@@ -1,0 +1,115 @@
+.focused {
+    border-width: 2px;
+    border-color: var(--input-active-border-color);
+    box-shadow: none;
+    outline: none;
+}
+
+.input {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 12px 0 16px;
+    border: 1px solid var(--input-border-color);
+    background: var(--input-bg);
+    border-radius: var(--input-border-radius);
+    outline: none;
+    transition: all 0.3s;
+
+    &:focus,
+    &:active,
+    &:hover {
+        border-width: 2px;
+        border-color: var(--input-active-border-color);
+        box-shadow: none;
+        outline: none;
+    }
+
+    &:focus {
+        padding-left: 15px;
+    }
+
+    &:not(:focus):hover,
+    &:global(.ant-input-disabled):hover {
+        border-width: 1px;
+    }
+
+    :global {
+        .ant-input-group-wrapper {
+            background: var(--input-bg);
+        }
+
+        .ant-input-group {
+            .ant-input-status-error {
+                border-top: 0;
+            }
+
+            .ant-input {
+                padding-left: 0;
+                border: 0;
+                background-color: transparent;
+                box-shadow: none;
+                outline: 0;
+            }
+
+            .ant-input-group-addon {
+                padding-right: 0;
+                border: 0;
+                background-color: transparent;
+                color: rgb(0 0 0 / 40%);
+            }
+        }
+    }
+
+    &:global(.ant-input-group-wrapper .ant-input) {
+        border: none;
+        background-color: transparent !important;
+    }
+}
+
+.disabled {
+    :global(.ant-input),
+    :global(.ant-input-number),
+    :global(.ant-select-disabled .ant-select-selector) {
+        border-color: var(--input-disabled-border-color) !important;
+        background: var(--input-disabled-bg) !important;
+        color: var(--input-disabled-color) !important;
+    }
+}
+
+.item {
+    :global {
+        .ant-form-item-explain-error {
+            margin-top: 4px;
+            color: var(--form-error);
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 16px;
+        }
+    }
+
+    &:global(.ant-form-item-has-error):not(.ant-input-disabled) {
+        :local(.input),
+        :global(input) {
+            border-width: 2px !important;
+            border-color: var(--form-error) !important;
+            background: var(--input-bg);
+            box-shadow: none !important;
+        }
+    }
+
+    :global(label.ant-form-item-required:not(.ant-form-item-required-mark-optional)) {
+        &:before {
+            content: '';
+        }
+
+        &:after {
+            display: inline-block;
+            margin-right: 4px;
+            color: var(--form-error);
+            content: '*';
+            font-family: SimSun, sans-serif;
+            font-size: 12px;
+            line-height: 1;
+        }
+    }
+}

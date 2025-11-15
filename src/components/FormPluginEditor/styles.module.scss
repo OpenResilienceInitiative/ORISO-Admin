@@ -1,0 +1,33 @@
+.disabled {
+    cursor: not-allowed;
+
+    &.input {
+        border-color: var(--input-disabled-border-color);
+        background: var(--input-disabled-bg);
+        color: var(--input-disabled-color);
+        cursor: not-allowed;
+
+        > div {
+            cursor: not-allowed;
+        }
+    }
+}
+
+.focused {
+    &.input {
+        border-width: 2px;
+        border-color: var(--input-active-border-color);
+        box-shadow: none;
+        outline: none;
+        transition: all 0.3s;
+    }
+}
+
+.input {
+    width: 100%;
+    border: 1px solid var(--input-border-color);
+    background: var(--input-bg);
+    border-radius: var(--input-border-radius);
+    outline: none;
+    transition: all 0.3s;
+}

@@ -1,0 +1,23 @@
+.switch {
+    margin-top: 1.5rem;
+}
+
+.radioGroup {
+    :global(label) {
+        font-family: 'Nunito';
+        font-style: normal;
+        font-weight: 400;
+        font-size: 16px;
+        line-height: 24px;
+        color: rgba(0, 0, 0, 0.9);
+        height: auto !important;
+    }
+
+    :global(.ant-form-item-control) {
+        margin-top: 8px;
+    }
+}
+
+.warning:global(.ant-alert.ant-alert-warning) {
+    padding: 14px 16px;
+}

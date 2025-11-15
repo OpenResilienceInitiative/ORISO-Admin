@@ -1,0 +1,27 @@
+.RichEditor {
+    &-toolbar {
+        &-link {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+
+            & > * {
+                display: flex;
+                align-items: center;
+            }
+            &-tooltip {
+                &-content {
+                    & > * {
+                        margin-bottom: 5px;
+                    }
+                }
+
+                &-actions {
+                    display: flex;
+                    flex-direction: row;
+                    justify-content: space-between;
+                }
+            }
+        }
+    }
+}

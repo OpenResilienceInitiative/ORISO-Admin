@@ -1,0 +1,18 @@
+{
+    "integrationFolder": "./cypress/integration/",
+    "testFiles": "**.spec.js",
+    "viewportHeight": 1024,
+    "viewportWidth": 1280,
+    "component": {
+        "componentFolder": "src",
+        "testFiles": "**/*spec.{js,jsx,ts,tsx}",
+        "viewportHeight": 500,
+        "viewportWidth": 700
+    },
+    "baseUrl": "http://localhost:3000/admin",
+    "experimentalStudio": true,
+    "env": {
+        "userOne": "admin@adminpanel.de",
+        "passwordOne": "chance12345"
+    }
+}

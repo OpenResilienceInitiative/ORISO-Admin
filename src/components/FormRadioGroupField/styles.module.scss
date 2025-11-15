@@ -1,0 +1,9 @@
+.vertical {
+    :global(.ant-form-item-control) {
+        margin-top: 24px;
+
+        label {
+            font-size: 16px;
+        }
+    }
+}

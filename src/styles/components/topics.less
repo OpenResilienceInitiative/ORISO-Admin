@@ -1,0 +1,17 @@
+.topicList {
+    &__column {
+        max-width: 200px;
+        left: 0px;
+    }
+}
+
+@media screen and (max-width: 767px) {
+    .topicList {
+        .ant-table-cell-fix-right {
+            .no-sticky-cell-right();
+        }
+        .ant-table-cell-fix-left {
+            .no-sticky-cell-left();
+        }
+    }
+}

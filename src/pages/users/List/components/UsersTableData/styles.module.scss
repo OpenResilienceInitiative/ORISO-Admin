@@ -1,0 +1,14 @@
+.searchWithButton {
+    display: flex;
+    gap: 24px;
+    width: 50%;
+    max-width: 529px;
+    @media (max-width: 767px) {
+        width: 100%;
+    }
+}
+
+.searchContainer {
+    display: flex;
+    justify-content: flex-end;
+}

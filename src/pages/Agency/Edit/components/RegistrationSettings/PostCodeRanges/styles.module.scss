@@ -1,0 +1,57 @@
+.postCodeRangesContainer {
+    background-color: var(--black-3);
+    padding: 1rem;
+}
+
+.remove {
+    margin-top: 37px;
+    background-color: var(--primary);
+    width: 32px;
+    display: flex;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50px;
+    --webkit-appearance: none;
+    padding: 0;
+    border: 0;
+
+    path {
+        fill: var(--white);
+        fill-opacity: 1;
+    }
+}
+
+.disabled {
+    path {
+        fill: black;
+        fill-opacity: 0.4;
+    }
+}
+
+.input {
+    margin-bottom: 0;
+    width: 100%;
+}
+
+.space {
+    margin-bottom: 1rem;
+    width: 100%;
+}
+
+.fieldsContainer {
+    display: flex;
+    align-items: flex-start;
+    gap: 17px;
+}
+
+.minusContainer {
+    margin-top: 37px;
+}
+
+.addButton {
+    padding: 2px 21px;
+    border: 2px solid rgba(0, 0, 0, 0.9);
+    margin-right: 15px;
+    margin-bottom: 20px;
+}

@@ -1,0 +1,140 @@
+@sidebar-plus-paddings-gap: 186px;
+
+.agencyEdit {
+    &__header {
+        display: grid;
+        margin-bottom: 2rem;
+        grid-template-columns: 1fr 1fr 1fr;
+
+        &--headline {
+            margin-bottom: 0;
+        }
+    }
+
+    &__headerBack {
+        display: flex;
+
+        a {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+    }
+
+    &__headline {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    &__nav {
+        display: flex;
+        justify-content: center;
+
+        &Item {
+            padding: 0 15px;
+        }
+
+        a {
+            display: inline-flex;
+            height: 100%;
+            align-items: center;
+            border-bottom: 4px solid transparent;
+            color: @form-active;
+            font-weight: @font-weight-medium;
+
+            &.active {
+                border-color: var(--skin-color-primary-contrast-safe, @primary);
+                color: var(--skin-color-primary-contrast-safe, @primary);
+            }
+
+            &:hover {
+                color: var(--skin-color-primary-contrast-safe, @hover-primary);
+            }
+        }
+    }
+
+    &__editableButtons {
+        display: flex;
+        justify-content: flex-end;
+
+        .button__item {
+            width: auto;
+            min-width: unset;
+            padding: 0;
+            margin: 0 0 0 24px;
+        }
+    }
+
+    &__pointer {
+        cursor: pointer;
+    }
+
+    &__selectFormField {
+        .ant-select-selector {
+            input {
+                padding-left: 10px !important;
+            }
+
+            .ant-select-selection-placeholder {
+                padding-left: 0 !important;
+                line-height: 23px !important;
+            }
+        }
+    }
+}
+
+.agencieEditInitialMeeting {
+    &__minutes {
+        align-items: center;
+        gap: 1rem;
+
+        input {
+            width: 90px;
+        }
+
+        &__text {
+            position: absolute;
+            left: 30%;
+            margin-bottom: 0 !important;
+        }
+    }
+
+    &__url {
+        position: relative;
+
+        svg {
+            position: absolute;
+            right: 0;
+            bottom: 0.5rem;
+        }
+    }
+}
+
+.agencyAdd {
+    &_actions {
+        display: flex;
+        justify-content: center;
+        margin-top: 1rem;
+        column-gap: 1rem;
+
+        &--sticky {
+            position: fixed;
+            bottom: 0;
+            width: calc(100% - @sidebar-plus-paddings-gap);
+            padding: 1rem 0;
+            background-color: @skin-main-background;
+        }
+
+        button {
+            border-radius: 4px;
+        }
+    }
+}
+
+.with-footer .agencyAdd_actions--sticky {
+    bottom: 48px;
+}
+
+.addForm {
+    padding-bottom: 30px;
+}

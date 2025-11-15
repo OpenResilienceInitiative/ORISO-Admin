@@ -1,0 +1,28 @@
+.disabled {
+    :global {
+        path {
+            fill: rgb(0 0 0 / 20%);
+        }
+    }
+}
+
+.iconButton {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    border-radius: 50%;
+    height: 36px;
+    width: 36px;
+
+    &:hover {
+        background: rgba(39, 50, 112, 0.1);
+    }
+}
+
+.disabled {
+    path {
+        fill: gray;
+    }
+}

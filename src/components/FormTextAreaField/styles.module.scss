@@ -1,0 +1,23 @@
+.textarea {
+    composes: input from '../FormFields/styles.module.scss';
+
+    padding: 12px 16px;
+}
+
+.item {
+    composes: item from '../FormFields/styles.module.scss';
+}
+
+.disabled {
+    composes: disabled from '../FormFields/styles.module.scss';
+}
+
+:global(.ant-form-vertical) :local(.item) {
+    :global(.ant-form-item-label) {
+        padding-bottom: 4px;
+    }
+
+    :global(label) {
+        height: initial;
+    }
+}

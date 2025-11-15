@@ -1,0 +1,19 @@
+$grid-base: 8px;
+$box-border-radius: 4px;
+
+.box {
+    padding: $grid-base * 2;
+    margin-bottom: $grid-base;
+    background: rgb(255 255 255 / 70%);
+    border-radius: $box-border-radius;
+
+    @media only screen and (min-width: 600px) {
+        padding: $grid-base * 3;
+        margin-bottom: $grid-base * 2;
+    }
+
+    @media only screen and (min-width: 600px) {
+        padding: $grid-base * 3;
+        margin-bottom: $grid-base * 2;
+    }
+}

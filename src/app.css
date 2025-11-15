@@ -1,0 +1,112 @@
+:root {
+    /* Spacing */
+    --spacing-xxs: 3px;
+    --spacing-xs: 5px;
+    --spacing-s: 10px;
+    --spacing-sm: 15px;
+    --spacing-m: 20px;
+    --spacing-ml: 25px;
+    --spacing-l: 30px;
+    --spacing-xl: 40px;
+    --spacing-2xl: 80px;
+    --mobileNavHeight: 60px;
+
+    /* font size */
+    --fontSize-xs: 10px;
+    --fontSize-s: 12px;
+    --fontSize-sm: 14px;
+    --fontSize-m: 16px;
+    --fontSize-ml: 24px;
+    --fontSize-l: 32px;
+    --fontSize-xl: 40px;
+    --fontSize-2xl: 80px;
+    --lineHeight-xs: calc(var(--fontSize-xs) * 1.8);
+    --lineHeightxs: calc(var(--fontSize-s) * 1.8);
+    --lineHeight-sm: calc(var(--fontSize-sm) * 1.8);
+    --lineHeight-m: calc(var(--fontSize-m) * 1.8);
+    --lineHeight-ml: calc(var(--fontSize-ml) * 1.8);
+    --lineHeight-l: calc(var(--fontSize-l) * 1.8);
+    --lineHeight-xl: calc(var(--fontSize-xl) * 1.8);
+    --lineHeight-2xl: calc(var(--fontSize-2xl) * 1.8);
+
+    /* FormFields */
+    --input-padding: 0 12px 0 16px;
+    --input-border-radius: 4px;
+    --input-border-color: rgb(0 0 0 / 20%);
+    --input-active-border-color: rgb(0 0 0 / 90%);
+    --input-disabled-border-color: transparent;
+    --input-bg: white;
+    --input-disabled-bg: rgb(0 0 0 / 5%);
+    --input-disabled-color: rgb(0 0 0 / 40%);
+    --label-color: rgb(0 0 0 / 60%);
+    --form-item-label-font-size: var(--fontSize-s);
+    --form-item-label-height: auto;
+    --form-item-margin-bottom: var(--spacing-sm);
+
+    /* Colors */
+    --warning-dark: #ff9f00;
+    --warning-light: #fff3e0;
+    --white: #ffffff;
+    --white-50: rgb(255 255 255 / 50%);
+    --black: #000000;
+    --black-87: rgb(0 0 0 / 87%);
+    --black-90: rgb(0 0 0 / 90%);
+    --black-60: rgb(0 0 0 / 60%);
+    --black-25: rgb(0 0 0 / 25%);
+    --black-10: rgb(0 0 0 / 10%);
+    --black-5: rgb(0 0 0 / 5%);
+    --black-3: rgb(0 0 0 / 3%);
+    --primary: #273270;
+    --secondary: #3f373f;
+    --tertiary: rgb(var(--black) 0.6);
+    --background-accent: #f8dedd;
+    --hover-primary: #525b8d;
+    --hover-select: #f4d2d1;
+    --background-light: #f4f0ee;
+    --background-lighter: #faf6f3;
+    --background-grey: #677391;
+    --form-primary: #8c878c;
+    --form-secondary: #3f373f;
+    --form-success: #0dcd21;
+    --form-medium: #ff9f00;
+    --form-error: #cc0000;
+    --form-disabled: #c4bfc4;
+    --form-active: #3f373f;
+    --light-grey: #787378;
+    --light-grey-hover: #655f65;
+    --light-red: #e07876;
+    --line-grey: #c4bfc4;
+    --line-ochre: #cebfaa;
+    --dark-brown: #432000;
+    --light-brown: #b5906e;
+    --dark-grey: #e7e3e1;
+    --text-color: rgb(0 0 0 / 90%);
+    --skin-main-background: #f2efea;
+    --success-color: #0dcd21;
+    --info-color: #273270;
+    --lightest-grey: #fafafa;
+    --tag-success: #0a882f;
+
+    /* YELLOW THEME */
+    --yellow-1: #ffeed2;
+    --yellow-2: #ffe7bf;
+    --yellow-3: #ffdca3;
+    --yellow-4: #febd50;
+    --yellow-5: #ff9f00;
+    --yellow-6: #de8a00;
+
+    /* breakpoints */
+    --from-small: 520px;
+    --from-medium: 600px;
+    --from-large: 900px;
+    --from-xl-large: 1200px;
+    --from-xx-large: 1600px;
+}
+
+body {
+    background: #f2efea;
+}
+
+.ant-layout {
+    height: 100%;
+}

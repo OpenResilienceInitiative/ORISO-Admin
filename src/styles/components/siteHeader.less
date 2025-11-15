@@ -1,0 +1,24 @@
+.siteHeader {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    height: auto;
+    justify-content: space-between;
+    padding: @spacing-m @spacing-m 0 @spacing-m;
+
+    span {
+        margin-bottom: 0.8rem;
+    }
+
+    @media screen and (max-width: @screen-sm-max) {
+        h2 {
+            margin-bottom: 0;
+            font-size: @fontSize-ml;
+        }
+    }
+
+    @media screen and (min-width: @screen-md) {
+        display: flex;
+        padding: @spacing-ml @spacing-ml 0 @spacing-ml;
+    }
+}

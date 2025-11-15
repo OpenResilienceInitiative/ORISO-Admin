@@ -1,0 +1,59 @@
+.counselorList {
+    td {
+        vertical-align: baseline;
+
+        .statusIconWrapper {
+            position: relative;
+            top: 3px;
+        }
+    }
+
+    .ant-spin-container {
+        min-height: 444px;
+    }
+
+    &__toggle {
+        padding: 16px 20px;
+        border: 0;
+        margin: -16px;
+        background-color: transparent;
+        cursor: pointer;
+    }
+
+    &__agencies {
+        span {
+            margin-right: @spacing-sm;
+        }
+    }
+
+    &__agencies + &__agencies {
+        margin-top: @spacing-s;
+    }
+
+    &__column {
+        max-width: 200px;
+        left: 0px;
+    }
+}
+
+.counselorListHeader {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+
+    h2 {
+        margin: 0;
+    }
+}
+
+@media screen and (max-width: 767px) {
+    .counselorList {
+        .ant-table-cell-fix-right {
+            .no-sticky-cell-right();
+        }
+        .ant-table-cell-fix-left {
+            .no-sticky-cell-left();
+        }
+    }
+}

@@ -1,0 +1,11 @@
+.sliderContainer {
+    :global(.ant-slider .ant-slider-rail) {
+        background-color: var(--black-5);
+    }
+    :global(.ant-form-item-control-input) {
+        margin-top: 50px;
+    }
+    :global(.ant-tooltip) {
+        z-index: 100;
+    }
+}

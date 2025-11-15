@@ -1,0 +1,24 @@
+.searchNewContainer {
+    display: flex;
+    gap: 24px;
+}
+
+.tag {
+    margin-left: 8px;
+    border-radius: 30px;
+    color: white;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 16px;
+    padding: 2px 12px;
+}
+
+.tagOnline {
+    @extend .tag;
+    background-color: var(--tag-success);
+}
+
+.tagOffline {
+    @extend .tag;
+    background-color: var(--form-error);
+}

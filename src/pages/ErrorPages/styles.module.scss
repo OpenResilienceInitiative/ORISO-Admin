@@ -1,0 +1,45 @@
+.wrapper {
+    display: flex;
+    align-items: center;
+    height: 100vh;
+    gap: 128px;
+    padding: 0 10%;
+    justify-content: center;
+
+    @media screen and (max-width: 770px) {
+        flex-direction: column;
+    }
+}
+
+.illustration {
+    width: 100%;
+    max-width: 500px;
+
+    @media screen and (max-width: 770px) {
+        max-width: 300px;
+    }
+}
+
+.title {
+    font-weight: 500;
+    font-size: 40px;
+    line-height: 50px;
+    color: var(--black-90);
+    margin-bottom: 12px;
+}
+
+.description {
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 28px;
+    color: var(--black-90);
+    margin-bottom: 25px;
+}
+
+.illustrationContainer {
+    flex-shrink: 1;
+}
+
+.infoContainer {
+    max-width: 620px;
+}

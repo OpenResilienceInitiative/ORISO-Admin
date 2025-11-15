@@ -1,0 +1,116 @@
+.protectedLayout {
+    padding-bottom: @mobileNavHeight;
+
+    .ant-layout-sider {
+        z-index: 80;
+        height: @mobileNavHeight;
+        background-color: @primary-color;
+    }
+
+    .mainMenu {
+        ul {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            padding: 10px 0;
+            margin: 0;
+            list-style: none;
+        }
+
+        .menuIcon svg {
+            width: 1.2rem;
+            height: 1.2rem;
+        }
+
+        .menuItem {
+            display: block;
+
+            a,
+            button {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 0;
+                border: none;
+                background: transparent;
+                color: @white;
+                cursor: pointer;
+                font-size: @fontSize-s;
+                justify-items: center;
+                opacity: 0.6;
+                text-align: center;
+
+                &.active {
+                    opacity: 1;
+                }
+            }
+        }
+    }
+
+    h4.formHeadline {
+        color: @primary-color;
+        font-size: @fontSize-sm;
+        line-height: @lineHeight-sm;
+        text-transform: uppercase;
+    }
+}
+
+/* hate this not mobile First with all these !important */
+@media screen and (max-width: @screen-sm-max) {
+    .protectedLayout {
+        .ant-layout-sider {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+    }
+}
+
+@media screen and (min-width: @screen-md) {
+    .protectedLayout {
+        padding-bottom: 0;
+
+        .ant-layout-sider {
+            position: sticky;
+            top: 0;
+            left: 0;
+            width: 140px;
+            height: 100vh;
+            flex: 0 0 140px;
+        }
+
+        .mainMenu {
+            height: 100%;
+
+            ul {
+                overflow: auto;
+                height: inherit;
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: flex-start;
+                padding: 50px 0 0;
+            }
+
+            .menuItem {
+                margin: 0 auto 40px;
+
+                &:last-child {
+                    display: flex;
+                    justify-content: center;
+                    margin-top: auto;
+                }
+            }
+
+            .menuIcon svg {
+                width: 1.6rem;
+                height: 1.6rem;
+            }
+
+            .logout {
+                text-transform: none;
+            }
+        }
+    }
+}

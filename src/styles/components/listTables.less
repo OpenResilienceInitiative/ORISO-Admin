@@ -1,0 +1,103 @@
+.editableTable {
+    .ant-table-body > table {
+        margin-top: -@spacing-s;
+        border-spacing: 0 @spacing-s;
+    }
+
+    .ant-table-body {
+        overflow: auto !important;
+    }
+
+    tr {
+        background-color: @skin-main-background;
+
+        .statusIconWrapper {
+            display: flex;
+            justify-content: center;
+        }
+
+        .statusIconWrapper {
+            &.IN_PROGRESS {
+                color: @info-color;
+            }
+
+            &.ERROR {
+                color: @form-error;
+            }
+
+            &.CREATED {
+                color: @success-color;
+            }
+        }
+    }
+
+    td {
+        background-color: @lightest-grey !important;
+    }
+
+    td:first-child {
+        border-bottom-left-radius: @border-radius-base;
+        border-top-left-radius: @border-radius-base;
+    }
+
+    td:last-child {
+        border-bottom-right-radius: @border-radius-base;
+        border-top-right-radius: @border-radius-base;
+    }
+
+    .ant-table-column-title {
+        font-weight: 700;
+    }
+
+    .tableActionWrapper {
+        display: flex;
+        flex-direction: row;
+        gap: @spacing-sm;
+        justify-content: flex-end;
+    }
+
+    .editBtnWrapper,
+    .statusIconWrapper {
+        display: inline-flex;
+        flex-direction: row;
+        gap: @spacing-sm;
+    }
+
+    .editIcon {
+        border: none;
+        background: transparent;
+        cursor: pointer;
+
+        svg {
+            width: 24px;
+            height: 24px;
+        }
+    }
+
+    .editIcon.disabled {
+        border: none;
+        background: transparent;
+
+        svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        path {
+            fill: gray;
+        }
+    }
+
+    .statusIconWrapper {
+        svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        // font-size: 21px;
+    }
+
+    .ant-table-sticky-scroll {
+        display: none;
+    }
+}

@@ -1,0 +1,33 @@
+.fileUploader {
+    max-width: 200px;
+    max-height: 200px;
+    margin-top: @spacing-xs;
+
+    .ant-upload-select-picture-card {
+        position: relative;
+        border: none;
+        background-color: @skin-fileUploader-background;
+
+        &:before {
+            display: block;
+            padding-top: 100%; /* initial ratio of 1:1 */
+            content: '';
+        }
+
+        .ant-upload {
+            position: absolute;
+            top: @spacing-sm;
+            right: @spacing-sm;
+            bottom: @spacing-sm;
+            left: @spacing-sm;
+            height: auto;
+            border: @border-width-base dashed @border-color-base;
+            border-radius: @border-radius-base;
+            font-size: clamp(@fontSize-s, 1.2vw, @fontSize-ml);
+
+            .anticon {
+                font-size: clamp(@fontSize-s, 2vw, @fontSize-l);
+            }
+        }
+    }
+}

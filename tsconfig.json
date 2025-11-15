@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "strictNullChecks": false,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+		"noImplicitAny": false,
+		"downlevelIteration": true,
+    "types": ["vite/client", "vite-plugin-svgr/client", "cypress"]
+  },
+  "include": [
+    "src",
+    "cypress",
+    "src/setupTests.ts"
+  ],
+  "exclude": [
+    "*.test",
+    "*.spec.js"
+  ],
+  "files": [
+    "index.d.ts",
+    "vite-env.d.ts"
+  ]
+}

@@ -1,0 +1,29 @@
+.fullHeight {
+    height: 100%;
+}
+
+.footerActions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+
+    :global {
+        .button__link {
+            width: auto;
+            min-width: unset;
+            padding: 0;
+            margin: 0 0 0 24px;
+        }
+    }
+}
+
+.editCard {
+    background: transparent;
+    appearance: none;
+    border: none;
+    cursor: pointer;
+}
+
+.cardTitleClassName {
+    min-height: 31.5px;
+}

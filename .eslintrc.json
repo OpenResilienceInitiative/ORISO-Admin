@@ -1,0 +1,54 @@
+{
+    "extends": [
+        "plugin:react-hooks/recommended",
+        "airbnb",
+        "airbnb-typescript",
+        "plugin:@typescript-eslint/eslint-recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:jsx-a11y/recommended",
+        "plugin:prettier/recommended",
+        "plugin:cypress/recommended",
+        "plugin:import/errors",
+        "plugin:import/warnings",
+        "plugin:import/typescript"
+    ],
+    "parser": "@typescript-eslint/parser",
+    /*"files": ["*.ts", "*.tsx"],*/
+    "parserOptions": {
+        "project": "./tsconfig.json"
+    },
+    "plugins": ["import", "@typescript-eslint", "jsx-a11y", "prettier", "cypress"],
+    "rules": {
+        "react/require-default-props": "off",
+        "import/no-named-as-default": 0,
+        "require-jsdoc": 0,
+        "react/react-in-jsx-scope": "off",
+        "valid-jsdoc": "off",
+        "react/jsx-fragments": "off",
+        "react-hooks/exhaustive-deps": "off",
+        "react/no-array-index-key": "off",
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/explicit-module-boundary-types": "off",
+        "@typescript-eslint/ban-types": "off",
+        "react/destructuring-assignment": "off",
+        "import/prefer-default-export": "off",
+        "react/jsx-props-no-spreading": "off",
+        "react/function-component-definition": [
+            2,
+            {
+                "namedComponents": "arrow-function"
+            }
+        ]
+    },
+    "settings": {
+        "react": {
+            "version": "detect"
+        },
+        " import/resolver": {
+            "node": {
+                "extensions": [".js", ".jsx", ".ts", ".tsx"],
+                "moduleDirectory": ["node_modules", "src/"]
+            }
+        }
+    }
+}

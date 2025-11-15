@@ -1,0 +1,37 @@
+.search {
+    width: 100%;
+    min-width: 400px;
+
+    :global {
+        .ant-input-affix-wrapper {
+            padding: 7px 11px;
+            border: 2px solid var(--primary);
+            border-right: 0;
+            background: white;
+        }
+
+        .protectedLayout & input.ant-input {
+            padding: 0;
+            border-bottom: 0;
+        }
+
+        .ant-input-search-button {
+            background-color: var(--primary);
+            border-radius: 0 4px 4px 0;
+            color: white !important;
+        }
+
+        .ant-input-suffix {
+            padding: 0 10px 0 5px;
+        }
+
+        .ant-input-affix-wrapper:focus,
+        .ant-input-affix-wrapper-focused {
+            box-shadow: none;
+        }
+
+        .anticon.ant-input-clear-icon {
+            font-size: 16px;
+        }
+    }
+}

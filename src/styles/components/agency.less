@@ -1,0 +1,37 @@
+.agencyList {
+    &__column {
+        max-width: 200px;
+        left: 0px;
+    }
+}
+
+.agencyListOnline {
+    &__column {
+        min-width: 160px;
+        left: 0px;
+    }
+}
+
+@media screen and (max-width: 767px) {
+    .agencyList {
+        .ant-table-cell-fix-right {
+            .no-sticky-cell-right();
+        }
+        .ant-table-cell-fix-left {
+            .no-sticky-cell-left();
+        }
+    }
+}
+
+.desc__toggleText {
+    margin-left: 0.5rem;
+}
+
+.online__title {
+    display: flex;
+    align-items: center;
+
+    .tooltip {
+        margin-left: 0.5rem;
+    }
+}

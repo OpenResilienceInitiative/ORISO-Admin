@@ -1,0 +1,36 @@
+.colorSelector {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: @spacing-s;
+    background-color: @white;
+    border-radius: @border-radius-base;
+    gap: @spacing-sm;
+
+    button {
+        border: none;
+    }
+
+    .colorIndicator {
+        width: 62px;
+        height: 62px;
+    }
+
+    .pickerWrapper {
+        position: absolute;
+        bottom: 100%;
+        left: @spacing-s;
+
+        .sketch-picker {
+            .flexbox-fix {
+                input {
+                    width: 100% !important;
+                }
+            }
+        }
+    }
+
+    h4 {
+        margin-bottom: 0;
+    }
+}

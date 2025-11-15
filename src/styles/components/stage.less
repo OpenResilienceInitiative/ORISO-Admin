@@ -1,0 +1,94 @@
+@loginOverlayDelayDesktop: 1s;
+@loginOverlayDelayMobile: 1.5s;
+
+.stage {
+    position: fixed;
+    z-index: 20;
+    top: 0;
+    left: 0;
+    width: 40vw;
+    height: 100vh;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: @spacing-2xl;
+    background-color: var(--skin-color-primary, @primary-color);
+    color: #ffffff;
+
+    .logo {
+        width: 200px;
+        height: 80px;
+    }
+
+    h1,
+    h3 {
+        color: #ffffff;
+    }
+
+    h3.ant-typography {
+        color: #ffffff;
+        font-size: @fontSize-m;
+        font-weight: 400;
+    }
+
+    &--animated {
+        display: flex;
+        width: 100vw;
+
+        @media screen and (prefers-reduced-motion: reduce) {
+            &.stage--ready {
+                animation: none;
+                animation-delay: @loginOverlayDelayMobile;
+            }
+        }
+
+        &.stage--ready {
+            animation: overlayAnimation 1s ease forwards;
+            animation-delay: @loginOverlayDelayMobile;
+        }
+
+        .stage__headline {
+            margin-top: auto;
+        }
+
+        @keyframes overlayAnimation {
+            from {
+                left: 0;
+            }
+
+            to {
+                left: -100vw;
+            }
+        }
+    }
+}
+
+@media screen and (min-width: @screen-xl) {
+    .stage {
+        display: flex;
+
+        &--animated {
+            @media screen and (prefers-reduced-motion: reduce) {
+                &.stage--ready {
+                    animation: none;
+                    animation-delay: @loginOverlayDelayDesktop;
+                }
+            }
+
+            &.stage--ready {
+                animation: overlayAnimation 1s ease forwards;
+                animation-delay: @loginOverlayDelayDesktop;
+            }
+        }
+    }
+
+    @keyframes overlayAnimation {
+        from {
+            width: 100vw;
+        }
+
+        to {
+            width: 40vw;
+        }
+    }
+}

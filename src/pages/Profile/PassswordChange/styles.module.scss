@@ -1,0 +1,24 @@
+.passwordRequirementsInfo {
+    margin-top: 52px;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.passwordRequirementsList {
+    padding-inline-start: 20px;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.editButton {
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 24px;
+    color: var(--black-60);
+
+    &:hover {
+        color: var(--primary);
+    }
+}

@@ -1,0 +1,73 @@
+.rte.rte {
+    border-color: @input-border-color;
+
+    .RichTextEditor__editor___1QqIU {
+        overflow: auto;
+        height: 400px;
+        min-height: 300px;
+        max-height: 4000px;
+        padding: @spacing-m;
+        resize: vertical;
+    }
+
+    .DraftEditor-root {
+        height: 100%;
+        font-family: @font-family;
+    }
+
+    button {
+        padding: @spacing-xxs;
+        border: none;
+        margin: 0;
+        background: transparent;
+    }
+
+    .EditorToolbar__root___3_Aqz {
+        display: flex;
+        flex-flow: wrap row;
+        padding: @spacing-s @spacing-s;
+        border-color: @input-border-color;
+        margin: 0;
+        column-gap: @spacing-s;
+        row-gap: @spacing-s;
+    }
+
+    .ButtonGroup__root___3lEAn {
+        display: inline-flex;
+        flex-direction: row;
+        gap: @spacing-s;
+
+        &:first-child {
+            width: 100%;
+        }
+    }
+
+    @media screen and (min-width: @screen-sm) {
+        .ButtonGroup__root___3lEAn {
+            &:first-child {
+                width: auto;
+            }
+        }
+    }
+    @media screen and (min-width: @screen-lg) {
+        .ButtonGroup__root___3lEAn {
+            &:first-child {
+                width: 100%;
+            }
+        }
+    }
+
+    @media screen and (min-width: @screen-xl) {
+        .ButtonGroup__root___3lEAn {
+            &:first-child {
+                width: auto;
+            }
+        }
+    }
+    @media screen and (min-width: @screen-xxl) {
+        .EditorToolbar__root___3_Aqz {
+            padding: @spacing-sm @spacing-m;
+            column-gap: @spacing-l;
+        }
+    }
+}

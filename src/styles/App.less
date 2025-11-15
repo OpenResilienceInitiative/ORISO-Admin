@@ -1,0 +1,89 @@
+@import 'antd/dist/antd.less';
+
+@import 'variables/index.less';
+@import 'components/index.less';
+@import 'util/index.less';
+@import './Settings.less';
+
+html,
+body {
+    height: 100%;
+    overflow: hidden;
+}
+
+html {
+    box-sizing: border-box;
+    text-size-adjust: 100%;
+}
+
+body {
+    font-family: @body-font-family;
+    font-size: @body-font-size;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased;
+    line-height: @body-line-height;
+}
+
+.root {
+    overflow: hidden;
+}
+
+.app {
+    height: 100%;
+
+    &--blur {
+        filter: blur(5px);
+    }
+}
+
+h1 {
+    font-size: @fontSize-xl;
+    line-height: @lineHeight-xl;
+}
+
+h2 {
+    font-size: @fontSize-l;
+    line-height: @lineHeight-l;
+}
+
+h3 {
+    font-size: @fontSize-ml;
+    line-height: @lineHeight-ml;
+}
+
+h4 {
+    font-size: @fontSize-m;
+    line-height: @lineHeight-m;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+    &.ant-typography {
+        font-family: Nunito;
+        font-weight: 700;
+    }
+}
+
+.ant-popover {
+    &.ant-popover-placement-bottomRight {
+        .ant-popover-arrow {
+            right: 7px;
+        }
+    }
+
+    max-width: 350px;
+
+    .ant-popover-title {
+        padding: @spacing-m @spacing-ml 0 @spacing-ml;
+        border: none;
+        font-size: @fontSize-m;
+        font-weight: 700;
+    }
+
+    .ant-popover-inner-content {
+        padding: @spacing-s @spacing-ml @spacing-m @spacing-ml;
+    }
+}

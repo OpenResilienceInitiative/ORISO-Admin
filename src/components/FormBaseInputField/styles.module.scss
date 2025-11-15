@@ -1,0 +1,31 @@
+.input {
+    composes: input from '../FormFields/styles.module.scss';
+}
+
+.item {
+    composes: item from '../FormFields/styles.module.scss';
+}
+
+.disabled {
+    composes: disabled from '../FormFields/styles.module.scss';
+}
+
+.withAddon {
+    &.disabled {
+        .input {
+            border-color: var(--input-disabled-border-color);
+            background: var(--input-disabled-bg);
+            color: var(--input-disabled-color);
+        }
+    }
+}
+
+:global(.ant-form-vertical) :local(.item) {
+    :global(.ant-form-item-label) {
+        padding-bottom: 4px;
+    }
+
+    :global(label) {
+        height: initial;
+    }
+}

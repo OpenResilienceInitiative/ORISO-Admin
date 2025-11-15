@@ -1,0 +1,55 @@
+.fullHeight {
+    height: 100%;
+}
+
+.contentClassName {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+}
+
+.cardTitle {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 24px;
+
+    &.hasSubtitle {
+        margin-bottom: 0;
+    }
+}
+
+.titleContainer {
+    display: flex;
+    gap: 8px;
+
+    .title {
+        margin-bottom: 0;
+    }
+}
+
+.cardSubTitle {
+    margin-bottom: 20px;
+    color: var(--label-color);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 16px;
+    margin-top: 5px;
+}
+
+.container {
+    flex-grow: 1;
+}
+
+.tooltip {
+    :global {
+        svg {
+            width: 20px;
+        }
+    }
+}
+
+.isLoading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

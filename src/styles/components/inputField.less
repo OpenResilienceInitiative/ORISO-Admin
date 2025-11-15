@@ -1,0 +1,146 @@
+.inputField {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+
+    &__input {
+        min-width: 0;
+        height: @input-field-height;
+        flex: 1;
+        padding: 12px @grid-base-three 0;
+        border: 1px solid @form-primary;
+        appearance: textfield;
+        appearance: none;
+        border-radius: @input-field-border-radius;
+        box-shadow: @input-field-box-shadow;
+        color: @form-secondary;
+        outline: 0;
+
+        &:hover {
+            border: 1px solid @form-active;
+        }
+
+        &:focus {
+            border: 2px solid @form-active;
+        }
+
+        &::-webkit-inner-spin-button {
+            appearance: none;
+        }
+
+        &:input-placeholder {
+            color: transparent;
+        }
+
+        &::input-placeholder {
+            color: transparent;
+        }
+
+        &::placeholder {
+            color: transparent;
+        }
+
+        &:focus + label,
+        &:not(:placeholder-shown) + label {
+            top: 3px;
+            font-size: 12px;
+            transition: font-size 0.5s, top 0.5s;
+        }
+
+        &[disabled] {
+            border: 1px solid @form-input-border;
+            background-color: @white;
+
+            + label {
+                color: @form-input-border;
+                cursor: not-allowed;
+            }
+        }
+
+        &[readonly] {
+            border: 1px solid @form-disabled;
+            color: @form-disabled;
+
+            & + label {
+                color: @form-disabled;
+            }
+
+            &:hover,
+            &:focus {
+                border: 1px solid @form-disabled !important;
+                cursor: not-allowed;
+            }
+        }
+
+        &--invalid {
+            border: 2px solid @form-error !important;
+            color: @form-error;
+
+            & + label {
+                color: @form-error;
+            }
+        }
+
+        &--valid {
+            border: 2px solid @form-success !important;
+            color: @form-success;
+
+            & + label {
+                color: @form-success;
+            }
+        }
+
+        /* TODO: check if --error state still needed (class added in warningLabels.ts) */
+        &--error {
+            border-width: 2px;
+            border-color: @form-error !important;
+            color: @form-error;
+
+            &.inputField__input--valid {
+                border-color: @form-error !important;
+                color: @form-error !important;
+
+                & + label {
+                    color: @form-primary;
+                }
+            }
+        }
+    }
+
+    &__label {
+        position: absolute;
+        top: 15px;
+        left: @grid-base-three;
+        color: @tertiary;
+        transition: font-size 0.5s, top 0.5s;
+    }
+
+    &__infoText {
+        width: 100%;
+        margin: @grid-base @grid-base-three 0;
+    }
+
+    &__passwordToggle {
+        position: absolute;
+        z-index: 15;
+        top: 0;
+        right: 0;
+        margin: 14px @grid-base-two 0 0;
+        cursor: pointer;
+    }
+
+    &--withIcon & {
+        &__icon {
+            margin-right: @grid-base;
+        }
+
+        &__infoText {
+            margin-left: @grid-base-seven;
+        }
+
+        &__label {
+            left: 58px;
+        }
+    }
+}

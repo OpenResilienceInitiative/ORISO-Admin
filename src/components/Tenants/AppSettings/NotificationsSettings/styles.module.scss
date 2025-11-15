@@ -1,0 +1,25 @@
+.checkGroup {
+    margin-bottom: 16px;
+}
+
+.checkInfo {
+    width: calc(100% - 71px);
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--black-60);
+}
+
+.notifications {
+    :global(.ant-form-item-label) {
+        padding: 0;
+
+        label {
+            height: auto;
+            font-weight: 400;
+            font-size: 16px;
+            line-height: 24px;
+            color: var(--black-90);
+        }
+    }
+}

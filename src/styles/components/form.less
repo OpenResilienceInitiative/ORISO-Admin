@@ -1,0 +1,43 @@
+.publicContent,
+.protectedLayout,
+.ant-modal-root {
+    button:not(.ant-btn-link) {
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+}
+
+.ant-btn-primary {
+    &:hover,
+    &:focus {
+        background-color: @primary-color-light;
+    }
+
+    &:active {
+        background-color: @primary-color-dark;
+        color: @white-50-opacity;
+    }
+
+    &:disabled {
+        background-color: @primary-color;
+        color: @white;
+        opacity: 0.3;
+    }
+}
+
+.ant-switch-checked {
+    background-color: rgb(13 205 33);
+}
+
+.requiredFieldsInfo {
+    color: @black-60-opacity;
+    font-weight: @font-weight-regular;
+}
+
+.rc-virtual-list .ant-select-item-option-selected {
+    display: none;
+}
+
+.formSwitchField__container {
+    display: flex;
+}

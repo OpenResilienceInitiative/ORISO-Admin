@@ -1,0 +1,59 @@
+.item {
+    :global {
+        label {
+            height: initial !important;
+
+            &.ant-form-item-required {
+                &:before {
+                    display: none !important;
+                }
+
+                &:after {
+                    display: inline-block;
+                    margin-right: 4px;
+                    color: inherit;
+                    content: '*';
+                    font-family: SimSun, sans-serif;
+                    font-size: 12px;
+                    line-height: 1;
+                }
+            }
+        }
+
+        .ant-form-item-label label {
+            padding-bottom: 4px;
+            color: var(--black-87);
+            font-weight: 400;
+            font-size: 16px;
+            line-height: 24px;
+        }
+    }
+}
+
+.inline {
+    margin-bottom: 4px;
+
+    :global(.ant-form-item-row) {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+    :global(.ant-form-item-label) {
+        flex-grow: 1;
+    }
+    :global(.ant-col.ant-form-item-control) {
+        width: auto;
+        display: flex;
+        align-items: flex-end;
+    }
+    :global(.ant-form-item-control-input) {
+        min-height: 22px;
+    }
+    :global(.ant-form-item-label) {
+        &,
+        label {
+            padding-bottom: 0;
+        }
+    }
+}

@@ -1,0 +1,14 @@
+.placeholder {
+    display: inline-flex;
+    flex-direction: row;
+    background: #faf6f3;
+    border: 1px solid #273270;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin: 0 4px;
+
+    &--delete {
+        cursor: pointer;
+        margin-left: 4px;
+    }
+}

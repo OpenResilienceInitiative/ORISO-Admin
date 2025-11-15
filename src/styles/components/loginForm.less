@@ -1,0 +1,49 @@
+.loginForm {
+    .ant-form-item-label > label {
+        &.ant-form-item-required:not(.ant-form-item-required-mark-optional):before,
+        &:after {
+            display: none;
+        }
+
+        span {
+            margin-right: @spacing-s;
+            font-size: @fontSize-ml;
+
+            &:before {
+                display: none;
+            }
+        }
+    }
+
+    .ant-form-item-control-input {
+        max-width: 290px;
+    }
+
+    .forgotPW {
+        padding: 0;
+
+        span {
+            color: @primary-color;
+            text-decoration: underline;
+        }
+    }
+}
+
+@media screen and (min-width: @screen-sm) {
+    .loginForm {
+        .ant-form-item-label > label {
+            .labelText {
+                display: none;
+            }
+        }
+    }
+}
+
+@media screen and (min-width: @screen-sm) and (max-width: @screen-md) {
+    .loginForm {
+        .ant-form-item-label {
+            flex: 0 auto;
+            max-width: none;
+        }
+    }
+}
