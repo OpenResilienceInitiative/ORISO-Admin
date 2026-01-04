@@ -50,6 +50,48 @@ export const AgencyList = () => {
 
     const columnsData = [
         {
+            title: 'ID',
+            dataIndex: 'id',
+            key: 'id',
+            sorter: (a: AgencyData, b: AgencyData) => {
+                // Frontend sorting by ID (numeric)
+                const idA = a.id ? parseInt(a.id.toString(), 10) : 0;
+                const idB = b.id ? parseInt(b.id.toString(), 10) : 0;
+                return idA - idB;
+            },
+            width: 80,
+            ellipsis: true,
+            className: 'agencyList__column',
+            fixed: 'left',
+        },
+        {
+            title: 'Created Date',
+            dataIndex: 'createDate',
+            key: 'createDate',
+            sorter: (a: AgencyData, b: AgencyData) => {
+                // Frontend sorting by creation date
+                const dateA = a.createDate ? new Date(a.createDate).getTime() : 0;
+                const dateB = b.createDate ? new Date(b.createDate).getTime() : 0;
+                return dateA - dateB;
+            },
+            width: 150,
+            ellipsis: true,
+            render: (createDate: string) => {
+                if (!createDate || createDate === 'null') return '-';
+                try {
+                    const date = new Date(createDate);
+                    return date.toLocaleDateString('de-DE', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                    });
+                } catch {
+                    return createDate;
+                }
+            },
+            className: 'agencyList__column',
+        },
+        {
             title: t('agency.name'),
             dataIndex: 'name',
             key: 'name',
@@ -175,7 +217,8 @@ export const AgencyList = () => {
 
     const tableChangeHandler = (pagination: any, filters: any, sorter: any) => {
         const { current, pageSize } = pagination;
-        if (sorter.field) {
+        // ID and createDate columns use frontend sorting, so skip backend sort for them
+        if (sorter.field && sorter.field.toLowerCase() !== 'id' && sorter.field.toLowerCase() !== 'createdate') {
             const sortBy = sorter.field.toUpperCase();
             const order = sorter.order === 'descend' ? 'DESC' : 'ASC';
             setTableState({

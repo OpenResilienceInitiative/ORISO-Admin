@@ -34,6 +34,8 @@ export interface AgencyData {
     consultingType: string;
     status: string | undefined;
     deleteDate: string | undefined;
+    createDate?: string; // Already returned by backend
+    updateDate?: string; // Already returned by backend
     dioceseId?: string;
     postCodes?: PostCodeRange[];
     dataProtection: {

@@ -202,6 +202,12 @@ export const UserEditOrAdd = () => {
                                 placeholderKey="placeholder.username"
                                 required
                                 disabled={isEditing}
+                                rules={[
+                                    {
+                                        pattern: /^[a-z0-9_-]+$/,
+                                        message: t('message.error.username.format'),
+                                    },
+                                ]}
                             />
 
                             {!isEditing && typeOfUsers === 'consultants' && (

@@ -20,16 +20,16 @@ export const UserProfile = () => {
             <Row gutter={[24, 24]}>
                 <Col span={12} md={6}>
                     {!hasRole(UserRole.TenantAdmin) && <PrivateData />}
-
-                    <Card titleKey="twoFactorAuth.title" subTitleKey="twoFactorAuth.subtitle">
-                        <TwoFactorAuth />
-                    </Card>
-                </Col>
-
-                <Col span={12} md={6}>
                     <PasswordChange />
                     {settings.documentationEnabled && <Documentation />}
                 </Col>
+
+                {/* 2FA disabled - Keycloak extension not implemented */}
+                {/* <Col span={12} md={6}>
+                    <Card titleKey="twoFactorAuth.title" subTitleKey="twoFactorAuth.subtitle">
+                        <TwoFactorAuth />
+                    </Card>
+                </Col> */}
             </Row>
         </Page>
     );
