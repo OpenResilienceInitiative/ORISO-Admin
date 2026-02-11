@@ -40,6 +40,10 @@ export const TenantSettingsLayout = () => {
                                 settings.multitenancyWithSingleDomainEnabled ? 'globalSettings' : 'appSettings'
                             }`,
                         },
+                    can(PermissionAction.Update, Resource.Tenant) && {
+                        to: '/admin/theme-settings/permissions',
+                        titleKey: 'settings.subhead.permissions',
+                    },
                 ]}
             />
             <Outlet />

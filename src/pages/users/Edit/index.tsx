@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router';
 import { FETCH_ERRORS, X_REASON } from '../../../api/fetchData';
 import { Card } from '../../../components/Card';
 import { FormInputField } from '../../../components/FormInputField';
+import { FormPasswordField } from '../../../components/FormPasswordField';
 import { FormTextAreaField } from '../../../components/FormTextAreaField';
 import { Page } from '../../../components/Page';
 import { SelectFormField } from '../../../components/SelectFormField';
@@ -200,9 +201,12 @@ export const UserEditOrAdd = () => {
                                 name="username"
                                 labelKey="counselor.username"
                                 placeholderKey="placeholder.username"
-                                required
                                 disabled={isEditing}
                                 rules={[
+                                    {
+                                        required: true,
+                                        message: t('message.error.username.required'),
+                                    },
                                     {
                                         pattern: /^[a-z0-9_-]+$/,
                                         message: t('message.error.username.format'),
@@ -211,11 +215,10 @@ export const UserEditOrAdd = () => {
                             />
 
                             {!isEditing && typeOfUsers === 'consultants' && (
-                                <FormInputField
+                                <FormPasswordField
                                     name="password"
                                     labelKey="counselor.password"
                                     placeholderKey="placeholder.password"
-                                    type="password"
                                     required
                                     rules={[
                                         {
@@ -255,13 +258,14 @@ export const UserEditOrAdd = () => {
                                             labelKey="counselor.formalLanguage.title"
                                             name="formalLanguage"
                                         />
-                                        {isEditing && <FormSwitchField labelKey="counselor.absent" name="absent" />}
-                                        {isEnabled(FeatureFlag.GroupChatV2) && (
+                                        {/* Temporarily hidden: {isEditing && <FormSwitchField labelKey="counselor.absent" name="absent" />} */}
+                                        {/* Temporarily hidden: {isEnabled(FeatureFlag.GroupChatV2) && (
                                             <FormSwitchField
                                                 labelKey="counselor.isGroupChatConsultant"
                                                 name="isGroupchatConsultant"
                                             />
-                                        )}
+                                        )} */}
+                                        <FormSwitchField labelKey="counselor.isSupervisor" name="isSupervisor" />
                                     </Space>
                                     {isAbsentEnabled && (
                                         <FormTextAreaField labelKey="counselor.absenceMessage" name="absenceMessage" />

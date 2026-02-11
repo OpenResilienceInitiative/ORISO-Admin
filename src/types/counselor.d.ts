@@ -20,6 +20,7 @@ export interface CounselorData {
     status: Status;
     twoFactorAuth?: boolean;
     isGroupchatConsultant?: boolean;
+    isSupervisor?: boolean;
     tenantId: string;
     tenantName: string;
 }

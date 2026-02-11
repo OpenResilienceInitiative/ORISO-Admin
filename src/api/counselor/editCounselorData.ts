@@ -22,6 +22,7 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         absenceMessage,
         twoFactorAuth,
         isGroupchatConsultant,
+        isSupervisor,
         tenantId,
     } = formData;
 
@@ -36,6 +37,7 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         ...(absent ? { absenceMessage } : {}),
         twoFactorAuth,
         isGroupchatConsultant,
+        isSupervisor,
         tenantId: parseInt(tenantId, 10),
     };
 
