@@ -153,6 +153,18 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 </li>
                             )}
 
+                            {can(PermissionAction.Read, Resource.Consultant) && (
+                                <li key="logs" className="menuItem">
+                                    <NavLink
+                                        to={routePathNames.logs}
+                                        className={({ isActive }) => (isActive ? 'active' : '')}
+                                    >
+                                        <NavIcon path={routePathNames.logs} />
+                                        <span>{t('logs.title')}</span>
+                                    </NavLink>
+                                </li>
+                            )}
+
                             <li className="menuItem">
                                 <NavLink
                                     to={routePathNames.userProfile}

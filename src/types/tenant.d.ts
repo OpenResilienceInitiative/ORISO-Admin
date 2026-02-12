@@ -26,6 +26,9 @@ export interface BasicTenantData {
         featureCentralDataProtectionTemplateEnabled?: boolean;
         featureAnonymousChatEnabled?: boolean;
         featureCallsEnabled?: boolean;
+        featureThreadsEnabled?: boolean;
+        featureThreadsGroupChatsEnabled?: boolean;
+        featureThreadsOneOnOneEnabled?: boolean;
     };
 }
 

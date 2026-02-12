@@ -1,3 +1,4 @@
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
 import { FormSwitchField } from '../../../FormSwitchField';
@@ -22,6 +23,9 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
         settings: {
             featureAnonymousChatEnabled: true,
             featureCallsEnabled: true,
+            featureThreadsEnabled: true,
+            featureThreadsGroupChatsEnabled: true,
+            featureThreadsOneOnOneEnabled: true,
             ...(data?.settings ?? {}),
         },
     };
@@ -51,6 +55,50 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                 />
                 <p className={styles.checkInfo}>{t('tenants.permissions.calls.description')}</p>
             </div>
+
+            <div className={styles.checkGroup}>
+                <FormSwitchField
+                    labelKey="tenants.permissions.threads.title"
+                    name={['settings', 'featureThreadsEnabled']}
+                    inline
+                    disableLabels
+                />
+                <p className={styles.checkInfo}>{t('tenants.permissions.threads.description')}</p>
+            </div>
+
+            <Form.Item noStyle shouldUpdate>
+                {({ getFieldValue }) => {
+                    const threadsEnabled = getFieldValue(['settings', 'featureThreadsEnabled']) !== false;
+                    return (
+                        <>
+                            <div className={styles.subCheckGroup}>
+                                <FormSwitchField
+                                    labelKey="tenants.permissions.threads.groupChats.title"
+                                    name={['settings', 'featureThreadsGroupChatsEnabled']}
+                                    inline
+                                    disableLabels
+                                    disabled={!threadsEnabled}
+                                />
+                                <p className={styles.checkInfo}>
+                                    {t('tenants.permissions.threads.groupChats.description')}
+                                </p>
+                            </div>
+                            <div className={styles.subCheckGroup}>
+                                <FormSwitchField
+                                    labelKey="tenants.permissions.threads.oneOnOne.title"
+                                    name={['settings', 'featureThreadsOneOnOneEnabled']}
+                                    inline
+                                    disableLabels
+                                    disabled={!threadsEnabled}
+                                />
+                                <p className={styles.checkInfo}>
+                                    {t('tenants.permissions.threads.oneOnOne.description')}
+                                </p>
+                            </div>
+                        </>
+                    );
+                }}
+            </Form.Item>
         </CardEditable>
     );
 };

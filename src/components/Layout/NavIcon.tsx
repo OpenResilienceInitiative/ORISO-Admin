@@ -43,6 +43,8 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
             return currentlySelected ? <TopicsActiveIcon /> : <TopicsInactiveIcon />;
         case routePathNames.statistic:
             return currentlySelected ? <StatisticsActiveIcon /> : <StatisticsInactiveIcon />;
+        case routePathNames.logs:
+            return currentlySelected ? <StatisticsActiveIcon /> : <StatisticsInactiveIcon />;
         case routePathNames.userProfile:
             return currentlySelected ? <ProfileActiveIcon /> : <ProfileInactiveIcon />;
         case 'logout':

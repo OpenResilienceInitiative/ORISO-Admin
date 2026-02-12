@@ -35,6 +35,7 @@ import { useUserRoles } from './hooks/useUserRoles.hook';
 import { UserRole } from './enums/UserRole';
 import { useAppConfigContext } from './context/useAppConfig';
 import { AgencyEditInitialMeeting } from './pages/Agency/EditInitialMeeting';
+import { SupervisorLogsPage } from './pages/Logs/SupervisorLogs';
 
 export const App = () => {
     const { data: publicTenantData } = usePublicTenantData();
@@ -135,6 +136,7 @@ export const App = () => {
                         <Route path={`${routePathNames.topics}/:id`} element={<TopicEditOrAdd />} />
                     )}
                     <Route path={routePathNames.statistic} element={<Statistic />} />
+                    <Route path={routePathNames.logs} element={<SupervisorLogsPage />} />
                     <Route path={routePathNames.userProfile} element={<UserProfile />} />
                     {can(PermissionAction.Create, Resource.Tenant) && (
                         <>
