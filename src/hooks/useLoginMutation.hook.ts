@@ -23,9 +23,9 @@ export const useLoginMutation = (tenantId: string) => {
     return useMutation<LoginData, ErrorLogin, LoginParams>(
         ['login', 'user-data', tenantId],
         async ({ username, password, otp }: any) => {
-            console.log('🔍 useLoginMutation: Starting login process');
+            // console.log('🔍 useLoginMutation: Starting login process');
             return getAccessToken({ username, password, otp }).then((data) => {
-                console.log('🔍 useLoginMutation: Got access token, checking tenant access');
+                // console.log('🔍 useLoginMutation: Got access token, checking tenant access');
                 // We'll check in the server if we're allowed to access the app
                 return fetchData({
                     url: tenantAccessEndpoint,
@@ -35,22 +35,22 @@ export const useLoginMutation = (tenantId: string) => {
                     },
                 })
                     .then(() => {
-                        console.log('🔍 useLoginMutation: Tenant access check passed');
+                        // console.log('🔍 useLoginMutation: Tenant access check passed');
                         return data;
                     })
                     .catch((error) => {
-                        console.log('🔍 useLoginMutation: Tenant access check failed:', error);
+                        // console.log('🔍 useLoginMutation: Tenant access check failed:', error);
                         return Promise.reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
                     });
             });
         },
         {
             onSuccess: (data) => {
-                console.log('🔍 useLoginMutation: onSuccess called with data:', data);
+                // console.log('🔍 useLoginMutation: onSuccess called with data:', data);
                 setTokens(data.access_token, data.expires_in, data.refresh_token, data.refresh_expires_in);
             },
             onError: (error) => {
-                console.log('🔍 useLoginMutation: onError called with error:', error);
+                // console.log('🔍 useLoginMutation: onError called with error:', error);
             },
         },
     );

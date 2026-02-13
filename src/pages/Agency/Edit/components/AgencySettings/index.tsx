@@ -49,13 +49,13 @@ export const AgencySettings = ({ isEditMode }: AgencySettingsProps) => {
             getConsultingTypes()
                 .then((cTypes) => setConsultingTypes(cTypes))
                 .catch((error) => {
-                    console.error('Failed to load consulting types:', error);
+                    // console.error('Failed to load consulting types:', error);
                     setConsultingTypes([]);
                 });
             getDiocesesData()
                 .then((dioceses) => setDiocesesData(dioceses))
                 .catch((error) => {
-                    console.error('Failed to load dioceses:', error);
+                    // console.error('Failed to load dioceses:', error);
                     setDiocesesData([]);
                 });
         }
@@ -64,7 +64,7 @@ export const AgencySettings = ({ isEditMode }: AgencySettingsProps) => {
             searchTenantData({ perPage: 1000 })
                 .then(({ data }) => setTenantsData(data))
                 .catch((error) => {
-                    console.error('Failed to load tenants:', error);
+                    // console.error('Failed to load tenants:', error);
                     setTenantsData([]);
                 });
         }

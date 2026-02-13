@@ -21,7 +21,7 @@ const getFAKEUserData = (cancelTokenSource: CancelTokenSource) => {
     };
 
     // eslint-disable-next-line no-console
-    console.log('4 FAKE UserDta', customerResponse, cancelTokenSource);
+    // console.log('4 FAKE UserDta', customerResponse, cancelTokenSource);
     return customerResponse;
 };
 

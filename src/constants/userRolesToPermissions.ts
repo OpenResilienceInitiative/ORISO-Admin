@@ -19,9 +19,9 @@ export const useUserRolesToPermission = () => {
     const { data } = useTenantData();
     const { settings } = useAppConfigContext();
 
-    console.log('🔍 useUserRolesToPermission: roles:', roles);
-    console.log('🔍 useUserRolesToPermission: tenant data:', data);
-    console.log('🔍 useUserRolesToPermission: settings:', settings);
+    // console.log('🔍 useUserRolesToPermission: roles:', roles);
+    // console.log('🔍 useUserRolesToPermission: tenant data:', data);
+    // console.log('🔍 useUserRolesToPermission: settings:', settings);
 
     const singleCanEditLegalText =
         !settings.multitenancyWithSingleDomainEnabled || settings.legalContentChangesBySingleTenantAdminsAllowed;
@@ -29,8 +29,8 @@ export const useUserRolesToPermission = () => {
     const isTopicsEnabled = data?.settings?.featureTopicsEnabled;
     const isStatisticsEnabled = data?.settings?.featureStatisticsEnabled;
 
-    console.log('🔍 useUserRolesToPermission: isTopicsEnabled:', isTopicsEnabled);
-    console.log('🔍 useUserRolesToPermission: isStatisticsEnabled:', isStatisticsEnabled);
+    // console.log('🔍 useUserRolesToPermission: isTopicsEnabled:', isTopicsEnabled);
+    // console.log('🔍 useUserRolesToPermission: isStatisticsEnabled:', isStatisticsEnabled);
 
     const permissions: Record<Partial<UserRole>, UserPermissions> = {
         [UserRole.RestrictedAgencyAdmin]: {
@@ -67,13 +67,13 @@ export const useUserRolesToPermission = () => {
     };
 
     const filteredRoles = rolesPriority.filter((role) => roles.includes(role));
-    console.log('🔍 useUserRolesToPermission: filteredRoles:', filteredRoles);
+    // console.log('🔍 useUserRolesToPermission: filteredRoles:', filteredRoles);
 
     const finalPermissions = filteredRoles.reduce(
         (current, role) => merge(current, permissions[role] || {}),
         {} as UserPermissions,
     );
-    console.log('🔍 useUserRolesToPermission: finalPermissions:', finalPermissions);
+    // console.log('🔍 useUserRolesToPermission: finalPermissions:', finalPermissions);
 
     return finalPermissions;
 };

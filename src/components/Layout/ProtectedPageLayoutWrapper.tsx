@@ -51,9 +51,9 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
 
     useEffect(() => {
         if (subdomain !== tenantData.subdomain && !settings.multitenancyWithSingleDomainEnabled) {
-            console.log('🔍 ProtectedPageLayoutWrapper: Subdomain mismatch, but not logging out for debugging');
-            console.log('🔍 ProtectedPageLayoutWrapper: subdomain:', subdomain);
-            console.log('🔍 ProtectedPageLayoutWrapper: tenantData.subdomain:', tenantData.subdomain);
+            // console.log('🔍 ProtectedPageLayoutWrapper: Subdomain mismatch, but not logging out for debugging');
+            // console.log('🔍 ProtectedPageLayoutWrapper: subdomain:', subdomain);
+            // console.log('🔍 ProtectedPageLayoutWrapper: tenantData.subdomain:', tenantData.subdomain);
             // logout(true);
         }
     }, [subdomain, tenantData.subdomain]);

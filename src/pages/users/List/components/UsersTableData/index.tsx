@@ -56,21 +56,21 @@ export const UsersTableData = () => {
     });
 
     const setSearchDebounced = useDebouncedCallback((value) => {
-        console.log('🔍 UsersTableData: Search input changed to:', value);
-        console.log('🔍 UsersTableData: Resetting to page 1');
+        // console.log('🔍 UsersTableData: Search input changed to:', value);
+        // console.log('🔍 UsersTableData: Resetting to page 1');
         setTableState((data) => ({ ...data, current: 1 }));
         setSearch(value);
     }, 100);
 
-    console.log('🔍 UsersTableData: Component render state:', {
-        search,
-        tableState,
-        isLoading,
-        isError,
-        hasData: !!responseList,
-        dataCount: responseList?.data?.length,
-        total: responseList?.total,
-    });
+    // console.log('🔍 UsersTableData: Component render state:', {
+    // search,
+    // tableState,
+    // isLoading,
+    // isError,
+    // hasData: !!responseList,
+    // dataCount: responseList?.data?.length,
+    // total: responseList?.total,
+    // });
 
     const onClose = useCallback(() => {
         setDeleteUserId(null);
@@ -160,7 +160,7 @@ export const UsersTableData = () => {
                 try {
                     return decodeUsername(username);
                 } catch (decodeError) {
-                    console.warn('Failed to decode username:', username, decodeError);
+                    // console.warn('Failed to decode username:', username, decodeError);
                     // Return original username if decoding fails
                     return username;
                 }

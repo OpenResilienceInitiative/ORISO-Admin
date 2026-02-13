@@ -74,7 +74,7 @@ const addCounselorData = (counselorData: CounselorData) => {
     fakeCounselors(counselorResponse);
 
     // eslint-disable-next-line no-console
-    console.log('FAKE add CounselorDta', counselorResponse);
+    // console.log('FAKE add CounselorDta', counselorResponse);
 
     return new Promise((resolve) => {
         window.setTimeout(() => {

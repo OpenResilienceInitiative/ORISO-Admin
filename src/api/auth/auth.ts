@@ -12,23 +12,23 @@ export const setTokens = (
     refresh_token: string | undefined,
     refresh_expires_in: number | undefined,
 ) => {
-    console.log('🔍 setTokens: CALLED with tokens');
-    console.log('🔍 setTokens: access_token:', access_token ? 'present' : 'missing');
-    console.log('🔍 setTokens: expires_in:', expires_in);
-    console.log('🔍 setTokens: refresh_token:', refresh_token ? 'present' : 'missing');
-    console.log('🔍 setTokens: refresh_expires_in:', refresh_expires_in);
+    // console.log('🔍 setTokens: CALLED with tokens');
+    // console.log('🔍 setTokens: access_token:', access_token ? 'present' : 'missing');
+    // console.log('🔍 setTokens: expires_in:', expires_in);
+    // console.log('🔍 setTokens: refresh_token:', refresh_token ? 'present' : 'missing');
+    // console.log('🔍 setTokens: refresh_expires_in:', refresh_expires_in);
 
     if (access_token) {
-        console.log('🔍 setTokens: Setting keycloak cookie');
+        // console.log('🔍 setTokens: Setting keycloak cookie');
         setValueInCookie('keycloak', access_token);
         setTokenExpiryInLocalStorage('auth.access_token_valid_until', expires_in);
     }
     if (refresh_token) {
-        console.log('🔍 setTokens: Setting refreshToken cookie');
+        // console.log('🔍 setTokens: Setting refreshToken cookie');
         setValueInCookie('refreshToken', refresh_token);
         setTokenExpiryInLocalStorage('auth.refresh_token_valid_until', refresh_expires_in);
     }
-    console.log('🔍 setTokens: COMPLETED');
+    // console.log('🔍 setTokens: COMPLETED');
 };
 
 const refreshTokens = (): Promise<void> => {
@@ -36,7 +36,7 @@ const refreshTokens = (): Promise<void> => {
     const tokenExpiry = getTokenExpiryFromLocalStorage();
 
     if (tokenExpiry.refreshTokenValidUntilTime <= currentTime - RENEW_BEFORE_EXPIRY_IN_MS) {
-        console.log('🔍 refreshTokens: Refresh token expired, but not logging out for debugging');
+        // console.log('🔍 refreshTokens: Refresh token expired, but not logging out for debugging');
         // logout(true, routePathNames.login);
         return Promise.resolve();
     }
@@ -86,7 +86,7 @@ export const handleTokenRefresh = (): Promise<void> => {
 
         if (refreshTokenValidInMs <= 0 && accessTokenValidInMs <= 0) {
             // access token and refresh token no longer valid, logout
-            console.log('🔍 handleTokenRefresh: Tokens expired, logging out');
+            // console.log('🔍 handleTokenRefresh: Tokens expired, logging out');
             logout(true, routePathNames.login);
             resolve();
         } else if (accessTokenValidInMs <= 0) {

@@ -16,7 +16,7 @@ const deleteCounselorData = (counselorData: CounselorData, counselors: Counselor
     }
 
     // eslint-disable-next-line no-console
-    console.log('FAKE delete CounselorDta', counselorResponse);
+    // console.log('FAKE delete CounselorDta', counselorResponse);
 
     return new Promise((resolve) => {
         window.setTimeout(() => {

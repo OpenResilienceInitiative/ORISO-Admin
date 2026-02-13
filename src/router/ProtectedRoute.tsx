@@ -26,18 +26,18 @@ export const ProtectedRoute = ({ children }: ProtectedRouteTypes) => {
     const refreshTokenValidInMs = tokenExpiry.refreshTokenValidUntilTime - currentTime;
 
     // Debug logging
-    console.log('🔍 ProtectedRoute: currentTime:', currentTime);
-    console.log('🔍 ProtectedRoute: tokenExpiry:', tokenExpiry);
-    console.log('🔍 ProtectedRoute: accessToken:', accessToken ? 'present' : 'missing');
-    console.log('🔍 ProtectedRoute: refreshToken:', refreshToken ? 'present' : 'missing');
-    console.log('🔍 ProtectedRoute: accessTokenValidInMs:', accessTokenValidInMs);
-    console.log('🔍 ProtectedRoute: refreshTokenValidInMs:', refreshTokenValidInMs);
+    // console.log('🔍 ProtectedRoute: currentTime:', currentTime);
+    // console.log('🔍 ProtectedRoute: tokenExpiry:', tokenExpiry);
+    // console.log('🔍 ProtectedRoute: accessToken:', accessToken ? 'present' : 'missing');
+    // console.log('🔍 ProtectedRoute: refreshToken:', refreshToken ? 'present' : 'missing');
+    // console.log('🔍 ProtectedRoute: accessTokenValidInMs:', accessTokenValidInMs);
+    // console.log('🔍 ProtectedRoute: refreshTokenValidInMs:', refreshTokenValidInMs);
 
     // Check if tokens exist (temporarily relaxed validation for debugging)
     if (!accessToken || !refreshToken) {
-        console.log('🔍 ProtectedRoute: No tokens present, redirecting to login');
-        console.log('🔍 ProtectedRoute: accessToken present:', !!accessToken);
-        console.log('🔍 ProtectedRoute: refreshToken present:', !!refreshToken);
+        // console.log('🔍 ProtectedRoute: No tokens present, redirecting to login');
+        // console.log('🔍 ProtectedRoute: accessToken present:', !!accessToken);
+        // console.log('🔍 ProtectedRoute: refreshToken present:', !!refreshToken);
         // Redirect them to the /login page, but save the current location they were
         // trying to go to when they were redirected. This allows us to send them
         // along to that page after they login, which is a nicer user experience
@@ -48,7 +48,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteTypes) => {
 
     // Additional check for expired tokens - redirect to login if both expired
     if (refreshTokenValidInMs <= 0 && accessTokenValidInMs <= 0) {
-        console.log('🔍 ProtectedRoute: Tokens expired, redirecting to login');
+        // console.log('🔍 ProtectedRoute: Tokens expired, redirecting to login');
         logout(true);
         return <Navigate to={routePathNames.login} state={{ from: location }} />;
     }

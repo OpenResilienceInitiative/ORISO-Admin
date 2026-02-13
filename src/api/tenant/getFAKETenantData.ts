@@ -69,7 +69,7 @@ const getTenantData = (tenantId: number, cancelTokenSource: CancelTokenSource) =
         },
     };
     // eslint-disable-next-line no-console
-    console.log('FAKE get TenantData', tenantResponse, cancelTokenSource);
+    // console.log('FAKE get TenantData', tenantResponse, cancelTokenSource);
     return new Promise((resolve) => {
         window.setTimeout(() => {
             resolve(tenantResponse);

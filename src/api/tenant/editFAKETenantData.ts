@@ -9,7 +9,7 @@ const editFAKETenantData = (tenantData: TenantData) => {
     const tenantResponse = tenantData;
 
     // eslint-disable-next-line no-console
-    console.log('FAKE edit TenantData', tenantResponse);
+    // console.log('FAKE edit TenantData', tenantResponse);
 
     return new Promise((resolve) => {
         window.setTimeout(() => {

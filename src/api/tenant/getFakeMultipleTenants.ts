@@ -38,7 +38,7 @@ const getFakeMultipleTenants = () => {
     }
 
     // eslint-disable-next-line no-console
-    console.log('FAKE get TenantData', tenantResponse);
+    // console.log('FAKE get TenantData', tenantResponse);
     return new Promise((resolve) => {
         window.setTimeout(() => {
             resolve(tenantResponse);

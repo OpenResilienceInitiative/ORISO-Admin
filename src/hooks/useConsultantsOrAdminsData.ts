@@ -41,7 +41,7 @@ export const useConsultantsOrAdminsData = ({
             })
                 .then((result: HalResponseList<CounselorData>) => removeEmbedded(result) as ResponseList<CounselorData>)
                 .catch((error) => {
-                    console.error('Error fetching consultants data:', error);
+                    // console.error('Error fetching consultants data:', error);
                     // Return empty result instead of crashing
                     return {
                         data: [],

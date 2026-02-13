@@ -36,7 +36,7 @@ export const RegistrationSettings = ({ consultingTypeId }: RegistrationSettingsP
                 setShowAutoselectPostcodeWarning(consultingType?.registration.autoSelectPostcode);
             })
             .catch((error) => {
-                console.error('Failed to fetch consulting types:', error);
+                // console.error('Failed to fetch consulting types:', error);
                 // Don't show warning if consulting types can't be fetched
                 setShowAutoselectPostcodeWarning(false);
             });

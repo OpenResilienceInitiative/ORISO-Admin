@@ -8,25 +8,25 @@ import { AppConfigInterface } from '../../types/AppConfigInterface';
  * @return data
  */
 const getPublicTenantData = (settings: AppConfigInterface) => {
-    console.log('🔍 getPublicTenantData: Starting...');
-    console.log('🔍 getPublicTenantData: Settings:', settings);
+    // console.log('🔍 getPublicTenantData: Starting...');
+    // console.log('🔍 getPublicTenantData: Settings:', settings);
 
     const { subdomain } = getLocationVariables();
-    console.log('🔍 getPublicTenantData: Subdomain from location:', subdomain);
+    // console.log('🔍 getPublicTenantData: Subdomain from location:', subdomain);
 
     const slug = settings.multitenancyWithSingleDomainEnabled
         ? settings.mainTenantSubdomainForSingleDomainMultitenancy
         : subdomain;
 
-    console.log('🔍 getPublicTenantData: Slug to use:', slug);
-    console.log(
-        '🔍 getPublicTenantData: multitenancyWithSingleDomainEnabled:',
-        settings.multitenancyWithSingleDomainEnabled,
-    );
+    // console.log('🔍 getPublicTenantData: Slug to use:', slug);
+    // console.log(
+    // '🔍 getPublicTenantData: multitenancyWithSingleDomainEnabled:',
+    // settings.multitenancyWithSingleDomainEnabled,
+    // );
 
     if (slug) {
         const url = `${baseTenantPublicEndpoint}/${slug}`;
-        console.log('🔍 getPublicTenantData: Fetching URL:', url);
+        // console.log('🔍 getPublicTenantData: Fetching URL:', url);
 
         return fetchData({
             url,
@@ -35,16 +35,16 @@ const getPublicTenantData = (settings: AppConfigInterface) => {
             responseHandling: [FETCH_ERRORS.NO_MATCH],
         })
             .then((result) => {
-                console.log('🔍 getPublicTenantData: SUCCESS - Result:', result);
+                // console.log('🔍 getPublicTenantData: SUCCESS - Result:', result);
                 return result;
             })
             .catch((error) => {
-                console.error('🔍 getPublicTenantData: ERROR:', error);
+                // console.error('🔍 getPublicTenantData: ERROR:', error);
                 throw error;
             });
     }
 
-    console.log('🔍 getPublicTenantData: No slug, returning empty promise');
+    // console.log('🔍 getPublicTenantData: No slug, returning empty promise');
     return new Promise<any>(() => {});
 };
 

@@ -16,11 +16,11 @@ export const useUserPermissions = (): UserPermissionsReturn => {
         can: (action: PermissionAction | PermissionAction[], resource: Resource) => {
             const actions = action instanceof Array ? action : [action];
             const result = actions.some((tmpAction) => userPermissions?.[Resource[resource]]?.[tmpAction] || false);
-            console.log(`🔍 useUserPermissions: can(${action}, ${Resource[resource]}) = ${result}`);
-            console.log(
-                `🔍 useUserPermissions: userPermissions[${Resource[resource]}]:`,
-                userPermissions?.[Resource[resource]],
-            );
+            // console.log(`🔍 useUserPermissions: can(${action}, ${Resource[resource]}) = ${result}`);
+            // console.log(
+            // `🔍 useUserPermissions: userPermissions[${Resource[resource]}]:`,
+            // userPermissions?.[Resource[resource]],
+            // );
             return result;
         },
     };

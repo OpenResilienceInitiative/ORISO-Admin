@@ -46,10 +46,10 @@ export const App = () => {
     const { hasRole } = useUserRoles();
     const { can } = useUserPermissions();
 
-    console.log('🔍 App: isLoading:', isLoading);
-    console.log('🔍 App: tenant data:', data);
-    console.log('🔍 App: publicTenantData:', publicTenantData);
-    console.log('🔍 App: settings:', settings);
+    // console.log('🔍 App: isLoading:', isLoading);
+    // console.log('🔍 App: tenant data:', data);
+    // console.log('🔍 App: publicTenantData:', publicTenantData);
+    // console.log('🔍 App: settings:', settings);
 
     const shouldShowThemeSettings =
         (settings.multitenancyWithSingleDomainEnabled && hasRole(UserRole.TenantAdmin)) ||
@@ -70,14 +70,14 @@ export const App = () => {
         }
     }, []);
 
-    console.log('🔍 App: About to check isLoading:', isLoading);
-    console.log('🔍 App: Will show Initialization?', isLoading);
+    // console.log('🔍 App: About to check isLoading:', isLoading);
+    // console.log('🔍 App: Will show Initialization?', isLoading);
 
     const canReadTenant = can(PermissionAction.Read, Resource.Tenant);
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
-    console.log('🔍 App: canReadTenant:', canReadTenant);
-    console.log('🔍 App: canReadLegalText:', canReadLegalText);
-    console.log('🔍 App: Will show routes?', canReadTenant || canReadLegalText);
+    // console.log('🔍 App: canReadTenant:', canReadTenant);
+    // console.log('🔍 App: canReadLegalText:', canReadLegalText);
+    // console.log('🔍 App: Will show routes?', canReadTenant || canReadLegalText);
 
     return isLoading ? (
         <Initialization />

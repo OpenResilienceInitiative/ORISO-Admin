@@ -61,7 +61,7 @@ export const InitialMeetingNewModal = (props: {
                         .catch((error) => {
                             props.handleSave(() => {});
                             // eslint-disable-next-line no-console
-                            console.error(error);
+                            // console.error(error);
                         });
                 });
             }}

@@ -163,7 +163,7 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                         // window.location.href = '/admin/access-denied';
                         reject(new Error('403 Forbidden'));
                     } else if (response.status === 401) {
-                        console.log('🔍 fetchData: 401 Unauthorized - session expired, logging out');
+                        // console.log('🔍 fetchData: 401 Unauthorized - session expired, logging out');
                         logout(true, routePathNames.login);
                         reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
                     } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL)) {
@@ -179,7 +179,7 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                     }
                 } else {
                     // Handle unhandled response status - reject with appropriate error
-                    console.error(`Unhandled response status: ${response.status} for URL: ${props.url}`);
+                    // console.error(`Unhandled response status: ${response.status} for URL: ${props.url}`);
                     reject(new Error(`API call error: ${response.status} ${response.statusText}`));
                 }
             })

@@ -15,7 +15,7 @@ const editCounselorData = (counselorData: CounselorData, counselors: CounselorDa
     }
 
     // eslint-disable-next-line no-console
-    console.log('FAKE edit CounselorDta', counselorResponse);
+    // console.log('FAKE edit CounselorDta', counselorResponse);
 
     return new Promise((resolve) => {
         window.setTimeout(() => {
