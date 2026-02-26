@@ -1,4 +1,5 @@
 import { Card, Form } from 'antd';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
 import { FormSwitchField } from '../../../FormSwitchField';
@@ -10,6 +11,34 @@ interface PermissionsSettingsArgs {
     tenantId: string;
 }
 
+const DEFAULT_PERMISSION_SETTINGS = {
+    featureAnonymousChatEnabled: true,
+    featureCallsEnabled: true,
+    featureSupervisionEnabled: true,
+    featureSupervisionAnonymousChatsEnabled: true,
+    featureSupervisionOneOnOneChatsEnabled: true,
+    featureAudioCallsEnabled: true,
+    featureAudioCallsAnonymousChatsEnabled: true,
+    featureAudioCallsOneOnOneChatsEnabled: true,
+    featureAudioCallsGroupChatsEnabled: true,
+    featureAudioCallsSupervisionChatsEnabled: true,
+    featureVideoCallsEnabled: true,
+    featureVideoCallsAnonymousChatsEnabled: true,
+    featureVideoCallsOneOnOneChatsEnabled: true,
+    featureVideoCallsGroupChatsEnabled: true,
+    featureVideoCallsSupervisionChatsEnabled: true,
+    featureThreadsEnabled: true,
+    featureThreadsAnonymousChatsEnabled: true,
+    featureThreadsGroupChatsEnabled: true,
+    featureThreadsOneOnOneEnabled: true,
+    featureThreadsSupervisionChatsEnabled: true,
+    featureVoiceMessagesEnabled: true,
+    featureVoiceMessagesAnonymousChatsEnabled: true,
+    featureVoiceMessagesOneOnOneChatsEnabled: true,
+    featureVoiceMessagesGroupChatsEnabled: true,
+    featureVoiceMessagesSupervisionChatsEnabled: true,
+} as const;
+
 export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id: tenantId });
@@ -18,37 +47,16 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
         successMessageKey: 'tenants.message.settingsUpdate',
     });
 
-    const initialValues = {
-        ...data,
-        settings: {
-            featureAnonymousChatEnabled: true,
-            featureCallsEnabled: true,
-            featureSupervisionEnabled: true,
-            featureSupervisionAnonymousChatsEnabled: true,
-            featureSupervisionOneOnOneChatsEnabled: true,
-            featureAudioCallsEnabled: true,
-            featureAudioCallsAnonymousChatsEnabled: true,
-            featureAudioCallsOneOnOneChatsEnabled: true,
-            featureAudioCallsGroupChatsEnabled: true,
-            featureAudioCallsSupervisionChatsEnabled: true,
-            featureVideoCallsEnabled: true,
-            featureVideoCallsAnonymousChatsEnabled: true,
-            featureVideoCallsOneOnOneChatsEnabled: true,
-            featureVideoCallsGroupChatsEnabled: true,
-            featureVideoCallsSupervisionChatsEnabled: true,
-            featureThreadsEnabled: true,
-            featureThreadsAnonymousChatsEnabled: true,
-            featureThreadsGroupChatsEnabled: true,
-            featureThreadsOneOnOneEnabled: true,
-            featureThreadsSupervisionChatsEnabled: true,
-            featureVoiceMessagesEnabled: true,
-            featureVoiceMessagesAnonymousChatsEnabled: true,
-            featureVoiceMessagesOneOnOneChatsEnabled: true,
-            featureVoiceMessagesGroupChatsEnabled: true,
-            featureVoiceMessagesSupervisionChatsEnabled: true,
-            ...(data?.settings ?? {}),
-        },
-    };
+    const initialValues = useMemo(
+        () => ({
+            ...data,
+            settings: {
+                ...DEFAULT_PERMISSION_SETTINGS,
+                ...(data?.settings ?? {}),
+            },
+        }),
+        [data]
+    );
 
     return (
         <CardEditable
@@ -82,7 +90,13 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                     </div>
                 </Card>
 
-                <Form.Item noStyle shouldUpdate>
+                <Form.Item
+                    noStyle
+                    shouldUpdate={(prev, curr) =>
+                        prev?.settings?.featureThreadsEnabled !== curr?.settings?.featureThreadsEnabled ||
+                        prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
+                    }
+                >
                     {({ getFieldValue }) => {
                         const supervisionEnabled = getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
                         return (
@@ -124,8 +138,16 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                     }}
                 </Form.Item>
 
-                <Form.Item noStyle shouldUpdate>
+                <Form.Item
+                    noStyle
+                    shouldUpdate={(prev, curr) =>
+                        prev?.settings?.featureCallsEnabled !== curr?.settings?.featureCallsEnabled ||
+                        prev?.settings?.featureAudioCallsEnabled !== curr?.settings?.featureAudioCallsEnabled ||
+                        prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
+                    }
+                >
                     {({ getFieldValue }) => {
+                        const callsMasterEnabled = getFieldValue(['settings', 'featureCallsEnabled']) !== false;
                         const audioMasterEnabled = getFieldValue(['settings', 'featureAudioCallsEnabled']) !== false;
                         const supervisionEnabled = getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
                         return (
@@ -136,6 +158,7 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                                         name={['settings', 'featureAudioCallsEnabled']}
                                         inline
                                         disableLabels
+                                        disabled={!callsMasterEnabled}
                                     />
                                     <p className={styles.checkInfo}>
                                         {t('tenants.permissions.audioCalls.description')}
@@ -149,7 +172,7 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                                             name={['settings', 'featureAudioCallsAnonymousChatsEnabled']}
                                             inline
                                             disableLabels
-                                            disabled={!audioMasterEnabled}
+                                            disabled={!audioMasterEnabled || !callsMasterEnabled}
                                         />
                                     </div>
                                     <div className={styles.subCheckGroup}>
@@ -158,7 +181,7 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                                             name={['settings', 'featureAudioCallsOneOnOneChatsEnabled']}
                                             inline
                                             disableLabels
-                                            disabled={!audioMasterEnabled}
+                                            disabled={!audioMasterEnabled || !callsMasterEnabled}
                                         />
                                     </div>
                                     <div className={styles.subCheckGroup}>
@@ -167,7 +190,7 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                                             name={['settings', 'featureAudioCallsGroupChatsEnabled']}
                                             inline
                                             disableLabels
-                                            disabled={!audioMasterEnabled}
+                                            disabled={!audioMasterEnabled || !callsMasterEnabled}
                                         />
                                     </div>
                                     <div className={styles.subCheckGroup}>
@@ -176,7 +199,7 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                                             name={['settings', 'featureAudioCallsSupervisionChatsEnabled']}
                                             inline
                                             disableLabels
-                                            disabled={!audioMasterEnabled || !supervisionEnabled}
+                                            disabled={!audioMasterEnabled || !supervisionEnabled || !callsMasterEnabled}
                                         />
                                     </div>
                                 </div>
@@ -185,8 +208,16 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                     }}
                 </Form.Item>
 
-                <Form.Item noStyle shouldUpdate>
+                <Form.Item
+                    noStyle
+                    shouldUpdate={(prev, curr) =>
+                        prev?.settings?.featureCallsEnabled !== curr?.settings?.featureCallsEnabled ||
+                        prev?.settings?.featureVideoCallsEnabled !== curr?.settings?.featureVideoCallsEnabled ||
+                        prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
+                    }
+                >
                     {({ getFieldValue }) => {
+                        const callsMasterEnabled = getFieldValue(['settings', 'featureCallsEnabled']) !== false;
                         const videoMasterEnabled = getFieldValue(['settings', 'featureVideoCallsEnabled']) !== false;
                         const supervisionEnabled = getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
                         return (
@@ -197,6 +228,7 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                                         name={['settings', 'featureVideoCallsEnabled']}
                                         inline
                                         disableLabels
+                                        disabled={!callsMasterEnabled}
                                     />
                                     <p className={styles.checkInfo}>
                                         {t('tenants.permissions.videoCalls.description')}
@@ -210,7 +242,7 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                                             name={['settings', 'featureVideoCallsAnonymousChatsEnabled']}
                                             inline
                                             disableLabels
-                                            disabled={!videoMasterEnabled}
+                                            disabled={!videoMasterEnabled || !callsMasterEnabled}
                                         />
                                     </div>
                                     <div className={styles.subCheckGroup}>
@@ -219,7 +251,7 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                                             name={['settings', 'featureVideoCallsOneOnOneChatsEnabled']}
                                             inline
                                             disableLabels
-                                            disabled={!videoMasterEnabled}
+                                            disabled={!videoMasterEnabled || !callsMasterEnabled}
                                         />
                                     </div>
                                     <div className={styles.subCheckGroup}>
@@ -228,7 +260,7 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                                             name={['settings', 'featureVideoCallsGroupChatsEnabled']}
                                             inline
                                             disableLabels
-                                            disabled={!videoMasterEnabled}
+                                            disabled={!videoMasterEnabled || !callsMasterEnabled}
                                         />
                                     </div>
                                     <div className={styles.subCheckGroup}>
@@ -237,7 +269,7 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                                             name={['settings', 'featureVideoCallsSupervisionChatsEnabled']}
                                             inline
                                             disableLabels
-                                            disabled={!videoMasterEnabled || !supervisionEnabled}
+                                            disabled={!videoMasterEnabled || !supervisionEnabled || !callsMasterEnabled}
                                         />
                                     </div>
                                 </div>
@@ -246,7 +278,13 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                     }}
                 </Form.Item>
 
-                <Form.Item noStyle shouldUpdate>
+                <Form.Item
+                    noStyle
+                    shouldUpdate={(prev, curr) =>
+                        prev?.settings?.featureVoiceMessagesEnabled !== curr?.settings?.featureVoiceMessagesEnabled ||
+                        prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
+                    }
+                >
                     {({ getFieldValue }) => {
                         const threadsEnabled = getFieldValue(['settings', 'featureThreadsEnabled']) !== false;
                         const supervisionEnabled = getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
