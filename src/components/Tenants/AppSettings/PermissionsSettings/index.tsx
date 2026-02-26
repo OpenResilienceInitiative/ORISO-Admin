@@ -55,7 +55,7 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
                 ...(data?.settings ?? {}),
             },
         }),
-        [data]
+        [data],
     );
 
     return (
