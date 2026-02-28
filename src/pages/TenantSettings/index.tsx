@@ -41,12 +41,36 @@ export const TenantSettingsLayout = () => {
                             }`,
                         },
                     can(PermissionAction.Update, Resource.Tenant) && {
+                        to: '/admin/theme-settings/smtp',
+                        titleKey: 'settings.subhead.smtp',
+                    },
+                    can(PermissionAction.Update, Resource.Tenant) && {
                         to: '/admin/theme-settings/permissions',
                         titleKey: 'settings.subhead.permissions',
                     },
                 ]}
             />
             <Outlet />
+        </Page>
+    );
+};
+
+        </Page>
+    );
+};
+
+        </Page>
+    );
+};
+
+        </Page>
+    );
+};
+
+        </Page>
+    );
+};
+
         </Page>
     );
 };

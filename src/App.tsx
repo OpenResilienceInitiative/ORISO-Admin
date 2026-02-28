@@ -30,6 +30,7 @@ import { TenantAppSettings } from './pages/Tenants/Edit/AppSettings';
 import { SingleLegalSettings } from './pages/Tenants/Edit/LegalSettings';
 import { AppSettingsPage } from './pages/TenantSettings/AppSettings';
 import { PermissionsSettingsPage } from './pages/TenantSettings/PermissionsSettings';
+import { SmtpSettingsPage } from './pages/TenantSettings/SmtpSettings';
 import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { UserRole } from './enums/UserRole';
@@ -101,6 +102,9 @@ export const App = () => {
                                     path={`${routePathNames.themeSettings}/app-settings`}
                                     element={<AppSettingsPage />}
                                 />
+                            )}
+                            {can(PermissionAction.Read, Resource.Tenant) && (
+                                <Route path={`${routePathNames.themeSettings}/smtp`} element={<SmtpSettingsPage />} />
                             )}
                             {can(PermissionAction.Read, Resource.Tenant) && (
                                 <Route

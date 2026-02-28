@@ -6,6 +6,7 @@ import { useUserRoles } from '../../../../hooks/useUserRoles.hook';
 import { CommunicationSettings } from '../../../../components/Tenants/AppSettings/CommunicationSettings';
 import { NotificationsSettings } from '../../../../components/Tenants/AppSettings/NotificationsSettings';
 import { OtherFunctionsSettings } from '../../../../components/Tenants/AppSettings/OtherFunctionsSettings';
+import { SmtpSettings } from '../../../../components/Tenants/AppSettings/SmtpSettings';
 
 export const TenantAppSettings = () => {
     const { id } = useParams<{ id: string }>();
@@ -20,10 +21,21 @@ export const TenantAppSettings = () => {
 
             {hasRole(UserRole.TenantAdmin) && (
                 <Col span={12} sm={6}>
+                    <SmtpSettings tenantId={id} />
                     <CommunicationSettings tenantId={id} />
                     <OtherFunctionsSettings tenantId={id} hideTopics={settings.multitenancyWithSingleDomainEnabled} />
                 </Col>
             )}
         </Row>
     );
+};
+
+};
+
+};
+
+};
+
+};
+
 };
