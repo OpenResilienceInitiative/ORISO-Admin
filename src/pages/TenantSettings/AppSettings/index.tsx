@@ -39,13 +39,3 @@ export const AppSettingsPage = () => {
         </Row>
     );
 };
-
-};
-
-};
-
-};
-
-};
-
-};

@@ -54,23 +54,3 @@ export const TenantSettingsLayout = () => {
         </Page>
     );
 };
-
-        </Page>
-    );
-};
-
-        </Page>
-    );
-};
-
-        </Page>
-    );
-};
-
-        </Page>
-    );
-};
-
-        </Page>
-    );
-};

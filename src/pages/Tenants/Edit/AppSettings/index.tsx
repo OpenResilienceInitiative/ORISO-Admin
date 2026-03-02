@@ -29,13 +29,3 @@ export const TenantAppSettings = () => {
         </Row>
     );
 };
-
-};
-
-};
-
-};
-
-};
-
-};

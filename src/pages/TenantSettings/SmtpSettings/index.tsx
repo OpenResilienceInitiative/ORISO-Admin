@@ -5,33 +5,3 @@ export const SmtpSettingsPage = () => {
     const { data } = useTenantData();
     return <SmtpSettings tenantId={`${data?.id || 1}`} />;
 };
-
-
-export const SmtpSettingsPage = () => {
-    const { data } = useTenantData();
-    return <SmtpSettings tenantId={`${data?.id || 1}`} />;
-};
-
-
-export const SmtpSettingsPage = () => {
-    const { data } = useTenantData();
-    return <SmtpSettings tenantId={`${data?.id || 1}`} />;
-};
-
-
-export const SmtpSettingsPage = () => {
-    const { data } = useTenantData();
-    return <SmtpSettings tenantId={`${data?.id || 1}`} />;
-};
-
-
-export const SmtpSettingsPage = () => {
-    const { data } = useTenantData();
-    return <SmtpSettings tenantId={`${data?.id || 1}`} />;
-};
-
-
-export const SmtpSettingsPage = () => {
-    const { data } = useTenantData();
-    return <SmtpSettings tenantId={`${data?.id || 1}`} />;
-};
