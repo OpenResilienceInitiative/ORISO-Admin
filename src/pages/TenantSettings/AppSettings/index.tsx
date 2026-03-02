@@ -2,6 +2,7 @@ import { Col, Row } from 'antd';
 import { CommunicationSettings } from '../../../components/Tenants/AppSettings/CommunicationSettings';
 import { NotificationsSettings } from '../../../components/Tenants/AppSettings/NotificationsSettings';
 import { OtherFunctionsSettings } from '../../../components/Tenants/AppSettings/OtherFunctionsSettings';
+import { SmtpSettings } from '../../../components/Tenants/AppSettings/SmtpSettings';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { UserRole } from '../../../enums/UserRole';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
@@ -30,6 +31,7 @@ export const AppSettingsPage = () => {
 
             {hasRole(UserRole.TenantAdmin) && (
                 <Col span={12} sm={6}>
+                    <SmtpSettings tenantId={`${data.id}`} />
                     {!settings.multitenancyWithSingleDomainEnabled && <CommunicationSettings tenantId={`${data.id}`} />}
                     <OtherFunctionsSettings tenantId={`${data.id}`} hideGroupChatToggle />
                 </Col>

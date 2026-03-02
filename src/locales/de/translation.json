@@ -315,6 +315,17 @@
     "tenants.appSettings.communications.title": "Kommunikationsfunktionen",
     "tenants.appSettings.communications.video.title": "Video-Beratung",
     "tenants.appSettings.communications.allowAttachments.title": "Dateianhänge im Chat erlauben",
+    "tenants.appSettings.smtp.title": "SMTP & System-E-Mails",
+    "tenants.appSettings.smtp.systemEmailToggle.title": "Systembenachrichtigungen per E-Mail",
+    "tenants.appSettings.smtp.systemEmailToggle.description": "Wenn aktiviert, werden Systembenachrichtigungen (z. B. Supervisor hinzugefügt) zusätzlich per E-Mail gesendet, sofern im Profil eine E-Mail hinterlegt ist.",
+    "tenants.appSettings.smtp.smtpToggle.title": "SMTP aktivieren",
+    "tenants.appSettings.smtp.smtpToggle.description": "Aktiviert die SMTP-Konfiguration für den Mandanten.",
+    "tenants.appSettings.smtp.host": "SMTP Host",
+    "tenants.appSettings.smtp.port": "SMTP Port",
+    "tenants.appSettings.smtp.username": "SMTP Benutzername",
+    "tenants.appSettings.smtp.password": "SMTP Passwort",
+    "tenants.appSettings.smtp.from": "Absender E-Mail",
+    "tenants.appSettings.smtp.secure": "SMTP Secure (TLS/SSL)",
     "tenants.appSettings.otherFunctions.title": "Sonstige Funktionen",
     "tenants.appSettings.otherFunctions.mtsd.allowTopicCreation.title": "Themen nutzen",
     "tenants.appSettings.otherFunctions.mtsd.allowTopicCreation.description": "Wenn Sie mehrere Themen in Ihrem Beratungsangebot haben, aktivieren Sie diese Funktionalität, um Themen wie z.B. Alkohol, Drogen usw. anzulegen. Diese werden den Ratsuchenden bei der Registrierung zur Auswahl angeboten.",
@@ -450,6 +461,7 @@
     "settings.subhead.personalisation": "Texte",
     "settings.subhead.view": "Erscheinungsbild",
     "settings.subhead.legal": "Rechtliches",
+    "settings.subhead.smtp": "SMTP & System-E-Mails",
     "settings.subhead.permissions": "Berechtigungen",
     "settings.images.title": "Individuelle Bilder",
     "settings.images.howto": "Bitte beachten Sie das wir nur JPG-/PNG-Formate bis zu 500 KB annehmen können.",
@@ -604,6 +616,66 @@
     "form.errors.fillAllLanguages": "Bitte Angaben in allen Sprachen ausfüllen.",
     "languages": "Sprachen",
     "language.en": "Englisch",
+    "language.de": "Deutsch",
+    "language.fr": "Französisch",
+    "language.ru": "Russisch",
+    "language.ti": "Tigrinya",
+    "language.tr": "Türkisch",
+    "language.uk": "Ukrainisch",
+    "footer.label.privacy": "Datenschutz",
+    "footer.label.imprint": "Impressum",
+    "errorPages.accessDenied.title": "Schade!",
+    "errorPages.accessDenied.description": "Leider sind Sie nicht berechtigt diese Seite einzusehen. Für mehr Informationen kontaktieren Sie bitte Ihren Admin."
+}
+
+    "language.de": "Deutsch",
+    "language.fr": "Französisch",
+    "language.ru": "Russisch",
+    "language.ti": "Tigrinya",
+    "language.tr": "Türkisch",
+    "language.uk": "Ukrainisch",
+    "footer.label.privacy": "Datenschutz",
+    "footer.label.imprint": "Impressum",
+    "errorPages.accessDenied.title": "Schade!",
+    "errorPages.accessDenied.description": "Leider sind Sie nicht berechtigt diese Seite einzusehen. Für mehr Informationen kontaktieren Sie bitte Ihren Admin."
+}
+
+    "language.de": "Deutsch",
+    "language.fr": "Französisch",
+    "language.ru": "Russisch",
+    "language.ti": "Tigrinya",
+    "language.tr": "Türkisch",
+    "language.uk": "Ukrainisch",
+    "footer.label.privacy": "Datenschutz",
+    "footer.label.imprint": "Impressum",
+    "errorPages.accessDenied.title": "Schade!",
+    "errorPages.accessDenied.description": "Leider sind Sie nicht berechtigt diese Seite einzusehen. Für mehr Informationen kontaktieren Sie bitte Ihren Admin."
+}
+
+    "language.de": "Deutsch",
+    "language.fr": "Französisch",
+    "language.ru": "Russisch",
+    "language.ti": "Tigrinya",
+    "language.tr": "Türkisch",
+    "language.uk": "Ukrainisch",
+    "footer.label.privacy": "Datenschutz",
+    "footer.label.imprint": "Impressum",
+    "errorPages.accessDenied.title": "Schade!",
+    "errorPages.accessDenied.description": "Leider sind Sie nicht berechtigt diese Seite einzusehen. Für mehr Informationen kontaktieren Sie bitte Ihren Admin."
+}
+
+    "language.de": "Deutsch",
+    "language.fr": "Französisch",
+    "language.ru": "Russisch",
+    "language.ti": "Tigrinya",
+    "language.tr": "Türkisch",
+    "language.uk": "Ukrainisch",
+    "footer.label.privacy": "Datenschutz",
+    "footer.label.imprint": "Impressum",
+    "errorPages.accessDenied.title": "Schade!",
+    "errorPages.accessDenied.description": "Leider sind Sie nicht berechtigt diese Seite einzusehen. Für mehr Informationen kontaktieren Sie bitte Ihren Admin."
+}
+
     "language.de": "Deutsch",
     "language.fr": "Französisch",
     "language.ru": "Russisch",

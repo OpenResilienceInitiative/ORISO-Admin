@@ -32,6 +32,16 @@ export interface TenantSettings {
     featureVoiceMessagesOneOnOneChatsEnabled?: boolean | null;
     featureVoiceMessagesGroupChatsEnabled?: boolean | null;
     featureVoiceMessagesSupervisionChatsEnabled?: boolean | null;
+    featureSystemNotificationEmailsEnabled?: boolean | null;
+    smtp?: {
+        enabled?: boolean | null;
+        host?: string | null;
+        port?: number | null;
+        secure?: boolean | null;
+        username?: string | null;
+        password?: string | null;
+        from?: string | null;
+    };
 }
 
 export interface BasicTenantData {
