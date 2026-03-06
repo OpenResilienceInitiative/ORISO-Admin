@@ -22,7 +22,17 @@ const getTenantData = (tenantData: TenantData, useMultiTenancyWithSingleDomain: 
     if (useMultiTenancyWithSingleDomain && accessToken) {
         const access = parseJwt(accessToken || '');
         // console.log('🔍 getTenantData: Parsed JWT access:', access);
-        tenantId = access?.tenantId || tenantId;
+        let tokenTenantId: number | null = null;
+        if (typeof access?.tenantId === 'number') {
+            tokenTenantId = access.tenantId;
+        } else if (typeof access?.tenantId === 'string' && access.tenantId.trim() !== '') {
+            tokenTenantId = Number(access.tenantId);
+        }
+        // Super-admin / technical tokens use tenantId=0 (global scope), but
+        // /service/tenant/0 does not exist. Keep public-tenant id in that case.
+        if (tokenTenantId !== null && tokenTenantId > 0) {
+            tenantId = tokenTenantId;
+        }
         // console.log('🔍 getTenantData: Final tenantId after JWT parsing:', tenantId);
     }
 

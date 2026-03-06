@@ -15,7 +15,7 @@ const rolesPriority: UserRole[] = [
 ];
 
 export const useUserRolesToPermission = () => {
-    const { roles } = useUserRoles();
+    const { roles, isSuperAdmin } = useUserRoles();
     const { data } = useTenantData();
     const { settings } = useAppConfigContext();
 
@@ -32,7 +32,7 @@ export const useUserRolesToPermission = () => {
     // console.log('🔍 useUserRolesToPermission: isTopicsEnabled:', isTopicsEnabled);
     // console.log('🔍 useUserRolesToPermission: isStatisticsEnabled:', isStatisticsEnabled);
 
-    const permissions: Record<Partial<UserRole>, UserPermissions> = {
+    const permissions: Partial<Record<UserRole, UserPermissions>> = {
         [UserRole.RestrictedAgencyAdmin]: {
             Statistic: { read: false },
             Agency: { read: true, create: false, update: true, delete: false },
@@ -42,7 +42,8 @@ export const useUserRolesToPermission = () => {
             Agency: { read: true, create: true, update: true, delete: true },
         },
         [UserRole.TenantAdmin]: {
-            Tenant: { read: true, update: true, create: true, delete: true },
+            // Tenant-scoped admins can manage tenant settings, but only super-admins may create/delete tenants.
+            Tenant: { read: true, update: true, create: isSuperAdmin, delete: isSuperAdmin },
             Language: { update: true },
             LegalText: { read: true, update: true },
             Statistic: { read: isStatisticsEnabled },

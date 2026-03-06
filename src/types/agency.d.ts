@@ -49,4 +49,5 @@ export interface AgencyData {
     };
     agencyLogo: string | null;
     tenantId: number;
+    tenantName?: string;
 }

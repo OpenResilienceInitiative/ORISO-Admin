@@ -44,7 +44,7 @@ export const App = () => {
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
     const location = useLocation();
-    const { hasRole } = useUserRoles();
+    const { hasRole, isSuperAdmin } = useUserRoles();
     const { can } = useUserPermissions();
 
     // console.log('🔍 App: isLoading:', isLoading);
@@ -58,6 +58,10 @@ export const App = () => {
 
     useEffect(() => {
         if (location.pathname === routePathNames.root || location.pathname === `${routePathNames.root}/`) {
+            if (can(PermissionAction.Create, Resource.Tenant)) {
+                navigate(routePathNames.tenants);
+                return;
+            }
             if (can(PermissionAction.Read, Resource.Tenant)) {
                 navigate(routePathNames.themeSettings);
                 return;
@@ -86,7 +90,7 @@ export const App = () => {
         <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
             <ProtectedPageLayoutWrapper>
                 <Routes>
-                    {(canReadTenant || canReadLegalText) && (
+                    {(canReadTenant || canReadLegalText) && !isSuperAdmin && (
                         <Route path={routePathNames.themeSettings} element={<TenantSettingsLayout />}>
                             {can(PermissionAction.Read, Resource.Tenant) && (
                                 <Route
@@ -140,7 +144,7 @@ export const App = () => {
                         <Route path={`${routePathNames.topics}/:id`} element={<TopicEditOrAdd />} />
                     )}
                     <Route path={routePathNames.statistic} element={<Statistic />} />
-                    <Route path={routePathNames.logs} element={<SupervisorLogsPage />} />
+                    {!isSuperAdmin && <Route path={routePathNames.logs} element={<SupervisorLogsPage />} />}
                     <Route path={routePathNames.userProfile} element={<UserProfile />} />
                     {can(PermissionAction.Create, Resource.Tenant) && (
                         <>

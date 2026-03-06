@@ -1,6 +1,11 @@
 import { GeneralSettings } from '../../../components/Tenants/GeneralSettings';
+import { useTenantData } from '../../../hooks/useTenantData.hook';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 
 export const GeneralSettingsPage = () => {
-    // Use a default tenant ID since tenant endpoints don't exist
-    return <GeneralSettings tenantId="1" />;
+    const { data } = useTenantData();
+    const { tenantId } = useUserRoles();
+    const resolvedTenantId = tenantId && tenantId > 0 ? tenantId : data?.id;
+
+    return <GeneralSettings tenantId={`${resolvedTenantId || ''}`} />;
 };

@@ -28,7 +28,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     const { settings } = useAppConfigContext();
     const { can } = useUserPermissions();
     const { subdomain } = getLocationVariables();
-    const { hasRole } = useUserRoles();
+    const { hasRole, isSuperAdmin } = useUserRoles();
     const { data: tenantData } = useTenantData();
     const { t } = useTranslation();
     const location = useLocation();
@@ -72,6 +72,10 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
         return routePathNames.tenantAdmins;
     };
 
+    const canSeeThemeMenu =
+        !isSuperAdmin &&
+        (can(PermissionAction.Read, Resource.Tenant) || can(PermissionAction.Read, Resource.LegalText));
+
     return (
         <>
             <Layout className="protectedLayout">
@@ -79,8 +83,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                     <div className="logo" />
                     <nav className="mainMenu">
                         <ul>
-                            {(can(PermissionAction.Read, Resource.Tenant) ||
-                                can(PermissionAction.Read, Resource.LegalText)) && (
+                            {canSeeThemeMenu && (
                                 <li key="theme" className="menuItem">
                                     <NavLink
                                         to={routePathNames.themeSettings}
@@ -153,7 +156,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 </li>
                             )}
 
-                            {can(PermissionAction.Read, Resource.Consultant) && (
+                            {!isSuperAdmin && can(PermissionAction.Read, Resource.Consultant) && (
                                 <li key="logs" className="menuItem">
                                     <NavLink
                                         to={routePathNames.logs}

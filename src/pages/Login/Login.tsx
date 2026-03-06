@@ -25,29 +25,57 @@ export const Login = () => {
     const currentTime = new Date().getTime();
     const tokenExpiry = getTokenExpiryFromLocalStorage();
     const { data: tenantData } = usePublicTenantData();
-    const { hasRole } = useUserRoles();
+    const { hasRole, isTechnicalAccount } = useUserRoles();
     const accessTokenValidInMs = tokenExpiry.accessTokenValidUntilTime - currentTime;
 
     const refreshTokenValidInMs = tokenExpiry.refreshTokenValidUntilTime - currentTime;
 
     const [redirectUrl, setRedirectUrl] = useState('');
     const { t } = useTranslation();
+    const isTenantAdmin = hasRole(UserRole.TenantAdmin);
+    const isAdminUser = hasRole([
+        UserRole.TenantAdmin,
+        UserRole.SingleTenantAdmin,
+        UserRole.UserAdmin,
+        UserRole.AgencyAdmin,
+        UserRole.RestrictedAgencyAdmin,
+        UserRole.TopicAdmin,
+    ]);
     /**
      * redirect user if authed
      * using different route if isSuperAdmin
      */
     useEffect(() => {
-        if (hasRole(UserRole.TenantAdmin) && accessToken && refreshTokenValidInMs > 0 && accessTokenValidInMs > 0) {
+        if (!accessToken || refreshTokenValidInMs <= 0 || accessTokenValidInMs <= 0) {
+            return;
+        }
+
+        // Technical/system users are reserved for background/system operations.
+        if (isTechnicalAccount || !isAdminUser) {
+            return;
+        }
+
+        if (isTenantAdmin) {
             setRedirectUrl(routePathNames.tenants);
-        } else if (accessToken && refreshTokenValidInMs > 0 && accessTokenValidInMs > 0 && tenantData) {
+        } else if (tenantData) {
             const redirectPath =
-                (settings.mainTenantSubdomainForSingleDomainMultitenancy && hasRole(UserRole.TenantAdmin)) ||
+                (settings.mainTenantSubdomainForSingleDomainMultitenancy && isTenantAdmin) ||
                 !settings.mainTenantSubdomainForSingleDomainMultitenancy
                     ? routePathNames.themeSettings
                     : routePathNames.consultants;
             setRedirectUrl(redirectPath);
         }
-    }, [accessToken, accessTokenValidInMs, refreshTokenValidInMs, tenantData, t, hasRole(UserRole.TenantAdmin)]);
+    }, [
+        accessToken,
+        accessTokenValidInMs,
+        refreshTokenValidInMs,
+        tenantData,
+        t,
+        isTechnicalAccount,
+        isAdminUser,
+        isTenantAdmin,
+        settings.mainTenantSubdomainForSingleDomainMultitenancy,
+    ]);
 
     return redirectUrl ? (
         <Navigate to={redirectUrl} />
