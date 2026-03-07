@@ -8,15 +8,19 @@ import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { useAppConfigContext } from '../../../context/useAppConfig';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 
 export const TenantEditOrAdd = () => {
     const { settings } = useAppConfigContext();
     const { isEnabled } = useReleasesToggle();
+    const { isSuperAdmin } = useUserRoles();
     const { can } = useUserPermissions();
     const { search } = useLocation();
     const main = new URLSearchParams(search).get('main');
     const { id } = useParams<{ id: string }>();
     const isEditing = id !== 'add';
+    const canSeeTenantEditTabs = isEditing && can(PermissionAction.Update, Resource.Tenant);
+    const canSeeConfigTabs = isEnabled(ReleaseToggle.TENANT_ADMIN_SETTINGS_EDIT) || isSuperAdmin;
 
     const { data, isLoading } = useSingleTenantData({ id, enabled: isEditing });
 
@@ -33,9 +37,8 @@ export const TenantEditOrAdd = () => {
                 path={routePathNames.tenants}
                 titleKey={title}
                 tabs={
-                    isEditing &&
-                    can(PermissionAction.Update, Resource.Tenant) &&
-                    isEnabled(ReleaseToggle.TENANT_ADMIN_SETTINGS_EDIT) && [
+                    canSeeTenantEditTabs &&
+                    canSeeConfigTabs && [
                         {
                             to: `/admin/tenants/${id}/general`,
                             titleKey: 'tenants.edit.tabs.general',
@@ -51,6 +54,10 @@ export const TenantEditOrAdd = () => {
                         {
                             to: `/admin/tenants/${id}/app-settings`,
                             titleKey: 'tenants.edit.tabs.appSettings',
+                        },
+                        isSuperAdmin && {
+                            to: `/admin/tenants/${id}/global-settings`,
+                            titleKey: 'tenants.edit.tabs.globalSettings',
                         },
                     ]
                 }

@@ -27,6 +27,7 @@ import { TenantAdminEditOrAdd } from './pages/users/TenantAdminEdit';
 import { GeneralTenantSettings } from './pages/Tenants/Edit/General';
 import { TenantThemeSettings } from './pages/Tenants/Edit/ThemeSettings';
 import { TenantAppSettings } from './pages/Tenants/Edit/AppSettings';
+import { TenantGlobalSettings } from './pages/Tenants/Edit/GlobalSettings';
 import { SingleLegalSettings } from './pages/Tenants/Edit/LegalSettings';
 import { AppSettingsPage } from './pages/TenantSettings/AppSettings';
 import { PermissionsSettingsPage } from './pages/TenantSettings/PermissionsSettings';
@@ -76,6 +77,7 @@ export const App = () => {
 
     const canReadTenant = can(PermissionAction.Read, Resource.Tenant);
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
+    const canAccessPermissionsPage = data?.settings?.tenantAdminControls?.permissionsPageEnabled !== false;
     // console.log('🔍 App: canReadTenant:', canReadTenant);
     // console.log('🔍 App: canReadLegalText:', canReadLegalText);
     // console.log('🔍 App: Will show routes?', canReadTenant || canReadLegalText);
@@ -106,7 +108,7 @@ export const App = () => {
                             {can(PermissionAction.Read, Resource.Tenant) && (
                                 <Route path={`${routePathNames.themeSettings}/smtp`} element={<SmtpSettingsPage />} />
                             )}
-                            {can(PermissionAction.Read, Resource.Tenant) && (
+                            {can(PermissionAction.Read, Resource.Tenant) && canAccessPermissionsPage && (
                                 <Route
                                     path={`${routePathNames.themeSettings}/permissions`}
                                     element={<PermissionsSettingsPage />}
@@ -162,6 +164,10 @@ export const App = () => {
                                 <Route
                                     path={`${routePathNames.tenants}/:id/app-settings`}
                                     element={<TenantAppSettings />}
+                                />
+                                <Route
+                                    path={`${routePathNames.tenants}/:id/global-settings`}
+                                    element={<TenantGlobalSettings />}
                                 />
                             </Route>
                         </>
