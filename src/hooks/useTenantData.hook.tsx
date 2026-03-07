@@ -47,12 +47,6 @@ export const useTenantData = () => {
         },
         {
             staleTime: 60_000,
-            onSuccess: (_data) => {
-                // console.log('🔍 useTenantData: Query SUCCESS callback:', data);
-            },
-            onError: (_error) => {
-                // console.error('🔍 useTenantData: Query ERROR callback:', error);
-            },
         },
     );
 };
