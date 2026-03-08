@@ -4,7 +4,6 @@ import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { UserRole } from '../../../../enums/UserRole';
 import { useUserRoles } from '../../../../hooks/useUserRoles.hook';
 import { CommunicationSettings } from '../../../../components/Tenants/AppSettings/CommunicationSettings';
-import { NotificationsSettings } from '../../../../components/Tenants/AppSettings/NotificationsSettings';
 import { OtherFunctionsSettings } from '../../../../components/Tenants/AppSettings/OtherFunctionsSettings';
 import { SmtpSettings } from '../../../../components/Tenants/AppSettings/SmtpSettings';
 
@@ -15,10 +14,6 @@ export const TenantAppSettings = () => {
 
     return (
         <Row gutter={[24, 24]}>
-            <Col span={12} sm={6}>
-                <NotificationsSettings tenantId={id} />
-            </Col>
-
             {hasRole(UserRole.TenantAdmin) && (
                 <Col span={12} sm={6}>
                     <SmtpSettings tenantId={id} />

@@ -9,6 +9,15 @@ import styles from './styles.module.scss';
 
 interface PermissionsSettingsArgs {
     tenantId: string;
+    visibleToggles?: {
+        anonymousChat?: boolean;
+        calls?: boolean;
+        supervision?: boolean;
+        audioCalls?: boolean;
+        videoCalls?: boolean;
+        threads?: boolean;
+        voiceMessages?: boolean;
+    };
 }
 
 const DEFAULT_PERMISSION_SETTINGS = {
@@ -39,7 +48,7 @@ const DEFAULT_PERMISSION_SETTINGS = {
     featureVoiceMessagesSupervisionChatsEnabled: true,
 } as const;
 
-export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
+export const PermissionsSettings = ({ tenantId, visibleToggles }: PermissionsSettingsArgs) => {
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id: tenantId });
     const { mutate } = useTenantAdminDataMutation({
@@ -57,6 +66,16 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
         }),
         [data],
     );
+    const visibility = {
+        anonymousChat: true,
+        calls: true,
+        supervision: true,
+        audioCalls: true,
+        videoCalls: true,
+        threads: true,
+        voiceMessages: true,
+        ...(visibleToggles ?? {}),
+    };
 
     return (
         <CardEditable
@@ -66,344 +85,372 @@ export const PermissionsSettings = ({ tenantId }: PermissionsSettingsArgs) => {
             onSave={mutate}
         >
             <div className={styles.sectionGrid}>
-                <Card className={styles.sectionCard} size="small" bordered>
-                    <div className={styles.checkGroup}>
-                        <FormSwitchField
-                            labelKey="tenants.permissions.anonymousChat.title"
-                            name={['settings', 'featureAnonymousChatEnabled']}
-                            inline
-                            disableLabels
-                        />
-                        <p className={styles.checkInfo}>{t('tenants.permissions.anonymousChat.description')}</p>
-                    </div>
-                </Card>
+                {visibility.anonymousChat && (
+                    <Card className={styles.sectionCard} size="small" bordered>
+                        <div className={styles.checkGroup}>
+                            <FormSwitchField
+                                labelKey="tenants.permissions.anonymousChat.title"
+                                name={['settings', 'featureAnonymousChatEnabled']}
+                                inline
+                                disableLabels
+                            />
+                            <p className={styles.checkInfo}>{t('tenants.permissions.anonymousChat.description')}</p>
+                        </div>
+                    </Card>
+                )}
 
-                <Card className={styles.sectionCard} size="small" bordered>
-                    <div className={styles.checkGroup}>
-                        <FormSwitchField
-                            labelKey="tenants.permissions.calls.title"
-                            name={['settings', 'featureCallsEnabled']}
-                            inline
-                            disableLabels
-                        />
-                        <p className={styles.checkInfo}>{t('tenants.permissions.calls.description')}</p>
-                    </div>
-                </Card>
+                {visibility.calls && (
+                    <Card className={styles.sectionCard} size="small" bordered>
+                        <div className={styles.checkGroup}>
+                            <FormSwitchField
+                                labelKey="tenants.permissions.calls.title"
+                                name={['settings', 'featureCallsEnabled']}
+                                inline
+                                disableLabels
+                            />
+                            <p className={styles.checkInfo}>{t('tenants.permissions.calls.description')}</p>
+                        </div>
+                    </Card>
+                )}
 
-                <Form.Item
-                    noStyle
-                    shouldUpdate={(prev, curr) =>
-                        prev?.settings?.featureThreadsEnabled !== curr?.settings?.featureThreadsEnabled ||
-                        prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
-                    }
-                >
-                    {({ getFieldValue }) => {
-                        const supervisionEnabled = getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
-                        return (
-                            <Card className={styles.sectionCard} size="small" bordered>
-                                <div className={styles.checkGroup}>
-                                    <FormSwitchField
-                                        labelKey="tenants.permissions.supervision.title"
-                                        name={['settings', 'featureSupervisionEnabled']}
-                                        inline
-                                        disableLabels
-                                    />
-                                    <p className={styles.checkInfo}>
-                                        {t('tenants.permissions.supervision.description')}
-                                    </p>
-                                </div>
+                {visibility.supervision && (
+                    <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, curr) =>
+                            prev?.settings?.featureThreadsEnabled !== curr?.settings?.featureThreadsEnabled ||
+                            prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
+                        }
+                    >
+                        {({ getFieldValue }) => {
+                            const supervisionEnabled =
+                                getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
+                            return (
+                                <Card className={styles.sectionCard} size="small" bordered>
+                                    <div className={styles.checkGroup}>
+                                        <FormSwitchField
+                                            labelKey="tenants.permissions.supervision.title"
+                                            name={['settings', 'featureSupervisionEnabled']}
+                                            inline
+                                            disableLabels
+                                        />
+                                        <p className={styles.checkInfo}>
+                                            {t('tenants.permissions.supervision.description')}
+                                        </p>
+                                    </div>
 
-                                <div className={styles.subCheckGrid}>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.anonymous"
-                                            name={['settings', 'featureSupervisionAnonymousChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!supervisionEnabled}
-                                        />
+                                    <div className={styles.subCheckGrid}>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.anonymous"
+                                                name={['settings', 'featureSupervisionAnonymousChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!supervisionEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.oneOnOne"
+                                                name={['settings', 'featureSupervisionOneOnOneChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!supervisionEnabled}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.oneOnOne"
-                                            name={['settings', 'featureSupervisionOneOnOneChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!supervisionEnabled}
-                                        />
-                                    </div>
-                                </div>
-                            </Card>
-                        );
-                    }}
-                </Form.Item>
+                                </Card>
+                            );
+                        }}
+                    </Form.Item>
+                )}
 
-                <Form.Item
-                    noStyle
-                    shouldUpdate={(prev, curr) =>
-                        prev?.settings?.featureCallsEnabled !== curr?.settings?.featureCallsEnabled ||
-                        prev?.settings?.featureAudioCallsEnabled !== curr?.settings?.featureAudioCallsEnabled ||
-                        prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
-                    }
-                >
-                    {({ getFieldValue }) => {
-                        const callsMasterEnabled = getFieldValue(['settings', 'featureCallsEnabled']) !== false;
-                        const audioMasterEnabled = getFieldValue(['settings', 'featureAudioCallsEnabled']) !== false;
-                        const supervisionEnabled = getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
-                        return (
-                            <Card className={styles.sectionCard} size="small" bordered>
-                                <div className={styles.checkGroup}>
-                                    <FormSwitchField
-                                        labelKey="tenants.permissions.audioCalls.title"
-                                        name={['settings', 'featureAudioCallsEnabled']}
-                                        inline
-                                        disableLabels
-                                        disabled={!callsMasterEnabled}
-                                    />
-                                    <p className={styles.checkInfo}>
-                                        {t('tenants.permissions.audioCalls.description')}
-                                    </p>
-                                </div>
+                {visibility.audioCalls && (
+                    <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, curr) =>
+                            prev?.settings?.featureCallsEnabled !== curr?.settings?.featureCallsEnabled ||
+                            prev?.settings?.featureAudioCallsEnabled !== curr?.settings?.featureAudioCallsEnabled ||
+                            prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
+                        }
+                    >
+                        {({ getFieldValue }) => {
+                            const callsMasterEnabled = getFieldValue(['settings', 'featureCallsEnabled']) !== false;
+                            const audioMasterEnabled =
+                                getFieldValue(['settings', 'featureAudioCallsEnabled']) !== false;
+                            const supervisionEnabled =
+                                getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
+                            return (
+                                <Card className={styles.sectionCard} size="small" bordered>
+                                    <div className={styles.checkGroup}>
+                                        <FormSwitchField
+                                            labelKey="tenants.permissions.audioCalls.title"
+                                            name={['settings', 'featureAudioCallsEnabled']}
+                                            inline
+                                            disableLabels
+                                            disabled={!callsMasterEnabled}
+                                        />
+                                        <p className={styles.checkInfo}>
+                                            {t('tenants.permissions.audioCalls.description')}
+                                        </p>
+                                    </div>
 
-                                <div className={styles.subCheckGrid}>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.anonymous"
-                                            name={['settings', 'featureAudioCallsAnonymousChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!audioMasterEnabled || !callsMasterEnabled}
-                                        />
+                                    <div className={styles.subCheckGrid}>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.anonymous"
+                                                name={['settings', 'featureAudioCallsAnonymousChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!audioMasterEnabled || !callsMasterEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.oneOnOne"
+                                                name={['settings', 'featureAudioCallsOneOnOneChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!audioMasterEnabled || !callsMasterEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.group"
+                                                name={['settings', 'featureAudioCallsGroupChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!audioMasterEnabled || !callsMasterEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.supervision"
+                                                name={['settings', 'featureAudioCallsSupervisionChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={
+                                                    !audioMasterEnabled || !supervisionEnabled || !callsMasterEnabled
+                                                }
+                                            />
+                                        </div>
                                     </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.oneOnOne"
-                                            name={['settings', 'featureAudioCallsOneOnOneChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!audioMasterEnabled || !callsMasterEnabled}
-                                        />
-                                    </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.group"
-                                            name={['settings', 'featureAudioCallsGroupChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!audioMasterEnabled || !callsMasterEnabled}
-                                        />
-                                    </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.supervision"
-                                            name={['settings', 'featureAudioCallsSupervisionChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!audioMasterEnabled || !supervisionEnabled || !callsMasterEnabled}
-                                        />
-                                    </div>
-                                </div>
-                            </Card>
-                        );
-                    }}
-                </Form.Item>
+                                </Card>
+                            );
+                        }}
+                    </Form.Item>
+                )}
 
-                <Form.Item
-                    noStyle
-                    shouldUpdate={(prev, curr) =>
-                        prev?.settings?.featureCallsEnabled !== curr?.settings?.featureCallsEnabled ||
-                        prev?.settings?.featureVideoCallsEnabled !== curr?.settings?.featureVideoCallsEnabled ||
-                        prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
-                    }
-                >
-                    {({ getFieldValue }) => {
-                        const callsMasterEnabled = getFieldValue(['settings', 'featureCallsEnabled']) !== false;
-                        const videoMasterEnabled = getFieldValue(['settings', 'featureVideoCallsEnabled']) !== false;
-                        const supervisionEnabled = getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
-                        return (
-                            <Card className={styles.sectionCard} size="small" bordered>
-                                <div className={styles.checkGroup}>
-                                    <FormSwitchField
-                                        labelKey="tenants.permissions.videoCalls.title"
-                                        name={['settings', 'featureVideoCallsEnabled']}
-                                        inline
-                                        disableLabels
-                                        disabled={!callsMasterEnabled}
-                                    />
-                                    <p className={styles.checkInfo}>
-                                        {t('tenants.permissions.videoCalls.description')}
-                                    </p>
-                                </div>
+                {visibility.videoCalls && (
+                    <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, curr) =>
+                            prev?.settings?.featureCallsEnabled !== curr?.settings?.featureCallsEnabled ||
+                            prev?.settings?.featureVideoCallsEnabled !== curr?.settings?.featureVideoCallsEnabled ||
+                            prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
+                        }
+                    >
+                        {({ getFieldValue }) => {
+                            const callsMasterEnabled = getFieldValue(['settings', 'featureCallsEnabled']) !== false;
+                            const videoMasterEnabled =
+                                getFieldValue(['settings', 'featureVideoCallsEnabled']) !== false;
+                            const supervisionEnabled =
+                                getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
+                            return (
+                                <Card className={styles.sectionCard} size="small" bordered>
+                                    <div className={styles.checkGroup}>
+                                        <FormSwitchField
+                                            labelKey="tenants.permissions.videoCalls.title"
+                                            name={['settings', 'featureVideoCallsEnabled']}
+                                            inline
+                                            disableLabels
+                                            disabled={!callsMasterEnabled}
+                                        />
+                                        <p className={styles.checkInfo}>
+                                            {t('tenants.permissions.videoCalls.description')}
+                                        </p>
+                                    </div>
 
-                                <div className={styles.subCheckGrid}>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.anonymous"
-                                            name={['settings', 'featureVideoCallsAnonymousChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!videoMasterEnabled || !callsMasterEnabled}
-                                        />
+                                    <div className={styles.subCheckGrid}>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.anonymous"
+                                                name={['settings', 'featureVideoCallsAnonymousChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!videoMasterEnabled || !callsMasterEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.oneOnOne"
+                                                name={['settings', 'featureVideoCallsOneOnOneChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!videoMasterEnabled || !callsMasterEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.group"
+                                                name={['settings', 'featureVideoCallsGroupChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!videoMasterEnabled || !callsMasterEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.supervision"
+                                                name={['settings', 'featureVideoCallsSupervisionChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={
+                                                    !videoMasterEnabled || !supervisionEnabled || !callsMasterEnabled
+                                                }
+                                            />
+                                        </div>
                                     </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.oneOnOne"
-                                            name={['settings', 'featureVideoCallsOneOnOneChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!videoMasterEnabled || !callsMasterEnabled}
-                                        />
-                                    </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.group"
-                                            name={['settings', 'featureVideoCallsGroupChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!videoMasterEnabled || !callsMasterEnabled}
-                                        />
-                                    </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.supervision"
-                                            name={['settings', 'featureVideoCallsSupervisionChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!videoMasterEnabled || !supervisionEnabled || !callsMasterEnabled}
-                                        />
-                                    </div>
-                                </div>
-                            </Card>
-                        );
-                    }}
-                </Form.Item>
+                                </Card>
+                            );
+                        }}
+                    </Form.Item>
+                )}
 
-                <Form.Item
-                    noStyle
-                    shouldUpdate={(prev, curr) =>
-                        prev?.settings?.featureVoiceMessagesEnabled !== curr?.settings?.featureVoiceMessagesEnabled ||
-                        prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
-                    }
-                >
-                    {({ getFieldValue }) => {
-                        const threadsEnabled = getFieldValue(['settings', 'featureThreadsEnabled']) !== false;
-                        const supervisionEnabled = getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
-                        return (
-                            <Card className={styles.sectionCard} size="small" bordered>
-                                <div className={styles.checkGroup}>
-                                    <FormSwitchField
-                                        labelKey="tenants.permissions.threads.title"
-                                        name={['settings', 'featureThreadsEnabled']}
-                                        inline
-                                        disableLabels
-                                    />
-                                    <p className={styles.checkInfo}>{t('tenants.permissions.threads.description')}</p>
-                                </div>
+                {visibility.threads && (
+                    <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, curr) =>
+                            prev?.settings?.featureVoiceMessagesEnabled !==
+                                curr?.settings?.featureVoiceMessagesEnabled ||
+                            prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
+                        }
+                    >
+                        {({ getFieldValue }) => {
+                            const threadsEnabled = getFieldValue(['settings', 'featureThreadsEnabled']) !== false;
+                            const supervisionEnabled =
+                                getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
+                            return (
+                                <Card className={styles.sectionCard} size="small" bordered>
+                                    <div className={styles.checkGroup}>
+                                        <FormSwitchField
+                                            labelKey="tenants.permissions.threads.title"
+                                            name={['settings', 'featureThreadsEnabled']}
+                                            inline
+                                            disableLabels
+                                        />
+                                        <p className={styles.checkInfo}>
+                                            {t('tenants.permissions.threads.description')}
+                                        </p>
+                                    </div>
 
-                                <div className={styles.subCheckGrid}>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.anonymous"
-                                            name={['settings', 'featureThreadsAnonymousChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!threadsEnabled}
-                                        />
+                                    <div className={styles.subCheckGrid}>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.anonymous"
+                                                name={['settings', 'featureThreadsAnonymousChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!threadsEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.oneOnOne"
+                                                name={['settings', 'featureThreadsOneOnOneEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!threadsEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.group"
+                                                name={['settings', 'featureThreadsGroupChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!threadsEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.supervision"
+                                                name={['settings', 'featureThreadsSupervisionChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!threadsEnabled || !supervisionEnabled}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.oneOnOne"
-                                            name={['settings', 'featureThreadsOneOnOneEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!threadsEnabled}
-                                        />
-                                    </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.group"
-                                            name={['settings', 'featureThreadsGroupChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!threadsEnabled}
-                                        />
-                                    </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.supervision"
-                                            name={['settings', 'featureThreadsSupervisionChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!threadsEnabled || !supervisionEnabled}
-                                        />
-                                    </div>
-                                </div>
-                            </Card>
-                        );
-                    }}
-                </Form.Item>
+                                </Card>
+                            );
+                        }}
+                    </Form.Item>
+                )}
 
-                <Form.Item noStyle shouldUpdate>
-                    {({ getFieldValue }) => {
-                        const voiceMessagesEnabled =
-                            getFieldValue(['settings', 'featureVoiceMessagesEnabled']) !== false;
-                        const supervisionEnabled = getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
-                        return (
-                            <Card className={styles.sectionCard} size="small" bordered>
-                                <div className={styles.checkGroup}>
-                                    <FormSwitchField
-                                        labelKey="tenants.permissions.voiceMessages.title"
-                                        name={['settings', 'featureVoiceMessagesEnabled']}
-                                        inline
-                                        disableLabels
-                                    />
-                                    <p className={styles.checkInfo}>
-                                        {t('tenants.permissions.voiceMessages.description')}
-                                    </p>
-                                </div>
+                {visibility.voiceMessages && (
+                    <Form.Item noStyle shouldUpdate>
+                        {({ getFieldValue }) => {
+                            const voiceMessagesEnabled =
+                                getFieldValue(['settings', 'featureVoiceMessagesEnabled']) !== false;
+                            const supervisionEnabled =
+                                getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
+                            return (
+                                <Card className={styles.sectionCard} size="small" bordered>
+                                    <div className={styles.checkGroup}>
+                                        <FormSwitchField
+                                            labelKey="tenants.permissions.voiceMessages.title"
+                                            name={['settings', 'featureVoiceMessagesEnabled']}
+                                            inline
+                                            disableLabels
+                                        />
+                                        <p className={styles.checkInfo}>
+                                            {t('tenants.permissions.voiceMessages.description')}
+                                        </p>
+                                    </div>
 
-                                <div className={styles.subCheckGrid}>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.anonymous"
-                                            name={['settings', 'featureVoiceMessagesAnonymousChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!voiceMessagesEnabled}
-                                        />
+                                    <div className={styles.subCheckGrid}>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.anonymous"
+                                                name={['settings', 'featureVoiceMessagesAnonymousChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!voiceMessagesEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.oneOnOne"
+                                                name={['settings', 'featureVoiceMessagesOneOnOneChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!voiceMessagesEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.group"
+                                                name={['settings', 'featureVoiceMessagesGroupChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!voiceMessagesEnabled}
+                                            />
+                                        </div>
+                                        <div className={styles.subCheckGroup}>
+                                            <FormSwitchField
+                                                labelKey="tenants.permissions.chatTypes.supervision"
+                                                name={['settings', 'featureVoiceMessagesSupervisionChatsEnabled']}
+                                                inline
+                                                disableLabels
+                                                disabled={!voiceMessagesEnabled || !supervisionEnabled}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.oneOnOne"
-                                            name={['settings', 'featureVoiceMessagesOneOnOneChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!voiceMessagesEnabled}
-                                        />
-                                    </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.group"
-                                            name={['settings', 'featureVoiceMessagesGroupChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!voiceMessagesEnabled}
-                                        />
-                                    </div>
-                                    <div className={styles.subCheckGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.chatTypes.supervision"
-                                            name={['settings', 'featureVoiceMessagesSupervisionChatsEnabled']}
-                                            inline
-                                            disableLabels
-                                            disabled={!voiceMessagesEnabled || !supervisionEnabled}
-                                        />
-                                    </div>
-                                </div>
-                            </Card>
-                        );
-                    }}
-                </Form.Item>
+                                </Card>
+                            );
+                        }}
+                    </Form.Item>
+                )}
             </div>
         </CardEditable>
     );

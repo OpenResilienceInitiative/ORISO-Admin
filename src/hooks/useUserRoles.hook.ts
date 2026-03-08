@@ -28,9 +28,8 @@ export const useUserRoles = (): {
     }
     const isTechnicalAccount = tokenRoles.includes(UserRole.Technical);
 
-    // Technical users are reserved for system operations and must not be treated
-    // as interactive admin accounts even if additional admin roles were assigned.
-    const roles = isTechnicalAccount ? tokenRoles.filter((role) => role === UserRole.Technical) : tokenRoles;
+    // Keep all token roles so mixed-role admin accounts retain expected UI capabilities.
+    const roles = tokenRoles;
 
     const hasRole = (userRole: UserRole | UserRole[]) => {
         const userRoles = Array.isArray(userRole) ? userRole : [userRole];

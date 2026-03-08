@@ -8,7 +8,7 @@ import { tenantEndpoint } from '../../appConfig';
  */
 export const deleteTenantData = (id: number) => {
     const tenant = fetchData({
-        url: `${tenantEndpoint}/${id}`,
+        url: `${tenantEndpoint}${id}`,
         method: FETCH_METHODS.DELETE,
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.NOT_ALLOWED],

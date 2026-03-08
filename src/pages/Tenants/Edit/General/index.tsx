@@ -1,42 +1,98 @@
-import { Button, Col, Form, notification, Row } from 'antd';
-import PersonSearchIcon from '@mui/icons-material/PersonSearch';
-import { useLocation, useNavigate, useParams } from 'react-router';
+import { Button, Col, notification, Row } from 'antd';
+import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'antd/lib/form/Form';
-import { useState } from 'react';
+import { deleteTenantData } from '../../../../api/tenant/deleteTenantData';
 import { FormInputField } from '../../../../components/FormInputField';
 import { FormInputNumberField } from '../../../../components/FormInputNumberField';
-import { SelectFormField } from '../../../../components/SelectFormField';
+import { FormPasswordField } from '../../../../components/FormPasswordField';
 import { getDomain } from '../../../../utils/getDomain';
 import { CardEditable } from '../../../../components/CardEditable';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useAddOrUpdateTenant } from '../../../../hooks/useAddOrUpdateTenant.hook';
+import { useAddOrUpdateTenantAdmin } from '../../../../hooks/useAddOrUpdateTenantAdmin.hook';
 import routePathNames from '../../../../appConfig';
 import styles from './styles.module.scss';
 import { TenantAdminData } from '../../../../types/TenantAdminData';
-import { ModalSuccess } from '../../../../components/ModalSuccess';
-import { Card } from '../../../../components/Card';
 import { X_REASON } from '../../../../api/fetchData';
 import { useUserRoles } from '../../../../hooks/useUserRoles.hook';
 
 export const GeneralTenantSettings = () => {
-    const { search } = useLocation();
-    const main = new URLSearchParams(search).get('main');
     const { id } = useParams<{ id: string }>();
     const isEditing = id !== 'add';
     const navigate = useNavigate();
-    const [newTenantId, setNewTenantId] = useState<number>(null);
     const [form] = useForm();
     const { settings } = useAppConfigContext();
     const { isSuperAdmin } = useUserRoles();
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id, enabled: isEditing });
+    const { mutate: createTenantAdmin } = useAddOrUpdateTenantAdmin({});
+
+    const extractTenantAdminPayload = (formData?: Record<string, any>) => {
+        if (!formData) return null;
+        const {
+            tenantAdminUsername,
+            tenantAdminPassword,
+            tenantAdminEmail,
+            tenantAdminFirstname,
+            tenantAdminLastname,
+        } = formData;
+        if (
+            !tenantAdminUsername ||
+            !tenantAdminPassword ||
+            !tenantAdminEmail ||
+            !tenantAdminFirstname ||
+            !tenantAdminLastname
+        ) {
+            return null;
+        }
+        return {
+            username: tenantAdminUsername,
+            password: tenantAdminPassword,
+            email: tenantAdminEmail,
+            firstname: tenantAdminFirstname,
+            lastname: tenantAdminLastname,
+        };
+    };
+
     const { mutate: update } = useAddOrUpdateTenant({
         id: isEditing ? id : null,
-        onSuccess: (rData) => {
+        onSuccess: (rData, submittedFormData) => {
             if (!isEditing) {
-                setNewTenantId(rData.id);
+                const tenantAdminPayload = extractTenantAdminPayload(submittedFormData as Record<string, any>);
+                if (tenantAdminPayload) {
+                    const payload = {
+                        ...tenantAdminPayload,
+                        tenantId: String(rData.id),
+                    } as any;
+                    const completeSuccess = () => {
+                        notification.success({ message: t('tenants.created.modal.title') });
+                        navigate(routePathNames.tenants);
+                    };
+                    const rollbackAndExit = () => {
+                        deleteTenantData(rData.id)
+                            .catch(() => undefined)
+                            .finally(() => {
+                                notification.error({ message: t('message.error.default') });
+                                navigate(routePathNames.tenants);
+                            });
+                    };
+
+                    createTenantAdmin(payload, {
+                        onSuccess: completeSuccess,
+                        onError: () => {
+                            // Retry once for transient backend/network issues; if it still fails, rollback tenant creation.
+                            createTenantAdmin(payload, {
+                                onSuccess: completeSuccess,
+                                onError: rollbackAndExit,
+                            });
+                        },
+                    });
+                } else {
+                    notification.success({ message: t('tenants.created.modal.title') });
+                    navigate(routePathNames.tenants);
+                }
                 return;
             }
 
@@ -60,96 +116,125 @@ export const GeneralTenantSettings = () => {
             }
         },
     });
-    const isMainTenant = !!main || settings.mainTenantSubdomainForSingleDomainMultitenancy === data?.subdomain;
+    const shouldShowSubdomainField = !settings.multitenancyWithSingleDomainEnabled;
+
+    const handleSave = (formData: Record<string, any>) => {
+        update(formData as unknown as TenantAdminData);
+    };
 
     return (
-        <>
-            {newTenantId && (
-                <ModalSuccess
-                    titleKey="tenants.created.modal.title"
-                    onClose={() => navigate(routePathNames.tenants)}
-                    contentKey="tenants.created.modal.description"
-                    footer={
-                        <Button
-                            type="primary"
-                            onClick={() => navigate(`${routePathNames.tenantAdmins}/add?tenantId=${newTenantId}`)}
-                        >
-                            {t('tenants.created.modal.link')}
-                        </Button>
-                    }
-                />
-            )}
-            <Row gutter={[24, 24]}>
-                <Col span={12} md={6}>
-                    <CardEditable
-                        isLoading={isLoading}
-                        editMode={!isEditing}
-                        hideCancelButton={!isEditing}
-                        titleKey="tenants.add.mainTenantTitle"
-                        initialValues={{ ...data }}
-                        formProp={form}
-                        onSave={(formData) => update(formData as unknown as TenantAdminData)}
-                    >
+        <Row gutter={[24, 24]}>
+            <Col span={12} md={6}>
+                <CardEditable
+                    isLoading={isLoading}
+                    editMode={!isEditing}
+                    hideCancelButton={!isEditing}
+                    titleKey="tenants.add.mainTenantTitle"
+                    initialValues={isEditing && data ? (data as unknown as Record<string, unknown>) : {}}
+                    formProp={form}
+                    onSave={handleSave}
+                >
+                    <div className={styles.fieldGroup}>
+                        <div className={styles.description}>{t('tenants.add.form.name.label')}</div>
+                        <FormInputField name="name" placeholderKey="tenants.add.form.name.placeholder" required />
+                    </div>
+                    {shouldShowSubdomainField && (
                         <div className={styles.fieldGroup}>
-                            <div className={styles.description}>{t('tenants.add.form.name.label')}</div>
-                            <FormInputField name="name" placeholderKey="tenants.add.form.name.placeholder" required />
-                        </div>
-                        {!isSuperAdmin &&
-                            (!settings.multitenancyWithSingleDomainEnabled ||
-                                (settings.multitenancyWithSingleDomainEnabled && isMainTenant)) && (
-                                <div className={styles.fieldGroup}>
-                                    <div className={styles.description}>{t('tenants.add.form.subdomain.label')}</div>
-                                    {isMainTenant && (
-                                        <div className={styles.warning}>{t('tenants.add.form.subdomain.warning')}</div>
-                                    )}
-
-                                    <FormInputField
-                                        name="subdomain"
-                                        placeholderKey="tenants.add.form.subdomain.placeholder"
-                                        required
-                                        addonAfter={getDomain()}
-                                        disabled={isMainTenant && isEditing}
-                                    />
-                                </div>
-                            )}
-                        <div className={styles.fieldGroup}>
-                            <div className={styles.description}>
-                                {t('tenants.add.form.allowedConsultantsLicense.label')}
-                            </div>
-                            <FormInputNumberField
-                                name={['licensing', 'allowedNumberOfUsers']}
-                                placeholderKey="tenants.add.form.allowedConsultantsLicense.placeholder"
+                            <div className={styles.description}>{t('tenants.add.form.subdomain.label')}</div>
+                            <FormInputField
+                                name="subdomain"
+                                placeholderKey="tenants.add.form.subdomain.placeholder"
                                 required
-                                min={1}
+                                addonAfter={getDomain()}
+                                disabled={isEditing}
                             />
                         </div>
-                    </CardEditable>
-                </Col>
-                {isEditing && (
-                    <Col span={12} md={6}>
-                        <Card
-                            isLoading={isLoading}
-                            titleKey="tenants.edit.adminEmailsCardTitle"
-                            tooltip={t('tenants.edit.adminEmailsCardTooltip')}
-                        >
-                            <Form disabled initialValues={{ ...data }}>
-                                {data?.adminEmails?.length && (
-                                    <SelectFormField name="adminEmails" required disabled isMulti />
-                                )}
-                                {!data?.adminEmails?.length && (
-                                    <div className={styles.emptyAdminsContainer}>
-                                        <PersonSearchIcon className={styles.emptyAdminsIcon} />
-
-                                        <div className={styles.emptyAdminsText}>
-                                            {t('tenants.edit.adminEmailsCardEmpty')}
-                                        </div>
-                                    </div>
-                                )}
-                            </Form>
-                        </Card>
-                    </Col>
-                )}
-            </Row>
-        </>
+                    )}
+                    <div className={styles.fieldGroup}>
+                        <div className={styles.description}>
+                            {t('tenants.add.form.allowedConsultantsLicense.label')}
+                        </div>
+                        <FormInputNumberField
+                            name={['licensing', 'allowedNumberOfUsers']}
+                            placeholderKey="tenants.add.form.allowedConsultantsLicense.placeholder"
+                            required
+                            min={1}
+                        />
+                    </div>
+                    {!isEditing && (
+                        <>
+                            <div className={styles.fieldGroup}>
+                                <div className={styles.description}>{t('tenantAdmins.form.username')}</div>
+                                <FormInputField
+                                    name="tenantAdminUsername"
+                                    placeholderKey="placeholder.username"
+                                    required
+                                    rules={[
+                                        {
+                                            pattern: /^[a-z0-9_-]+$/,
+                                            message: t('message.error.username.format'),
+                                        },
+                                    ]}
+                                />
+                            </div>
+                            <div className={styles.fieldGroup}>
+                                <div className={styles.description}>{t('tenantAdmins.form.password')}</div>
+                                <FormPasswordField
+                                    name="tenantAdminPassword"
+                                    placeholderKey="placeholder.password"
+                                    required
+                                    rules={[
+                                        {
+                                            min: 8,
+                                            message: t('message.error.password.minLength'),
+                                        },
+                                    ]}
+                                />
+                            </div>
+                            <div className={styles.fieldGroup}>
+                                <div className={styles.description}>{t('email')}</div>
+                                <FormInputField
+                                    name="tenantAdminEmail"
+                                    placeholderKey="placeholder.email"
+                                    required
+                                    rules={[
+                                        {
+                                            type: 'email',
+                                            message: t('message.error.email.incorrect'),
+                                        },
+                                    ]}
+                                />
+                            </div>
+                            <div className={styles.fieldGroup}>
+                                <div className={styles.description}>{t('firstname')}</div>
+                                <FormInputField
+                                    name="tenantAdminFirstname"
+                                    placeholderKey="placeholder.firstname"
+                                    required
+                                />
+                            </div>
+                            <div className={styles.fieldGroup}>
+                                <div className={styles.description}>{t('lastname')}</div>
+                                <FormInputField
+                                    name="tenantAdminLastname"
+                                    placeholderKey="placeholder.lastname"
+                                    required
+                                />
+                            </div>
+                        </>
+                    )}
+                    {isEditing && isSuperAdmin && (
+                        <div className={styles.fieldGroup}>
+                            <Button
+                                type="default"
+                                onClick={() => navigate(`${routePathNames.tenants}/${id}/global-settings`)}
+                            >
+                                {t('tenants.edit.tabs.globalSettings')}
+                            </Button>
+                        </div>
+                    )}
+                </CardEditable>
+            </Col>
+        </Row>
     );
 };

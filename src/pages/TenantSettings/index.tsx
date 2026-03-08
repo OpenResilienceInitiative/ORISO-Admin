@@ -8,15 +8,18 @@ import { UserRole } from '../../enums/UserRole';
 import { useReleasesToggle } from '../../hooks/useReleasesToggle.hook';
 import { useUserPermissions } from '../../hooks/useUserPermission';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
+import { useTenantData } from '../../hooks/useTenantData.hook';
 
 export const TenantSettingsLayout = () => {
     const { settings } = useAppConfigContext();
     const { hasRole } = useUserRoles();
     const { can } = useUserPermissions();
     const { isEnabled } = useReleasesToggle();
+    const { data: tenantData } = useTenantData();
     const shouldShowThemeSettings =
         (settings.multitenancyWithSingleDomainEnabled && hasRole(UserRole.TenantAdmin)) ||
         (!settings.multitenancyWithSingleDomainEnabled && hasRole(UserRole.SingleTenantAdmin));
+    const canAccessPermissionsPage = tenantData?.settings?.tenantAdminControls?.permissionsPageEnabled !== false;
 
     return (
         <Page>
@@ -44,10 +47,11 @@ export const TenantSettingsLayout = () => {
                         to: '/admin/theme-settings/smtp',
                         titleKey: 'settings.subhead.smtp',
                     },
-                    can(PermissionAction.Update, Resource.Tenant) && {
-                        to: '/admin/theme-settings/permissions',
-                        titleKey: 'settings.subhead.permissions',
-                    },
+                    can(PermissionAction.Update, Resource.Tenant) &&
+                        canAccessPermissionsPage && {
+                            to: '/admin/theme-settings/permissions',
+                            titleKey: 'settings.subhead.permissions',
+                        },
                 ]}
             />
             <Outlet />
