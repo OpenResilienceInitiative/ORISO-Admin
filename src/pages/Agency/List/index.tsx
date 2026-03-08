@@ -22,6 +22,8 @@ import { useAgenciesData } from '../../../hooks/useAgencysData';
 import { ResizeTable } from '../../../components/ResizableTable';
 import styles from './styles.module.scss';
 import SearchInput from '../../../components/SearchInput/SearchInput';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { useTenantsData } from '../../../hooks/useTenantsData';
 
 export const AgencyList = () => {
     const { t } = useTranslation();
@@ -33,6 +35,8 @@ export const AgencyList = () => {
     });
     const { data, isLoading, refetch } = useAgenciesData({ ...tableState });
     const { can } = useUserPermissions();
+    const { isSuperAdmin } = useUserRoles();
+    const { data: tenantsData } = useTenantsData({ perPage: 1000, page: 1, enabled: isSuperAdmin });
     const { isEnabled } = useFeatureContext();
     const [agencyToDelete, setAgencyToDelete] = useState<AgencyData>();
     const isTopicsFeatureActive = isEnabled(FeatureFlag.TopicsInRegistration);
@@ -47,6 +51,9 @@ export const AgencyList = () => {
     const setSearchDebounced = useDebouncedCallback((search?: string) => {
         setTableState((tmpData) => ({ ...tmpData, current: 1, search }));
     }, 100);
+    const tenantNameById = new Map(
+        (tenantsData?.data || []).map((tenant) => [Number(tenant.id), String(tenant.name || '')]),
+    );
 
     const columnsData = [
         {
@@ -125,6 +132,16 @@ export const AgencyList = () => {
             sorter: true,
             width: 100,
             ellipsis: true,
+            className: 'agencyList__column',
+        },
+        isSuperAdmin && {
+            title: t('tenantName'),
+            dataIndex: 'tenantName',
+            key: 'tenantName',
+            width: 120,
+            ellipsis: true,
+            render: (_: string, record: AgencyData) =>
+                record.tenantName || tenantNameById.get(Number(record.tenantId)) || record.tenantId || '-',
             className: 'agencyList__column',
         },
         ...(can(PermissionAction.Read, Resource.Topic)

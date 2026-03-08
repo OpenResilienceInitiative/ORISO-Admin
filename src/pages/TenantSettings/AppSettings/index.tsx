@@ -10,14 +10,15 @@ import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 
 export const AppSettingsPage = () => {
     const { data } = useTenantData();
-    const { hasRole } = useUserRoles();
+    const { hasRole, tenantId } = useUserRoles();
     const { settings } = useAppConfigContext();
+    const resolvedTenantId = tenantId && tenantId > 0 ? tenantId : data?.id;
 
     if (settings.multitenancyWithSingleDomainEnabled && hasRole(UserRole.TenantAdmin)) {
         return (
             <Row gutter={[24, 24]}>
                 <Col span={12} sm={6}>
-                    <OtherFunctionsSettings tenantId={`${data.id}`} hideStatistics hideGroupChatToggle />
+                    <OtherFunctionsSettings tenantId={`${resolvedTenantId || ''}`} hideStatistics hideGroupChatToggle />
                 </Col>
             </Row>
         );
@@ -26,14 +27,16 @@ export const AppSettingsPage = () => {
     return (
         <Row gutter={[24, 24]}>
             <Col span={12} sm={6}>
-                <NotificationsSettings tenantId={`${data.id}`} />
+                <NotificationsSettings tenantId={`${resolvedTenantId || ''}`} />
             </Col>
 
             {hasRole(UserRole.TenantAdmin) && (
                 <Col span={12} sm={6}>
-                    <SmtpSettings tenantId={`${data.id}`} />
-                    {!settings.multitenancyWithSingleDomainEnabled && <CommunicationSettings tenantId={`${data.id}`} />}
-                    <OtherFunctionsSettings tenantId={`${data.id}`} hideGroupChatToggle />
+                    <SmtpSettings tenantId={`${resolvedTenantId || ''}`} />
+                    {!settings.multitenancyWithSingleDomainEnabled && (
+                        <CommunicationSettings tenantId={`${resolvedTenantId || ''}`} />
+                    )}
+                    <OtherFunctionsSettings tenantId={`${resolvedTenantId || ''}`} hideGroupChatToggle />
                 </Col>
             )}
         </Row>

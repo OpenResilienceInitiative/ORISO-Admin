@@ -325,6 +325,7 @@
     "tenants.appSettings.smtp.username": "SMTP Benutzername",
     "tenants.appSettings.smtp.password": "SMTP Passwort",
     "tenants.appSettings.smtp.from": "Absender E-Mail",
+    "tenants.appSettings.smtp.emailThemeColor": "E-Mail Designfarbe",
     "tenants.appSettings.smtp.secure": "SMTP Secure (TLS/SSL)",
     "tenants.appSettings.otherFunctions.title": "Sonstige Funktionen",
     "tenants.appSettings.otherFunctions.mtsd.allowTopicCreation.title": "Themen nutzen",
@@ -616,66 +617,6 @@
     "form.errors.fillAllLanguages": "Bitte Angaben in allen Sprachen ausfüllen.",
     "languages": "Sprachen",
     "language.en": "Englisch",
-    "language.de": "Deutsch",
-    "language.fr": "Französisch",
-    "language.ru": "Russisch",
-    "language.ti": "Tigrinya",
-    "language.tr": "Türkisch",
-    "language.uk": "Ukrainisch",
-    "footer.label.privacy": "Datenschutz",
-    "footer.label.imprint": "Impressum",
-    "errorPages.accessDenied.title": "Schade!",
-    "errorPages.accessDenied.description": "Leider sind Sie nicht berechtigt diese Seite einzusehen. Für mehr Informationen kontaktieren Sie bitte Ihren Admin."
-}
-
-    "language.de": "Deutsch",
-    "language.fr": "Französisch",
-    "language.ru": "Russisch",
-    "language.ti": "Tigrinya",
-    "language.tr": "Türkisch",
-    "language.uk": "Ukrainisch",
-    "footer.label.privacy": "Datenschutz",
-    "footer.label.imprint": "Impressum",
-    "errorPages.accessDenied.title": "Schade!",
-    "errorPages.accessDenied.description": "Leider sind Sie nicht berechtigt diese Seite einzusehen. Für mehr Informationen kontaktieren Sie bitte Ihren Admin."
-}
-
-    "language.de": "Deutsch",
-    "language.fr": "Französisch",
-    "language.ru": "Russisch",
-    "language.ti": "Tigrinya",
-    "language.tr": "Türkisch",
-    "language.uk": "Ukrainisch",
-    "footer.label.privacy": "Datenschutz",
-    "footer.label.imprint": "Impressum",
-    "errorPages.accessDenied.title": "Schade!",
-    "errorPages.accessDenied.description": "Leider sind Sie nicht berechtigt diese Seite einzusehen. Für mehr Informationen kontaktieren Sie bitte Ihren Admin."
-}
-
-    "language.de": "Deutsch",
-    "language.fr": "Französisch",
-    "language.ru": "Russisch",
-    "language.ti": "Tigrinya",
-    "language.tr": "Türkisch",
-    "language.uk": "Ukrainisch",
-    "footer.label.privacy": "Datenschutz",
-    "footer.label.imprint": "Impressum",
-    "errorPages.accessDenied.title": "Schade!",
-    "errorPages.accessDenied.description": "Leider sind Sie nicht berechtigt diese Seite einzusehen. Für mehr Informationen kontaktieren Sie bitte Ihren Admin."
-}
-
-    "language.de": "Deutsch",
-    "language.fr": "Französisch",
-    "language.ru": "Russisch",
-    "language.ti": "Tigrinya",
-    "language.tr": "Türkisch",
-    "language.uk": "Ukrainisch",
-    "footer.label.privacy": "Datenschutz",
-    "footer.label.imprint": "Impressum",
-    "errorPages.accessDenied.title": "Schade!",
-    "errorPages.accessDenied.description": "Leider sind Sie nicht berechtigt diese Seite einzusehen. Für mehr Informationen kontaktieren Sie bitte Ihren Admin."
-}
-
     "language.de": "Deutsch",
     "language.fr": "Französisch",
     "language.ru": "Russisch",

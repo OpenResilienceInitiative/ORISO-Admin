@@ -41,6 +41,7 @@ export interface TenantSettings {
         username?: string | null;
         password?: string | null;
         from?: string | null;
+        emailThemeColor?: string | null;
     };
 }
 

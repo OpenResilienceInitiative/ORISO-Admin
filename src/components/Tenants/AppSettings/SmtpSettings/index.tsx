@@ -6,6 +6,7 @@ import { FormSwitchField } from '../../../FormSwitchField';
 import { FormInputField } from '../../../FormInputField';
 import { FormInputNumberField } from '../../../FormInputNumberField';
 import { FormInputPasswordField } from '../../../FormInputPasswordField';
+import { FormColorSelectorField } from '../../../FormColorSelectorField';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import styles from './styles.module.scss';
@@ -20,6 +21,7 @@ const DEFAULT_SMTP_SETTINGS = {
         username: '',
         password: '',
         from: '',
+        emailThemeColor: '#0f3b8f',
     },
 } as const;
 
@@ -42,7 +44,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                 },
             },
         }),
-        [data]
+        [data],
     );
 
     return (
@@ -90,6 +92,10 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         name={['settings', 'smtp', 'password']}
                     />
                     <FormInputField labelKey="tenants.appSettings.smtp.from" name={['settings', 'smtp', 'from']} />
+                    <FormColorSelectorField
+                        labelKey="tenants.appSettings.smtp.emailThemeColor"
+                        name={['settings', 'smtp', 'emailThemeColor']}
+                    />
                     <FormSwitchField
                         labelKey="tenants.appSettings.smtp.secure"
                         name={['settings', 'smtp', 'secure']}

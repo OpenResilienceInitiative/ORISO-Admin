@@ -18,6 +18,7 @@ import { TenantAdminData } from '../../../../types/TenantAdminData';
 import { ModalSuccess } from '../../../../components/ModalSuccess';
 import { Card } from '../../../../components/Card';
 import { X_REASON } from '../../../../api/fetchData';
+import { useUserRoles } from '../../../../hooks/useUserRoles.hook';
 
 export const GeneralTenantSettings = () => {
     const { search } = useLocation();
@@ -28,6 +29,7 @@ export const GeneralTenantSettings = () => {
     const [newTenantId, setNewTenantId] = useState<number>(null);
     const [form] = useForm();
     const { settings } = useAppConfigContext();
+    const { isSuperAdmin } = useUserRoles();
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id, enabled: isEditing });
     const { mutate: update } = useAddOrUpdateTenant({
@@ -92,23 +94,24 @@ export const GeneralTenantSettings = () => {
                             <div className={styles.description}>{t('tenants.add.form.name.label')}</div>
                             <FormInputField name="name" placeholderKey="tenants.add.form.name.placeholder" required />
                         </div>
-                        {(!settings.multitenancyWithSingleDomainEnabled ||
-                            (settings.multitenancyWithSingleDomainEnabled && isMainTenant)) && (
-                            <div className={styles.fieldGroup}>
-                                <div className={styles.description}>{t('tenants.add.form.subdomain.label')}</div>
-                                {isMainTenant && (
-                                    <div className={styles.warning}>{t('tenants.add.form.subdomain.warning')}</div>
-                                )}
+                        {!isSuperAdmin &&
+                            (!settings.multitenancyWithSingleDomainEnabled ||
+                                (settings.multitenancyWithSingleDomainEnabled && isMainTenant)) && (
+                                <div className={styles.fieldGroup}>
+                                    <div className={styles.description}>{t('tenants.add.form.subdomain.label')}</div>
+                                    {isMainTenant && (
+                                        <div className={styles.warning}>{t('tenants.add.form.subdomain.warning')}</div>
+                                    )}
 
-                                <FormInputField
-                                    name="subdomain"
-                                    placeholderKey="tenants.add.form.subdomain.placeholder"
-                                    required
-                                    addonAfter={getDomain()}
-                                    disabled={isMainTenant && isEditing}
-                                />
-                            </div>
-                        )}
+                                    <FormInputField
+                                        name="subdomain"
+                                        placeholderKey="tenants.add.form.subdomain.placeholder"
+                                        required
+                                        addonAfter={getDomain()}
+                                        disabled={isMainTenant && isEditing}
+                                    />
+                                </div>
+                            )}
                         <div className={styles.fieldGroup}>
                             <div className={styles.description}>
                                 {t('tenants.add.form.allowedConsultantsLicense.label')}
