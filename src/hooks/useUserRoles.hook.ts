@@ -39,5 +39,12 @@ export const useUserRoles = (): {
     const isSuperAdmin = hasRole(UserRole.AgencyAdmin) && hasRole(UserRole.TenantAdmin) && tenantId === 0;
     const isTenantScopedAdmin = hasRole(UserRole.TenantAdmin) && tenantId !== null && tenantId > 0;
 
-    return { roles, hasRole, isSuperAdmin, isTechnicalAccount, isTenantScopedAdmin, tenantId };
+    return {
+        roles,
+        hasRole,
+        isSuperAdmin,
+        isTechnicalAccount,
+        isTenantScopedAdmin,
+        tenantId,
+    };
 };

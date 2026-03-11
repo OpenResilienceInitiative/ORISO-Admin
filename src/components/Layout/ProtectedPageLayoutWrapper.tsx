@@ -106,6 +106,17 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                     </NavLink>
                                 </li>
                             )}
+                            {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
+                                <li key="global-settings" className="menuItem">
+                                    <NavLink
+                                        to={routePathNames.globalSettings}
+                                        className={classNames({ active: checkActive(routePathNames.globalSettings) })}
+                                    >
+                                        <NavIcon path={routePathNames.globalSettings} />
+                                        <span>{t('globalSettings.navTitle')}</span>
+                                    </NavLink>
+                                </li>
+                            )}
                             {(can(PermissionAction.Read, Resource.Consultant) ||
                                 can(PermissionAction.Read, Resource.AgencyAdminUser) ||
                                 can(PermissionAction.Read, Resource.TenantAdminUser)) && (

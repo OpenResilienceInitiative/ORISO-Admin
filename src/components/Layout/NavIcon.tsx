@@ -28,6 +28,7 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
 
     switch (path) {
         case routePathNames.themeSettings:
+        case routePathNames.globalSettings:
             return currentlySelected ? <SettingsActiveIcon /> : <SettingsInactiveIcon />;
         case '/admin/users':
             return currentlySelected ? <UsersActiveIcon /> : <UsersInactiveIcon />;

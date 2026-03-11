@@ -61,7 +61,7 @@ export const TenantsList = () => {
     const onDelete = useCallback(
         (id: number) => {
             setTenantToDelete(null);
-        deleteTenant(id);
+            deleteTenant(id);
         },
         [deleteTenant],
     );
@@ -159,17 +159,17 @@ export const TenantsList = () => {
 
                     {can(PermissionAction.Create, Resource.Tenant) &&
                         (isSuperAdmin || isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING)) && (
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={() =>
-                                navigate(
-                                    `${routePathNames.tenants}/add/general${data?.total === 0 ? '?main=true' : ''}`,
-                                )
-                            }
-                        >
-                            {t('tenants.list.new')}
-                        </Button>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() =>
+                                    navigate(
+                                        `${routePathNames.tenants}/add/general${data?.total === 0 ? '?main=true' : ''}`,
+                                    )
+                                }
+                            >
+                                {t('tenants.list.new')}
+                            </Button>
                         )}
                 </div>
             </Page.Title>

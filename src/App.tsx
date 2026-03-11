@@ -38,6 +38,7 @@ import { UserRole } from './enums/UserRole';
 import { useAppConfigContext } from './context/useAppConfig';
 import { AgencyEditInitialMeeting } from './pages/Agency/EditInitialMeeting';
 import { SupervisorLogsPage } from './pages/Logs/SupervisorLogs';
+import { GlobalSettingsPage } from './pages/GlobalSettings';
 
 export const App = () => {
     const { data: publicTenantData } = usePublicTenantData();
@@ -81,7 +82,6 @@ export const App = () => {
 
     const canReadTenant = can(PermissionAction.Read, Resource.Tenant);
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
-    const canAccessPermissionsPage = data?.settings?.tenantAdminControls?.permissionsPageEnabled !== false;
     // console.log('🔍 App: canReadTenant:', canReadTenant);
     // console.log('🔍 App: canReadLegalText:', canReadLegalText);
     // console.log('🔍 App: Will show routes?', canReadTenant || canReadLegalText);
@@ -112,7 +112,7 @@ export const App = () => {
                             {can(PermissionAction.Read, Resource.Tenant) && (
                                 <Route path={`${routePathNames.themeSettings}/smtp`} element={<SmtpSettingsPage />} />
                             )}
-                            {can(PermissionAction.Read, Resource.Tenant) && canAccessPermissionsPage && (
+                            {can(PermissionAction.Read, Resource.Tenant) && (
                                 <Route
                                     path={`${routePathNames.themeSettings}/permissions`}
                                     element={<PermissionsSettingsPage />}
@@ -148,6 +148,9 @@ export const App = () => {
                     <Route path={routePathNames.statistic} element={<Statistic />} />
                     {!isSuperAdmin && <Route path={routePathNames.logs} element={<SupervisorLogsPage />} />}
                     <Route path={routePathNames.userProfile} element={<UserProfile />} />
+                    {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
+                        <Route path={routePathNames.globalSettings} element={<GlobalSettingsPage />} />
+                    )}
                     {can(PermissionAction.Create, Resource.Tenant) && (
                         <>
                             <Route path={routePathNames.tenants} element={<TenantsList />} />

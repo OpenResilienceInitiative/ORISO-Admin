@@ -10,3 +10,23 @@
     margin-top: 4px;
 }
 
+.warningCard {
+    background: #fff1f0;
+    border: 1px solid #ffa39e;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    color: #a8071a;
+
+    p {
+        margin: 6px 0 0;
+        color: #cf1322;
+        font-size: 13px;
+        line-height: 18px;
+    }
+}
+
+.permissionsCardWrap {
+    margin-top: 16px;
+}
+

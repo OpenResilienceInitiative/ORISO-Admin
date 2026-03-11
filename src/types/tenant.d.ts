@@ -49,10 +49,28 @@ export interface TenantSettings {
             anonymousChat?: boolean | null;
             calls?: boolean | null;
             supervision?: boolean | null;
+            supervisionAnonymousChats?: boolean | null;
+            supervisionOneOnOneChats?: boolean | null;
             audioCalls?: boolean | null;
+            audioCallsAnonymousChats?: boolean | null;
+            audioCallsOneOnOneChats?: boolean | null;
+            audioCallsGroupChats?: boolean | null;
+            audioCallsSupervisionChats?: boolean | null;
             videoCalls?: boolean | null;
+            videoCallsAnonymousChats?: boolean | null;
+            videoCallsOneOnOneChats?: boolean | null;
+            videoCallsGroupChats?: boolean | null;
+            videoCallsSupervisionChats?: boolean | null;
             threads?: boolean | null;
+            threadsAnonymousChats?: boolean | null;
+            threadsOneOnOneChats?: boolean | null;
+            threadsGroupChats?: boolean | null;
+            threadsSupervisionChats?: boolean | null;
             voiceMessages?: boolean | null;
+            voiceMessagesAnonymousChats?: boolean | null;
+            voiceMessagesOneOnOneChats?: boolean | null;
+            voiceMessagesGroupChats?: boolean | null;
+            voiceMessagesSupervisionChats?: boolean | null;
         };
     };
 }
