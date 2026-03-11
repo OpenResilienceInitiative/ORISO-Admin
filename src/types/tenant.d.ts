@@ -43,6 +43,18 @@ export interface TenantSettings {
         from?: string | null;
         emailThemeColor?: string | null;
     };
+    tenantAdminControls?: {
+        permissionsPageEnabled?: boolean | null;
+        allowedPermissionToggles?: {
+            anonymousChat?: boolean | null;
+            calls?: boolean | null;
+            supervision?: boolean | null;
+            audioCalls?: boolean | null;
+            videoCalls?: boolean | null;
+            threads?: boolean | null;
+            voiceMessages?: boolean | null;
+        };
+    };
 }
 
 export interface BasicTenantData {

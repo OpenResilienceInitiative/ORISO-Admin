@@ -12,12 +12,27 @@ interface UseAddOrUpdateTenantOptions
 export const useAddOrUpdateTenant = ({ id, ...options }: UseAddOrUpdateTenantOptions) => {
     const queryClient = useQueryClient();
     const { data } = useSingleTenantData({ id, enabled: !!id });
+
+    const buildInternalSubdomain = (name?: string) => {
+        const base =
+            (name || 'tenant')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .slice(0, 24) || 'tenant';
+        return `${base}-${Date.now().toString().slice(-6)}`;
+    };
+
     return useMutation(
         (formData) => {
+            const resolvedSubdomain =
+                typeof formData.subdomain === 'string' && formData.subdomain.trim() !== ''
+                    ? formData.subdomain
+                    : data?.subdomain || buildInternalSubdomain(formData.name);
             const bodyData = JSON.stringify({
                 ...data,
                 name: formData.name,
-                subdomain: formData.subdomain,
+                subdomain: resolvedSubdomain,
                 licensing: {
                     ...formData.licensing,
                 },

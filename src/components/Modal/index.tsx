@@ -1,33 +1,38 @@
 import { Modal as AntModal } from 'antd';
 import { useTranslation } from 'react-i18next';
 import Title from 'antd/lib/typography/Title';
+import { ReactNode } from 'react';
 
 export interface ModalProps {
     titleKey?: string;
+    titleKeyOptions?: Record<string, unknown>;
     cancelLabelKey?: string;
     okLabelKey?: string;
     contentKey?: string;
-    children?: React.ReactChild | React.ReactChild[];
+    contentKeyOptions?: Record<string, unknown>;
+    children?: ReactNode;
     onConfirm?: () => void;
     onClose?: () => void;
-    footer?: React.ReactChild;
+    footer?: ReactNode;
 }
 
 export const Modal = ({
     titleKey,
+    titleKeyOptions,
     okLabelKey,
     cancelLabelKey,
     children,
     onConfirm,
     onClose,
     contentKey,
+    contentKeyOptions,
     footer,
 }: ModalProps) => {
     const { t } = useTranslation();
 
     return (
         <AntModal
-            title={<Title level={2}>{t(titleKey)}</Title>}
+            title={<Title level={2}>{titleKey ? t(titleKey, titleKeyOptions) : null}</Title>}
             open
             destroyOnClose
             centered
@@ -37,7 +42,7 @@ export const Modal = ({
             okText={okLabelKey && t(okLabelKey)}
             footer={footer}
         >
-            {contentKey && t(contentKey)}
+            {contentKey && t(contentKey, contentKeyOptions)}
             {children}
         </AntModal>
     );

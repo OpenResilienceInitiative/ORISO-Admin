@@ -1,14 +1,12 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, notification, Tag } from 'antd';
+import { Button, notification } from 'antd';
 import { ColumnProps, TablePaginationConfig } from 'antd/lib/table';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { Link } from 'react-router-dom';
 import routePathNames from '../../../appConfig';
-import { CopyToClipboard } from '../../../components/CopyToClipboard';
 import { EditButtons } from '../../../components/EditableTable/EditButtons';
-import { FeatureEnabled } from '../../../components/FeatureEnabled';
 import { Modal } from '../../../components/Modal';
 import { Page } from '../../../components/Page';
 import { ResizeTable } from '../../../components/ResizableTable';
@@ -18,8 +16,10 @@ import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { Resource } from '../../../enums/Resource';
 import { useDeleteTenant } from '../../../hooks/useDeleteTenant';
+import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { TenantData } from '../../../types/tenant';
 import decodeHTML from '../../../utils/decodeHTML';
 import { getDomain } from '../../../utils/getDomain';
@@ -35,8 +35,10 @@ export const TenantsList = () => {
 
     const { settings } = useAppConfigContext();
     const [search, setSearch] = useState('');
-    const [showDeleteModal, setShowDeleteModal] = useState<number>(null);
+    const [tenantToDelete, setTenantToDelete] = useState<TenantData | null>(null);
     const { can } = useUserPermissions();
+    const { isEnabled } = useReleasesToggle();
+    const { isSuperAdmin } = useUserRoles();
     const handleSearch = useCallback((value) => {
         setSearch(value);
         setTableState((data) => ({ ...data, current: 1 }));
@@ -56,10 +58,13 @@ export const TenantsList = () => {
         },
     });
 
-    const onDelete = useCallback((id) => {
-        setShowDeleteModal(null);
+    const onDelete = useCallback(
+        (id: number) => {
+            setTenantToDelete(null);
         deleteTenant(id);
-    }, []);
+        },
+        [deleteTenant],
+    );
 
     const handleTableAction = useCallback((pagination: TablePaginationConfig, _: any, sorter: any) => {
         const { current, pageSize } = pagination;
@@ -91,29 +96,7 @@ export const TenantsList = () => {
             dataIndex: 'name',
             width: 100,
             ellipsis: true,
-            render: (name: string, record: TenantData) => (
-                <>
-                    {decodeHTML(name)}
-                    {settings.mainTenantSubdomainForSingleDomainMultitenancy === record.subdomain && (
-                        <Tag className={styles.mainTenant}>{t('tenants.list.mainTenantTag')}</Tag>
-                    )}
-                </>
-            ),
-        },
-        {
-            title: t('tenants.list.adminEmails'),
-            dataIndex: 'adminEmails',
-            width: 150,
-            ellipsis: true,
-            render: (emails: string[]) => (
-                <div className={styles.emailsContainer}>
-                    {emails?.filter(Boolean)?.map((email) => (
-                        <CopyToClipboard className={styles.email} key={email}>
-                            {email}
-                        </CopyToClipboard>
-                    ))}
-                </div>
-            ),
+            render: (name: string) => <>{decodeHTML(name)}</>,
         },
         !settings.multitenancyWithSingleDomainEnabled && {
             width: 150,
@@ -147,9 +130,9 @@ export const TenantsList = () => {
                     <div className="tableActionWrapper">
                         <EditButtons
                             handleEdit={() => navigate(`${routePathNames.tenants}/${record.id}`)}
-                            handleDelete={() => setShowDeleteModal(record.id)}
+                            handleDelete={() => setTenantToDelete(record)}
                             record={record}
-                            hide={['delete']}
+                            hide={can(PermissionAction.Delete, Resource.Tenant) ? [] : ['delete']}
                             disabled={{
                                 edit: false,
                                 delete: settings.mainTenantSubdomainForSingleDomainMultitenancy === record.subdomain,
@@ -174,7 +157,8 @@ export const TenantsList = () => {
                         handleOnSearchClear={() => handleSearch('')}
                     />
 
-                    <FeatureEnabled feature={ReleaseToggle.TENANT_ADMIN_CREATING}>
+                    {can(PermissionAction.Create, Resource.Tenant) &&
+                        (isSuperAdmin || isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING)) && (
                         <Button
                             type="primary"
                             icon={<PlusOutlined />}
@@ -186,7 +170,7 @@ export const TenantsList = () => {
                         >
                             {t('tenants.list.new')}
                         </Button>
-                    </FeatureEnabled>
+                        )}
                 </div>
             </Page.Title>
             <ResizeTable
@@ -199,22 +183,15 @@ export const TenantsList = () => {
                 locale={{ emptyText: t('tenants.list.empty') }}
             />
 
-            {showDeleteModal !== null && (
+            {tenantToDelete !== null && (
                 <Modal
                     titleKey="tenants.list.deleteModal.title"
+                    titleKeyOptions={{ name: decodeHTML(tenantToDelete.name) }}
                     contentKey="tenants.list.deleteModal.description"
-                    cancelLabelKey="tenants.list.deleteModal.confirm"
-                    onClose={() => setShowDeleteModal(null)}
-                    footer={
-                        <>
-                            <Button key="confirm" onClick={() => onDelete(showDeleteModal)}>
-                                {t('tenants.list.deleteModal.confirm')}
-                            </Button>
-                            <Button key="cancel" type="primary" onClick={() => setShowDeleteModal(null)}>
-                                {t('tenants.list.deleteModal.cancel')}
-                            </Button>
-                        </>
-                    }
+                    okLabelKey="tenants.list.deleteModal.confirm"
+                    cancelLabelKey="tenants.list.deleteModal.cancel"
+                    onConfirm={() => onDelete(tenantToDelete.id)}
+                    onClose={() => setTenantToDelete(null)}
                 />
             )}
         </Page>
