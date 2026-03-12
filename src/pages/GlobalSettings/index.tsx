@@ -1,10 +1,11 @@
 import { Col, Row } from 'antd';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Navigate, Outlet } from 'react-router';
 import { Page } from '../../components/Page';
 import { CardEditable } from '../../components/CardEditable';
 import { FormSwitchField } from '../../components/FormSwitchField';
 import { FormInputField } from '../../components/FormInputField';
+import { FormInputNumberField } from '../../components/FormInputNumberField';
 import { FormInputPasswordField } from '../../components/FormInputPasswordField';
 import { FormColorSelectorField } from '../../components/FormColorSelectorField';
 import { useTenantData } from '../../hooks/useTenantData.hook';
@@ -75,14 +76,29 @@ export const GlobalSmtpSettingsPage = () => {
                 settings.globalFeatureSystemNotificationEmailsEnabled ?? false,
             globalSmtpEnabled: settings.globalSmtpEnabled ?? false,
             globalSmtpHost: settings.globalSmtpHost ?? '',
-            globalSmtpPort: settings.globalSmtpPort ?? '587',
+            globalSmtpPort: Number(settings.globalSmtpPort ?? 587),
             globalSmtpSecure: settings.globalSmtpSecure ?? false,
             globalSmtpUsername: settings.globalSmtpUsername ?? '',
-            globalSmtpPassword: settings.globalSmtpPassword ?? '',
             globalSmtpFrom: settings.globalSmtpFrom ?? '',
             globalSmtpEmailThemeColor: settings.globalSmtpEmailThemeColor ?? '#0f3b8f',
         }),
         [settings],
+    );
+    const handleSmtpSave = useCallback(
+        (formData) => {
+            const payload = { ...formData };
+
+            // Treat password as write-only: only patch it when user explicitly enters a new value.
+            if (!payload.globalSmtpPassword) {
+                delete payload.globalSmtpPassword;
+            }
+            if (payload.globalSmtpPort !== undefined && payload.globalSmtpPort !== null) {
+                payload.globalSmtpPort = String(payload.globalSmtpPort);
+            }
+
+            mutate(payload);
+        },
+        [mutate],
     );
 
     return (
@@ -92,7 +108,7 @@ export const GlobalSmtpSettingsPage = () => {
                     isLoading={isLoading}
                     initialValues={initialValues}
                     titleKey="globalSettings.smtp.title"
-                    onSave={mutate}
+                    onSave={handleSmtpSave}
                 >
                     <div className={styles.checkGroup}>
                         <FormSwitchField
@@ -113,7 +129,12 @@ export const GlobalSmtpSettingsPage = () => {
                     </div>
 
                     <FormInputField labelKey="globalSettings.smtp.host" name={['globalSmtpHost']} />
-                    <FormInputField labelKey="globalSettings.smtp.port" name={['globalSmtpPort']} />
+                    <FormInputNumberField
+                        labelKey="globalSettings.smtp.port"
+                        name={['globalSmtpPort']}
+                        min={1}
+                        max={65535}
+                    />
                     <FormInputField labelKey="globalSettings.smtp.username" name={['globalSmtpUsername']} />
                     <FormInputPasswordField labelKey="globalSettings.smtp.password" name={['globalSmtpPassword']} />
                     <FormInputField labelKey="globalSettings.smtp.from" name={['globalSmtpFrom']} />
