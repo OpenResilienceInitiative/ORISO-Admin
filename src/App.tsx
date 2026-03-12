@@ -38,7 +38,12 @@ import { UserRole } from './enums/UserRole';
 import { useAppConfigContext } from './context/useAppConfig';
 import { AgencyEditInitialMeeting } from './pages/Agency/EditInitialMeeting';
 import { SupervisorLogsPage } from './pages/Logs/SupervisorLogs';
-import { GlobalSettingsPage } from './pages/GlobalSettings';
+import {
+    GlobalLoginSettingsPage,
+    GlobalSettingsIndexRedirect,
+    GlobalSettingsPage,
+    GlobalSmtpSettingsPage,
+} from './pages/GlobalSettings';
 
 export const App = () => {
     const { data: publicTenantData } = usePublicTenantData();
@@ -149,7 +154,11 @@ export const App = () => {
                     {!isSuperAdmin && <Route path={routePathNames.logs} element={<SupervisorLogsPage />} />}
                     <Route path={routePathNames.userProfile} element={<UserProfile />} />
                     {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
-                        <Route path={routePathNames.globalSettings} element={<GlobalSettingsPage />} />
+                        <Route path={routePathNames.globalSettings} element={<GlobalSettingsPage />}>
+                            <Route index element={<GlobalSettingsIndexRedirect />} />
+                            <Route path="login" element={<GlobalLoginSettingsPage />} />
+                            <Route path="smtp" element={<GlobalSmtpSettingsPage />} />
+                        </Route>
                     )}
                     {can(PermissionAction.Create, Resource.Tenant) && (
                         <>
