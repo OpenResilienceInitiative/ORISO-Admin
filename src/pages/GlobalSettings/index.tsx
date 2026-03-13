@@ -1,17 +1,20 @@
-import { Col, Row } from 'antd';
-import { useCallback, useMemo } from 'react';
+import { Button, Col, Form, Row, message } from 'antd';
+import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet } from 'react-router';
 import { Page } from '../../components/Page';
 import { CardEditable } from '../../components/CardEditable';
+import { Card } from '../../components/Card';
 import { FormSwitchField } from '../../components/FormSwitchField';
 import { FormInputField } from '../../components/FormInputField';
-import { FormInputNumberField } from '../../components/FormInputNumberField';
 import { FormInputPasswordField } from '../../components/FormInputPasswordField';
 import { FormColorSelectorField } from '../../components/FormColorSelectorField';
 import { useTenantData } from '../../hooks/useTenantData.hook';
 import { useTenantAdminDataMutation } from '../../hooks/useTenantAdminDataMutation.hook';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.hook';
+import { useUserData } from '../../hooks/useUserData.hook';
+import { sendGlobalSmtpTestEmail } from '../../api/settings/sendGlobalSmtpTestEmail';
 import styles from '../Tenants/Edit/GlobalSettings/styles.module.scss';
 
 export const GlobalSettingsPage = () => {
@@ -68,38 +71,79 @@ export const GlobalLoginSettingsPage = () => {
 };
 
 export const GlobalSmtpSettingsPage = () => {
+    const { t } = useTranslation();
+    const [form] = Form.useForm();
+    const [testForm] = Form.useForm();
     const { settings } = useAppConfigContext();
+    const { data: userData } = useUserData();
     const { mutate, isLoading } = useSettingsAdminMutation();
+    const [isTestSending, setIsTestSending] = useState(false);
     const initialValues = useMemo(
         () => ({
             globalFeatureSystemNotificationEmailsEnabled:
                 settings.globalFeatureSystemNotificationEmailsEnabled ?? false,
             globalSmtpEnabled: settings.globalSmtpEnabled ?? false,
             globalSmtpHost: settings.globalSmtpHost ?? '',
-            globalSmtpPort: Number(settings.globalSmtpPort ?? 587),
+            globalSmtpPort: settings.globalSmtpPort ?? '587',
             globalSmtpSecure: settings.globalSmtpSecure ?? false,
             globalSmtpUsername: settings.globalSmtpUsername ?? '',
+            globalSmtpPassword: settings.globalSmtpPassword ?? '',
             globalSmtpFrom: settings.globalSmtpFrom ?? '',
             globalSmtpEmailThemeColor: settings.globalSmtpEmailThemeColor ?? '#0f3b8f',
         }),
         [settings],
     );
-    const handleSmtpSave = useCallback(
-        (formData) => {
-            const payload = { ...formData };
+    const handleSendTestEmail = useCallback(async () => {
+        const values = form.getFieldsValue(true);
+        const { recipientEmail } = await testForm.validateFields();
+        const cleanedRecipientEmail = (recipientEmail || '').trim();
 
-            // Treat password as write-only: only patch it when user explicitly enters a new value.
-            if (!payload.globalSmtpPassword) {
-                delete payload.globalSmtpPassword;
-            }
-            if (payload.globalSmtpPort !== undefined && payload.globalSmtpPort !== null) {
-                payload.globalSmtpPort = String(payload.globalSmtpPort);
-            }
+        if (!cleanedRecipientEmail) {
+            message.error(t('globalSettings.smtp.test.errorMissingRecipient'));
+            return;
+        }
 
-            mutate(payload);
-        },
-        [mutate],
-    );
+        if (
+            !values.globalSmtpHost ||
+            !values.globalSmtpPort ||
+            !values.globalSmtpUsername ||
+            !values.globalSmtpPassword ||
+            !values.globalSmtpFrom
+        ) {
+            message.error(t('globalSettings.smtp.test.errorMissingSmtp'));
+            return;
+        }
+        setIsTestSending(true);
+        try {
+            await sendGlobalSmtpTestEmail({
+                host: values.globalSmtpHost || '',
+                port: Number(values.globalSmtpPort || 0),
+                secure: !!values.globalSmtpSecure,
+                username: values.globalSmtpUsername || '',
+                password: values.globalSmtpPassword || '',
+                from: values.globalSmtpFrom || '',
+                recipientEmail: cleanedRecipientEmail,
+                emailThemeColor: values.globalSmtpEmailThemeColor || '#0f3b8f',
+            });
+            message.success(t('globalSettings.smtp.test.success', { email: cleanedRecipientEmail }));
+        } catch (error) {
+            if (error instanceof Response) {
+                try {
+                    const body = await error.json();
+                    const backendMessage = body?.message;
+                    if (backendMessage) {
+                        message.error(backendMessage);
+                        return;
+                    }
+                } catch {
+                    // ignore parse error and show fallback
+                }
+            }
+            message.error(t('globalSettings.smtp.test.error'));
+        } finally {
+            setIsTestSending(false);
+        }
+    }, [form, t, testForm]);
 
     return (
         <Row gutter={[24, 24]}>
@@ -108,7 +152,8 @@ export const GlobalSmtpSettingsPage = () => {
                     isLoading={isLoading}
                     initialValues={initialValues}
                     titleKey="globalSettings.smtp.title"
-                    onSave={handleSmtpSave}
+                    onSave={mutate}
+                    formProp={form}
                 >
                     <div className={styles.checkGroup}>
                         <FormSwitchField
@@ -129,14 +174,13 @@ export const GlobalSmtpSettingsPage = () => {
                     </div>
 
                     <FormInputField labelKey="globalSettings.smtp.host" name={['globalSmtpHost']} />
-                    <FormInputNumberField
-                        labelKey="globalSettings.smtp.port"
-                        name={['globalSmtpPort']}
-                        min={1}
-                        max={65535}
-                    />
+                    <FormInputField labelKey="globalSettings.smtp.port" name={['globalSmtpPort']} />
                     <FormInputField labelKey="globalSettings.smtp.username" name={['globalSmtpUsername']} />
-                    <FormInputPasswordField labelKey="globalSettings.smtp.password" name={['globalSmtpPassword']} />
+                    <FormInputPasswordField
+                        labelKey="globalSettings.smtp.password"
+                        name={['globalSmtpPassword']}
+                        autoComplete="current-password"
+                    />
                     <FormInputField labelKey="globalSettings.smtp.from" name={['globalSmtpFrom']} />
                     <FormColorSelectorField
                         labelKey="globalSettings.smtp.emailThemeColor"
@@ -149,6 +193,29 @@ export const GlobalSmtpSettingsPage = () => {
                         disableLabels
                     />
                 </CardEditable>
+            </Col>
+            <Col span={12} sm={6}>
+                <Card titleKey="globalSettings.smtp.test.title">
+                    <Form
+                        form={testForm}
+                        layout="vertical"
+                        initialValues={{
+                            recipientEmail: userData?.email ?? '',
+                        }}
+                    >
+                        <FormInputField
+                            labelKey="globalSettings.smtp.test.recipientEmail"
+                            name={['recipientEmail']}
+                            required
+                            rules={[{ type: 'email', message: t('message.error.email.incorrect') }]}
+                        />
+                        <div className={styles.checkGroup}>
+                            <Button loading={isTestSending} onClick={handleSendTestEmail}>
+                                {t('globalSettings.smtp.test.button')}
+                            </Button>
+                        </div>
+                    </Form>
+                </Card>
             </Col>
         </Row>
     );
