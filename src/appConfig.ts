@@ -64,6 +64,7 @@ export const twoFactorAuth = `${mainURL}/service/users/2fa`;
 export const twoFactorAuthApp = `${mainURL}/service/users/2fa/app`;
 export const twoFactorAuthAppEmail = `${mainURL}/service/users/2fa/email`;
 export const userDataEndpoint = `${mainURL}/service/users/data`;
+export const globalSmtpTestEmailEndpoint = `${mainURL}/service/users/system-notification-emails/test`;
 export const usersConsultantEndpoint = `${mainURL}/service/users/consultants`;
 export const usersConsultantsSearchEndpoint = `${mainURL}/service/users/consultants/search`;
 export const supervisorLogsEndpoint = `${mainURL}/service/users/supervisors/logs`;
