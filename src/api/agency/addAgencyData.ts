@@ -62,8 +62,11 @@ async function createAgency(agencyDataRequestBody: string) {
  * @return data
  */
 async function addAgencyData(agencyData: Record<string, any>) {
-    // Get tenant ID from JWT token
-    const { tenantId = 1 } = parseUserAuthInfo();
+    // Prefer explicitly selected tenant from form (superadmin flow).
+    // Fallback to JWT tenant for tenant-admin users.
+    const { tenantId: tokenTenantId = 1 } = parseUserAuthInfo();
+    const selectedTenantId = Number(agencyData?.tenantId);
+    const tenantId = Number.isFinite(selectedTenantId) && selectedTenantId > 0 ? selectedTenantId : tokenTenantId;
 
     const consultingTypeId =
         agencyData.consultingType !== null && agencyData.consultingType !== undefined
