@@ -23,4 +23,14 @@ export interface AppConfigInterface {
     documentationEnabled?: boolean;
     /** Release toggles */
     releaseToggles?: Record<string, boolean>;
+    /** Global SMTP settings for superadmin auth-related mails */
+    globalFeatureSystemNotificationEmailsEnabled?: boolean;
+    globalSmtpEnabled?: boolean;
+    globalSmtpHost?: string;
+    globalSmtpPort?: string;
+    globalSmtpSecure?: boolean;
+    globalSmtpUsername?: string;
+    globalSmtpPassword?: string;
+    globalSmtpFrom?: string;
+    globalSmtpEmailThemeColor?: string;
 }
