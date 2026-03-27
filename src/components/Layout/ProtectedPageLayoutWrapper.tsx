@@ -178,6 +178,17 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                     </NavLink>
                                 </li>
                             )}
+                            {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
+                                <li key="inactive-audit-logs" className="menuItem">
+                                    <NavLink
+                                        to={routePathNames.inactiveAccountAuditLogs}
+                                        className={({ isActive }) => (isActive ? 'active' : '')}
+                                    >
+                                        <NavIcon path={routePathNames.inactiveAccountAuditLogs} />
+                                        <span>{t('inactiveAudit.title')}</span>
+                                    </NavLink>
+                                </li>
+                            )}
 
                             <li className="menuItem">
                                 <NavLink

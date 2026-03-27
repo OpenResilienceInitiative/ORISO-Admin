@@ -68,6 +68,7 @@ export const globalSmtpTestEmailEndpoint = `${mainURL}/service/users/system-noti
 export const usersConsultantEndpoint = `${mainURL}/service/users/consultants`;
 export const usersConsultantsSearchEndpoint = `${mainURL}/service/users/consultants/search`;
 export const supervisorLogsEndpoint = `${mainURL}/service/users/supervisors/logs`;
+export const inactiveAccountAuditLogsEndpoint = `${mainURL}/service/users/inactive-accounts/audit-logs`;
 export const agencyAdminsSearchEndpoint = `${mainURL}/service/useradmin/agencyadmins/search`;
 export const registrationDataEndpoint = `${mainURL}/service/statistics/registration`;
 export const XHRheader = { AcceptLanguage: 'de' };
@@ -92,6 +93,7 @@ const routePathNames = {
     topics: '/admin/topics',
     statistic: '/admin/statistic',
     logs: '/admin/logs',
+    inactiveAccountAuditLogs: '/admin/logs/inactive-accounts',
     userProfile: '/admin/profil/',
     termsAndConditions: '/admin/agb',
     imprint: 'https://www.caritas-beratungundhilfe.de/impressum',

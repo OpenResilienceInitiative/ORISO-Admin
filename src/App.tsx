@@ -38,6 +38,7 @@ import { UserRole } from './enums/UserRole';
 import { useAppConfigContext } from './context/useAppConfig';
 import { AgencyEditInitialMeeting } from './pages/Agency/EditInitialMeeting';
 import { SupervisorLogsPage } from './pages/Logs/SupervisorLogs';
+import { InactiveAccountAuditLogsPage } from './pages/Logs/InactiveAccountAuditLogs';
 import {
     GlobalLoginSettingsPage,
     GlobalSettingsIndexRedirect,
@@ -152,6 +153,12 @@ export const App = () => {
                     )}
                     <Route path={routePathNames.statistic} element={<Statistic />} />
                     {!isSuperAdmin && <Route path={routePathNames.logs} element={<SupervisorLogsPage />} />}
+                    {isSuperAdmin && (
+                        <Route
+                            path={routePathNames.inactiveAccountAuditLogs}
+                            element={<InactiveAccountAuditLogsPage />}
+                        />
+                    )}
                     <Route path={routePathNames.userProfile} element={<UserProfile />} />
                     {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
                         <Route path={routePathNames.globalSettings} element={<GlobalSettingsPage />}>
