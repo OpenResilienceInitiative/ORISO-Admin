@@ -120,7 +120,7 @@ export const InactiveAccountAuditLogsPage = () => {
                     value={accountIdInput}
                     onChange={(event) => setAccountIdInput(event.target.value)}
                     onPressEnter={() => {
-                        setAccountIdFilter(accountIdInput);
+                        setAccountIdFilter(accountIdInput.trim());
                         setPage(1);
                     }}
                     style={{ width: 260 }}
@@ -128,7 +128,7 @@ export const InactiveAccountAuditLogsPage = () => {
                 <Button
                     type="primary"
                     onClick={() => {
-                        setAccountIdFilter(accountIdInput);
+                        setAccountIdFilter(accountIdInput.trim());
                         setPage(1);
                     }}
                 >
@@ -158,10 +158,11 @@ export const InactiveAccountAuditLogsPage = () => {
                     total: data?.total ?? 0,
                     showSizeChanger: true,
                     onChange: (nextPage, nextPageSize) => {
-                        setPage(nextPage);
                         if (nextPageSize && nextPageSize !== perPage) {
                             setPerPage(nextPageSize);
                             setPage(1);
+                        } else {
+                            setPage(nextPage);
                         }
                     },
                 }}

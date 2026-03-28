@@ -1,4 +1,4 @@
-import { QueryOptions, useQuery, UseQueryOptions } from 'react-query';
+import { useQuery, UseQueryOptions } from 'react-query';
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
 import { inactiveAccountAuditLogsEndpoint } from '../appConfig';
 import { InactiveAccountAuditLogsResponse } from '../types/inactiveAccountAuditLogs';
@@ -29,7 +29,7 @@ export const useInactiveAccountAuditLogsData = ({
         params.set('accountId', accountId.trim());
     }
 
-    return useQuery(
+    return useQuery<InactiveAccountAuditLogsResponse>(
         ['INACTIVE_ACCOUNT_AUDIT_LOGS', page, perPage, accountRole ?? '', accountId ?? ''],
         () =>
             fetchData({
@@ -42,6 +42,6 @@ export const useInactiveAccountAuditLogsData = ({
             ...options,
             retry: false,
             refetchOnWindowFocus: false,
-        } as QueryOptions<InactiveAccountAuditLogsResponse>,
+        },
     );
 };

@@ -153,7 +153,7 @@ export const App = () => {
                     )}
                     <Route path={routePathNames.statistic} element={<Statistic />} />
                     {!isSuperAdmin && <Route path={routePathNames.logs} element={<SupervisorLogsPage />} />}
-                    {isSuperAdmin && (
+                    {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
                         <Route
                             path={routePathNames.inactiveAccountAuditLogs}
                             element={<InactiveAccountAuditLogsPage />}
