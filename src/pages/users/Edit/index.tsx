@@ -214,20 +214,21 @@ export const UserEditOrAdd = () => {
                                 ]}
                             />
 
-                            {!isEditing && typeOfUsers === 'consultants' && (
-                                <FormPasswordField
-                                    name="password"
-                                    labelKey="counselor.password"
-                                    placeholderKey="placeholder.password"
-                                    required
-                                    rules={[
-                                        {
-                                            min: 8,
-                                            message: t('message.error.password.minLength'),
-                                        },
-                                    ]}
-                                />
-                            )}
+                            {!isEditing &&
+                                (typeOfUsers === TypeOfUser.Consultants || typeOfUsers === TypeOfUser.AgencyAdmins) && (
+                                    <FormPasswordField
+                                        name="password"
+                                        labelKey="counselor.password"
+                                        placeholderKey="placeholder.password"
+                                        required
+                                        rules={[
+                                            {
+                                                min: 8,
+                                                message: t('message.error.password.minLength'),
+                                            },
+                                        ]}
+                                    />
+                                )}
                         </Card>
                     </Col>
                     <Col xs={12} lg={6}>

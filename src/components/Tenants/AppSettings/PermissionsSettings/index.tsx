@@ -1,17 +1,90 @@
-import { Card, Form } from 'antd';
-import { useMemo } from 'react';
+import { Form } from 'antd';
+import { FunctionComponent, SVGProps, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
-import { FormSwitchField } from '../../../FormSwitchField';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
+import { ReactComponent as OneOnOneIcon } from '../../../../resources/img/svg/permissions/one_on_one.svg';
+import { ReactComponent as LiveChatIcon } from '../../../../resources/img/svg/permissions/live_chat.svg';
+import { ReactComponent as GroupIcon } from '../../../../resources/img/svg/permissions/group.svg';
+import { ReactComponent as GroupInternalIcon } from '../../../../resources/img/svg/permissions/group_internal.svg';
 import styles from './styles.module.scss';
+
+type CheckToggleInnerProps = {
+    checked?: boolean;
+    onChange?: (value: boolean) => void;
+    disabled?: boolean;
+    label: string;
+};
+
+const CheckToggleInner = ({ checked, onChange, disabled, label }: CheckToggleInnerProps) => {
+    const handleToggle = () => {
+        if (disabled) return;
+        onChange?.(!checked);
+    };
+    return (
+        <button
+            type="button"
+            role="switch"
+            aria-checked={!!checked}
+            aria-label={label}
+            disabled={disabled}
+            onClick={handleToggle}
+            className={styles.checkToggleButton}
+        >
+            {checked ? (
+                <svg width="60" height="48" viewBox="0 0 60 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect y="8" width="52" height="32" rx="16" fill="#1B1B1C" fillOpacity="0.9" />
+                    <rect x="24" y="12" width="24" height="24" rx="12" fill="#FCF9F9" />
+                    <path
+                        d="M34.3669 28.0001L30.5669 24.2001L31.5169 23.2501L34.3669 26.1001L40.4836 19.9834L41.4336 20.9334L34.3669 28.0001Z"
+                        fill="#1B1B1C"
+                    />
+                </svg>
+            ) : (
+                <svg width="60" height="48" viewBox="0 0 60 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="8" y="8" width="52" height="32" rx="16" fill="#E0E3E3" fillOpacity="0.1" />
+                    <rect
+                        x="9"
+                        y="9"
+                        width="50"
+                        height="30"
+                        rx="15"
+                        stroke="#1B1B1C"
+                        strokeOpacity="0.4"
+                        strokeWidth="2"
+                    />
+                    <rect x="12" y="12" width="24" height="24" rx="12" fill="#1B1B1C" fillOpacity="0.5" />
+                    <path
+                        d="M20.2668 28.6668L19.3335 27.7335L23.0668 24.0002L19.3335 20.2668L20.2668 19.3335L24.0002 23.0668L27.7335 19.3335L28.6668 20.2668L24.9335 24.0002L28.6668 27.7335L27.7335 28.6668L24.0002 24.9335L20.2668 28.6668Z"
+                        fill="#E4E2E2"
+                    />
+                </svg>
+            )}
+        </button>
+    );
+};
+
+type CheckToggleProps = {
+    name: string | string[];
+    label: string;
+    disabled?: boolean;
+};
+
+const CheckToggle = ({ name, label, disabled }: CheckToggleProps) => (
+    <Form.Item name={name} valuePropName="checked" noStyle>
+        <CheckToggleInner label={label} disabled={disabled} />
+    </Form.Item>
+);
 
 interface PermissionsSettingsArgs {
     tenantId: string;
+    // Kept for API compatibility with callers; new 4-card layout renders all toggles unconditionally.
+    // eslint-disable-next-line react/no-unused-prop-types
     visibleToggles?: PermissionToggleVisibility;
     forcedOffToggles?: PermissionToggleVisibility;
     superAdminControlMode?: boolean;
+    // eslint-disable-next-line react/no-unused-prop-types
     showSubToggles?: boolean;
 }
 
@@ -75,122 +148,21 @@ const enforceToggleRestrictions = (formData, forcedOffToggles?: PermissionsSetti
     if (!forcedOffToggles) {
         return formData;
     }
-
     const next = { ...formData, settings: { ...(formData?.settings ?? {}) } };
     const setFalse = (keys: string[]) => {
         keys.forEach((key) => {
             next.settings[key] = false;
         });
     };
-
-    if (forcedOffToggles.anonymousChat) {
-        setFalse(['featureAnonymousChatEnabled']);
-    }
-    if (forcedOffToggles.calls) {
-        setFalse(['featureCallsEnabled']);
-    }
+    if (forcedOffToggles.anonymousChat) setFalse(['featureAnonymousChatEnabled']);
+    if (forcedOffToggles.calls) setFalse(['featureCallsEnabled']);
     if (forcedOffToggles.supervision) {
         setFalse([
             'featureSupervisionEnabled',
             'featureSupervisionAnonymousChatsEnabled',
             'featureSupervisionOneOnOneChatsEnabled',
-            'featureAudioCallsSupervisionChatsEnabled',
-            'featureVideoCallsSupervisionChatsEnabled',
-            'featureThreadsSupervisionChatsEnabled',
-            'featureVoiceMessagesSupervisionChatsEnabled',
         ]);
     }
-    if (forcedOffToggles.audioCalls) {
-        setFalse([
-            'featureAudioCallsEnabled',
-            'featureAudioCallsAnonymousChatsEnabled',
-            'featureAudioCallsOneOnOneChatsEnabled',
-            'featureAudioCallsGroupChatsEnabled',
-            'featureAudioCallsSupervisionChatsEnabled',
-        ]);
-    }
-    if (forcedOffToggles.videoCalls) {
-        setFalse([
-            'featureVideoCallsEnabled',
-            'featureVideoCallsAnonymousChatsEnabled',
-            'featureVideoCallsOneOnOneChatsEnabled',
-            'featureVideoCallsGroupChatsEnabled',
-            'featureVideoCallsSupervisionChatsEnabled',
-        ]);
-    }
-    if (forcedOffToggles.threads) {
-        setFalse([
-            'featureThreadsEnabled',
-            'featureThreadsAnonymousChatsEnabled',
-            'featureThreadsGroupChatsEnabled',
-            'featureThreadsOneOnOneEnabled',
-            'featureThreadsSupervisionChatsEnabled',
-        ]);
-    }
-    if (forcedOffToggles.voiceMessages) {
-        setFalse([
-            'featureVoiceMessagesEnabled',
-            'featureVoiceMessagesAnonymousChatsEnabled',
-            'featureVoiceMessagesOneOnOneChatsEnabled',
-            'featureVoiceMessagesGroupChatsEnabled',
-            'featureVoiceMessagesSupervisionChatsEnabled',
-        ]);
-    }
-    if (forcedOffToggles.supervisionAnonymousChats) {
-        setFalse(['featureSupervisionAnonymousChatsEnabled']);
-    }
-    if (forcedOffToggles.supervisionOneOnOneChats) {
-        setFalse(['featureSupervisionOneOnOneChatsEnabled']);
-    }
-    if (forcedOffToggles.audioCallsAnonymousChats) {
-        setFalse(['featureAudioCallsAnonymousChatsEnabled']);
-    }
-    if (forcedOffToggles.audioCallsOneOnOneChats) {
-        setFalse(['featureAudioCallsOneOnOneChatsEnabled']);
-    }
-    if (forcedOffToggles.audioCallsGroupChats) {
-        setFalse(['featureAudioCallsGroupChatsEnabled']);
-    }
-    if (forcedOffToggles.audioCallsSupervisionChats) {
-        setFalse(['featureAudioCallsSupervisionChatsEnabled']);
-    }
-    if (forcedOffToggles.videoCallsAnonymousChats) {
-        setFalse(['featureVideoCallsAnonymousChatsEnabled']);
-    }
-    if (forcedOffToggles.videoCallsOneOnOneChats) {
-        setFalse(['featureVideoCallsOneOnOneChatsEnabled']);
-    }
-    if (forcedOffToggles.videoCallsGroupChats) {
-        setFalse(['featureVideoCallsGroupChatsEnabled']);
-    }
-    if (forcedOffToggles.videoCallsSupervisionChats) {
-        setFalse(['featureVideoCallsSupervisionChatsEnabled']);
-    }
-    if (forcedOffToggles.threadsAnonymousChats) {
-        setFalse(['featureThreadsAnonymousChatsEnabled']);
-    }
-    if (forcedOffToggles.threadsOneOnOneChats) {
-        setFalse(['featureThreadsOneOnOneEnabled']);
-    }
-    if (forcedOffToggles.threadsGroupChats) {
-        setFalse(['featureThreadsGroupChatsEnabled']);
-    }
-    if (forcedOffToggles.threadsSupervisionChats) {
-        setFalse(['featureThreadsSupervisionChatsEnabled']);
-    }
-    if (forcedOffToggles.voiceMessagesAnonymousChats) {
-        setFalse(['featureVoiceMessagesAnonymousChatsEnabled']);
-    }
-    if (forcedOffToggles.voiceMessagesOneOnOneChats) {
-        setFalse(['featureVoiceMessagesOneOnOneChatsEnabled']);
-    }
-    if (forcedOffToggles.voiceMessagesGroupChats) {
-        setFalse(['featureVoiceMessagesGroupChatsEnabled']);
-    }
-    if (forcedOffToggles.voiceMessagesSupervisionChats) {
-        setFalse(['featureVoiceMessagesSupervisionChatsEnabled']);
-    }
-
     return next;
 };
 
@@ -198,104 +170,162 @@ const syncMasterTogglesToTenantAdminControls = (formData) => {
     const next = { ...formData, settings: { ...(formData?.settings ?? {}) } };
     const { settings } = next;
     const isEnabled = (key: string) => settings?.[key] !== false;
-    const callsEnabled = isEnabled('featureCallsEnabled');
-    const supervisionEnabled = isEnabled('featureSupervisionEnabled');
-    const audioEnabled = isEnabled('featureAudioCallsEnabled');
-    const videoEnabled = isEnabled('featureVideoCallsEnabled');
-    const threadsEnabled = isEnabled('featureThreadsEnabled');
-    const voiceEnabled = isEnabled('featureVoiceMessagesEnabled');
     const anonymousEnabled = isEnabled('featureAnonymousChatEnabled');
-    const supervisionAnonymousEnabled =
-        supervisionEnabled && settings.featureSupervisionAnonymousChatsEnabled !== false;
-    const supervisionOneOnOneEnabled = supervisionEnabled && settings.featureSupervisionOneOnOneChatsEnabled !== false;
-    const audioAnonymousEnabled = audioEnabled && isEnabled('featureAudioCallsAnonymousChatsEnabled');
-    const audioOneOnOneEnabled = audioEnabled && isEnabled('featureAudioCallsOneOnOneChatsEnabled');
-    const audioGroupEnabled = audioEnabled && isEnabled('featureAudioCallsGroupChatsEnabled');
-    const audioSupervisionEnabled =
-        audioEnabled && supervisionEnabled && isEnabled('featureAudioCallsSupervisionChatsEnabled');
-    const videoAnonymousEnabled = videoEnabled && isEnabled('featureVideoCallsAnonymousChatsEnabled');
-    const videoOneOnOneEnabled = videoEnabled && isEnabled('featureVideoCallsOneOnOneChatsEnabled');
-    const videoGroupEnabled = videoEnabled && isEnabled('featureVideoCallsGroupChatsEnabled');
-    const videoSupervisionEnabled =
-        videoEnabled && supervisionEnabled && isEnabled('featureVideoCallsSupervisionChatsEnabled');
-    const threadsAnonymousEnabled = threadsEnabled && isEnabled('featureThreadsAnonymousChatsEnabled');
-    const threadsOneOnOneEnabled = threadsEnabled && isEnabled('featureThreadsOneOnOneEnabled');
-    const threadsGroupEnabled = threadsEnabled && isEnabled('featureThreadsGroupChatsEnabled');
-    const threadsSupervisionEnabled =
-        threadsEnabled && supervisionEnabled && isEnabled('featureThreadsSupervisionChatsEnabled');
-    const voiceAnonymousEnabled = voiceEnabled && isEnabled('featureVoiceMessagesAnonymousChatsEnabled');
-    const voiceOneOnOneEnabled = voiceEnabled && isEnabled('featureVoiceMessagesOneOnOneChatsEnabled');
-    const voiceGroupEnabled = voiceEnabled && isEnabled('featureVoiceMessagesGroupChatsEnabled');
-    const voiceSupervisionEnabled =
-        voiceEnabled && supervisionEnabled && isEnabled('featureVoiceMessagesSupervisionChatsEnabled');
-
-    settings.featureAnonymousChatEnabled = anonymousEnabled;
-    settings.featureCallsEnabled = callsEnabled;
-    settings.featureSupervisionEnabled = supervisionEnabled;
-    settings.featureSupervisionAnonymousChatsEnabled = supervisionAnonymousEnabled;
-    settings.featureSupervisionOneOnOneChatsEnabled = supervisionOneOnOneEnabled;
-    settings.featureAudioCallsEnabled = audioEnabled;
-    settings.featureAudioCallsAnonymousChatsEnabled = audioAnonymousEnabled;
-    settings.featureAudioCallsOneOnOneChatsEnabled = audioOneOnOneEnabled;
-    settings.featureAudioCallsGroupChatsEnabled = audioGroupEnabled;
-    settings.featureAudioCallsSupervisionChatsEnabled = audioSupervisionEnabled;
-    settings.featureVideoCallsEnabled = videoEnabled;
-    settings.featureVideoCallsAnonymousChatsEnabled = videoAnonymousEnabled;
-    settings.featureVideoCallsOneOnOneChatsEnabled = videoOneOnOneEnabled;
-    settings.featureVideoCallsGroupChatsEnabled = videoGroupEnabled;
-    settings.featureVideoCallsSupervisionChatsEnabled = videoSupervisionEnabled;
-    settings.featureThreadsEnabled = threadsEnabled;
-    settings.featureThreadsAnonymousChatsEnabled = threadsAnonymousEnabled;
-    settings.featureThreadsGroupChatsEnabled = threadsGroupEnabled;
-    settings.featureThreadsOneOnOneEnabled = threadsOneOnOneEnabled;
-    settings.featureThreadsSupervisionChatsEnabled = threadsSupervisionEnabled;
-    settings.featureVoiceMessagesEnabled = voiceEnabled;
-    settings.featureVoiceMessagesAnonymousChatsEnabled = voiceAnonymousEnabled;
-    settings.featureVoiceMessagesOneOnOneChatsEnabled = voiceOneOnOneEnabled;
-    settings.featureVoiceMessagesGroupChatsEnabled = voiceGroupEnabled;
-    settings.featureVoiceMessagesSupervisionChatsEnabled = voiceSupervisionEnabled;
 
     settings.tenantAdminControls = {
         ...(settings.tenantAdminControls ?? {}),
         allowedPermissionToggles: {
             anonymousChat: anonymousEnabled,
-            calls: callsEnabled,
-            supervision: supervisionEnabled,
-            supervisionAnonymousChats: supervisionAnonymousEnabled,
-            supervisionOneOnOneChats: supervisionOneOnOneEnabled,
-            audioCalls: audioEnabled,
-            audioCallsAnonymousChats: audioAnonymousEnabled,
-            audioCallsOneOnOneChats: audioOneOnOneEnabled,
-            audioCallsGroupChats: audioGroupEnabled,
-            audioCallsSupervisionChats: audioSupervisionEnabled,
-            videoCalls: videoEnabled,
-            videoCallsAnonymousChats: videoAnonymousEnabled,
-            videoCallsOneOnOneChats: videoOneOnOneEnabled,
-            videoCallsGroupChats: videoGroupEnabled,
-            videoCallsSupervisionChats: videoSupervisionEnabled,
-            threads: threadsEnabled,
-            threadsAnonymousChats: threadsAnonymousEnabled,
-            threadsOneOnOneChats: threadsOneOnOneEnabled,
-            threadsGroupChats: threadsGroupEnabled,
-            threadsSupervisionChats: threadsSupervisionEnabled,
-            voiceMessages: voiceEnabled,
-            voiceMessagesAnonymousChats: voiceAnonymousEnabled,
-            voiceMessagesOneOnOneChats: voiceOneOnOneEnabled,
-            voiceMessagesGroupChats: voiceGroupEnabled,
-            voiceMessagesSupervisionChats: voiceSupervisionEnabled,
+            calls: isEnabled('featureCallsEnabled'),
+            supervision: isEnabled('featureSupervisionEnabled'),
+            supervisionAnonymousChats: anonymousEnabled && isEnabled('featureSupervisionAnonymousChatsEnabled'),
+            supervisionOneOnOneChats: isEnabled('featureSupervisionOneOnOneChatsEnabled'),
+            audioCalls: isEnabled('featureAudioCallsEnabled'),
+            audioCallsAnonymousChats: anonymousEnabled && isEnabled('featureAudioCallsAnonymousChatsEnabled'),
+            audioCallsOneOnOneChats: isEnabled('featureAudioCallsOneOnOneChatsEnabled'),
+            audioCallsGroupChats: isEnabled('featureAudioCallsGroupChatsEnabled'),
+            audioCallsSupervisionChats: isEnabled('featureAudioCallsSupervisionChatsEnabled'),
+            videoCalls: isEnabled('featureVideoCallsEnabled'),
+            videoCallsAnonymousChats: anonymousEnabled && isEnabled('featureVideoCallsAnonymousChatsEnabled'),
+            videoCallsOneOnOneChats: isEnabled('featureVideoCallsOneOnOneChatsEnabled'),
+            videoCallsGroupChats: isEnabled('featureVideoCallsGroupChatsEnabled'),
+            videoCallsSupervisionChats: isEnabled('featureVideoCallsSupervisionChatsEnabled'),
+            threads: isEnabled('featureThreadsEnabled'),
+            threadsAnonymousChats: anonymousEnabled && isEnabled('featureThreadsAnonymousChatsEnabled'),
+            threadsOneOnOneChats: isEnabled('featureThreadsOneOnOneEnabled'),
+            threadsGroupChats: isEnabled('featureThreadsGroupChatsEnabled'),
+            threadsSupervisionChats: isEnabled('featureThreadsSupervisionChatsEnabled'),
+            voiceMessages: isEnabled('featureVoiceMessagesEnabled'),
+            voiceMessagesAnonymousChats: anonymousEnabled && isEnabled('featureVoiceMessagesAnonymousChatsEnabled'),
+            voiceMessagesOneOnOneChats: isEnabled('featureVoiceMessagesOneOnOneChatsEnabled'),
+            voiceMessagesGroupChats: isEnabled('featureVoiceMessagesGroupChatsEnabled'),
+            voiceMessagesSupervisionChats: isEnabled('featureVoiceMessagesSupervisionChatsEnabled'),
         },
     };
-
     return next;
 };
 
-export const PermissionsSettings = ({
-    tenantId,
-    visibleToggles,
-    forcedOffToggles,
-    superAdminControlMode,
-    showSubToggles = true,
-}: PermissionsSettingsArgs) => {
+type ChatTypeCardDef = {
+    key: 'oneOnOne' | 'liveChat' | 'group' | 'groupInternal';
+    titleKey: string;
+    descriptionKey: string;
+    Icon: FunctionComponent<SVGProps<SVGSVGElement>>;
+    masterField?: string[];
+    toggles: Array<{
+        labelKey: string;
+        field: string[];
+    }>;
+};
+
+const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
+    {
+        key: 'oneOnOne',
+        titleKey: 'tenants.permissions.card.oneOnOne.title',
+        descriptionKey: 'tenants.permissions.card.oneOnOne.description',
+        Icon: OneOnOneIcon,
+        toggles: [
+            {
+                labelKey: 'tenants.permissions.feature.videoCalls',
+                field: ['settings', 'featureVideoCallsOneOnOneChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.audioCalls',
+                field: ['settings', 'featureAudioCallsOneOnOneChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.voiceMessages',
+                field: ['settings', 'featureVoiceMessagesOneOnOneChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.threads',
+                field: ['settings', 'featureThreadsOneOnOneEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.supervision',
+                field: ['settings', 'featureSupervisionOneOnOneChatsEnabled'],
+            },
+        ],
+    },
+    {
+        key: 'liveChat',
+        titleKey: 'tenants.permissions.card.liveChat.title',
+        descriptionKey: 'tenants.permissions.card.liveChat.description',
+        Icon: LiveChatIcon,
+        toggles: [
+            {
+                labelKey: 'tenants.permissions.feature.videoCalls',
+                field: ['settings', 'featureVideoCallsAnonymousChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.audioCalls',
+                field: ['settings', 'featureAudioCallsAnonymousChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.voiceMessages',
+                field: ['settings', 'featureVoiceMessagesAnonymousChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.threads',
+                field: ['settings', 'featureThreadsAnonymousChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.supervision',
+                field: ['settings', 'featureSupervisionAnonymousChatsEnabled'],
+            },
+        ],
+    },
+    {
+        key: 'group',
+        titleKey: 'tenants.permissions.card.group.title',
+        descriptionKey: 'tenants.permissions.card.group.description',
+        Icon: GroupIcon,
+        toggles: [
+            {
+                labelKey: 'tenants.permissions.feature.videoCalls',
+                field: ['settings', 'featureVideoCallsGroupChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.audioCalls',
+                field: ['settings', 'featureAudioCallsGroupChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.voiceMessages',
+                field: ['settings', 'featureVoiceMessagesGroupChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.threads',
+                field: ['settings', 'featureThreadsGroupChatsEnabled'],
+            },
+        ],
+    },
+    {
+        key: 'groupInternal',
+        titleKey: 'tenants.permissions.card.groupInternal.title',
+        descriptionKey: 'tenants.permissions.card.groupInternal.description',
+        Icon: GroupInternalIcon,
+        masterField: ['settings', 'featureSupervisionEnabled'],
+        toggles: [
+            {
+                labelKey: 'tenants.permissions.feature.videoCalls',
+                field: ['settings', 'featureVideoCallsSupervisionChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.audioCalls',
+                field: ['settings', 'featureAudioCallsSupervisionChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.voiceMessages',
+                field: ['settings', 'featureVoiceMessagesSupervisionChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.threads',
+                field: ['settings', 'featureThreadsSupervisionChatsEnabled'],
+            },
+        ],
+    },
+];
+
+export const PermissionsSettings = ({ tenantId, forcedOffToggles, superAdminControlMode }: PermissionsSettingsArgs) => {
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id: tenantId });
     const { mutate } = useTenantAdminDataMutation({
@@ -313,37 +343,19 @@ export const PermissionsSettings = ({
         }),
         [data],
     );
-    const visibility = {
-        anonymousChat: true,
-        calls: true,
-        supervision: true,
-        supervisionAnonymousChats: true,
-        supervisionOneOnOneChats: true,
-        audioCalls: true,
-        audioCallsAnonymousChats: true,
-        audioCallsOneOnOneChats: true,
-        audioCallsGroupChats: true,
-        audioCallsSupervisionChats: true,
-        videoCalls: true,
-        videoCallsAnonymousChats: true,
-        videoCallsOneOnOneChats: true,
-        videoCallsGroupChats: true,
-        videoCallsSupervisionChats: true,
-        threads: true,
-        threadsAnonymousChats: true,
-        threadsOneOnOneChats: true,
-        threadsGroupChats: true,
-        threadsSupervisionChats: true,
-        voiceMessages: true,
-        voiceMessagesAnonymousChats: true,
-        voiceMessagesOneOnOneChats: true,
-        voiceMessagesGroupChats: true,
-        voiceMessagesSupervisionChats: true,
-        ...(visibleToggles ?? {}),
-    };
+
+    const gridRef = useRef<HTMLDivElement | null>(null);
+    const scrollByCard = useCallback((dir: 'left' | 'right') => {
+        const el = gridRef.current;
+        if (!el) return;
+        const firstCard = el.querySelector(`.${styles.chatTypeCard}`) as HTMLElement | null;
+        const step = firstCard ? firstCard.offsetWidth + 16 : el.clientWidth * 0.9;
+        el.scrollBy({ left: dir === 'left' ? -step : step, behavior: 'smooth' });
+    }, []);
 
     return (
         <CardEditable
+            className={styles.transparentCardWrapper}
             isLoading={isLoading}
             initialValues={initialValues}
             titleKey="tenants.permissions.title"
@@ -355,412 +367,90 @@ export const PermissionsSettings = ({
                 )
             }
         >
-            <div className={styles.sectionGrid}>
-                {visibility.anonymousChat && (
-                    <Card className={styles.sectionCard} size="small" bordered>
-                        <div className={styles.checkGroup}>
-                            <FormSwitchField
-                                labelKey="tenants.permissions.anonymousChat.title"
-                                name={['settings', 'featureAnonymousChatEnabled']}
-                                inline
-                                disableLabels
-                            />
-                            <p className={styles.checkInfo}>{t('tenants.permissions.anonymousChat.description')}</p>
-                        </div>
-                    </Card>
-                )}
+            <div className={styles.cardGridOuter}>
+                <button
+                    type="button"
+                    className={`${styles.carouselArrow} ${styles.carouselArrowLeft}`}
+                    onClick={() => scrollByCard('left')}
+                    aria-label="Previous card"
+                >
+                    ‹
+                </button>
+                <button
+                    type="button"
+                    className={`${styles.carouselArrow} ${styles.carouselArrowRight}`}
+                    onClick={() => scrollByCard('right')}
+                    aria-label="Next card"
+                >
+                    ›
+                </button>
+                <div className={styles.cardGrid} ref={gridRef}>
+                    {CHAT_TYPE_CARDS.map((card) => (
+                        <Form.Item
+                            key={card.key}
+                            noStyle
+                            shouldUpdate={(prev, curr) => {
+                                if (!card.masterField) return false;
+                                const [, masterKey] = card.masterField;
+                                return prev?.settings?.[masterKey] !== curr?.settings?.[masterKey];
+                            }}
+                        >
+                            {({ getFieldValue }) => {
+                                const masterEnabled = card.masterField
+                                    ? getFieldValue(card.masterField) !== false
+                                    : true;
+                                const CardIcon = card.Icon;
+                                return (
+                                    <div className={styles.chatTypeCard}>
+                                        <div className={styles.cardHeader}>
+                                            <span className={styles.cardIcon} aria-hidden>
+                                                <CardIcon width={40} height={40} />
+                                            </span>
+                                            <h3 className={styles.cardTitle}>{t(card.titleKey)}</h3>
+                                        </div>
 
-                {visibility.calls && (
-                    <Card className={styles.sectionCard} size="small" bordered>
-                        <div className={styles.checkGroup}>
-                            <FormSwitchField
-                                labelKey="tenants.permissions.calls.title"
-                                name={['settings', 'featureCallsEnabled']}
-                                inline
-                                disableLabels
-                            />
-                            <p className={styles.checkInfo}>{t('tenants.permissions.calls.description')}</p>
-                        </div>
-                    </Card>
-                )}
-
-                {visibility.supervision && (
-                    <Form.Item
-                        noStyle
-                        shouldUpdate={(prev, curr) =>
-                            prev?.settings?.featureThreadsEnabled !== curr?.settings?.featureThreadsEnabled ||
-                            prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
-                        }
-                    >
-                        {({ getFieldValue }) => {
-                            const supervisionEnabled =
-                                getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
-                            return (
-                                <Card className={styles.sectionCard} size="small" bordered>
-                                    <div className={styles.checkGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.supervision.title"
-                                            name={['settings', 'featureSupervisionEnabled']}
-                                            inline
-                                            disableLabels
-                                        />
-                                        <p className={styles.checkInfo}>
-                                            {t('tenants.permissions.supervision.description')}
-                                        </p>
-                                    </div>
-
-                                    {showSubToggles && (
-                                        <div className={styles.subCheckGrid}>
-                                            {visibility.supervisionAnonymousChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.anonymous"
-                                                        name={['settings', 'featureSupervisionAnonymousChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!supervisionEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                            {visibility.supervisionOneOnOneChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.oneOnOne"
-                                                        name={['settings', 'featureSupervisionOneOnOneChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!supervisionEnabled}
-                                                    />
-                                                </div>
+                                        <div className={styles.masterRow}>
+                                            <span className={styles.masterLabel}>
+                                                {t('tenants.permissions.card.activated')}
+                                            </span>
+                                            {card.masterField ? (
+                                                <CheckToggle
+                                                    name={card.masterField}
+                                                    label={t('tenants.permissions.card.activated')}
+                                                />
+                                            ) : (
+                                                <span className={styles.masterRowPlaceholder} aria-hidden>
+                                                    —
+                                                </span>
                                             )}
                                         </div>
-                                    )}
-                                </Card>
-                            );
-                        }}
-                    </Form.Item>
-                )}
 
-                {visibility.audioCalls && (
-                    <Form.Item
-                        noStyle
-                        shouldUpdate={(prev, curr) =>
-                            prev?.settings?.featureAudioCallsEnabled !== curr?.settings?.featureAudioCallsEnabled ||
-                            prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
-                        }
-                    >
-                        {({ getFieldValue }) => {
-                            const audioMasterEnabled =
-                                getFieldValue(['settings', 'featureAudioCallsEnabled']) !== false;
-                            const supervisionEnabled =
-                                getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
-                            return (
-                                <Card className={styles.sectionCard} size="small" bordered>
-                                    <div className={styles.checkGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.audioCalls.title"
-                                            name={['settings', 'featureAudioCallsEnabled']}
-                                            inline
-                                            disableLabels
-                                        />
-                                        <p className={styles.checkInfo}>
-                                            {t('tenants.permissions.audioCalls.description')}
-                                        </p>
-                                    </div>
+                                        <p className={styles.cardDescription}>{t(card.descriptionKey)}</p>
 
-                                    {showSubToggles && (
-                                        <div className={styles.subCheckGrid}>
-                                            {visibility.audioCallsAnonymousChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.anonymous"
-                                                        name={['settings', 'featureAudioCallsAnonymousChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!audioMasterEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                            {visibility.audioCallsOneOnOneChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.oneOnOne"
-                                                        name={['settings', 'featureAudioCallsOneOnOneChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!audioMasterEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                            {visibility.audioCallsGroupChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.group"
-                                                        name={['settings', 'featureAudioCallsGroupChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!audioMasterEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                            {visibility.audioCallsSupervisionChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.supervision"
-                                                        name={['settings', 'featureAudioCallsSupervisionChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!audioMasterEnabled || !supervisionEnabled}
-                                                    />
-                                                </div>
-                                            )}
+                                        <div className={styles.cardDivider} />
+
+                                        <div className={styles.togglesSectionLabel}>
+                                            {t('tenants.permissions.card.configurableFeatures')}
                                         </div>
-                                    )}
-                                </Card>
-                            );
-                        }}
-                    </Form.Item>
-                )}
 
-                {visibility.videoCalls && (
-                    <Form.Item
-                        noStyle
-                        shouldUpdate={(prev, curr) =>
-                            prev?.settings?.featureVideoCallsEnabled !== curr?.settings?.featureVideoCallsEnabled ||
-                            prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
-                        }
-                    >
-                        {({ getFieldValue }) => {
-                            const videoMasterEnabled =
-                                getFieldValue(['settings', 'featureVideoCallsEnabled']) !== false;
-                            const supervisionEnabled =
-                                getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
-                            return (
-                                <Card className={styles.sectionCard} size="small" bordered>
-                                    <div className={styles.checkGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.videoCalls.title"
-                                            name={['settings', 'featureVideoCallsEnabled']}
-                                            inline
-                                            disableLabels
-                                        />
-                                        <p className={styles.checkInfo}>
-                                            {t('tenants.permissions.videoCalls.description')}
-                                        </p>
-                                    </div>
-
-                                    {showSubToggles && (
-                                        <div className={styles.subCheckGrid}>
-                                            {visibility.videoCallsAnonymousChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.anonymous"
-                                                        name={['settings', 'featureVideoCallsAnonymousChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!videoMasterEnabled}
+                                        <div className={styles.togglesList}>
+                                            {card.toggles.map((toggle) => (
+                                                <div key={toggle.field.join('.')} className={styles.toggleRow}>
+                                                    <span className={styles.toggleLabel}>{t(toggle.labelKey)}</span>
+                                                    <CheckToggle
+                                                        name={toggle.field}
+                                                        label={t(toggle.labelKey)}
+                                                        disabled={!masterEnabled}
                                                     />
                                                 </div>
-                                            )}
-                                            {visibility.videoCallsOneOnOneChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.oneOnOne"
-                                                        name={['settings', 'featureVideoCallsOneOnOneChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!videoMasterEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                            {visibility.videoCallsGroupChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.group"
-                                                        name={['settings', 'featureVideoCallsGroupChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!videoMasterEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                            {visibility.videoCallsSupervisionChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.supervision"
-                                                        name={['settings', 'featureVideoCallsSupervisionChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!videoMasterEnabled || !supervisionEnabled}
-                                                    />
-                                                </div>
-                                            )}
+                                            ))}
                                         </div>
-                                    )}
-                                </Card>
-                            );
-                        }}
-                    </Form.Item>
-                )}
-
-                {visibility.threads && (
-                    <Form.Item
-                        noStyle
-                        shouldUpdate={(prev, curr) =>
-                            prev?.settings?.featureVoiceMessagesEnabled !==
-                                curr?.settings?.featureVoiceMessagesEnabled ||
-                            prev?.settings?.featureSupervisionEnabled !== curr?.settings?.featureSupervisionEnabled
-                        }
-                    >
-                        {({ getFieldValue }) => {
-                            const threadsEnabled = getFieldValue(['settings', 'featureThreadsEnabled']) !== false;
-                            const supervisionEnabled =
-                                getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
-                            return (
-                                <Card className={styles.sectionCard} size="small" bordered>
-                                    <div className={styles.checkGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.threads.title"
-                                            name={['settings', 'featureThreadsEnabled']}
-                                            inline
-                                            disableLabels
-                                        />
-                                        <p className={styles.checkInfo}>
-                                            {t('tenants.permissions.threads.description')}
-                                        </p>
                                     </div>
-
-                                    {showSubToggles && (
-                                        <div className={styles.subCheckGrid}>
-                                            {visibility.threadsAnonymousChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.anonymous"
-                                                        name={['settings', 'featureThreadsAnonymousChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!threadsEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                            {visibility.threadsOneOnOneChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.oneOnOne"
-                                                        name={['settings', 'featureThreadsOneOnOneEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!threadsEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                            {visibility.threadsGroupChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.group"
-                                                        name={['settings', 'featureThreadsGroupChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!threadsEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                            {visibility.threadsSupervisionChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.supervision"
-                                                        name={['settings', 'featureThreadsSupervisionChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!threadsEnabled || !supervisionEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </Card>
-                            );
-                        }}
-                    </Form.Item>
-                )}
-
-                {visibility.voiceMessages && (
-                    <Form.Item noStyle shouldUpdate>
-                        {({ getFieldValue }) => {
-                            const voiceMessagesEnabled =
-                                getFieldValue(['settings', 'featureVoiceMessagesEnabled']) !== false;
-                            const supervisionEnabled =
-                                getFieldValue(['settings', 'featureSupervisionEnabled']) !== false;
-                            return (
-                                <Card className={styles.sectionCard} size="small" bordered>
-                                    <div className={styles.checkGroup}>
-                                        <FormSwitchField
-                                            labelKey="tenants.permissions.voiceMessages.title"
-                                            name={['settings', 'featureVoiceMessagesEnabled']}
-                                            inline
-                                            disableLabels
-                                        />
-                                        <p className={styles.checkInfo}>
-                                            {t('tenants.permissions.voiceMessages.description')}
-                                        </p>
-                                    </div>
-
-                                    {showSubToggles && (
-                                        <div className={styles.subCheckGrid}>
-                                            {visibility.voiceMessagesAnonymousChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.anonymous"
-                                                        name={['settings', 'featureVoiceMessagesAnonymousChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!voiceMessagesEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                            {visibility.voiceMessagesOneOnOneChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.oneOnOne"
-                                                        name={['settings', 'featureVoiceMessagesOneOnOneChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!voiceMessagesEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                            {visibility.voiceMessagesGroupChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.group"
-                                                        name={['settings', 'featureVoiceMessagesGroupChatsEnabled']}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!voiceMessagesEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                            {visibility.voiceMessagesSupervisionChats && (
-                                                <div className={styles.subCheckGroup}>
-                                                    <FormSwitchField
-                                                        labelKey="tenants.permissions.chatTypes.supervision"
-                                                        name={[
-                                                            'settings',
-                                                            'featureVoiceMessagesSupervisionChatsEnabled',
-                                                        ]}
-                                                        inline
-                                                        disableLabels
-                                                        disabled={!voiceMessagesEnabled || !supervisionEnabled}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </Card>
-                            );
-                        }}
-                    </Form.Item>
-                )}
+                                );
+                            }}
+                        </Form.Item>
+                    ))}
+                </div>
             </div>
         </CardEditable>
     );

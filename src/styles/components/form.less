@@ -8,20 +8,29 @@
 }
 
 .ant-btn-primary {
+    background-color: #1f1f1f !important;
+    border-color: #1f1f1f !important;
+    color: #ffffff !important;
+
     &:hover,
     &:focus {
-        background-color: @primary-color-light;
+        background-color: #3a3a3a !important;
+        border-color: #3a3a3a !important;
+        color: #ffffff !important;
     }
 
     &:active {
-        background-color: @primary-color-dark;
-        color: @white-50-opacity;
+        background-color: #0f0f0f !important;
+        border-color: #0f0f0f !important;
+        color: #ffffff !important;
     }
 
-    &:disabled {
-        background-color: @primary-color;
-        color: @white;
-        opacity: 0.3;
+    &:disabled,
+    &[disabled] {
+        background-color: #8b8b8f !important;
+        border-color: #8b8b8f !important;
+        color: #ffffff !important;
+        opacity: 0.6;
     }
 }
 

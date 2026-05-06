@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import routePathNames from '../../appConfig';
 import SiteFooter from './SiteFooter';
-import SiteHeader from './SiteHeader';
 import { handleTokenRefresh } from '../../api/auth/auth';
 import logout from '../../api/auth/logout';
 import getLocationVariables from '../../utils/getLocationVariables';
@@ -131,7 +130,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 </li>
                             )}
 
-                            {can(PermissionAction.Read, Resource.Agency) && (
+                            {can(PermissionAction.Read, Resource.Agency) && !hasRole(UserRole.RestrictedAgencyAdmin) && (
                                 <li className="menuItem">
                                     <NavLink
                                         to={routePathNames.agency}
@@ -167,14 +166,33 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 </li>
                             )}
 
-                            {!isSuperAdmin && can(PermissionAction.Read, Resource.Consultant) && (
-                                <li key="logs" className="menuItem">
+                            {!isSuperAdmin &&
+                                can(PermissionAction.Read, Resource.Consultant) &&
+                                !hasRole(UserRole.RestrictedAgencyAdmin) && (
+                                    <li key="logs" className="menuItem">
+                                        <NavLink
+                                            to={routePathNames.logs}
+                                            className={({ isActive }) => (isActive ? 'active' : '')}
+                                        >
+                                            <NavIcon path={routePathNames.logs} />
+                                            <span>{t('logs.title')}</span>
+                                        </NavLink>
+                                    </li>
+                                )}
+
+                            {/* Standalone Einladungslinks entry — distinct sidebar slot (same
+                                level as Logs). Visible to super / tenant admins and agency
+                                admins; anyone who can manage agencies or agency-admin users. */}
+                            {(can(PermissionAction.Read, Resource.Agency) ||
+                                can(PermissionAction.Read, Resource.AgencyAdminUser) ||
+                                hasRole(UserRole.RestrictedAgencyAdmin)) && (
+                                <li key="invite-links" className="menuItem">
                                     <NavLink
-                                        to={routePathNames.logs}
+                                        to={routePathNames.inviteLinks}
                                         className={({ isActive }) => (isActive ? 'active' : '')}
                                     >
-                                        <NavIcon path={routePathNames.logs} />
-                                        <span>{t('logs.title')}</span>
+                                        <NavIcon path={routePathNames.inviteLinks} />
+                                        <span>{t('inviteLinks.navTitle', 'Einladungslinks')}</span>
                                     </NavLink>
                                 </li>
                             )}
@@ -211,7 +229,6 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                 </Sider>
 
                 <Layout className={classNames(styles.mainContent)}>
-                    <SiteHeader />
                     <Content className={styles.content}>
                         {children}
                         {!hasRole(UserRole.TenantAdmin) && <SiteFooter />}
