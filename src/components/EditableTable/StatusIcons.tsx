@@ -10,13 +10,21 @@ import {
 import { Tooltip } from 'antd';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
+import { DisplayStatus } from '../../types/userDisplayStatus';
 import { Status } from '../../types/status';
 
 const successColor = '#4FCC5C';
 const attentionColor = '#FF9F00';
 const errorColor = '#FF0000';
+const mutedColor = '#8C8C8C';
 
-const StatusIcons = ({ status, createdCustomLabel }: { status: Status; createdCustomLabel?: string }) => {
+const StatusIcons = ({
+    status,
+    createdCustomLabel,
+}: {
+    status: Status | DisplayStatus;
+    createdCustomLabel?: string;
+}) => {
     const { t } = useTranslation();
     return (
         <div className={clsx('statusIconWrapper', status)}>
@@ -48,6 +56,21 @@ const StatusIcons = ({ status, createdCustomLabel }: { status: Status; createdCu
             {status === 'INACTIVE' && (
                 <Tooltip color={errorColor} title={t('status.INACTIVE.tooltip')}>
                     <StopOutlined style={{ color: errorColor }} />
+                </Tooltip>
+            )}
+            {status === 'INVITED' && (
+                <Tooltip color={attentionColor} title={t('status.INVITED.tooltip')}>
+                    <InfoCircleOutlined style={{ color: attentionColor }} />
+                </Tooltip>
+            )}
+            {status === 'ABSENT' && (
+                <Tooltip color={mutedColor} title={t('status.ABSENT.tooltip')}>
+                    <StopOutlined style={{ color: mutedColor }} />
+                </Tooltip>
+            )}
+            {status === 'DISABLED' && (
+                <Tooltip color={errorColor} title={t('status.DISABLED.tooltip')}>
+                    <CloseCircleOutlined style={{ color: errorColor }} />
                 </Tooltip>
             )}
         </div>

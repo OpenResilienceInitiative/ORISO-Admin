@@ -79,6 +79,7 @@ export interface BasicTenantData {
     id: number | null;
     key?: number | null;
     name: string;
+    beraterCount?: number;
     subdomain?: string;
     createDate?: string;
     startServiceDate?: string; // to-do: show startServiceDate instead of createDate

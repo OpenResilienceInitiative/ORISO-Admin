@@ -1,9 +1,9 @@
 import { QueryOptions, useQuery, UseQueryOptions } from 'react-query';
-import { fetchData, FETCH_METHODS } from '../api/fetchData';
 import { tenantAdminsSearchEndpoint } from '../appConfig';
+import { USER_TABLE_DEFAULT_ORDER, USER_TABLE_DEFAULT_SORT } from '../constants/userTableSort';
 import { CounselorData } from '../types/counselor';
-import { HalResponseList, ResponseList } from '../types/ResponseList';
-import removeEmbedded from '../utils/removeEmbedded';
+import { ResponseList } from '../types/ResponseList';
+import { fetchUserSearchWithSortFallback } from '../utils/fetchUserSearchWithSortFallback';
 
 interface TenantUserAdminDataProps extends UseQueryOptions<ResponseList<CounselorData>> {
     search?: string;
@@ -12,9 +12,6 @@ interface TenantUserAdminDataProps extends UseQueryOptions<ResponseList<Counselo
     order?: string;
     pageSize?: number;
 }
-
-const DEFAULT_SORT = 'FIRSTNAME';
-const DEFAULT_ORDER = 'ASC';
 
 export const useTenantAdminsData = ({
     search,
@@ -26,16 +23,16 @@ export const useTenantAdminsData = ({
 }: TenantUserAdminDataProps = {}) => {
     return useQuery(
         ['TENANT_ADMINS', search, current, sortBy, order, pageSize],
-        () => {
-            return fetchData({
+        () =>
+            fetchUserSearchWithSortFallback({
                 url: `${tenantAdminsSearchEndpoint}?query=${encodeURIComponent(search || '*')}&page=${
                     current || 1
-                }&perPage=${pageSize || 10}&order=${order || DEFAULT_ORDER}&field=${sortBy || DEFAULT_SORT}`,
-                method: FETCH_METHODS.GET,
-                skipAuth: false,
-                responseHandling: [],
-            }).then((result: HalResponseList<CounselorData>) => removeEmbedded(result) as ResponseList<CounselorData>);
-        },
+                }&perPage=${pageSize || 10}`,
+                sortBy: sortBy || USER_TABLE_DEFAULT_SORT,
+                order: order || USER_TABLE_DEFAULT_ORDER,
+                current,
+                pageSize,
+            }),
         options as QueryOptions<ResponseList<CounselorData>>,
     );
 };

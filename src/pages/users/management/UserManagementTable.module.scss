@@ -1,0 +1,134 @@
+.wrapper {
+    width: 100%;
+}
+
+.searchContainer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px 24px;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.searchWithButton {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+    max-width: 529px;
+    min-width: 0;
+    flex: 0 1 529px;
+
+    @media (max-width: 767px) {
+        max-width: 100%;
+        flex: 1 1 100%;
+    }
+}
+
+.searchField {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+}
+
+.toolbarActions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+.popoverTrigger {
+    display: inline-flex;
+}
+
+.sectionCount {
+    flex-shrink: 0;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    color: #646d78;
+    white-space: nowrap;
+    align-self: flex-start;
+
+    @media (min-width: 768px) {
+        align-self: center;
+    }
+}
+
+:global {
+    .userTableActions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
+    }
+
+    .counselorList__toggle--inline {
+        padding: 8px;
+        margin: 0;
+        min-width: 32px;
+        min-height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .counselorList__row--expanded td {
+        vertical-align: top;
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+
+    .counselorList__row--expanded .counselorList__agencies + .counselorList__agencies {
+        margin-top: 8px;
+    }
+}
+
+.tableContainerFigma {
+    width: 100%;
+    overflow-x: auto;
+
+    :global {
+        .ant-table-thead > tr > th {
+            background: #f4f5f6;
+            border-bottom: none;
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+            font-weight: 500;
+            font-size: 14px;
+            color: #141c25;
+            padding-top: 14px;
+            padding-bottom: 14px;
+        }
+
+        .ant-table-thead > tr > th:first-child {
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+        }
+
+        .ant-table-thead > tr > th:last-child {
+            border-top-right-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        .ant-table-thead > tr:first-child > th:first-child {
+            border-top-left-radius: 12px;
+        }
+
+        .ant-table-thead > tr:first-child > th:last-child {
+            border-top-right-radius: 12px;
+        }
+    }
+}
+
+.lastUpdatedHeader {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.historyIcon {
+    font-size: 14px;
+    color: #646d78;
+}

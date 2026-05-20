@@ -23,4 +23,7 @@ export interface CounselorData {
     isSupervisor?: boolean;
     tenantId: string;
     tenantName: string;
+    tenantSubdomain?: string;
+    createDate?: string;
+    updateDate?: string;
 }

@@ -20,6 +20,7 @@ import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
 import { useUserPermissions } from '../../hooks/useUserPermission';
 import styles from './styles.module.scss';
+import { clearStuckOverlays } from '../../utils/clearStuckOverlays';
 
 const { Content, Sider } = Layout;
 
@@ -49,6 +50,20 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     }, []);
 
     useEffect(() => {
+        clearStuckOverlays();
+    }, [location.pathname]);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                clearStuckOverlays();
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, []);
+
+    useEffect(() => {
         if (subdomain !== tenantData.subdomain && !settings.multitenancyWithSingleDomainEnabled) {
             // console.log('🔍 ProtectedPageLayoutWrapper: Subdomain mismatch, but not logging out for debugging');
             // console.log('🔍 ProtectedPageLayoutWrapper: subdomain:', subdomain);
@@ -62,6 +77,9 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     };
 
     const usersPage = () => {
+        if (can(PermissionAction.Create, Resource.Tenant)) {
+            return routePathNames.usersTenants;
+        }
         if (can(PermissionAction.Read, Resource.Consultant)) {
             return routePathNames.consultants;
         }
@@ -94,17 +112,6 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 </li>
                             )}
 
-                            {can(PermissionAction.Create, Resource.Tenant) && (
-                                <li key="tenants" className="menuItem">
-                                    <NavLink
-                                        to={routePathNames.tenants}
-                                        className={classNames({ active: checkActive(routePathNames.tenants) })}
-                                    >
-                                        <NavIcon path={routePathNames.tenants} />
-                                        <span>{t('tenants.navTitle')}</span>
-                                    </NavLink>
-                                </li>
-                            )}
                             {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
                                 <li key="global-settings" className="menuItem">
                                     <NavLink
@@ -125,7 +132,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                         className={classNames({ active: checkActive('/admin/users') })}
                                     >
                                         <NavIcon path="/admin/users" />
-                                        <span>{t('users.title')}</span>
+                                        <span>{t('users.allUsers')}</span>
                                     </NavLink>
                                 </li>
                             )}

@@ -21,7 +21,6 @@ import { useUserPermissions } from './hooks/useUserPermission';
 import { PermissionAction } from './enums/PermissionAction';
 import { Resource } from './enums/Resource';
 import { TopicEditOrAdd } from './pages/Topics/Edit';
-import { TenantsList } from './pages/Tenants/List';
 import { TenantEditOrAdd } from './pages/Tenants/Edit';
 import { TenantAdminEditOrAdd } from './pages/users/TenantAdminEdit';
 import { GeneralTenantSettings } from './pages/Tenants/Edit/General';
@@ -68,7 +67,7 @@ export const App = () => {
     useEffect(() => {
         if (location.pathname === routePathNames.root || location.pathname === `${routePathNames.root}/`) {
             if (can(PermissionAction.Create, Resource.Tenant)) {
-                navigate(routePathNames.tenants);
+                navigate(routePathNames.usersTenants);
                 return;
             }
             if (can(PermissionAction.Read, Resource.Tenant)) {
@@ -170,7 +169,10 @@ export const App = () => {
                     )}
                     {can(PermissionAction.Create, Resource.Tenant) && (
                         <>
-                            <Route path={routePathNames.tenants} element={<TenantsList />} />
+                            <Route
+                                path={routePathNames.tenants}
+                                element={<Navigate to={routePathNames.usersTenants} replace />}
+                            />
                             <Route path={`${routePathNames.tenants}/:id`} element={<TenantEditOrAdd />}>
                                 <Route index element={<Navigate to="./general" />} />
                                 <Route

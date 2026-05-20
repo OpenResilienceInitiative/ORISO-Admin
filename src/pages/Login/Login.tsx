@@ -56,7 +56,7 @@ export const Login = () => {
         }
 
         if (isTenantAdmin) {
-            setRedirectUrl(routePathNames.tenants);
+            setRedirectUrl(routePathNames.consultants);
         } else if (tenantData) {
             const redirectPath =
                 (settings.mainTenantSubdomainForSingleDomainMultitenancy && isTenantAdmin) ||

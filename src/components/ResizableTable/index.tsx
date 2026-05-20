@@ -9,7 +9,17 @@ export interface ResizeTableProps<T> extends TableProps<T> {
     columns: Array<ColumnProps<T>>;
 }
 
-export const ResizeTable = ({ columns, ...defaultOptions }: ResizeTableProps<any>) => {
+const normalizeLoading = (loading: ResizeTableProps<unknown>['loading']) => {
+    if (loading === true) {
+        return { spinning: true, delay: 300 };
+    }
+    if (loading === false || loading == null) {
+        return false;
+    }
+    return loading;
+};
+
+export const ResizeTable = ({ columns, loading, ...defaultOptions }: ResizeTableProps<any>) => {
     const [columnsWidth, setColumnsWidth] = useState(columns.filter(Boolean).map(({ width }) => width));
 
     const handleResize = useCallback(
@@ -34,6 +44,7 @@ export const ResizeTable = ({ columns, ...defaultOptions }: ResizeTableProps<any
     return (
         <AntTable
             {...defaultOptions}
+            loading={normalizeLoading(loading)}
             className={classNames(styles.table)}
             columns={mergeColumns}
             scroll={{ x: 'max-content', y: 'auto' }}
