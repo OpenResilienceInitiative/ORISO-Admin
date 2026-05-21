@@ -1,23 +1,13 @@
+import { keycloakAuthPath, runtimeConfig } from './config/runtimeConfig';
 import getLocationVariables from './utils/getLocationVariables';
 
-const VITE_CSRF_WHITELIST_HEADER_PROPERTY = import.meta.env.VITE_CSRF_WHITELIST_HEADER_FOR_LOCAL_DEVELOPMENT;
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-export const CSRF_WHITELIST_HEADER: string = VITE_CSRF_WHITELIST_HEADER_PROPERTY;
-const { subdomain, origin } = getLocationVariables();
+export const CSRF_WHITELIST_HEADER: string = runtimeConfig.csrfWhitelistHeader;
 
-let url = origin;
+const { subdomain } = getLocationVariables();
 
-const useHttps = import.meta.env.VITE_USE_HTTPS !== 'false';
-const protocol = useHttps ? 'https' : 'http';
-
-if (import.meta.env.VITE_USE_API_URL === 'true') {
-    url = `${protocol}://${import.meta.env.VITE_API_URL}`;
-} else if (origin.includes('localhost')) {
-    url = `${protocol}://${subdomain && `${subdomain}.`}${import.meta.env.VITE_API_URL}`;
-}
-
-export const mainURL = url;
+export const mainURL = runtimeConfig.apiBaseUrl;
+export const appURL = runtimeConfig.appBaseUrl;
+export const matrixURL = runtimeConfig.matrixBaseUrl;
 
 export const clusterFeatureFlags = {
     useApiClusterSettings: true, // Fetch server settings from /service/settings
@@ -47,8 +37,8 @@ export const counselorEndpoint = `${mainURL}/service/useradmin/consultants`;
 export const diocesesEndpoint = `${mainURL}/service/agencyadmin/dioceses`;
 export const agencyAdminEndpoint = `${mainURL}/service/useradmin/agencyadmins`;
 export const eventTypeById = `${mainURL}/eventTypes/{eventTypeId}`;
-export const loginEndpoint = `${mainURL}/auth/realms/online-beratung/protocol/openid-connect/token`;
-export const logoutEndpoint = `${mainURL}/auth/realms/online-beratung/protocol/openid-connect/logout`;
+export const loginEndpoint = keycloakAuthPath('/protocol/openid-connect/token');
+export const logoutEndpoint = keycloakAuthPath('/protocol/openid-connect/logout');
 export const tenantEndpoint = `${mainURL}/service/tenant/`;
 export const tenantAccessEndpoint = `${mainURL}/service/tenant/access`;
 export const tenantAdminEndpoint = `${mainURL}/service/tenantadmin`;
@@ -101,8 +91,8 @@ const routePathNames = {
     tenants: '/admin/tenants',
     tenantAdmins: '/admin/users/tenant-admins',
     inviteLinks: '/admin/invite-links',
-    loginResetPasswordLink: '/auth/realms/online-beratung/login-actions/reset-credentials?client_id=account',
-    appointmentServiceDevServer: 'https://calcom-develop.suchtberatung.digital',
+    loginResetPasswordLink: keycloakAuthPath('/login-actions/reset-credentials?client_id=account'),
+    appointmentServiceDevServer: runtimeConfig.appointmentServiceUrl,
 };
 
 export default routePathNames;

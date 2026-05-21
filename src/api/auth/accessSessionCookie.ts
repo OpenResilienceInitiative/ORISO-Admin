@@ -1,3 +1,5 @@
+import { runtimeConfig } from '../../config/runtimeConfig';
+
 export const setValueInCookie = (name: string, value: string) => {
     // console.log('🔍 setValueInCookie: name:', name);
     // console.log('🔍 setValueInCookie: value length:', value.length);
@@ -42,7 +44,7 @@ export const removeAllCookies = () => {
     // console.log('🔍 removeAllCookies: Current cookies:', document.cookie);
     document.cookie.split(';').forEach((c) => {
         const name = c.trim().split('=')[0];
-        if ((import.meta.env.VITE_COOKIES_ALLOWEDLIST ?? '').split(',').includes(name)) {
+        if (runtimeConfig.cookiesAllowedList.includes(name)) {
             // console.log('🔍 removeAllCookies: Preserving cookie:', name);
             return;
         }

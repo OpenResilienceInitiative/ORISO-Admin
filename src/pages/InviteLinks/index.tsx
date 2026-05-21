@@ -8,7 +8,7 @@ import { getSingleTenantData } from '../../api/tenant/getSingleTenantData';
 import { useAgenciesData } from '../../hooks/useAgencysData';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
-import { mainURL } from '../../appConfig';
+import { appURL } from '../../appConfig';
 
 interface TenantOption {
     id: number;
@@ -86,12 +86,7 @@ export const InviteLinksPage = () => {
         [t, loadLinks],
     );
 
-    const buildUrl = (link: AgencyInviteLinkDTO) => {
-        // The user-facing app is served from app.oriso-dev.site (single-domain
-        // multi-tenancy). Swap the api subdomain for app.
-        const host = mainURL.replace('api.', 'app.');
-        return `${host}/invite/${link.token}`;
-    };
+    const buildUrl = (link: AgencyInviteLinkDTO) => `${appURL}/invite/${link.token}`;
 
     const copyLink = (link: AgencyInviteLinkDTO) => {
         const url = buildUrl(link);
