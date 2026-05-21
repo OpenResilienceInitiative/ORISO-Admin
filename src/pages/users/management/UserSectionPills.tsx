@@ -7,6 +7,7 @@ import routePathNames from '../../../appConfig';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import styles from './UserSectionPills.module.scss';
 
 type SectionPill = {
@@ -21,15 +22,19 @@ const PillIcon = () => <UserOutlined className={styles.pillIcon} aria-hidden />;
 export const UserSectionPills = () => {
     const { t } = useTranslation();
     const { can } = useUserPermissions();
+    const { isSuperAdmin } = useUserRoles();
 
     const pills = useMemo(() => {
-        const visible: SectionPill[] = [
-            {
+        const visible: SectionPill[] = [];
+
+        // Platform admins = super-admin / user-admin (tenantId 0). No list route yet — stub only for that role.
+        if (isSuperAdmin) {
+            visible.push({
                 id: 'platform-admins',
                 labelKey: 'users.sectionPills.platformAdmins',
                 disabled: true,
-            },
-        ];
+            });
+        }
 
         if (can(PermissionAction.Create, Resource.Tenant)) {
             visible.push({
@@ -55,14 +60,16 @@ export const UserSectionPills = () => {
             });
         }
 
-        visible.push({
-            id: 'volunteers',
-            labelKey: 'users.sectionPills.volunteers',
-            disabled: true,
-        });
+        if (can(PermissionAction.Read, Resource.TenantAdminUser)) {
+            visible.push({
+                id: 'tenant-admins',
+                labelKey: 'users.sectionPills.tenantAdmins',
+                to: routePathNames.tenantAdmins,
+            });
+        }
 
         return visible;
-    }, [can]);
+    }, [can, isSuperAdmin]);
 
     const navigablePills = pills.filter((pill) => pill.to && !pill.disabled);
 
