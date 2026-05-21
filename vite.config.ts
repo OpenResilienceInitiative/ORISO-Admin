@@ -41,7 +41,8 @@ export default ({ mode }) => {
         configureServer(server) {
             const envPath = `${process.cwd()}/public/env.js`;
 
-            server.middlewares.use('/admin/env.js', (_req, res, next) => {
+            const runtimeEnvPath = `${(process.env.BASE || '/admin').replace(/\/$/, '')}/env.js`;
+            server.middlewares.use(runtimeEnvPath, (_req, res, next) => {
                 if (!existsSync(envPath)) {
                     next();
                     return;
