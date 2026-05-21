@@ -29,6 +29,116 @@
     }
 }
 
+.loginLanguageSelector {
+    position: fixed;
+    z-index: 25;
+    top: @spacing-sm;
+    right: @spacing-sm;
+    display: inline-flex;
+    align-items: center;
+    gap: @spacing-xs;
+
+    .loginLanguageSelector__select.ant-select {
+        width: auto;
+        min-width: 0;
+    }
+
+    .loginLanguageSelector__select .ant-select-selector {
+        display: flex;
+        align-items: center;
+        padding: 0 !important;
+        padding-right: 22px !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        transition: color 0.15s ease;
+    }
+
+    .loginLanguageSelector__select.ant-select:hover .ant-select-selector,
+    .loginLanguageSelector__select.ant-select-focused .ant-select-selector,
+    .loginLanguageSelector__select.ant-select-open .ant-select-selector {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    .loginLanguageSelector__select .ant-select-selection-item {
+        margin-right: 0;
+        color: @primary-color;
+        font-size: @fontSize-m;
+        font-weight: 700;
+        line-height: 1.2;
+        padding-right: 0;
+    }
+
+    .loginLanguageSelector__select .ant-select-arrow {
+        right: 2px;
+        color: @primary-color;
+    }
+
+    .loginLanguageSelector__select.ant-select:hover .ant-select-selection-item,
+    .loginLanguageSelector__select.ant-select:hover .ant-select-arrow,
+    .loginLanguageSelector__select.ant-select-open .ant-select-selection-item,
+    .loginLanguageSelector__select.ant-select-open .ant-select-arrow {
+        color: @primary-color-dark;
+        transition: color 0.15s ease;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+}
+
+.loginLanguageSelectorDropdown.ant-select-dropdown {
+    padding: 0;
+    min-width: 190px;
+    border: 1px solid @black-10-opacity;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgb(31 31 31 / 8%);
+    overflow: hidden;
+}
+
+.loginLanguageSelectorDropdown .ant-select-item {
+    min-height: 40px;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.loginLanguageSelectorDropdown .ant-select-item-option-content {
+    display: block;
+    width: 100%;
+    padding: 0 @spacing-sm;
+    color: @text-dark-color;
+    overflow: visible;
+    font-size: @fontSize-m;
+    font-weight: 700;
+    line-height: 40px;
+    white-space: nowrap;
+    text-overflow: clip;
+}
+
+.loginLanguageSelectorDropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+    background: @light-grey;
+}
+
+.loginLanguageSelectorDropdown .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+    background: @primary-color;
+    color: @white;
+}
+
+.loginLanguageSelectorDropdown .ant-select-item-option-selected .ant-select-item-option-content {
+    color: @white !important;
+}
+
+.loginLanguageSelectorDropdown .ant-select-item-option-selected .ant-select-item-option-content * {
+    color: @white !important;
+}
+
+.loginLanguageSelectorDropdown
+    .ant-select-item-option-selected.ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+    background: @primary-color-dark;
+}
+
 @media screen and (min-width: @screen-sm) {
     .loginForm {
         .ant-form-item-label > label {
@@ -39,11 +149,18 @@
     }
 }
 
+@media screen and (min-width: @screen-xl) {
+    .loginLanguageSelector {
+        top: @spacing-ml;
+        right: @spacing-ml;
+    }
+}
+
 @media screen and (min-width: @screen-sm) and (max-width: @screen-md) {
     .loginForm {
         .ant-form-item-label {
-            flex: 0 auto;
             max-width: none;
+            flex: 0 auto;
         }
     }
 }

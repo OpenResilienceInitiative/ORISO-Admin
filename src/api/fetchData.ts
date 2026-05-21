@@ -2,6 +2,7 @@ import { message } from 'antd';
 import i18next from 'i18next';
 import { getValueFromCookie } from './auth/accessSessionCookie';
 import generateCsrfToken from '../utils/generateCsrfToken';
+import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
 
 import logout from './auth/logout';
 import routePathNames, { CSRF_WHITELIST_HEADER } from '../appConfig';
@@ -106,11 +107,14 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
         // Remove Authorization from headersData if it exists to avoid duplication
         const { Authorization: removedAuth, ...otherHeadersData } = (props.headersData as any) || {};
 
+        const normalizedLanguage = normalizeLanguage(i18next.resolvedLanguage || i18next.language) || DEFAULT_LANGUAGE;
+
         const req = new Request(props.url, {
             method: props.method,
             headers: {
                 'Content-Type': 'application/json',
                 'cache-control': 'no-cache',
+                AcceptLanguage: normalizedLanguage,
                 ...authorization,
                 'X-CSRF-TOKEN': csrfToken,
                 ...otherHeadersData,

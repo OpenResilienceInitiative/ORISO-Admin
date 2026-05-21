@@ -1,30 +1,42 @@
 import i18n from 'i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 
 import translationDe from './locales/de/translation.json';
+import translationEn from './locales/en/translation.json';
+import { DEFAULT_LANGUAGE, getInitialLanguage, SUPPORTED_LANGUAGES, updateDocumentLanguage } from './utils/language';
 
-i18n.use(initReactI18next) // passes i18n down to react-i18next
-    .use(LanguageDetector)
-    .init({
-        debug: false, // set to true for debugging
-        fallbackLng: 'de', // use en if detected lng is not available
-        keySeparator: false, // we do not use keys in form messages.welcome
+const initialLanguage = getInitialLanguage();
+updateDocumentLanguage(initialLanguage);
 
-        interpolation: {
-            escapeValue: false, // react already safes from xss
+i18n.use(initReactI18next).init({
+    debug: false, // set to true for debugging
+    lng: initialLanguage,
+    fallbackLng: [DEFAULT_LANGUAGE, 'de'],
+    supportedLngs: [...SUPPORTED_LANGUAGES],
+    keySeparator: false, // we do not use keys in form messages.welcome
+
+    interpolation: {
+        escapeValue: false, // react already safes from xss
+    },
+
+    resources: {
+        en: {
+            translations: translationEn,
         },
-
-        resources: {
-            de: {
-                translations: translationDe,
-            },
+        de: {
+            translations: translationDe,
         },
-        // have a common namespace used around the full app
-        ns: ['translations'],
-        defaultNS: 'translations',
-        // allow an empty value to count as invalid (by default is true)
-        returnEmptyString: false,
-    });
+    },
+    // have a common namespace used around the full app
+    ns: ['translations'],
+    defaultNS: 'translations',
+    // allow an empty value to count as invalid (by default is true)
+    returnEmptyString: false,
+});
+
+i18n.on('languageChanged', (nextLanguage) => {
+    const language = nextLanguage === 'de' ? 'de' : DEFAULT_LANGUAGE;
+    updateDocumentLanguage(language);
+});
 
 export default i18n;
