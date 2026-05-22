@@ -7,7 +7,6 @@ import {
     normalizeLanguage,
     storeLanguage,
     SupportedLanguage,
-    updateDocumentLanguage,
 } from '../utils/language';
 
 type LanguageOption = {
@@ -26,7 +25,7 @@ export const useLanguage = () => {
         const handleLanguageChanged = (nextLanguage: string) => {
             const normalizedLanguage = normalizeLanguage(nextLanguage) || DEFAULT_LANGUAGE;
             setLanguage(normalizedLanguage);
-            updateDocumentLanguage(normalizedLanguage);
+            storeLanguage(normalizedLanguage);
         };
 
         i18n.on('languageChanged', handleLanguageChanged);
@@ -37,10 +36,7 @@ export const useLanguage = () => {
 
     const changeLanguage = useCallback(
         async (nextLanguage: SupportedLanguage) => {
-            storeLanguage(nextLanguage);
-            updateDocumentLanguage(nextLanguage);
             await i18n.changeLanguage(nextLanguage);
-            setLanguage(nextLanguage);
         },
         [i18n],
     );

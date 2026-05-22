@@ -7,11 +7,7 @@ const changeLang = (lang: Languages) => {
     storeLanguage(lang);
     updateDocumentLanguage(lang);
 
-    i18next.changeLanguage(lang, (err) => {
-        // eslint-disable-next-line no-console
-        if (err) return console.log('something went wrong loading', err);
-        return null;
-    });
+    i18next.changeLanguage(lang);
 };
 
 export const changeLangFromUnknown = (value: string | null | undefined) => {

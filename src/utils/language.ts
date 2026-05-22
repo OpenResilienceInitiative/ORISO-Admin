@@ -44,11 +44,15 @@ export const detectBrowserLanguage = (): SupportedLanguage => {
 };
 
 export const getStoredLanguage = (): SupportedLanguage | null => {
-    if (typeof window === 'undefined') {
+    if (globalThis.window === undefined) {
         return null;
     }
 
-    return normalizeLanguage(window.localStorage.getItem(LANGUAGE_STORAGE_KEY));
+    try {
+        return normalizeLanguage(globalThis.localStorage.getItem(LANGUAGE_STORAGE_KEY));
+    } catch {
+        return null;
+    }
 };
 
 export const getInitialLanguage = (): SupportedLanguage => {
@@ -56,11 +60,15 @@ export const getInitialLanguage = (): SupportedLanguage => {
 };
 
 export const storeLanguage = (language: SupportedLanguage): void => {
-    if (typeof window === 'undefined') {
+    if (globalThis.window === undefined) {
         return;
     }
 
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+    try {
+        globalThis.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+    } catch {
+        // Ignore storage errors in restricted browser contexts.
+    }
 };
 
 export const updateDocumentLanguage = (language: SupportedLanguage): void => {

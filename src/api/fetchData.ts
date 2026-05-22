@@ -114,7 +114,7 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
             headers: {
                 'Content-Type': 'application/json',
                 'cache-control': 'no-cache',
-                AcceptLanguage: normalizedLanguage,
+                'Accept-Language': normalizedLanguage,
                 ...authorization,
                 'X-CSRF-TOKEN': csrfToken,
                 ...otherHeadersData,
