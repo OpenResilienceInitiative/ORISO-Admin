@@ -39,7 +39,11 @@ import { useAppConfigContext } from './context/useAppConfig';
 import { AgencyEditInitialMeeting } from './pages/Agency/EditInitialMeeting';
 import { SupervisorLogsPage } from './pages/Logs/SupervisorLogs';
 import { InactiveAccountAuditLogsPage } from './pages/Logs/InactiveAccountAuditLogs';
-import { InviteLinksPage } from './pages/InviteLinks';
+import {
+    ExternalInboundsTab,
+    InviteLinksIndexRedirect,
+    InviteLinksPage,
+} from './pages/InviteLinks';
 import {
     GlobalLoginSettingsPage,
     GlobalSettingsIndexRedirect,
@@ -199,7 +203,18 @@ export const App = () => {
                     <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
                     <Route path="/admin/users/tenant-admins/:id" element={<TenantAdminEditOrAdd />} />
                     <Route path="/admin/users/:typeOfUsers/:id" element={<UserEditOrAdd />} />
-                    <Route path="/admin/invite-links" element={<InviteLinksPage />} />
+                    <Route path="/admin/invite-links" element={<InviteLinksPage />}>
+                        <Route index element={<InviteLinksIndexRedirect />} />
+                        <Route
+                            path="tenants"
+                            element={<Navigate to={routePathNames.inviteLinksExternalInbounds} replace />}
+                        />
+                        <Route
+                            path="counsellor"
+                            element={<Navigate to={routePathNames.inviteLinksExternalInbounds} replace />}
+                        />
+                        <Route path="external-inbounds" element={<ExternalInboundsTab />} />
+                    </Route>
                 </Routes>
             </ProtectedPageLayoutWrapper>
         </FeatureProvider>

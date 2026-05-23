@@ -189,7 +189,11 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 <li key="invite-links" className="menuItem">
                                     <NavLink
                                         to={routePathNames.inviteLinks}
-                                        className={({ isActive }) => (isActive ? 'active' : '')}
+                                        className={({ isActive }) =>
+                                            isActive || location.pathname.startsWith(`${routePathNames.inviteLinks}/`)
+                                                ? 'active'
+                                                : ''
+                                        }
                                     >
                                         <NavIcon path={routePathNames.inviteLinks} />
                                         <span>{t('inviteLinks.navTitle', 'Einladungslinks')}</span>

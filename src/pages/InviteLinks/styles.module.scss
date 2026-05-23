@@ -1,0 +1,160 @@
+.tabDisabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.pageHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 60px;
+    flex-wrap: wrap;
+}
+
+.myAccessButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 32px;
+    border: 2px solid #c4c7c8;
+    border-radius: 999px;
+    background: rgba(68, 71, 72, 0.1);
+    color: #444748;
+    font-size: 16px;
+    line-height: 24px;
+    white-space: nowrap;
+    transition: background 160ms ease;
+
+    &:hover {
+        background: rgba(68, 71, 72, 0.16);
+        color: #444748;
+    }
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.createForm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 24px;
+
+    :global {
+        .ant-form-item {
+            margin-bottom: 0;
+        }
+
+        .ant-form-item-label > label {
+            color: rgba(0, 0, 0, 0.6);
+            font-weight: 900;
+            height: 40px;
+        }
+
+        .ant-form-item-label > label::after {
+            content: ':';
+            margin-inline: 2px 8px;
+        }
+
+        .ant-select,
+        .ant-input-number,
+        .ant-input {
+            min-width: 120px;
+        }
+    }
+}
+
+.formFields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.createButton {
+    background: #1f1f1f !important;
+    border-color: #1f1f1f !important;
+    text-transform: uppercase;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    height: 40px;
+    padding-inline: 16px;
+
+    &:hover,
+    &:focus {
+        background: #3a3a3a !important;
+        border-color: #3a3a3a !important;
+    }
+}
+
+.copyButton {
+    border-color: #273270 !important;
+    color: #273270 !important;
+    text-transform: uppercase;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    background: #fff !important;
+
+    &:hover,
+    &:focus {
+        border-color: #273270 !important;
+        color: #273270 !important;
+        background: rgba(39, 50, 112, 0.04) !important;
+    }
+}
+
+.linksTable {
+    :global {
+        .ant-table-thead > tr > th {
+            background: #f5f5f5 !important;
+            font-weight: 900;
+            color: rgba(0, 0, 0, 0.85);
+            text-align: center;
+
+            &::before {
+                background-color: rgba(0, 0, 0, 0.8) !important;
+            }
+        }
+
+        .ant-table-tbody > tr > td {
+            text-align: center;
+            color: rgba(0, 0, 0, 0.8);
+            font-weight: 900;
+        }
+
+        .ant-table-tbody > tr:nth-child(even) > td {
+            background: #fafafa;
+        }
+    }
+}
+
+.statusTag {
+    margin: 0;
+    border-radius: 4px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.statusTagActive {
+    background: #f6ffed;
+    border-color: #b7eb8f;
+    color: #389e0d;
+}
+
+.statusTagDefault {
+    background: #fafafa;
+    border-color: #d9d9d9;
+    color: rgba(0, 0, 0, 0.65);
+}
+
+.statusTagExpired {
+    background: #fff2f0;
+    border-color: #ffccc7;
+    color: #cf1322;
+}

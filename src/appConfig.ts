@@ -91,6 +91,9 @@ const routePathNames = {
     tenants: '/admin/tenants',
     tenantAdmins: '/admin/users/tenant-admins',
     inviteLinks: '/admin/invite-links',
+    inviteLinksTenants: '/admin/invite-links/tenants',
+    inviteLinksCounsellor: '/admin/invite-links/counsellor',
+    inviteLinksExternalInbounds: '/admin/invite-links/external-inbounds',
     loginResetPasswordLink: keycloakAuthPath('/login-actions/reset-credentials?client_id=account'),
     appointmentServiceDevServer: runtimeConfig.appointmentServiceUrl,
 };
