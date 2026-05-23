@@ -26,7 +26,7 @@ import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 
 export const AgencyList = () => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [tableState, setTableState] = useState<TableState>({
         current: 1,
         sortBy: undefined,
@@ -57,7 +57,7 @@ export const AgencyList = () => {
 
     const columnsData = [
         {
-            title: 'ID',
+            title: t('agency.list.id'),
             dataIndex: 'id',
             key: 'id',
             sorter: (a: AgencyData, b: AgencyData) => {
@@ -72,7 +72,7 @@ export const AgencyList = () => {
             fixed: 'left',
         },
         {
-            title: 'Created Date',
+            title: t('agency.list.createdDate'),
             dataIndex: 'createDate',
             key: 'createDate',
             sorter: (a: AgencyData, b: AgencyData) => {
@@ -87,7 +87,8 @@ export const AgencyList = () => {
                 if (!createDate || createDate === 'null') return '-';
                 try {
                     const date = new Date(createDate);
-                    return date.toLocaleDateString('de-DE', {
+                    const dateLocale = i18n.language === 'de' ? 'de-DE' : 'en-GB';
+                    return date.toLocaleDateString(dateLocale, {
                         year: 'numeric',
                         month: '2-digit',
                         day: '2-digit',
