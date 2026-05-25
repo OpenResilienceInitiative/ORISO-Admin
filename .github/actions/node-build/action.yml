@@ -12,12 +12,12 @@ runs:
     uses: actions/setup-node@v4
     with:
       node-version: ${{ inputs.node_version }}
-      cache: yarn
+      cache: npm
 
   - name: Install dependencies
     shell: bash
-    run: yarn install --frozen-lockfile
+    run: npm ci
 
   - name: Build app
     shell: bash
-    run: yarn build
+    run: npm run build
