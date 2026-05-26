@@ -189,14 +189,27 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 <li key="invite-links" className="menuItem">
                                     <NavLink
                                         to={routePathNames.inviteLinks}
+                                        className={({ isActive }) => (isActive ? 'active' : '')}
+                                    >
+                                        <NavIcon path={routePathNames.inviteLinks} />
+                                        <span>{t('inviteLinks.navTitle', 'Einladungslinks')}</span>
+                                    </NavLink>
+                                </li>
+                            )}
+                            {(can(PermissionAction.Read, Resource.Agency) ||
+                                can(PermissionAction.Read, Resource.AgencyAdminUser) ||
+                                hasRole(UserRole.RestrictedAgencyAdmin)) && (
+                                <li key="links" className="menuItem">
+                                    <NavLink
+                                        to={routePathNames.links}
                                         className={({ isActive }) =>
-                                            isActive || location.pathname.startsWith(`${routePathNames.inviteLinks}/`)
+                                            isActive || location.pathname.startsWith(`${routePathNames.links}/`)
                                                 ? 'active'
                                                 : ''
                                         }
                                     >
-                                        <NavIcon path={routePathNames.inviteLinks} />
-                                        <span>{t('inviteLinks.navTitle', 'Einladungslinks')}</span>
+                                        <NavIcon path={routePathNames.links} />
+                                        <span>{t('links.navTitle', 'Links')}</span>
                                     </NavLink>
                                 </li>
                             )}
