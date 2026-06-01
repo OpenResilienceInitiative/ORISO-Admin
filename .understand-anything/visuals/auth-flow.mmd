@@ -1,0 +1,21 @@
+sequenceDiagram
+  participant User
+  participant LoginForm as src/pages/Login/LoginForm.tsx
+  participant LoginHook as useLoginMutation
+  participant Keycloak as Keycloak token endpoint
+  participant TenantAccess as /service/tenant/access
+  participant AuthStore as cookies + localStorage
+  participant ProtectedRoute
+  participant AppShell as src/App.tsx
+
+  User->>LoginForm: username/password/otp
+  LoginForm->>LoginHook: mutate credentials
+  LoginHook->>Keycloak: POST token request
+  Keycloak-->>LoginHook: access_token + refresh_token
+  LoginHook->>TenantAccess: verify tenant access with Bearer token
+  TenantAccess-->>LoginHook: access allowed
+  LoginHook->>AuthStore: setTokens()
+  User->>ProtectedRoute: navigate to /admin/*
+  ProtectedRoute->>AuthStore: read keycloak, refreshToken, expiry
+  ProtectedRoute-->>AppShell: render protected app when valid
+
