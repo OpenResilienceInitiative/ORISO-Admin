@@ -130,17 +130,18 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 </li>
                             )}
 
-                            {can(PermissionAction.Read, Resource.Agency) && !hasRole(UserRole.RestrictedAgencyAdmin) && (
-                                <li className="menuItem">
-                                    <NavLink
-                                        to={routePathNames.agency}
-                                        className={classNames({ active: checkActive(routePathNames.agency) })}
-                                    >
-                                        <NavIcon path={routePathNames.agency} />
-                                        <span>{t('agency')}</span>
-                                    </NavLink>
-                                </li>
-                            )}
+                            {can(PermissionAction.Read, Resource.Agency) &&
+                                !hasRole(UserRole.RestrictedAgencyAdmin) && (
+                                    <li className="menuItem">
+                                        <NavLink
+                                            to={routePathNames.agency}
+                                            className={classNames({ active: checkActive(routePathNames.agency) })}
+                                        >
+                                            <NavIcon path={routePathNames.agency} />
+                                            <span>{t('agency')}</span>
+                                        </NavLink>
+                                    </li>
+                                )}
 
                             {/* {can(PermissionAction.Read, Resource.Topic) && isEnabled(FeatureFlag.Topics) && (
                                 <li key="topics" className="menuItem">
@@ -192,7 +193,24 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                         className={({ isActive }) => (isActive ? 'active' : '')}
                                     >
                                         <NavIcon path={routePathNames.inviteLinks} />
-                                        <span>{t('inviteLinks.navTitle', 'Einladungslinks')}</span>
+                                        <span>{t('inviteLinks.navTitle')}</span>
+                                    </NavLink>
+                                </li>
+                            )}
+                            {(can(PermissionAction.Read, Resource.Agency) ||
+                                can(PermissionAction.Read, Resource.AgencyAdminUser) ||
+                                hasRole(UserRole.RestrictedAgencyAdmin)) && (
+                                <li key="links" className="menuItem">
+                                    <NavLink
+                                        to={routePathNames.links}
+                                        className={({ isActive }) =>
+                                            isActive || location.pathname.startsWith(`${routePathNames.links}/`)
+                                                ? 'active'
+                                                : ''
+                                        }
+                                    >
+                                        <NavIcon path={routePathNames.links} />
+                                        <span>{t('links.navTitle', 'Links')}</span>
                                     </NavLink>
                                 </li>
                             )}

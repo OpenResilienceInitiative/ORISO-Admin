@@ -1,0 +1,39 @@
+.tabDisabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.pageHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 60px;
+    flex-wrap: wrap;
+}
+
+.myAccessButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 32px;
+    border: 2px solid #c4c7c8;
+    border-radius: 999px;
+    background: rgba(68, 71, 72, 0.1);
+    color: #444748;
+    font-size: 16px;
+    line-height: 24px;
+    white-space: nowrap;
+    transition: background 160ms ease;
+
+    &:hover {
+        background: rgba(68, 71, 72, 0.16);
+        color: #444748;
+    }
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}

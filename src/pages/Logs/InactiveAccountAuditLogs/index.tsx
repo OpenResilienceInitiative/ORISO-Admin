@@ -1,7 +1,8 @@
-import { Button, Input, Select, Space, Table, Tag } from 'antd';
+import { Button, Input, Select, Space, Tag } from 'antd';
 import { ColumnType } from 'antd/lib/table';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ListingTable } from '../../../components/ListingTable';
 import { Page } from '../../../components/Page';
 import { useInactiveAccountAuditLogsData } from '../../../hooks/useInactiveAccountAuditLogsData';
 import { InactiveAccountAuditLogEntry } from '../../../types/inactiveAccountAuditLogs';
@@ -30,63 +31,63 @@ export const InactiveAccountAuditLogsPage = () => {
     const columns: ColumnType<InactiveAccountAuditLogEntry>[] = useMemo(
         () => [
             {
-                title: t('inactiveAudit.table.createdAt', 'Erstellt am'),
+                title: t('inactiveAudit.table.createdAt'),
                 dataIndex: 'createDate',
                 key: 'createDate',
                 width: 180,
                 render: (value: string) => (value ? new Date(value).toLocaleString() : '-'),
             },
             {
-                title: t('inactiveAudit.table.role', 'Rolle'),
+                title: t('inactiveAudit.table.role'),
                 dataIndex: 'accountRole',
                 key: 'accountRole',
                 width: 110,
                 render: (value: string) => <Tag color={roleColorMap[value] ?? 'default'}>{value}</Tag>,
             },
             {
-                title: t('inactiveAudit.table.accountId', 'Account ID'),
+                title: t('inactiveAudit.table.accountId'),
                 dataIndex: 'accountId',
                 key: 'accountId',
                 width: 240,
             },
             {
-                title: t('inactiveAudit.table.accountTenantId', 'Account Tenant'),
+                title: t('inactiveAudit.table.accountTenantId'),
                 dataIndex: 'accountTenantId',
                 key: 'accountTenantId',
                 width: 130,
                 render: (value: number | null | undefined) => value ?? '-',
             },
             {
-                title: t('inactiveAudit.table.lastActivityAt', 'Letzte Aktivität'),
+                title: t('inactiveAudit.table.lastActivityAt'),
                 dataIndex: 'lastActivityAt',
                 key: 'lastActivityAt',
                 width: 180,
                 render: (value: string | null | undefined) => (value ? new Date(value).toLocaleString() : '-'),
             },
             {
-                title: t('inactiveAudit.table.thresholdDays', 'Schwelle (Tage)'),
+                title: t('inactiveAudit.table.thresholdDays'),
                 dataIndex: 'thresholdDays',
                 key: 'thresholdDays',
                 width: 130,
             },
             {
-                title: t('inactiveAudit.table.recipientEmail', 'Empfänger E-Mail'),
+                title: t('inactiveAudit.table.recipientEmail'),
                 dataIndex: 'recipientEmail',
                 key: 'recipientEmail',
                 width: 230,
             },
             {
-                title: t('inactiveAudit.table.recipientAdminId', 'Empfänger Admin ID'),
+                title: t('inactiveAudit.table.recipientAdminId'),
                 dataIndex: 'recipientAdminId',
                 key: 'recipientAdminId',
                 width: 230,
             },
             {
-                title: t('inactiveAudit.table.emailDispatched', 'E-Mail versendet'),
+                title: t('inactiveAudit.table.emailDispatched'),
                 dataIndex: 'emailDispatched',
                 key: 'emailDispatched',
                 width: 130,
-                render: (value: boolean) => (value ? t('yes', 'Ja') : t('no', 'Nein')),
+                render: (value: boolean) => (value ? t('yes') : t('no')),
             },
         ],
         [t],
@@ -94,15 +95,12 @@ export const InactiveAccountAuditLogsPage = () => {
 
     return (
         <Page>
-            <Page.Title
-                titleKey="inactiveAudit.title"
-                subTitle={String(t('inactiveAudit.subTitle', 'Security-06 Inaktivitäts-Audit-Logs'))}
-            />
+            <Page.Title titleKey="inactiveAudit.title" subTitle={String(t('inactiveAudit.subTitle'))} />
 
             <Space style={{ marginBottom: 16 }} wrap>
                 <Select
                     allowClear
-                    placeholder={t('inactiveAudit.filters.role', 'Rolle filtern')}
+                    placeholder={t('inactiveAudit.filters.role')}
                     style={{ width: 180 }}
                     value={accountRole}
                     onChange={(value) => {
@@ -116,7 +114,7 @@ export const InactiveAccountAuditLogsPage = () => {
                     ]}
                 />
                 <Input
-                    placeholder={t('inactiveAudit.filters.accountId', 'Account ID suchen')}
+                    placeholder={t('inactiveAudit.filters.accountId')}
                     value={accountIdInput}
                     onChange={(event) => setAccountIdInput(event.target.value)}
                     onPressEnter={() => {
@@ -132,7 +130,7 @@ export const InactiveAccountAuditLogsPage = () => {
                         setPage(1);
                     }}
                 >
-                    {t('search', 'Suche')}
+                    {t('search')}
                 </Button>
                 <Button
                     onClick={() => {
@@ -142,11 +140,11 @@ export const InactiveAccountAuditLogsPage = () => {
                         setPage(1);
                     }}
                 >
-                    {t('btn.cancel', 'Abbrechen')}
+                    {t('btn.cancel')}
                 </Button>
             </Space>
 
-            <Table<InactiveAccountAuditLogEntry>
+            <ListingTable<InactiveAccountAuditLogEntry>
                 rowKey={(row) => `${row.id}`}
                 loading={isLoading}
                 columns={columns}

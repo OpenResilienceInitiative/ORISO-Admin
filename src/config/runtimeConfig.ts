@@ -100,8 +100,7 @@ export const runtimeConfig = {
         .split(',')
         .map((entry) => entry.trim())
         .filter(Boolean),
-    appointmentServiceUrl:
-        readConfigValue('APPOINTMENT_SERVICE_URL') ?? 'https://calcom-develop.suchtberatung.digital',
+    appointmentServiceUrl: readConfigValue('APPOINTMENT_SERVICE_URL') ?? 'https://calcom-develop.suchtberatung.digital',
 };
 
 // Auth (Keycloak) is served on the API host: {API_URL}/auth/realms/{realm}/...
