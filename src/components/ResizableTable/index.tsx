@@ -2,6 +2,7 @@ import { Table as AntTable } from 'antd';
 import { ColumnProps, TableProps } from 'antd/lib/table';
 import classNames from 'classnames';
 import { useCallback, useState } from 'react';
+import listingTableStyles from '../ListingTable/styles.module.scss';
 import ResizableTitle from './Resizable/Resizable';
 import styles from './styles.module.scss';
 
@@ -34,7 +35,7 @@ export const ResizeTable = ({ columns, ...defaultOptions }: ResizeTableProps<any
     return (
         <AntTable
             {...defaultOptions}
-            className={classNames(styles.table)}
+            className={classNames(listingTableStyles.listingTable, styles.table, defaultOptions.className)}
             columns={mergeColumns}
             scroll={{ x: 'max-content', y: 'auto' }}
             components={{

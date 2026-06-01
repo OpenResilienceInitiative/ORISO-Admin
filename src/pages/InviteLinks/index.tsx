@@ -17,9 +17,9 @@ interface TenantOption {
 }
 
 /**
- * Admin page for creating agency invite links. Opening the generated link
- * auto-registers an anonymous user for the selected agency. Tokens are
- * single-use and tracked in the table below.
+ * Legacy agency invite links page (Rebuild). New topic-based links live under
+ * /admin/links/external-inbounds — keep this file aligned with Rebuild to
+ * avoid merge conflicts.
  */
 export const InviteLinksPage = () => {
     const { t } = useTranslation();
@@ -58,7 +58,9 @@ export const InviteLinksPage = () => {
     const loadLinks = useCallback(() => {
         setLoadingLinks(true);
         listInviteLinks()
-            .then(setLinks)
+            .then((response) => {
+                setLinks(response.content ?? []);
+            })
             .catch(() => message.error(t('inviteLinks.error.loadFailed')))
             .finally(() => setLoadingLinks(false));
     }, [t]);
@@ -71,10 +73,13 @@ export const InviteLinksPage = () => {
         async (values: { tenantId: number; agencyId: number; expiresInDays?: number }) => {
             setSubmitting(true);
             try {
-                await createInviteLink({
-                    agencyId: Number(values.agencyId),
-                    expiresInDays: values.expiresInDays ? Number(values.expiresInDays) : undefined,
-                });
+                await createInviteLink(
+                    {
+                        agencyId: Number(values.agencyId),
+                        expiresInDays: values.expiresInDays ? Number(values.expiresInDays) : undefined,
+                    },
+                    Number(values.tenantId),
+                );
                 message.success(t('inviteLinks.created'));
                 loadLinks();
             } catch {

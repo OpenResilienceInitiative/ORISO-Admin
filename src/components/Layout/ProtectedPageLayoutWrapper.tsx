@@ -196,6 +196,23 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                     </NavLink>
                                 </li>
                             )}
+                            {(can(PermissionAction.Read, Resource.Agency) ||
+                                can(PermissionAction.Read, Resource.AgencyAdminUser) ||
+                                hasRole(UserRole.RestrictedAgencyAdmin)) && (
+                                <li key="links" className="menuItem">
+                                    <NavLink
+                                        to={routePathNames.links}
+                                        className={({ isActive }) =>
+                                            isActive || location.pathname.startsWith(`${routePathNames.links}/`)
+                                                ? 'active'
+                                                : ''
+                                        }
+                                    >
+                                        <NavIcon path={routePathNames.links} />
+                                        <span>{t('links.navTitle', 'Links')}</span>
+                                    </NavLink>
+                                </li>
+                            )}
                             {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
                                 <li key="inactive-audit-logs" className="menuItem">
                                     <NavLink

@@ -1,7 +1,8 @@
-import { Button, Input, Select, Space, Table, Tag } from 'antd';
+import { Button, Input, Select, Space, Tag } from 'antd';
 import { ColumnType } from 'antd/lib/table';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ListingTable } from '../../../components/ListingTable';
 import { Page } from '../../../components/Page';
 import { useInactiveAccountAuditLogsData } from '../../../hooks/useInactiveAccountAuditLogsData';
 import { InactiveAccountAuditLogEntry } from '../../../types/inactiveAccountAuditLogs';
@@ -143,7 +144,7 @@ export const InactiveAccountAuditLogsPage = () => {
                 </Button>
             </Space>
 
-            <Table<InactiveAccountAuditLogEntry>
+            <ListingTable<InactiveAccountAuditLogEntry>
                 rowKey={(row) => `${row.id}`}
                 loading={isLoading}
                 columns={columns}
