@@ -155,7 +155,7 @@ export const InviteLinksPage = () => {
 
     return (
         <Page>
-            <Page.Title titleKey="inviteLinks.title" subTitle={t('inviteLinks.subtitle')} />
+            <Page.Title titleKey="inviteLinks.title" subTitle={t('inviteLinks.subtitle') as string} />
             <Form form={form} layout="inline" onFinish={onGenerate} style={{ marginBottom: 24, gap: 12 }}>
                 <Form.Item name="tenantId" label={t('inviteLinks.form.tenant')} rules={[{ required: true }]}>
                     <Select
