@@ -1,10 +1,7 @@
-import { Button, Form, InputNumber, message, Select } from 'antd';
-import type { TablePaginationConfig } from 'antd/es/table';
+import { Button, Form, InputNumber, message, Select, Space, Table, Tag } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AgencyInviteLinkDTO, createInviteLink, listInviteLinks } from '../../api/invitelinks/invitelinks';
-import { ListingTable, listingTableStyles } from '../../components/ListingTable';
-import { StatusTag } from '../../components/ListingTable/StatusTag';
 import { Page } from '../../components/Page';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../api/tenant/getSingleTenantData';
@@ -20,9 +17,9 @@ interface TenantOption {
 }
 
 /**
- * Admin page for creating agency invite links. Opening the generated link
- * auto-registers an anonymous user for the selected agency. Tokens are
- * single-use and tracked in the table below.
+ * Legacy agency invite links page (Rebuild). New topic-based links live under
+ * /admin/links/external-inbounds — keep this file aligned with Rebuild to
+ * avoid merge conflicts.
  */
 export const InviteLinksPage = () => {
     const { t } = useTranslation();
@@ -32,7 +29,6 @@ export const InviteLinksPage = () => {
     const [links, setLinks] = useState<AgencyInviteLinkDTO[]>([]);
     const [loadingLinks, setLoadingLinks] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
 
     const selectedTenantId = Form.useWatch('tenantId', form);
     const { data: agenciesResp } = useAgenciesData({ pageSize: 10000 });
@@ -59,28 +55,18 @@ export const InviteLinksPage = () => {
         return all.filter((a: any) => a.deleteDate === 'null' && a.tenantId === Number(selectedTenantId));
     }, [agenciesResp, selectedTenantId]);
 
-    const loadLinks = useCallback(
-        async (page: number, pageSize: number) => {
-            setLoadingLinks(true);
-            try {
-                const response = await listInviteLinks({ page: page - 1, size: pageSize });
+    const loadLinks = useCallback(() => {
+        setLoadingLinks(true);
+        listInviteLinks()
+            .then((response) => {
                 setLinks(response.content ?? []);
-                setPagination({
-                    current: (response.page ?? 0) + 1,
-                    pageSize: response.size ?? pageSize,
-                    total: response.totalElements ?? 0,
-                });
-            } catch {
-                message.error(t('inviteLinks.error.loadFailed', 'Could not load invite links'));
-            } finally {
-                setLoadingLinks(false);
-            }
-        },
-        [t],
-    );
+            })
+            .catch(() => message.error(t('inviteLinks.error.loadFailed')))
+            .finally(() => setLoadingLinks(false));
+    }, [t]);
 
     useEffect(() => {
-        loadLinks(1, 20);
+        loadLinks();
     }, [loadLinks]);
 
     const onGenerate = useCallback(
@@ -94,163 +80,121 @@ export const InviteLinksPage = () => {
                     },
                     Number(values.tenantId),
                 );
-                message.success(t('inviteLinks.created', 'Invite link created'));
-                await loadLinks(1, pagination.pageSize);
+                message.success(t('inviteLinks.created'));
+                loadLinks();
             } catch {
-                message.error(t('inviteLinks.error.createFailed', 'Could not create invite link'));
+                message.error(t('inviteLinks.error.createFailed'));
             } finally {
                 setSubmitting(false);
             }
         },
-        [t, loadLinks, pagination.pageSize],
+        [t, loadLinks],
     );
-
-    const onTableChange = useCallback(
-        (tablePagination: TablePaginationConfig) => {
-            const nextPage = tablePagination.current ?? 1;
-            const nextSize = tablePagination.pageSize ?? 20;
-            loadLinks(nextPage, nextSize);
-        },
-        [loadLinks],
-    );
-
-    const formatDate = (value: string | null) => {
-        if (!value) {
-            return '—';
-        }
-        return new Date(value).toLocaleString();
-    };
 
     const buildUrl = (link: AgencyInviteLinkDTO) => `${appURL}/invite/${link.token}`;
 
-    const copyLink = useCallback(
-        (link: AgencyInviteLinkDTO) => {
-            const url = buildUrl(link);
-            navigator.clipboard
-                .writeText(url)
-                .then(() => message.success(t('inviteLinks.copied', { defaultValue: 'Link copied' })))
-                .catch(() => message.error(t('inviteLinks.copyFailed', 'Copy failed')));
-        },
-        [t],
-    );
+    const copyLink = (link: AgencyInviteLinkDTO) => {
+        const url = buildUrl(link);
+        navigator.clipboard
+            .writeText(url)
+            .then(() => message.success(t('inviteLinks.copied')))
+            .catch(() => message.error(t('inviteLinks.copyFailed')));
+    };
 
-    const columns = useMemo(
-        () => [
-            {
-                title: t('inviteLinks.col.createDate', 'Created'),
-                dataIndex: 'createDate',
-                key: 'createDate',
-                render: (value: string) => formatDate(value),
-            },
-            {
-                title: t('inviteLinks.col.createdBy', 'Created by'),
-                dataIndex: 'createdByUsername',
-                key: 'createdByUsername',
-                render: (value: string | null) => value || '—',
-            },
-            {
-                title: t('inviteLinks.col.agency', 'Agency'),
-                dataIndex: 'agencyId',
-                key: 'agencyId',
-                render: (value: number | null | undefined) => (value != null ? value : '—'),
-            },
-            {
-                title: t('inviteLinks.col.status', 'Status'),
-                dataIndex: 'status',
-                key: 'status',
-                render: (status: AgencyInviteLinkDTO['status']) => <StatusTag status={status} />,
-            },
-            {
-                title: t('inviteLinks.col.expiresAt', 'Expires'),
-                dataIndex: 'expiresAt',
-                key: 'expiresAt',
-                render: (value: string | null) => formatDate(value),
-            },
-            {
-                title: t('inviteLinks.col.usedAt', 'Used'),
-                dataIndex: 'usedAt',
-                key: 'usedAt',
-                render: (value: string | null) => formatDate(value),
-            },
-            {
-                title: t('inviteLinks.col.link', 'Link'),
-                key: 'link',
-                render: (_: unknown, record: AgencyInviteLinkDTO) => (
-                    <Button size="small" className={listingTableStyles.copyButton} onClick={() => copyLink(record)}>
-                        {t('inviteLinks.copy', 'Copy')}
+    const statusTag = (status: AgencyInviteLinkDTO['status']) => {
+        const colors: Record<AgencyInviteLinkDTO['status'], string> = {
+            ACTIVE: 'green',
+            USED: 'default',
+            EXPIRED: 'red',
+        };
+        return <Tag color={colors[status]}>{status}</Tag>;
+    };
+
+    const columns = [
+        {
+            title: t('inviteLinks.col.createDate'),
+            dataIndex: 'createDate',
+            key: 'createDate',
+            render: (v: string) => new Date(v).toLocaleString(),
+        },
+        {
+            title: t('inviteLinks.col.createdBy'),
+            dataIndex: 'createdByUsername',
+            key: 'createdByUsername',
+        },
+        {
+            title: t('inviteLinks.col.agency'),
+            dataIndex: 'agencyId',
+            key: 'agencyId',
+        },
+        {
+            title: t('inviteLinks.col.status'),
+            dataIndex: 'status',
+            key: 'status',
+            render: statusTag,
+        },
+        {
+            title: t('inviteLinks.col.expiresAt'),
+            dataIndex: 'expiresAt',
+            key: 'expiresAt',
+            render: (v: string | null) => (v ? new Date(v).toLocaleString() : '—'),
+        },
+        {
+            title: t('inviteLinks.col.usedAt'),
+            dataIndex: 'usedAt',
+            key: 'usedAt',
+            render: (v: string | null) => (v ? new Date(v).toLocaleString() : '—'),
+        },
+        {
+            title: t('inviteLinks.col.link'),
+            key: 'link',
+            render: (_: any, record: AgencyInviteLinkDTO) => (
+                <Space>
+                    <Button size="small" onClick={() => copyLink(record)}>
+                        {t('inviteLinks.copy')}
                     </Button>
-                ),
-            },
-        ],
-        [copyLink, t],
-    );
+                </Space>
+            ),
+        },
+    ];
 
     return (
         <Page>
-            <Page.Title
-                titleKey="inviteLinks.title"
-                subTitle={
-                    t(
-                        'inviteLinks.subtitle',
-                        'Share these single-use links; opening one auto-registers the visitor as an anonymous user for the chosen agency.',
-                    ) as unknown as string
-                }
-            />
-            <Form form={form} className={listingTableStyles.createForm} layout="inline" onFinish={onGenerate}>
-                <div className={listingTableStyles.formFields}>
-                    <Form.Item
-                        name="tenantId"
-                        label={t('inviteLinks.form.tenant', 'Tenant')}
-                        rules={[{ required: true }]}
-                    >
-                        <Select
-                            style={{ minWidth: 200 }}
-                            placeholder={t('inviteLinks.form.tenantPh', 'Select tenant')}
-                            disabled={!isSuperAdmin}
-                            options={tenants.map((tn) => ({ value: tn.id, label: tn.name }))}
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        name="agencyId"
-                        label={t('inviteLinks.form.agency', 'Agency')}
-                        rules={[{ required: true }]}
-                    >
-                        <Select
-                            style={{ minWidth: 240 }}
-                            placeholder={t('inviteLinks.form.agencyPh', 'Select agency')}
-                            options={filteredAgencies.map((a: any) => ({
-                                value: a.id,
-                                label: `${a.postcode || ''} ${a.name}`.trim(),
-                            }))}
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        name="expiresInDays"
-                        label={t('inviteLinks.form.expiresInDays', 'Expires in (days)')}
-                        initialValue={30}
-                    >
-                        <InputNumber min={1} max={365} style={{ width: 90 }} />
-                    </Form.Item>
-                </div>
+            <Page.Title titleKey="inviteLinks.title" subTitle={t('inviteLinks.subtitle') as string} />
+            <Form form={form} layout="inline" onFinish={onGenerate} style={{ marginBottom: 24, gap: 12 }}>
+                <Form.Item name="tenantId" label={t('inviteLinks.form.tenant')} rules={[{ required: true }]}>
+                    <Select
+                        style={{ minWidth: 200 }}
+                        placeholder={t('inviteLinks.form.tenantPh')}
+                        disabled={!isSuperAdmin}
+                        options={tenants.map((tn) => ({ value: tn.id, label: tn.name }))}
+                    />
+                </Form.Item>
+                <Form.Item name="agencyId" label={t('inviteLinks.form.agency')} rules={[{ required: true }]}>
+                    <Select
+                        style={{ minWidth: 240 }}
+                        placeholder={t('inviteLinks.form.agencyPh')}
+                        options={filteredAgencies.map((a: any) => ({
+                            value: a.id,
+                            label: `${a.postcode || ''} ${a.name}`.trim(),
+                        }))}
+                    />
+                </Form.Item>
+                <Form.Item name="expiresInDays" label={t('inviteLinks.form.expiresInDays')} initialValue={30}>
+                    <InputNumber min={1} max={365} />
+                </Form.Item>
                 <Form.Item>
-                    <Button type="primary" htmlType="submit" loading={submitting} className={listingTableStyles.createButton}>
-                        {t('inviteLinks.generate', 'Generate link')}
+                    <Button type="primary" htmlType="submit" loading={submitting}>
+                        {t('inviteLinks.generate')}
                     </Button>
                 </Form.Item>
             </Form>
-            <ListingTable
+            <Table
                 rowKey="id"
                 loading={loadingLinks}
                 dataSource={links}
-                columns={columns}
-                pagination={{
-                    current: pagination.current,
-                    pageSize: pagination.pageSize,
-                    total: pagination.total,
-                    showSizeChanger: true,
-                    pageSizeOptions: ['10', '20', '30'],
-                }}
-                onChange={onTableChange}
+                columns={columns as any}
+                pagination={{ pageSize: 20 }}
             />
         </Page>
     );
