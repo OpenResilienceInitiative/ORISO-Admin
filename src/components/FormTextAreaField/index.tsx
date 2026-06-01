@@ -1,7 +1,7 @@
 import { Form, Input } from 'antd';
 import { useContext } from 'react';
 import classNames from 'classnames';
-import { Rule } from 'rc-field-form/es/interface';
+import { Rule } from 'antd/es/form';
 import DisabledContext from 'antd/es/config-provider/DisabledContext';
 import { useTranslation } from 'react-i18next';
 import styles from './styles.module.scss';
