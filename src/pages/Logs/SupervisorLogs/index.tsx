@@ -1,7 +1,7 @@
-import { Table } from 'antd';
-import { ColumnType } from 'antd/lib/table';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ColumnType } from 'antd/lib/table';
+import { ListingTable } from '../../../components/ListingTable';
 import { Page } from '../../../components/Page';
 import { useSupervisorLogsData } from '../../../hooks/useSupervisorLogsData';
 import { SupervisorLogEntry } from '../../../types/supervisorLogs';
@@ -55,7 +55,7 @@ export const SupervisorLogsPage = () => {
     return (
         <Page>
             <Page.Title titleKey="logs.title" subTitle={String(t('logs.supervisors.subTitle', 'Supervisor Log'))} />
-            <Table<SupervisorLogEntry>
+            <ListingTable<SupervisorLogEntry>
                 rowKey={(row) => `${row.relationId}-${row.action}-${row.eventDate}`}
                 loading={isLoading}
                 columns={columns}

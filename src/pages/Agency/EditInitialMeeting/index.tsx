@@ -1,4 +1,4 @@
-import { Button, Table, Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { PlusOutlined } from '@ant-design/icons';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -6,6 +6,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { useParams } from 'react-router';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
 import EditButtons from '../../../components/EditableTable/EditButtons';
+import { ListingTable } from '../../../components/ListingTable';
 import { ConsultantInterface, AgencyEditData, AgencyEventTypes } from '../../../types/agencyEdit';
 import ResizableTitle from '../../../components/Resizable/Resizable';
 import { InitialMeetingNewModal } from './InitialMeetingNewModal';
@@ -221,9 +222,8 @@ export const AgencyEditInitialMeeting = () => {
             </Page.BackWithActions>
             <Paragraph>{t('agency.edit.initialMeeting.description')}</Paragraph>
 
-            <Table
+            <ListingTable
                 loading={isLoading}
-                className="agencyList editableTable"
                 dataSource={topics}
                 columns={mergeColumns}
                 scroll={{

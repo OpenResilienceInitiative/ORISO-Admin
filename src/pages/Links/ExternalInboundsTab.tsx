@@ -1,4 +1,4 @@
-import { Button, Form, InputNumber, message, Select, Table } from 'antd';
+import { Button, Form, InputNumber, message, Select } from 'antd';
 import type { TablePaginationConfig } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,9 +11,9 @@ import {
     listTopicInviteLinks,
     TopicInviteLinkDTO,
 } from '../../api/invitelinks/topicInviteLinks';
+import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { useTenantTopics } from '../../hooks/useTenantTopics';
 import { AnonymityTag, StatusTag } from './components/StatusTag';
-import styles from './styles.module.scss';
 
 const LINK_KIND = 'EXTERNAL_INBOUND' as const;
 const DEFAULT_ANONYMITY = 'FULL' as const;
@@ -181,7 +181,7 @@ export const ExternalInboundsTab = () => {
                 title: t('links.col.link', 'Link'),
                 key: 'link',
                 render: (_: unknown, record: TopicInviteLinkDTO) => (
-                    <Button size="small" className={styles.copyButton} onClick={() => copyLink(record)}>
+                    <Button size="small" className={listingTableStyles.copyButton} onClick={() => copyLink(record)}>
                         {t('links.copy', 'Kopieren')}
                     </Button>
                 ),
@@ -194,12 +194,12 @@ export const ExternalInboundsTab = () => {
         <>
             <Form
                 form={form}
-                className={styles.createForm}
+                className={listingTableStyles.createForm}
                 layout="inline"
                 initialValues={{ chatType: CHAT_TYPE_OPTIONS[0].value, expiresInDays: DEFAULT_EXPIRES_IN_DAYS }}
                 onFinish={onCreate}
             >
-                <div className={styles.formFields}>
+                <div className={listingTableStyles.formFields}>
                     <Form.Item
                         name="topicId"
                         label={t('links.form.topic', 'Topic')}
@@ -225,14 +225,13 @@ export const ExternalInboundsTab = () => {
                     </Form.Item>
                 </div>
                 <Form.Item>
-                    <Button type="primary" htmlType="submit" loading={submitting} className={styles.createButton}>
+                    <Button type="primary" htmlType="submit" loading={submitting} className={listingTableStyles.createButton}>
                         {t('links.createLink', 'Create link')}
                     </Button>
                 </Form.Item>
             </Form>
 
-            <Table
-                className={styles.linksTable}
+            <ListingTable
                 rowKey="id"
                 loading={loadingLinks}
                 columns={columns}
