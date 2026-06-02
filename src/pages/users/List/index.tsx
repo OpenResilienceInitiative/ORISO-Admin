@@ -45,11 +45,10 @@ export const UsersList = () => {
                         to: '/admin/users/consultants',
                         titleKey: 'counselor.title',
                     },
-                    // Temporarily hidden - Keycloak admin client auth issues
-                    // can(PermissionAction.Read, Resource.AgencyAdminUser) && {
-                    //     to: '/admin/users/agency-admins',
-                    //     titleKey: 'agencyAdmins.title',
-                    // },
+                    can(PermissionAction.Read, Resource.AgencyAdminUser) && {
+                        to: '/admin/users/agency-admins',
+                        titleKey: 'agencyAdmins.title',
+                    },
                     // can(PermissionAction.Read, Resource.TenantAdminUser) && {
                     //     to: '/admin/users/tenant-admins',
                     //     titleKey: 'tenantAdmins.title',

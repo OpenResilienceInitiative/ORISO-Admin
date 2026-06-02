@@ -48,6 +48,8 @@ export const useUserRolesToPermission = () => {
             LegalText: { read: true, update: true },
             Statistic: { read: isStatisticsEnabled },
             TenantAdminUser: { read: true, create: true, update: true, delete: true },
+            // Tenant admins also manage the agency admins inside their tenant.
+            AgencyAdminUser: { read: true, create: true, update: true, delete: true },
         },
         [UserRole.TopicAdmin]: {
             Topic: { read: isTopicsEnabled, create: isTopicsEnabled, update: isTopicsEnabled, delete: isTopicsEnabled },

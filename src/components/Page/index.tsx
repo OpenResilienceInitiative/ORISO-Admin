@@ -1,10 +1,10 @@
 import { ChevronLeft } from '@mui/icons-material';
 import { Spin } from 'antd';
-import Title from 'antd/es/typography/Title';
 import classNames from 'classnames';
 import React, { cloneElement, forwardRef, LegacyRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
+import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissions/tab_star.svg';
 import styles from './styles.module.scss';
 
 interface PageProps {
@@ -14,8 +14,12 @@ interface PageProps {
 }
 
 interface PageTitleProps {
-    titleKey: string;
+    // Kept for API compatibility; new design hides all page titles.
+    // eslint-disable-next-line react/no-unused-prop-types
+    titleKey?: string;
+    // eslint-disable-next-line react/no-unused-prop-types
     subTitleKey?: string;
+    // eslint-disable-next-line react/no-unused-prop-types
     subTitle?: React.ReactChild;
     children?: React.ReactChild | React.ReactChild[];
     tabs?: Array<{ to: string; titleKey }>;
@@ -51,7 +55,8 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; icon?: JSX.Ele
                 ?.filter((tab) => tab && tab.to)
                 .map(({ icon, ...tab }) => (
                     <NavLink className={styles.tab} to={tab.to} key={tab.titleKey}>
-                        {t(tab.titleKey)}
+                        <TabStarIcon className={styles.tabStar} width={20} height={20} />
+                        <span className={styles.tabLabel}>{t(tab.titleKey)}</span>
                         {icon && cloneElement(icon, { className: styles.tabIcon })}
                     </NavLink>
                 ))}
@@ -59,19 +64,11 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; icon?: JSX.Ele
     );
 };
 
-export const PageTitle = forwardRef(({ titleKey, subTitleKey, subTitle, tabs, children }: PageTitleProps, ref) => {
-    const { t } = useTranslation();
+export const PageTitle = forwardRef(({ tabs, children }: PageTitleProps, ref) => {
     const finalTabs = useMemo(() => tabs?.filter?.(Boolean) || [], [tabs]);
 
     return (
         <div className={styles.pageTitleContainer} ref={ref as LegacyRef<HTMLDivElement>}>
-            <div className={classNames(styles.titleContainer, { [styles.titleWithTabs]: !!finalTabs?.length })}>
-                <Title level={3} className={styles.title}>
-                    {t(titleKey)}
-                </Title>
-                {subTitleKey && <p>{t(subTitleKey)}</p>}
-                {subTitle}
-            </div>
             {children}
             {!!finalTabs?.length && finalTabs.length > 1 && <PageTabs tabs={finalTabs} />}
         </div>

@@ -4,7 +4,7 @@
     .ant-layout-sider {
         z-index: 80;
         height: @mobileNavHeight;
-        background-color: @primary-color;
+        background-color: #1f1f1f;
     }
 
     .mainMenu {
@@ -15,6 +15,10 @@
             padding: 10px 0;
             margin: 0;
             list-style: none;
+            overflow-x: auto;
+            gap: 12px;
+            padding-left: 5px;
+            padding-right: 5px;
         }
 
         .menuIcon svg {
@@ -33,12 +37,18 @@
                 padding: 0;
                 border: none;
                 background: transparent;
-                color: @white;
+                color: #e7effc;
                 cursor: pointer;
-                font-size: @fontSize-s;
+                font-size: 9px;
+                line-height: 11px;
                 justify-items: center;
-                opacity: 0.6;
+                opacity: 0.72;
                 text-align: center;
+                transition: all 160ms ease;
+
+                &:hover {
+                    opacity: 0.95;
+                }
 
                 &.active {
                     opacity: 1;
@@ -55,7 +65,7 @@
     }
 }
 
-/* hate this not mobile First with all these !important */
+/* Mobile bottom bar */
 @media screen and (max-width: @screen-sm-max) {
     .protectedLayout {
         .ant-layout-sider {
@@ -68,6 +78,7 @@
     }
 }
 
+/* Desktop sidebar — strict Figma layout */
 @media screen and (min-width: @screen-md) {
     .protectedLayout {
         padding-bottom: 0;
@@ -76,36 +87,136 @@
             position: sticky;
             top: 0;
             left: 0;
-            width: 140px;
+            width: 132px;
+            min-width: 132px !important;
+            max-width: 132px !important;
+            flex: 0 0 132px !important;
             height: 100vh;
-            flex: 0 0 140px;
+            background-color: #1f1f1f;
+        }
+
+        .logo {
+            display: none;
         }
 
         .mainMenu {
             height: 100%;
 
             ul {
-                overflow: auto;
-                height: inherit;
+                overflow-y: auto;
+                overflow-x: hidden;
+                height: 100%;
                 flex-direction: column;
-                align-items: flex-start;
+                align-items: center;
                 justify-content: flex-start;
-                padding: 50px 0 0;
+                padding: 24px 0 16px;
+                gap: 4px;
+                list-style: none;
             }
 
             .menuItem {
-                margin: 0 auto 40px;
+                margin: 0;
+                width: 100px;
+                display: flex;
+                justify-content: center;
+
+                a,
+                button {
+                    width: 92px;
+                    min-height: 140px;
+                    padding: 18px 6px;
+                    box-sizing: border-box;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                    border-radius: 999px;
+                    background: transparent;
+                    color: #e7effc;
+                    border: none;
+                    cursor: pointer;
+                    opacity: 1;
+                    font-size: 12px;
+                    text-align: center;
+                    transition:
+                        background 160ms ease,
+                        color 160ms ease;
+
+                    .menuIcon {
+                        width: 40px;
+                        height: 40px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: inherit;
+                        flex-shrink: 0;
+                    }
+
+                    .menuIcon svg {
+                        width: 2rem;
+                        height: 2rem;
+                        color: inherit;
+                        fill: currentColor;
+                    }
+
+                    .menuIcon svg path {
+                        fill: currentColor;
+                    }
+
+                    span {
+                        font-size: 12px;
+                        line-height: 14px;
+                        font-weight: 500;
+                        color: inherit;
+                        text-align: center;
+                        word-break: break-word;
+                        display: inline-block;
+                        max-width: 84px;
+                    }
+
+                    &:hover:not(.active) {
+                        background: #646d78;
+                        color: #e7effc;
+                        opacity: 1;
+
+                        .menuIcon {
+                            color: #e7effc;
+                        }
+
+                        span {
+                            color: #e7effc;
+                        }
+                    }
+
+                    &.active {
+                        background: #e7effc;
+                        color: #273270;
+                        opacity: 1;
+
+                        .menuIcon {
+                            color: #273270;
+                        }
+
+                        .menuIcon svg,
+                        .menuIcon svg path {
+                            fill: #273270;
+                            color: #273270;
+                        }
+
+                        span {
+                            color: #273270;
+                            font-weight: 700;
+                        }
+                    }
+                }
 
                 &:last-child {
                     display: flex;
                     justify-content: center;
                     margin-top: auto;
+                    padding: 8px 0 12px;
                 }
-            }
-
-            .menuIcon svg {
-                width: 1.6rem;
-                height: 1.6rem;
             }
 
             .logout {

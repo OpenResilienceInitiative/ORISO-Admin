@@ -1,37 +1,260 @@
-.checkGroup {
-    margin-bottom: 16px;
+/* Wrapper override: remove the outer white CardEditable background & title header */
+.transparentCardWrapper {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    padding: 0 !important;
+
+    :global(.ant-card) {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: 0 !important;
+    }
+
+    :global(.ant-card-head) {
+        display: none !important;
+    }
+
+    :global(.ant-card-body) {
+        padding: 0 !important;
+        background: transparent !important;
+    }
+
+    /* Hide the Card component's internal title row (h5 + edit pencil) */
+    > div > div:first-child {
+        display: none !important;
+    }
+
+    h5 {
+        display: none !important;
+    }
 }
 
-.sectionGrid {
+.cardGridOuter {
+    position: relative;
+    width: 100%;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.cardGrid {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 80px;
+    padding: 8px 80px;
+    width: 100%;
+
+    @media screen and (max-width: 1440px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 40px;
+        padding: 8px 32px;
+    }
+
+    @media screen and (max-width: 900px) {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+        padding: 8px 24px;
+        gap: 16px;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chatTypeCard {
+            flex: 0 0 calc(100% - 48px);
+            scroll-snap-align: center;
+        }
+    }
 }
 
-.sectionCard {
-    border-radius: 10px;
+.carouselArrow {
+    display: none;
+
+    @media screen and (max-width: 900px) {
+        display: inline-flex;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 0;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 2;
+        font-size: 20px;
+        color: #1b1b1c;
+
+        &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+    }
 }
 
-.subCheckGrid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
+.carouselArrowLeft {
+    left: 8px;
 }
 
-.subCheckGroup {
+.carouselArrowRight {
+    right: 8px;
+}
+
+.chatTypeCard {
+    background: #eae7e8;
+    border-radius: 28px;
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    min-height: 560px;
+    color: #1b1b1c;
+    transition: box-shadow 180ms ease;
+
+    &:hover {
+        box-shadow: 0 4px 18px rgba(39, 50, 112, 0.08);
+    }
+}
+
+/* Centered header: icon on top, title below, both centered */
+.cardHeader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 28px;
+    text-align: center;
+}
+
+.cardIcon {
+    width: 48px;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #1b1b1c;
+    flex-shrink: 0;
+
+    svg {
+        width: 40px;
+        height: 40px;
+        color: inherit;
+    }
+}
+
+.cardTitle {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.25;
     margin: 0;
-    padding-left: 12px;
-    border-left: 2px solid rgba(0, 0, 0, 0.06);
+    color: #1b1b1c;
+    font-family: inherit;
+    text-align: center;
 }
 
-.checkInfo {
-    width: calc(100% - 71px);
-    font-weight: 400;
+.masterRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    min-height: 40px;
+    gap: 12px;
+}
+
+.masterLabel {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1b1b1c;
+}
+
+.masterRowPlaceholder {
     font-size: 14px;
-    line-height: 20px;
-    color: var(--black-60);
+    color: #8b8b8f;
 }
 
+.cardDescription {
+    font-size: 13px;
+    line-height: 18px;
+    color: #4c555f;
+    margin: 0 0 20px;
+    text-align: left;
+}
+
+.cardDivider {
+    height: 1px;
+    background: rgba(28, 27, 31, 0.14);
+    margin: 80px 0 14px;
+}
+
+.togglesSectionLabel {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #4c555f;
+    margin-bottom: 8px;
+}
+
+.togglesList {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.toggleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    gap: 12px;
+    border-bottom: 1px solid rgba(28, 27, 31, 0.06);
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+
+.toggleLabel {
+    font-size: 15px;
+    color: #1b1b1c;
+    font-weight: 500;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Custom SVG check toggle — renders exact Figma-spec SVGs for on/off */
+.checkToggleButton {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    flex-shrink: 0;
+
+    svg {
+        display: block;
+        width: 60px;
+        height: 48px;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    &:focus-visible {
+        outline: 2px solid #273270;
+        outline-offset: 2px;
+        border-radius: 24px;
+    }
+}

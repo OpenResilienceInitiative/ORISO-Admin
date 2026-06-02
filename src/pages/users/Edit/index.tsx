@@ -110,10 +110,22 @@ export const UserEditOrAdd = () => {
                         });
                         break;
                     }
+                    case X_REASON.USERNAME_NOT_AVAILABLE:
+                        message.error({
+                            content: t('message.error.USERNAME_NOT_AVAILABLE'),
+                            duration: 3,
+                        });
+                        break;
                     case X_REASON.NUMBER_OF_LICENSES_EXCEEDED:
                         message.error({
                             content: t('message.error.NUMBER_OF_LICENSES_EXCEEDED'),
                             duration: 3,
+                        });
+                        break;
+                    case X_REASON.PASSWORD_NOT_VALID:
+                        message.error({
+                            content: t('message.error.PASSWORD_NOT_VALID'),
+                            duration: 5,
                         });
                         break;
                     default:
@@ -214,20 +226,25 @@ export const UserEditOrAdd = () => {
                                 ]}
                             />
 
-                            {!isEditing && typeOfUsers === 'consultants' && (
-                                <FormPasswordField
-                                    name="password"
-                                    labelKey="counselor.password"
-                                    placeholderKey="placeholder.password"
-                                    required
-                                    rules={[
-                                        {
-                                            min: 8,
-                                            message: t('message.error.password.minLength'),
-                                        },
-                                    ]}
-                                />
-                            )}
+                            {!isEditing &&
+                                (typeOfUsers === TypeOfUser.Consultants || typeOfUsers === TypeOfUser.AgencyAdmins) && (
+                                    <FormPasswordField
+                                        name="password"
+                                        labelKey="counselor.password"
+                                        placeholderKey="placeholder.password"
+                                        required
+                                        rules={[
+                                            {
+                                                min: 8,
+                                                message: t('message.error.password.minLength'),
+                                            },
+                                            {
+                                                pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
+                                                message: t('message.error.password.policy'),
+                                            },
+                                        ]}
+                                    />
+                                )}
                         </Card>
                     </Col>
                     <Col xs={12} lg={6}>

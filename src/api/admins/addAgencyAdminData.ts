@@ -10,14 +10,18 @@ import { putAgenciesForAgencyAdmin } from '../agency/putAgenciesForAdmin';
  * @return data
  */
 export const addAgencyAdminData = (adminData: Record<string, any>): Promise<AdminData> => {
-    const { firstname, lastname, email, username, twoFactorAuth, tenantId } = adminData;
+    const { firstname, lastname, email, username, twoFactorAuth, tenantId, password } = adminData;
 
     return (
         fetchData({
             url: agencyAdminEndpoint,
             method: FETCH_METHODS.POST,
             skipAuth: false,
-            responseHandling: [FETCH_ERRORS.CATCH_ALL],
+            responseHandling: [
+                FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+                FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
+                FETCH_ERRORS.CATCH_ALL,
+            ],
             bodyData: JSON.stringify({
                 firstname,
                 lastname,
@@ -25,6 +29,7 @@ export const addAgencyAdminData = (adminData: Record<string, any>): Promise<Admi
                 username: encodeUsername(username),
                 twoFactorAuth,
                 tenantId: parseInt(tenantId, 10),
+                ...(password ? { password } : {}),
             }),
         })
             .then((response) => {

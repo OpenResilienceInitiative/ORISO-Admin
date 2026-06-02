@@ -1,5 +1,5 @@
 import { Col, notification, Row } from 'antd';
-import { RuleRender } from 'rc-field-form/lib/interface';
+import { RuleRender } from 'antd/es/form';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../components/CardEditable';
 import { FormInputPasswordField } from '../../../components/FormInputPasswordField';

@@ -1,0 +1,13 @@
+flowchart LR
+  Page[src/pages/*] --> Hook[src/hooks/*]
+  Hook --> Api[src/api/<domain>/*]
+  Api --> Fetch[src/api/fetchData.ts]
+  Fetch --> Auth[Keycloak cookie + refresh token]
+  Fetch --> Csrf[generateCsrfToken]
+  Fetch --> Config[src/appConfig.ts]
+  Config --> Backend[ORISO /service/* endpoints]
+  Backend --> Api
+  Api --> Hook
+  Hook --> Page
+  Page --> Components[src/components/*]
+

@@ -1,9 +1,10 @@
 import React from 'react';
-import { Modal, Table } from 'antd';
+import { Modal } from 'antd';
 
 import Title from 'antd/es/typography/Title';
 
 import EditableTableProps from '../../types/editabletable';
+import { ListingTable } from '../ListingTable';
 import AddButton from './AddButton';
 import SearchInput from '../SearchInput/SearchInput';
 
@@ -38,9 +39,8 @@ const EditableTable = ({
                 )}
             </div>
 
-            <Table
+            <ListingTable
                 loading={isLoading}
-                className="editableTable"
                 dataSource={source}
                 columns={columns}
                 scroll={{ x: 'max-content', y: 'auto' }}

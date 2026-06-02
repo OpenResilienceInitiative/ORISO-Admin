@@ -22,13 +22,19 @@
     }
 
     &__primary {
-        background: var(--skin-color-primary, @primary);
-        color: var(--text-color-contrast-switch, @white);
-        transition: all 0.6s ease;
+        background: #1f1f1f !important;
+        color: #ffffff !important;
+        transition: all 0.3s ease;
 
         &:hover {
-            background-color: var(--skin-color-primary-hover, @hover-primary);
+            background-color: #3a3a3a !important;
             transition: all 0.3s ease;
+        }
+
+        &:disabled,
+        &[disabled] {
+            background: #8b8b8f !important;
+            color: #ffffff !important;
         }
     }
 

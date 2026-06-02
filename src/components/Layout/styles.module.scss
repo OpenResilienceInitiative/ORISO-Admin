@@ -1,4 +1,17 @@
 .content {
-    height: calc(100vh - 100px);
+    height: 100vh;
     overflow: auto;
+    background: #f0edee;
+
+    :global(.ant-layout-content) {
+        background: #f0edee;
+    }
+}
+
+.mainContent {
+    background: #f0edee;
+
+    :global(.ant-layout) {
+        background: #f0edee;
+    }
 }
