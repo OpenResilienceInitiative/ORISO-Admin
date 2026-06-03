@@ -36,10 +36,7 @@ export const ExternalInboundsTab = () => {
     const [submitting, setSubmitting] = useState(false);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
 
-    const topicOptions = useMemo(
-        () => topics.map((topic) => ({ value: topic.id, label: topic.name })),
-        [topics],
-    );
+    const topicOptions = useMemo(() => topics.map((topic) => ({ value: topic.id, label: topic.name })), [topics]);
 
     const topicNameById = useMemo(() => {
         const map = new Map<number, string>();
@@ -225,7 +222,12 @@ export const ExternalInboundsTab = () => {
                     </Form.Item>
                 </div>
                 <Form.Item>
-                    <Button type="primary" htmlType="submit" loading={submitting} className={listingTableStyles.createButton}>
+                    <Button
+                        type="primary"
+                        htmlType="submit"
+                        loading={submitting}
+                        className={listingTableStyles.createButton}
+                    >
                         {t('links.createLink', 'Create link')}
                     </Button>
                 </Form.Item>

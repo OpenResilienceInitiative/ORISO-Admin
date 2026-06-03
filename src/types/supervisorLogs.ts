@@ -18,5 +18,3 @@ export interface SupervisorLogsResponse {
     page: number;
     perPage: number;
 }
-
-
