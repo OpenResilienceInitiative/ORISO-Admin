@@ -17,7 +17,11 @@ export const addAgencyAdminData = (adminData: Record<string, any>): Promise<Admi
             url: agencyAdminEndpoint,
             method: FETCH_METHODS.POST,
             skipAuth: false,
-            responseHandling: [FETCH_ERRORS.CATCH_ALL],
+            responseHandling: [
+                FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+                FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
+                FETCH_ERRORS.CATCH_ALL,
+            ],
             bodyData: JSON.stringify({
                 firstname,
                 lastname,

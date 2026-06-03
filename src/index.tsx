@@ -13,28 +13,23 @@ import { queryClient } from './constants/client';
 import { Login } from './pages/Login/Login';
 import { Error404 } from './pages/Error404';
 import { ProtectedRoute } from './router/ProtectedRoute';
-import './i18n';
+import i18n from './i18n';
 import { Imprint } from './pages/Imprint';
 import { Privacy } from './pages/Privacy';
 import { useAppConfigContext, UseAppConfigProvider } from './context/useAppConfig';
 import { apiServerSettings } from './api/settings/apiServerSettings';
 import { Initialization } from './components/Layout/Initialization';
 import { AccessDenied } from './pages/ErrorPages/AccessDenied';
+import { DEFAULT_LANGUAGE, normalizeLanguage } from './utils/language';
 
 interface LangMap {
     [key: string]: Locale;
 }
 
 const myLanguages: LangMap = {
-    'de-DE': de_DE,
-    'en-GB': en_GB,
+    de: de_DE,
+    en: en_GB,
 };
-
-const appConfig = {
-    locales: 'de-DE',
-};
-
-const languageToUse = (appConfig && appConfig.locales) || 'de-DE';
 
 /**
  * ant design message config
@@ -63,11 +58,28 @@ const AppSettingsWrapper = ({ children }: { children: JSX.Element }): JSX.Elemen
     return loaded ? children : <Initialization />;
 };
 
+const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) => {
+    const [language, setLanguage] = useState(() => normalizeLanguage(i18n.language) || DEFAULT_LANGUAGE);
+
+    useEffect(() => {
+        const handleLanguageChanged = (nextLanguage: string) => {
+            setLanguage(normalizeLanguage(nextLanguage) || DEFAULT_LANGUAGE);
+        };
+
+        i18n.on('languageChanged', handleLanguageChanged);
+        return () => {
+            i18n.off('languageChanged', handleLanguageChanged);
+        };
+    }, []);
+
+    return <ConfigProvider locale={myLanguages[language]}>{children}</ConfigProvider>;
+};
+
 render(
     <QueryClientProvider client={queryClient}>
         <UseAppConfigProvider>
             <AppSettingsWrapper>
-                <ConfigProvider locale={myLanguages[languageToUse]}>
+                <LanguageAwareConfigProvider>
                     <Router>
                         <Routes>
                             <Route path={routePathNames.login} element={<Login />} />
@@ -88,7 +100,7 @@ render(
                             />
                         </Routes>
                     </Router>
-                </ConfigProvider>
+                </LanguageAwareConfigProvider>
             </AppSettingsWrapper>
         </UseAppConfigProvider>
     </QueryClientProvider>, // Contextprovider does not work at the moment as they have an error there

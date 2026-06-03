@@ -8,7 +8,7 @@ import { getSingleTenantData } from '../../api/tenant/getSingleTenantData';
 import { useAgenciesData } from '../../hooks/useAgencysData';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
-import { mainURL } from '../../appConfig';
+import { appURL } from '../../appConfig';
 
 interface TenantOption {
     id: number;
@@ -17,9 +17,9 @@ interface TenantOption {
 }
 
 /**
- * Admin page for creating agency invite links. Opening the generated link
- * auto-registers an anonymous user for the selected agency. Tokens are
- * single-use and tracked in the table below.
+ * Legacy agency invite links page (Rebuild). New topic-based links live under
+ * /admin/links/external-inbounds — keep this file aligned with Rebuild to
+ * avoid merge conflicts.
  */
 export const InviteLinksPage = () => {
     const { t } = useTranslation();
@@ -58,8 +58,10 @@ export const InviteLinksPage = () => {
     const loadLinks = useCallback(() => {
         setLoadingLinks(true);
         listInviteLinks()
-            .then(setLinks)
-            .catch(() => message.error(t('inviteLinks.error.loadFailed', 'Could not load invite links')))
+            .then((response) => {
+                setLinks(response.content ?? []);
+            })
+            .catch(() => message.error(t('inviteLinks.error.loadFailed')))
             .finally(() => setLoadingLinks(false));
     }, [t]);
 
@@ -71,14 +73,17 @@ export const InviteLinksPage = () => {
         async (values: { tenantId: number; agencyId: number; expiresInDays?: number }) => {
             setSubmitting(true);
             try {
-                await createInviteLink({
-                    agencyId: Number(values.agencyId),
-                    expiresInDays: values.expiresInDays ? Number(values.expiresInDays) : undefined,
-                });
-                message.success(t('inviteLinks.created', 'Invite link created'));
+                await createInviteLink(
+                    {
+                        agencyId: Number(values.agencyId),
+                        expiresInDays: values.expiresInDays ? Number(values.expiresInDays) : undefined,
+                    },
+                    Number(values.tenantId),
+                );
+                message.success(t('inviteLinks.created'));
                 loadLinks();
             } catch {
-                message.error(t('inviteLinks.error.createFailed', 'Could not create invite link'));
+                message.error(t('inviteLinks.error.createFailed'));
             } finally {
                 setSubmitting(false);
             }
@@ -86,19 +91,14 @@ export const InviteLinksPage = () => {
         [t, loadLinks],
     );
 
-    const buildUrl = (link: AgencyInviteLinkDTO) => {
-        // The user-facing app is served from app.oriso-dev.site (single-domain
-        // multi-tenancy). Swap the api subdomain for app.
-        const host = mainURL.replace('api.', 'app.');
-        return `${host}/invite/${link.token}`;
-    };
+    const buildUrl = (link: AgencyInviteLinkDTO) => `${appURL}/invite/${link.token}`;
 
     const copyLink = (link: AgencyInviteLinkDTO) => {
         const url = buildUrl(link);
         navigator.clipboard
             .writeText(url)
-            .then(() => message.success(t('inviteLinks.copied', { defaultValue: 'Link copied' })))
-            .catch(() => message.error(t('inviteLinks.copyFailed', 'Copy failed')));
+            .then(() => message.success(t('inviteLinks.copied')))
+            .catch(() => message.error(t('inviteLinks.copyFailed')));
     };
 
     const statusTag = (status: AgencyInviteLinkDTO['status']) => {
@@ -112,46 +112,46 @@ export const InviteLinksPage = () => {
 
     const columns = [
         {
-            title: t('inviteLinks.col.createDate', 'Created'),
+            title: t('inviteLinks.col.createDate'),
             dataIndex: 'createDate',
             key: 'createDate',
             render: (v: string) => new Date(v).toLocaleString(),
         },
         {
-            title: t('inviteLinks.col.createdBy', 'Created by'),
+            title: t('inviteLinks.col.createdBy'),
             dataIndex: 'createdByUsername',
             key: 'createdByUsername',
         },
         {
-            title: t('inviteLinks.col.agency', 'Agency'),
+            title: t('inviteLinks.col.agency'),
             dataIndex: 'agencyId',
             key: 'agencyId',
         },
         {
-            title: t('inviteLinks.col.status', 'Status'),
+            title: t('inviteLinks.col.status'),
             dataIndex: 'status',
             key: 'status',
             render: statusTag,
         },
         {
-            title: t('inviteLinks.col.expiresAt', 'Expires'),
+            title: t('inviteLinks.col.expiresAt'),
             dataIndex: 'expiresAt',
             key: 'expiresAt',
             render: (v: string | null) => (v ? new Date(v).toLocaleString() : '—'),
         },
         {
-            title: t('inviteLinks.col.usedAt', 'Used'),
+            title: t('inviteLinks.col.usedAt'),
             dataIndex: 'usedAt',
             key: 'usedAt',
             render: (v: string | null) => (v ? new Date(v).toLocaleString() : '—'),
         },
         {
-            title: t('inviteLinks.col.link', 'Link'),
+            title: t('inviteLinks.col.link'),
             key: 'link',
             render: (_: any, record: AgencyInviteLinkDTO) => (
                 <Space>
                     <Button size="small" onClick={() => copyLink(record)}>
-                        {t('inviteLinks.copy', 'Copy')}
+                        {t('inviteLinks.copy')}
                     </Button>
                 </Space>
             ),
@@ -160,44 +160,32 @@ export const InviteLinksPage = () => {
 
     return (
         <Page>
-            <Page.Title
-                titleKey="inviteLinks.title"
-                subTitle={
-                    t(
-                        'inviteLinks.subtitle',
-                        'Share these single-use links; opening one auto-registers the visitor as an anonymous user for the chosen agency.',
-                    ) as unknown as string
-                }
-            />
+            <Page.Title titleKey="inviteLinks.title" subTitle={t('inviteLinks.subtitle') as string} />
             <Form form={form} layout="inline" onFinish={onGenerate} style={{ marginBottom: 24, gap: 12 }}>
-                <Form.Item name="tenantId" label={t('inviteLinks.form.tenant', 'Tenant')} rules={[{ required: true }]}>
+                <Form.Item name="tenantId" label={t('inviteLinks.form.tenant')} rules={[{ required: true }]}>
                     <Select
                         style={{ minWidth: 200 }}
-                        placeholder={t('inviteLinks.form.tenantPh', 'Select tenant')}
+                        placeholder={t('inviteLinks.form.tenantPh')}
                         disabled={!isSuperAdmin}
                         options={tenants.map((tn) => ({ value: tn.id, label: tn.name }))}
                     />
                 </Form.Item>
-                <Form.Item name="agencyId" label={t('inviteLinks.form.agency', 'Agency')} rules={[{ required: true }]}>
+                <Form.Item name="agencyId" label={t('inviteLinks.form.agency')} rules={[{ required: true }]}>
                     <Select
                         style={{ minWidth: 240 }}
-                        placeholder={t('inviteLinks.form.agencyPh', 'Select agency')}
+                        placeholder={t('inviteLinks.form.agencyPh')}
                         options={filteredAgencies.map((a: any) => ({
                             value: a.id,
                             label: `${a.postcode || ''} ${a.name}`.trim(),
                         }))}
                     />
                 </Form.Item>
-                <Form.Item
-                    name="expiresInDays"
-                    label={t('inviteLinks.form.expiresInDays', 'Expires in (days)')}
-                    initialValue={30}
-                >
+                <Form.Item name="expiresInDays" label={t('inviteLinks.form.expiresInDays')} initialValue={30}>
                     <InputNumber min={1} max={365} />
                 </Form.Item>
                 <Form.Item>
                     <Button type="primary" htmlType="submit" loading={submitting}>
-                        {t('inviteLinks.generate', 'Generate link')}
+                        {t('inviteLinks.generate')}
                     </Button>
                 </Form.Item>
             </Form>

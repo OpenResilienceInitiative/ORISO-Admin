@@ -1,0 +1,38 @@
+# .understandignore - patterns for files/dirs to exclude from analysis
+# Syntax: same as .gitignore (globs, # comments, ! negation, trailing / for dirs)
+# Built-in defaults already exclude node_modules, .git, build outputs, locks, media, fonts, minified files, and maps.
+
+# --- From .gitignore (uncomment to exclude) ---
+
+# /node_modules
+# /.pnp
+# .pnp.js
+# /coverage
+# /build
+# .DS_Store
+# .env.local
+# .env.development.local
+# .env.test.local
+# .env.production.local
+# /.vite/
+# npm-debug.log*
+# yarn-debug.log*
+# yarn-error.log*
+# /.idea/
+# .history
+# .env
+# graphify-out/*
+
+# --- Project-specific scratch and heavy artifacts ---
+
+cypress/videos/
+cypress/screenshots/
+coverage/
+build/
+dist/
+
+# --- Test file patterns (uncomment to exclude) ---
+
+# *.test.*
+# *.spec.*
+# *.snap

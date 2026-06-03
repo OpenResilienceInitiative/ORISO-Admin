@@ -1,0 +1,12 @@
+flowchart TD
+  Source[ORISO-Admin source] --> Build[npm run build]
+  Build --> Static[build/ static app]
+  Static --> Dockerfile[Dockerfile]
+  Dockerfile --> Nginx[onlineberatung nginx image]
+  Nginx --> Path[/usr/share/nginx/html/admin]
+  Nginx --> Config[nginx.conf]
+  Config --> Container[admin container]
+  Container --> Service[Kubernetes service admin:9000]
+  Service --> Ingress[ingress.yaml admin.oriso.site]
+  Ingress --> Browser[Browser /admin]
+

@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Form, Select } from 'antd';
 import { ValidateStatus } from 'antd/es/form/FormItem';
 import classNames from 'classnames';
-import { Rule } from 'rc-field-form/lib/interface';
+import { Rule } from 'antd/es/form';
 import DisabledContext from 'antd/es/config-provider/DisabledContext';
 import { useContext } from 'react';
 import styles from './styles.module.scss';

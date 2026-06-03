@@ -39,6 +39,7 @@ import { AgencyEditInitialMeeting } from './pages/Agency/EditInitialMeeting';
 import { SupervisorLogsPage } from './pages/Logs/SupervisorLogs';
 import { InactiveAccountAuditLogsPage } from './pages/Logs/InactiveAccountAuditLogs';
 import { InviteLinksPage } from './pages/InviteLinks';
+import { ExternalInboundsTab, LinksIndexRedirect, LinksPage } from './pages/Links';
 import {
     GlobalLoginSettingsPage,
     GlobalSettingsIndexRedirect,
@@ -202,6 +203,18 @@ export const App = () => {
                     <Route path="/admin/users/tenant-admins/:id" element={<TenantAdminEditOrAdd />} />
                     <Route path="/admin/users/:typeOfUsers/:id" element={<UserEditOrAdd />} />
                     <Route path="/admin/invite-links" element={<InviteLinksPage />} />
+                    <Route path="/admin/links" element={<LinksPage />}>
+                        <Route index element={<LinksIndexRedirect />} />
+                        <Route
+                            path="tenants"
+                            element={<Navigate to={routePathNames.linksExternalInbounds} replace />}
+                        />
+                        <Route
+                            path="counsellor"
+                            element={<Navigate to={routePathNames.linksExternalInbounds} replace />}
+                        />
+                        <Route path="external-inbounds" element={<ExternalInboundsTab />} />
+                    </Route>
                 </Routes>
             </ProtectedPageLayoutWrapper>
         </FeatureProvider>

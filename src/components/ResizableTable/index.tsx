@@ -2,6 +2,7 @@ import { Table as AntTable } from 'antd';
 import { ColumnProps, TableProps } from 'antd/lib/table';
 import classNames from 'classnames';
 import { useCallback, useState } from 'react';
+import listingTableStyles from '../ListingTable/styles.module.scss';
 import ResizableTitle from './Resizable/Resizable';
 import styles from './styles.module.scss';
 

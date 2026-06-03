@@ -2,6 +2,7 @@ import { message } from 'antd';
 import i18next from 'i18next';
 import { getValueFromCookie } from './auth/accessSessionCookie';
 import generateCsrfToken from '../utils/generateCsrfToken';
+import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
 
 import logout from './auth/logout';
 import routePathNames, { CSRF_WHITELIST_HEADER } from '../appConfig';
@@ -34,11 +35,13 @@ export const FETCH_ERRORS = {
 
 export const X_REASON = {
     EMAIL_NOT_AVAILABLE: 'EMAIL_NOT_AVAILABLE',
+    USERNAME_NOT_AVAILABLE: 'USERNAME_NOT_AVAILABLE',
     NUMBER_OF_LICENSES_EXCEEDED: 'NUMBER_OF_LICENSES_EXCEEDED',
     SUBDOMAIN_NOT_UNIQUE: 'SUBDOMAIN_NOT_UNIQUE',
     CONSULTANT_HAS_ACTIVE_OR_ARCHIVE_SESSIONS: 'CONSULTANT_HAS_ACTIVE_OR_ARCHIVE_SESSIONS',
     CONSULTANT_IS_THE_LAST_OF_AGENCY_AND_AGENCY_IS_STILL_ACTIVE:
         'CONSULTANT_IS_THE_LAST_OF_AGENCY_AND_AGENCY_IS_STILL_ACTIVE',
+    PASSWORD_NOT_VALID: 'PASSWORD_NOT_VALID',
 };
 
 export const FETCH_SUCCESS = {
@@ -106,11 +109,14 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
         // Remove Authorization from headersData if it exists to avoid duplication
         const { Authorization: removedAuth, ...otherHeadersData } = (props.headersData as any) || {};
 
+        const normalizedLanguage = normalizeLanguage(i18next.resolvedLanguage || i18next.language) || DEFAULT_LANGUAGE;
+
         const req = new Request(props.url, {
             method: props.method,
             headers: {
                 'Content-Type': 'application/json',
                 'cache-control': 'no-cache',
+                'Accept-Language': normalizedLanguage,
                 ...authorization,
                 'X-CSRF-TOKEN': csrfToken,
                 ...otherHeadersData,

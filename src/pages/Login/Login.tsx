@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 
 import { Col, Row } from 'antd';
-import { useTranslation } from 'react-i18next';
 import Stage from './Stage';
 import PublicPageLayoutWrapper from '../../components/Layout/PublicPageLayoutWrapper';
+import { LanguageSelector } from '../../components/LanguageSelector';
 import LoginForm from './LoginForm';
 import routePathNames from '../../appConfig';
 import { getValueFromCookie } from '../../api/auth/accessSessionCookie';
@@ -22,7 +22,7 @@ import { useAppConfigContext } from '../../context/useAppConfig';
 export const Login = () => {
     const { settings } = useAppConfigContext();
     const accessToken = getValueFromCookie('keycloak');
-    const currentTime = new Date().getTime();
+    const currentTime = Date.now();
     const tokenExpiry = getTokenExpiryFromLocalStorage();
     const { data: tenantData } = usePublicTenantData();
     const { hasRole, isTechnicalAccount } = useUserRoles();
@@ -31,7 +31,6 @@ export const Login = () => {
     const refreshTokenValidInMs = tokenExpiry.refreshTokenValidUntilTime - currentTime;
 
     const [redirectUrl, setRedirectUrl] = useState('');
-    const { t } = useTranslation();
     const isTenantAdmin = hasRole(UserRole.TenantAdmin);
     const isAdminUser = hasRole([
         UserRole.TenantAdmin,
@@ -70,7 +69,6 @@ export const Login = () => {
         accessTokenValidInMs,
         refreshTokenValidInMs,
         tenantData,
-        t,
         isTechnicalAccount,
         isAdminUser,
         isTenantAdmin,
@@ -81,6 +79,9 @@ export const Login = () => {
         <Navigate to={redirectUrl} />
     ) : (
         <PublicPageLayoutWrapper className="login flex-col flex">
+            <div className="loginLanguageSelector">
+                <LanguageSelector variant="login" ariaLabelKey="language.loginSelectAriaLabel" />
+            </div>
             <Stage />
             <Row align="middle" style={{ flex: '1 0 auto' }}>
                 <Col xs={{ span: 10, offset: 1 }} md={{ span: 6, offset: 3 }} xl={{ span: 4, offset: 6 }}>
