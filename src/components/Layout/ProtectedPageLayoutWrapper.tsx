@@ -137,18 +137,17 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 </li>
                             )}
 
-                            {can(PermissionAction.Read, Resource.Agency) &&
-                                !hasRole(UserRole.RestrictedAgencyAdmin) && (
-                                    <li className="menuItem">
-                                        <NavLink
-                                            to={routePathNames.agency}
-                                            className={classNames({ active: checkActive(routePathNames.agency) })}
-                                        >
-                                            <NavIcon path={routePathNames.agency} />
-                                            <span>{t('agency')}</span>
-                                        </NavLink>
-                                    </li>
-                                )}
+                            {can(PermissionAction.Read, Resource.Agency) && !hasRole(UserRole.RestrictedAgencyAdmin) && (
+                                <li className="menuItem">
+                                    <NavLink
+                                        to={routePathNames.agency}
+                                        className={classNames({ active: checkActive(routePathNames.agency) })}
+                                    >
+                                        <NavIcon path={routePathNames.agency} />
+                                        <span>{t('agency')}</span>
+                                    </NavLink>
+                                </li>
+                            )}
 
                             {/* {can(PermissionAction.Read, Resource.Topic) && isEnabled(FeatureFlag.Topics) && (
                                 <li key="topics" className="menuItem">

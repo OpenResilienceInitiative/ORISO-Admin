@@ -1,7 +1,6 @@
 import { LoginData } from '../../types/loginData';
 import { loginEndpoint } from '../../appConfig';
 
-import { encodeUsername } from '../../utils/encryptionHelpers';
 import { FetchErrorWithOptions, FETCH_ERRORS } from '../fetchData';
 
 const getKeycloakAccessToken = (loginProps: {
@@ -67,7 +66,7 @@ const getKeycloakAccessToken = (loginProps: {
                     reject(new Error('keycloakLogin'));
                 }
             })
-            .catch((error) => {
+            .catch(() => {
                 // console.log('🔍 getKeycloakAccessToken: Fetch error:', error);
                 reject(new Error('keycloakLogin'));
             });

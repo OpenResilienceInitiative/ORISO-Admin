@@ -1,5 +1,6 @@
 export interface AppRuntimeConfig {
     API_URL?: string;
+    KEYCLOAK_URL?: string;
     APP_URL?: string;
     MATRIX_URL?: string;
     KEYCLOAK_REALM?: string;

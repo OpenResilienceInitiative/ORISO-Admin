@@ -118,6 +118,7 @@ type PermissionToggleVisibility = {
 
 const DEFAULT_PERMISSION_SETTINGS = {
     featureAnonymousChatEnabled: true,
+    featureGroupChatV2Enabled: true,
     featureCallsEnabled: true,
     featureSupervisionEnabled: true,
     featureSupervisionAnonymousChatsEnabled: true,
@@ -223,6 +224,7 @@ const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
         titleKey: 'tenants.permissions.card.oneOnOne.title',
         descriptionKey: 'tenants.permissions.card.oneOnOne.description',
         Icon: OneOnOneIcon,
+        masterField: ['settings', 'featureCallsEnabled'],
         toggles: [
             {
                 labelKey: 'tenants.permissions.feature.videoCalls',
@@ -251,6 +253,7 @@ const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
         titleKey: 'tenants.permissions.card.liveChat.title',
         descriptionKey: 'tenants.permissions.card.liveChat.description',
         Icon: LiveChatIcon,
+        masterField: ['settings', 'featureAnonymousChatEnabled'],
         toggles: [
             {
                 labelKey: 'tenants.permissions.feature.videoCalls',
@@ -279,6 +282,7 @@ const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
         titleKey: 'tenants.permissions.card.group.title',
         descriptionKey: 'tenants.permissions.card.group.description',
         Icon: GroupIcon,
+        masterField: ['settings', 'featureGroupChatV2Enabled'],
         toggles: [
             {
                 labelKey: 'tenants.permissions.feature.videoCalls',
@@ -324,6 +328,22 @@ const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
         ],
     },
 ];
+
+const ONE_ON_ONE_CALL_TOGGLE_FIELDS = new Set([
+    'featureVideoCallsOneOnOneChatsEnabled',
+    'featureAudioCallsOneOnOneChatsEnabled',
+]);
+
+const isSubToggleDisabled = (card: ChatTypeCardDef, toggleField: string[], masterEnabled: boolean): boolean => {
+    const fieldKey = toggleField[1];
+    if (card.key === 'oneOnOne' && ONE_ON_ONE_CALL_TOGGLE_FIELDS.has(fieldKey)) {
+        return !masterEnabled;
+    }
+    if (card.masterField) {
+        return !masterEnabled;
+    }
+    return false;
+};
 
 export const PermissionsSettings = ({ tenantId, forcedOffToggles, superAdminControlMode }: PermissionsSettingsArgs) => {
     const { t } = useTranslation();
@@ -440,7 +460,11 @@ export const PermissionsSettings = ({ tenantId, forcedOffToggles, superAdminCont
                                                     <CheckToggle
                                                         name={toggle.field}
                                                         label={t(toggle.labelKey)}
-                                                        disabled={!masterEnabled}
+                                                        disabled={isSubToggleDisabled(
+                                                            card,
+                                                            toggle.field,
+                                                            masterEnabled,
+                                                        )}
                                                     />
                                                 </div>
                                             ))}

@@ -27,9 +27,7 @@ i18n.use(initReactI18next).init({
 
     resources: {
         en: {
-            // Keep English overrides, but backfill keys that do not yet have
-            // translated EN values so key lookups never break.
-            translations: { ...translationDe, ...translationEn },
+            translations: translationEn,
         },
         de: {
             translations: translationDe,

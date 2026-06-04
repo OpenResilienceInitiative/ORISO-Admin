@@ -12,19 +12,15 @@ type FetchUserSearchParams = {
     pageSize?: number;
 };
 
-const emptyList = (current = 1, pageSize = 10): ResponseList<CounselorData> => ({
+const emptyList = (): ResponseList<CounselorData> => ({
     data: [],
     total: 0,
-    page: current,
-    perPage: pageSize,
 });
 
 export const fetchUserSearchWithSortFallback = async ({
     url,
     sortBy,
     order,
-    current = 1,
-    pageSize = 10,
 }: FetchUserSearchParams): Promise<ResponseList<CounselorData>> => {
     const field = sortBy || USER_TABLE_API_SAFE_SORT;
     const sortOrder = order || USER_TABLE_API_SAFE_ORDER;
@@ -41,12 +37,12 @@ export const fetchUserSearchWithSortFallback = async ({
         return await request(field, sortOrder);
     } catch {
         if (field === USER_TABLE_API_SAFE_SORT && sortOrder === USER_TABLE_API_SAFE_ORDER) {
-            return emptyList(current, pageSize);
+            return emptyList();
         }
         try {
             return await request(USER_TABLE_API_SAFE_SORT, USER_TABLE_API_SAFE_ORDER);
         } catch {
-            return emptyList(current, pageSize);
+            return emptyList();
         }
     }
 };
