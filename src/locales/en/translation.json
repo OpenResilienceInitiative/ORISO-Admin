@@ -557,9 +557,9 @@
     "topics.title.text": "Create and edit topics",
     "twoFactorAuth.subtitle": "Use an additional app to sign in to your Online Counseling & Help account. This makes your account more secure against unauthorized access.",
     "twoFactorAuth.title": "Two-factor authentication",
-    "users.sectionPills.counsellorAdmins": "Agency admins",
-    "users.sectionPills.counsellors": "Consultants",
-    "users.sectionPills.platformAdmins": "Platform admins",
-    "users.sectionPills.tenantAdmins": "Tenant admins",
-    "users.sectionPills.tenants": "Tenants"
+    "users.sectionPills.counsellorAdmins": "Counsellor Admin",
+    "users.sectionPills.counsellors": "Counsellors",
+    "users.sectionPills.platformAdmins": "Platform Admin",
+    "users.sectionPills.tenantAdmins": "Volunteers",
+    "users.sectionPills.tenants": "Tenant Admin"
 }
