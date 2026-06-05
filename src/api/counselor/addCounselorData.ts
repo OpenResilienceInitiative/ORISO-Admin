@@ -9,6 +9,16 @@ import { putAgenciesForCounselor } from '../agency/putAgenciesForCounselor';
  * @param counselorData
  * @return data
  */
+const parseTopicIds = (counselorData: Record<string, any>): number[] | undefined => {
+    const topics = counselorData?.topicIds || counselorData?.topics;
+    const topicIds = topics
+        ?.map((topic) => (typeof topic === 'string' ? topic : topic?.value || topic?.id))
+        .filter((id) => id != null && !Number.isNaN(Number(id)))
+        .map((id) => Number(id));
+
+    return topicIds?.length ? topicIds : undefined;
+};
+
 export const addCounselorData = (counselorData: Record<string, any>): Promise<CounselorData> => {
     const {
         firstname,
@@ -23,6 +33,8 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
         tenantId,
     } = counselorData;
 
+    const topicIds = parseTopicIds(counselorData);
+
     // just use needed data from whole form data
     const strippedCounselor = {
         firstname,
@@ -35,6 +47,7 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
         twoFactorAuth,
         isGroupchatConsultant,
         tenantId: parseInt(tenantId, 10),
+        ...(topicIds && { topicIds }),
     };
 
     return (
