@@ -1,6 +1,8 @@
 import { useLocation } from 'react-router';
 import { useState } from 'react';
 import routePathNames from '../../appConfig';
+import { ReactComponent as DisplaySettingsActiveIcon } from '../../resources/img/svg/navbar/display_settings_active.svg';
+import { ReactComponent as DisplaySettingsInactiveIcon } from '../../resources/img/svg/navbar/display_settings_inactive.svg';
 import { ReactComponent as SettingsActiveIcon } from '../../resources/img/svg/navbar/settings_active.svg';
 import { ReactComponent as SettingsInactiveIcon } from '../../resources/img/svg/navbar/settings_inactive.svg';
 import { ReactComponent as TenantsActiveIcon } from '../../resources/img/svg/navbar/tenants_active.svg';
@@ -28,6 +30,7 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
 
     switch (path) {
         case routePathNames.themeSettings:
+            return currentlySelected ? <DisplaySettingsActiveIcon /> : <DisplaySettingsInactiveIcon />;
         case routePathNames.globalSettings:
             return currentlySelected ? <SettingsActiveIcon /> : <SettingsInactiveIcon />;
         case '/admin/users':

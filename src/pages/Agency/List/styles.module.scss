@@ -1,10 +1,118 @@
 .searchNewContainer {
     display: flex;
-    gap: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px 24px;
+    width: 100%;
+    max-width: 529px;
+    min-width: 0;
+
+    @media (max-width: 767px) {
+        max-width: 100%;
+    }
+}
+
+.searchField {
+    flex: 1 1 320px;
+    min-width: 0;
+    width: 100%;
+}
+
+.toolbarActions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+.addButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.addButtonIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+
+    svg {
+        display: block;
+        width: 14px;
+        height: 14px;
+        overflow: visible;
+    }
+}
+
+.tableContainer {
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    :global {
+        .ant-table {
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .ant-table-container,
+        .ant-table-content {
+            min-width: 0;
+        }
+
+        .ant-table-thead > tr > th {
+            background: #f4f5f6;
+            border-bottom: none;
+            color: #141c25;
+            font-size: 14px;
+            font-weight: 500;
+            padding-top: 14px;
+            padding-bottom: 14px;
+            white-space: nowrap;
+        }
+
+        .ant-table-thead > tr > th:first-child {
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+        }
+
+        .ant-table-thead > tr > th:last-child {
+            border-top-right-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        .ant-table-tbody > tr > td {
+            color: #141c25;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        .ant-table-tbody > tr:hover > td {
+            background: #fafafa;
+        }
+
+        .agencyList__column,
+        .agencyListOnline__column {
+            min-width: 0;
+        }
+
+        .TopicList__agencies + .TopicList__agencies {
+            margin-top: 6px;
+        }
+
+        .tableActionWrapper {
+            justify-content: flex-end;
+            white-space: nowrap;
+        }
+    }
 }
 
 .tag {
-    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
     border-radius: 30px;
     color: white;
     font-size: 12px;
@@ -21,4 +129,18 @@
 .tagOffline {
     @extend .tag;
     background-color: var(--form-error);
+}
+
+@media (max-width: 767px) {
+    .tableContainer {
+        :global {
+            .ant-table-cell-fix-right,
+            .ant-table-cell-fix-left {
+                position: relative !important;
+                left: auto !important;
+                right: auto !important;
+                overflow: hidden;
+            }
+        }
+    }
 }
