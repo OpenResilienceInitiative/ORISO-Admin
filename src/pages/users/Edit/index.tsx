@@ -20,8 +20,6 @@ import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { convertToOptions } from '../../../utils/convertToOptions';
 import { decodeUsername } from '../../../utils/encryptionHelpers';
 import { FormSwitchField } from '../../../components/FormSwitchField';
-import { useFeatureContext } from '../../../context/FeatureContext';
-import { FeatureFlag } from '../../../enums/FeatureFlag';
 import styles from './styles.module.scss';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
@@ -45,7 +43,6 @@ export const UserEditOrAdd = () => {
     const [form] = Form.useForm();
     const { can } = useUserPermissions();
     const { t } = useTranslation();
-    const { isEnabled } = useFeatureContext();
     const { isSuperAdmin } = useUserRoles();
 
     const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
@@ -73,9 +70,7 @@ export const UserEditOrAdd = () => {
     const prevAgencyIdsRef = useRef<string[] | null>(null);
     const topicsForList = topics?.filter((topic) => !selectedTopicIds.find(({ value }) => value === `${topic.id}`));
     const topicOptions = [
-        ...selectedTopicIds.filter(
-            (selected) => !topics?.some((topic) => `${topic.id}` === selected.value),
-        ),
+        ...selectedTopicIds.filter((selected) => !topics?.some((topic) => `${topic.id}` === selected.value)),
         ...convertToOptions(topicsForList, 'name', 'id'),
     ];
     const hasSelectedAgencies = selectedAgencies.length > 0;
