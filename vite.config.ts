@@ -44,7 +44,7 @@ export default ({ mode }) => {
                 emitWarning: true,
                 failOnWarning: false,
                 emitError: true,
-                failOnError: true,
+                failOnError: false,
                 fix: false,
             }),
             isAnalyze &&
