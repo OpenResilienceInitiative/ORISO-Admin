@@ -179,20 +179,19 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 </li>
                             )}
 
-                            {(can(PermissionAction.Read, Resource.Agency) ||
-                                can(PermissionAction.Read, Resource.AgencyAdminUser) ||
-                                hasRole(UserRole.RestrictedAgencyAdmin)) && (
-                                <li key="invite-links" className="menuItem">
-                                    <NavLink
-                                        to={routePathNames.inviteLinks}
-                                        className={({ isActive }) => (isActive ? 'active' : '')}
-                                    >
-                                        <NavIcon path={routePathNames.inviteLinks} />
-                                        <span>{t('inviteLinks.navTitle')}</span>
-                                    </NavLink>
-                                </li>
-                            )}
-
+                            {!isSuperAdmin &&
+                                can(PermissionAction.Read, Resource.Consultant) &&
+                                !hasRole(UserRole.RestrictedAgencyAdmin) && (
+                                    <li key="logs" className="menuItem">
+                                        <NavLink
+                                            to={routePathNames.logs}
+                                            className={({ isActive }) => (isActive ? 'active' : '')}
+                                        >
+                                            <NavIcon path={routePathNames.logs} />
+                                            <span>{t('logs.title')}</span>
+                                        </NavLink>
+                                    </li>
+                                )}
                             {(can(PermissionAction.Read, Resource.Agency) ||
                                 can(PermissionAction.Read, Resource.AgencyAdminUser) ||
                                 hasRole(UserRole.RestrictedAgencyAdmin)) && (
