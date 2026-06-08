@@ -746,6 +746,7 @@
     "tenantAdmins.form.tenantAssignment": "Trägerzuordnung",
     "tenantAdmins.form.username": "Benutzername",
     "tenantAdmins.form.password": "Passwort",
+    "tenantAdmins.form.passwordConfirmation": "Passwort bestätigen",
     "tenantAdmins.card.credentialsTitle": "Zugangsdaten (optional)",
     "tenantAdmins.card.personalDataTitle": "Persönliche Daten des Träger-Admins",
     "tenantAdmins.card.tenantTitle": "Trägerzuordnung",

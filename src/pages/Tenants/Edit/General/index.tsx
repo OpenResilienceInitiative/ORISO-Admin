@@ -188,6 +188,27 @@ export const GeneralTenantSettings = () => {
                                 />
                             </div>
                             <div className={styles.fieldGroup}>
+                                <div className={styles.description}>{t('tenantAdmins.form.passwordConfirmation')}</div>
+                                <FormPasswordField
+                                    name="tenantAdminPasswordConfirmation"
+                                    placeholderKey="placeholder.password"
+                                    required
+                                    dependencies={['tenantAdminPassword']}
+                                    rules={[
+                                        ({ getFieldValue }) => ({
+                                            validator(_, value) {
+                                                if (!value || getFieldValue('tenantAdminPassword') === value) {
+                                                    return Promise.resolve();
+                                                }
+                                                return Promise.reject(
+                                                    new Error(t('profile.passwordChange.error.passwordsNotMatch')),
+                                                );
+                                            },
+                                        }),
+                                    ]}
+                                />
+                            </div>
+                            <div className={styles.fieldGroup}>
                                 <div className={styles.description}>{t('email')}</div>
                                 <FormInputField
                                     name="tenantAdminEmail"
