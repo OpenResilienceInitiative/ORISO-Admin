@@ -25,17 +25,13 @@ import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { searchTenantData } from '../../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
+import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { useCounselorById } from '../../../hooks/useCounselorById';
 
-const mergeTopicOptions = (current: Option[], toAdd: Option[]): Option[] => {
-    const merged = [...current];
-    toAdd.forEach((option) => {
-        if (!merged.find(({ value }) => value === option.value)) {
-            merged.push(option);
-        }
-    });
-    return merged;
+const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
+    const seen = new Set(current.map(({ value }) => value));
+    return [...current, ...incoming.filter(({ value }) => !seen.has(value))];
 };
 
 export const UserEditOrAdd = () => {
@@ -174,7 +170,7 @@ export const UserEditOrAdd = () => {
             });
             navigate(`/admin/users/${typeOfUsers}/${response.id}`);
         },
-        onError: (error: Error | Response) => {
+        onError: async (error: Error | Response) => {
             if (error instanceof Response) {
                 switch (error.headers.get(FETCH_ERRORS.X_REASON)) {
                     case X_REASON.EMAIL_NOT_AVAILABLE: {
@@ -186,36 +182,35 @@ export const UserEditOrAdd = () => {
                                     FETCH_ERRORS.X_REASON,
                                 )}`,
                             ),
-                            duration: 3,
+                            duration: 8,
                         });
-                        break;
+                        return;
                     }
                     case X_REASON.USERNAME_NOT_AVAILABLE:
                         message.error({
                             content: t('message.error.USERNAME_NOT_AVAILABLE'),
-                            duration: 3,
+                            duration: 8,
                         });
-                        break;
+                        return;
                     case X_REASON.NUMBER_OF_LICENSES_EXCEEDED:
                         message.error({
                             content: t('message.error.NUMBER_OF_LICENSES_EXCEEDED'),
-                            duration: 3,
+                            duration: 8,
                         });
-                        break;
+                        return;
                     case X_REASON.PASSWORD_NOT_VALID:
                         message.error({
                             content: t('message.error.PASSWORD_NOT_VALID'),
-                            duration: 5,
+                            duration: 8,
                         });
-                        break;
+                        return;
                     default:
-                        message.error({
-                            content: t('message.error.default'),
-                            duration: 3,
-                        });
                         break;
                 }
             }
+
+            const content = await extractApiErrorMessage(error);
+            message.error({ content, duration: 8 });
         },
     });
 

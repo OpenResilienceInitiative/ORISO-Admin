@@ -36,11 +36,16 @@ export const Modal = ({
             open
             destroyOnClose
             centered
+            maskClosable
+            keyboard
             onCancel={onClose}
             onOk={onConfirm}
             cancelText={cancelLabelKey && t(cancelLabelKey)}
             okText={okLabelKey && t(okLabelKey)}
             footer={footer}
+            afterClose={() => {
+                document.querySelectorAll('.ant-modal-root:empty').forEach((root) => root.remove());
+            }}
         >
             {contentKey && t(contentKey, contentKeyOptions)}
             {children}

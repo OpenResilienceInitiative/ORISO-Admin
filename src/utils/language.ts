@@ -33,14 +33,7 @@ export const normalizeLanguage = (value?: string | null): SupportedLanguage | nu
 };
 
 export const detectBrowserLanguage = (): SupportedLanguage => {
-    if (typeof navigator === 'undefined') {
-        return DEFAULT_LANGUAGE;
-    }
-
-    const candidates = [...(navigator.languages || []), navigator.language].filter(Boolean);
-    const hasGermanCandidate = candidates.some((candidate) => normalizeLanguage(candidate) === 'de');
-
-    return hasGermanCandidate ? 'de' : DEFAULT_LANGUAGE;
+    return DEFAULT_LANGUAGE;
 };
 
 export const getStoredLanguage = (): SupportedLanguage | null => {
@@ -56,7 +49,7 @@ export const getStoredLanguage = (): SupportedLanguage | null => {
 };
 
 export const getInitialLanguage = (): SupportedLanguage => {
-    return getStoredLanguage() || detectBrowserLanguage();
+    return getStoredLanguage() || DEFAULT_LANGUAGE;
 };
 
 export const storeLanguage = (language: SupportedLanguage): void => {

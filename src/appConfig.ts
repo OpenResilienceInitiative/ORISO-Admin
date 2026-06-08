@@ -89,6 +89,7 @@ const routePathNames = {
     imprint: 'https://www.caritas-beratungundhilfe.de/impressum',
     privacy: 'https://www.caritas-beratungundhilfe.de/datenschutz',
     tenants: '/admin/tenants',
+    usersTenants: '/admin/users/tenants',
     tenantAdmins: '/admin/users/tenant-admins',
     inviteLinks: '/admin/invite-links',
     links: '/admin/links',

@@ -2,6 +2,7 @@ interface ImportMetaEnv {
     readonly VITE_PORT: number;
     readonly VITE_CSRF_WHITELIST_HEADER_FOR_LOCAL_DEVELOPMENT: string;
     readonly VITE_API_URL: string;
+    readonly VITE_KEYCLOAK_URL: string;
     readonly VITE_APP_URL: string;
     readonly VITE_MATRIX_URL: string;
     readonly VITE_KEYCLOAK_REALM: string;
@@ -13,6 +14,7 @@ interface ImportMetaEnv {
     readonly VITE_COOKIES_ALLOWEDLIST: string;
     readonly VITE_APPOINTMENT_SERVICE_URL: string;
     readonly REACT_APP_API_URL: string;
+    readonly REACT_APP_KEYCLOAK_URL: string;
     readonly REACT_APP_MATRIX_URL: string;
 }
 

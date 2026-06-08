@@ -2,9 +2,10 @@ import { usersConsultantsSearchEndpoint } from '../../appConfig';
 
 import { FETCH_METHODS, fetchData } from '../fetchData';
 import removeEmbedded from '../../utils/removeEmbedded';
+import { USER_TABLE_DEFAULT_ORDER, USER_TABLE_DEFAULT_SORT } from '../../constants/userTableSort';
 
-export const DEFAULT_SORT = 'FIRSTNAME';
-export const DEFAULT_ORDER = 'ASC';
+export const DEFAULT_SORT = USER_TABLE_DEFAULT_SORT;
+export const DEFAULT_ORDER = USER_TABLE_DEFAULT_ORDER;
 
 /**
  * retrieve all needed counselor data

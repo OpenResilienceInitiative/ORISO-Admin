@@ -84,6 +84,8 @@ interface PermissionsSettingsArgs {
     visibleToggles?: PermissionToggleVisibility;
     forcedOffToggles?: PermissionToggleVisibility;
     superAdminControlMode?: boolean;
+    /** Hide chat-type cards by key (e.g. liveChat on super-admin settings — managed under Global Configs). */
+    excludeCardKeys?: Array<'oneOnOne' | 'liveChat' | 'group' | 'groupInternal'>;
     // eslint-disable-next-line react/no-unused-prop-types
     showSubToggles?: boolean;
 }
@@ -118,6 +120,7 @@ type PermissionToggleVisibility = {
 
 const DEFAULT_PERMISSION_SETTINGS = {
     featureAnonymousChatEnabled: true,
+    featureGroupChatV2Enabled: true,
     featureCallsEnabled: true,
     featureSupervisionEnabled: true,
     featureSupervisionAnonymousChatsEnabled: true,
@@ -223,6 +226,7 @@ const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
         titleKey: 'tenants.permissions.card.oneOnOne.title',
         descriptionKey: 'tenants.permissions.card.oneOnOne.description',
         Icon: OneOnOneIcon,
+        masterField: ['settings', 'featureCallsEnabled'],
         toggles: [
             {
                 labelKey: 'tenants.permissions.feature.videoCalls',
@@ -251,6 +255,7 @@ const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
         titleKey: 'tenants.permissions.card.liveChat.title',
         descriptionKey: 'tenants.permissions.card.liveChat.description',
         Icon: LiveChatIcon,
+        masterField: ['settings', 'featureAnonymousChatEnabled'],
         toggles: [
             {
                 labelKey: 'tenants.permissions.feature.videoCalls',
@@ -279,6 +284,7 @@ const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
         titleKey: 'tenants.permissions.card.group.title',
         descriptionKey: 'tenants.permissions.card.group.description',
         Icon: GroupIcon,
+        masterField: ['settings', 'featureGroupChatV2Enabled'],
         toggles: [
             {
                 labelKey: 'tenants.permissions.feature.videoCalls',
@@ -325,7 +331,28 @@ const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
     },
 ];
 
-export const PermissionsSettings = ({ tenantId, forcedOffToggles, superAdminControlMode }: PermissionsSettingsArgs) => {
+const ONE_ON_ONE_CALL_TOGGLE_FIELDS = new Set([
+    'featureVideoCallsOneOnOneChatsEnabled',
+    'featureAudioCallsOneOnOneChatsEnabled',
+]);
+
+const isSubToggleDisabled = (card: ChatTypeCardDef, toggleField: string[], masterEnabled: boolean): boolean => {
+    const fieldKey = toggleField[1];
+    if (card.key === 'oneOnOne' && ONE_ON_ONE_CALL_TOGGLE_FIELDS.has(fieldKey)) {
+        return !masterEnabled;
+    }
+    if (card.masterField) {
+        return !masterEnabled;
+    }
+    return false;
+};
+
+export const PermissionsSettings = ({
+    tenantId,
+    forcedOffToggles,
+    superAdminControlMode,
+    excludeCardKeys,
+}: PermissionsSettingsArgs) => {
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id: tenantId });
     const { mutate } = useTenantAdminDataMutation({
@@ -352,6 +379,10 @@ export const PermissionsSettings = ({ tenantId, forcedOffToggles, superAdminCont
         const step = firstCard ? firstCard.offsetWidth + 16 : el.clientWidth * 0.9;
         el.scrollBy({ left: dir === 'left' ? -step : step, behavior: 'smooth' });
     }, []);
+
+    const cardsToRender = excludeCardKeys?.length
+        ? CHAT_TYPE_CARDS.filter((card) => !excludeCardKeys.includes(card.key))
+        : CHAT_TYPE_CARDS;
 
     return (
         <CardEditable
@@ -385,7 +416,7 @@ export const PermissionsSettings = ({ tenantId, forcedOffToggles, superAdminCont
                     ›
                 </button>
                 <div className={styles.cardGrid} ref={gridRef}>
-                    {CHAT_TYPE_CARDS.map((card) => (
+                    {cardsToRender.map((card) => (
                         <Form.Item
                             key={card.key}
                             noStyle
@@ -440,7 +471,11 @@ export const PermissionsSettings = ({ tenantId, forcedOffToggles, superAdminCont
                                                     <CheckToggle
                                                         name={toggle.field}
                                                         label={t(toggle.labelKey)}
-                                                        disabled={!masterEnabled}
+                                                        disabled={isSubToggleDisabled(
+                                                            card,
+                                                            toggle.field,
+                                                            masterEnabled,
+                                                        )}
                                                     />
                                                 </div>
                                             ))}

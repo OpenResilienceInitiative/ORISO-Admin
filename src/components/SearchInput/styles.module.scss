@@ -1,6 +1,7 @@
 .search {
     width: 100%;
-    min-width: 400px;
+    min-width: 0;
+    max-width: 100%;
 
     :global {
         .ant-input-affix-wrapper {

@@ -30,6 +30,8 @@ interface CardEditableProps {
     tooltip?: string;
     allowUnsavedChanges?: boolean;
     editButton?: React.ReactChild;
+    /** When false, the card is view-only (no edit pencil). */
+    allowEdit?: boolean;
 }
 
 export const CardEditable = ({
@@ -51,6 +53,7 @@ export const CardEditable = ({
     tooltip,
     fullHeight,
     editButton = <PenIcon className={styles.pencil} />,
+    allowEdit = true,
 }: CardEditableProps) => {
     const [form] = Form.useForm(formProp);
     const { t } = useTranslation();
@@ -87,6 +90,7 @@ export const CardEditable = ({
             isLoading={isLoading}
             cardTitleClassName={styles.cardTitleClassName}
             cardTitleChildren={
+                allowEdit &&
                 !editMode &&
                 !editing && (
                     <button className={styles.editCard} type="button" onClick={() => setEditing(true)}>
