@@ -180,22 +180,6 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                     </li>
                                 )}
 
-                            {/* Standalone Einladungslinks entry — distinct sidebar slot (same
-                                level as Logs). Visible to super / tenant admins and agency
-                                admins; anyone who can manage agencies or agency-admin users. */}
-                            {(can(PermissionAction.Read, Resource.Agency) ||
-                                can(PermissionAction.Read, Resource.AgencyAdminUser) ||
-                                hasRole(UserRole.RestrictedAgencyAdmin)) && (
-                                <li key="invite-links" className="menuItem">
-                                    <NavLink
-                                        to={routePathNames.inviteLinks}
-                                        className={({ isActive }) => (isActive ? 'active' : '')}
-                                    >
-                                        <NavIcon path={routePathNames.inviteLinks} />
-                                        <span>{t('inviteLinks.navTitle')}</span>
-                                    </NavLink>
-                                </li>
-                            )}
                             {(can(PermissionAction.Read, Resource.Agency) ||
                                 can(PermissionAction.Read, Resource.AgencyAdminUser) ||
                                 hasRole(UserRole.RestrictedAgencyAdmin)) && (
