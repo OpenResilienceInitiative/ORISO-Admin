@@ -1,4 +1,4 @@
-import { Button, Form, InputNumber, message, Select } from 'antd';
+import { Button, Form, message, Select } from 'antd';
 import type { TablePaginationConfig } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,15 +17,6 @@ import { AnonymityTag, StatusTag } from './components/StatusTag';
 
 const LINK_KIND = 'EXTERNAL_INBOUND' as const;
 const DEFAULT_ANONYMITY = 'FULL' as const;
-
-const DEFAULT_EXPIRES_IN_DAYS = 30;
-
-const resolveExpiresInDays = (value: number | null | undefined): number | undefined => {
-    if (value == null || !Number.isFinite(value) || value <= 0) {
-        return undefined;
-    }
-    return value;
-};
 
 export const ExternalInboundsTab = () => {
     const { t } = useTranslation();
@@ -93,7 +84,7 @@ export const ExternalInboundsTab = () => {
     );
 
     const onCreate = useCallback(
-        async (values: { topicId: number; chatType: string; expiresInDays?: number | null }) => {
+        async (values: { topicId: number; chatType: string }) => {
             setSubmitting(true);
             try {
                 await createTopicInviteLink({
@@ -101,7 +92,6 @@ export const ExternalInboundsTab = () => {
                     linkKind: LINK_KIND,
                     chatType: values.chatType as 'LIVE_CHAT',
                     anonymity: DEFAULT_ANONYMITY,
-                    expiresInDays: resolveExpiresInDays(values.expiresInDays),
                 });
                 message.success(t('links.created', 'Link created'));
                 form.resetFields(['topicId']);
@@ -193,7 +183,7 @@ export const ExternalInboundsTab = () => {
                 form={form}
                 className={listingTableStyles.createForm}
                 layout="inline"
-                initialValues={{ chatType: CHAT_TYPE_OPTIONS[0].value, expiresInDays: DEFAULT_EXPIRES_IN_DAYS }}
+                initialValues={{ chatType: CHAT_TYPE_OPTIONS[0].value }}
                 onFinish={onCreate}
             >
                 <div className={listingTableStyles.formFields}>
@@ -216,9 +206,6 @@ export const ExternalInboundsTab = () => {
                         rules={[{ required: true }]}
                     >
                         <Select style={{ minWidth: 160 }} options={CHAT_TYPE_OPTIONS} />
-                    </Form.Item>
-                    <Form.Item name="expiresInDays" label={t('links.form.expiresInDays', 'Expires in days')}>
-                        <InputNumber min={1} max={365} style={{ width: 90 }} />
                     </Form.Item>
                 </div>
                 <Form.Item>
