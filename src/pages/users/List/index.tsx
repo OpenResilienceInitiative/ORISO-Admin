@@ -5,12 +5,7 @@ import { UserManagementTable } from '../management/UserManagementTable';
 import { UserSectionPills } from '../management/UserSectionPills';
 import styles from './styles.module.scss';
 
-const USER_HUB_SECTIONS = new Set<string>([
-    TypeOfUser.Tenants,
-    TypeOfUser.Consultants,
-    TypeOfUser.AgencyAdmins,
-    TypeOfUser.TenantAdmins,
-]);
+const USER_HUB_SECTIONS = new Set<string>([TypeOfUser.Consultants, TypeOfUser.AgencyAdmins, TypeOfUser.TenantAdmins]);
 
 export const UsersList = () => {
     const { typeOfUsers } = useParams<{ typeOfUsers: TypeOfUser }>();

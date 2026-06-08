@@ -1,9 +1,14 @@
 import { QueryOptions, useQuery, UseQueryOptions } from 'react-query';
 import { tenantAdminsSearchEndpoint } from '../appConfig';
-import { USER_TABLE_DEFAULT_ORDER, USER_TABLE_DEFAULT_SORT } from '../constants/userTableSort';
+import {
+    USER_TABLE_DEFAULT_ORDER,
+    USER_TABLE_DEFAULT_SORT,
+    normalizeTenantAdminSortField,
+} from '../constants/userTableSort';
 import { CounselorData } from '../types/counselor';
 import { ResponseList } from '../types/ResponseList';
 import { fetchUserSearchWithSortFallback } from '../utils/fetchUserSearchWithSortFallback';
+import { TENANT_ADMINS_QUERY_KEY } from './useTenantUserAdminData';
 
 interface TenantUserAdminDataProps extends UseQueryOptions<ResponseList<CounselorData>> {
     search?: string;
@@ -22,7 +27,7 @@ export const useTenantAdminsData = ({
     ...options
 }: TenantUserAdminDataProps = {}) => {
     return useQuery(
-        ['TENANT_ADMINS', search, current, sortBy, order, pageSize],
+        [TENANT_ADMINS_QUERY_KEY, search, current, sortBy, order, pageSize],
         () =>
             fetchUserSearchWithSortFallback({
                 url: `${tenantAdminsSearchEndpoint}?query=${encodeURIComponent(search || '*')}&page=${
@@ -30,9 +35,13 @@ export const useTenantAdminsData = ({
                 }&perPage=${pageSize || 10}`,
                 sortBy: sortBy || USER_TABLE_DEFAULT_SORT,
                 order: order || USER_TABLE_DEFAULT_ORDER,
-                current,
-                pageSize,
+                normalizeSortField: normalizeTenantAdminSortField,
             }),
-        options as QueryOptions<ResponseList<CounselorData>>,
+        {
+            ...options,
+            retry: false,
+            refetchOnMount: 'always',
+            refetchOnWindowFocus: false,
+        } as QueryOptions<ResponseList<CounselorData>>,
     );
 };

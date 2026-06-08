@@ -178,7 +178,7 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                                 `message.error.${response.headers.get(FETCH_ERRORS.X_REASON)}`,
                                 'message.error.default',
                             ]),
-                            duration: 3,
+                            duration: 8,
                         });
 
                         reject(new Error(FETCH_ERRORS.CATCH_ALL));

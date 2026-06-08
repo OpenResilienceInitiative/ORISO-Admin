@@ -47,7 +47,12 @@ export const useUserRolesToPermission = () => {
             Language: { update: true },
             LegalText: { read: true, update: true },
             Statistic: { read: isStatisticsEnabled },
-            TenantAdminUser: { read: true, create: true, update: true, delete: true },
+            TenantAdminUser: {
+                read: isSuperAdmin,
+                create: isSuperAdmin,
+                update: isSuperAdmin,
+                delete: isSuperAdmin,
+            },
             // Tenant admins also manage the agency admins inside their tenant.
             AgencyAdminUser: { read: true, create: true, update: true, delete: true },
         },
@@ -58,7 +63,7 @@ export const useUserRolesToPermission = () => {
             Tenant: { read: !isMultiTenancyWithSingleDomain, update: !isMultiTenancyWithSingleDomain },
             Language: { update: !settings.multitenancyWithSingleDomainEnabled },
             LegalText: {
-                read: singleCanEditLegalText,
+                read: isMultiTenancyWithSingleDomain || singleCanEditLegalText,
                 update: singleCanEditLegalText,
             },
             Statistic: { read: isStatisticsEnabled },

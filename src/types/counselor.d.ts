@@ -1,5 +1,6 @@
 import { AgencyData } from './agency';
 import { Status } from './status';
+import { TopicData } from './topic';
 
 export interface CounselorData {
     lastname: string;
@@ -26,4 +27,6 @@ export interface CounselorData {
     tenantSubdomain?: string;
     createDate?: string;
     updateDate?: string;
+    topics?: TopicData[];
+    topicIds?: Array<{ value: string; label: string }> | string[];
 }

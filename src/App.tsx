@@ -10,6 +10,7 @@ import { Statistic } from './pages/Statistic';
 import { UserProfile } from './pages/Profile/UserProfile';
 import { Initialization } from './components/Layout/Initialization';
 import { AgencyList } from './pages/Agency/List';
+import { TenantsList } from './pages/Tenants/List';
 import { useTenantData } from './hooks/useTenantData.hook';
 import { FeatureProvider } from './context/FeatureContext';
 import { AgencyPageEdit } from './pages/Agency/Edit';
@@ -30,7 +31,10 @@ import { TenantGlobalSettings } from './pages/Tenants/Edit/GlobalSettings';
 import { SingleLegalSettings } from './pages/Tenants/Edit/LegalSettings';
 import { AppSettingsPage } from './pages/TenantSettings/AppSettings';
 import { PermissionsSettingsPage } from './pages/TenantSettings/PermissionsSettings';
-import { SmtpSettingsPage } from './pages/TenantSettings/SmtpSettings';
+import { UnifiedSmtpSettingsPage } from './pages/TenantSettings/UnifiedSmtpSettings';
+import { getDefaultSettingsPath } from './constants/settingsTabs';
+import { ReleaseToggle } from './enums/ReleaseToggle';
+import { useReleasesToggle } from './hooks/useReleasesToggle.hook';
 import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { UserRole } from './enums/UserRole';
@@ -40,12 +44,7 @@ import { SupervisorLogsPage } from './pages/Logs/SupervisorLogs';
 import { InactiveAccountAuditLogsPage } from './pages/Logs/InactiveAccountAuditLogs';
 import { InviteLinksPage } from './pages/InviteLinks';
 import { ExternalInboundsTab, LinksIndexRedirect, LinksPage } from './pages/Links';
-import {
-    GlobalLoginSettingsPage,
-    GlobalSettingsIndexRedirect,
-    GlobalSettingsPage,
-    GlobalSmtpSettingsPage,
-} from './pages/GlobalSettings';
+import { GlobalLoginSettingsPage } from './pages/GlobalSettings';
 
 export const App = () => {
     const { data: publicTenantData } = usePublicTenantData();
@@ -55,31 +54,39 @@ export const App = () => {
     const location = useLocation();
     const { hasRole, isSuperAdmin } = useUserRoles();
     const { can } = useUserPermissions();
-
-    // console.log('🔍 App: isLoading:', isLoading);
-    // console.log('🔍 App: tenant data:', data);
-    // console.log('🔍 App: publicTenantData:', publicTenantData);
-    // console.log('🔍 App: settings:', settings);
+    const { isEnabled: isReleaseEnabled } = useReleasesToggle();
 
     const shouldShowThemeSettings =
         (settings.multitenancyWithSingleDomainEnabled && hasRole(UserRole.TenantAdmin)) ||
         (!settings.multitenancyWithSingleDomainEnabled && hasRole(UserRole.SingleTenantAdmin));
 
+    const defaultSettingsPath = getDefaultSettingsPath({
+        isSuperAdmin,
+        shouldShowThemeSettings,
+        can,
+        isTenantSettingsEditEnabled: isReleaseEnabled(ReleaseToggle.TENANT_ADMIN_SETTINGS_EDIT),
+        multitenancyWithSingleDomainEnabled: settings.multitenancyWithSingleDomainEnabled,
+    });
+
     useEffect(() => {
         if (location.pathname === routePathNames.root || location.pathname === `${routePathNames.root}/`) {
             if (can(PermissionAction.Create, Resource.Tenant)) {
-                navigate(routePathNames.usersTenants);
+                navigate(routePathNames.tenants);
                 return;
             }
-            if (can(PermissionAction.Read, Resource.Tenant)) {
-                navigate(routePathNames.themeSettings);
+            if (can(PermissionAction.Read, Resource.Tenant) || can(PermissionAction.Read, Resource.LegalText)) {
+                navigate(defaultSettingsPath);
                 return;
             }
 
-            const redirectPath =
-                can(PermissionAction.Read, Resource.Consultant) || can(PermissionAction.Read, Resource.AgencyAdminUser)
-                    ? routePathNames.consultants
-                    : routePathNames.userProfile;
+            let redirectPath = routePathNames.userProfile;
+            if (can(PermissionAction.Read, Resource.TenantAdminUser)) {
+                redirectPath = routePathNames.tenantAdmins;
+            } else if (can(PermissionAction.Read, Resource.AgencyAdminUser)) {
+                redirectPath = routePathNames.agencyAdmins;
+            } else if (can(PermissionAction.Read, Resource.Consultant)) {
+                redirectPath = routePathNames.consultants;
+            }
             navigate(redirectPath);
         }
     }, []);
@@ -99,8 +106,14 @@ export const App = () => {
         <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
             <ProtectedPageLayoutWrapper>
                 <Routes>
-                    {(canReadTenant || canReadLegalText) && !isSuperAdmin && (
+                    {(canReadTenant || canReadLegalText) && (
                         <Route path={routePathNames.themeSettings} element={<TenantSettingsLayout />}>
+                            {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
+                                <Route
+                                    path={`${routePathNames.themeSettings}/global-config`}
+                                    element={<GlobalLoginSettingsPage />}
+                                />
+                            )}
                             {can(PermissionAction.Read, Resource.Tenant) && (
                                 <Route
                                     path={`${routePathNames.themeSettings}/general`}
@@ -117,7 +130,10 @@ export const App = () => {
                                 />
                             )}
                             {can(PermissionAction.Read, Resource.Tenant) && (
-                                <Route path={`${routePathNames.themeSettings}/smtp`} element={<SmtpSettingsPage />} />
+                                <Route
+                                    path={`${routePathNames.themeSettings}/smtp`}
+                                    element={<UnifiedSmtpSettingsPage />}
+                                />
                             )}
                             {can(PermissionAction.Read, Resource.Tenant) && (
                                 <Route
@@ -125,18 +141,7 @@ export const App = () => {
                                     element={<PermissionsSettingsPage />}
                                 />
                             )}
-                            <Route
-                                index
-                                element={
-                                    <Navigate
-                                        to={`${routePathNames.themeSettings}/${
-                                            can(PermissionAction.Update, Resource.Tenant) && shouldShowThemeSettings
-                                                ? 'general'
-                                                : 'legal'
-                                        }`}
-                                    />
-                                }
-                            />
+                            <Route index element={<Navigate to={defaultSettingsPath} replace />} />
                         </Route>
                     )}
                     <Route path={routePathNames.agency} element={<AgencyList />} />
@@ -162,17 +167,27 @@ export const App = () => {
                     )}
                     <Route path={routePathNames.userProfile} element={<UserProfile />} />
                     {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
-                        <Route path={routePathNames.globalSettings} element={<GlobalSettingsPage />}>
-                            <Route index element={<GlobalSettingsIndexRedirect />} />
-                            <Route path="login" element={<GlobalLoginSettingsPage />} />
-                            <Route path="smtp" element={<GlobalSmtpSettingsPage />} />
-                        </Route>
+                        <>
+                            <Route
+                                path={routePathNames.globalSettings}
+                                element={<Navigate to={`${routePathNames.themeSettings}/global-config`} replace />}
+                            />
+                            <Route
+                                path={`${routePathNames.globalSettings}/login`}
+                                element={<Navigate to={`${routePathNames.themeSettings}/global-config`} replace />}
+                            />
+                            <Route
+                                path={`${routePathNames.globalSettings}/smtp`}
+                                element={<Navigate to={`${routePathNames.themeSettings}/smtp`} replace />}
+                            />
+                        </>
                     )}
                     {can(PermissionAction.Create, Resource.Tenant) && (
                         <>
+                            <Route path={routePathNames.tenants} element={<TenantsList />} />
                             <Route
-                                path={routePathNames.tenants}
-                                element={<Navigate to={routePathNames.usersTenants} replace />}
+                                path={routePathNames.usersTenants}
+                                element={<Navigate to={routePathNames.tenants} replace />}
                             />
                             <Route path={`${routePathNames.tenants}/:id`} element={<TenantEditOrAdd />}>
                                 <Route index element={<Navigate to="./general" />} />
@@ -199,6 +214,7 @@ export const App = () => {
                             </Route>
                         </>
                     )}
+                    <Route path="/admin/users" element={<UsersList />} />
                     <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
                     <Route path="/admin/users/tenant-admins/:id" element={<TenantAdminEditOrAdd />} />
                     <Route path="/admin/users/:typeOfUsers/:id" element={<UserEditOrAdd />} />

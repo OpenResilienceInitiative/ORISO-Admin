@@ -10,6 +10,8 @@ type FetchUserSearchParams = {
     order?: string;
     current?: number;
     pageSize?: number;
+    normalizeSortField?: (field?: string) => string;
+    rethrowOnFailure?: boolean;
 };
 
 const emptyList = (): ResponseList<CounselorData> => ({
@@ -21,8 +23,11 @@ export const fetchUserSearchWithSortFallback = async ({
     url,
     sortBy,
     order,
+    normalizeSortField,
+    rethrowOnFailure = false,
 }: FetchUserSearchParams): Promise<ResponseList<CounselorData>> => {
-    const field = sortBy || USER_TABLE_API_SAFE_SORT;
+    const resolveField = normalizeSortField ?? ((field?: string) => field || USER_TABLE_API_SAFE_SORT);
+    const field = resolveField(sortBy);
     const sortOrder = order || USER_TABLE_API_SAFE_ORDER;
 
     const request = (sortField: string, sortDirection: string) =>
@@ -35,13 +40,19 @@ export const fetchUserSearchWithSortFallback = async ({
 
     try {
         return await request(field, sortOrder);
-    } catch {
+    } catch (primaryError) {
         if (field === USER_TABLE_API_SAFE_SORT && sortOrder === USER_TABLE_API_SAFE_ORDER) {
+            if (rethrowOnFailure) {
+                throw primaryError;
+            }
             return emptyList();
         }
         try {
             return await request(USER_TABLE_API_SAFE_SORT, USER_TABLE_API_SAFE_ORDER);
-        } catch {
+        } catch (fallbackError) {
+            if (rethrowOnFailure) {
+                throw fallbackError;
+            }
             return emptyList();
         }
     }

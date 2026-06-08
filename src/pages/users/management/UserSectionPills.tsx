@@ -1,6 +1,6 @@
+import { useMemo } from 'react';
 import { UserOutlined } from '@ant-design/icons';
 import classNames from 'classnames';
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import routePathNames from '../../../appConfig';
@@ -27,7 +27,6 @@ export const UserSectionPills = () => {
     const pills = useMemo(() => {
         const visible: SectionPill[] = [];
 
-        // Platform admins = super-admin / user-admin (tenantId 0). No list route yet — stub only for that role.
         if (isSuperAdmin) {
             visible.push({
                 id: 'platform-admins',
@@ -36,11 +35,11 @@ export const UserSectionPills = () => {
             });
         }
 
-        if (can(PermissionAction.Create, Resource.Tenant)) {
+        if (can(PermissionAction.Read, Resource.TenantAdminUser)) {
             visible.push({
-                id: 'tenants',
-                labelKey: 'users.sectionPills.tenants',
-                to: routePathNames.usersTenants,
+                id: 'tenant-admins',
+                labelKey: 'users.sectionPills.tenantAdmins',
+                to: routePathNames.tenantAdmins,
             });
         }
 
@@ -57,14 +56,6 @@ export const UserSectionPills = () => {
                 id: 'counsellors',
                 labelKey: 'users.sectionPills.counsellors',
                 to: routePathNames.consultants,
-            });
-        }
-
-        if (can(PermissionAction.Read, Resource.TenantAdminUser)) {
-            visible.push({
-                id: 'tenant-admins',
-                labelKey: 'users.sectionPills.tenantAdmins',
-                to: routePathNames.tenantAdmins,
             });
         }
 

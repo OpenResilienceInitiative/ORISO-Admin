@@ -79,13 +79,7 @@ export const GeneralTenantSettings = () => {
 
                     createTenantAdmin(payload, {
                         onSuccess: completeSuccess,
-                        onError: () => {
-                            // Retry once for transient backend/network issues; if it still fails, rollback tenant creation.
-                            createTenantAdmin(payload, {
-                                onSuccess: completeSuccess,
-                                onError: rollbackAndExit,
-                            });
-                        },
+                        onError: rollbackAndExit,
                     });
                 } else {
                     notification.success({ message: t('tenants.created.modal.title') });
