@@ -26,6 +26,13 @@ import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { searchTenantData } from '../../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
 import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
+import { useTenantTopics } from '../../../hooks/useTenantTopics';
+import { useCounselorById } from '../../../hooks/useCounselorById';
+
+const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
+    const seen = new Set(current.map(({ value }) => value));
+    return [...current, ...incoming.filter(({ value }) => !seen.has(value))];
+};
 
 export const UserEditOrAdd = () => {
     const navigate = useNavigate();
