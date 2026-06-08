@@ -57,11 +57,7 @@
     color: #e7effc;
     background: #4c555f;
     border-radius: 20px;
-    transition:
-        background 160ms ease,
-        color 160ms ease,
-        border-radius 200ms ease,
-        padding 200ms ease;
+    transition: background 160ms ease, color 160ms ease, border-radius 200ms ease, padding 200ms ease;
     white-space: nowrap;
 
     .tabStar {
