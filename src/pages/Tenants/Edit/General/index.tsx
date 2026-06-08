@@ -1,4 +1,4 @@
-import { Button, Col, notification, Row } from 'antd';
+import { Col, notification, Row } from 'antd';
 import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'antd/lib/form/Form';
@@ -16,7 +16,6 @@ import routePathNames from '../../../../appConfig';
 import styles from './styles.module.scss';
 import { TenantAdminData } from '../../../../types/TenantAdminData';
 import { X_REASON } from '../../../../api/fetchData';
-import { useUserRoles } from '../../../../hooks/useUserRoles.hook';
 
 export const GeneralTenantSettings = () => {
     const { id } = useParams<{ id: string }>();
@@ -24,7 +23,6 @@ export const GeneralTenantSettings = () => {
     const navigate = useNavigate();
     const [form] = useForm();
     const { settings } = useAppConfigContext();
-    const { isSuperAdmin } = useUserRoles();
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id, enabled: isEditing });
     const { mutate: createTenantAdmin } = useAddOrUpdateTenantAdmin({});
@@ -222,16 +220,6 @@ export const GeneralTenantSettings = () => {
                                 />
                             </div>
                         </>
-                    )}
-                    {isEditing && isSuperAdmin && (
-                        <div className={styles.fieldGroup}>
-                            <Button
-                                type="default"
-                                onClick={() => navigate(`${routePathNames.tenants}/${id}/global-settings`)}
-                            >
-                                {t('tenants.edit.tabs.globalSettings')}
-                            </Button>
-                        </div>
                     )}
                 </CardEditable>
             </Col>

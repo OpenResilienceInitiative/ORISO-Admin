@@ -116,7 +116,7 @@ export const ExternalInboundsTab = () => {
 
     const formatDate = (value: string | null) => {
         if (!value) {
-            return t('links.never', 'Niemals');
+            return t('links.never', 'Never');
         }
         return new Date(value).toLocaleString();
     };
@@ -141,7 +141,7 @@ export const ExternalInboundsTab = () => {
                 render: (value: string) => formatDate(value),
             },
             {
-                title: t('links.col.createdBy', 'Erstellt von'),
+                title: t('links.col.createdBy', 'Created by'),
                 dataIndex: 'createdByUsername',
                 key: 'createdByUsername',
                 render: (value: string | null) => value || '—',
@@ -153,7 +153,7 @@ export const ExternalInboundsTab = () => {
                 render: (status: TopicInviteLinkDTO['status']) => <StatusTag status={status} />,
             },
             {
-                title: t('links.col.expiresAt', 'Läuft ab'),
+                title: t('links.col.expiresAt', 'Expires'),
                 dataIndex: 'expiresAt',
                 key: 'expiresAt',
                 render: (value: string | null) => formatDate(value),
@@ -169,7 +169,7 @@ export const ExternalInboundsTab = () => {
                 key: 'link',
                 render: (_: unknown, record: TopicInviteLinkDTO) => (
                     <Button size="small" className={listingTableStyles.copyButton} onClick={() => copyLink(record)}>
-                        {t('links.copy', 'Kopieren')}
+                        {t('links.copy', 'Copy')}
                     </Button>
                 ),
             },

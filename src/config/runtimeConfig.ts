@@ -69,6 +69,8 @@ const useApiUrl = readBooleanConfig('USE_API_URL', true);
 const { subdomain, origin } = getLocationVariables();
 
 const apiHost = stripUrlProtocol(readConfigValue('API_URL') ?? '');
+const keycloakHost = readConfigValue('KEYCLOAK_URL');
+const keycloakBaseUrl = keycloakHost ? toAbsoluteUrl(keycloakHost, useHttps) : '';
 const configuredAppHost = stripUrlProtocol(readConfigValue('APP_URL') ?? '');
 const appHost = configuredAppHost || apiHost.replace(/^api\./i, 'app.');
 const matrixHost = stripUrlProtocol(readConfigValue('MATRIX_URL') ?? '');
@@ -86,6 +88,7 @@ export const runtimeConfig = {
     useHttps,
     useApiUrl,
     apiBaseUrl,
+    keycloakBaseUrl,
     appBaseUrl: toAbsoluteUrl(appHost, useHttps) || apiBaseUrl,
     matrixBaseUrl: matrixHost ? toAbsoluteUrl(matrixHost, useHttps) : '',
     keycloakRealm: readConfigValue('KEYCLOAK_REALM') ?? 'online-beratung',
@@ -103,6 +106,12 @@ export const runtimeConfig = {
     appointmentServiceUrl: readConfigValue('APPOINTMENT_SERVICE_URL') ?? 'https://calcom-develop.suchtberatung.digital',
 };
 
-// Auth (Keycloak) is served on the API host: {API_URL}/auth/realms/{realm}/...
-export const keycloakAuthPath = (path: string) =>
-    `${runtimeConfig.apiBaseUrl}/auth/realms/${runtimeConfig.keycloakRealm}${path}`;
+// Dedicated Keycloak hosts use {KEYCLOAK_URL}/realms/{realm}/...
+// Legacy API-hosted auth falls back to {API_URL}/auth/realms/{realm}/...
+export const keycloakAuthPath = (path: string) => {
+    const realmBaseUrl = runtimeConfig.keycloakBaseUrl
+        ? `${runtimeConfig.keycloakBaseUrl}/realms`
+        : `${runtimeConfig.apiBaseUrl}/auth/realms`;
+
+    return `${realmBaseUrl}/${runtimeConfig.keycloakRealm}${path}`;
+};

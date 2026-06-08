@@ -28,7 +28,7 @@ export const TenantEditOrAdd = () => {
     const title = isEditing ? data?.name : newTitle;
 
     const shouldAppearLegalTextTab =
-        can(PermissionAction.Update, Resource.LegalText) &&
+        can(PermissionAction.Read, Resource.LegalText) &&
         (settings.legalContentChangesBySingleTenantAdminsAllowed || !settings.multitenancyWithSingleDomainEnabled);
 
     return (
@@ -57,7 +57,7 @@ export const TenantEditOrAdd = () => {
                         },
                         isSuperAdmin && {
                             to: `/admin/tenants/${id}/global-settings`,
-                            titleKey: 'tenants.edit.tabs.globalSettings',
+                            titleKey: 'settings.subhead.functionAccess',
                         },
                     ]
                 }

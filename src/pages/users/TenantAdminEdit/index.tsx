@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Button, Col, Row, Form, notification } from 'antd';
+import { Button, Col, Row, Form, notification, Typography } from 'antd';
 import { FormInputField } from '../../../components/FormInputField';
+import { FormInputPasswordField } from '../../../components/FormInputPasswordField';
 import { Page } from '../../../components/Page';
 import { SelectFormField } from '../../../components/SelectFormField';
 import { useTenantUserAdminData } from '../../../hooks/useTenantUserAdminData';
@@ -15,6 +16,7 @@ import { getDomain } from '../../../utils/getDomain';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
+import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 
 export const TenantAdminEditOrAdd = () => {
     const { search } = useLocation();
@@ -35,6 +37,13 @@ export const TenantAdminEditOrAdd = () => {
             navigate(routePathNames.tenantAdmins);
             notification.success({
                 message: t(`tenantAdmins.message.${isEditing ? 'update' : 'add'}`),
+            });
+        },
+        onError: async (error) => {
+            const content = await extractApiErrorMessage(error);
+            notification.error({
+                message: content,
+                duration: 8,
             });
         },
     });
@@ -108,6 +117,32 @@ export const TenantAdminEditOrAdd = () => {
                             />
                         </Card>
                     </Col>
+                    {!isEditing && (
+                        <Col span={12} md={6}>
+                            <Card titleKey="tenantAdmins.card.credentialsTitle">
+                                <FormInputField
+                                    name="username"
+                                    labelKey="tenantAdmins.form.username"
+                                    placeholderKey="tenantAdmins.form.username"
+                                />
+                                <Typography.Text type="secondary">{t('tenantAdmins.hint.username')}</Typography.Text>
+                                <FormInputPasswordField
+                                    name="password"
+                                    labelKey="tenantAdmins.form.password"
+                                    placeholderKey="placeholder.password"
+                                    rules={[
+                                        {
+                                            validator: (_, value) =>
+                                                !value || value.length >= 8
+                                                    ? Promise.resolve()
+                                                    : Promise.reject(new Error(t('message.error.password.minLength'))),
+                                        },
+                                    ]}
+                                />
+                                <Typography.Text type="secondary">{t('tenantAdmins.hint.password')}</Typography.Text>
+                            </Card>
+                        </Col>
+                    )}
                     <Col span={12} md={6}>
                         <Card titleKey="tenantAdmins.card.tenantTitle">
                             <SelectFormField

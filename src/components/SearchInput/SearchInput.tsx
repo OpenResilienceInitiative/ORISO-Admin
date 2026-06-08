@@ -1,4 +1,5 @@
 import { Input } from 'antd';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import styles from './styles.module.scss';
 
@@ -6,9 +7,10 @@ interface SearchInputProps {
     handleOnSearch?: (query: string) => void;
     handleOnSearchClear?: () => void;
     placeholder?: string;
+    className?: string;
 }
 
-export const SearchInput = ({ handleOnSearch, handleOnSearchClear, placeholder }: SearchInputProps) => {
+export const SearchInput = ({ handleOnSearch, handleOnSearchClear, placeholder, className }: SearchInputProps) => {
     const { t } = useTranslation();
     let timer: ReturnType<typeof setTimeout>;
     const defaultPlaceholder = t('search-placeholder');
@@ -29,7 +31,7 @@ export const SearchInput = ({ handleOnSearch, handleOnSearchClear, placeholder }
     };
     return (
         <Search
-            className={styles.search}
+            className={classNames(styles.search, className)}
             name="search"
             allowClear
             placeholder={placeholder || defaultPlaceholder}

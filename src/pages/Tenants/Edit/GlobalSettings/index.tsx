@@ -10,7 +10,7 @@ export const TenantGlobalSettings = () => {
 
     return (
         <Row gutter={[24, 24]}>
-            <Col span={12} sm={6}>
+            <Col span={24}>
                 <div className={styles.warningCard}>
                     <strong>{t('tenants.globalSettings.superAdminWarning.title')}</strong>
                     <p>{t('tenants.globalSettings.superAdminWarning.description')}</p>

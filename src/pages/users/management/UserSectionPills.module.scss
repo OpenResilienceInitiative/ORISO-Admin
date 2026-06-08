@@ -1,0 +1,167 @@
+/* Connected pill bar — compact admin layout with horizontal scroll */
+
+.container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-bottom: 20px;
+}
+
+.pillGroupScroll {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #c4c7c8 transparent;
+    padding-bottom: 2px;
+
+    &::-webkit-scrollbar {
+        height: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #c4c7c8;
+        border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: #9aa0a6;
+    }
+}
+
+.pillGroup {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    width: max-content;
+    max-width: none;
+    padding: 2px 0;
+}
+
+.pill {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: none;
+    background: #646d78;
+    color: #e7effc;
+    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    border-radius: 12px;
+    transition:
+        background 160ms ease,
+        color 160ms ease;
+
+    &:hover:not(.pillActive):not(.pillDisabled) {
+        background: #565f69;
+        color: #ffffff;
+    }
+
+    &:focus-visible {
+        outline: 2px solid #141c25;
+        outline-offset: 2px;
+    }
+}
+
+.pillIcon {
+    flex-shrink: 0;
+    font-size: 16px;
+    color: currentColor;
+}
+
+.pillLabel {
+    flex-shrink: 0;
+}
+
+.pillActive {
+    background: #141c25;
+    color: #ffffff;
+    border-radius: 20px;
+
+    &:hover {
+        background: #141c25;
+        color: #ffffff;
+    }
+}
+
+.pillDisabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+
+    &:disabled {
+        pointer-events: none;
+    }
+}
+
+.myAccessButton {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid #c4c7c8;
+    border-radius: 20px;
+    background: rgba(68, 71, 72, 0.08);
+    color: #646d78;
+    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 20px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: not-allowed;
+    white-space: nowrap;
+
+    &:disabled {
+        pointer-events: none;
+    }
+}
+
+.myAccessLabel {
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .pillGroupScroll {
+        width: 100%;
+        margin: 0 -4px;
+        padding: 0 4px 4px;
+    }
+
+    .myAccessButton {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .pill {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+}
