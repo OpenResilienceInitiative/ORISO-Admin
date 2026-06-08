@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import { useDebouncedCallback } from 'use-debounce';
 import { PlusOutlined } from '@ant-design/icons';
-import AddButton from '../../../components/EditableTable/AddButton';
 import { Modal } from '../../../components/Modal';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import SearchInput from '../../../components/SearchInput/SearchInput';
@@ -29,6 +28,7 @@ import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
 import { USER_TABLE_CONFIGS } from './userTableConfigs';
 import { mapSorterToApiField, useUserTableColumns } from './useUserTableColumns';
+import { normalizeTenantAdminSortField } from '../../../constants/userTableSort';
 import styles from './UserManagementTable.module.scss';
 
 interface UserManagementTableProps {
@@ -185,26 +185,33 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         setSearch(value);
     }, 100);
 
-    const handleTableAction = useCallback((pagination: TablePaginationConfig, _: unknown, sorter: any) => {
-        const { current, pageSize } = pagination;
-        setTableState((prev) => {
-            if (sorter?.field) {
-                const apiField = mapSorterToApiField(String(sorter.field)) || String(sorter.field).toUpperCase();
+    const handleTableAction = useCallback(
+        (pagination: TablePaginationConfig, _: unknown, sorter: any) => {
+            const { current, pageSize } = pagination;
+            setTableState((prev) => {
+                if (sorter?.field) {
+                    const mappedField = mapSorterToApiField(String(sorter.field)) || String(sorter.field).toUpperCase();
+                    const apiField =
+                        sectionId === TypeOfUser.TenantAdmins
+                            ? normalizeTenantAdminSortField(mappedField)
+                            : mappedField;
+                    return {
+                        ...prev,
+                        current: current ?? prev.current,
+                        pageSize: pageSize ?? prev.pageSize,
+                        sortBy: apiField,
+                        order: sorter.order === 'descend' ? 'DESC' : 'ASC',
+                    };
+                }
                 return {
                     ...prev,
                     current: current ?? prev.current,
                     pageSize: pageSize ?? prev.pageSize,
-                    sortBy: apiField,
-                    order: sorter.order === 'descend' ? 'DESC' : 'ASC',
                 };
-            }
-            return {
-                ...prev,
-                current: current ?? prev.current,
-                pageSize: pageSize ?? prev.pageSize,
-            };
-        });
-    }, []);
+            });
+        },
+        [sectionId],
+    );
 
     const onCloseDelete = useCallback(() => {
         setDeleteUserId(null);
@@ -271,12 +278,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
             );
         }
 
-        if (isTenantAdmins) {
-            return (
-                <AddButton allowedNumberOfUsers={false} sourceLength={responseList?.total} handleBtnAdd={handleAdd} />
-            );
-        }
-
         return addButton;
     }, [
         allowedNumberOfUsers,
@@ -312,6 +313,11 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                 {isAgencyAdmins && responseList?.total != null && (
                     <span className={styles.sectionCount}>
                         {t('agencyAdmins.title.text', { userCount: responseList.total })}
+                    </span>
+                )}
+                {isTenantAdmins && responseList?.total != null && (
+                    <span className={styles.sectionCount}>
+                        {t('tenantAdmins.title.text', { userCount: responseList.total })}
                     </span>
                 )}
                 {isTenants && responseList?.total != null && (

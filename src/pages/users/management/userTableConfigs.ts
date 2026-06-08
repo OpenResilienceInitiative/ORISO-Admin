@@ -60,6 +60,15 @@ const baseIdentityColumns = (): UserTableColumnConfig[] => [
     col('username', true, false, 150),
 ];
 
+const tenantAdminIdentityColumns = (): UserTableColumnConfig[] => [
+    col('lastUpdated', true, false, 130),
+    col('status', true, false, 60),
+    col('lastname', true, true, 130),
+    col('firstname', true, true, 120),
+    col('email', true, true, 150),
+    col('username', true, false, 150),
+];
+
 const defaultSort: { field: string; order: 'ASC' | 'DESC' } = {
     field: USER_TABLE_DEFAULT_SORT,
     order: USER_TABLE_DEFAULT_ORDER,
@@ -140,7 +149,7 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         editPathPrefix: '/admin/users/tenant-admins',
         searchPlaceholderKey: 'consultant-search-placeholder',
         columns: [
-            ...baseIdentityColumns(),
+            ...tenantAdminIdentityColumns(),
             col('subdomain', true, false, 200),
             col('tenant', true, false, 100),
             col('actions', true, false, 100),
