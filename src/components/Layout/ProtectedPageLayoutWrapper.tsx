@@ -140,7 +140,6 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                     </NavLink>
                                 </li>
                             )}
-
                             {(can(PermissionAction.Read, Resource.Consultant) ||
                                 can(PermissionAction.Read, Resource.AgencyAdminUser) ||
                                 can(PermissionAction.Read, Resource.TenantAdminUser)) && (

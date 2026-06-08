@@ -17,7 +17,7 @@ const PublicPageLayoutWrapper = ({ children, className = '', hideFooter }: Publi
     const { settings } = useAppConfigContext();
 
     useEffect(() => {
-        getPublicTenantData(settings);
+        getPublicTenantData(settings).catch(() => {});
     }, []);
 
     return (
