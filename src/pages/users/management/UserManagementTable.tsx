@@ -1,4 +1,4 @@
-import { Alert, Button, Popover, notification } from 'antd';
+import { Alert, Button, Grid, Popover, notification } from 'antd';
 import { TablePaginationConfig } from 'antd/lib/table';
 import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -36,6 +36,7 @@ interface UserManagementTableProps {
 }
 
 export const UserManagementTable = ({ figmaTableHeader = false }: UserManagementTableProps) => {
+    const screens = Grid.useBreakpoint();
     const { typeOfUsers } = useParams<{ typeOfUsers: TypeOfUser }>();
     const sectionId = typeOfUsers || TypeOfUser.Consultants;
     const config = USER_TABLE_CONFIGS[sectionId] ?? USER_TABLE_CONFIGS[TypeOfUser.Consultants];
@@ -44,6 +45,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const isTenantAdmins = sectionId === TypeOfUser.TenantAdmins;
     const isConsultants = sectionId === TypeOfUser.Consultants;
     const isAgencyAdmins = sectionId === TypeOfUser.AgencyAdmins;
+    const isMobile = !screens.md;
     const consultantsSectionId =
         sectionId === TypeOfUser.AgencyAdmins ? TypeOfUser.AgencyAdmins : TypeOfUser.Consultants;
 
@@ -178,6 +180,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         canEditOrDelete,
         mainTenantSubdomain: settings.mainTenantSubdomainForSingleDomainMultitenancy,
         figmaTableHeader: figmaTableHeader && !isOrganizations,
+        fixActionsColumn: !isMobile,
     }).filter((column) => column.key !== 'status' || config.showStatus);
 
     const setSearchDebounced = useDebouncedCallback((value: string) => {
@@ -333,7 +336,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     style={{ marginBottom: 16 }}
                 />
             )}
-            <div className={classNames({ [styles.tableContainerFigma]: figmaTableHeader })}>
+            <div className={classNames(styles.tableContainer, { [styles.tableContainerFigma]: figmaTableHeader })}>
                 <ResizeTable
                     rowKey="id"
                     loading={isLoading}

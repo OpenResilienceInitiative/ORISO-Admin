@@ -14,8 +14,9 @@
 
 .searchWithButton {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 24px;
+    gap: 16px 24px;
     width: 100%;
     max-width: 529px;
     min-width: 0;
@@ -28,7 +29,7 @@
 }
 
 .searchField {
-    flex: 1 1 auto;
+    flex: 1 1 320px;
     min-width: 0;
     width: 100%;
 }
@@ -54,6 +55,36 @@
 
     @media (min-width: 768px) {
         align-self: center;
+    }
+}
+
+.tableContainer {
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    :global {
+        .ant-table-container,
+        .ant-table-content {
+            min-width: 0;
+        }
+
+        .ant-table-thead > tr > th {
+            white-space: nowrap;
+        }
+
+        .ant-table-tbody > tr > td {
+            vertical-align: middle;
+        }
+
+        .counselorList__column {
+            min-width: 0;
+        }
+
+        .tableActionWrapper {
+            white-space: nowrap;
+        }
     }
 }
 
@@ -87,9 +118,6 @@
 }
 
 .tableContainerFigma {
-    width: 100%;
-    overflow-x: auto;
-
     :global {
         .ant-table-thead > tr > th {
             background: #f4f5f6;
@@ -118,6 +146,30 @@
 
         .ant-table-thead > tr:first-child > th:last-child {
             border-top-right-radius: 12px;
+        }
+    }
+}
+
+@media (max-width: 767px) {
+    .toolbarActions {
+        flex-shrink: 1;
+
+        :global {
+            .ant-btn {
+                min-width: 40px;
+            }
+        }
+    }
+
+    .tableContainer {
+        :global {
+            .ant-table-cell-fix-right,
+            .ant-table-cell-fix-left {
+                position: relative !important;
+                left: auto !important;
+                right: auto !important;
+                overflow: hidden;
+            }
         }
     }
 }

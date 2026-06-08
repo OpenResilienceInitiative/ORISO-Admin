@@ -44,6 +44,7 @@ interface UseUserTableColumnsParams {
     canEditOrDelete: boolean;
     mainTenantSubdomain?: string;
     figmaTableHeader?: boolean;
+    fixActionsColumn?: boolean;
 }
 
 export const useUserTableColumns = ({
@@ -59,6 +60,7 @@ export const useUserTableColumns = ({
     canEditOrDelete,
     mainTenantSubdomain,
     figmaTableHeader = false,
+    fixActionsColumn = true,
 }: UseUserTableColumnsParams) => {
     const { t } = useTranslation();
     const config = USER_TABLE_CONFIGS[sectionId];
@@ -221,7 +223,7 @@ export const useUserTableColumns = ({
                     return {
                         ...base,
                         title: '',
-                        fixed: 'right',
+                        fixed: fixActionsColumn ? 'right' : undefined,
                         render: (_: unknown, record: TableRow) => {
                             if (isOrganizations) {
                                 const tenant = record as TenantData;
@@ -294,6 +296,7 @@ export const useUserTableColumns = ({
         canEditOrDelete,
         mainTenantSubdomain,
         figmaTableHeader,
+        fixActionsColumn,
         t,
         showTenant,
         showSubdomain,

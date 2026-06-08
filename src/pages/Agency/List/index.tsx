@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Tag } from 'antd';
+import { Button, Grid, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { ColumnProps } from 'antd/lib/table';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +26,7 @@ import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 
 export const AgencyList = () => {
+    const screens = Grid.useBreakpoint();
     const { t, i18n } = useTranslation();
     const [tableState, setTableState] = useState<TableState>({
         current: 1,
@@ -40,6 +41,7 @@ export const AgencyList = () => {
     const { isEnabled } = useFeatureContext();
     const [agencyToDelete, setAgencyToDelete] = useState<AgencyData>();
     const isTopicsFeatureActive = isEnabled(FeatureFlag.TopicsInRegistration);
+    const isMobile = !screens.md;
 
     const navigate = useNavigate();
 
@@ -69,7 +71,6 @@ export const AgencyList = () => {
             width: 80,
             ellipsis: true,
             className: 'agencyList__column',
-            fixed: 'left',
         },
         {
             title: t('agency.list.createdDate'),
@@ -107,7 +108,6 @@ export const AgencyList = () => {
             width: 100,
             ellipsis: true,
             className: 'agencyList__column',
-            fixed: 'left',
         },
         {
             title: t('agency.description'),
@@ -229,7 +229,7 @@ export const AgencyList = () => {
                 );
             },
             className: 'agencyList__column',
-            fixed: 'right',
+            fixed: isMobile ? undefined : 'right',
         },
     ] as Array<ColumnProps<AgencyData>>;
 
@@ -266,32 +266,37 @@ export const AgencyList = () => {
             >
                 <div className={styles.searchNewContainer}>
                     <SearchInput
+                        className={styles.searchField}
                         placeholder={t('agency.list.searchPlaceholder')}
                         handleOnSearch={setSearchDebounced}
                         handleOnSearchClear={() => setSearchDebounced('')}
                     />
                     {can(PermissionAction.Create, Resource.Agency) && (
-                        <Button
-                            className="mb-m mr-sm"
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={() => navigate(`${routePathNames.agencyAdd}`)}
-                        >
-                            {t('new')}
-                        </Button>
+                        <div className={styles.toolbarActions}>
+                            <Button
+                                className={styles.addButton}
+                                type="primary"
+                                icon={<PlusOutlined className={styles.addButtonIcon} />}
+                                onClick={() => navigate(`${routePathNames.agencyAdd}`)}
+                            >
+                                {t('new')}
+                            </Button>
+                        </div>
                     )}
                 </div>
             </Page.Title>
 
-            <ResizeTable
-                loading={isLoading}
-                columns={columnsData}
-                dataSource={data?.data || []}
-                pagination={pagination}
-                onChange={tableChangeHandler}
-                rowKey="id"
-                locale={{ emptyText: t('tenants.list.empty') }}
-            />
+            <div className={styles.tableContainer}>
+                <ResizeTable
+                    loading={isLoading}
+                    columns={columnsData}
+                    dataSource={data?.data || []}
+                    pagination={pagination}
+                    onChange={tableChangeHandler}
+                    rowKey="id"
+                    locale={{ emptyText: t('tenants.list.empty') }}
+                />
+            </div>
             {agencyToDelete && <AgencyDeletionModal agencyModel={agencyToDelete} onClose={onClose} />}
         </Page>
     );
