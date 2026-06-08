@@ -184,6 +184,10 @@ export const GeneralTenantSettings = () => {
                                             min: 8,
                                             message: t('message.error.password.minLength'),
                                         },
+                                        {
+                                            pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
+                                            message: t('message.error.password.policy'),
+                                        },
                                     ]}
                                 />
                             </div>
