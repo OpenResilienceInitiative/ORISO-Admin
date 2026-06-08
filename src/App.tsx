@@ -68,6 +68,16 @@ export const App = () => {
         multitenancyWithSingleDomainEnabled: settings.multitenancyWithSingleDomainEnabled,
     });
 
+    // Apply tenant favicon when appearance config is available
+    useEffect(() => {
+        const favicon = publicTenantData?.theming?.favicon;
+        if (!favicon) return;
+        const link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+        if (link) {
+            link.href = favicon;
+        }
+    }, [publicTenantData?.theming?.favicon]);
+
     useEffect(() => {
         if (location.pathname === routePathNames.root || location.pathname === `${routePathNames.root}/`) {
             if (can(PermissionAction.Create, Resource.Tenant)) {
