@@ -14,9 +14,9 @@ export const defaultSelectedCaseDayByScope: Record<ScopeKey, string> = {
 };
 
 export const defaultSelectedFilterTargetIdsByScope: SelectedFilterTargetIdsByScope = {
-    platform: ['tenant-caritas-nrw', 'agency-u25-berlin'],
-    tenant: ['agency-schuldnerberatung-koeln'],
-    agency: ['agency-u25-berlin'],
+    platform: ['tenant-caritas-nrw'],
+    tenant: [],
+    agency: [],
 };
 
 export const scopeOrder: ScopeKey[] = ['platform', 'tenant', 'agency'];
