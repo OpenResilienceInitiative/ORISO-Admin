@@ -689,6 +689,14 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
     ],
 };
 
+const duplicatedCommunicationMetricKeys = new Set<CardMenuKey>([
+    'conversationsTotal',
+    'textMessagesTotal',
+    'phoneShare',
+    'videoShare',
+    'voiceShare',
+]);
+
 const defaultMetricKeyByCardKey: Record<string, CardMenuKey> = {
     'active-agencies': 'activeAgencies',
     'active-counselors': 'activeCounselors',
@@ -846,9 +854,9 @@ const getPersonalizedMetricCard = (card: StatisticCardDefinition, activeScope: S
         defaultMenuKey: defaultMetricKeyByCardKey[card.key],
         menuAriaLabel: 'Kennzahl in diesem Dashboard-Slot auswählen',
         menuLabel: 'Meine Kennzahl',
-        menuOptions: dashboardMetricOptionsByScope[activeScope].map((option) =>
-            applyDemoMetricOverride(option, activeScope, option.key),
-        ),
+        menuOptions: dashboardMetricOptionsByScope[activeScope]
+            .filter((option) => !duplicatedCommunicationMetricKeys.has(option.key))
+            .map((option) => applyDemoMetricOverride(option, activeScope, option.key)),
     };
 };
 
@@ -1843,8 +1851,10 @@ interface StatisticCardProps {
 }
 
 const StatisticCard = ({ card, menuValue, onMenuChange }: StatisticCardProps) => {
-    const activeMenuKey = menuValue || card.defaultMenuKey;
-    const selectedMenuOption = card.menuOptions?.find((option) => option.key === activeMenuKey);
+    const storedMenuOption = card.menuOptions?.find((option) => option.key === menuValue);
+    const defaultMenuOption = card.menuOptions?.find((option) => option.key === card.defaultMenuKey);
+    const selectedMenuOption = storedMenuOption || defaultMenuOption;
+    const activeMenuKey = selectedMenuOption?.key || card.defaultMenuKey;
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const hasMenu = Boolean(card.menuOptions?.length);
     const displayTitle = selectedMenuOption?.title || card.title;
