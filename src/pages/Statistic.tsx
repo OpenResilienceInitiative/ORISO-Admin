@@ -1735,9 +1735,10 @@ const DonutChart = ({
     const selectedSegment = data.segments.find((segment) => segment.label === selectedSegmentLabel);
     const hasSelectedSegment = Boolean(selectedSegment);
     const centerValue = selectedSegment ? `${selectedSegment.value}` : data.total;
-    const centerDetail = selectedSegment
-        ? `${getConversationSegmentPercentage(selectedSegment, data.segments)}% ${selectedSegment.label}`
-        : 'gesamt';
+    const centerPercentage = selectedSegment
+        ? `${getConversationSegmentPercentage(selectedSegment, data.segments)}%`
+        : undefined;
+    const centerLabel = selectedSegment ? selectedSegment.displayLabel || selectedSegment.label : 'gesamt';
 
     const handleSegmentKeyDown = (event: ReactKeyboardEvent<SVGCircleElement>, segmentLabel: string) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -1798,7 +1799,10 @@ const DonutChart = ({
                 <strong>
                     <AnimatedValue value={centerValue} />
                 </strong>
-                <small>{centerDetail}</small>
+                <small>
+                    {centerPercentage && <span>{centerPercentage}</span>}
+                    <span className="statisticDashboard__donutCenterLabel">{centerLabel}</span>
+                </small>
             </div>
         </div>
     );
