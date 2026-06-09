@@ -1,4 +1,13 @@
-import { ArrowDownward, ArrowUpward, MoreVert, NorthEast, SouthEast } from '@mui/icons-material';
+import {
+    ArrowDownward,
+    ArrowUpward,
+    Close,
+    FilterList,
+    MoreVert,
+    NorthEast,
+    Search as SearchIcon,
+    SouthEast,
+} from '@mui/icons-material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Page } from '../components/Page';
@@ -27,7 +36,12 @@ import {
     getCaseAxisMax,
     gridLinePositions,
 } from './Statistic/statisticChartUtils';
-import { readStoredCardMenuSelection, storeCardMenuSelection } from './Statistic/statisticPreferences';
+import {
+    readStoredCardMenuSelection,
+    readStoredFilterTargetSelection,
+    storeCardMenuSelection,
+    storeFilterTargetSelection,
+} from './Statistic/statisticPreferences';
 import type {
     CardMenuKey,
     CardMenuOption,
@@ -40,6 +54,7 @@ import type {
     ScopeDashboard,
     ScopeDefinition,
     ScopeKey,
+    SelectedFilterTargetIdsByScope,
     SelectedCardMenuByScope,
     StatisticCardDefinition,
     SvgIcon,
@@ -97,6 +112,104 @@ const scopeDefinitions: Record<ScopeKey, ScopeDefinition> = {
         icon: ScopeAgencyIcon,
     },
 };
+
+type FilterTargetType = 'Träger' | 'Beratungsstelle';
+
+interface FilterTarget {
+    id: string;
+    label: string;
+    type: FilterTargetType;
+    detail: string;
+}
+
+const filterTargetsByScope: Record<ScopeKey, FilterTarget[]> = {
+    platform: [
+        {
+            id: 'tenant-caritas-nrw',
+            label: 'Caritas NRW',
+            type: 'Träger',
+            detail: '18 Beratungsstellen',
+        },
+        {
+            id: 'tenant-diakonie-sued',
+            label: 'Diakonie Süd',
+            type: 'Träger',
+            detail: '12 Beratungsstellen',
+        },
+        {
+            id: 'tenant-drk-berlin',
+            label: 'DRK Berlin',
+            type: 'Träger',
+            detail: '9 Beratungsstellen',
+        },
+        {
+            id: 'agency-u25-berlin',
+            label: 'U25 Berlin',
+            type: 'Beratungsstelle',
+            detail: 'Caritas NRW',
+        },
+        {
+            id: 'agency-schuldnerberatung-koeln',
+            label: 'Schuldnerberatung Köln',
+            type: 'Beratungsstelle',
+            detail: 'Caritas NRW',
+        },
+        {
+            id: 'agency-familienhilfe-muenchen',
+            label: 'Familienhilfe München',
+            type: 'Beratungsstelle',
+            detail: 'Diakonie Süd',
+        },
+        {
+            id: 'agency-krisenchat-hamburg',
+            label: 'Krisenchat Hamburg',
+            type: 'Beratungsstelle',
+            detail: 'DRK Berlin',
+        },
+    ],
+    tenant: [
+        {
+            id: 'agency-u25-berlin',
+            label: 'U25 Berlin',
+            type: 'Beratungsstelle',
+            detail: 'Caritas NRW',
+        },
+        {
+            id: 'agency-schuldnerberatung-koeln',
+            label: 'Schuldnerberatung Köln',
+            type: 'Beratungsstelle',
+            detail: 'Caritas NRW',
+        },
+        {
+            id: 'agency-familienhilfe-muenchen',
+            label: 'Familienhilfe München',
+            type: 'Beratungsstelle',
+            detail: 'Caritas NRW',
+        },
+        {
+            id: 'agency-jugendberatung-bonn',
+            label: 'Jugendberatung Bonn',
+            type: 'Beratungsstelle',
+            detail: 'Caritas NRW',
+        },
+    ],
+    agency: [
+        {
+            id: 'agency-u25-berlin',
+            label: 'U25 Berlin',
+            type: 'Beratungsstelle',
+            detail: 'eigene Beratungsstelle',
+        },
+        {
+            id: 'agency-u25-chat',
+            label: 'U25 Chat',
+            type: 'Beratungsstelle',
+            detail: 'geteilte Ansicht',
+        },
+    ],
+};
+
+const normalizeFilterSearch = (value: string) => value.trim().toLocaleLowerCase('de-DE');
 
 const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
     platform: [
@@ -1937,6 +2050,116 @@ const StatisticCard = ({ card, menuValue, onMenuChange }: StatisticCardProps) =>
     );
 };
 
+interface StatisticFilterBarProps {
+    availableTargets: FilterTarget[];
+    onAddFirstSuggestion: () => void;
+    onAddTarget: (targetId: string) => void;
+    onRemoveTarget: (targetId: string) => void;
+    onSearchChange: (value: string) => void;
+    searchValue: string;
+    selectedTargets: FilterTarget[];
+    suggestions: FilterTarget[];
+}
+
+const StatisticFilterBar = ({
+    availableTargets,
+    onAddFirstSuggestion,
+    onAddTarget,
+    onRemoveTarget,
+    onSearchChange,
+    searchValue,
+    selectedTargets,
+    suggestions,
+}: StatisticFilterBarProps) => {
+    const hasSearchValue = Boolean(searchValue.trim());
+    const hasSuggestions = suggestions.length > 0;
+
+    const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            onAddFirstSuggestion();
+        }
+    };
+
+    return (
+        <div className="statisticDashboard__filterBar" aria-label="Statistik eingrenzen">
+            <div className="statisticDashboard__filterSearchWrap">
+                <input
+                    type="search"
+                    className="statisticDashboard__filterSearch"
+                    placeholder="Suche"
+                    aria-label="Beratungsstellen oder Träger suchen"
+                    autoComplete="off"
+                    value={searchValue}
+                    onChange={(event) => onSearchChange(event.target.value)}
+                    onKeyDown={handleSearchKeyDown}
+                />
+                <button
+                    type="button"
+                    className="statisticDashboard__filterSearchButton"
+                    aria-label="Ersten passenden Filter hinzufügen"
+                    disabled={!hasSuggestions}
+                    onClick={onAddFirstSuggestion}
+                >
+                    <SearchIcon aria-hidden="true" />
+                </button>
+
+                {hasSearchValue && hasSuggestions && (
+                    <div className="statisticDashboard__filterSuggestions" role="listbox">
+                        {suggestions.map((target) => (
+                            <button
+                                key={target.id}
+                                type="button"
+                                className="statisticDashboard__filterSuggestion"
+                                role="option"
+                                aria-selected="false"
+                                onClick={() => onAddTarget(target.id)}
+                            >
+                                <span>
+                                    <strong>{target.label}</strong>
+                                    <small>{target.detail}</small>
+                                </span>
+                                <em>{target.type}</em>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <button
+                type="button"
+                className="statisticDashboard__filterAction"
+                aria-label="Filter anwenden"
+                onClick={onAddFirstSuggestion}
+            >
+                <FilterList aria-hidden="true" />
+                <span>Eingrenzen</span>
+            </button>
+
+            <div className="statisticDashboard__filterChips" aria-label="Aktive Filter">
+                {selectedTargets.map((target) => (
+                    <span key={target.id} className="statisticDashboard__filterChip">
+                        <small>{target.type}</small>
+                        <span>{target.label}</span>
+                        <button
+                            type="button"
+                            aria-label={`${target.label} entfernen`}
+                            onClick={() => onRemoveTarget(target.id)}
+                        >
+                            <Close aria-hidden="true" />
+                        </button>
+                    </span>
+                ))}
+                {!selectedTargets.length && (
+                    <span className="statisticDashboard__filterChip statisticDashboard__filterChip--muted">
+                        {availableTargets.length ? 'Alle zugeordneten Einheiten' : 'Keine Filter verfügbar'}
+                    </span>
+                )}
+            </div>
+        </div>
+    );
+};
+
 interface PeriodSelectProps<OptionKey extends string> {
     ariaLabel: string;
     onSelect: (key: OptionKey) => void;
@@ -2027,6 +2250,13 @@ export const Statistic = () => {
     const [activeScope, setActiveScope] = useState<ScopeKey>('platform');
     const [selectedCardMenuByScope, setSelectedCardMenuByScope] =
         useState<SelectedCardMenuByScope>(readStoredCardMenuSelection);
+    const [selectedFilterTargetIdsByScope, setSelectedFilterTargetIdsByScope] =
+        useState<SelectedFilterTargetIdsByScope>(readStoredFilterTargetSelection);
+    const [filterSearchByScope, setFilterSearchByScope] = useState<Record<ScopeKey, string>>({
+        platform: '',
+        tenant: '',
+        agency: '',
+    });
     const [selectedCasePeriodByScope, setSelectedCasePeriodByScope] = useState<Record<ScopeKey, CasePeriodKey>>({
         platform: 'thisWeek',
         tenant: 'thisWeek',
@@ -2049,6 +2279,9 @@ export const Statistic = () => {
     const [selectedCaseDayByScope, setSelectedCaseDayByScope] =
         useState<Record<ScopeKey, string>>(defaultSelectedCaseDayByScope);
     const dashboard = dashboardByScope[activeScope];
+    const availableFilterTargets = filterTargetsByScope[activeScope];
+    const selectedFilterTargetIds = selectedFilterTargetIdsByScope[activeScope] || [];
+    const filterSearch = filterSearchByScope[activeScope];
     const selectedCasePeriod = selectedCasePeriodByScope[activeScope];
     const selectedConversationPeriod = selectedConversationPeriodByScope[activeScope];
     const selectedConversationSegment = selectedConversationSegmentByScope[activeScope];
@@ -2069,6 +2302,29 @@ export const Statistic = () => {
     const yAxisLabels = useMemo(() => getCaseAxisLabels(maxCaseValue), [maxCaseValue]);
     const chartAnimationKey = `${activeScope}-${selectedCasePeriod}`;
     const donutAnimationKey = `${activeScope}-${selectedConversationPeriod}`;
+    const selectedFilterTargets = useMemo(
+        () =>
+            selectedFilterTargetIds
+                .map((targetId) => availableFilterTargets.find((target) => target.id === targetId))
+                .filter((target): target is FilterTarget => Boolean(target)),
+        [availableFilterTargets, selectedFilterTargetIds],
+    );
+    const filterSuggestions = useMemo(() => {
+        const normalizedSearch = normalizeFilterSearch(filterSearch);
+
+        if (!normalizedSearch) {
+            return [];
+        }
+
+        return availableFilterTargets
+            .filter((target) => !selectedFilterTargetIds.includes(target.id))
+            .filter((target) =>
+                [target.label, target.detail, target.type].some((value) =>
+                    normalizeFilterSearch(value).includes(normalizedSearch),
+                ),
+            )
+            .slice(0, 6);
+    }, [availableFilterTargets, filterSearch, selectedFilterTargetIds]);
     const updateCardMenuSelection = (cardKey: string, menuKey: CardMenuKey) => {
         setSelectedCardMenuByScope((currentSelection) => ({
             ...currentSelection,
@@ -2076,6 +2332,44 @@ export const Statistic = () => {
                 ...currentSelection[activeScope],
                 [cardKey]: menuKey,
             },
+        }));
+    };
+    const updateFilterSearch = (value: string) => {
+        setFilterSearchByScope((currentSearch) => ({
+            ...currentSearch,
+            [activeScope]: value,
+        }));
+    };
+    const addFilterTarget = (targetId: string) => {
+        if (!availableFilterTargets.some((target) => target.id === targetId)) {
+            return;
+        }
+
+        setSelectedFilterTargetIdsByScope((currentSelection) => {
+            const currentScopeSelection = currentSelection[activeScope] || [];
+
+            if (currentScopeSelection.includes(targetId)) {
+                return currentSelection;
+            }
+
+            return {
+                ...currentSelection,
+                [activeScope]: [...currentScopeSelection, targetId],
+            };
+        });
+        updateFilterSearch('');
+    };
+    const addFirstFilterSuggestion = () => {
+        if (filterSuggestions[0]) {
+            addFilterTarget(filterSuggestions[0].id);
+        }
+    };
+    const removeFilterTarget = (targetId: string) => {
+        setSelectedFilterTargetIdsByScope((currentSelection) => ({
+            ...currentSelection,
+            [activeScope]: (currentSelection[activeScope] || []).filter(
+                (currentTargetId) => currentTargetId !== targetId,
+            ),
         }));
     };
     const selectCaseDay = (day: string) => {
@@ -2094,6 +2388,10 @@ export const Statistic = () => {
     useEffect(() => {
         storeCardMenuSelection(selectedCardMenuByScope);
     }, [selectedCardMenuByScope]);
+
+    useEffect(() => {
+        storeFilterTargetSelection(selectedFilterTargetIdsByScope);
+    }, [selectedFilterTargetIdsByScope]);
 
     return (
         <Page>
@@ -2124,6 +2422,17 @@ export const Statistic = () => {
                 </Page.Title>
 
                 <div className="statisticDashboard">
+                    <StatisticFilterBar
+                        availableTargets={availableFilterTargets}
+                        onAddFirstSuggestion={addFirstFilterSuggestion}
+                        onAddTarget={addFilterTarget}
+                        onRemoveTarget={removeFilterTarget}
+                        onSearchChange={updateFilterSearch}
+                        searchValue={filterSearch}
+                        selectedTargets={selectedFilterTargets}
+                        suggestions={filterSuggestions}
+                    />
+
                     <div className="statisticDashboard__summaryGrid">
                         {dashboard.topCards.map((card) => (
                             <StatisticCard

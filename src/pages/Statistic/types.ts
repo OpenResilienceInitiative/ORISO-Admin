@@ -111,3 +111,4 @@ export interface PeriodOption<OptionKey extends string> {
 }
 
 export type SelectedCardMenuByScope = Record<ScopeKey, Record<string, CardMenuKey>>;
+export type SelectedFilterTargetIdsByScope = Record<ScopeKey, string[]>;
