@@ -18,12 +18,30 @@ const extractFromBody = (body: unknown): string | null => {
     }
 
     const record = body as Record<string, unknown>;
+    let bodyReason: string | null = null;
+    if (typeof record.reason === 'string') {
+        bodyReason = record.reason;
+    } else if (typeof record.xReason === 'string') {
+        bodyReason = record.xReason;
+    }
+    const translatedBodyReason = translateXReason(bodyReason);
+    if (translatedBodyReason) {
+        return translatedBodyReason;
+    }
 
     if (typeof record.message === 'string' && record.message.trim()) {
+        const translatedMessageReason = translateXReason(record.message.trim());
+        if (translatedMessageReason) {
+            return translatedMessageReason;
+        }
         return record.message.trim();
     }
 
     if (typeof record.error === 'string' && record.error.trim()) {
+        const translatedErrorReason = translateXReason(record.error.trim());
+        if (translatedErrorReason) {
+            return translatedErrorReason;
+        }
         return record.error.trim();
     }
 

@@ -14,8 +14,30 @@ interface UseAddOrUpdateTenantAdminOptions
 export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTenantAdminOptions) => {
     const queryClient = useQueryClient();
     const { data } = useTenantUserAdminData({ id, enabled: !!id && id !== 'add' });
+
+    const normalizeSuccessfulResponse = async (response: unknown) => {
+        if (response instanceof Response) {
+            if (response.status === 204) {
+                return null;
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                return null;
+            }
+
+            const textBody = await response.clone().text();
+            if (!textBody.trim()) {
+                return null;
+            }
+
+            return JSON.parse(textBody);
+        }
+        return response;
+    };
+
     return useMutation(
-        (formData) => {
+        async (formData) => {
             const formValues = formData as CounselorData & { username?: string; password?: string };
             const resolvedUsername = formValues.username?.trim()
                 ? formValues.username.trim()
@@ -28,7 +50,7 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
             }
             const bodyData = JSON.stringify(body);
 
-            return fetchData({
+            const response = await fetchData({
                 url: `${tenantAdminsEndpoint}${id ? `/${id}` : ''}`,
                 method: id ? FETCH_METHODS.PUT : FETCH_METHODS.POST,
                 responseHandling: [
@@ -38,12 +60,25 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
                     FETCH_ERRORS.CATCH_ALL,
                 ],
                 bodyData,
-            }).then(({ _embedded }) => _embedded);
+            });
+
+            const normalizedResponse = await normalizeSuccessfulResponse(response);
+            if (normalizedResponse && typeof normalizedResponse === 'object' && '_embedded' in normalizedResponse) {
+                // eslint-disable-next-line no-underscore-dangle
+                const embeddedData = (normalizedResponse as { _embedded: CounselorData })._embedded;
+                return embeddedData;
+            }
+
+            return {
+                ...(formValues as CounselorData),
+            } as CounselorData;
         },
         {
             ...options,
             onSuccess: (responseData, variables) => {
-                queryClient.setQueryData([TENANT_ADMIN_QUERY_KEY, responseData.id], responseData);
+                if (responseData?.id) {
+                    queryClient.setQueryData([TENANT_ADMIN_QUERY_KEY, responseData.id], responseData);
+                }
                 queryClient.invalidateQueries(TENANT_ADMINS_QUERY_KEY);
                 queryClient.removeQueries([TENANT_QUERY_KEY]);
                 options?.onSuccess?.(responseData, variables, null);

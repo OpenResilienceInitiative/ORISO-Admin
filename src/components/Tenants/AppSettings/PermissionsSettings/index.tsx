@@ -3,6 +3,7 @@ import { FunctionComponent, SVGProps, useCallback, useMemo, useRef } from 'react
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
+import { useSettingsAdminMutation } from '../../../../hooks/useSettingsAdminMutation.hook';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import { ReactComponent as OneOnOneIcon } from '../../../../resources/img/svg/permissions/one_on_one.svg';
 import { ReactComponent as LiveChatIcon } from '../../../../resources/img/svg/permissions/live_chat.svg';
@@ -10,17 +11,26 @@ import { ReactComponent as GroupIcon } from '../../../../resources/img/svg/permi
 import { ReactComponent as GroupInternalIcon } from '../../../../resources/img/svg/permissions/group_internal.svg';
 import styles from './styles.module.scss';
 
+const buildTogglePayload = (fieldPath: string | string[], value: boolean): Record<string, unknown> => {
+    const path = Array.isArray(fieldPath) ? fieldPath : [fieldPath];
+    return path.reduceRight<unknown>((acc, key) => ({ [key]: acc }), value) as Record<string, unknown>;
+};
+
 type CheckToggleInnerProps = {
     checked?: boolean;
     onChange?: (value: boolean) => void;
     disabled?: boolean;
     label: string;
+    fieldName: string | string[];
+    onAfterChange?: (fieldPath: string | string[], value: boolean) => void;
 };
 
-const CheckToggleInner = ({ checked, onChange, disabled, label }: CheckToggleInnerProps) => {
+const CheckToggleInner = ({ checked, onChange, disabled, label, fieldName, onAfterChange }: CheckToggleInnerProps) => {
     const handleToggle = () => {
         if (disabled) return;
-        onChange?.(!checked);
+        const newValue = !checked;
+        onChange?.(newValue);
+        onAfterChange?.(fieldName, newValue);
     };
     return (
         <button
@@ -69,11 +79,12 @@ type CheckToggleProps = {
     name: string | string[];
     label: string;
     disabled?: boolean;
+    onAfterChange?: (fieldPath: string | string[], value: boolean) => void;
 };
 
-const CheckToggle = ({ name, label, disabled }: CheckToggleProps) => (
+const CheckToggle = ({ name, label, disabled, onAfterChange }: CheckToggleProps) => (
     <Form.Item name={name} valuePropName="checked" noStyle>
-        <CheckToggleInner label={label} disabled={disabled} />
+        <CheckToggleInner label={label} disabled={disabled} fieldName={name} onAfterChange={onAfterChange} />
     </Form.Item>
 );
 
@@ -450,7 +461,10 @@ export const PermissionsSettings = ({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
+
     const inheritedForcedOffFields = useMemo(() => getForcedOffFields(visibleToggles), [visibleToggles]);
+
+    const { mutate: settingsAdminMutate } = useSettingsAdminMutation();
 
     const initialValues = useMemo(
         () => ({
@@ -478,6 +492,13 @@ export const PermissionsSettings = ({
     const formStateKey = useMemo(
         () => Array.from(inheritedForcedOffFields).sort().join('|'),
         [inheritedForcedOffFields],
+    );
+
+    const handleSettingsAdminToggle = useCallback(
+        (fieldPath: string | string[], value: boolean) => {
+            settingsAdminMutate(buildTogglePayload(fieldPath, value));
+        },
+        [settingsAdminMutate],
     );
 
     return (
@@ -549,6 +570,7 @@ export const PermissionsSettings = ({
                                                     name={card.masterField}
                                                     label={t('tenants.permissions.card.activated')}
                                                     disabled={inheritedForcedOffFields.has(card.masterField[1])}
+                                                    onAfterChange={handleSettingsAdminToggle}
                                                 />
                                             ) : (
                                                 <span className={styles.masterRowPlaceholder} aria-hidden>
@@ -576,6 +598,7 @@ export const PermissionsSettings = ({
                                                             isSubToggleDisabled(card, toggle.field, masterEnabled) ||
                                                             inheritedForcedOffFields.has(toggle.field[1])
                                                         }
+                                                        onAfterChange={handleSettingsAdminToggle}
                                                     />
                                                 </div>
                                             ))}
