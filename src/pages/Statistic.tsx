@@ -159,12 +159,6 @@ const filterTargetsByScope: Record<ScopeKey, FilterTarget[]> = {
             type: 'Beratungsstelle',
             detail: 'Caritas NRW',
         },
-        {
-            id: 'agency-familienberatung-dortmund',
-            label: 'Familienberatung Dortmund',
-            type: 'Beratungsstelle',
-            detail: 'Caritas NRW',
-        },
     ],
     tenant: [
         {
@@ -182,12 +176,6 @@ const filterTargetsByScope: Record<ScopeKey, FilterTarget[]> = {
         {
             id: 'agency-jugendberatung-essen',
             label: 'Jugendberatung Essen',
-            type: 'Beratungsstelle',
-            detail: 'Caritas NRW',
-        },
-        {
-            id: 'agency-familienberatung-dortmund',
-            label: 'Familienberatung Dortmund',
             type: 'Beratungsstelle',
             detail: 'Caritas NRW',
         },
