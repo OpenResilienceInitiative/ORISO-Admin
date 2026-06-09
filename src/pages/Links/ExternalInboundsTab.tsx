@@ -127,7 +127,7 @@ export const ExternalInboundsTab = () => {
                 title: t('links.col.chatType', 'Chat Type'),
                 dataIndex: 'chatType',
                 key: 'chatType',
-                render: (value: string) => formatChatTypeLabel(value),
+                render: (value: string) => t(`links.chatTypeValue.${value}`, formatChatTypeLabel(value)),
             },
             {
                 title: t('links.col.topic', 'Topic'),
@@ -150,7 +150,9 @@ export const ExternalInboundsTab = () => {
                 title: t('links.col.status', 'Status'),
                 dataIndex: 'status',
                 key: 'status',
-                render: (status: TopicInviteLinkDTO['status']) => <StatusTag status={status} />,
+                render: (status: TopicInviteLinkDTO['status']) => (
+                    <StatusTag status={status} label={t(`links.statusValue.${status}`, status)} />
+                ),
             },
             {
                 title: t('links.col.expiresAt', 'Expires'),
@@ -162,7 +164,12 @@ export const ExternalInboundsTab = () => {
                 title: t('links.col.anonymity', 'Anonymity'),
                 dataIndex: 'anonymity',
                 key: 'anonymity',
-                render: (value: string) => <AnonymityTag value={formatAnonymityLabel(value)} />,
+                render: (value: string) => (
+                    <AnonymityTag
+                        value={formatAnonymityLabel(value)}
+                        label={t(`links.anonymityValue.${value}`, formatAnonymityLabel(value))}
+                    />
+                ),
             },
             {
                 title: t('links.col.link', 'Link'),
