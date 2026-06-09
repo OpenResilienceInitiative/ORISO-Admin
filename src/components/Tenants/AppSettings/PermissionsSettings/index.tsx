@@ -465,7 +465,6 @@ export const PermissionsSettings = ({
     const inheritedForcedOffFields = useMemo(() => getForcedOffFields(visibleToggles), [visibleToggles]);
 
     // const { mutate: settingsAdminMutate } = useSettingsAdminMutation();
-
     const { mutate: updateTenant } = useAddOrUpdateTenant({ id: tenantId });
 
     const initialValues = useMemo(
@@ -612,6 +611,7 @@ export const PermissionsSettings = ({
                                                             masterEnabled,
                                                         )}
                                                         onAfterChange={handleToggleUpdate}
+
                                                     />
                                                 </div>
                                             ))}
