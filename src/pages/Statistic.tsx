@@ -1804,9 +1804,7 @@ const DonutChart = ({
                 })}
             </svg>
             <div className="statisticDashboard__donutCenter">
-                <strong>
-                    <AnimatedValue value={centerValue} />
-                </strong>
+                <strong>{selectedSegment ? centerValue : <AnimatedValue value={centerValue} />}</strong>
                 <small>
                     {centerPercentage && <span>{centerPercentage}</span>}
                     <span className="statisticDashboard__donutCenterLabel">{centerLabel}</span>
