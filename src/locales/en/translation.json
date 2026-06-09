@@ -344,6 +344,8 @@
     "tenantAdmins.delete.description": "Are you sure you want to delete {{name}}?",
     "tenantAdmins.delete.success": "You have successfully deleted tenant admin.",
     "tenantAdmins.edit.back": "Create new admin",
+    "tenantAdmins.message.add": "Tenant admin account created successfully.",
+    "tenantAdmins.message.update": "Tenant admin account updated successfully.",
     "tenantAdmins.form.password": "Password",
     "tenantAdmins.form.subdomain": "Tenant subdomain",
     "tenantAdmins.form.username": "Username",
