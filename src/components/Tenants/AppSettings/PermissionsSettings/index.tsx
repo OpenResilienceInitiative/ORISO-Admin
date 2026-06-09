@@ -3,8 +3,9 @@ import { FunctionComponent, SVGProps, useCallback, useMemo, useRef } from 'react
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
-import { useSettingsAdminMutation } from '../../../../hooks/useSettingsAdminMutation.hook';
+import { useAddOrUpdateTenant } from '../../../../hooks/useAddOrUpdateTenant.hook';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
+import { TenantAdminData } from '../../../../types/TenantAdminData';
 import { ReactComponent as OneOnOneIcon } from '../../../../resources/img/svg/permissions/one_on_one.svg';
 import { ReactComponent as LiveChatIcon } from '../../../../resources/img/svg/permissions/live_chat.svg';
 import { ReactComponent as GroupIcon } from '../../../../resources/img/svg/permissions/group.svg';
@@ -370,7 +371,7 @@ export const PermissionsSettings = ({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
-    const { mutate: settingsAdminMutate } = useSettingsAdminMutation();
+    const { mutate: updateTenant } = useAddOrUpdateTenant({ id: tenantId });
 
     const initialValues = useMemo(
         () => ({
@@ -396,11 +397,21 @@ export const PermissionsSettings = ({
         ? CHAT_TYPE_CARDS.filter((card) => !excludeCardKeys.includes(card.key))
         : CHAT_TYPE_CARDS;
 
-    const handleSettingsAdminToggle = useCallback(
+    const handleToggleUpdate = useCallback(
         (fieldPath: string | string[], value: boolean) => {
-            settingsAdminMutate(buildTogglePayload(fieldPath, value));
+            if (!data) return;
+            const toggleUpdate = buildTogglePayload(fieldPath, value) as { settings?: Record<string, boolean> };
+            updateTenant({
+                name: data.name,
+                subdomain: data.subdomain,
+                licensing: data.licensing,
+                settings: {
+                    ...data.settings,
+                    ...toggleUpdate.settings,
+                },
+            } as TenantAdminData);
         },
-        [settingsAdminMutate],
+        [data, updateTenant],
     );
 
     return (
@@ -467,7 +478,7 @@ export const PermissionsSettings = ({
                                                 <CheckToggle
                                                     name={card.masterField}
                                                     label={t('tenants.permissions.card.activated')}
-                                                    onAfterChange={handleSettingsAdminToggle}
+                                                    onAfterChange={handleToggleUpdate}
                                                 />
                                             ) : (
                                                 <span className={styles.masterRowPlaceholder} aria-hidden>
@@ -496,7 +507,7 @@ export const PermissionsSettings = ({
                                                             toggle.field,
                                                             masterEnabled,
                                                         )}
-                                                        onAfterChange={handleSettingsAdminToggle}
+                                                        onAfterChange={handleToggleUpdate}
                                                     />
                                                 </div>
                                             ))}
