@@ -734,12 +734,29 @@
     }
 
     small {
-        display: block;
-        max-width: 78px;
+        display: grid;
+        justify-items: center;
+        max-width: 76px;
+        min-width: 0;
         color: #687180;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 700;
-        line-height: 13px;
+        line-height: 12px;
+
+        span {
+            min-width: 0;
+        }
+    }
+
+    .statisticDashboard__donutCenterLabel {
+        display: -webkit-box;
+        overflow: hidden;
+        max-width: 76px;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow-wrap: anywhere;
+        text-overflow: ellipsis;
+        white-space: pre-line;
     }
 }
 
@@ -841,15 +858,47 @@
 .statisticDashboard__legendItem:focus-visible {
     background: #f2f6fb;
     outline: none;
+
+    p {
+        color: #111923;
+    }
+
+    .statisticDashboard__legendMeta {
+        strong {
+            color: #111923;
+        }
+
+        small {
+            color: #46515f;
+        }
+    }
 }
 
 .statisticDashboard__legendItem--active {
     background: #111923;
 
     p,
-    strong,
-    small {
+    .statisticDashboard__legendMeta strong {
         color: #ffffff;
+    }
+
+    .statisticDashboard__legendMeta small {
+        color: #d9e4ef;
+    }
+}
+
+.statisticDashboard__legendItem--active:hover,
+.statisticDashboard__legendItem--active:focus-visible {
+    background: #111923;
+    box-shadow: 0 0 0 2px rgba(17, 25, 35, 0.22);
+
+    p,
+    .statisticDashboard__legendMeta strong {
+        color: #ffffff;
+    }
+
+    .statisticDashboard__legendMeta small {
+        color: #d9e4ef;
     }
 }
 
