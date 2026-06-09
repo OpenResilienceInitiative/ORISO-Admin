@@ -37,6 +37,7 @@ export const useAddOrUpdateTenant = ({ id, ...options }: UseAddOrUpdateTenantOpt
                 licensing: {
                     ...formData.licensing,
                 },
+                settings: { ...formData.settings },
             });
 
             return fetchData({

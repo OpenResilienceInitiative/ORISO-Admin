@@ -1,4 +1,4 @@
-import { Form } from 'antd';
+import { Form, FormInstance } from 'antd';
 import { FunctionComponent, SVGProps, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
@@ -12,9 +12,26 @@ import { ReactComponent as GroupIcon } from '../../../../resources/img/svg/permi
 import { ReactComponent as GroupInternalIcon } from '../../../../resources/img/svg/permissions/group_internal.svg';
 import styles from './styles.module.scss';
 
+let MASTER_TOGGLE_CHILDREN: Record<string, string[]> = {};
+let syncMasterChildTogglesInForm: (form: FormInstance, fieldPath: string | string[], value: boolean) => void;
+
 const buildTogglePayload = (fieldPath: string | string[], value: boolean): Record<string, unknown> => {
     const path = Array.isArray(fieldPath) ? fieldPath : [fieldPath];
-    return path.reduceRight<unknown>((acc, key) => ({ [key]: acc }), value) as Record<string, unknown>;
+    const fieldKey = path[path.length - 1] as string;
+
+    const settings: Record<string, boolean> = { [fieldKey]: value };
+
+    if (!value && MASTER_TOGGLE_CHILDREN[fieldKey]) {
+        MASTER_TOGGLE_CHILDREN[fieldKey].forEach((childKey) => {
+            settings[childKey] = false;
+        });
+    }
+
+    if (path.length === 1) {
+        return settings;
+    }
+
+    return path.slice(0, -1).reduceRight<unknown>((acc, key) => ({ [key]: acc }), settings) as Record<string, unknown>;
 };
 
 type CheckToggleInnerProps = {
@@ -27,10 +44,13 @@ type CheckToggleInnerProps = {
 };
 
 const CheckToggleInner = ({ checked, onChange, disabled, label, fieldName, onAfterChange }: CheckToggleInnerProps) => {
+    const form = Form.useFormInstance();
+
     const handleToggle = () => {
         if (disabled) return;
         const newValue = !checked;
         onChange?.(newValue);
+        syncMasterChildTogglesInForm(form, fieldName, newValue);
         onAfterChange?.(fieldName, newValue);
     };
     return (
@@ -342,6 +362,24 @@ const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
         ],
     },
 ];
+
+MASTER_TOGGLE_CHILDREN = CHAT_TYPE_CARDS.reduce((acc, card) => {
+    if (!card.masterField) return acc;
+    const masterKey = card.masterField[1];
+    acc[masterKey] = card.toggles.map((toggle) => toggle.field[1]);
+    return acc;
+}, {} as Record<string, string[]>);
+
+syncMasterChildTogglesInForm = (form, fieldPath, value) => {
+    if (value) return;
+    const path = Array.isArray(fieldPath) ? fieldPath : [fieldPath];
+    const fieldKey = path[path.length - 1] as string;
+    const children = MASTER_TOGGLE_CHILDREN[fieldKey];
+    if (!children?.length) return;
+
+    const prefix = path.slice(0, -1);
+    form.setFields(children.map((childKey) => ({ name: [...prefix, childKey], value: false })));
+};
 
 const ONE_ON_ONE_CALL_TOGGLE_FIELDS = new Set([
     'featureVideoCallsOneOnOneChatsEnabled',
