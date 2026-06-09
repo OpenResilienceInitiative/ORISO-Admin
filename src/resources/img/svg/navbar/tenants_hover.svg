@@ -1,10 +1,8 @@
-<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g id="holiday_village">
-<mask id="mask0_0_121" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="40" height="40">
-<rect id="Bounding box" width="40" height="40" fill="var(--fill-0, #D9D9D9)"/>
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<mask id="mask0_388_22828" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="40" height="40">
+<rect width="40" height="40" fill="#D9D9D9"/>
 </mask>
-<g mask="url(#mask0_0_121)">
-<path id="holiday_village_2" d="M7.3075 31.6667V17.3717L15.6408 9.03833L23.9742 17.3717V31.6667H7.3075ZM8.71792 30.2563H14.4871V26.4104H16.795V30.2563H22.5642V17.9475L15.6408 11.0246L8.71792 17.9475V30.2563ZM14.4871 21.1537V18.8462H16.795V21.1537H14.4871ZM26.9229 31.6988V16.2533L19.7083 9.03833H21.8204L28.3333 15.5512V31.6988H26.9229ZM31.2821 31.6988V14.4325L25.8879 9.03833H28.0321L32.6925 13.7308V31.6988H31.2821Z" fill="var(--fill-0, white)"/>
-</g>
+<g mask="url(#mask0_388_22828)">
+<path d="M3.33334 33.3333V16.6666L13.3333 6.66663L23.3333 16.6666V33.3333H3.33334ZM6.11125 30.5554H11.9446V25.5554H14.7221V30.5554H20.5554V17.8195L13.3333 10.597L6.11125 17.8195V30.5554ZM11.9446 21.3887V18.6112H14.7221V21.3887H11.9446ZM27.2221 33.3333V15.2916L18.5971 6.66663H22.75L30 13.9166V33.3333H27.2221ZM33.8888 33.3333V12.5416L28.0138 6.66663H32.1667L36.6667 11.1666V33.3333H33.8888Z" fill="white"/>
 </g>
 </svg>

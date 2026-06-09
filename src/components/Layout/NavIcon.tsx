@@ -42,6 +42,12 @@ type IconState = 'active' | 'hover' | 'inactive';
 
 const selectIcon = (state: IconState, icons: Record<IconState, JSX.Element>) => icons[state];
 
+const renderIconState = (state: IconState, icons: Record<IconState, JSX.Element>) => (
+    <span key={state} className="navIcon__state">
+        {selectIcon(state, icons)}
+    </span>
+);
+
 const getIconState = (isActive: boolean, hover: boolean): IconState => {
     if (isActive) {
         return 'active';
@@ -58,25 +64,25 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
 
     switch (path) {
         case routePathNames.themeSettings:
-            return selectIcon(iconState, {
+            return renderIconState(iconState, {
                 active: <DisplaySettingsActiveIcon />,
                 hover: <DisplaySettingsHoverIcon />,
                 inactive: <DisplaySettingsInactiveIcon />,
             });
         case routePathNames.globalSettings:
-            return selectIcon(iconState, {
+            return renderIconState(iconState, {
                 active: <SettingsActiveIcon />,
                 hover: <SettingsHoverIcon />,
                 inactive: <SettingsInactiveIcon />,
             });
         case '/admin/users':
-            return selectIcon(iconState, {
+            return renderIconState(iconState, {
                 active: <UsersActiveIcon />,
                 hover: <UsersHoverIcon />,
                 inactive: <UsersInactiveIcon />,
             });
         case '/admin/tenants':
-            return selectIcon(iconState, {
+            return renderIconState(iconState, {
                 active: <TenantsActiveIcon />,
                 hover: <TenantsHoverIcon />,
                 inactive: <TenantsInactiveIcon />,
@@ -86,29 +92,33 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
         case routePathNames.agencyAddGeneral:
         case routePathNames.agencyEdit:
         case routePathNames.agencyEditInitialMeeting:
-            return selectIcon(iconState, {
+            return renderIconState(iconState, {
                 active: <CounselingActiveIcon />,
                 hover: <CounselingHoverIcon />,
                 inactive: <CounselingInactiveIcon />,
             });
         case routePathNames.topics:
-            return iconState === 'inactive' ? <TopicsInactiveIcon /> : <TopicsActiveIcon />;
+            return renderIconState(iconState, {
+                active: <TopicsActiveIcon />,
+                hover: <TopicsActiveIcon />,
+                inactive: <TopicsInactiveIcon />,
+            });
         case routePathNames.statistic:
-            return selectIcon(iconState, {
+            return renderIconState(iconState, {
                 active: <StatisticsActiveIcon />,
                 hover: <StatisticsHoverIcon />,
                 inactive: <StatisticsInactiveIcon />,
             });
         case routePathNames.logs:
         case routePathNames.inactiveAccountAuditLogs:
-            return selectIcon(iconState, {
+            return renderIconState(iconState, {
                 active: <LogsActiveIcon />,
                 hover: <LogsHoverIcon />,
                 inactive: <LogsInactiveIcon />,
             });
         case routePathNames.inviteLinks:
         case routePathNames.links:
-            return selectIcon(iconState, {
+            return renderIconState(iconState, {
                 active: <LinksActiveIcon />,
                 hover: <LinksHoverIcon />,
                 inactive: <LinksInactiveIcon />,
@@ -116,19 +126,19 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
         case routePathNames.linksTenants:
         case routePathNames.linksCounsellor:
         case routePathNames.linksExternalInbounds:
-            return selectIcon(iconState, {
+            return renderIconState(iconState, {
                 active: <LinksActiveIcon />,
                 hover: <LinksHoverIcon />,
                 inactive: <LinksInactiveIcon />,
             });
         case routePathNames.userProfile:
-            return selectIcon(iconState, {
+            return renderIconState(iconState, {
                 active: <ProfileActiveIcon />,
                 hover: <ProfileHoverIcon />,
                 inactive: <ProfileInactiveIcon />,
             });
         case 'logout':
-            return selectIcon(iconState, {
+            return renderIconState(iconState, {
                 active: <LogoutActiveIcon />,
                 hover: <LogoutHoverIcon />,
                 inactive: <LogoutInactiveIcon />,
@@ -142,7 +152,12 @@ export const NavIcon = ({ path }: Props) => {
     const [hover, setHover] = useState(false);
 
     return (
-        <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+        <div
+            className="navIcon"
+            aria-hidden="true"
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
+        >
             <Icon path={path} hover={hover} />
         </div>
     );
