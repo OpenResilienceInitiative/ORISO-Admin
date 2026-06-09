@@ -1,16 +1,10 @@
-import {
-    ArrowDownward,
-    ArrowUpward,
-    Close,
-    MoreVert,
-    NorthEast,
-    Search as SearchIcon,
-    SouthEast,
-} from '@mui/icons-material';
+import { ArrowDownward, ArrowUpward, Close, MoreVert, NorthEast, SouthEast } from '@mui/icons-material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AdminSegmentedTabs } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { Page } from '../components/Page';
+import SearchInput from '../components/SearchInput/SearchInput';
 import { ReactComponent as ActiveAgenciesIcon } from '../resources/img/svg/statistics-dashboard/active-agencies.svg';
 import { ReactComponent as CalendarIcon } from '../resources/img/svg/statistics-dashboard/calendar.svg';
 import { ReactComponent as ChevronDownIcon } from '../resources/img/svg/statistics-dashboard/chevron-down.svg';
@@ -63,6 +57,7 @@ import type {
     TrendScoreTone,
 } from './Statistic/types';
 import { useAnimatedDisplayValue } from './Statistic/useAnimatedDisplayValue';
+import type { AdminSegmentedTabItem } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 
 const conversationSegmentBlueprint = [
     { label: 'Nähe', color: '#bd000d' },
@@ -2942,41 +2937,29 @@ const StatisticFilterBar = ({
                     }
                 }}
             >
-                <input
-                    type="search"
+                <SearchInput
                     className="statisticDashboard__filterSearch"
                     placeholder={translateDashboardKey(translate, 'statistic.dashboard.filter.placeholder', 'Suche')}
-                    aria-label={translateDashboardKey(
+                    ariaLabel={translateDashboardKey(
                         translate,
                         'statistic.dashboard.filter.searchAria',
                         'Beratungsstellen oder Träger suchen',
                     )}
-                    autoComplete="off"
                     value={searchValue}
+                    searchOnChange={false}
                     onClick={() => setIsSuggestionMenuOpen(true)}
-                    onChange={(event) => {
-                        setIsSuggestionMenuOpen(true);
-                        onSearchChange(event.target.value);
-                    }}
                     onFocus={() => setIsSuggestionMenuOpen(true)}
                     onKeyDown={handleSearchKeyDown}
-                />
-                <button
-                    type="button"
-                    className="statisticDashboard__filterSearchButton"
-                    aria-label={translateDashboardKey(
-                        translate,
-                        'statistic.dashboard.filter.addFirst',
-                        'Ersten passenden Filter hinzufügen',
-                    )}
-                    disabled={!hasSuggestions}
-                    onClick={() => {
+                    onValueChange={(value) => {
+                        setIsSuggestionMenuOpen(true);
+                        onSearchChange(value);
+                    }}
+                    handleOnSearch={() => {
                         addFirstVisibleSuggestion();
                         setIsSuggestionMenuOpen(false);
                     }}
-                >
-                    <SearchIcon aria-hidden="true" />
-                </button>
+                    handleOnSearchClear={() => setIsSuggestionMenuOpen(true)}
+                />
 
                 {isSuggestionMenuOpen && hasSuggestions && (
                     <div className="statisticDashboard__filterSuggestions" role="listbox">
@@ -3235,6 +3218,16 @@ export const Statistic = () => {
             )
             .slice(0, 6);
     }, [availableFilterTargets, filterSearch, locale, translate, visibleFilterTargetIds]);
+    const scopeTabItems: AdminSegmentedTabItem[] = scopeOrder.map((scopeKey) => {
+        const scope = scopeDefinitions[scopeKey];
+        const ScopeIcon = scope.icon;
+
+        return {
+            id: scope.key,
+            label: translateDashboardText(translate, scope.label, locale),
+            icon: <ScopeIcon />,
+        };
+    });
     const updateCardMenuSelection = (cardKey: string, menuKey: CardMenuKey) => {
         setSelectedCardMenuByScope((currentSelection) => ({
             ...currentSelection,
@@ -3313,31 +3306,13 @@ export const Statistic = () => {
         <Page>
             <div className="statisticDashboardPage">
                 <Page.Title>
-                    <div
+                    <AdminSegmentedTabs
                         className="statisticDashboard__scopeTabs"
-                        aria-label={translateDashboardText(translate, 'Statistik-Ebene', locale)}
-                    >
-                        {scopeOrder.map((scopeKey) => {
-                            const scope = scopeDefinitions[scopeKey];
-                            const ScopeIcon = scope.icon;
-                            const isActive = scope.key === activeScope;
-
-                            return (
-                                <button
-                                    key={scope.key}
-                                    type="button"
-                                    aria-pressed={isActive}
-                                    className={`statisticDashboard__scopeTab ${
-                                        isActive ? 'statisticDashboard__scopeTab--active' : ''
-                                    }`}
-                                    onClick={() => setActiveScope(scope.key)}
-                                >
-                                    <ScopeIcon />
-                                    <span>{translateDashboardText(translate, scope.label, locale)}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
+                        activeId={activeScope}
+                        ariaLabel={translateDashboardText(translate, 'Statistik-Ebene', locale)}
+                        items={scopeTabItems}
+                        onChange={(scopeKey) => setActiveScope(scopeKey as ScopeKey)}
+                    />
                 </Page.Title>
 
                 <div className="statisticDashboard">

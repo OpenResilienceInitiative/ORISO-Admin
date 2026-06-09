@@ -2,10 +2,10 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: 16px 24px;
     width: 100%;
-    max-width: 529px;
+    max-width: 638px;
     min-width: 0;
 
     @media (max-width: 767px) {
@@ -14,9 +14,10 @@
 }
 
 .searchField {
-    flex: 1 1 320px;
+    flex: 0 1 499px;
     min-width: 0;
     width: 100%;
+    max-width: 499px;
 }
 
 .toolbarActions {

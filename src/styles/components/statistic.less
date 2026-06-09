@@ -33,100 +33,24 @@
 
 .statisticDashboard__filterSearchWrap {
     position: relative;
-    display: flex;
     width: 100%;
-    height: 56px;
     min-width: 0;
-    align-items: center;
     overflow: visible;
-    background: var(--m3-surface-container-lowest, #ffffff);
-    border-radius: 28px;
 }
 
 .statisticDashboard__filterSearch {
     width: 100%;
-    min-width: 0;
-    height: 56px;
-    box-sizing: border-box;
-    padding: 0 0 0 28px;
-    border: 0;
-    background: transparent;
-    border-radius: 28px 0 0 28px;
-    color: var(--m3-on-surface-variant, #444748);
-    font: inherit;
-    font-size: 16px;
-    font-weight: 400;
-    line-height: 24px;
-    outline: 0;
-
-    &::placeholder {
-        color: var(--m3-on-surface-variant, #444748);
-        opacity: 1;
-    }
-
-    &:focus {
-        box-shadow: none;
-    }
-
-    &:focus::placeholder {
-        color: transparent;
-        opacity: 0;
-    }
-}
-
-.statisticDashboard__filterSearchButton {
-    display: inline-flex;
-    height: 56px;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    background: transparent;
-    color: var(--m3-on-surface-variant, #444748);
-    cursor: pointer;
-    font: inherit;
-    transition: background 160ms ease, color 160ms ease, transform 160ms ease;
-
-    svg {
-        width: 20px;
-        height: 20px;
-        flex: 0 0 auto;
-    }
-
-    &:hover {
-        background: rgba(68, 71, 72, 0.08);
-        color: var(--m3-on-surface-variant, #444748);
-    }
-
-    &:active {
-        transform: translateY(1px);
-    }
-
-    &:focus-visible {
-        outline: 2px solid var(--m3-on-surface-variant, #444748);
-        outline-offset: -4px;
-    }
-}
-
-.statisticDashboard__filterSearchButton {
-    width: 56px;
-    flex: 0 0 56px;
-    padding: 0;
-    border-radius: 0 28px 28px 0;
-
-    &:disabled {
-        cursor: default;
-        opacity: 0.72;
-        transform: none;
-    }
+    max-width: 499px;
 }
 
 .statisticDashboard__filterSuggestions {
     position: absolute;
     z-index: 55;
     top: calc(100% + 8px);
-    right: 56px;
     left: 0;
     display: grid;
+    width: min(100%, 499px);
+    box-sizing: border-box;
     max-height: min(320px, calc(100vh - 220px));
     padding: 8px;
     border: 1px solid #d8e0e9;
@@ -277,69 +201,8 @@
 }
 
 .statisticDashboard__scopeTabs {
-    display: inline-flex;
+    width: 100%;
     max-width: 100%;
-    align-items: center;
-    border-radius: 48px;
-    gap: 2px;
-}
-
-.statisticDashboard__scopeTab {
-    display: inline-flex;
-    min-width: 282px;
-    min-height: 96px;
-    align-items: center;
-    justify-content: center;
-    padding: 32px 48px;
-    border: 0;
-    background: #646d78;
-    border-radius: 16px;
-    color: #e7effc;
-    cursor: pointer;
-    font-family: Inter, Roboto, Arial, sans-serif;
-    font-size: 24px;
-    font-weight: 400;
-    gap: 12px;
-    letter-spacing: 0;
-    line-height: 32px;
-    text-transform: none;
-    transition: background 160ms ease, border-radius 180ms ease, transform 160ms ease;
-    white-space: nowrap;
-
-    svg {
-        width: 32px;
-        height: 32px;
-        flex: 0 0 auto;
-    }
-
-    &:hover {
-        background: #58616b;
-    }
-
-    &:active {
-        transform: translateY(1px);
-    }
-}
-
-.protectedLayout button.statisticDashboard__scopeTab:not(.ant-btn-link) {
-    font-weight: 400;
-    text-transform: none;
-}
-
-.statisticDashboard__scopeTab:first-child {
-    border-radius: 100px;
-}
-
-.statisticDashboard__scopeTab:last-child {
-    border-radius: 16px 68px 68px 16px;
-}
-
-.statisticDashboard__scopeTab--active,
-.statisticDashboard__scopeTab--active:first-child,
-.statisticDashboard__scopeTab--active:last-child {
-    background: #141c25;
-    border-radius: 100px;
-    color: #ffffff;
 }
 
 .statisticDashboard__summaryGrid,
@@ -1196,13 +1059,6 @@
 }
 
 @media screen and (max-width: 1200px) {
-    .statisticDashboard__scopeTab {
-        min-width: 0;
-        padding-right: 32px;
-        padding-left: 32px;
-        font-size: 20px;
-    }
-
     .statisticDashboard__bars {
         gap: 22px;
     }
@@ -1237,34 +1093,14 @@
         grid-template-columns: 1fr;
     }
 
+    .statisticDashboard__filterSearch,
+    .statisticDashboard__filterSuggestions {
+        max-width: 100%;
+        width: 100%;
+    }
+
     .statisticDashboard__filterChips {
         justify-content: flex-start;
-    }
-
-    .statisticDashboard__scopeTabs {
-        display: grid;
-        width: 100%;
-        gap: 6px;
-    }
-
-    .statisticDashboard__scopeTab,
-    .statisticDashboard__scopeTab:first-child,
-    .statisticDashboard__scopeTab:last-child,
-    .statisticDashboard__scopeTab--active,
-    .statisticDashboard__scopeTab--active:first-child,
-    .statisticDashboard__scopeTab--active:last-child {
-        width: 100%;
-        min-height: 58px;
-        justify-content: flex-start;
-        padding: 14px 20px;
-        border-radius: 20px;
-        font-size: 18px;
-        line-height: 24px;
-    }
-
-    .statisticDashboard__scopeTab svg {
-        width: 24px;
-        height: 24px;
     }
 
     .statisticDashboard__summaryGrid,
@@ -1415,21 +1251,6 @@
 @media screen and (max-width: 520px) {
     .statisticDashboard__filterBar {
         margin-bottom: 14px;
-    }
-
-    .statisticDashboard__filterSearchWrap {
-        height: 52px;
-        border-radius: 26px;
-    }
-
-    .statisticDashboard__filterSearch,
-    .statisticDashboard__filterSearchButton {
-        height: 52px;
-    }
-
-    .statisticDashboard__filterSearchButton {
-        width: 52px;
-        flex-basis: 52px;
     }
 
     .statisticDashboard__filterChip {

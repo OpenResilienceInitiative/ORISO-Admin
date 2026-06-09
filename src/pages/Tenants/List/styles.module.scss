@@ -12,7 +12,19 @@
 
 .searchContainer {
     display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    max-width: 638px;
+    min-width: 0;
     gap: 24px;
+}
+
+.searchField {
+    flex: 0 1 499px;
+    width: 100%;
+    max-width: 499px;
+    min-width: 0;
 }
 
 .subdomain {
