@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { UserOutlined } from '@ant-design/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
@@ -8,6 +7,9 @@ import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { ReactComponent as AllUsersFilledIcon } from '../../../resources/img/svg/user-management/all_users_filled.svg';
+import { ReactComponent as AllUsersIcon } from '../../../resources/img/svg/user-management/all_users.svg';
+import { ReactComponent as GroupSearchIcon } from '../../../resources/img/svg/user-management/group_search.svg';
 import styles from './UserSectionPills.module.scss';
 
 type SectionPill = {
@@ -17,7 +19,11 @@ type SectionPill = {
     disabled?: boolean;
 };
 
-const PillIcon = () => <UserOutlined className={styles.pillIcon} aria-hidden />;
+const PillIcon = ({ filled = false }: { filled?: boolean }) => {
+    const Icon = filled ? AllUsersFilledIcon : AllUsersIcon;
+
+    return <Icon className={styles.pillIcon} aria-hidden />;
+};
 
 export const UserSectionPills = () => {
     const { t } = useTranslation();
@@ -68,9 +74,9 @@ export const UserSectionPills = () => {
         return null;
     }
 
-    const renderPillContent = (labelKey: string) => (
+    const renderPillContent = (labelKey: string, isActive = false) => (
         <>
-            <PillIcon />
+            <PillIcon filled={isActive} />
             <span className={styles.pillLabel}>{t(labelKey)}</span>
         </>
     );
@@ -106,14 +112,14 @@ export const UserSectionPills = () => {
                                     })
                                 }
                             >
-                                {renderPillContent(pill.labelKey)}
+                                {({ isActive }) => renderPillContent(pill.labelKey, isActive)}
                             </NavLink>
                         );
                     })}
                 </div>
             </div>
             <button type="button" className={styles.myAccessButton} disabled aria-disabled="true">
-                <PillIcon />
+                <GroupSearchIcon className={styles.pillIcon} aria-hidden />
                 <span className={styles.myAccessLabel}>{t('users.sectionPills.myAccess')}</span>
             </button>
         </div>

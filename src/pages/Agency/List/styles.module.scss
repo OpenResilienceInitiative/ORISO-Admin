@@ -2,11 +2,12 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
-    gap: 16px 24px;
+    justify-content: flex-start;
+    gap: 8px;
     width: 100%;
-    max-width: 529px;
+    max-width: 100%;
     min-width: 0;
+    padding-left: 24px;
 
     @media (max-width: 767px) {
         max-width: 100%;
@@ -14,9 +15,9 @@
 }
 
 .searchField {
-    flex: 1 1 320px;
+    flex: 0 1 499px;
     min-width: 0;
-    width: 100%;
+    width: min(499px, 100%);
 }
 
 .toolbarActions {
@@ -29,6 +30,24 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    height: 56px;
+    padding-inline: 24px;
+    border: 0;
+    border-radius: 28px;
+    background: var(--m3-secondary-container) !important;
+    color: var(--m3-on-secondary-container) !important;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+    letter-spacing: 0;
+    box-shadow: none;
+
+    &:hover,
+    &:focus {
+        background: #5b6470 !important;
+        color: var(--m3-on-secondary-container) !important;
+    }
 }
 
 .addButtonIcon {

@@ -160,6 +160,7 @@ export const TenantsList = () => {
                     {can(PermissionAction.Create, Resource.Tenant) &&
                         (isSuperAdmin || isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING)) && (
                             <Button
+                                className={styles.addButton}
                                 type="primary"
                                 icon={<PlusOutlined />}
                                 onClick={() =>

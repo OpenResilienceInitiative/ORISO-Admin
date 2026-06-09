@@ -1,4 +1,16 @@
 .loginForm {
+    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
+
+    h2.ant-typography {
+        margin-bottom: @spacing-m;
+        color: @text-dark-color;
+        font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 22px;
+        font-weight: 500;
+        line-height: 28px;
+        letter-spacing: 0;
+    }
+
     .ant-form-item-label > label {
         &.ant-form-item-required:not(.ant-form-item-required-mark-optional):before,
         &:after {
@@ -19,7 +31,32 @@
         max-width: 290px;
     }
 
+    .ant-input,
+    .ant-input-password,
+    .ant-btn {
+        font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
+        letter-spacing: 0;
+    }
+
+    .ant-input,
+    .ant-input-password input {
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 24px;
+    }
+
+    .ant-btn {
+        font-size: 16px;
+        font-weight: 500 !important;
+        line-height: 24px;
+    }
+
     .forgotPW {
+        color: @primary-color;
+        font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 24px;
         padding: 0;
 
         span {
@@ -65,6 +102,7 @@
     .loginLanguageSelector__select .ant-select-selection-item {
         margin-right: 0;
         color: @primary-color;
+        font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
         font-size: @fontSize-m;
         font-weight: 700;
         line-height: 1.2;
@@ -110,6 +148,7 @@
     padding: 0 @spacing-sm;
     color: @text-dark-color;
     overflow: visible;
+    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
     font-size: @fontSize-m;
     font-weight: 700;
     line-height: 40px;

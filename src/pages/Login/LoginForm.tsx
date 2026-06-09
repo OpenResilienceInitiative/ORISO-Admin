@@ -12,7 +12,11 @@ import { useLoginMutation } from '../../hooks/useLoginMutation.hook';
 import { TwoFactorType } from '../../enums/TwoFactorType';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 
-const LoginForm = () => {
+type LoginFormProps = {
+    onUsernamePresenceChange?: (hasUsername: boolean) => void;
+};
+
+const LoginForm = ({ onUsernamePresenceChange }: LoginFormProps) => {
     const { data: tenantData } = usePublicTenantData();
     const navigate = useNavigate();
     const { t } = useTranslation();
@@ -50,6 +54,7 @@ const LoginForm = () => {
                 wrapperCol={{ xs: { span: 8 } }}
                 initialValues={{ remember: true }}
                 onFinish={onFinish}
+                onValuesChange={(_, values) => onUsernamePresenceChange?.(!!values.username)}
                 autoComplete="off"
                 title={t('admin.login')}
                 size="large"

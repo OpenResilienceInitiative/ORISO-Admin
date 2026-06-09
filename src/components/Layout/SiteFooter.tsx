@@ -1,5 +1,4 @@
 import React from 'react';
-import { Menu } from 'antd';
 
 import { Footer } from 'antd/es/layout/layout';
 import { useTranslation } from 'react-i18next';
@@ -18,28 +17,19 @@ import routePathNames from '../../appConfig';
 
 const SiteFooter = () => {
     const { t } = useTranslation();
-    const items = [
-        {
-            label: (
-                <a href={routePathNames.imprint} target="_blank" rel="noopener noreferrer">
-                    <span>{t('footer.label.imprint')}</span>
-                </a>
-            ),
-            key: 'item-1',
-        }, // remember to pass the key prop
-        { label: ' | ', key: 'split' }, // which is required
-        {
-            label: (
-                <a href={routePathNames.privacy} target="_blank" rel="noopener noreferrer">
-                    <span>{t('footer.label.privacy')}</span>
-                </a>
-            ),
-            key: 'submenu',
-        },
-    ];
     return (
         <Footer className="layoutFooter">
-            <Menu mode="horizontal" className="footerMenu" items={items} />
+            <nav className="footerMenu" aria-label="Legal">
+                <a href={routePathNames.imprint} target="_blank" rel="noopener noreferrer">
+                    {t('footer.label.imprint')}
+                </a>
+                <span className="footerMenu__separator" aria-hidden="true">
+                    |
+                </span>
+                <a href={routePathNames.privacy} target="_blank" rel="noopener noreferrer">
+                    {t('footer.label.privacy')}
+                </a>
+            </nav>
         </Footer>
     );
 };

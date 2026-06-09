@@ -31,6 +31,7 @@ export const Login = () => {
     const refreshTokenValidInMs = tokenExpiry.refreshTokenValidUntilTime - currentTime;
 
     const [redirectUrl, setRedirectUrl] = useState('');
+    const [hasUsernameInput, setHasUsernameInput] = useState(false);
     const isTenantAdmin = hasRole(UserRole.TenantAdmin);
     const isAdminUser = hasRole([
         UserRole.TenantAdmin,
@@ -82,10 +83,10 @@ export const Login = () => {
             <div className="loginLanguageSelector">
                 <LanguageSelector variant="login" ariaLabelKey="language.loginSelectAriaLabel" />
             </div>
-            <Stage />
+            <Stage hasUsernameInput={hasUsernameInput} />
             <Row align="middle" style={{ flex: '1 0 auto' }}>
                 <Col xs={{ span: 10, offset: 1 }} md={{ span: 6, offset: 3 }} xl={{ span: 4, offset: 6 }}>
-                    <LoginForm />
+                    <LoginForm onUsernamePresenceChange={setHasUsernameInput} />
                 </Col>
             </Row>
         </PublicPageLayoutWrapper>
