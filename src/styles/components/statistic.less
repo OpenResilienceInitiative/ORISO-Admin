@@ -700,31 +700,46 @@
 .statisticDashboard__donutContent {
     display: grid;
     align-items: center;
-    gap: 36px;
-    grid-template-columns: minmax(190px, 226px) minmax(104px, 1fr);
+    gap: 24px;
+    grid-template-columns: minmax(176px, 190px) minmax(150px, 1fr);
 }
 
 .statisticDashboard__donut {
     position: relative;
     display: grid;
-    width: 226px;
-    height: 226px;
+    width: 190px;
+    height: 190px;
     border-radius: 50%;
     place-items: center;
 
-    span {
+    .statisticDashboard__donutCenter {
         position: relative;
         z-index: 1;
         display: grid;
-        width: 96px;
-        height: 96px;
+        align-content: center;
+        justify-items: center;
+        width: 92px;
+        height: 92px;
+        padding: 14px 10px;
         background: #ffffff;
         border-radius: 50%;
+        text-align: center;
+    }
+
+    strong {
         color: #373737;
-        font-size: 28px;
+        font-size: 27px;
         font-weight: 800;
-        line-height: 34px;
-        place-items: center;
+        line-height: 31px;
+    }
+
+    small {
+        display: block;
+        max-width: 78px;
+        color: #687180;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 13px;
     }
 }
 
@@ -750,24 +765,45 @@
 .statisticDashboard__donutSegment {
     animation: statisticDashboardDonutDraw 2800ms cubic-bezier(0.2, 0.78, 0.26, 1) both;
     animation-delay: calc(var(--segment-index, 0) * 220ms);
+    cursor: pointer;
     stroke-dasharray: var(--segment-size) 100;
     stroke-dashoffset: var(--segment-offset);
     stroke-linecap: butt;
+    transition: opacity 180ms ease, stroke-width 180ms ease;
+}
+
+.statisticDashboard__donutSegment--active {
+    opacity: 1;
+    stroke-width: 27;
+}
+
+.statisticDashboard__donutSegment--dimmed {
+    opacity: 0.26;
 }
 
 .statisticDashboard__legend {
     display: grid;
     align-content: center;
-    gap: 23px;
+    gap: 12px;
 }
 
 .statisticDashboard__legendItem {
+    appearance: none;
     display: grid;
     align-items: center;
-    gap: 10px;
-    grid-template-columns: 14px minmax(0, 1fr);
+    gap: 8px;
+    grid-template-columns: 14px minmax(0, 1fr) minmax(44px, auto);
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    transition: background 160ms ease, color 160ms ease;
 
-    span {
+    .statisticDashboard__legendDot {
         display: inline-flex;
         width: 14px;
         height: 14px;
@@ -780,6 +816,40 @@
         font-weight: 400;
         line-height: 20px;
         white-space: pre-line;
+    }
+
+    .statisticDashboard__legendMeta {
+        display: grid;
+        justify-items: end;
+
+        strong,
+        small {
+            color: #687180;
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 17px;
+        }
+
+        small {
+            color: #8b94a1;
+            font-size: 12px;
+        }
+    }
+}
+
+.statisticDashboard__legendItem:hover,
+.statisticDashboard__legendItem:focus-visible {
+    background: #f2f6fb;
+    outline: none;
+}
+
+.statisticDashboard__legendItem--active {
+    background: #111923;
+
+    p,
+    strong,
+    small {
+        color: #ffffff;
     }
 }
 

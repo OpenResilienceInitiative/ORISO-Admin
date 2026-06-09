@@ -1,6 +1,6 @@
 import { ArrowDownward, ArrowUpward, MoreVert, NorthEast, SouthEast } from '@mui/icons-material';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Page } from '../components/Page';
 import { ReactComponent as ActiveAgenciesIcon } from '../resources/img/svg/statistics-dashboard/active-agencies.svg';
 import { ReactComponent as CalendarIcon } from '../resources/img/svg/statistics-dashboard/calendar.svg';
@@ -33,6 +33,7 @@ import type {
     CardMenuOption,
     CaseChartBar,
     CasePeriodKey,
+    ConversationSegment,
     ConversationPeriodData,
     ConversationPeriodKey,
     IconTone,
@@ -65,6 +66,19 @@ const createConversationData = (values: [number, number, number, number]): Conve
     total: `${values.reduce((sum, value) => sum + value, 0)}`,
     segments: createConversationSegments(values),
 });
+
+const getConversationTotal = (segments: ConversationSegment[]) =>
+    segments.reduce((sum, segment) => sum + segment.value, 0);
+
+const getConversationSegmentPercentage = (segment: ConversationSegment, segments: ConversationSegment[]) => {
+    const total = getConversationTotal(segments);
+
+    if (!total) {
+        return 0;
+    }
+
+    return Math.round((segment.value / total) * 100);
+};
 
 const scopeDefinitions: Record<ScopeKey, ScopeDefinition> = {
     platform: {
@@ -782,28 +796,28 @@ const demoCaseChartsByScope: Record<ScopeKey, Record<CasePeriodKey, CaseChartBar
 
 const demoConversationByScope: Record<ScopeKey, Record<ConversationPeriodKey, ConversationPeriodData>> = {
     platform: {
-        today: createConversationData([5, 1, 1, 0]),
-        yesterday: createConversationData([4, 1, 0, 0]),
-        thisWeek: createConversationData([14, 3, 1, 1]),
-        total: createConversationData([24, 4, 2, 0]),
-        thisYear: createConversationData([20, 3, 1, 2]),
-        lastYear: createConversationData([17, 3, 1, 1]),
+        today: createConversationData([1, 2, 0, 0]),
+        yesterday: createConversationData([1, 1, 1, 0]),
+        thisWeek: createConversationData([2, 5, 3, 0]),
+        total: createConversationData([7, 14, 11, 0]),
+        thisYear: createConversationData([4, 11, 8, 0]),
+        lastYear: createConversationData([5, 9, 6, 1]),
     },
     tenant: {
-        today: createConversationData([3, 1, 1, 0]),
-        yesterday: createConversationData([3, 1, 0, 0]),
-        thisWeek: createConversationData([9, 2, 1, 1]),
-        total: createConversationData([13, 3, 1, 1]),
-        thisYear: createConversationData([11, 2, 1, 1]),
-        lastYear: createConversationData([10, 2, 1, 0]),
+        today: createConversationData([1, 1, 1, 0]),
+        yesterday: createConversationData([0, 2, 1, 0]),
+        thisWeek: createConversationData([3, 5, 2, 0]),
+        total: createConversationData([6, 10, 8, 1]),
+        thisYear: createConversationData([4, 8, 6, 0]),
+        lastYear: createConversationData([5, 7, 4, 1]),
     },
     agency: {
-        today: createConversationData([2, 1, 0, 0]),
+        today: createConversationData([1, 1, 0, 0]),
         yesterday: createConversationData([1, 0, 1, 0]),
-        thisWeek: createConversationData([5, 1, 1, 0]),
-        total: createConversationData([6, 1, 1, 0]),
-        thisYear: createConversationData([5, 1, 1, 0]),
-        lastYear: createConversationData([4, 1, 0, 1]),
+        thisWeek: createConversationData([2, 2, 1, 0]),
+        total: createConversationData([3, 4, 3, 0]),
+        thisYear: createConversationData([2, 3, 2, 0]),
+        lastYear: createConversationData([3, 2, 1, 0]),
     },
 };
 
@@ -1706,8 +1720,31 @@ const getEffectiveIconTone = (icon: SvgIcon, tone?: IconTone) => {
 
 const AnimatedValue = ({ value }: { value: string }) => <>{useAnimatedDisplayValue(value)}</>;
 
-const DonutChart = ({ animationKey, data }: { animationKey: string; data: ConversationPeriodData }) => {
+const DonutChart = ({
+    animationKey,
+    data,
+    onSegmentSelect,
+    selectedSegmentLabel,
+}: {
+    animationKey: string;
+    data: ConversationPeriodData;
+    onSegmentSelect: (segmentLabel: string) => void;
+    selectedSegmentLabel?: string;
+}) => {
     const renderSegments = useMemo(() => buildDonutSegments(data.segments), [data.segments]);
+    const selectedSegment = data.segments.find((segment) => segment.label === selectedSegmentLabel);
+    const hasSelectedSegment = Boolean(selectedSegment);
+    const centerValue = selectedSegment ? `${selectedSegment.value}` : data.total;
+    const centerDetail = selectedSegment
+        ? `${getConversationSegmentPercentage(selectedSegment, data.segments)}% ${selectedSegment.label}`
+        : 'gesamt';
+
+    const handleSegmentKeyDown = (event: ReactKeyboardEvent<SVGCircleElement>, segmentLabel: string) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onSegmentSelect(segmentLabel);
+        }
+    };
 
     return (
         <div className="statisticDashboard__donut" aria-label={`Gespräche insgesamt ${data.total}`}>
@@ -1715,11 +1752,16 @@ const DonutChart = ({ animationKey, data }: { animationKey: string; data: Conver
                 key={animationKey}
                 className="statisticDashboard__donutSvg"
                 viewBox="0 0 120 120"
-                aria-hidden="true"
+                aria-label="Gesprächstyp-Anteile"
                 focusable="false"
+                role="group"
             >
                 <circle className="statisticDashboard__donutTrack" cx="60" cy="60" r="43" />
                 {renderSegments.map((segment, index) => {
+                    const segmentData = data.segments[index];
+                    const isSelected = selectedSegment?.label === segmentData.label;
+                    const isClickableSegment = segmentData.value > 0;
+                    const segmentPercentage = getConversationSegmentPercentage(segmentData, data.segments);
                     const segmentStyle = {
                         '--segment-index': index,
                         '--segment-offset': -segment.offset,
@@ -1729,20 +1771,35 @@ const DonutChart = ({ animationKey, data }: { animationKey: string; data: Conver
                     return (
                         <circle
                             key={`${segment.color}-${index}`}
-                            className="statisticDashboard__donutSegment"
+                            aria-label={`${segmentData.label}: ${segmentData.value} Gespräche, ${segmentPercentage}%`}
+                            aria-hidden={!isClickableSegment}
+                            className={`statisticDashboard__donutSegment ${
+                                isSelected ? 'statisticDashboard__donutSegment--active' : ''
+                            } ${hasSelectedSegment && !isSelected ? 'statisticDashboard__donutSegment--dimmed' : ''}`}
                             cx="60"
                             cy="60"
                             r="43"
+                            onClick={isClickableSegment ? () => onSegmentSelect(segmentData.label) : undefined}
+                            onKeyDown={
+                                isClickableSegment
+                                    ? (event) => handleSegmentKeyDown(event, segmentData.label)
+                                    : undefined
+                            }
                             pathLength="100"
+                            role={isClickableSegment ? 'button' : undefined}
                             stroke={segment.color}
                             style={segmentStyle}
+                            tabIndex={isClickableSegment ? 0 : -1}
                         />
                     );
                 })}
             </svg>
-            <span>
-                <AnimatedValue value={data.total} />
-            </span>
+            <div className="statisticDashboard__donutCenter">
+                <strong>
+                    <AnimatedValue value={centerValue} />
+                </strong>
+                <small>{centerDetail}</small>
+            </div>
         </div>
     );
 };
@@ -1970,13 +2027,26 @@ export const Statistic = () => {
         tenant: 'today',
         agency: 'today',
     });
+    const [selectedConversationSegmentByScope, setSelectedConversationSegmentByScope] = useState<
+        Record<ScopeKey, string | undefined>
+    >({
+        platform: undefined,
+        tenant: undefined,
+        agency: undefined,
+    });
     const [selectedCaseDayByScope, setSelectedCaseDayByScope] =
         useState<Record<ScopeKey, string>>(defaultSelectedCaseDayByScope);
     const dashboard = dashboardByScope[activeScope];
     const selectedCasePeriod = selectedCasePeriodByScope[activeScope];
     const selectedConversationPeriod = selectedConversationPeriodByScope[activeScope];
+    const selectedConversationSegment = selectedConversationSegmentByScope[activeScope];
     const caseChart = demoCaseChartsByScope[activeScope][selectedCasePeriod];
     const conversationData = demoConversationByScope[activeScope][selectedConversationPeriod];
+    const selectedConversationSegmentLabel = conversationData.segments.some(
+        (segment) => segment.label === selectedConversationSegment,
+    )
+        ? selectedConversationSegment
+        : undefined;
     const selectedCaseDay = selectedCaseDayByScope[activeScope];
     const selectedCaseBar =
         caseChart.find((bar) => bar.day === selectedCaseDay) ||
@@ -2000,6 +2070,12 @@ export const Statistic = () => {
         setSelectedCaseDayByScope((currentSelection) => ({
             ...currentSelection,
             [activeScope]: day,
+        }));
+    };
+    const selectConversationSegment = (segmentLabel: string) => {
+        setSelectedConversationSegmentByScope((currentSelection) => ({
+            ...currentSelection,
+            [activeScope]: segmentLabel,
         }));
     };
 
@@ -2157,15 +2233,48 @@ export const Statistic = () => {
                             </div>
 
                             <div className="statisticDashboard__donutContent">
-                                <DonutChart animationKey={donutAnimationKey} data={conversationData} />
+                                <DonutChart
+                                    animationKey={donutAnimationKey}
+                                    data={conversationData}
+                                    onSegmentSelect={selectConversationSegment}
+                                    selectedSegmentLabel={selectedConversationSegmentLabel}
+                                />
 
                                 <div className="statisticDashboard__legend">
-                                    {conversationData.segments.map((segment) => (
-                                        <div key={segment.label} className="statisticDashboard__legendItem">
-                                            <span style={{ backgroundColor: segment.color }} />
-                                            <p aria-label={segment.label}>{segment.displayLabel || segment.label}</p>
-                                        </div>
-                                    ))}
+                                    {conversationData.segments.map((segment) => {
+                                        const segmentPercentage = getConversationSegmentPercentage(
+                                            segment,
+                                            conversationData.segments,
+                                        );
+                                        const isSelected = segment.label === selectedConversationSegmentLabel;
+
+                                        return (
+                                            <button
+                                                key={segment.label}
+                                                type="button"
+                                                className={`statisticDashboard__legendItem ${
+                                                    isSelected ? 'statisticDashboard__legendItem--active' : ''
+                                                }`}
+                                                aria-pressed={isSelected}
+                                                onClick={() => selectConversationSegment(segment.label)}
+                                            >
+                                                <span
+                                                    className="statisticDashboard__legendDot"
+                                                    style={{ backgroundColor: segment.color }}
+                                                />
+                                                <p aria-label={segment.label}>
+                                                    {segment.displayLabel || segment.label}
+                                                </p>
+                                                <span
+                                                    className="statisticDashboard__legendMeta"
+                                                    aria-label={`${segment.value} Gespräche, ${segmentPercentage}%`}
+                                                >
+                                                    <strong>{segment.value}</strong>
+                                                    <small>{segmentPercentage}%</small>
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </section>
