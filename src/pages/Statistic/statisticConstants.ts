@@ -1,9 +1,22 @@
-import type { CardMenuKey, CasePeriodKey, ConversationPeriodKey, PeriodOption, ScopeKey } from './types';
+import type {
+    CardMenuKey,
+    CasePeriodKey,
+    ConversationPeriodKey,
+    PeriodOption,
+    ScopeKey,
+    SelectedFilterTargetIdsByScope,
+} from './types';
 
 export const defaultSelectedCaseDayByScope: Record<ScopeKey, string> = {
     platform: 'Do',
     tenant: 'Do',
     agency: 'Do',
+};
+
+export const defaultSelectedFilterTargetIdsByScope: SelectedFilterTargetIdsByScope = {
+    platform: ['tenant-caritas-nrw', 'agency-u25-berlin'],
+    tenant: ['agency-schuldnerberatung-koeln'],
+    agency: ['agency-u25-berlin'],
 };
 
 export const scopeOrder: ScopeKey[] = ['platform', 'tenant', 'agency'];
