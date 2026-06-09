@@ -26,10 +26,10 @@ const getAnonymityClass = (value: string): string => {
     return styles.anonymityTagFull;
 };
 
-export const StatusTag = ({ status, label }: { status: LinkStatus; label?: string }) => (
-    <Tag className={classNames(styles.statusTag, statusClassMap[status])}>{label ?? status}</Tag>
+export const StatusTag = ({ status }: { status: LinkStatus }) => (
+    <Tag className={classNames(styles.statusTag, statusClassMap[status])}>{status}</Tag>
 );
 
-export const AnonymityTag = ({ value, label }: { value: string; label?: string }) => (
-    <Tag className={classNames(styles.statusTag, getAnonymityClass(value))}>{label ?? value}</Tag>
+export const AnonymityTag = ({ value }: { value: string }) => (
+    <Tag className={classNames(styles.statusTag, getAnonymityClass(value))}>{value}</Tag>
 );
