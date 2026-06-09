@@ -2,6 +2,15 @@
     width: 100%;
 }
 
+.wrapperFigma {
+    @media (min-width: 768px) {
+        .searchContainer {
+            padding-left: 31px;
+            margin-bottom: 62px;
+        }
+    }
+}
+
 .searchContainer {
     display: flex;
     flex-wrap: wrap;

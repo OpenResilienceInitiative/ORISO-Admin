@@ -304,7 +304,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const tableData = responseList?.data ?? [];
 
     return (
-        <div className={classNames('counselorList', styles.wrapper)}>
+        <div className={classNames('counselorList', styles.wrapper, { [styles.wrapperFigma]: figmaTableHeader })}>
             <div className={styles.searchContainer}>
                 <div className={styles.searchWithButton}>
                     <SearchInput

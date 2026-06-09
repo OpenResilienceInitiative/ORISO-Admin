@@ -2,4 +2,10 @@
     margin-bottom: 8px;
     width: 100%;
     min-width: 0;
+
+    @media (min-width: 768px) {
+        box-sizing: border-box;
+        padding-left: 7px;
+        margin-top: 7px;
+    }
 }
