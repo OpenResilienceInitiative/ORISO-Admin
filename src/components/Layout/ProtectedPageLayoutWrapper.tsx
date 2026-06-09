@@ -33,7 +33,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     const { subdomain } = getLocationVariables();
     const { hasRole, isSuperAdmin } = useUserRoles();
     const { data: tenantData } = useTenantData();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const location = useLocation();
     const handleLogout = () => {
         logout(true);
@@ -99,6 +99,8 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
 
     const canSeeSettingsMenu =
         can(PermissionAction.Read, Resource.Tenant) || can(PermissionAction.Read, Resource.LegalText);
+    const navLanguage = i18n.resolvedLanguage || i18n.language;
+    const navLabel = (key: string, fallbackKey: string) => t(key, t(fallbackKey));
 
     const settingsPath = getDefaultSettingsPath({
         isSuperAdmin,
@@ -124,7 +126,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                         }
                                     >
                                         <NavIcon path={routePathNames.themeSettings} />
-                                        <span>{t('settings.title')}</span>
+                                        <span lang={navLanguage}>{navLabel('sidebar.settings', 'settings.title')}</span>
                                     </NavLink>
                                 </li>
                             )}
@@ -136,7 +138,21 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                         className={classNames({ active: checkActive(routePathNames.tenants) })}
                                     >
                                         <NavIcon path={routePathNames.tenants} />
-                                        <span>{t('tenants.navTitle')}</span>
+                                        <span lang={navLanguage}>
+                                            {navLabel('sidebar.tenants', 'tenants.navTitle')}
+                                        </span>
+                                    </NavLink>
+                                </li>
+                            )}
+
+                            {can(PermissionAction.Read, Resource.Agency) && !hasRole(UserRole.RestrictedAgencyAdmin) && (
+                                <li className="menuItem">
+                                    <NavLink
+                                        to={routePathNames.agency}
+                                        className={classNames({ active: checkActive(routePathNames.agency) })}
+                                    >
+                                        <NavIcon path={routePathNames.agency} />
+                                        <span lang={navLanguage}>{navLabel('sidebar.agency', 'agency')}</span>
                                     </NavLink>
                                 </li>
                             )}
@@ -150,19 +166,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                         className={classNames({ active: checkActive('/admin/users') })}
                                     >
                                         <NavIcon path="/admin/users" />
-                                        <span>{t('users.allUsers')}</span>
-                                    </NavLink>
-                                </li>
-                            )}
-
-                            {can(PermissionAction.Read, Resource.Agency) && !hasRole(UserRole.RestrictedAgencyAdmin) && (
-                                <li className="menuItem">
-                                    <NavLink
-                                        to={routePathNames.agency}
-                                        className={classNames({ active: checkActive(routePathNames.agency) })}
-                                    >
-                                        <NavIcon path={routePathNames.agency} />
-                                        <span>{t('agency')}</span>
+                                        <span lang={navLanguage}>{navLabel('sidebar.users', 'users.allUsers')}</span>
                                     </NavLink>
                                 </li>
                             )}
@@ -174,24 +178,13 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                         className={({ isActive }) => (isActive ? 'active' : '')}
                                     >
                                         <NavIcon path={routePathNames.statistic} />
-                                        <span>{t('statistic.title')}</span>
+                                        <span lang={navLanguage}>
+                                            {navLabel('sidebar.statistics', 'statistic.title')}
+                                        </span>
                                     </NavLink>
                                 </li>
                             )}
 
-                            {!isSuperAdmin &&
-                                can(PermissionAction.Read, Resource.Consultant) &&
-                                !hasRole(UserRole.RestrictedAgencyAdmin) && (
-                                    <li key="logs" className="menuItem">
-                                        <NavLink
-                                            to={routePathNames.logs}
-                                            className={({ isActive }) => (isActive ? 'active' : '')}
-                                        >
-                                            <NavIcon path={routePathNames.logs} />
-                                            <span>{t('logs.title')}</span>
-                                        </NavLink>
-                                    </li>
-                                )}
                             {(can(PermissionAction.Read, Resource.Agency) ||
                                 can(PermissionAction.Read, Resource.AgencyAdminUser) ||
                                 hasRole(UserRole.RestrictedAgencyAdmin)) && (
@@ -205,10 +198,24 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                         }
                                     >
                                         <NavIcon path={routePathNames.links} />
-                                        <span>{t('links.navTitle', 'Links')}</span>
+                                        <span lang={navLanguage}>{navLabel('sidebar.links', 'links.navTitle')}</span>
                                     </NavLink>
                                 </li>
                             )}
+
+                            {!isSuperAdmin &&
+                                can(PermissionAction.Read, Resource.Consultant) &&
+                                !hasRole(UserRole.RestrictedAgencyAdmin) && (
+                                    <li key="logs" className="menuItem">
+                                        <NavLink
+                                            to={routePathNames.logs}
+                                            className={({ isActive }) => (isActive ? 'active' : '')}
+                                        >
+                                            <NavIcon path={routePathNames.logs} />
+                                            <span lang={navLanguage}>{navLabel('sidebar.logs', 'logs.title')}</span>
+                                        </NavLink>
+                                    </li>
+                                )}
 
                             {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
                                 <li key="inactive-audit-logs" className="menuItem">
@@ -217,7 +224,9 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                         className={({ isActive }) => (isActive ? 'active' : '')}
                                     >
                                         <NavIcon path={routePathNames.inactiveAccountAuditLogs} />
-                                        <span>{t('inactiveAudit.title')}</span>
+                                        <span lang={navLanguage}>
+                                            {navLabel('sidebar.logs', 'inactiveAudit.title')}
+                                        </span>
                                     </NavLink>
                                 </li>
                             )}
@@ -230,14 +239,16 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                     className={({ isActive }) => (isActive ? 'active' : '')}
                                 >
                                     <NavIcon path={routePathNames.userProfile} />
-                                    <span>{t('profile.title')}</span>
+                                    <span lang={navLanguage}>{navLabel('sidebar.account', 'profile.title')}</span>
                                 </NavLink>
                             </li>
 
                             <li className="menuItem">
                                 <button onClick={handleLogout} type="button">
                                     <NavIcon path="logout" />
-                                    <span className="logout">{t('logout')}</span>
+                                    <span className="logout" lang={navLanguage}>
+                                        {navLabel('sidebar.logout', 'logout')}
+                                    </span>
                                 </button>
                             </li>
                         </ul>

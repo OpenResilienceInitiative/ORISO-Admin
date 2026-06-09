@@ -19,7 +19,7 @@
 
 .statisticDashboard {
     width: min(100%, 1236px);
-    margin-top: clamp(32px, 5vw, 88px);
+    margin-top: clamp(16px, 2.4vw, 32px);
 }
 
 .statisticDashboard__filterBar {
@@ -278,26 +278,28 @@
 .statisticDashboard__scopeTab {
     display: inline-flex;
     min-width: 282px;
-    min-height: 76px;
+    min-height: 96px;
     align-items: center;
     justify-content: center;
-    padding: 22px 44px;
+    padding: 32px 48px;
     border: 0;
     background: #646d78;
     border-radius: 16px;
     color: #e7effc;
     cursor: pointer;
-    font: inherit;
+    font-family: Inter, Roboto, Arial, sans-serif;
     font-size: 24px;
     font-weight: 400;
-    gap: 14px;
+    gap: 12px;
+    letter-spacing: 0;
     line-height: 32px;
+    text-transform: none;
     transition: background 160ms ease, border-radius 180ms ease, transform 160ms ease;
     white-space: nowrap;
 
     svg {
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
         flex: 0 0 auto;
     }
 
@@ -308,6 +310,11 @@
     &:active {
         transform: translateY(1px);
     }
+}
+
+.protectedLayout button.statisticDashboard__scopeTab:not(.ant-btn-link) {
+    font-weight: 400;
+    text-transform: none;
 }
 
 .statisticDashboard__scopeTab:first-child {
@@ -1179,7 +1186,7 @@
     }
 }
 
-@media screen and (max-width: 1450px) {
+@media screen and (max-width: 1200px) {
     .statisticDashboard__scopeTab {
         min-width: 0;
         padding-right: 32px;

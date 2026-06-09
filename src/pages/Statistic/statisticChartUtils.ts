@@ -20,11 +20,11 @@ export const getCaseAxisMax = (maxValue: number) => {
     return Math.ceil(maxValue / 10) * 10;
 };
 
-export const getCaseAxisLabels = (maxValue: number) => {
+export const getCaseAxisLabels = (maxValue: number, locale = 'de-DE') => {
     const topValue = getCaseAxisMax(maxValue);
 
     return [topValue, Math.round(topValue * 0.66), Math.round(topValue * 0.33), 0].map((label) =>
-        label.toLocaleString('de-DE'),
+        label.toLocaleString(locale),
     );
 };
 

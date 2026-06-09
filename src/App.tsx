@@ -96,6 +96,7 @@ export const App = () => {
 
     const canReadTenant = can(PermissionAction.Read, Resource.Tenant);
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
+    const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     // console.log('🔍 App: canReadTenant:', canReadTenant);
     // console.log('🔍 App: canReadLegalText:', canReadLegalText);
     // console.log('🔍 App: Will show routes?', canReadTenant || canReadLegalText);
@@ -163,13 +164,7 @@ export const App = () => {
                     />
                     <Route
                         path={routePathNames.statistic}
-                        element={
-                            can(PermissionAction.Read, Resource.Statistic) ? (
-                                <Statistic />
-                            ) : (
-                                <Navigate to="/admin/access-denied" replace />
-                            )
-                        }
+                        element={canReadStatistic ? <Statistic /> : <Navigate to="/admin/access-denied" replace />}
                     />
                     {!isSuperAdmin && <Route path={routePathNames.logs} element={<SupervisorLogsPage />} />}
                     {isSuperAdmin && (

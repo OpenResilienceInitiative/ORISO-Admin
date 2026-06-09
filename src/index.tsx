@@ -88,6 +88,7 @@ render(
 
                             <Route path={routePathNames.imprint} element={<Imprint />} />
                             <Route path={routePathNames.privacy} element={<Privacy />} />
+
                             {/* put protected routes at the end to act as a wildcard route fetcher */}
                             <Route
                                 path="*"

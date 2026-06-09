@@ -46,7 +46,7 @@ export const useUserRolesToPermission = () => {
             Tenant: { read: true, update: true, create: isSuperAdmin, delete: isSuperAdmin },
             Language: { update: true },
             LegalText: { read: true, update: true },
-            Statistic: { read: isStatisticsEnabled },
+            Statistic: { read: isSuperAdmin || isStatisticsEnabled },
             TenantAdminUser: {
                 read: isSuperAdmin,
                 create: isSuperAdmin,
