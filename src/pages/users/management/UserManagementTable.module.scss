@@ -151,8 +151,9 @@
 .tableContainerFigma {
     :global {
         .ant-table-thead > tr > th {
-            background: var(--m3-table-header-background);
+            background: var(--m3-surface-container-highest);
             border-bottom: none;
+            border-radius: 0 !important;
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
             font-weight: 500;
             font-size: 14px;
@@ -166,21 +167,21 @@
         }
 
         .ant-table-thead > tr > th:first-child {
-            border-top-left-radius: 12px;
-            border-bottom-left-radius: 12px;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
         }
 
         .ant-table-thead > tr > th:last-child {
-            border-top-right-radius: 12px;
-            border-bottom-right-radius: 12px;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
         }
 
         .ant-table-thead > tr:first-child > th:first-child {
-            border-top-left-radius: 12px;
+            border-top-left-radius: 0;
         }
 
         .ant-table-thead > tr:first-child > th:last-child {
-            border-top-right-radius: 12px;
+            border-top-right-radius: 0;
         }
     }
 }
