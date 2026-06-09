@@ -17,8 +17,10 @@ const PublicPageLayoutWrapper = ({ children, className = '', hideFooter }: Publi
     const { settings } = useAppConfigContext();
 
     useEffect(() => {
-        getPublicTenantData(settings).catch(() => {});
-    }, []);
+        getPublicTenantData(settings).catch((error) => {
+            if (error?.message !== 'No tenant slug available') throw error;
+        });
+    }, [settings]);
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
