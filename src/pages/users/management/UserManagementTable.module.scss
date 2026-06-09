@@ -15,15 +15,16 @@
 
 .searchWithButton {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 8px;
-    width: auto;
+    width: min(100%, 610px);
     max-width: 100%;
     min-width: 0;
-    flex: 0 1 auto;
+    flex: 0 1 610px;
 
     @media (max-width: 767px) {
+        flex-wrap: wrap;
         max-width: 100%;
         flex: 1 1 100%;
     }

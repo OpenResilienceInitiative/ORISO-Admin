@@ -1,6 +1,6 @@
 .searchNewContainer {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: flex-start;
     gap: 8px;
@@ -10,6 +10,7 @@
     padding-left: 24px;
 
     @media (max-width: 767px) {
+        flex-wrap: wrap;
         max-width: 100%;
     }
 }
