@@ -12,6 +12,7 @@ import routePathNames from './appConfig';
 import { queryClient } from './constants/client';
 import { Login } from './pages/Login/Login';
 import { Error404 } from './pages/Error404';
+import { Statistic } from './pages/Statistic';
 import { ProtectedRoute } from './router/ProtectedRoute';
 import i18n from './i18n';
 import { Imprint } from './pages/Imprint';
@@ -88,6 +89,7 @@ render(
 
                             <Route path={routePathNames.imprint} element={<Imprint />} />
                             <Route path={routePathNames.privacy} element={<Privacy />} />
+                            {import.meta.env.DEV && <Route path="/admin/statistic-preview" element={<Statistic />} />}
 
                             {/* put protected routes at the end to act as a wildcard route fetcher */}
                             <Route
