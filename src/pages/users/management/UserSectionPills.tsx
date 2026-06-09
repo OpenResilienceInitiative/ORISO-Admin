@@ -9,7 +9,6 @@ import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { ReactComponent as AllUsersFilledIcon } from '../../../resources/img/svg/user-management/all_users_filled.svg';
 import { ReactComponent as AllUsersIcon } from '../../../resources/img/svg/user-management/all_users.svg';
-import { ReactComponent as GroupSearchIcon } from '../../../resources/img/svg/user-management/group_search.svg';
 import styles from './UserSectionPills.module.scss';
 
 type SectionPill = {
@@ -118,10 +117,6 @@ export const UserSectionPills = () => {
                     })}
                 </div>
             </div>
-            <button type="button" className={styles.myAccessButton} disabled aria-disabled="true">
-                <GroupSearchIcon className={styles.pillIcon} aria-hidden />
-                <span className={styles.myAccessLabel}>{t('users.sectionPills.myAccess')}</span>
-            </button>
         </div>
     );
 };

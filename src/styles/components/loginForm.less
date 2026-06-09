@@ -1,5 +1,13 @@
 .loginForm {
+    width: 319px;
+    max-width: 100%;
     font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
+
+    .ant-form,
+    .ant-form-item,
+    .ant-form-item-row {
+        width: 100%;
+    }
 
     h2.ant-typography {
         margin-bottom: @spacing-m;
@@ -9,6 +17,10 @@
         font-weight: 500;
         line-height: 28px;
         letter-spacing: 0;
+    }
+
+    .ant-form-item {
+        margin-bottom: 21px;
     }
 
     .ant-form-item-label > label {
@@ -28,7 +40,18 @@
     }
 
     .ant-form-item-control-input {
-        max-width: 290px;
+        width: 100%;
+        max-width: 319px;
+    }
+
+    .ant-form-item-control {
+        flex: 0 0 319px;
+        max-width: 319px;
+    }
+
+    .ant-form-item-control-input-content {
+        width: 100%;
+        max-width: 319px;
     }
 
     .ant-input,
@@ -39,29 +62,94 @@
     }
 
     .ant-input,
+    .ant-input-password {
+        width: 100%;
+        min-height: 56px;
+        border: 1px solid #747878;
+        border-radius: 4px;
+        background: @white;
+        color: @text-dark-color;
+        box-shadow: none;
+        transition:
+            border-color 160ms ease,
+            box-shadow 160ms ease;
+    }
+
+    .ant-input:hover,
+    .ant-input-password:hover {
+        border-color: #444748;
+    }
+
+    .ant-input:focus,
+    .ant-input-focused,
+    .ant-input-password-focused {
+        border-color: @primary-color;
+        box-shadow: 0 0 0 1px @primary-color;
+    }
+
+    .ant-input-password {
+        height: 56px;
+        padding: 0 11px;
+        align-items: center;
+    }
+
+    .ant-input,
     .ant-input-password input {
         font-size: 16px;
         font-weight: 400;
         line-height: 24px;
     }
 
+    .ant-input-password input {
+        height: 54px;
+        min-height: 0;
+        border: 0;
+        background: transparent;
+    }
+
     .ant-btn {
+        width: 100%;
+        height: 56px;
+        border: 0;
+        border-radius: 28px;
         font-size: 16px;
         font-weight: 500 !important;
         line-height: 24px;
+
+        &:not(:disabled):not([disabled]) {
+            background: var(--m3-secondary-container);
+            color: var(--m3-on-secondary-container);
+        }
+
+        &:not(:disabled):hover,
+        &:not(:disabled):focus {
+            background: #5b6470;
+            color: var(--m3-on-secondary-container);
+        }
+
+        &:disabled,
+        &[disabled] {
+            border: 0;
+            background: rgba(29, 27, 32, 0.12) !important;
+            color: rgba(29, 27, 32, 0.38) !important;
+        }
     }
 
     .forgotPW {
+        display: inline-flex;
+        align-items: center;
+        min-height: 56px;
         color: @primary-color;
         font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
         font-size: 16px;
-        font-weight: 400;
+        font-weight: 500;
         line-height: 24px;
         padding: 0;
+        text-decoration: none;
 
         span {
-            color: @primary-color;
-            text-decoration: underline;
+            color: #4c555f;
+            text-decoration: none;
         }
     }
 }
