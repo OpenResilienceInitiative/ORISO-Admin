@@ -9,6 +9,15 @@
     overflow: hidden;
     background: var(--m3-surface-container-lowest);
 
+    &:focus-within {
+        :global {
+            .ant-input::placeholder {
+                color: transparent;
+                opacity: 0;
+            }
+        }
+    }
+
     :global {
         .ant-input {
             flex: 1 1 auto;
