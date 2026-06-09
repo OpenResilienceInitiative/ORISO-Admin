@@ -1,9 +1,9 @@
 import type { CardMenuKey, CasePeriodKey, ConversationPeriodKey, PeriodOption, ScopeKey } from './types';
 
 export const defaultSelectedCaseDayByScope: Record<ScopeKey, string> = {
-    platform: 'Thu',
-    tenant: 'Thu',
-    agency: 'Thu',
+    platform: 'Do',
+    tenant: 'Do',
+    agency: 'Do',
 };
 
 export const scopeOrder: ScopeKey[] = ['platform', 'tenant', 'agency'];
