@@ -5,13 +5,15 @@ import { TranslatableFormField } from '../../../../TranslatableFormField';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
 
-export const NameAndSlogan = ({ tenantId }: { tenantId: string }) => {
+export const NameAndSlogan = ({ tenantId, readOnly = false }: { tenantId: string; readOnly?: boolean }) => {
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id: tenantId });
     const { mutate } = useTenantAdminDataMutation({ id: tenantId });
 
     return (
         <CardEditable
+            key={`name-slogan-${tenantId}-${readOnly}`}
+            allowEdit={!readOnly}
             isLoading={isLoading}
             initialValues={{ ...data }}
             titleKey="organisations.nameAndSlugTitle"

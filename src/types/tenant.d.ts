@@ -47,6 +47,7 @@ export interface TenantSettings {
         permissionsPageEnabled?: boolean | null;
         allowedPermissionToggles?: {
             anonymousChat?: boolean | null;
+            appearance?: boolean | null;
             calls?: boolean | null;
             supervision?: boolean | null;
             supervisionAnonymousChats?: boolean | null;

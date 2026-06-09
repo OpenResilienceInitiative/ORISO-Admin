@@ -8,7 +8,7 @@ import { SelectFormField } from '../../../../SelectFormField';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
 
-export const Languages = ({ tenantId }: { tenantId: string }) => {
+export const Languages = ({ tenantId, readOnly = false }: { tenantId: string; readOnly?: boolean }) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
     const [modal, setModal] = useState(false);
@@ -23,6 +23,8 @@ export const Languages = ({ tenantId }: { tenantId: string }) => {
     return (
         <>
             <CardEditable
+                key={`languages-${tenantId}-${readOnly}`}
+                allowEdit={!readOnly}
                 isLoading={isLoading}
                 initialValues={{ ...data }}
                 titleKey="organisations.language"

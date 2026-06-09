@@ -4,6 +4,14 @@ import classNames from 'classnames';
 import React, { cloneElement, forwardRef, LegacyRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
+import { ReactComponent as AppearanceIcon } from '../../resources/img/svg/permissions/appearance.svg';
+import { ReactComponent as EmailServerIcon } from '../../resources/img/svg/permissions/email_server.svg';
+import { ReactComponent as FunctionalitiesIcon } from '../../resources/img/svg/permissions/functionalities.svg';
+import { ReactComponent as FunctionalityAccessIcon } from '../../resources/img/svg/permissions/functionality_access.svg';
+import { ReactComponent as GlobalConfigIcon } from '../../resources/img/svg/permissions/global_config.svg';
+import { ReactComponent as GlobalSettingsIcon } from '../../resources/img/svg/permissions/global_settings.svg';
+import { ReactComponent as LegalIcon } from '../../resources/img/svg/permissions/legal.svg';
+import { ReactComponent as MasterDataIcon } from '../../resources/img/svg/permissions/master_data.svg';
 import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissions/tab_star.svg';
 import styles from './styles.module.scss';
 
@@ -22,7 +30,7 @@ interface PageTitleProps {
     // eslint-disable-next-line react/no-unused-prop-types
     subTitle?: React.ReactChild;
     children?: React.ReactChild | React.ReactChild[];
-    tabs?: Array<{ to: string; titleKey }>;
+    tabs?: Array<{ to: string; titleKey; iconName?: string }>;
 }
 
 interface PageBackProps {
@@ -30,7 +38,7 @@ interface PageBackProps {
     titleKey?: string;
     path: string;
     children?: React.ReactChild | React.ReactChild[];
-    tabs?: Array<{ to: string; titleKey: string; icon?: JSX.Element }>;
+    tabs?: Array<{ to: string; titleKey: string; iconName?: string; icon?: JSX.Element }>;
 }
 
 export const Page = ({ children, stickyHeader, isLoading }: PageProps) => {
@@ -46,20 +54,35 @@ export const Page = ({ children, stickyHeader, isLoading }: PageProps) => {
     );
 };
 
-const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; icon?: JSX.Element }> }) => {
+const tabIcons = {
+    appearance: AppearanceIcon,
+    email_server: EmailServerIcon,
+    functionalities: FunctionalitiesIcon,
+    functionality_access: FunctionalityAccessIcon,
+    global_config: GlobalConfigIcon,
+    global_settings: GlobalSettingsIcon,
+    legal: LegalIcon,
+    master_data: MasterDataIcon,
+};
+
+const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: string; icon?: JSX.Element }> }) => {
     const { t } = useTranslation();
 
     return (
         <div className={styles.tabsContainer}>
             {tabs
                 ?.filter((tab) => tab && tab.to)
-                .map(({ icon, ...tab }) => (
-                    <NavLink className={styles.tab} to={tab.to} key={tab.titleKey}>
-                        <TabStarIcon className={styles.tabStar} width={20} height={20} />
-                        <span className={styles.tabLabel}>{t(tab.titleKey)}</span>
-                        {icon && cloneElement(icon, { className: styles.tabIcon })}
-                    </NavLink>
-                ))}
+                .map(({ icon, iconName, ...tab }) => {
+                    const TabIcon = iconName ? tabIcons[iconName] || TabStarIcon : TabStarIcon;
+
+                    return (
+                        <NavLink className={styles.tab} to={tab.to} key={tab.titleKey}>
+                            <TabIcon className={styles.tabStar} width={20} height={20} />
+                            <span className={styles.tabLabel}>{t(tab.titleKey)}</span>
+                            {icon && cloneElement(icon, { className: styles.tabIcon })}
+                        </NavLink>
+                    );
+                })}
         </div>
     );
 };
