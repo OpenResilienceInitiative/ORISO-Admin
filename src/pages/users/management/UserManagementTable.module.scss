@@ -158,7 +158,28 @@
 }
 
 .tableContainerFigma {
+    overflow: visible;
+
     :global {
+        .ant-table-wrapper {
+            overflow: visible;
+        }
+
+        .ant-table-container,
+        .ant-table-content {
+            overflow: visible;
+        }
+
+        .ant-table-sticky-holder {
+            z-index: 20;
+            overflow: hidden;
+            background: var(--m3-surface-container-highest);
+        }
+
+        .ant-table-sticky-holder table {
+            background: var(--m3-surface-container-highest);
+        }
+
         .ant-table-thead > tr > th {
             background: var(--m3-surface-container-highest);
             border-bottom: none;
@@ -169,6 +190,22 @@
             color: #141c25;
             padding-top: 14px;
             padding-bottom: 14px;
+        }
+
+        .ant-table-thead > tr > th::before {
+            display: none;
+        }
+
+        .ant-table-cell-fix-right,
+        .ant-table-cell-fix-right-first,
+        .ant-table-cell-fix-right-last {
+            z-index: 3;
+        }
+
+        .ant-table-thead .ant-table-cell-fix-right,
+        .ant-table-thead .ant-table-cell-fix-right-first,
+        .ant-table-thead .ant-table-cell-fix-right-last {
+            z-index: 21;
         }
 
         .ant-table-tbody > tr:hover > td {

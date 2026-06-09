@@ -353,6 +353,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     onChange={handleTableAction}
                     rowClassName={isOrganizations ? undefined : rowClassName}
                     locale={config.emptyTextKey ? { emptyText: t(config.emptyTextKey) } : undefined}
+                    sticky={figmaTableHeader ? { offsetHeader: 0 } : undefined}
                 />
             </div>
             {deleteUserId && can(PermissionAction.Delete, config.updateResource) && !isTenantAdmins && (
