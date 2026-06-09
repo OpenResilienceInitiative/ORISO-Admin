@@ -51,10 +51,11 @@ const col = (key: UserTableColumnKey, visible: boolean, sortable = false, width?
     width,
 });
 
-const STATUS_COLUMN_WIDTH = 90;
+const STATUS_COLUMN_WIDTH = 100;
+const LAST_UPDATED_COLUMN_WIDTH = 210;
 
 const baseIdentityColumns = (): UserTableColumnConfig[] => [
-    col('lastUpdated', true, true, 130),
+    col('lastUpdated', true, true, LAST_UPDATED_COLUMN_WIDTH),
     col('status', true, false, STATUS_COLUMN_WIDTH),
     col('lastname', true, true, 130),
     col('firstname', true, true, 120),
@@ -63,7 +64,7 @@ const baseIdentityColumns = (): UserTableColumnConfig[] => [
 ];
 
 const tenantAdminIdentityColumns = (): UserTableColumnConfig[] => [
-    col('lastUpdated', true, false, 130),
+    col('lastUpdated', true, false, LAST_UPDATED_COLUMN_WIDTH),
     col('status', true, false, STATUS_COLUMN_WIDTH),
     col('lastname', true, true, 130),
     col('firstname', true, true, 120),
