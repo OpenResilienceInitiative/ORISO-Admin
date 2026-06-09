@@ -16,6 +16,7 @@ import routePathNames from '../../../../appConfig';
 import styles from './styles.module.scss';
 import { TenantAdminData } from '../../../../types/TenantAdminData';
 import { X_REASON } from '../../../../api/fetchData';
+import { extractApiErrorMessage } from '../../../../utils/extractApiErrorMessage';
 
 export const GeneralTenantSettings = () => {
     const { id } = useParams<{ id: string }>();
@@ -68,11 +69,14 @@ export const GeneralTenantSettings = () => {
                         notification.success({ message: t('tenants.created.modal.title') });
                         navigate(routePathNames.tenants);
                     };
-                    const rollbackAndExit = () => {
+                    const rollbackAndExit = async (error?: unknown) => {
+                        const conflictMessage = error
+                            ? await extractApiErrorMessage(error)
+                            : t('message.error.default');
                         deleteTenantData(rData.id)
                             .catch(() => undefined)
                             .finally(() => {
-                                notification.error({ message: t('message.error.default') });
+                                notification.error({ message: conflictMessage });
                                 navigate(routePathNames.tenants);
                             });
                     };
