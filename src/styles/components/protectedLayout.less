@@ -168,9 +168,10 @@
                     opacity: 1;
                     text-align: center;
                     font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
-                    transition:
-                        background 160ms ease,
-                        color 160ms ease;
+                    transform: translateZ(0);
+                    transition: padding 800ms cubic-bezier(0.2, 0.78, 0.26, 1),
+                        border-radius 800ms cubic-bezier(0.2, 0.78, 0.26, 1), background-color 800ms ease,
+                        color 800ms ease, transform 800ms cubic-bezier(0.2, 0.78, 0.26, 1);
 
                     > div {
                         width: 40px;
@@ -179,6 +180,7 @@
                         align-items: center;
                         justify-content: center;
                         flex-shrink: 0;
+                        transition: color 800ms ease;
                     }
 
                     svg {
@@ -186,11 +188,13 @@
                         height: 40px;
                         color: inherit;
                         fill: currentColor;
+                        transition: color 800ms ease, fill 800ms ease;
                     }
 
                     svg path {
                         fill: currentColor;
                         fill-opacity: 1;
+                        transition: fill 800ms ease, fill-opacity 800ms ease;
                     }
 
                     span {
@@ -207,6 +211,7 @@
                         max-width: 69px;
                         letter-spacing: 0.5px;
                         white-space: normal;
+                        transition: color 800ms ease;
                     }
 
                     &:hover:not(.active) {
