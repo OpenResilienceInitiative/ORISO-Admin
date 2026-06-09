@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router';
 import { useState } from 'react';
+import classNames from 'classnames';
 import routePathNames from '../../appConfig';
 import { ReactComponent as DisplaySettingsActiveIcon } from '../../resources/img/svg/navbar/display_settings_active.svg';
 import { ReactComponent as DisplaySettingsHoverIcon } from '../../resources/img/svg/navbar/display_settings_hover.svg';
@@ -43,8 +44,17 @@ type IconState = 'active' | 'hover' | 'inactive';
 const selectIcon = (state: IconState, icons: Record<IconState, JSX.Element>) => icons[state];
 
 const renderIconState = (state: IconState, icons: Record<IconState, JSX.Element>) => (
-    <span key={state} className="navIcon__state">
-        {selectIcon(state, icons)}
+    <span className="navIcon__stack" data-state={state}>
+        {(['inactive', 'hover', 'active'] as IconState[]).map((iconState) => (
+            <span
+                key={iconState}
+                className={classNames('navIcon__state', {
+                    'navIcon__state--visible': iconState === state,
+                })}
+            >
+                {selectIcon(iconState, icons)}
+            </span>
+        ))}
     </span>
 );
 
