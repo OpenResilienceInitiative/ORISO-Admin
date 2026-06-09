@@ -56,6 +56,17 @@
     --black-10: rgb(0 0 0 / 10%);
     --black-5: rgb(0 0 0 / 5%);
     --black-3: rgb(0 0 0 / 3%);
+    --m3-surface: #fcf9f9;
+    --m3-surface-container-highest: #e4e2e2;
+    --m3-surface-container-high: #eae7e8;
+    --m3-surface-container: #f0edee;
+    --m3-surface-container-low: #f6f3f3;
+    --m3-surface-container-lowest: #ffffff;
+    --m3-surface-bright: #fcf9f9;
+    --m3-surface-dim: #dcd9da;
+    --m3-table-header-background: var(--m3-surface-container-high);
+    --m3-table-row-background: var(--m3-surface-container-low);
+    --m3-table-hover-background: var(--m3-surface-container);
     --primary: #273270;
     --secondary: #3f373f;
     --tertiary: rgb(var(--black) 0.6);

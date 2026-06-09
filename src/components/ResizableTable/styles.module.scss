@@ -1,5 +1,21 @@
 .table {
     :global {
+        .ant-table {
+            background: var(--m3-table-row-background);
+        }
+
+        .ant-table-thead > tr > th {
+            background: var(--m3-table-header-background);
+        }
+
+        .ant-table-tbody > tr > td {
+            background: var(--m3-table-row-background);
+        }
+
+        .ant-table-tbody > tr:hover > td {
+            background: var(--m3-table-hover-background);
+        }
+
         .ant-table-body {
             overflow: auto !important;
         }

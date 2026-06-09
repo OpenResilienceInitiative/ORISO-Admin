@@ -75,6 +75,7 @@
         }
 
         .ant-table-tbody > tr > td {
+            background: var(--m3-table-row-background);
             vertical-align: middle;
         }
 
@@ -120,7 +121,7 @@
 .tableContainerFigma {
     :global {
         .ant-table-thead > tr > th {
-            background: #f4f5f6;
+            background: var(--m3-table-header-background);
             border-bottom: none;
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
             font-weight: 500;
@@ -128,6 +129,10 @@
             color: #141c25;
             padding-top: 14px;
             padding-bottom: 14px;
+        }
+
+        .ant-table-tbody > tr:hover > td {
+            background: var(--m3-table-hover-background);
         }
 
         .ant-table-thead > tr > th:first-child {

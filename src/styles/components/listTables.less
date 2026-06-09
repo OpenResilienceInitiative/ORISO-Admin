@@ -9,7 +9,7 @@
     }
 
     tr {
-        background-color: @skin-main-background;
+        background-color: @m3-table-row-background;
 
         .statusIconWrapper {
             display: flex;
@@ -32,7 +32,11 @@
     }
 
     td {
-        background-color: @lightest-grey !important;
+        background-color: @m3-table-row-background !important;
+    }
+
+    .ant-table-tbody > tr:hover > td {
+        background-color: @m3-table-hover-background !important;
     }
 
     td:first-child {

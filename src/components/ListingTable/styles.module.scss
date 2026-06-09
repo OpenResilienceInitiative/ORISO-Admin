@@ -1,7 +1,7 @@
 .listingTable {
     :global {
         .ant-table-thead > tr > th {
-            background: #f5f5f5 !important;
+            background: var(--m3-table-header-background) !important;
             font-weight: 900;
             color: rgba(0, 0, 0, 0.85);
             text-align: center;
@@ -15,7 +15,7 @@
             text-align: center;
             color: rgba(0, 0, 0, 0.8);
             font-weight: 900;
-            background: #fafafa !important;
+            background: var(--m3-table-row-background) !important;
         }
 
         .ant-table-column-title,

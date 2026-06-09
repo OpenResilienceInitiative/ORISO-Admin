@@ -62,7 +62,7 @@
         }
 
         .ant-table-thead > tr > th {
-            background: #f4f5f6;
+            background: var(--m3-table-header-background);
             border-bottom: none;
             color: #141c25;
             font-size: 14px;
@@ -83,13 +83,14 @@
         }
 
         .ant-table-tbody > tr > td {
+            background: var(--m3-table-row-background);
             color: #141c25;
             font-size: 14px;
             vertical-align: middle;
         }
 
         .ant-table-tbody > tr:hover > td {
-            background: #fafafa;
+            background: var(--m3-table-hover-background);
         }
 
         .agencyList__column,
