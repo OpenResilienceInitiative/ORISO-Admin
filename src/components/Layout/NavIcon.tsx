@@ -19,6 +19,8 @@ import { ReactComponent as StatisticsActiveIcon } from '../../resources/img/svg/
 import { ReactComponent as StatisticsInactiveIcon } from '../../resources/img/svg/navbar/statistics_inactive.svg';
 import { ReactComponent as LogoutActiveIcon } from '../../resources/img/svg/navbar/logout_active.svg';
 import { ReactComponent as LogoutInactiveIcon } from '../../resources/img/svg/navbar/logout_inactive.svg';
+import { ReactComponent as LinksActiveIcon } from '../../resources/img/svg/navbar/links_active.svg';
+import { ReactComponent as LinksInactiveIcon } from '../../resources/img/svg/navbar/links_inactive.svg';
 
 interface Props {
     path: string;
@@ -53,7 +55,7 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
         case routePathNames.inviteLinks:
             return currentlySelected ? <TopicsActiveIcon /> : <TopicsInactiveIcon />;
         case routePathNames.links:
-            return currentlySelected ? <TopicsActiveIcon /> : <TopicsInactiveIcon />;
+            return currentlySelected ? <LinksActiveIcon /> : <LinksInactiveIcon />;
         case routePathNames.userProfile:
             return currentlySelected ? <ProfileActiveIcon /> : <ProfileInactiveIcon />;
         case 'logout':

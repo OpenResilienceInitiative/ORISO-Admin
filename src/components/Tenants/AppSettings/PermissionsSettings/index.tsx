@@ -147,6 +147,96 @@ const DEFAULT_PERMISSION_SETTINGS = {
     featureVoiceMessagesSupervisionChatsEnabled: true,
 } as const;
 
+const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, string[]> = {
+    anonymousChat: [
+        'featureAnonymousChatEnabled',
+        'featureVideoCallsAnonymousChatsEnabled',
+        'featureAudioCallsAnonymousChatsEnabled',
+        'featureVoiceMessagesAnonymousChatsEnabled',
+        'featureThreadsAnonymousChatsEnabled',
+        'featureSupervisionAnonymousChatsEnabled',
+    ],
+    calls: ['featureCallsEnabled'],
+    supervision: [
+        'featureSupervisionEnabled',
+        'featureSupervisionAnonymousChatsEnabled',
+        'featureSupervisionOneOnOneChatsEnabled',
+        'featureVideoCallsSupervisionChatsEnabled',
+        'featureAudioCallsSupervisionChatsEnabled',
+        'featureVoiceMessagesSupervisionChatsEnabled',
+        'featureThreadsSupervisionChatsEnabled',
+    ],
+    supervisionAnonymousChats: ['featureSupervisionAnonymousChatsEnabled'],
+    supervisionOneOnOneChats: ['featureSupervisionOneOnOneChatsEnabled'],
+    audioCalls: [
+        'featureAudioCallsEnabled',
+        'featureAudioCallsAnonymousChatsEnabled',
+        'featureAudioCallsOneOnOneChatsEnabled',
+        'featureAudioCallsGroupChatsEnabled',
+        'featureAudioCallsSupervisionChatsEnabled',
+    ],
+    audioCallsAnonymousChats: ['featureAudioCallsAnonymousChatsEnabled'],
+    audioCallsOneOnOneChats: ['featureAudioCallsOneOnOneChatsEnabled'],
+    audioCallsGroupChats: ['featureAudioCallsGroupChatsEnabled'],
+    audioCallsSupervisionChats: ['featureAudioCallsSupervisionChatsEnabled'],
+    videoCalls: [
+        'featureVideoCallsEnabled',
+        'featureVideoCallsAnonymousChatsEnabled',
+        'featureVideoCallsOneOnOneChatsEnabled',
+        'featureVideoCallsGroupChatsEnabled',
+        'featureVideoCallsSupervisionChatsEnabled',
+    ],
+    videoCallsAnonymousChats: ['featureVideoCallsAnonymousChatsEnabled'],
+    videoCallsOneOnOneChats: ['featureVideoCallsOneOnOneChatsEnabled'],
+    videoCallsGroupChats: ['featureVideoCallsGroupChatsEnabled'],
+    videoCallsSupervisionChats: ['featureVideoCallsSupervisionChatsEnabled'],
+    threads: [
+        'featureThreadsEnabled',
+        'featureThreadsAnonymousChatsEnabled',
+        'featureThreadsOneOnOneEnabled',
+        'featureThreadsGroupChatsEnabled',
+        'featureThreadsSupervisionChatsEnabled',
+    ],
+    threadsAnonymousChats: ['featureThreadsAnonymousChatsEnabled'],
+    threadsOneOnOneChats: ['featureThreadsOneOnOneEnabled'],
+    threadsGroupChats: ['featureThreadsGroupChatsEnabled'],
+    threadsSupervisionChats: ['featureThreadsSupervisionChatsEnabled'],
+    voiceMessages: [
+        'featureVoiceMessagesEnabled',
+        'featureVoiceMessagesAnonymousChatsEnabled',
+        'featureVoiceMessagesOneOnOneChatsEnabled',
+        'featureVoiceMessagesGroupChatsEnabled',
+        'featureVoiceMessagesSupervisionChatsEnabled',
+    ],
+    voiceMessagesAnonymousChats: ['featureVoiceMessagesAnonymousChatsEnabled'],
+    voiceMessagesOneOnOneChats: ['featureVoiceMessagesOneOnOneChatsEnabled'],
+    voiceMessagesGroupChats: ['featureVoiceMessagesGroupChatsEnabled'],
+    voiceMessagesSupervisionChats: ['featureVoiceMessagesSupervisionChatsEnabled'],
+};
+
+const getForcedOffFields = (toggles?: PermissionToggleVisibility) => {
+    if (!toggles) return new Set<string>();
+
+    return Object.entries(toggles).reduce((fields, [toggleKey, enabled]) => {
+        if (enabled === false) {
+            PLATFORM_TOGGLE_FIELDS[toggleKey as keyof PermissionToggleVisibility]?.forEach((field) => {
+                fields.add(field);
+            });
+        }
+        return fields;
+    }, new Set<string>());
+};
+
+const applyForcedOffFields = (settings, forcedOffFields: Set<string>) => {
+    if (forcedOffFields.size === 0) return settings;
+
+    const nextSettings = { ...(settings ?? {}) };
+    forcedOffFields.forEach((field) => {
+        nextSettings[field] = false;
+    });
+    return nextSettings;
+};
+
 const enforceToggleRestrictions = (formData, forcedOffToggles?: PermissionsSettingsArgs['forcedOffToggles']) => {
     if (!forcedOffToggles) {
         return formData;
@@ -349,6 +439,7 @@ const isSubToggleDisabled = (card: ChatTypeCardDef, toggleField: string[], maste
 
 export const PermissionsSettings = ({
     tenantId,
+    visibleToggles,
     forcedOffToggles,
     superAdminControlMode,
     excludeCardKeys,
@@ -359,16 +450,17 @@ export const PermissionsSettings = ({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
+    const inheritedForcedOffFields = useMemo(() => getForcedOffFields(visibleToggles), [visibleToggles]);
 
     const initialValues = useMemo(
         () => ({
             ...data,
             settings: {
                 ...DEFAULT_PERMISSION_SETTINGS,
-                ...(data?.settings ?? {}),
+                ...applyForcedOffFields(data?.settings ?? {}, inheritedForcedOffFields),
             },
         }),
-        [data],
+        [data, inheritedForcedOffFields],
     );
 
     const gridRef = useRef<HTMLDivElement | null>(null);
@@ -383,20 +475,28 @@ export const PermissionsSettings = ({
     const cardsToRender = excludeCardKeys?.length
         ? CHAT_TYPE_CARDS.filter((card) => !excludeCardKeys.includes(card.key))
         : CHAT_TYPE_CARDS;
+    const formStateKey = useMemo(
+        () => Array.from(inheritedForcedOffFields).sort().join('|'),
+        [inheritedForcedOffFields],
+    );
 
     return (
         <CardEditable
+            key={`permissions-${tenantId}-${formStateKey}`}
             className={styles.transparentCardWrapper}
             isLoading={isLoading}
             initialValues={initialValues}
             titleKey="tenants.permissions.title"
-            onSave={(formData) =>
-                mutate(
-                    superAdminControlMode
-                        ? syncMasterTogglesToTenantAdminControls(formData)
-                        : enforceToggleRestrictions(formData, forcedOffToggles),
-                )
-            }
+            onSave={(formData) => {
+                const restrictedData = superAdminControlMode
+                    ? syncMasterTogglesToTenantAdminControls(formData)
+                    : enforceToggleRestrictions(formData, forcedOffToggles);
+
+                mutate({
+                    ...restrictedData,
+                    settings: applyForcedOffFields(restrictedData?.settings, inheritedForcedOffFields),
+                });
+            }}
         >
             <div className={styles.cardGridOuter}>
                 <button
@@ -448,6 +548,7 @@ export const PermissionsSettings = ({
                                                 <CheckToggle
                                                     name={card.masterField}
                                                     label={t('tenants.permissions.card.activated')}
+                                                    disabled={inheritedForcedOffFields.has(card.masterField[1])}
                                                 />
                                             ) : (
                                                 <span className={styles.masterRowPlaceholder} aria-hidden>
@@ -471,11 +572,10 @@ export const PermissionsSettings = ({
                                                     <CheckToggle
                                                         name={toggle.field}
                                                         label={t(toggle.labelKey)}
-                                                        disabled={isSubToggleDisabled(
-                                                            card,
-                                                            toggle.field,
-                                                            masterEnabled,
-                                                        )}
+                                                        disabled={
+                                                            isSubToggleDisabled(card, toggle.field, masterEnabled) ||
+                                                            inheritedForcedOffFields.has(toggle.field[1])
+                                                        }
                                                     />
                                                 </div>
                                             ))}
