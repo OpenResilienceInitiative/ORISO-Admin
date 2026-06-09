@@ -3,7 +3,7 @@ import { cardMenuKeys, defaultSelectedFilterTargetIdsByScope, scopeOrder } from 
 import type { CardMenuKey, SelectedCardMenuByScope, SelectedFilterTargetIdsByScope } from './types';
 
 const statisticPreferenceStorageBaseKey = 'oriso.admin.statistics.metricPreferences.v1';
-const statisticFilterPreferenceStorageBaseKey = 'oriso.admin.statistics.filterPreferences.v1';
+const statisticFilterPreferenceStorageBaseKey = 'oriso.admin.statistics.filterPreferences.v2';
 const legacyStatisticPreferenceStorageKey = statisticPreferenceStorageBaseKey;
 
 const createDefaultCardMenuSelection = (): SelectedCardMenuByScope => ({
