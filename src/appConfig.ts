@@ -82,6 +82,7 @@ const routePathNames = {
     agencyAddGeneral: '/admin/agency/add/general',
     topics: '/admin/topics',
     statistic: '/admin/statistic',
+    statisticPreview: '/admin/statistic-preview',
     logs: '/admin/logs',
     inactiveAccountAuditLogs: '/admin/logs/inactive-accounts',
     userProfile: '/admin/profil/',

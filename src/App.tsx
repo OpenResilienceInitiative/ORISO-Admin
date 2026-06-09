@@ -157,7 +157,20 @@ export const App = () => {
                     {can([PermissionAction.Update, PermissionAction.Create], Resource.Topic) && (
                         <Route path={`${routePathNames.topics}/:id`} element={<TopicEditOrAdd />} />
                     )}
-                    <Route path={routePathNames.statistic} element={<Statistic />} />
+                    <Route
+                        path={routePathNames.statisticPreview}
+                        element={<Navigate to={routePathNames.statistic} replace />}
+                    />
+                    <Route
+                        path={routePathNames.statistic}
+                        element={
+                            can(PermissionAction.Read, Resource.Statistic) ? (
+                                <Statistic />
+                            ) : (
+                                <Navigate to="/admin/access-denied" replace />
+                            )
+                        }
+                    />
                     {!isSuperAdmin && <Route path={routePathNames.logs} element={<SupervisorLogsPage />} />}
                     {isSuperAdmin && (
                         <Route
