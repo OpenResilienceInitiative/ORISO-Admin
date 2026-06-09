@@ -51,13 +51,13 @@ export const TenantEditOrAdd = () => {
                             to: `/admin/tenants/${id}/legal-settings`,
                             titleKey: 'tenants.edit.tabs.legal',
                         },
-                        isSuperAdmin && {
-                            to: `/admin/tenants/${id}/global-settings`,
-                            titleKey: 'settings.subhead.functionAccess',
-                        },
                         {
                             to: `/admin/tenants/${id}/app-settings`,
                             titleKey: 'tenants.edit.tabs.appSettings',
+                        },
+                        isSuperAdmin && {
+                            to: `/admin/tenants/${id}/global-settings`,
+                            titleKey: 'settings.subhead.functionAccess',
                         },
                     ]
                 }
