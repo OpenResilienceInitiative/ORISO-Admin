@@ -1,3 +1,5 @@
+import { ChangeEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { CloseOutlined, SearchOutlined } from '@ant-design/icons';
 import { Input } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -12,33 +14,86 @@ interface SearchInputProps {
 
 export const SearchInput = ({ handleOnSearch, handleOnSearchClear, placeholder, className }: SearchInputProps) => {
     const { t } = useTranslation();
-    let timer: ReturnType<typeof setTimeout>;
+    const [searchValue, setSearchValue] = useState('');
+    const timerRef = useRef<ReturnType<typeof setTimeout>>();
     const defaultPlaceholder = t('search-placeholder');
+    const hasSearchValue = searchValue.length > 0;
 
-    const { Search } = Input;
+    useEffect(
+        () => () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+            }
+        },
+        [],
+    );
 
-    const onSearchChange = (e: any) => {
+    const executeSearch = (query: string) => {
+        handleOnSearch?.(query);
+    };
+
+    const clearSearch = () => {
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+        }
+        setSearchValue('');
+        handleOnSearchClear?.();
+    };
+
+    const onSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const nextValue = e.target.value;
+        setSearchValue(nextValue);
+
         if (handleOnSearch) {
-            clearTimeout(timer);
-            timer = setTimeout(() => {
-                if (e.target.value.length >= 3) handleOnSearch(e.target.value);
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+            }
+
+            timerRef.current = setTimeout(() => {
+                if (nextValue.length >= 3) handleOnSearch(nextValue);
             }, 1000);
         }
 
-        if (e.target.value === '') {
-            if (handleOnSearchClear) handleOnSearchClear();
+        if (nextValue === '') {
+            handleOnSearchClear?.();
         }
     };
+
+    const onSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            executeSearch(searchValue);
+        }
+    };
+
     return (
-        <Search
-            className={classNames(styles.search, className)}
-            name="search"
-            allowClear
-            placeholder={placeholder || defaultPlaceholder}
-            autoComplete="search"
-            onChange={onSearchChange}
-            onSearch={handleOnSearch}
-        />
+        <div className={classNames(styles.search, className)}>
+            <Input
+                name="search"
+                value={searchValue}
+                placeholder={placeholder || defaultPlaceholder}
+                autoComplete="search"
+                onChange={onSearchChange}
+                onKeyDown={onSearchKeyDown}
+            />
+            <button
+                className={styles.actionButton}
+                type="button"
+                aria-label={
+                    hasSearchValue
+                        ? t('searchInput.clear', 'Suche löschen')
+                        : t('searchInput.submit', 'Suche ausführen')
+                }
+                onClick={() => {
+                    if (hasSearchValue) {
+                        clearSearch();
+                        return;
+                    }
+                    executeSearch(searchValue);
+                }}
+            >
+                {hasSearchValue ? <CloseOutlined /> : <SearchOutlined />}
+            </button>
+        </div>
     );
 };
 
