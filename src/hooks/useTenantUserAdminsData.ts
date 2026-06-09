@@ -8,6 +8,7 @@ import {
 import { CounselorData } from '../types/counselor';
 import { ResponseList } from '../types/ResponseList';
 import { fetchUserSearchWithSortFallback } from '../utils/fetchUserSearchWithSortFallback';
+import { TENANT_ADMINS_QUERY_KEY } from './useTenantUserAdminData';
 
 interface TenantUserAdminDataProps extends UseQueryOptions<ResponseList<CounselorData>> {
     search?: string;
@@ -26,7 +27,7 @@ export const useTenantAdminsData = ({
     ...options
 }: TenantUserAdminDataProps = {}) => {
     return useQuery(
-        ['TENANT_ADMINS', search, current, sortBy, order, pageSize],
+        [TENANT_ADMINS_QUERY_KEY, search, current, sortBy, order, pageSize],
         () =>
             fetchUserSearchWithSortFallback({
                 url: `${tenantAdminsSearchEndpoint}?query=${encodeURIComponent(search || '*')}&page=${
@@ -39,6 +40,7 @@ export const useTenantAdminsData = ({
         {
             ...options,
             retry: false,
+            refetchOnMount: 'always',
             refetchOnWindowFocus: false,
         } as QueryOptions<ResponseList<CounselorData>>,
     );

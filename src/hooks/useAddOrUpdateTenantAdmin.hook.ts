@@ -1,10 +1,10 @@
 import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
-import { fetchData, FETCH_ERRORS, FETCH_METHODS } from '../api/fetchData';
+import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { tenantAdminsEndpoint } from '../appConfig';
 import { CounselorData } from '../types/counselor';
 import { encodeUsername } from '../utils/encryptionHelpers';
 import { TENANT_QUERY_KEY } from './useSingleTenantData';
-import { TENANT_ADMIN_QUERY_KEY, useTenantUserAdminData } from './useTenantUserAdminData';
+import { TENANT_ADMIN_QUERY_KEY, TENANT_ADMINS_QUERY_KEY, useTenantUserAdminData } from './useTenantUserAdminData';
 
 interface UseAddOrUpdateTenantAdminOptions
     extends UseMutationOptions<CounselorData, Error, CounselorData, Error | Response> {
@@ -32,6 +32,7 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
                 url: `${tenantAdminsEndpoint}${id ? `/${id}` : ''}`,
                 method: id ? FETCH_METHODS.PUT : FETCH_METHODS.POST,
                 responseHandling: [
+                    FETCH_SUCCESS.CONTENT,
                     FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
                     FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
                     FETCH_ERRORS.CATCH_ALL,
@@ -43,6 +44,7 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
             ...options,
             onSuccess: (responseData, variables) => {
                 queryClient.setQueryData([TENANT_ADMIN_QUERY_KEY, responseData.id], responseData);
+                queryClient.invalidateQueries(TENANT_ADMINS_QUERY_KEY);
                 queryClient.removeQueries([TENANT_QUERY_KEY]);
                 options?.onSuccess?.(responseData, variables, null);
             },

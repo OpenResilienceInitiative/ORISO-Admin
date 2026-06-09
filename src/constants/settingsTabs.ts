@@ -59,6 +59,10 @@ export const getSettingsTabs = ({
                 to: `${base}/general`,
                 titleKey: 'settings.subhead.masterData',
             },
+        // can(PermissionAction.Update, Resource.Tenant) && {
+        //     to: `${base}/general`,
+        //     titleKey: 'settings.subhead.view',
+        // },
         (can(PermissionAction.Read, Resource.LegalText) || can(PermissionAction.Update, Resource.LegalText)) && {
             to: `${base}/legal`,
             titleKey: 'settings.subhead.legal',
