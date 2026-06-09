@@ -45,7 +45,9 @@ const getPublicTenantData = (settings: AppConfigInterface) => {
     }
 
     // console.log('🔍 getPublicTenantData: No slug, returning empty promise');
-    return Promise.reject(new Error('No tenant slug available'));
+    const error = new Error('No tenant slug available');
+    error.name = 'NoTenantSlug';
+    return Promise.reject(error);
 };
 
 export default getPublicTenantData;

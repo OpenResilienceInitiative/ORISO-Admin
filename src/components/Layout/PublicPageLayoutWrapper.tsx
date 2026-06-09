@@ -18,7 +18,8 @@ const PublicPageLayoutWrapper = ({ children, className = '', hideFooter }: Publi
 
     useEffect(() => {
         getPublicTenantData(settings).catch((error) => {
-            if (error?.message !== 'No tenant slug available') throw error;
+            if (error?.name === 'NoTenantSlug') return;
+            console.error('Failed to load public tenant data', error);
         });
     }, [settings]);
 
