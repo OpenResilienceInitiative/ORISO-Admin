@@ -183,10 +183,14 @@
         line-height: 16px;
     }
 
-    &:hover,
+    &:hover {
+        background: #eef2f7;
+    }
+
     &:focus-visible {
         background: #eef2f7;
-        outline: none;
+        outline: 2px solid #6ba6ff;
+        outline-offset: 2px;
     }
 }
 
@@ -869,7 +873,7 @@
     width: min(100%, 56px);
     min-height: 8px;
     align-self: end;
-    animation: statisticDashboardBarRise 2400ms cubic-bezier(0.2, 0.78, 0.26, 1) both;
+    animation: statistic-dashboard-bar-rise 2400ms cubic-bezier(0.2, 0.78, 0.26, 1) both;
     animation-delay: calc(var(--bar-index, 0) * 120ms);
     background: #d5dfec;
     border-radius: 8px;
@@ -1021,7 +1025,7 @@
 }
 
 .statisticDashboard__donutSegment {
-    animation: statisticDashboardDonutDraw 2800ms cubic-bezier(0.2, 0.78, 0.26, 1) both;
+    animation: statistic-dashboard-donut-draw 2800ms cubic-bezier(0.2, 0.78, 0.26, 1) both;
     animation-delay: calc(var(--segment-index, 0) * 220ms);
     cursor: pointer;
     stroke-dasharray: var(--segment-size) 100;
@@ -1143,7 +1147,7 @@
     }
 }
 
-@keyframes statisticDashboardBarRise {
+@keyframes statistic-dashboard-bar-rise {
     from {
         opacity: 0.65;
         transform: scaleY(0.06);
@@ -1155,7 +1159,7 @@
     }
 }
 
-@keyframes statisticDashboardDonutDraw {
+@keyframes statistic-dashboard-donut-draw {
     from {
         opacity: 0.72;
         stroke-dasharray: 0 100;
