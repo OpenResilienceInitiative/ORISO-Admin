@@ -14,7 +14,7 @@ export const defaultSelectedCaseDayByScope: Record<ScopeKey, string> = {
 };
 
 export const defaultSelectedFilterTargetIdsByScope: SelectedFilterTargetIdsByScope = {
-    platform: ['tenant-caritas-nrw'],
+    platform: [],
     tenant: [],
     agency: [],
 };
