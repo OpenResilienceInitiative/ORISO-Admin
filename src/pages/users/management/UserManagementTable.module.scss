@@ -6,7 +6,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     gap: 16px 24px;
     width: 100%;
     margin-bottom: 16px;
@@ -18,9 +18,9 @@
     align-items: center;
     gap: 16px 24px;
     width: 100%;
-    max-width: 529px;
+    max-width: 638px;
     min-width: 0;
-    flex: 0 1 529px;
+    flex: 1 1 638px;
 
     @media (max-width: 767px) {
         max-width: 100%;
@@ -29,9 +29,10 @@
 }
 
 .searchField {
-    flex: 1 1 320px;
+    flex: 0 1 499px;
     min-width: 0;
     width: 100%;
+    max-width: 499px;
 }
 
 .toolbarActions {
@@ -45,6 +46,7 @@
 }
 
 .sectionCount {
+    margin-left: auto;
     flex-shrink: 0;
     font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
     font-size: 14px;

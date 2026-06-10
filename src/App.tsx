@@ -96,6 +96,7 @@ export const App = () => {
 
     const canReadTenant = can(PermissionAction.Read, Resource.Tenant);
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
+    const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     // console.log('🔍 App: canReadTenant:', canReadTenant);
     // console.log('🔍 App: canReadLegalText:', canReadLegalText);
     // console.log('🔍 App: Will show routes?', canReadTenant || canReadLegalText);
@@ -157,7 +158,14 @@ export const App = () => {
                     {can([PermissionAction.Update, PermissionAction.Create], Resource.Topic) && (
                         <Route path={`${routePathNames.topics}/:id`} element={<TopicEditOrAdd />} />
                     )}
-                    <Route path={routePathNames.statistic} element={<Statistic />} />
+                    <Route
+                        path={routePathNames.statisticPreview}
+                        element={<Navigate to={routePathNames.statistic} replace />}
+                    />
+                    <Route
+                        path={routePathNames.statistic}
+                        element={canReadStatistic ? <Statistic /> : <Navigate to="/admin/access-denied" replace />}
+                    />
                     {!isSuperAdmin && <Route path={routePathNames.logs} element={<SupervisorLogsPage />} />}
                     {isSuperAdmin && (
                         <Route
@@ -217,6 +225,7 @@ export const App = () => {
                     <Route path="/admin/users" element={<UsersList />} />
                     <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
                     <Route path="/admin/users/tenant-admins/:id" element={<TenantAdminEditOrAdd />} />
+                    <Route path="/admin/users/platform-admins/:id" element={<TenantAdminEditOrAdd />} />
                     <Route path="/admin/users/:typeOfUsers/:id" element={<UserEditOrAdd />} />
                     <Route path="/admin/invite-links" element={<InviteLinksPage />} />
                     <Route path="/admin/links" element={<LinksPage />}>

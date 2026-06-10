@@ -18,6 +18,7 @@ import { useDeleteTenant } from '../../../hooks/useDeleteTenant';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useTenantAdminsData } from '../../../hooks/useTenantUserAdminsData';
+import { usePlatformAdminsData } from '../../../hooks/usePlatformAdminsData';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { CounselorData } from '../../../types/counselor';
@@ -43,6 +44,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const isOrganizations = config.sectionKind === 'organizations';
     const isTenants = sectionId === TypeOfUser.Tenants;
     const isTenantAdmins = sectionId === TypeOfUser.TenantAdmins;
+    const isPlatformAdmins = sectionId === TypeOfUser.PlatformAdmins;
     const isConsultants = sectionId === TypeOfUser.Consultants;
     const isAgencyAdmins = sectionId === TypeOfUser.AgencyAdmins;
     const isMobile = !screens.md;
@@ -95,7 +97,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         search,
         ...tableState,
         typeOfUser: consultantsSectionId,
-        enabled: !isTenantAdmins && !isTenants,
+        enabled: !isTenantAdmins && !isPlatformAdmins && !isTenants,
     });
 
     const tenantAdminsQuery = useTenantAdminsData({
@@ -104,9 +106,16 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         enabled: isTenantAdmins,
     });
 
+    const platformAdminsQuery = usePlatformAdminsData({
+        search,
+        ...tableState,
+        enabled: isPlatformAdmins,
+    });
+
     const activeQuery = (() => {
         if (isTenants) return tenantsQuery;
         if (isTenantAdmins) return tenantAdminsQuery;
+        if (isPlatformAdmins) return platformAdminsQuery;
         return consultantsQuery;
     })();
     const { data: responseList, isLoading, isError, error, refetch } = activeQuery;
@@ -147,13 +156,13 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     const onDeleteUser = useCallback(
         (record: CounselorData) => {
-            if (isTenantAdmins) {
+            if (isTenantAdmins || isPlatformAdmins) {
                 setDeleteTenantAdmin(record);
             } else {
                 setDeleteUserId(record.id);
             }
         },
-        [isTenantAdmins],
+        [isTenantAdmins, isPlatformAdmins],
     );
 
     const onEditTenant = useCallback(
@@ -195,7 +204,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                 if (sorter?.field) {
                     const mappedField = mapSorterToApiField(String(sorter.field)) || String(sorter.field).toUpperCase();
                     const apiField =
-                        sectionId === TypeOfUser.TenantAdmins
+                        sectionId === TypeOfUser.TenantAdmins || sectionId === TypeOfUser.PlatformAdmins
                             ? normalizeTenantAdminSortField(mappedField)
                             : mappedField;
                     return {

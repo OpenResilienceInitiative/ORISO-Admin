@@ -152,6 +152,7 @@ export const TenantsList = () => {
             <Page.Title titleKey="tenants.title" subTitle={t<string>('tenants.subTitle', { count: data?.total || 0 })}>
                 <div className={styles.searchContainer}>
                     <SearchInput
+                        className={styles.searchField}
                         placeholder={t('tenants.searchPlaceholder')}
                         handleOnSearch={(a) => handleSearch(a)}
                         handleOnSearchClear={() => handleSearch('')}

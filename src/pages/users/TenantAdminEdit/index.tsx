@@ -19,8 +19,11 @@ import { Resource } from '../../../enums/Resource';
 import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 
 export const TenantAdminEditOrAdd = () => {
-    const { search } = useLocation();
-    const tenantId = new URLSearchParams(search).get('tenantId');
+    const { search, pathname } = useLocation();
+    // Platform admins are tenant admins with the fixed platform id 0 (MT-04-12)
+    const isPlatformAdmin = pathname.includes('/platform-admins/');
+    const tenantId = isPlatformAdmin ? '0' : new URLSearchParams(search).get('tenantId');
+    const listPath = isPlatformAdmin ? routePathNames.platformAdmins : routePathNames.tenantAdmins;
     const { can } = useUserPermissions();
     const navigate = useNavigate();
     const [form] = Form.useForm();
@@ -29,12 +32,12 @@ export const TenantAdminEditOrAdd = () => {
     const isEditing = id !== 'add';
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const { data, isLoading: isLoadingConsultants } = useTenantUserAdminData({ id, enabled: isEditing });
-    const { data: tenants, isLoading } = useTenantsData({ perPage: 1000 });
+    const { data: tenants, isLoading } = useTenantsData({ perPage: 1000, enabled: !isPlatformAdmin });
 
     const { mutate } = useAddOrUpdateTenantAdmin({
         id: id !== 'add' ? id : '',
         onSuccess: () => {
-            navigate(routePathNames.tenantAdmins);
+            navigate(listPath);
             notification.success({
                 message: t(`tenantAdmins.message.${isEditing ? 'update' : 'add'}`),
             });
@@ -48,20 +51,23 @@ export const TenantAdminEditOrAdd = () => {
         },
     });
 
-    const onSave = useCallback((tmp: any) => mutate(tmp), []);
+    const onSave = useCallback(
+        (tmp: any) => mutate(isPlatformAdmin ? { ...tmp, tenantId: '0' } : tmp),
+        [isPlatformAdmin],
+    );
     const onCancel = useCallback(() => {
         if (isEditing) {
             setReadOnly(true);
         } else {
-            navigate(routePathNames.tenantAdmins);
+            navigate(listPath);
         }
-    }, [isEditing]);
+    }, [isEditing, listPath]);
 
     const title = isEditing ? `${data?.firstname} ${data?.lastname}` : t('tenantAdmins.edit.back');
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading}>
-            <Page.BackWithActions path="/admin/users/tenant-admins" title={title}>
+            <Page.BackWithActions path={listPath} title={title}>
                 {isReadOnly && (
                     <Button type="primary" onClick={() => setReadOnly(false)}>
                         {t('edit')}
@@ -143,33 +149,35 @@ export const TenantAdminEditOrAdd = () => {
                             </Card>
                         </Col>
                     )}
-                    <Col span={12} md={6}>
-                        <Card titleKey="tenantAdmins.card.tenantTitle">
-                            <SelectFormField
-                                name="tenantId"
-                                placeholder="tenantAdmins.form.tenant"
-                                required
-                                disabled={isReadOnly || !can(PermissionAction.Update, Resource.TenantAdminUser)}
-                                className={styles.select}
-                            >
-                                {tenants?.data.map((option) => (
-                                    <SelectFormField.Option
-                                        key={option.id}
-                                        className={styles.option}
-                                        value={String(option.id)}
-                                        label={option.name}
-                                    >
-                                        <div className={styles.optionName}>{option.name}</div>
-                                        <div className={styles.optionGroup}>
-                                            <div className={styles.optionTenantId}>{option.id}</div>
-                                            {' | '}
-                                            <div className={styles.optionTenantSubdomain}>{getDomain()}</div>
-                                        </div>
-                                    </SelectFormField.Option>
-                                ))}
-                            </SelectFormField>
-                        </Card>
-                    </Col>
+                    {!isPlatformAdmin && (
+                        <Col span={12} md={6}>
+                            <Card titleKey="tenantAdmins.card.tenantTitle">
+                                <SelectFormField
+                                    name="tenantId"
+                                    placeholder="tenantAdmins.form.tenant"
+                                    required
+                                    disabled={isReadOnly || !can(PermissionAction.Update, Resource.TenantAdminUser)}
+                                    className={styles.select}
+                                >
+                                    {tenants?.data.map((option) => (
+                                        <SelectFormField.Option
+                                            key={option.id}
+                                            className={styles.option}
+                                            value={String(option.id)}
+                                            label={option.name}
+                                        >
+                                            <div className={styles.optionName}>{option.name}</div>
+                                            <div className={styles.optionGroup}>
+                                                <div className={styles.optionTenantId}>{option.id}</div>
+                                                {' | '}
+                                                <div className={styles.optionTenantSubdomain}>{getDomain()}</div>
+                                            </div>
+                                        </SelectFormField.Option>
+                                    ))}
+                                </SelectFormField>
+                            </Card>
+                        </Col>
+                    )}
                 </Row>
             </Form>
         </Page>
