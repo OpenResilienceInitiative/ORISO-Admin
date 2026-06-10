@@ -732,5 +732,20 @@
     "users.sectionPills.counsellorAdmins": "Counsellor Admin",
     "users.sectionPills.counsellors": "Counsellors",
     "users.sectionPills.platformAdmins": "Platform Admin",
-    "users.sectionPills.tenantAdmins": "Tenant Admin"
+    "users.sectionPills.tenantAdmins": "Tenant Admin",
+    "theme.builder.title": "Theme",
+    "theme.builder.howto": "Pick up to three colours — main colour (required), accent and signal colour. The platform computes every other colour automatically with guaranteed contrast.",
+    "theme.builder.primaryColor": "Main colour",
+    "theme.builder.accentColor": "Accent colour",
+    "theme.builder.signalColor": "Signal colour",
+    "theme.builder.tooPale": "The chosen main colour is very pale — the theme will look grey. You can still save.",
+    "theme.builder.preview.current": "Current",
+    "theme.builder.preview.new": "New",
+    "theme.builder.preview.empty": "Pick a main colour to see the preview.",
+    "theme.builder.preview.headline": "Counselling",
+    "theme.builder.preview.messageIn": "Hello, how can I help you?",
+    "theme.builder.preview.messageOut": "I have a question about my appointment.",
+    "theme.builder.preview.error": "The message could not be sent.",
+    "theme.builder.preview.inputPlaceholder": "Write a message …",
+    "theme.builder.preview.send": "Send"
 }

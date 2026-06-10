@@ -83,6 +83,22 @@
                 "prettier/prettier": "off",
                 "no-console": "off"
             }
+        },
+        {
+            "files": [
+                "**/*.test.ts",
+                "**/*.test.tsx",
+                "src/test/**/*"
+            ],
+            "rules": {
+                "import/no-extraneous-dependencies": [
+                    "error",
+                    {
+                        "devDependencies": true
+                    }
+                ],
+                "class-methods-use-this": "off"
+            }
         }
     ]
 }
