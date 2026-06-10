@@ -22,7 +22,10 @@ import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useAgencyLegalDataMissing } from '../../../hooks/useAgencyLegalDataMissing';
 import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
+import { LegalTextSettings } from './components/LegalTextSettings';
 import styles from '../../../components/Page/styles.module.scss';
+import { CardEditable } from '../../../components/CardEditable';
+import { PermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -31,11 +34,32 @@ function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
 const DEFAULT_MIN_AGE = 18;
 const DEFAULT_MAX_AGE = 100;
 
-export const AgencyPageEdit = () => {
+type AgencySettingsSection = 'general' | 'legal' | 'functionalities';
+
+interface AgencyPageEditProps {
+    section?: AgencySettingsSection;
+}
+
+const getEntityId = (value: unknown) => {
+    if (typeof value === 'number' || typeof value === 'string') {
+        return String(value);
+    }
+
+    if (value && typeof value === 'object' && 'id' in value) {
+        const { id } = value as { id?: unknown };
+        return typeof id === 'number' || typeof id === 'string' ? String(id) : '';
+    }
+
+    return '';
+};
+
+export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const { id } = useParams();
     const isEditing = id !== 'add';
+    const isLegalSection = section === 'legal';
+    const isFunctionalitiesSection = section === 'functionalities';
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted, setSubmitted] = useState(false);
     const { data: agencyData, isLoading } = useAgencyData({ id });
@@ -45,7 +69,26 @@ export const AgencyPageEdit = () => {
     const [form] = Form.useForm();
     const { mutate } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
-    const responsibleEntity = Form.useWatch(['dataProtection', 'dataProtectionResponsibleEntity'], form);
+    const agencyTenantId = getEntityId(agencyData?.tenantId);
+    const agencySettingsTabs = [
+        {
+            titleKey: 'settings.subhead.masterData',
+            to: `${routePathNames.agency}/${id}/general`,
+            iconName: 'master_data',
+            icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
+        },
+        isEditing && {
+            titleKey: 'settings.subhead.legal',
+            to: `${routePathNames.agency}/${id}/legal-settings`,
+            iconName: 'legal',
+            icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
+        },
+        isEditing && {
+            titleKey: 'settings.subhead.functionAccess',
+            to: `${routePathNames.agency}/${id}/functionalities`,
+            iconName: 'functionality_access',
+        },
+    ];
 
     const demographicsInitialValues = isEnabled(FeatureFlag.Demographics)
         ? {
@@ -73,37 +116,92 @@ export const AgencyPageEdit = () => {
           }
         : {};
 
-    const onSubmit = useCallback((formData) => {
-        setSubmitted(true);
-        const newFormData = {
-            ...formData,
-            demographics: formData.demographics && {
-                ageFrom: formData.demographics.age[0],
-                ageTo: formData.demographics.age[1],
-                genders: formData.demographics.genders.map(({ value }) => value),
-            },
-            topicIds: formData.topicIds?.map(({ value }) => value),
-            offline: !formData.online,
-            counsellingRelations: formData.counsellingRelations?.map(({ value }) => value),
-            tenantId: parseInt(formData.tenantId, 10),
-        };
+    const initialValues = {
+        ...agencyData,
+        postCodes: postCodes?.length > 0 ? postCodes : [{ from: '00000', until: '99999' }],
+        ...demographicsInitialValues,
+        ...counsellingRelationsInitialValues,
+        postCodeRangesActive: !hasOnlyDefaultRangeDefined(postCodes || []),
+        online: agencyData?.id ? !agencyData?.offline : false,
+        topicIds: convertToOptions(agencyData?.topics, 'name', 'id', true),
+        tenantId: agencyTenantId,
+    };
 
-        mutate(newFormData, {
-            onError: () => {
-                setSubmitted(false);
-            },
-            onSuccess: () => {
-                navigate(routePathNames.agency);
+    const buildAgencyUpdateData = useCallback(
+        (formData) => {
+            const mergedFormData = {
+                ...initialValues,
+                ...formData,
+                dataProtection: {
+                    ...initialValues.dataProtection,
+                    ...formData.dataProtection,
+                },
+                content: {
+                    ...initialValues.content,
+                    ...formData.content,
+                },
+            };
 
-                notification.success({
-                    message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
-                    duration: 3,
-                });
-                setSubmitted(false);
-                setReadOnly(true);
-            },
-        });
-    }, []);
+            return {
+                ...mergedFormData,
+                demographics:
+                    mergedFormData.demographics?.age !== undefined
+                        ? {
+                              ageFrom: mergedFormData.demographics.age[0],
+                              ageTo: mergedFormData.demographics.age[1],
+                              genders: mergedFormData.demographics.genders.map(({ value }) => value),
+                          }
+                        : mergedFormData.demographics,
+                topicIds: mergedFormData.topicIds?.map(({ value }) => value),
+                offline: !mergedFormData.online,
+                counsellingRelations: mergedFormData.counsellingRelations?.map(
+                    (relation) => relation.value || relation,
+                ),
+                tenantId: parseInt(mergedFormData.tenantId, 10),
+            };
+        },
+        [initialValues],
+    );
+
+    const onSubmit = useCallback(
+        (formData) => {
+            setSubmitted(true);
+
+            mutate(buildAgencyUpdateData(formData), {
+                onError: () => {
+                    setSubmitted(false);
+                },
+                onSuccess: () => {
+                    navigate(routePathNames.agency);
+
+                    notification.success({
+                        message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
+                        duration: 3,
+                    });
+                    setSubmitted(false);
+                    setReadOnly(true);
+                },
+            });
+        },
+        [buildAgencyUpdateData, isEditing, mutate, navigate, t],
+    );
+
+    const onSaveCard = useCallback(
+        (formData, options?: { onError?: () => void }) => {
+            mutate(buildAgencyUpdateData(formData), {
+                onError: () => {
+                    options?.onError?.();
+                },
+                onSuccess: () => {
+                    notification.success({
+                        message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
+                        duration: 3,
+                    });
+                },
+            });
+        },
+        [buildAgencyUpdateData, isEditing, mutate, t],
+    );
 
     const onCancel = useCallback(() => {
         if (isEditing) {
@@ -112,53 +210,52 @@ export const AgencyPageEdit = () => {
         } else {
             navigate(routePathNames.agency);
         }
-    }, [isEditing]);
+    }, [form, isEditing, navigate]);
 
-    return (
-        <Page isLoading={isLoading || isLoadingPostCodes} stickyHeader>
-            <Page.BackWithActions
-                path={routePathNames.agency}
-                titleKey="agency.edit.general.headline"
-                tabs={[
-                    {
-                        titleKey: 'agency.edit.tab.settings',
-                        to: `${routePathNames.agency}/${id}`,
-                        icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
-                    },
-                    isEditing &&
-                        isEnabled(FeatureFlag.Appointments) && {
-                            titleKey: 'agency.edit.tab.initialEnquiry',
-                            to: `${routePathNames.agency}/${id}/initial-meeting`,
-                        },
-                ]}
-            >
-                {isReadOnly && (
-                    <Button type="primary" onClick={() => setReadOnly(false)}>
-                        {t('edit')}
-                    </Button>
-                )}
-                {!isReadOnly && (
-                    <>
-                        <Button type="default" onClick={onCancel}>
-                            {t('btn.cancel')}
-                        </Button>
-                        <Button type="primary" onClick={() => form.submit()} disabled={submitted}>
-                            {t('save')}
-                        </Button>
-                    </>
-                )}
-            </Page.BackWithActions>
+    const renderGeneralSettings = () => {
+        if (isEditing) {
+            return (
+                <Row gutter={[20, 10]}>
+                    <Col xs={12}>
+                        <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
+                    </Col>
+                    <Col xs={12} lg={6}>
+                        <CardEditable
+                            allowUnsavedChanges
+                            initialValues={initialValues}
+                            titleKey="agency.edit.general.general_information"
+                            onSave={onSaveCard}
+                        >
+                            <AgencyGeneralInformation asFields />
+                        </CardEditable>
+                    </Col>
+                    <Col xs={12} lg={6}>
+                        <CardEditable
+                            allowUnsavedChanges
+                            initialValues={initialValues}
+                            titleKey="agency.form.registrationSettings.title"
+                            onSave={onSaveCard}
+                        >
+                            <RegistrationSettings consultingTypeId={agencyData?.consultingType} asFields />
+                        </CardEditable>
+                    </Col>
+                    <Col xs={12} lg={6}>
+                        <CardEditable
+                            allowUnsavedChanges
+                            initialValues={initialValues}
+                            titleKey="agency.edit.settings.title"
+                            onSave={onSaveCard}
+                        >
+                            <AgencySettings isEditMode={isEditing} asFields />
+                        </CardEditable>
+                    </Col>
+                </Row>
+            );
+        }
+
+        return (
             <Form
-                initialValues={{
-                    ...agencyData,
-                    postCodes: postCodes?.length > 0 ? postCodes : [{ from: '00000', until: '99999' }],
-                    ...demographicsInitialValues,
-                    ...counsellingRelationsInitialValues,
-                    postCodeRangesActive: !hasOnlyDefaultRangeDefined(postCodes || []),
-                    online: agencyData?.id ? !agencyData?.offline : false,
-                    topicIds: convertToOptions(agencyData?.topics, 'name', 'id', true),
-                    tenantId: agencyData?.tenantId?.toString() || '',
-                }}
+                initialValues={initialValues}
                 labelAlign="left"
                 labelWrap
                 layout="vertical"
@@ -175,27 +272,107 @@ export const AgencyPageEdit = () => {
                         <AgencyGeneralInformation />
                         <RegistrationSettings consultingTypeId={agencyData?.consultingType} />
                     </Col>
-                    <Col xs={12} lg={6}>
-                        <AgencySettings isEditMode={isEditing} />
-                    </Col>
                 </Row>
-                {isEnabled(FeatureFlag.CentralDataProtectionTemplate) && (
-                    <Row gutter={[20, 10]}>
-                        <Col xs={12}>
-                            <h3 className={styles.backHeadline}>
-                                {t(`agency.edit.settings.legal.title`)}{' '}
-                                {legalDataMissing && <ErrorOutlinedIcon fontSize="small" color="error" />}
-                            </h3>
-                        </Col>
-                        <Col xs={12} lg={6}>
-                            <ResponsibleSettings />
-                        </Col>
-                        <Col xs={12} lg={6}>
-                            <ContactSettings type={responsibleEntity} />
-                        </Col>
-                    </Row>
-                )}
             </Form>
+        );
+    };
+
+    const renderFunctionalitiesSettings = () => (
+        <Row gutter={[20, 10]}>
+            <Col xs={12}>
+                <h3 className={styles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
+            </Col>
+            <Col xs={12}>{agencyTenantId ? <PermissionsSettings tenantId={agencyTenantId} /> : null}</Col>
+        </Row>
+    );
+
+    const renderLegacyFunctionalitiesSettings = () => (
+        <Form
+            initialValues={initialValues}
+            labelAlign="left"
+            labelWrap
+            layout="vertical"
+            form={form}
+            size="large"
+            disabled={isReadOnly}
+            onFinish={onSubmit}
+        >
+            <Row gutter={[20, 10]}>
+                <Col xs={12}>
+                    <h3 className={styles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
+                </Col>
+                <Col xs={12} lg={6}>
+                    <AgencySettings isEditMode={isEditing} />
+                </Col>
+            </Row>
+        </Form>
+    );
+
+    const renderLegalSettings = () => (
+        <Row gutter={[20, 10]}>
+            <Col xs={12}>
+                <h3 className={styles.backHeadline}>
+                    {t(`agency.edit.settings.legal.title`)}{' '}
+                    {legalDataMissing && <ErrorOutlinedIcon fontSize="small" color="error" />}
+                </h3>
+            </Col>
+            <Col xs={12} lg={6}>
+                <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />
+            </Col>
+            <Col xs={12} lg={6}>
+                <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
+            </Col>
+            <Col xs={12} lg={6}>
+                <LegalTextSettings
+                    agencyData={agencyData}
+                    field="impressum"
+                    initialValues={initialValues}
+                    onSave={onSaveCard}
+                />
+            </Col>
+            <Col xs={12} lg={6}>
+                <LegalTextSettings
+                    agencyData={agencyData}
+                    field="privacy"
+                    initialValues={initialValues}
+                    onSave={onSaveCard}
+                />
+            </Col>
+        </Row>
+    );
+
+    return (
+        <Page isLoading={isLoading || isLoadingPostCodes} stickyHeader>
+            <Page.BackWithActions
+                path={routePathNames.agency}
+                title={
+                    isEditing
+                        ? agencyData?.name || t<string>('agency.edit.general.headline')
+                        : t<string>('agency.edit.general.headline')
+                }
+                titleMaxLength={isEditing ? 10 : undefined}
+                tabs={agencySettingsTabs}
+            >
+                {isReadOnly && !isEditing && !isLegalSection && (
+                    <Button type="primary" onClick={() => setReadOnly(false)}>
+                        {t('edit')}
+                    </Button>
+                )}
+                {!isReadOnly && !isEditing && !isLegalSection && (
+                    <>
+                        <Button type="default" onClick={onCancel}>
+                            {t('btn.cancel')}
+                        </Button>
+                        <Button type="primary" onClick={() => form.submit()} disabled={submitted}>
+                            {t('save')}
+                        </Button>
+                    </>
+                )}
+            </Page.BackWithActions>
+            {isLegalSection && renderLegalSettings()}
+            {isFunctionalitiesSection &&
+                (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
+            {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
         </Page>
     );
 };

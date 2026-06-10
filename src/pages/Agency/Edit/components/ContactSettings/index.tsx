@@ -1,4 +1,4 @@
-import { Col, Row } from 'antd';
+import { Col, Form, FormInstance, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
 import Paragraph from 'antd/lib/typography/Paragraph';
 import { useMemo } from 'react';
@@ -6,20 +6,29 @@ import { Card } from '../../../../../components/Card';
 import { FormInputField } from '../../../../../components/FormInputField';
 import styles from '../RegistrationSettings/styles.module.scss';
 import { FormRadioGroupField } from '../../../../../components/FormRadioGroupField';
+import { CardEditable } from '../../../../../components/CardEditable';
 
-export const ContactSettings = ({ type }: { type: any }) => {
+interface ContactSettingsProps {
+    initialValues?: Record<string, unknown>;
+    onSave?: <T>(formData: T, options?: { onError?: () => void }) => void;
+    type?: any;
+}
+
+const ContactSettingsFields = ({ form, type }: { form?: FormInstance; type?: any }) => {
     const { t } = useTranslation();
+    const watchedType = Form.useWatch(['dataProtection', 'dataProtectionResponsibleEntity'], form);
+    const finalType = watchedType || type;
     const contactKey = useMemo(() => {
-        if (!type || type === 'AGENCY_RESPONSIBLE') {
+        if (!finalType || finalType === 'AGENCY_RESPONSIBLE') {
             return null;
         }
-        return type === 'DATA_PROTECTION_OFFICER'
+        return finalType === 'DATA_PROTECTION_OFFICER'
             ? 'dataProtectionOfficerContact'
             : 'alternativeDataProtectionRepresentativeContact';
-    }, [type]);
+    }, [finalType]);
 
     return (
-        <Card titleKey="agency.edit.settings.legal.contact.title">
+        <>
             <Paragraph className="text desc">{t('agency.edit.settings.legal.contact.text')}</Paragraph>
 
             <FormRadioGroupField
@@ -89,6 +98,27 @@ export const ContactSettings = ({ type }: { type: any }) => {
                     </Col>
                 </Row>
             )}
+        </>
+    );
+};
+
+export const ContactSettings = ({ initialValues, onSave, type }: ContactSettingsProps) => {
+    if (onSave) {
+        return (
+            <CardEditable
+                allowUnsavedChanges
+                initialValues={initialValues}
+                titleKey="agency.edit.settings.legal.contact.title"
+                onSave={onSave}
+            >
+                {({ form }) => <ContactSettingsFields form={form} type={type} />}
+            </CardEditable>
+        );
+    }
+
+    return (
+        <Card titleKey="agency.edit.settings.legal.contact.title">
+            <ContactSettingsFields type={type} />
         </Card>
     );
 };

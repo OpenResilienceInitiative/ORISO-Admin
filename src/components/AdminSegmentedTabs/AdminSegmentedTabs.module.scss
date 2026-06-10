@@ -1,0 +1,152 @@
+.container {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    align-items: center;
+}
+
+.scroll {
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.group {
+    display: inline-flex;
+    width: max-content;
+    max-width: none;
+    align-items: center;
+    border-radius: 48px;
+    gap: 2px;
+}
+
+.item {
+    display: inline-flex;
+    min-height: 76px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 38px;
+    border: 0;
+    background: #646d78;
+    border-radius: 12px;
+    color: #e7effc;
+    cursor: pointer;
+    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 20px;
+    font-weight: 400;
+    gap: 10px;
+    letter-spacing: 0;
+    line-height: 26px;
+    text-decoration: none;
+    transition: background 220ms ease, border-radius 220ms ease, color 220ms ease, transform 220ms ease;
+    white-space: nowrap;
+
+    &:first-child {
+        border-radius: 38px 12px 12px 38px;
+    }
+
+    &:last-child {
+        border-radius: 12px 38px 38px 12px;
+    }
+
+    &:hover:not(.itemActive):not(.itemDisabled) {
+        background: #5b6470;
+        color: #e7effc;
+    }
+
+    &:active:not(.itemDisabled) {
+        transform: translateY(1px);
+    }
+
+    &:focus-visible {
+        outline: 2px solid #141c25;
+        outline-offset: 2px;
+    }
+}
+
+.itemActive,
+.itemActive:first-child,
+.itemActive:last-child {
+    background: #141c25;
+    border-radius: 38px;
+    color: #ffffff;
+
+    &:hover {
+        background: #141c25;
+        color: #ffffff;
+    }
+}
+
+.itemDisabled {
+    color: #dbe7f8;
+    cursor: not-allowed;
+    opacity: 0.72;
+
+    &:disabled {
+        pointer-events: none;
+    }
+}
+
+.icon {
+    display: inline-flex;
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    align-items: center;
+    justify-content: center;
+    color: currentColor;
+
+    > svg {
+        display: block;
+        width: 26px;
+        height: 26px;
+    }
+
+    :global {
+        .anticon {
+            font-size: 26px;
+            line-height: 1;
+        }
+    }
+}
+
+.label {
+    flex: 0 0 auto;
+    font-weight: 400;
+}
+
+@media (max-width: 768px) {
+    .item {
+        min-height: 64px;
+        padding: 20px 24px;
+        font-size: 16px;
+        gap: 8px;
+        line-height: 24px;
+    }
+
+    .icon {
+        width: 24px;
+        height: 24px;
+        flex-basis: 24px;
+
+        > svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        :global {
+            .anticon {
+                font-size: 24px;
+            }
+        }
+    }
+}

@@ -1,4 +1,5 @@
 import { runtimeConfig } from '../../config/runtimeConfig';
+import { LANGUAGE_COOKIE_KEY } from '../../utils/language';
 
 export const setValueInCookie = (name: string, value: string) => {
     // console.log('🔍 setValueInCookie: name:', name);
@@ -44,7 +45,7 @@ export const removeAllCookies = () => {
     // console.log('🔍 removeAllCookies: Current cookies:', document.cookie);
     document.cookie.split(';').forEach((c) => {
         const name = c.trim().split('=')[0];
-        if (runtimeConfig.cookiesAllowedList.includes(name)) {
+        if (runtimeConfig.cookiesAllowedList.includes(name) || name === LANGUAGE_COOKIE_KEY) {
             // console.log('🔍 removeAllCookies: Preserving cookie:', name);
             return;
         }

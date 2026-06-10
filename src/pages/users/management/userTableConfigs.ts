@@ -52,8 +52,8 @@ const col = (key: UserTableColumnKey, visible: boolean, sortable = false, width?
 });
 
 const baseIdentityColumns = (): UserTableColumnConfig[] => [
-    col('lastUpdated', true, true, 130),
-    col('status', true, false, 60),
+    col('lastUpdated', true, true, 210),
+    col('status', true, false, 120),
     col('lastname', true, true, 130),
     col('firstname', true, true, 120),
     col('email', true, true, 150),
@@ -61,8 +61,8 @@ const baseIdentityColumns = (): UserTableColumnConfig[] => [
 ];
 
 const tenantAdminIdentityColumns = (): UserTableColumnConfig[] => [
-    col('lastUpdated', true, false, 130),
-    col('status', true, false, 60),
+    col('lastUpdated', true, false, 210),
+    col('status', true, false, 120),
     col('lastname', true, true, 130),
     col('firstname', true, true, 120),
     col('email', true, true, 150),
@@ -154,6 +154,19 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
             col('tenant', true, false, 100),
             col('actions', true, false, 100),
         ],
+    },
+    [TypeOfUser.PlatformAdmins]: {
+        sectionId: TypeOfUser.PlatformAdmins,
+        sectionKind: 'users',
+        readResource: Resource.TenantAdminUser,
+        createResource: Resource.TenantAdminUser,
+        updateResource: Resource.TenantAdminUser,
+        defaultSort,
+        showAgencyExpand: false,
+        showStatus: true,
+        editPathPrefix: routePathNames.platformAdmins,
+        searchPlaceholderKey: 'consultant-search-placeholder',
+        columns: [...tenantAdminIdentityColumns(), col('actions', true, false, 100)],
     },
     [TypeOfUser.Users]: {
         sectionId: TypeOfUser.Users,

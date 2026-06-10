@@ -45,8 +45,8 @@ export const useUserRolesToPermission = () => {
             // Tenant-scoped admins can manage tenant settings, but only super-admins may create/delete tenants.
             Tenant: { read: true, update: true, create: isSuperAdmin, delete: isSuperAdmin },
             Language: { update: true },
-            LegalText: { read: true, update: isSuperAdmin || singleCanEditLegalText },
-            Statistic: { read: isStatisticsEnabled },
+            LegalText: { read: true, update: true },
+            Statistic: { read: isSuperAdmin || isStatisticsEnabled },
             TenantAdminUser: {
                 read: true,
                 create: isSuperAdmin,

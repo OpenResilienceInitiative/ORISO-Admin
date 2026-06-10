@@ -4,7 +4,8 @@ const parseApiDate = (value?: string | null): moment.Moment | null => {
     if (!value || value === 'null' || value === 'undefined') {
         return null;
     }
-    const parsed = moment(value);
+    // API timestamps are UTC LocalDateTime strings without offset (e.g. 2026-06-10T07:54:06)
+    const parsed = moment.utc(value).local();
     return parsed.isValid() ? parsed : null;
 };
 

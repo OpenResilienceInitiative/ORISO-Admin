@@ -1,6 +1,5 @@
-import { Button, Typography } from 'antd';
+import { Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { PlusOutlined } from '@ant-design/icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ColumnsType } from 'antd/lib/table';
 import { useParams } from 'react-router';
@@ -9,7 +8,6 @@ import EditButtons from '../../../components/EditableTable/EditButtons';
 import { ListingTable } from '../../../components/ListingTable';
 import { ConsultantInterface, AgencyEditData, AgencyEventTypes } from '../../../types/agencyEdit';
 import ResizableTitle from '../../../components/Resizable/Resizable';
-import { InitialMeetingNewModal } from './InitialMeetingNewModal';
 import { InitialMeetingEditModal } from './InitialMeetingEditModal';
 import getAgencyEventTypes from '../../../api/agency/getAgencyEventTypes';
 import getAgencyEventTypeById from '../../../api/agency/getAgencyEventTypeById';
@@ -32,7 +30,6 @@ export const AgencyEditInitialMeeting = () => {
     const [topics, setTopics] = useState([]);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [showNewModal, setShowNewModal] = useState(false);
     const [editableData, setEditableData] = useState(undefined);
     const [eventTypeDelete, setEventTypeDelete] = useState(undefined);
     const [allAgencyConsultants, setAllAgencyConsultants] = useState<ConsultantInterface[]>(undefined);
@@ -87,19 +84,6 @@ export const AgencyEditInitialMeeting = () => {
             setEditableData(editableDataContent);
             setShowEditModal(true);
         });
-    };
-
-    const handleConsultantTypeNew = () => {
-        setShowNewModal(true);
-    };
-
-    const handleCancelNew = () => {
-        setShowNewModal(false);
-    };
-
-    const handleSaveNew = () => {
-        setShowNewModal(false);
-        getAgencyData();
     };
 
     const handleCancelEdit = () => {
@@ -206,8 +190,15 @@ export const AgencyEditInitialMeeting = () => {
                 titleKey="agency.edit.initialMeeting.title"
                 tabs={[
                     {
-                        titleKey: 'agency.edit.tab.settings',
+                        titleKey: 'settings.subhead.masterData',
                         to: `${routePathNames.agency}/${agencyId}/general`,
+                        iconName: 'master_data',
+                        icon: !isLoadingAgency && legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
+                    },
+                    {
+                        titleKey: 'settings.subhead.legal',
+                        to: `${routePathNames.agency}/${agencyId}/legal-settings`,
+                        iconName: 'legal',
                         icon: !isLoadingAgency && legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
                     },
                     {
@@ -215,11 +206,7 @@ export const AgencyEditInitialMeeting = () => {
                         to: `${routePathNames.agency}/${agencyId}/initial-meeting`,
                     },
                 ]}
-            >
-                <Button className="mb-m mr-sm" type="primary" icon={<PlusOutlined />} onClick={handleConsultantTypeNew}>
-                    {t('agency.edit.initialMeeting.button_label')}
-                </Button>
-            </Page.BackWithActions>
+            />
             <Paragraph>{t('agency.edit.initialMeeting.description')}</Paragraph>
 
             <ListingTable
@@ -239,12 +226,6 @@ export const AgencyEditInitialMeeting = () => {
                         cell: ResizableTitle,
                     },
                 }}
-            />
-            <InitialMeetingNewModal
-                showEditModal={showNewModal}
-                handleCancel={handleCancelNew}
-                handleSave={handleSaveNew}
-                allAgencyConsultants={allAgencyConsultants}
             />
             <InitialMeetingEditModal
                 showEditModal={showEditModal}

@@ -99,10 +99,10 @@
             position: sticky;
             top: 0;
             left: 0;
-            width: 85px;
-            min-width: 85px !important;
-            max-width: 85px !important;
-            flex: 0 0 85px !important;
+                width: 97px;
+                min-width: 97px !important;
+                max-width: 97px !important;
+                flex: 0 0 97px !important;
             height: 100vh;
             background-color: #141c25;
         }
@@ -137,7 +137,7 @@
             }
 
             .lowerSidebar {
-                gap: 2px;
+                gap: 4px;
                 padding: 8px 0 0;
             }
 
@@ -149,9 +149,11 @@
 
                 a,
                 button {
-                    width: 76px;
+                    width: 83px;
+                    min-width: 60px;
+                    max-width: 96px;
                     min-height: auto;
-                    padding: 8px 4px;
+                    padding: 4px;
                     box-sizing: border-box;
                     display: flex;
                     flex-direction: column;
@@ -165,51 +167,51 @@
                     cursor: pointer;
                     opacity: 1;
                     text-align: center;
-                    transition:
-                        background 160ms ease,
-                        color 160ms ease;
+                    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+                    transform: translateZ(0);
+                    transition: padding 800ms cubic-bezier(0.2, 0.78, 0.26, 1),
+                        border-radius 800ms cubic-bezier(0.2, 0.78, 0.26, 1), background-color 800ms ease,
+                        color 800ms ease, transform 800ms cubic-bezier(0.2, 0.78, 0.26, 1);
 
                     > div {
-                        width: 28px;
-                        height: 28px;
+                        width: 40px;
+                        height: 40px;
                         display: inline-flex;
                         align-items: center;
                         justify-content: center;
                         flex-shrink: 0;
+                        transition: color 800ms ease;
                     }
 
                     svg {
-                        width: 28px;
-                        height: 28px;
+                        width: 40px;
+                        height: 40px;
                         color: inherit;
-                        fill: currentColor;
-                    }
-
-                    svg path {
-                        fill: currentColor;
+                        transition: color 800ms ease, fill 800ms ease;
                     }
 
                     span {
                         font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
-                        font-size: 11px;
-                        line-height: 14px;
-                        font-weight: 500;
+                        font-size: 10px;
+                        line-height: 13px;
+                        font-weight: 600;
                         color: inherit;
                         text-align: center;
-                        word-break: break-word;
+                        hyphens: auto;
+                        overflow-wrap: anywhere;
+                        word-break: normal;
                         display: inline-block;
-                        max-width: 72px;
+                        max-width: 75px;
                         letter-spacing: 0.2px;
-                        white-space: normal;
+                        white-space: pre-line;
+                        transition: color 800ms ease;
                     }
 
                     &:hover:not(.active) {
-                        background: rgba(100, 109, 120, 0.35);
+                        background: transparent;
                         color: #ffffff;
 
-                        svg,
-                        svg path {
-                            fill: #ffffff;
+                        svg {
                             color: #ffffff;
                         }
 
@@ -221,16 +223,14 @@
                     &.active {
                         background: #e7effc;
                         color: #141c25;
-                        border-radius: 36px;
-                        padding: 36px 4px;
+                        border-radius: 50px;
+                        padding: 32px 4px;
 
                         > div {
                             color: #141c25;
                         }
 
-                        svg,
-                        svg path {
-                            fill: #141c25;
+                        svg {
                             color: #141c25;
                         }
 

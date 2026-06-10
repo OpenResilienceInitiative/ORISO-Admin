@@ -6,21 +6,26 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     gap: 16px 24px;
     width: 100%;
-    margin-bottom: 16px;
+    margin-bottom: 32px;
+    padding-left: 32px;
+
+    @media (max-width: 767px) {
+        padding-left: 0;
+    }
 }
 
 .searchWithButton {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
-    gap: 16px 24px;
+    gap: 24px;
     width: 100%;
-    max-width: 529px;
+    max-width: 640px;
     min-width: 0;
-    flex: 0 1 529px;
+    flex: 0 1 640px;
 
     @media (max-width: 767px) {
         max-width: 100%;
@@ -29,9 +34,10 @@
 }
 
 .searchField {
-    flex: 1 1 320px;
+    flex: 0 0 499px;
     min-width: 0;
     width: 100%;
+    max-width: 499px;
 }
 
 .toolbarActions {
@@ -40,17 +46,72 @@
     align-items: center;
 }
 
+.createButton {
+    display: inline-flex;
+    min-width: 116px;
+    height: 56px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 24px;
+    border: 0;
+    border-radius: 28px;
+    background: #646d78 !important;
+    border-color: #646d78 !important;
+    box-shadow: none;
+    color: #ffffff;
+    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 16px;
+    font-weight: 600 !important;
+    line-height: 24px;
+    text-transform: none;
+    transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+
+    &:hover,
+    &:focus {
+        background: #56616c !important;
+        border-color: #56616c !important;
+        color: #ffffff;
+    }
+
+    &:active {
+        background: #4a535e !important;
+        border-color: #4a535e !important;
+        transform: translateY(1px);
+    }
+
+    &:disabled {
+        background: #d4d8de !important;
+        border-color: #d4d8de !important;
+        color: #7d8792;
+        transform: none;
+    }
+
+    :global {
+        .anticon {
+            display: inline-flex;
+            align-items: center;
+            font-size: 18px;
+            line-height: 1;
+        }
+    }
+}
+
 .popoverTrigger {
     display: inline-flex;
 }
 
 .sectionCount {
+    margin-left: auto;
     flex-shrink: 0;
+    max-width: 7rem;
     font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
     font-size: 14px;
     font-weight: 400;
+    line-height: 18px;
     color: #646d78;
-    white-space: nowrap;
+    text-align: right;
+    white-space: normal;
     align-self: flex-start;
 
     @media (min-width: 768px) {
@@ -119,33 +180,58 @@
 
 .tableContainerFigma {
     :global {
+        .ant-table {
+            background: transparent;
+        }
+
+        .ant-table-container,
+        .ant-table-content {
+            background: var(--m3-surface-container-low, #f6f3f3);
+        }
+
         .ant-table-thead > tr > th {
-            background: #f4f5f6;
+            background: var(--m3-surface-container-highest, #e4e2e2);
             border-bottom: none;
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
             font-weight: 500;
             font-size: 14px;
-            color: #141c25;
+            color: var(--m3-on-surface, #1b1b1c);
             padding-top: 14px;
             padding-bottom: 14px;
+            border-radius: 0 !important;
+        }
+
+        .ant-table-tbody > tr > td {
+            background: var(--m3-surface-container-low, #f6f3f3);
+            border-bottom: 1px solid var(--m3-surface-container-high, #eae7e8);
+            color: var(--m3-on-surface-variant, #444748);
+        }
+
+        .ant-table-tbody > tr:hover > td {
+            background: var(--m3-surface-container, #f0edee) !important;
+        }
+
+        .ant-table-cell-fix-right,
+        .ant-table-cell-fix-left {
+            background: inherit;
         }
 
         .ant-table-thead > tr > th:first-child {
-            border-top-left-radius: 12px;
-            border-bottom-left-radius: 12px;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
         }
 
         .ant-table-thead > tr > th:last-child {
-            border-top-right-radius: 12px;
-            border-bottom-right-radius: 12px;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
         }
 
         .ant-table-thead > tr:first-child > th:first-child {
-            border-top-left-radius: 12px;
+            border-top-left-radius: 0;
         }
 
         .ant-table-thead > tr:first-child > th:last-child {
-            border-top-right-radius: 12px;
+            border-top-right-radius: 0;
         }
     }
 }

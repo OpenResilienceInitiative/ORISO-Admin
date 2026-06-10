@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import './styles/App.less';
 import './app.css';
-import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router';
 import ProtectedPageLayoutWrapper from './components/Layout/ProtectedPageLayoutWrapper';
 import routePathNames from './appConfig';
 import { TenantSettingsLayout } from './pages/TenantSettings';
@@ -39,12 +39,17 @@ import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { UserRole } from './enums/UserRole';
 import { useAppConfigContext } from './context/useAppConfig';
-import { AgencyEditInitialMeeting } from './pages/Agency/EditInitialMeeting';
 import { SupervisorLogsPage } from './pages/Logs/SupervisorLogs';
 import { InactiveAccountAuditLogsPage } from './pages/Logs/InactiveAccountAuditLogs';
 import { InviteLinksPage } from './pages/InviteLinks';
 import { ExternalInboundsTab, LinksIndexRedirect, LinksPage } from './pages/Links';
 import { GlobalLoginSettingsPage } from './pages/GlobalSettings';
+
+const AgencyInitialMeetingRedirect = () => {
+    const { id } = useParams();
+
+    return <Navigate to={`${routePathNames.agency}/${id}/functionalities`} replace />;
+};
 
 export const App = () => {
     const { data: publicTenantData } = usePublicTenantData();
@@ -96,6 +101,7 @@ export const App = () => {
 
     const canReadTenant = can(PermissionAction.Read, Resource.Tenant);
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
+    const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     // console.log('🔍 App: canReadTenant:', canReadTenant);
     // console.log('🔍 App: canReadLegalText:', canReadLegalText);
     // console.log('🔍 App: Will show routes?', canReadTenant || canReadLegalText);
@@ -148,8 +154,16 @@ export const App = () => {
                     <Route path={`${routePathNames.agency}/:id`} element={<AgencyPageEdit />} />
                     <Route path={`${routePathNames.agency}/:id/general`} element={<AgencyPageEdit />} />
                     <Route
+                        path={`${routePathNames.agency}/:id/legal-settings`}
+                        element={<AgencyPageEdit section="legal" />}
+                    />
+                    <Route
+                        path={`${routePathNames.agency}/:id/functionalities`}
+                        element={<AgencyPageEdit section="functionalities" />}
+                    />
+                    <Route
                         path={`${routePathNames.agency}/:id/initial-meeting`}
-                        element={<AgencyEditInitialMeeting />}
+                        element={<AgencyInitialMeetingRedirect />}
                     />
                     {can(PermissionAction.Read, Resource.Topic) && (
                         <Route path={routePathNames.topics} element={<TopicList />} />
@@ -157,7 +171,14 @@ export const App = () => {
                     {can([PermissionAction.Update, PermissionAction.Create], Resource.Topic) && (
                         <Route path={`${routePathNames.topics}/:id`} element={<TopicEditOrAdd />} />
                     )}
-                    <Route path={routePathNames.statistic} element={<Statistic />} />
+                    <Route
+                        path={routePathNames.statisticPreview}
+                        element={<Navigate to={routePathNames.statistic} replace />}
+                    />
+                    <Route
+                        path={routePathNames.statistic}
+                        element={canReadStatistic ? <Statistic /> : <Navigate to="/admin/access-denied" replace />}
+                    />
                     {!isSuperAdmin && <Route path={routePathNames.logs} element={<SupervisorLogsPage />} />}
                     {isSuperAdmin && (
                         <Route
@@ -217,6 +238,7 @@ export const App = () => {
                     <Route path="/admin/users" element={<UsersList />} />
                     <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
                     <Route path="/admin/users/tenant-admins/:id" element={<TenantAdminEditOrAdd />} />
+                    <Route path="/admin/users/platform-admins/:id" element={<TenantAdminEditOrAdd />} />
                     <Route path="/admin/users/:typeOfUsers/:id" element={<UserEditOrAdd />} />
                     <Route path="/admin/invite-links" element={<InviteLinksPage />} />
                     <Route path="/admin/links" element={<LinksPage />}>
