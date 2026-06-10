@@ -534,7 +534,10 @@ export const PermissionsSettings = ({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
-    const inheritedForcedOffFields = useMemo(() => getForcedOffFields(visibleToggles), [visibleToggles]);
+    const inheritedForcedOffFields = useMemo(
+        () => (superAdminControlMode ? new Set<string>() : getForcedOffFields(visibleToggles)),
+        [visibleToggles, superAdminControlMode],
+    );
 
     // const { mutate: settingsAdminMutate } = useSettingsAdminMutation();
     const { mutate: updateTenant } = useAddOrUpdateTenant({ id: tenantId });
@@ -691,7 +694,8 @@ export const PermissionsSettings = ({
                                                         label={t(toggle.labelKey)}
                                                         disabled={
                                                             inheritedForcedOffFields.has(toggle.field[1]) ||
-                                                            isSubToggleDisabled(card, toggle.field, masterEnabled)
+                                                            (!superAdminControlMode &&
+                                                                isSubToggleDisabled(card, toggle.field, masterEnabled))
                                                         }
                                                         onAfterChange={handleToggleUpdate}
                                                     />
