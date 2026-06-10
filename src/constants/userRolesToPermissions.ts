@@ -27,7 +27,7 @@ export const useUserRolesToPermission = () => {
         !settings.multitenancyWithSingleDomainEnabled || settings.legalContentChangesBySingleTenantAdminsAllowed;
     const isMultiTenancyWithSingleDomain = settings.multitenancyWithSingleDomainEnabled;
     const isTopicsEnabled = data?.settings?.featureTopicsEnabled;
-    const isStatisticsEnabled = data?.settings?.featureStatisticsEnabled;
+    const isStatisticsEnabled = Boolean(data?.settings?.featureStatisticsEnabled);
 
     // console.log('🔍 useUserRolesToPermission: isTopicsEnabled:', isTopicsEnabled);
     // console.log('🔍 useUserRolesToPermission: isStatisticsEnabled:', isStatisticsEnabled);
@@ -40,6 +40,7 @@ export const useUserRolesToPermission = () => {
         },
         [UserRole.AgencyAdmin]: {
             Agency: { read: true, create: true, update: true, delete: true },
+            Statistic: { read: isStatisticsEnabled },
         },
         [UserRole.TenantAdmin]: {
             // Tenant-scoped admins can manage tenant settings, but only super-admins may create/delete tenants.

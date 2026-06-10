@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { AdminSegmentedTabs } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { Page } from '../components/Page';
 import SearchInput from '../components/SearchInput/SearchInput';
+import { UserRole } from '../enums/UserRole';
+import { useUserRoles } from '../hooks/useUserRoles.hook';
 import { ReactComponent as ActiveAgenciesIcon } from '../resources/img/svg/statistics-dashboard/active-agencies.svg';
 import { ReactComponent as CalendarIcon } from '../resources/img/svg/statistics-dashboard/calendar.svg';
 import { ReactComponent as ChevronDownIcon } from '../resources/img/svg/statistics-dashboard/chevron-down.svg';
@@ -313,6 +315,25 @@ const getConversationSegmentPercentage = (segment: ConversationSegment, segments
     }
 
     return Math.round((segment.value / total) * 100);
+};
+
+const getAllowedStatisticScopes = (
+    isSuperAdmin: boolean,
+    hasRole: (role: UserRole | UserRole[]) => boolean,
+): ScopeKey[] => {
+    if (isSuperAdmin) {
+        return scopeOrder;
+    }
+
+    if (hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])) {
+        return ['tenant', 'agency'];
+    }
+
+    if (hasRole([UserRole.AgencyAdmin, UserRole.RestrictedAgencyAdmin])) {
+        return ['agency'];
+    }
+
+    return ['agency'];
 };
 
 const scopeDefinitions: Record<ScopeKey, ScopeDefinition> = {
@@ -3113,7 +3134,11 @@ export const Statistic = () => {
     const translate: DashboardTranslate = (key, options) =>
         translateSource?.(key, options) || String(options?.defaultValue || key);
     const locale = getDashboardLocale(i18nInstance?.resolvedLanguage || i18nInstance?.language);
-    const [activeScope, setActiveScope] = useState<ScopeKey>('platform');
+    const { hasRole, isSuperAdmin } = useUserRoles();
+    const allowedScopeKeys = useMemo(() => getAllowedStatisticScopes(isSuperAdmin, hasRole), [hasRole, isSuperAdmin]);
+    const allowedScopeKey = allowedScopeKeys.join('|');
+    const defaultScope = allowedScopeKeys[0] || 'agency';
+    const [activeScope, setActiveScope] = useState<ScopeKey>(defaultScope);
     const [selectedCardMenuByScope, setSelectedCardMenuByScope] =
         useState<SelectedCardMenuByScope>(readStoredCardMenuSelection);
     const [selectedFilterTargetIdsByScope, setSelectedFilterTargetIdsByScope] =
@@ -3218,7 +3243,7 @@ export const Statistic = () => {
             )
             .slice(0, 6);
     }, [availableFilterTargets, filterSearch, locale, translate, visibleFilterTargetIds]);
-    const scopeTabItems: AdminSegmentedTabItem[] = scopeOrder.map((scopeKey) => {
+    const scopeTabItems: AdminSegmentedTabItem[] = allowedScopeKeys.map((scopeKey) => {
         const scope = scopeDefinitions[scopeKey];
         const ScopeIcon = scope.icon;
 
@@ -3301,6 +3326,12 @@ export const Statistic = () => {
     useEffect(() => {
         storeFilterTargetSelection(selectedFilterTargetIdsByScope);
     }, [selectedFilterTargetIdsByScope]);
+
+    useEffect(() => {
+        if (!allowedScopeKeys.includes(activeScope)) {
+            setActiveScope(defaultScope);
+        }
+    }, [activeScope, allowedScopeKey, defaultScope]);
 
     return (
         <Page>
