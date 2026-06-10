@@ -129,31 +129,32 @@ interface PermissionsSettingsArgs {
 }
 
 type PermissionToggleVisibility = {
-    anonymousChat?: boolean;
-    calls?: boolean;
-    supervision?: boolean;
-    supervisionAnonymousChats?: boolean;
-    supervisionOneOnOneChats?: boolean;
-    audioCalls?: boolean;
-    audioCallsAnonymousChats?: boolean;
-    audioCallsOneOnOneChats?: boolean;
-    audioCallsGroupChats?: boolean;
-    audioCallsSupervisionChats?: boolean;
-    videoCalls?: boolean;
-    videoCallsAnonymousChats?: boolean;
-    videoCallsOneOnOneChats?: boolean;
-    videoCallsGroupChats?: boolean;
-    videoCallsSupervisionChats?: boolean;
-    threads?: boolean;
-    threadsAnonymousChats?: boolean;
-    threadsOneOnOneChats?: boolean;
-    threadsGroupChats?: boolean;
-    threadsSupervisionChats?: boolean;
-    voiceMessages?: boolean;
-    voiceMessagesAnonymousChats?: boolean;
-    voiceMessagesOneOnOneChats?: boolean;
-    voiceMessagesGroupChats?: boolean;
-    voiceMessagesSupervisionChats?: boolean;
+    featureAnonymousChatEnabled?: boolean | null;
+    featureGroupChatV2Enabled?: boolean | null;
+    featureCallsEnabled?: boolean | null;
+    featureSupervisionEnabled?: boolean | null;
+    featureSupervisionAnonymousChatsEnabled?: boolean | null;
+    featureSupervisionOneOnOneChatsEnabled?: boolean | null;
+    featureAudioCallsEnabled?: boolean | null;
+    featureAudioCallsAnonymousChatsEnabled?: boolean | null;
+    featureAudioCallsOneOnOneChatsEnabled?: boolean | null;
+    featureAudioCallsGroupChatsEnabled?: boolean | null;
+    featureAudioCallsSupervisionChatsEnabled?: boolean | null;
+    featureVideoCallsEnabled?: boolean | null;
+    featureVideoCallsAnonymousChatsEnabled?: boolean | null;
+    featureVideoCallsOneOnOneChatsEnabled?: boolean | null;
+    featureVideoCallsGroupChatsEnabled?: boolean | null;
+    featureVideoCallsSupervisionChatsEnabled?: boolean | null;
+    featureThreadsEnabled?: boolean | null;
+    featureThreadsAnonymousChatsEnabled?: boolean | null;
+    featureThreadsGroupChatsEnabled?: boolean | null;
+    featureThreadsOneOnOneEnabled?: boolean | null;
+    featureThreadsSupervisionChatsEnabled?: boolean | null;
+    featureVoiceMessagesEnabled?: boolean | null;
+    featureVoiceMessagesAnonymousChatsEnabled?: boolean | null;
+    featureVoiceMessagesOneOnOneChatsEnabled?: boolean | null;
+    featureVoiceMessagesGroupChatsEnabled?: boolean | null;
+    featureVoiceMessagesSupervisionChatsEnabled?: boolean | null;
 };
 
 const DEFAULT_PERMISSION_SETTINGS = {
@@ -185,7 +186,34 @@ const DEFAULT_PERMISSION_SETTINGS = {
     featureVoiceMessagesSupervisionChatsEnabled: true,
 } as const;
 
-const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, string[]> = {
+type AllowedPermissionToggleKey =
+    | 'anonymousChat'
+    | 'calls'
+    | 'supervision'
+    | 'supervisionAnonymousChats'
+    | 'supervisionOneOnOneChats'
+    | 'audioCalls'
+    | 'audioCallsAnonymousChats'
+    | 'audioCallsOneOnOneChats'
+    | 'audioCallsGroupChats'
+    | 'audioCallsSupervisionChats'
+    | 'videoCalls'
+    | 'videoCallsAnonymousChats'
+    | 'videoCallsOneOnOneChats'
+    | 'videoCallsGroupChats'
+    | 'videoCallsSupervisionChats'
+    | 'threads'
+    | 'threadsAnonymousChats'
+    | 'threadsOneOnOneChats'
+    | 'threadsGroupChats'
+    | 'threadsSupervisionChats'
+    | 'voiceMessages'
+    | 'voiceMessagesAnonymousChats'
+    | 'voiceMessagesOneOnOneChats'
+    | 'voiceMessagesGroupChats'
+    | 'voiceMessagesSupervisionChats';
+
+const PLATFORM_TOGGLE_FIELDS: Record<AllowedPermissionToggleKey, string[]> = {
     anonymousChat: [
         'featureAnonymousChatEnabled',
         'featureVideoCallsAnonymousChatsEnabled',
@@ -252,15 +280,26 @@ const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, string[]>
     voiceMessagesSupervisionChats: ['featureVoiceMessagesSupervisionChatsEnabled'],
 };
 
+const PERMISSION_SETTING_KEYS = new Set<string>(Object.keys(DEFAULT_PERMISSION_SETTINGS));
+
 const getForcedOffFields = (toggles?: PermissionToggleVisibility) => {
     if (!toggles) return new Set<string>();
 
     return Object.entries(toggles).reduce((fields, [toggleKey, enabled]) => {
-        if (enabled === false) {
-            PLATFORM_TOGGLE_FIELDS[toggleKey as keyof PermissionToggleVisibility]?.forEach((field) => {
-                fields.add(field);
-            });
+        if (enabled !== false) {
+            return fields;
         }
+
+        const platformFields = PLATFORM_TOGGLE_FIELDS[toggleKey as AllowedPermissionToggleKey];
+        if (platformFields) {
+            platformFields.forEach((field) => fields.add(field));
+            return fields;
+        }
+
+        if (PERMISSION_SETTING_KEYS.has(toggleKey)) {
+            fields.add(toggleKey);
+        }
+
         return fields;
     }, new Set<string>());
 };
@@ -280,20 +319,9 @@ const enforceToggleRestrictions = (formData, forcedOffToggles?: PermissionsSetti
         return formData;
     }
     const next = { ...formData, settings: { ...(formData?.settings ?? {}) } };
-    const setFalse = (keys: string[]) => {
-        keys.forEach((key) => {
-            next.settings[key] = false;
-        });
-    };
-    if (forcedOffToggles.anonymousChat) setFalse(['featureAnonymousChatEnabled']);
-    if (forcedOffToggles.calls) setFalse(['featureCallsEnabled']);
-    if (forcedOffToggles.supervision) {
-        setFalse([
-            'featureSupervisionEnabled',
-            'featureSupervisionAnonymousChatsEnabled',
-            'featureSupervisionOneOnOneChatsEnabled',
-        ]);
-    }
+    getForcedOffFields(forcedOffToggles).forEach((field) => {
+        next.settings[field] = false;
+    });
     return next;
 };
 
@@ -661,11 +689,10 @@ export const PermissionsSettings = ({
                                                     <CheckToggle
                                                         name={toggle.field}
                                                         label={t(toggle.labelKey)}
-                                                        disabled={isSubToggleDisabled(
-                                                            card,
-                                                            toggle.field,
-                                                            masterEnabled,
-                                                        )}
+                                                        disabled={
+                                                            inheritedForcedOffFields.has(toggle.field[1]) ||
+                                                            isSubToggleDisabled(card, toggle.field, masterEnabled)
+                                                        }
                                                         onAfterChange={handleToggleUpdate}
                                                     />
                                                 </div>
