@@ -13,11 +13,16 @@
         "plugin:import/typescript"
     ],
     "parser": "@typescript-eslint/parser",
-    /*"files": ["*.ts", "*.tsx"],*/
     "parserOptions": {
         "project": "./tsconfig.json"
     },
-    "plugins": ["import", "@typescript-eslint", "jsx-a11y", "prettier", "cypress"],
+    "plugins": [
+        "import",
+        "@typescript-eslint",
+        "jsx-a11y",
+        "prettier",
+        "cypress"
+    ],
     "rules": {
         "react/require-default-props": "off",
         "import/no-named-as-default": 0,
@@ -51,9 +56,33 @@
                 "project": "./tsconfig.json"
             },
             "node": {
-                "extensions": [".js", ".jsx", ".ts", ".tsx"],
-                "moduleDirectory": ["node_modules", "src/"]
+                "extensions": [
+                    ".js",
+                    ".jsx",
+                    ".ts",
+                    ".tsx"
+                ],
+                "moduleDirectory": [
+                    "node_modules",
+                    "src/"
+                ]
             }
         }
-    }
+    },
+    "overrides": [
+        {
+            "files": [
+                "src/utils/theme/**/*.ts"
+            ],
+            "rules": {
+                "no-restricted-syntax": "off",
+                "no-restricted-properties": "off",
+                "prefer-exponentiation-operator": "off",
+                "no-continue": "off",
+                "no-nested-ternary": "off",
+                "prettier/prettier": "off",
+                "no-console": "off"
+            }
+        }
+    ]
 }
