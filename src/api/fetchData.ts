@@ -22,6 +22,7 @@ export const FETCH_ERRORS = {
     BAD_REQUEST: 'BAD_REQUEST',
     BAD_REQUEST_WITH_RESPONSE: 'BAD_REQUEST_WITH_RESPONSE',
     CATCH_ALL: 'CATCH_ALL',
+    CATCH_ALL_SILENT: 'CATCH_ALL_SILENT',
     CONFLICT: 'CONFLICT',
     CONFLICT_WITH_RESPONSE: 'CONFLICT_WITH_RESPONSE',
     EMPTY: 'EMPTY',
@@ -172,6 +173,9 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                         // console.log('🔍 fetchData: 401 Unauthorized - session expired, logging out');
                         logout(true, routePathNames.login);
                         reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
+                    } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL_SILENT)) {
+                        // Reject without showing a toast so the caller can decide how to handle it.
+                        reject(response);
                     } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL)) {
                         message.error({
                             content: i18next.t([
