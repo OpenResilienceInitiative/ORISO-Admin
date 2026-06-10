@@ -164,11 +164,20 @@ export const UserEditOrAdd = () => {
         id: isEditing ? id : null,
         typeOfUser: typeOfUsers,
         onSuccess: (response) => {
+            const messagePrefix = isConsultantForm ? 'counselor' : 'agencyAdmin';
             message.success({
-                content: t(`message.counselor.${isEditing ? 'update' : 'add'}`),
+                content: t(`message.${messagePrefix}.${isEditing ? 'update' : 'add'}`),
                 duration: 3,
             });
-            navigate(`/admin/users/${typeOfUsers}/${response.id}`);
+
+            if (!isEditing && (response as { agencyAssignmentFailed?: boolean })?.agencyAssignmentFailed) {
+                message.warning({
+                    content: t('message.agencyAdmin.agencyAssignmentFailed'),
+                    duration: 8,
+                });
+            }
+
+            navigate(`/admin/users/${typeOfUsers}`);
         },
         onError: async (error: Error | Response) => {
             if (error instanceof Response) {

@@ -18,7 +18,7 @@ export const putAgenciesForAgencyAdmin = (adminId: string, agencyIds: string[]) 
         url: `${agencyAdminEndpoint}/${adminId}/agencies`,
         method: FETCH_METHODS.PUT,
         skipAuth: false,
-        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
         bodyData: JSON.stringify(agencies),
     });
 };
