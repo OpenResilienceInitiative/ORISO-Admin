@@ -10,8 +10,8 @@ export const PermissionsSettingsPage = () => {
     return (
         <PermissionsSettings
             tenantId={`${resolvedTenantId || ''}`}
-            excludeCardKeys={isSuperAdmin ? ['liveChat'] : undefined}
             visibleToggles={data?.settings}
+            superAdminControlMode={isSuperAdmin}
         />
     );
 };
