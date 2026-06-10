@@ -3,12 +3,18 @@ import { useTranslation } from 'react-i18next';
 import Paragraph from 'antd/lib/typography/Paragraph';
 import { Card } from '../../../../../components/Card';
 import { FormInputField } from '../../../../../components/FormInputField';
+import { CardEditable } from '../../../../../components/CardEditable';
 
-export const ResponsibleSettings = () => {
+interface ResponsibleSettingsProps {
+    initialValues?: Record<string, unknown>;
+    onSave?: <T>(formData: T, options?: { onError?: () => void }) => void;
+}
+
+const ResponsibleSettingsFields = () => {
     const [t] = useTranslation();
 
     return (
-        <Card titleKey="agency.edit.settings.legal.responsible.title">
+        <>
             <Paragraph className="text desc">{t('agency.edit.settings.legal.responsible.text')}</Paragraph>
             <Row gutter={[20, 10]}>
                 <Col xs={12}>
@@ -57,6 +63,27 @@ export const ResponsibleSettings = () => {
                     />
                 </Col>
             </Row>
+        </>
+    );
+};
+
+export const ResponsibleSettings = ({ initialValues, onSave }: ResponsibleSettingsProps) => {
+    if (onSave) {
+        return (
+            <CardEditable
+                allowUnsavedChanges
+                initialValues={initialValues}
+                titleKey="agency.edit.settings.legal.responsible.title"
+                onSave={onSave}
+            >
+                <ResponsibleSettingsFields />
+            </CardEditable>
+        );
+    }
+
+    return (
+        <Card titleKey="agency.edit.settings.legal.responsible.title">
+            <ResponsibleSettingsFields />
         </Card>
     );
 };

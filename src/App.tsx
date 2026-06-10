@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import './styles/App.less';
 import './app.css';
-import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router';
 import ProtectedPageLayoutWrapper from './components/Layout/ProtectedPageLayoutWrapper';
 import routePathNames from './appConfig';
 import { TenantSettingsLayout } from './pages/TenantSettings';
@@ -39,12 +39,17 @@ import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { UserRole } from './enums/UserRole';
 import { useAppConfigContext } from './context/useAppConfig';
-import { AgencyEditInitialMeeting } from './pages/Agency/EditInitialMeeting';
 import { SupervisorLogsPage } from './pages/Logs/SupervisorLogs';
 import { InactiveAccountAuditLogsPage } from './pages/Logs/InactiveAccountAuditLogs';
 import { InviteLinksPage } from './pages/InviteLinks';
 import { ExternalInboundsTab, LinksIndexRedirect, LinksPage } from './pages/Links';
 import { GlobalLoginSettingsPage } from './pages/GlobalSettings';
+
+const AgencyInitialMeetingRedirect = () => {
+    const { id } = useParams();
+
+    return <Navigate to={`${routePathNames.agency}/${id}/functionalities`} replace />;
+};
 
 export const App = () => {
     const { data: publicTenantData } = usePublicTenantData();
@@ -149,8 +154,16 @@ export const App = () => {
                     <Route path={`${routePathNames.agency}/:id`} element={<AgencyPageEdit />} />
                     <Route path={`${routePathNames.agency}/:id/general`} element={<AgencyPageEdit />} />
                     <Route
+                        path={`${routePathNames.agency}/:id/legal-settings`}
+                        element={<AgencyPageEdit section="legal" />}
+                    />
+                    <Route
+                        path={`${routePathNames.agency}/:id/functionalities`}
+                        element={<AgencyPageEdit section="functionalities" />}
+                    />
+                    <Route
                         path={`${routePathNames.agency}/:id/initial-meeting`}
-                        element={<AgencyEditInitialMeeting />}
+                        element={<AgencyInitialMeetingRedirect />}
                     />
                     {can(PermissionAction.Read, Resource.Topic) && (
                         <Route path={routePathNames.topics} element={<TopicList />} />

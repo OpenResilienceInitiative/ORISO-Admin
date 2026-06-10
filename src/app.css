@@ -86,6 +86,15 @@
     --info-color: #273270;
     --lightest-grey: #fafafa;
     --tag-success: #0a882f;
+    --m3-surface: #fcf9f9;
+    --m3-on-surface: #1b1b1c;
+    --m3-surface-variant: #e0e3e3;
+    --m3-on-surface-variant: #444748;
+    --m3-surface-container-lowest: #ffffff;
+    --m3-surface-container-low: #f6f3f3;
+    --m3-surface-container: #f0edee;
+    --m3-surface-container-high: #eae7e8;
+    --m3-surface-container-highest: #e4e2e2;
 
     /* YELLOW THEME */
     --yellow-1: #ffeed2;
