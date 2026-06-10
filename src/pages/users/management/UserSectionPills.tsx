@@ -29,7 +29,7 @@ export const UserSectionPills = () => {
             visible.push({
                 id: 'platform-admins',
                 labelKey: 'users.sectionPills.platformAdmins',
-                disabled: true,
+                to: routePathNames.platformAdmins,
             });
         }
 
