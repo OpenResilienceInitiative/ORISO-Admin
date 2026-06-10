@@ -649,7 +649,6 @@ export const PermissionsSettings = ({
                                                             masterEnabled,
                                                         )}
                                                         onAfterChange={handleToggleUpdate}
-
                                                     />
                                                 </div>
                                             ))}

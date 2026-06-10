@@ -29,7 +29,9 @@ export const TenantEditOrAdd = () => {
 
     const shouldAppearLegalTextTab =
         can(PermissionAction.Read, Resource.LegalText) &&
-        (settings.legalContentChangesBySingleTenantAdminsAllowed || !settings.multitenancyWithSingleDomainEnabled);
+        (isSuperAdmin ||
+            settings.legalContentChangesBySingleTenantAdminsAllowed ||
+            !settings.multitenancyWithSingleDomainEnabled);
 
     return (
         <Page isLoading={isLoading}>
@@ -42,22 +44,27 @@ export const TenantEditOrAdd = () => {
                         {
                             to: `/admin/tenants/${id}/general`,
                             titleKey: 'tenants.edit.tabs.general',
+                            iconName: 'master_data',
                         },
                         !settings.multitenancyWithSingleDomainEnabled && {
                             to: `/admin/tenants/${id}/theme-settings`,
                             titleKey: 'tenants.edit.tabs.themeSettings',
+                            iconName: 'appearance',
                         },
                         shouldAppearLegalTextTab && {
                             to: `/admin/tenants/${id}/legal-settings`,
                             titleKey: 'tenants.edit.tabs.legal',
+                            iconName: 'legal',
                         },
                         {
                             to: `/admin/tenants/${id}/app-settings`,
-                            titleKey: 'tenants.edit.tabs.appSettings',
+                            titleKey: 'settings.subhead.smtp',
+                            iconName: 'email_server',
                         },
                         isSuperAdmin && {
                             to: `/admin/tenants/${id}/global-settings`,
                             titleKey: 'settings.subhead.functionAccess',
+                            iconName: 'functionality_access',
                         },
                     ]
                 }

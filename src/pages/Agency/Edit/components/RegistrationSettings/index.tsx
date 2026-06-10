@@ -13,10 +13,11 @@ import { useFeatureContext } from '../../../../../context/FeatureContext';
 import { FeatureFlag } from '../../../../../enums/FeatureFlag';
 
 interface RegistrationSettingsProps {
-    consultingTypeId: string;
+    consultingTypeId?: string;
+    asFields?: boolean;
 }
 
-export const RegistrationSettings = ({ consultingTypeId }: RegistrationSettingsProps) => {
+export const RegistrationSettings = ({ consultingTypeId, asFields }: RegistrationSettingsProps) => {
     const { t } = useTranslation();
     const { id } = useParams();
     const postCodeRangesActive = Form.useWatch('postCodeRangesActive');
@@ -42,8 +43,8 @@ export const RegistrationSettings = ({ consultingTypeId }: RegistrationSettingsP
             });
     }, [consultingTypeId, isEnabled]);
 
-    return (
-        <Card titleKey="agency.form.registrationSettings.title" isLoading={isLoading}>
+    const fields = (
+        <>
             {!hasConsultants && (
                 <Alert
                     className={styles.warning}
@@ -84,6 +85,16 @@ export const RegistrationSettings = ({ consultingTypeId }: RegistrationSettingsP
             </FormRadioGroupField>
 
             {postCodeRangesActive && <PostCodeRanges />}
+        </>
+    );
+
+    if (asFields) {
+        return fields;
+    }
+
+    return (
+        <Card titleKey="agency.form.registrationSettings.title" isLoading={isLoading}>
+            {fields}
         </Card>
     );
 };
