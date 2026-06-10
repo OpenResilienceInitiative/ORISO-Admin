@@ -3362,224 +3362,228 @@ export const Statistic = () => {
                         />
                     )}
 
-                    <div className="statisticDashboard__summaryGrid">
-                        {dashboard.topCards.map((card) => (
-                            <StatisticCard
-                                key={card.key}
-                                card={localizeStatisticCard(
-                                    getPersonalizedMetricCard(card, activeScope, metricOverrides),
-                                    translate,
-                                    locale,
-                                )}
-                                locale={locale}
-                                menuValue={selectedCardMenuByScope[activeScope][card.key]}
-                                onMenuChange={updateCardMenuSelection}
-                                translate={translate}
-                            />
-                        ))}
-                    </div>
-
-                    <div className="statisticDashboard__communicationGrid">
-                        {dashboard.communicationCards.map((card) => (
-                            <StatisticCard
-                                key={card.key}
-                                card={localizeStatisticCard(
-                                    getDisplayMetricCard(card, activeScope, metricOverrides),
-                                    translate,
-                                    locale,
-                                )}
-                                locale={locale}
-                                translate={translate}
-                            />
-                        ))}
-                    </div>
-
-                    <div className="statisticDashboard__chartGrid">
-                        <section className="statisticDashboard__chartCard statisticDashboard__caseChartCard">
-                            <div className="statisticDashboard__chartHeader">
-                                <h2>{translateDashboardText(translate, 'Beratungsfälle', locale)}</h2>
-                                <PeriodSelect<CasePeriodKey>
-                                    ariaLabel={translateDashboardKey(
+                    <div key={activeScope} className="statisticDashboard__animatedContent">
+                        <div className="statisticDashboard__summaryGrid">
+                            {dashboard.topCards.map((card) => (
+                                <StatisticCard
+                                    key={card.key}
+                                    card={localizeStatisticCard(
+                                        getPersonalizedMetricCard(card, activeScope, metricOverrides),
                                         translate,
-                                        'statistic.dashboard.chart.casePeriodAria',
-                                        'Zeitraum für Beratungsfälle',
+                                        locale,
                                     )}
-                                    onSelect={(periodKey) =>
-                                        setSelectedCasePeriodByScope((currentPeriods) => ({
-                                            ...currentPeriods,
-                                            [activeScope]: periodKey,
-                                        }))
-                                    }
-                                    options={localizedCasePeriodOptions}
-                                    value={selectedCasePeriod}
+                                    locale={locale}
+                                    menuValue={selectedCardMenuByScope[activeScope][card.key]}
+                                    onMenuChange={updateCardMenuSelection}
+                                    translate={translate}
                                 />
-                            </div>
+                            ))}
+                        </div>
 
-                            <div className="statisticDashboard__barChart">
-                                <div className="statisticDashboard__axisLabels" aria-hidden="true">
-                                    {yAxisLabels.map((label) => (
-                                        <span key={label}>{label}</span>
-                                    ))}
+                        <div className="statisticDashboard__communicationGrid">
+                            {dashboard.communicationCards.map((card) => (
+                                <StatisticCard
+                                    key={card.key}
+                                    card={localizeStatisticCard(
+                                        getDisplayMetricCard(card, activeScope, metricOverrides),
+                                        translate,
+                                        locale,
+                                    )}
+                                    locale={locale}
+                                    translate={translate}
+                                />
+                            ))}
+                        </div>
+
+                        <div className="statisticDashboard__chartGrid">
+                            <section className="statisticDashboard__chartCard statisticDashboard__caseChartCard">
+                                <div className="statisticDashboard__chartHeader">
+                                    <h2>{translateDashboardText(translate, 'Beratungsfälle', locale)}</h2>
+                                    <PeriodSelect<CasePeriodKey>
+                                        ariaLabel={translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.chart.casePeriodAria',
+                                            'Zeitraum für Beratungsfälle',
+                                        )}
+                                        onSelect={(periodKey) =>
+                                            setSelectedCasePeriodByScope((currentPeriods) => ({
+                                                ...currentPeriods,
+                                                [activeScope]: periodKey,
+                                            }))
+                                        }
+                                        options={localizedCasePeriodOptions}
+                                        value={selectedCasePeriod}
+                                    />
                                 </div>
-                                <div className="statisticDashboard__barStage">
-                                    {gridLinePositions.map((position) => (
-                                        <span
-                                            key={position}
-                                            className="statisticDashboard__gridLine"
-                                            style={{ top: `${position}%` }}
-                                        />
-                                    ))}
-                                    <div className="statisticDashboard__bars">
-                                        {caseChart.map((bar, index) => {
-                                            const height = Math.round((bar.value / caseAxisMax) * 100);
-                                            const isSelected = bar.day === selectedCaseBar.day;
-                                            const barStyle = {
-                                                '--bar-index': index,
-                                                height: `${height}%`,
-                                            } as CSSProperties;
-                                            const tooltipLift = height <= 35 ? 48 : 18;
-                                            const tooltipStyle = {
-                                                '--statistic-dashboard-tooltip-bottom': `calc(${height}% + ${tooltipLift}px)`,
-                                            } as CSSProperties;
-                                            const barValue = bar.value.toLocaleString(locale);
-                                            const dateLabel = translateDashboardDateLabel(translate, bar.dateLabel);
-                                            const dayLabel = translateDashboardWeekday(translate, bar.day);
+
+                                <div className="statisticDashboard__barChart">
+                                    <div className="statisticDashboard__axisLabels" aria-hidden="true">
+                                        {yAxisLabels.map((label) => (
+                                            <span key={label}>{label}</span>
+                                        ))}
+                                    </div>
+                                    <div className="statisticDashboard__barStage">
+                                        {gridLinePositions.map((position) => (
+                                            <span
+                                                key={position}
+                                                className="statisticDashboard__gridLine"
+                                                style={{ top: `${position}%` }}
+                                            />
+                                        ))}
+                                        <div className="statisticDashboard__bars">
+                                            {caseChart.map((bar, index) => {
+                                                const height = Math.round((bar.value / caseAxisMax) * 100);
+                                                const isSelected = bar.day === selectedCaseBar.day;
+                                                const barStyle = {
+                                                    '--bar-index': index,
+                                                    height: `${height}%`,
+                                                } as CSSProperties;
+                                                const tooltipLift = height <= 35 ? 48 : 18;
+                                                const tooltipStyle = {
+                                                    '--statistic-dashboard-tooltip-bottom': `calc(${height}% + ${tooltipLift}px)`,
+                                                } as CSSProperties;
+                                                const barValue = bar.value.toLocaleString(locale);
+                                                const dateLabel = translateDashboardDateLabel(translate, bar.dateLabel);
+                                                const dayLabel = translateDashboardWeekday(translate, bar.day);
+
+                                                return (
+                                                    <button
+                                                        key={bar.day}
+                                                        type="button"
+                                                        className={`statisticDashboard__barSlot ${
+                                                            isSelected ? 'statisticDashboard__barSlot--selected' : ''
+                                                        }`}
+                                                        aria-label={translateDashboardKey(
+                                                            translate,
+                                                            'statistic.dashboard.chart.caseBarAria',
+                                                            `${bar.value} Beratungsfälle am ${bar.dateLabel}`,
+                                                            { date: dateLabel, value: barValue },
+                                                        )}
+                                                        aria-current={isSelected ? 'true' : undefined}
+                                                        aria-pressed={isSelected}
+                                                        data-day={bar.day}
+                                                        onClick={() => selectCaseDay(bar.day)}
+                                                        onFocus={() => selectCaseDay(bar.day)}
+                                                        onPointerDown={() => selectCaseDay(bar.day)}
+                                                    >
+                                                        {isSelected && (
+                                                            <div
+                                                                className="statisticDashboard__barTooltip"
+                                                                style={tooltipStyle}
+                                                            >
+                                                                <strong>
+                                                                    <span />
+                                                                    {barValue}
+                                                                </strong>
+                                                                <small>{dateLabel}</small>
+                                                            </div>
+                                                        )}
+                                                        <span
+                                                            key={`${chartAnimationKey}-${bar.day}`}
+                                                            className={`statisticDashboard__bar ${
+                                                                isSelected ? 'statisticDashboard__bar--highlight' : ''
+                                                            } ${
+                                                                bar.value === 0 ? 'statisticDashboard__bar--empty' : ''
+                                                            }`}
+                                                            style={barStyle}
+                                                        />
+                                                        <small className="statisticDashboard__barDayLabel">
+                                                            {dayLabel}
+                                                        </small>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="statisticDashboard__chartCard statisticDashboard__donutCard">
+                                <div className="statisticDashboard__chartHeader">
+                                    <h2>{translateDashboardText(translate, 'Gesprächstyp', locale)}</h2>
+                                    <PeriodSelect<ConversationPeriodKey>
+                                        ariaLabel={translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.chart.conversationPeriodAria',
+                                            'Zeitraum für Gesprächstyp',
+                                        )}
+                                        onSelect={(periodKey) =>
+                                            setSelectedConversationPeriodByScope((currentPeriods) => ({
+                                                ...currentPeriods,
+                                                [activeScope]: periodKey,
+                                            }))
+                                        }
+                                        options={localizedConversationPeriodOptions}
+                                        value={selectedConversationPeriod}
+                                    />
+                                </div>
+
+                                <div className="statisticDashboard__donutContent">
+                                    <DonutChart
+                                        animationKey={donutAnimationKey}
+                                        data={conversationData}
+                                        locale={locale}
+                                        onSegmentSelect={selectConversationSegment}
+                                        selectedSegmentLabel={selectedConversationSegmentLabel}
+                                        translate={translate}
+                                    />
+
+                                    <div className="statisticDashboard__legend">
+                                        {conversationData.segments.map((segment) => {
+                                            const segmentPercentage = getConversationSegmentPercentage(
+                                                segment,
+                                                conversationData.segments,
+                                            );
+                                            const isSelected = segment.label === selectedConversationSegmentLabel;
+                                            const segmentLabel = translateDashboardText(
+                                                translate,
+                                                segment.displayLabel || segment.label,
+                                                locale,
+                                            );
+                                            const segmentAriaLabel = translateDashboardText(
+                                                translate,
+                                                segment.label,
+                                                locale,
+                                            );
+                                            const segmentValue = formatDashboardNumberText(`${segment.value}`, locale);
 
                                             return (
                                                 <button
-                                                    key={bar.day}
+                                                    key={segment.label}
                                                     type="button"
-                                                    className={`statisticDashboard__barSlot ${
-                                                        isSelected ? 'statisticDashboard__barSlot--selected' : ''
+                                                    className={`statisticDashboard__legendItem ${
+                                                        isSelected ? 'statisticDashboard__legendItem--active' : ''
                                                     }`}
-                                                    aria-label={translateDashboardKey(
-                                                        translate,
-                                                        'statistic.dashboard.chart.caseBarAria',
-                                                        `${bar.value} Beratungsfälle am ${bar.dateLabel}`,
-                                                        { date: dateLabel, value: barValue },
-                                                    )}
-                                                    aria-current={isSelected ? 'true' : undefined}
                                                     aria-pressed={isSelected}
-                                                    data-day={bar.day}
-                                                    onClick={() => selectCaseDay(bar.day)}
-                                                    onFocus={() => selectCaseDay(bar.day)}
-                                                    onPointerDown={() => selectCaseDay(bar.day)}
+                                                    onClick={() => selectConversationSegment(segment.label)}
                                                 >
-                                                    {isSelected && (
-                                                        <div
-                                                            className="statisticDashboard__barTooltip"
-                                                            style={tooltipStyle}
-                                                        >
-                                                            <strong>
-                                                                <span />
-                                                                {barValue}
-                                                            </strong>
-                                                            <small>{dateLabel}</small>
-                                                        </div>
-                                                    )}
                                                     <span
-                                                        key={`${chartAnimationKey}-${bar.day}`}
-                                                        className={`statisticDashboard__bar ${
-                                                            isSelected ? 'statisticDashboard__bar--highlight' : ''
-                                                        } ${bar.value === 0 ? 'statisticDashboard__bar--empty' : ''}`}
-                                                        style={barStyle}
+                                                        className="statisticDashboard__legendDot"
+                                                        style={{ backgroundColor: segment.color }}
                                                     />
-                                                    <small className="statisticDashboard__barDayLabel">
-                                                        {dayLabel}
-                                                    </small>
+                                                    <p aria-label={segmentAriaLabel}>{segmentLabel}</p>
+                                                    <span
+                                                        className="statisticDashboard__legendMeta"
+                                                        aria-label={translateDashboardKey(
+                                                            translate,
+                                                            'statistic.dashboard.chart.segmentMetaAria',
+                                                            `${segment.value} Gespräche, ${segmentPercentage}%`,
+                                                            {
+                                                                percentage: segmentPercentage,
+                                                                value: segmentValue,
+                                                            },
+                                                        )}
+                                                    >
+                                                        <strong>{segmentValue}</strong>
+                                                        <small>{segmentPercentage}%</small>
+                                                    </span>
                                                 </button>
                                             );
                                         })}
                                     </div>
                                 </div>
-                            </div>
-                        </section>
-
-                        <section className="statisticDashboard__chartCard statisticDashboard__donutCard">
-                            <div className="statisticDashboard__chartHeader">
-                                <h2>{translateDashboardText(translate, 'Gesprächstyp', locale)}</h2>
-                                <PeriodSelect<ConversationPeriodKey>
-                                    ariaLabel={translateDashboardKey(
-                                        translate,
-                                        'statistic.dashboard.chart.conversationPeriodAria',
-                                        'Zeitraum für Gesprächstyp',
-                                    )}
-                                    onSelect={(periodKey) =>
-                                        setSelectedConversationPeriodByScope((currentPeriods) => ({
-                                            ...currentPeriods,
-                                            [activeScope]: periodKey,
-                                        }))
-                                    }
-                                    options={localizedConversationPeriodOptions}
-                                    value={selectedConversationPeriod}
-                                />
-                            </div>
-
-                            <div className="statisticDashboard__donutContent">
-                                <DonutChart
-                                    animationKey={donutAnimationKey}
-                                    data={conversationData}
-                                    locale={locale}
-                                    onSegmentSelect={selectConversationSegment}
-                                    selectedSegmentLabel={selectedConversationSegmentLabel}
-                                    translate={translate}
-                                />
-
-                                <div className="statisticDashboard__legend">
-                                    {conversationData.segments.map((segment) => {
-                                        const segmentPercentage = getConversationSegmentPercentage(
-                                            segment,
-                                            conversationData.segments,
-                                        );
-                                        const isSelected = segment.label === selectedConversationSegmentLabel;
-                                        const segmentLabel = translateDashboardText(
-                                            translate,
-                                            segment.displayLabel || segment.label,
-                                            locale,
-                                        );
-                                        const segmentAriaLabel = translateDashboardText(
-                                            translate,
-                                            segment.label,
-                                            locale,
-                                        );
-                                        const segmentValue = formatDashboardNumberText(`${segment.value}`, locale);
-
-                                        return (
-                                            <button
-                                                key={segment.label}
-                                                type="button"
-                                                className={`statisticDashboard__legendItem ${
-                                                    isSelected ? 'statisticDashboard__legendItem--active' : ''
-                                                }`}
-                                                aria-pressed={isSelected}
-                                                onClick={() => selectConversationSegment(segment.label)}
-                                            >
-                                                <span
-                                                    className="statisticDashboard__legendDot"
-                                                    style={{ backgroundColor: segment.color }}
-                                                />
-                                                <p aria-label={segmentAriaLabel}>{segmentLabel}</p>
-                                                <span
-                                                    className="statisticDashboard__legendMeta"
-                                                    aria-label={translateDashboardKey(
-                                                        translate,
-                                                        'statistic.dashboard.chart.segmentMetaAria',
-                                                        `${segment.value} Gespräche, ${segmentPercentage}%`,
-                                                        {
-                                                            percentage: segmentPercentage,
-                                                            value: segmentValue,
-                                                        },
-                                                    )}
-                                                >
-                                                    <strong>{segmentValue}</strong>
-                                                    <small>{segmentPercentage}%</small>
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </section>
+                            </section>
+                        </div>
                     </div>
                 </div>
             </div>
