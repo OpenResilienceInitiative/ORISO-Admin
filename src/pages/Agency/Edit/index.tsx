@@ -23,6 +23,7 @@ import { useAgencyLegalDataMissing } from '../../../hooks/useAgencyLegalDataMiss
 import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
 import { LegalTextSettings } from './components/LegalTextSettings';
+import { DataProcessingAgreement } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreement';
 import styles from '../../../components/Page/styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { PermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings';
@@ -337,6 +338,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     initialValues={initialValues}
                     onSave={onSaveCard}
                 />
+            </Col>
+            <Col xs={12} lg={6}>
+                <DataProcessingAgreement />
             </Col>
         </Row>
     );

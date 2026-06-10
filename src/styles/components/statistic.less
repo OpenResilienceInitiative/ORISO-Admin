@@ -205,6 +205,23 @@
     max-width: 100%;
 }
 
+.statisticDashboard__animatedContent {
+    animation: statisticScopeIn 180ms ease-out both;
+    transform-origin: top center;
+}
+
+@keyframes statisticScopeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
 .statisticDashboard__summaryGrid,
 .statisticDashboard__communicationGrid,
 .statisticDashboard__chartGrid {
@@ -1080,6 +1097,12 @@
 
     .statisticDashboard__communicationGrid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .statisticDashboard__animatedContent {
+        animation: none;
     }
 }
 
