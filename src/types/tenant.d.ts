@@ -101,6 +101,7 @@ export interface TenantData extends BasicTenantData {
     theming: {
         logo: string;
         favicon: string;
+        associationLogo?: string;
         primaryColor: string;
         secondaryColor: string | null;
     };
