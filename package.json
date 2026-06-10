@@ -55,7 +55,8 @@
     "start": "vite",
     "build": "tsc && vite build",
     "serve": "vite preview",
-    "test": "vite test",
+    "test": "vitest run --passWithNoTests",
+    "test:unit": "vitest run --passWithNoTests",
     "lint": "yarn run lint:css && yarn run lint:js && yarn run lint:formatting",
     "lint:css": "stylelint --fix \"src/**/*.(s(c|a)ss|css|less)\"",
     "lint:js": "eslint",
@@ -127,6 +128,7 @@
     "vite-plugin-eslint": "^1.8.1",
     "vite-plugin-svgr": "^3.2.0",
     "vite-tsconfig-paths": "^4.2.0",
+    "vitest": "3.2.6",
     "wait-on": "^5.2.0"
   },
   "overrides": {
