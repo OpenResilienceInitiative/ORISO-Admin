@@ -5,9 +5,8 @@ import { useAppConfigContext } from '../../../../../context/useAppConfig';
 import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.hook';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
-
-const isReadOnlySetting = (meta: Record<string, { readOnly?: boolean }> | undefined, keys: string[]) =>
-    keys.some((key) => meta?.[key]?.readOnly);
+import { isReadOnlySetting } from '../../../../../utils/serverSettingsMeta';
+import { buildSeedUpdate, readSeeds } from '../../../../../utils/themeSeeds';
 
 export const TenantColor = ({ tenantId, readOnly = false }: { tenantId: string; readOnly?: boolean }) => {
     const { t } = useTranslation();
@@ -24,7 +23,10 @@ export const TenantColor = ({ tenantId, readOnly = false }: { tenantId: string; 
             'tenantThemingPrimaryColor',
             'brandingPrimaryColor',
         ]);
-    const effectivePrimaryColor = data?.theming?.primaryColor || inheritedData?.theming?.primaryColor;
+    // Legacy records carry only primaryColor (+ a mirrored secondaryColor);
+    // readSeeds maps both shapes onto the seed model.
+    const storedSeeds = readSeeds(data?.theming);
+    const effectivePrimaryColor = storedSeeds.primary || readSeeds(inheritedData?.theming).primary;
     const initialValues = {
         ...data,
         theming: {
@@ -34,10 +36,12 @@ export const TenantColor = ({ tenantId, readOnly = false }: { tenantId: string; 
     };
     const onSubmit = (values) => {
         mutate({
-            theming: {
-                primaryColor: values.theming.primaryColor,
-                secondaryColor: values.theming.primaryColor,
-            },
+            // Seeds only — the palette is computed on use. Accent/signal are
+            // not edited on this card, so the stored values pass through.
+            theming: buildSeedUpdate({
+                ...storedSeeds,
+                primary: values.theming.primaryColor,
+            }),
         });
     };
 

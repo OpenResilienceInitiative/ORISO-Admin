@@ -6,9 +6,7 @@ import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.ho
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
-
-const isReadOnlySetting = (meta: Record<string, { readOnly?: boolean }> | undefined, keys: string[]) =>
-    keys.some((key) => meta?.[key]?.readOnly);
+import { isReadOnlySetting } from '../../../../../utils/serverSettingsMeta';
 
 export const LogoAndFavicon = ({ tenantId, readOnly = false }: { tenantId: string; readOnly?: boolean }) => {
     const { t } = useTranslation();
