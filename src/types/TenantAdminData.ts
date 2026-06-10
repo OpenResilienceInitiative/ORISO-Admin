@@ -6,8 +6,14 @@ export interface TenantAdminData extends BasicTenantData {
         associationLogo?: string;
         logo?: string;
         favicon?: string;
+        /** Main brand seed; the palette is computed from it on use. */
         primaryColor?: string;
+        /** Legacy mirrored value — computed, not stored; cleared on save. */
         secondaryColor?: string | null;
+        /** Optional accent seed, harmonised toward the primary. */
+        accent?: string | null;
+        /** Optional signal/error seed; Oriso default tones when unset. */
+        signal?: string | null;
     };
     content: {
         impressum: Record<string, string>;
