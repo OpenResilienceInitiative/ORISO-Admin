@@ -12,18 +12,23 @@ interface FormFileUploaderFieldProps {
     name?: string | string[];
     allowIcon?: boolean;
     tooltip?: string;
+    disabled?: boolean;
 }
 
 interface FormRichTextEditorProps {
     onChange?: (value: string) => void;
     value?: string;
     allowIcon: boolean;
+    disabled?: boolean;
 }
 
-const FormFileUploaderLocal = ({ onChange, value, allowIcon }: FormRichTextEditorProps) => {
+const FormFileUploaderLocal = ({ onChange, value, allowIcon, disabled }: FormRichTextEditorProps) => {
     const { t } = useTranslation();
 
     const beforeUpload = (file: UploadFileProps) => {
+        if (disabled) {
+            return false;
+        }
         const isJpgOrPng =
             file.type === 'image/jpeg' ||
             file.type === 'image/png' ||
@@ -50,6 +55,7 @@ const FormFileUploaderLocal = ({ onChange, value, allowIcon }: FormRichTextEdito
             className="fileUploader"
             showUploadList={false}
             beforeUpload={beforeUpload}
+            disabled={disabled}
         >
             {value ? (
                 <img src={decodeHTML(value)} className={styles.image} alt="" />
@@ -66,6 +72,7 @@ export const FormFileUploaderField = ({
     className,
     allowIcon,
     tooltip,
+    disabled,
 }: FormFileUploaderFieldProps) => {
     const { t } = useTranslation();
     return (
@@ -75,7 +82,7 @@ export const FormFileUploaderField = ({
             className={classNames(className, styles.richEditor)}
             tooltip={tooltip}
         >
-            <FormFileUploaderLocal allowIcon={allowIcon} />
+            <FormFileUploaderLocal allowIcon={allowIcon} disabled={disabled} />
         </Form.Item>
     );
 };

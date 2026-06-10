@@ -5,13 +5,15 @@ import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
 import styles from './styles.module.scss';
 
-export const TypeOfLanguage = ({ tenantId }: { tenantId: string }) => {
+export const TypeOfLanguage = ({ tenantId, readOnly = false }: { tenantId: string; readOnly?: boolean }) => {
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id: tenantId });
     const { mutate } = useTenantAdminDataMutation({ id: tenantId });
 
     return (
         <CardEditable
+            key={`type-of-language-${tenantId}-${readOnly}`}
+            allowEdit={!readOnly}
             className={styles.card}
             isLoading={isLoading}
             initialValues={{ ...data }}

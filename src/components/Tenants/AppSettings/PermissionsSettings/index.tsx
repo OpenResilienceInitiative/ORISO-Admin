@@ -1,19 +1,37 @@
-import { Form } from 'antd';
+import { Form, FormInstance } from 'antd';
 import { FunctionComponent, SVGProps, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
-import { useSettingsAdminMutation } from '../../../../hooks/useSettingsAdminMutation.hook';
+import { useAddOrUpdateTenant } from '../../../../hooks/useAddOrUpdateTenant.hook';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
+import { TenantAdminData } from '../../../../types/TenantAdminData';
 import { ReactComponent as OneOnOneIcon } from '../../../../resources/img/svg/permissions/one_on_one.svg';
 import { ReactComponent as LiveChatIcon } from '../../../../resources/img/svg/permissions/live_chat.svg';
 import { ReactComponent as GroupIcon } from '../../../../resources/img/svg/permissions/group.svg';
 import { ReactComponent as GroupInternalIcon } from '../../../../resources/img/svg/permissions/group_internal.svg';
 import styles from './styles.module.scss';
 
+let MASTER_TOGGLE_CHILDREN: Record<string, string[]> = {};
+let syncMasterChildTogglesInForm: (form: FormInstance, fieldPath: string | string[], value: boolean) => void;
+
 const buildTogglePayload = (fieldPath: string | string[], value: boolean): Record<string, unknown> => {
     const path = Array.isArray(fieldPath) ? fieldPath : [fieldPath];
-    return path.reduceRight<unknown>((acc, key) => ({ [key]: acc }), value) as Record<string, unknown>;
+    const fieldKey = path[path.length - 1] as string;
+
+    const settings: Record<string, boolean> = { [fieldKey]: value };
+
+    if (!value && MASTER_TOGGLE_CHILDREN[fieldKey]) {
+        MASTER_TOGGLE_CHILDREN[fieldKey].forEach((childKey) => {
+            settings[childKey] = false;
+        });
+    }
+
+    if (path.length === 1) {
+        return settings;
+    }
+
+    return path.slice(0, -1).reduceRight<unknown>((acc, key) => ({ [key]: acc }), settings) as Record<string, unknown>;
 };
 
 type CheckToggleInnerProps = {
@@ -26,10 +44,13 @@ type CheckToggleInnerProps = {
 };
 
 const CheckToggleInner = ({ checked, onChange, disabled, label, fieldName, onAfterChange }: CheckToggleInnerProps) => {
+    const form = Form.useFormInstance();
+
     const handleToggle = () => {
         if (disabled) return;
         const newValue = !checked;
         onChange?.(newValue);
+        syncMasterChildTogglesInForm(form, fieldName, newValue);
         onAfterChange?.(fieldName, newValue);
     };
     return (
@@ -157,6 +178,96 @@ const DEFAULT_PERMISSION_SETTINGS = {
     featureVoiceMessagesGroupChatsEnabled: true,
     featureVoiceMessagesSupervisionChatsEnabled: true,
 } as const;
+
+const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, string[]> = {
+    anonymousChat: [
+        'featureAnonymousChatEnabled',
+        'featureVideoCallsAnonymousChatsEnabled',
+        'featureAudioCallsAnonymousChatsEnabled',
+        'featureVoiceMessagesAnonymousChatsEnabled',
+        'featureThreadsAnonymousChatsEnabled',
+        'featureSupervisionAnonymousChatsEnabled',
+    ],
+    calls: ['featureCallsEnabled'],
+    supervision: [
+        'featureSupervisionEnabled',
+        'featureSupervisionAnonymousChatsEnabled',
+        'featureSupervisionOneOnOneChatsEnabled',
+        'featureVideoCallsSupervisionChatsEnabled',
+        'featureAudioCallsSupervisionChatsEnabled',
+        'featureVoiceMessagesSupervisionChatsEnabled',
+        'featureThreadsSupervisionChatsEnabled',
+    ],
+    supervisionAnonymousChats: ['featureSupervisionAnonymousChatsEnabled'],
+    supervisionOneOnOneChats: ['featureSupervisionOneOnOneChatsEnabled'],
+    audioCalls: [
+        'featureAudioCallsEnabled',
+        'featureAudioCallsAnonymousChatsEnabled',
+        'featureAudioCallsOneOnOneChatsEnabled',
+        'featureAudioCallsGroupChatsEnabled',
+        'featureAudioCallsSupervisionChatsEnabled',
+    ],
+    audioCallsAnonymousChats: ['featureAudioCallsAnonymousChatsEnabled'],
+    audioCallsOneOnOneChats: ['featureAudioCallsOneOnOneChatsEnabled'],
+    audioCallsGroupChats: ['featureAudioCallsGroupChatsEnabled'],
+    audioCallsSupervisionChats: ['featureAudioCallsSupervisionChatsEnabled'],
+    videoCalls: [
+        'featureVideoCallsEnabled',
+        'featureVideoCallsAnonymousChatsEnabled',
+        'featureVideoCallsOneOnOneChatsEnabled',
+        'featureVideoCallsGroupChatsEnabled',
+        'featureVideoCallsSupervisionChatsEnabled',
+    ],
+    videoCallsAnonymousChats: ['featureVideoCallsAnonymousChatsEnabled'],
+    videoCallsOneOnOneChats: ['featureVideoCallsOneOnOneChatsEnabled'],
+    videoCallsGroupChats: ['featureVideoCallsGroupChatsEnabled'],
+    videoCallsSupervisionChats: ['featureVideoCallsSupervisionChatsEnabled'],
+    threads: [
+        'featureThreadsEnabled',
+        'featureThreadsAnonymousChatsEnabled',
+        'featureThreadsOneOnOneEnabled',
+        'featureThreadsGroupChatsEnabled',
+        'featureThreadsSupervisionChatsEnabled',
+    ],
+    threadsAnonymousChats: ['featureThreadsAnonymousChatsEnabled'],
+    threadsOneOnOneChats: ['featureThreadsOneOnOneEnabled'],
+    threadsGroupChats: ['featureThreadsGroupChatsEnabled'],
+    threadsSupervisionChats: ['featureThreadsSupervisionChatsEnabled'],
+    voiceMessages: [
+        'featureVoiceMessagesEnabled',
+        'featureVoiceMessagesAnonymousChatsEnabled',
+        'featureVoiceMessagesOneOnOneChatsEnabled',
+        'featureVoiceMessagesGroupChatsEnabled',
+        'featureVoiceMessagesSupervisionChatsEnabled',
+    ],
+    voiceMessagesAnonymousChats: ['featureVoiceMessagesAnonymousChatsEnabled'],
+    voiceMessagesOneOnOneChats: ['featureVoiceMessagesOneOnOneChatsEnabled'],
+    voiceMessagesGroupChats: ['featureVoiceMessagesGroupChatsEnabled'],
+    voiceMessagesSupervisionChats: ['featureVoiceMessagesSupervisionChatsEnabled'],
+};
+
+const getForcedOffFields = (toggles?: PermissionToggleVisibility) => {
+    if (!toggles) return new Set<string>();
+
+    return Object.entries(toggles).reduce((fields, [toggleKey, enabled]) => {
+        if (enabled === false) {
+            PLATFORM_TOGGLE_FIELDS[toggleKey as keyof PermissionToggleVisibility]?.forEach((field) => {
+                fields.add(field);
+            });
+        }
+        return fields;
+    }, new Set<string>());
+};
+
+const applyForcedOffFields = (settings, forcedOffFields: Set<string>) => {
+    if (forcedOffFields.size === 0) return settings;
+
+    const nextSettings = { ...(settings ?? {}) };
+    forcedOffFields.forEach((field) => {
+        nextSettings[field] = false;
+    });
+    return nextSettings;
+};
 
 const enforceToggleRestrictions = (formData, forcedOffToggles?: PermissionsSettingsArgs['forcedOffToggles']) => {
     if (!forcedOffToggles) {
@@ -342,6 +453,24 @@ const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
     },
 ];
 
+MASTER_TOGGLE_CHILDREN = CHAT_TYPE_CARDS.reduce((acc, card) => {
+    if (!card.masterField) return acc;
+    const masterKey = card.masterField[1];
+    acc[masterKey] = card.toggles.map((toggle) => toggle.field[1]);
+    return acc;
+}, {} as Record<string, string[]>);
+
+syncMasterChildTogglesInForm = (form, fieldPath, value) => {
+    if (value) return;
+    const path = Array.isArray(fieldPath) ? fieldPath : [fieldPath];
+    const fieldKey = path[path.length - 1] as string;
+    const children = MASTER_TOGGLE_CHILDREN[fieldKey];
+    if (!children?.length) return;
+
+    const prefix = path.slice(0, -1);
+    form.setFields(children.map((childKey) => ({ name: [...prefix, childKey], value: false })));
+};
+
 const ONE_ON_ONE_CALL_TOGGLE_FIELDS = new Set([
     'featureVideoCallsOneOnOneChatsEnabled',
     'featureAudioCallsOneOnOneChatsEnabled',
@@ -360,6 +489,7 @@ const isSubToggleDisabled = (card: ChatTypeCardDef, toggleField: string[], maste
 
 export const PermissionsSettings = ({
     tenantId,
+    visibleToggles,
     forcedOffToggles,
     superAdminControlMode,
     excludeCardKeys,
@@ -370,17 +500,20 @@ export const PermissionsSettings = ({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
-    const { mutate: settingsAdminMutate } = useSettingsAdminMutation();
+    const inheritedForcedOffFields = useMemo(() => getForcedOffFields(visibleToggles), [visibleToggles]);
+
+    // const { mutate: settingsAdminMutate } = useSettingsAdminMutation();
+    const { mutate: updateTenant } = useAddOrUpdateTenant({ id: tenantId });
 
     const initialValues = useMemo(
         () => ({
             ...data,
             settings: {
                 ...DEFAULT_PERMISSION_SETTINGS,
-                ...(data?.settings ?? {}),
+                ...applyForcedOffFields(data?.settings ?? {}, inheritedForcedOffFields),
             },
         }),
-        [data],
+        [data, inheritedForcedOffFields],
     );
 
     const gridRef = useRef<HTMLDivElement | null>(null);
@@ -395,27 +528,45 @@ export const PermissionsSettings = ({
     const cardsToRender = excludeCardKeys?.length
         ? CHAT_TYPE_CARDS.filter((card) => !excludeCardKeys.includes(card.key))
         : CHAT_TYPE_CARDS;
+    const formStateKey = useMemo(
+        () => Array.from(inheritedForcedOffFields).sort().join('|'),
+        [inheritedForcedOffFields],
+    );
 
-    const handleSettingsAdminToggle = useCallback(
+    const handleToggleUpdate = useCallback(
         (fieldPath: string | string[], value: boolean) => {
-            settingsAdminMutate(buildTogglePayload(fieldPath, value));
+            if (!data) return;
+            const toggleUpdate = buildTogglePayload(fieldPath, value) as { settings?: Record<string, boolean> };
+            updateTenant({
+                name: data.name,
+                subdomain: data.subdomain,
+                licensing: data.licensing,
+                settings: {
+                    ...data.settings,
+                    ...toggleUpdate.settings,
+                },
+            } as TenantAdminData);
         },
-        [settingsAdminMutate],
+        [data, updateTenant],
     );
 
     return (
         <CardEditable
+            key={`permissions-${tenantId}-${formStateKey}`}
             className={styles.transparentCardWrapper}
             isLoading={isLoading}
             initialValues={initialValues}
             titleKey="tenants.permissions.title"
-            onSave={(formData) =>
-                mutate(
-                    superAdminControlMode
-                        ? syncMasterTogglesToTenantAdminControls(formData)
-                        : enforceToggleRestrictions(formData, forcedOffToggles),
-                )
-            }
+            onSave={(formData) => {
+                const restrictedData = superAdminControlMode
+                    ? syncMasterTogglesToTenantAdminControls(formData)
+                    : enforceToggleRestrictions(formData, forcedOffToggles);
+
+                mutate({
+                    ...restrictedData,
+                    settings: applyForcedOffFields(restrictedData?.settings, inheritedForcedOffFields),
+                });
+            }}
         >
             <div className={styles.cardGridOuter}>
                 <button
@@ -467,7 +618,8 @@ export const PermissionsSettings = ({
                                                 <CheckToggle
                                                     name={card.masterField}
                                                     label={t('tenants.permissions.card.activated')}
-                                                    onAfterChange={handleSettingsAdminToggle}
+                                                    disabled={inheritedForcedOffFields.has(card.masterField[1])}
+                                                    onAfterChange={handleToggleUpdate}
                                                 />
                                             ) : (
                                                 <span className={styles.masterRowPlaceholder} aria-hidden>
@@ -496,7 +648,8 @@ export const PermissionsSettings = ({
                                                             toggle.field,
                                                             masterEnabled,
                                                         )}
-                                                        onAfterChange={handleSettingsAdminToggle}
+                                                        onAfterChange={handleToggleUpdate}
+
                                                     />
                                                 </div>
                                             ))}

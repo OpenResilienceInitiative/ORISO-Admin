@@ -21,7 +21,7 @@ interface LegalSettingsProps {
 export const LegalSettings = ({ tenantId, disableManageToggle }: LegalSettingsProps) => {
     const { data } = useTenantData();
     const { t } = useTranslation();
-    const { hasRole } = useUserRoles();
+    const { hasRole, isSuperAdmin } = useUserRoles();
     const finalTenantId = tenantId || `${data.id}`;
     const { settings } = useAppConfigContext();
     const { isEnabled } = useFeatureContext();
@@ -83,6 +83,8 @@ export const LegalSettings = ({ tenantId, disableManageToggle }: LegalSettingsPr
                     settings?.multitenancyWithSingleDomainEnabled &&
                     hasRole(UserRole.TenantAdmin) && (
                         <CardEditable
+                            key={`legal-toggle-${settings.legalContentChangesBySingleTenantAdminsAllowed}`}
+                            allowEdit={isSuperAdmin}
                             initialValues={{ ...settings }}
                             titleKey="tenants.legal.singleTenantsManageLegal.title"
                             onSave={mutate}
@@ -93,6 +95,7 @@ export const LegalSettings = ({ tenantId, disableManageToggle }: LegalSettingsPr
                                     name={['legalContentChangesBySingleTenantAdminsAllowed']}
                                     inline
                                     disableLabels
+                                    disabled={!isSuperAdmin}
                                 />
                                 <p className={styles.checkInfo}>
                                     {t('tenants.legal.singleTenantsManageLegal.setting.description')}
