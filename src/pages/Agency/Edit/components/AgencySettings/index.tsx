@@ -20,9 +20,10 @@ import { searchTenantData } from '../../../../../api/tenant/searchTenantData';
 
 interface AgencySettingsProps {
     isEditMode: boolean;
+    asFields?: boolean;
 }
 
-export const AgencySettings = ({ isEditMode }: AgencySettingsProps) => {
+export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) => {
     const [t] = useTranslation();
 
     const topicIds = Form.useWatch<Option[]>('topicIds') || [];
@@ -70,8 +71,8 @@ export const AgencySettings = ({ isEditMode }: AgencySettingsProps) => {
         }
     }, [isSuperAdmin, isEnabled]);
 
-    return (
-        <Card isLoading={isLoadingTopics} titleKey="agency.edit.settings.title">
+    const fields = (
+        <>
             {isSuperAdmin && (
                 <SelectFormField
                     label="agency.edit.general.more_settings.tenant.title"
@@ -159,6 +160,16 @@ export const AgencySettings = ({ isEditMode }: AgencySettingsProps) => {
                     }))}
                 />
             )}
+        </>
+    );
+
+    if (asFields) {
+        return fields;
+    }
+
+    return (
+        <Card isLoading={isLoadingTopics} titleKey="agency.edit.settings.title">
+            {fields}
         </Card>
     );
 };

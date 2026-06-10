@@ -47,6 +47,13 @@ export interface AgencyData {
         alternativeDataProtectionRepresentativeContact: AgencyContact | null;
         dataProtectionOfficerContact: AgencyContact | null;
     };
+    content?: {
+        impressum?: Record<string, string>;
+        privacy?: Record<string, string>;
+        termsAndConditions?: Record<string, string>;
+        confirmPrivacy?: boolean;
+        confirmTermsAndConditions?: boolean;
+    };
     agencyLogo: string | null;
     tenantId: number;
     tenantName?: string;
