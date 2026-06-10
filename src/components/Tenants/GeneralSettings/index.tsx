@@ -11,7 +11,7 @@ import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { Languages } from './components/Languages';
 import { LogoAndFavicon } from './components/LogoAndFavicon';
 import { NameAndSlogan } from './components/NameAndSlogan';
-import { TenantColor } from './components/TenantColor';
+import { ThemeBuilder } from './components/ThemeBuilder';
 import { TypeOfLanguage } from './components/TypeOfLanguage';
 import { AppConfigInterface } from '../../../types/AppConfigInterface';
 
@@ -95,7 +95,7 @@ export const GeneralSettings = ({ tenantId }: GeneralSettingsProps) => {
             </Col>
             <Col span={12} sm={6}>
                 <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                <TenantColor tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                <ThemeBuilder tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
             </Col>
         </Row>
     );
