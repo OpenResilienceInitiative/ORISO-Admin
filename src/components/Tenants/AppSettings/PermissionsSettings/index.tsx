@@ -1,11 +1,13 @@
 import { Form, FormInstance } from 'antd';
-import { FunctionComponent, SVGProps, useCallback, useMemo, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { FunctionComponent, SVGProps, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useAddOrUpdateTenant } from '../../../../hooks/useAddOrUpdateTenant.hook';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import { TenantAdminData } from '../../../../types/TenantAdminData';
+import { ReactComponent as PenIcon } from '../../../../resources/img/svg/pen.svg';
+import { ReactComponent as ArrowRightIcon } from '../../../../resources/img/svg/permissions/arrow_right.svg';
 import { ReactComponent as OneOnOneIcon } from '../../../../resources/img/svg/permissions/one_on_one.svg';
 import { ReactComponent as LiveChatIcon } from '../../../../resources/img/svg/permissions/live_chat.svg';
 import { ReactComponent as GroupIcon } from '../../../../resources/img/svg/permissions/group.svg';
@@ -506,7 +508,10 @@ export const PermissionsSettings = ({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
-    const inheritedForcedOffFields = useMemo(() => getForcedOffFields(visibleToggles), [visibleToggles]);
+    const inheritedForcedOffFields = useMemo(
+        () => (superAdminControlMode ? new Set<string>() : getForcedOffFields(visibleToggles)),
+        [superAdminControlMode, visibleToggles],
+    );
 
     // const { mutate: settingsAdminMutate } = useSettingsAdminMutation();
     const { mutate: updateTenant } = useAddOrUpdateTenant({ id: tenantId });
@@ -523,14 +528,7 @@ export const PermissionsSettings = ({
     );
 
     const gridRef = useRef<HTMLDivElement | null>(null);
-    const scrollByCard = useCallback((dir: 'left' | 'right') => {
-        const el = gridRef.current;
-        if (!el) return;
-        const firstCard = el.querySelector(`.${styles.chatTypeCard}`) as HTMLElement | null;
-        const step = firstCard ? firstCard.offsetWidth + 16 : el.clientWidth * 0.9;
-        el.scrollBy({ left: dir === 'left' ? -step : step, behavior: 'smooth' });
-    }, []);
-
+    const [scrollState, setScrollState] = useState({ canScrollLeft: false, canScrollRight: false });
     const cardsToRender = excludeCardKeys?.length
         ? CHAT_TYPE_CARDS.filter((card) => !excludeCardKeys.includes(card.key))
         : CHAT_TYPE_CARDS;
@@ -538,6 +536,71 @@ export const PermissionsSettings = ({
         () => Array.from(inheritedForcedOffFields).sort().join('|'),
         [inheritedForcedOffFields],
     );
+
+    const updateScrollState = useCallback(() => {
+        const el = gridRef.current;
+        if (!el) return;
+
+        const maxScrollLeft = el.scrollWidth - el.clientWidth;
+        const canScroll = maxScrollLeft > 1;
+        const canScrollLeft = canScroll && el.scrollLeft > 1;
+        const canScrollRight = canScroll && el.scrollLeft < maxScrollLeft - 1;
+
+        setScrollState((previous) => {
+            if (previous.canScrollLeft === canScrollLeft && previous.canScrollRight === canScrollRight) {
+                return previous;
+            }
+
+            return { canScrollLeft, canScrollRight };
+        });
+    }, []);
+
+    const scrollByCard = useCallback(
+        (dir: 'left' | 'right') => {
+            const el = gridRef.current;
+            if (!el) return;
+            const firstCard = el.querySelector(`.${styles.chatTypeCard}`) as HTMLElement | null;
+            const computedStyle = window.getComputedStyle(el);
+            const gap = Number.parseFloat(computedStyle.columnGap || computedStyle.gap) || 48;
+            const step = firstCard ? firstCard.offsetWidth + gap : el.clientWidth * 0.9;
+            el.scrollBy({ left: dir === 'left' ? -step : step, behavior: 'smooth' });
+            window.setTimeout(updateScrollState, 260);
+        },
+        [updateScrollState],
+    );
+
+    useEffect(() => {
+        const el = gridRef.current;
+        const initialCheck = window.setTimeout(updateScrollState, 0);
+        const settledCheck = window.setTimeout(updateScrollState, 250);
+
+        if (!el) {
+            return () => {
+                window.clearTimeout(initialCheck);
+                window.clearTimeout(settledCheck);
+            };
+        }
+
+        updateScrollState();
+
+        const handleScroll = () => updateScrollState();
+        const handleResize = () => updateScrollState();
+        const observer =
+            typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(() => updateScrollState());
+
+        el.addEventListener('scroll', handleScroll, { passive: true });
+        window.addEventListener('resize', handleResize);
+        observer?.observe(el);
+        Array.from(el.children).forEach((child) => observer?.observe(child));
+
+        return () => {
+            window.clearTimeout(initialCheck);
+            window.clearTimeout(settledCheck);
+            el.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('resize', handleResize);
+            observer?.disconnect();
+        };
+    }, [cardsToRender.length, isLoading, updateScrollState]);
 
     const handleToggleUpdate = useCallback<ToggleAfterChangeHandler>(
         (fieldPath, value, currentFormData) => {
@@ -591,17 +654,19 @@ export const PermissionsSettings = ({
                     type="button"
                     className={`${styles.carouselArrow} ${styles.carouselArrowLeft}`}
                     onClick={() => scrollByCard('left')}
+                    disabled={!scrollState.canScrollLeft}
                     aria-label="Previous card"
                 >
-                    ‹
+                    <ArrowRightIcon className={styles.carouselArrowIcon} aria-hidden />
                 </button>
                 <button
                     type="button"
                     className={`${styles.carouselArrow} ${styles.carouselArrowRight}`}
                     onClick={() => scrollByCard('right')}
+                    disabled={!scrollState.canScrollRight}
                     aria-label="Next card"
                 >
-                    ›
+                    <ArrowRightIcon className={styles.carouselArrowIcon} aria-hidden />
                 </button>
                 <div className={styles.cardGrid} ref={gridRef}>
                     {cardsToRender.map((card) => (
@@ -646,7 +711,15 @@ export const PermissionsSettings = ({
                                             )}
                                         </div>
 
-                                        <p className={styles.cardDescription}>{t(card.descriptionKey)}</p>
+                                        <p className={styles.cardDescription}>
+                                            <Trans
+                                                i18nKey={card.descriptionKey}
+                                                components={{
+                                                    strong: <strong />,
+                                                    small: <span className={styles.cardDescriptionSecondary} />,
+                                                }}
+                                            />
+                                        </p>
 
                                         <div className={styles.cardDivider} />
 
@@ -670,6 +743,23 @@ export const PermissionsSettings = ({
                                                     />
                                                 </div>
                                             ))}
+                                        </div>
+
+                                        <div className={styles.cardFooterActions}>
+                                            {card.key === 'liveChat' ? (
+                                                <button
+                                                    type="button"
+                                                    className={`${styles.cardFooterAction} ${styles.cardFooterActionAlert}`}
+                                                    disabled
+                                                >
+                                                    <span className={styles.cardFooterGear} aria-hidden />
+                                                    {t('tenants.permissions.card.advanced')}
+                                                </button>
+                                            ) : null}
+                                            <button type="button" className={styles.cardFooterAction} disabled>
+                                                <PenIcon className={styles.cardFooterIcon} aria-hidden />
+                                                {t('tenants.permissions.card.forceSelection')}
+                                            </button>
                                         </div>
                                     </div>
                                 );
