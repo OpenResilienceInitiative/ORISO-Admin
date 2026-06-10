@@ -217,6 +217,7 @@ export const App = () => {
                     <Route path="/admin/users" element={<UsersList />} />
                     <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
                     <Route path="/admin/users/tenant-admins/:id" element={<TenantAdminEditOrAdd />} />
+                    <Route path="/admin/users/platform-admins/:id" element={<TenantAdminEditOrAdd />} />
                     <Route path="/admin/users/:typeOfUsers/:id" element={<UserEditOrAdd />} />
                     <Route path="/admin/invite-links" element={<InviteLinksPage />} />
                     <Route path="/admin/links" element={<LinksPage />}>
