@@ -14,8 +14,8 @@ interface AddOrUpdateConsultantOptions
 }
 export const useAddOrUpdateConsultantOrAdmin = ({ id, typeOfUser, ...options }: AddOrUpdateConsultantOptions) => {
     const queryClient = useQueryClient();
-    return useMutation(
-        (formData) => {
+    return useMutation<CounselorData | AdminData, Error, CounselorData | AdminData, Error | Response>(
+        (formData): Promise<CounselorData | AdminData> => {
             if (typeOfUser.toLowerCase() === TypeOfUser.Consultants) {
                 return id ? editCounselorData(id, formData as CounselorData) : addCounselorData(formData);
             }
