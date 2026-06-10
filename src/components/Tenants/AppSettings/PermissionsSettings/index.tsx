@@ -15,6 +15,12 @@ import styles from './styles.module.scss';
 let MASTER_TOGGLE_CHILDREN: Record<string, string[]> = {};
 let syncMasterChildTogglesInForm: (form: FormInstance, fieldPath: string | string[], value: boolean) => void;
 
+type ToggleAfterChangeHandler = (
+    fieldPath: string | string[],
+    value: boolean,
+    currentFormData?: { settings?: Record<string, unknown> },
+) => void;
+
 const buildTogglePayload = (fieldPath: string | string[], value: boolean): Record<string, unknown> => {
     const path = Array.isArray(fieldPath) ? fieldPath : [fieldPath];
     const fieldKey = path[path.length - 1] as string;
@@ -40,7 +46,7 @@ type CheckToggleInnerProps = {
     disabled?: boolean;
     label: string;
     fieldName: string | string[];
-    onAfterChange?: (fieldPath: string | string[], value: boolean) => void;
+    onAfterChange?: ToggleAfterChangeHandler;
 };
 
 const CheckToggleInner = ({ checked, onChange, disabled, label, fieldName, onAfterChange }: CheckToggleInnerProps) => {
@@ -51,7 +57,7 @@ const CheckToggleInner = ({ checked, onChange, disabled, label, fieldName, onAft
         const newValue = !checked;
         onChange?.(newValue);
         syncMasterChildTogglesInForm(form, fieldName, newValue);
-        onAfterChange?.(fieldName, newValue);
+        onAfterChange?.(fieldName, newValue, form.getFieldsValue(true));
     };
     return (
         <button
@@ -100,7 +106,7 @@ type CheckToggleProps = {
     name: string | string[];
     label: string;
     disabled?: boolean;
-    onAfterChange?: (fieldPath: string | string[], value: boolean) => void;
+    onAfterChange?: ToggleAfterChangeHandler;
 };
 
 const CheckToggle = ({ name, label, disabled, onAfterChange }: CheckToggleProps) => (
@@ -533,21 +539,33 @@ export const PermissionsSettings = ({
         [inheritedForcedOffFields],
     );
 
-    const handleToggleUpdate = useCallback(
-        (fieldPath: string | string[], value: boolean) => {
+    const handleToggleUpdate = useCallback<ToggleAfterChangeHandler>(
+        (fieldPath, value, currentFormData) => {
             if (!data) return;
             const toggleUpdate = buildTogglePayload(fieldPath, value) as { settings?: Record<string, boolean> };
+            // Base the payload on the live form state (not the react-query cache) so rapid
+            // consecutive toggles don't overwrite each other, then run it through the same
+            // restriction pipeline as the explicit save: tenantAdminControls must stay in
+            // sync on every persisted change, otherwise tenant admins keep access to
+            // features a super admin already disabled.
+            const formData = {
+                settings: {
+                    ...data.settings,
+                    ...(currentFormData?.settings ?? {}),
+                    ...toggleUpdate.settings,
+                },
+            };
+            const restrictedData = superAdminControlMode
+                ? syncMasterTogglesToTenantAdminControls(formData)
+                : enforceToggleRestrictions(formData, forcedOffToggles);
             updateTenant({
                 name: data.name,
                 subdomain: data.subdomain,
                 licensing: data.licensing,
-                settings: {
-                    ...data.settings,
-                    ...toggleUpdate.settings,
-                },
+                settings: applyForcedOffFields(restrictedData.settings, inheritedForcedOffFields),
             } as TenantAdminData);
         },
-        [data, updateTenant],
+        [data, updateTenant, superAdminControlMode, forcedOffToggles, inheritedForcedOffFields],
     );
 
     return (
@@ -649,7 +667,6 @@ export const PermissionsSettings = ({
                                                             masterEnabled,
                                                         )}
                                                         onAfterChange={handleToggleUpdate}
-
                                                     />
                                                 </div>
                                             ))}
