@@ -119,13 +119,28 @@
     justify-content: space-between;
 }
 
+/* Figma: brand topic chips ride the light brand tint, full radius
+   (the #ffd9d9/999px pair in the real message.styles.scss). */
+
 .topicChip {
     display: inline-flex;
     align-items: center;
     padding: 1px 8px;
-    background: var(--m3-secondary-container);
-    border-radius: 10px;
-    color: var(--m3-on-secondary-container);
+    background: var(--m3-primary-fixed);
+    border-radius: 999px;
+    color: var(--m3-on-primary-fixed-variant);
+    font-size: 10px;
+    font-weight: 600;
+    gap: 4px;
+}
+
+.topicChipNeutral {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    background: var(--m3-surface-container-highest);
+    border-radius: 999px;
+    color: var(--m3-on-surface-variant);
     font-size: 10px;
     font-weight: 600;
     gap: 4px;

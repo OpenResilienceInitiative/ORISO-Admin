@@ -10,6 +10,8 @@ export type CounsellingType = 'liveChat' | 'oneOnOne' | 'interna';
 export interface PreviewSession {
     /** Beratungsthema chip; group entries carry none. */
     topic?: string;
+    /** Chip tone per the Figma design: brand (rosa) or neutral (grey). */
+    topicTone?: 'brand' | 'neutral';
     /** Optional case number shown inside the topic chip. */
     caseId?: string;
     name: string;
@@ -21,6 +23,7 @@ export interface PreviewSession {
 export const PREVIEW_SESSIONS: PreviewSession[] = [
     {
         topic: 'Familienberatung',
+        topicTone: 'brand',
         caseId: '12345',
         name: 'ruhiges Yak Kim',
         lastMessage: 'Anfrage gesendet',
@@ -29,6 +32,7 @@ export const PREVIEW_SESSIONS: PreviewSession[] = [
     },
     {
         topic: 'Suchtberatung',
+        topicTone: 'neutral',
         caseId: '99322',
         name: 'Ratsuchender_R3',
         lastMessage: 'Ja das ist schön, dass Sie das…',

@@ -66,7 +66,11 @@ export const DesktopScreen = () => {
                     >
                         <span className={shell.sessionTop}>
                             {session.topic ? (
-                                <span className={shell.topicChip}>
+                                <span
+                                    className={
+                                        session.topicTone === 'neutral' ? shell.topicChipNeutral : shell.topicChip
+                                    }
+                                >
                                     {session.topic}
                                     {session.caseId && <span className={shell.caseId}>{session.caseId}</span>}
                                 </span>
