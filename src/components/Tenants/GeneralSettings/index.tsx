@@ -95,6 +95,10 @@ export const GeneralSettings = ({ tenantId }: GeneralSettingsProps) => {
             </Col>
             <Col span={12} sm={6}>
                 <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+            </Col>
+            {/* The Theme card carries the full app preview — give it the
+                whole row instead of half a column. */}
+            <Col span={24}>
                 <ThemeBuilder tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
             </Col>
         </Row>

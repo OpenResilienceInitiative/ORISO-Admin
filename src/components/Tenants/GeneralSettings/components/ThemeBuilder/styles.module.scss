@@ -6,100 +6,14 @@
 
 .previewRow {
     display: flex;
-    margin-top: 16px;
-    gap: 16px;
-}
-
-.previewColumn {
-    min-width: 0;
-    flex: 1 1 0;
-}
-
-.previewLabel {
-    display: block;
-    margin-bottom: 4px;
-    font-weight: 600;
-}
-
-.preview {
-    overflow: hidden;
-    border: 1px solid var(--m3-outline-variant);
-    background: var(--m3-surface);
-    border-radius: 8px;
-    color: var(--m3-on-surface);
-    font-size: 12px;
-    line-height: 1.4;
-}
-
-.previewEmpty {
-    padding: 24px 12px;
-    border: 1px dashed var(--m3-outline-variant, #c4c7c8);
-    border-radius: 8px;
-    font-size: 12px;
-    text-align: center;
-}
-
-.previewHeader {
-    padding: 8px 12px;
-    background: var(--m3-primary);
-    color: var(--m3-on-primary);
-    font-weight: 600;
-}
-
-.previewBody {
-    display: flex;
     flex-direction: column;
-    padding: 12px;
-    background: var(--m3-surface-container-low);
+    margin-top: 16px;
     gap: 8px;
 }
 
-.bubbleCounsellor {
-    max-width: 80%;
-    align-self: flex-start;
-    padding: 6px 10px;
-    background: var(--m3-surface-container-highest);
-    border-radius: 12px 12px 12px 2px;
-    color: var(--m3-on-surface);
-}
-
-.bubbleUser {
-    max-width: 80%;
-    align-self: flex-end;
-    padding: 6px 10px;
-    background: var(--m3-primary-container);
-    border-radius: 12px 12px 2px;
-    color: var(--m3-on-primary-container);
-}
-
-.errorHint {
-    color: var(--m3-error);
-    font-size: 11px;
-}
-
-.previewFooter {
+.previewToolbar {
     display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    border-top: 1px solid var(--m3-outline-variant);
-    background: var(--m3-surface);
-    gap: 8px;
-}
-
-.inputMock {
-    flex: 1;
-    padding: 4px 10px;
-    border: 1px solid var(--m3-outline);
-    border-radius: 16px;
-    color: var(--m3-on-surface-variant);
-}
-
-.sendButton {
-    padding: 4px 12px;
-    background: var(--m3-primary);
-    border-radius: 16px;
-    color: var(--m3-on-primary);
-    font-weight: 600;
+    justify-content: flex-end;
 }
 
 .tooPaleAlert {
