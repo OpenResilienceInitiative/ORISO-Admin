@@ -31,15 +31,15 @@ const DRAFT = { primary: '#A5000A', accent: '#646d78', signal: '#b1005e' };
 const STORED = { primary: '#0061ff' };
 
 describe('buildPreviewUrl', () => {
-    it('carries the seeds as bare hex params on the sign-in route', () => {
+    it('carries the seeds as bare hex params on the theme-demo route', () => {
         expect(buildPreviewUrl('https://example.org', DRAFT)).toBe(
-            'https://example.org/login?themePreviewPrimary=a5000a&themePreviewAccent=646d78&themePreviewSignal=b1005e',
+            'https://example.org/theme-demo?themePreviewPrimary=a5000a&themePreviewAccent=646d78&themePreviewSignal=b1005e',
         );
     });
 
     it('omits absent optional seeds', () => {
         expect(buildPreviewUrl('https://example.org', { primary: '#A5000A' })).toBe(
-            'https://example.org/login?themePreviewPrimary=a5000a',
+            'https://example.org/theme-demo?themePreviewPrimary=a5000a',
         );
     });
 
@@ -60,7 +60,7 @@ describe('PreviewFrameModal', () => {
             />,
         );
         const frame = screen.getByTitle('theme.builder.preview.frameTitle') as HTMLIFrameElement;
-        expect(frame.src).toContain('/login?themePreviewPrimary=a5000a');
+        expect(frame.src).toContain('/theme-demo?themePreviewPrimary=a5000a');
         // scripts + own origin only — no forms, popups, navigation, downloads
         expect(frame.getAttribute('sandbox')).toBe('allow-scripts allow-same-origin');
         expect(frame.getAttribute('sandbox')).not.toContain('allow-top-navigation');
