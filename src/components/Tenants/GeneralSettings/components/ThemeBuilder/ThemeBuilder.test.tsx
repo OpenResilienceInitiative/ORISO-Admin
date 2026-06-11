@@ -8,7 +8,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { computeOrisoPalette } from '../../../../../utils/theme/orisoScheme';
-import { MiniChatPreview } from './MiniChatPreview';
 import { ThemeBuilder } from '.';
 
 const mutateSpy = vi.fn();
@@ -50,37 +49,22 @@ const enterEditMode = (container: HTMLElement) => {
     fireEvent.click(pencil);
 };
 
-describe('MiniChatPreview recomputes from the engine (Test #14)', () => {
-    it('paints the mock with the engine palette for the given seeds', () => {
-        const { tokens } = computeOrisoPalette({ primary: '#a5000a' }, 'light');
-        render(<MiniChatPreview seeds={{ primary: '#a5000a' }} labelKey="theme.builder.preview.new" />);
-        const preview = screen.getByTestId('mini-chat-preview');
-        expect(preview.style.getPropertyValue('--m3-primary')).toBe(tokens['--m3-primary']);
-        expect(preview.style.getPropertyValue('--m3-surface')).toBe(tokens['--m3-surface']);
-    });
-
-    it('repaints when the seed changes (live recompute on drag)', () => {
-        const { rerender } = render(
-            <MiniChatPreview seeds={{ primary: '#a5000a' }} labelKey="theme.builder.preview.new" />,
-        );
-        const next = computeOrisoPalette({ primary: '#0061ff' }, 'light');
-        rerender(<MiniChatPreview seeds={{ primary: '#0061ff' }} labelKey="theme.builder.preview.new" />);
-        const preview = screen.getByTestId('mini-chat-preview');
-        expect(preview.style.getPropertyValue('--m3-primary')).toBe(next.tokens['--m3-primary']);
-    });
-
-    it('renders a placeholder instead of crashing without a primary seed', () => {
-        render(<MiniChatPreview seeds={{}} labelKey="theme.builder.preview.new" />);
-        expect(screen.queryByTestId('mini-chat-preview')).not.toBeInTheDocument();
-    });
-});
-
 describe('ThemeBuilder page (Tests #14, #17)', () => {
-    it('shows the side-by-side previews: current vs new', () => {
+    it('shows one large app preview with a current/new comparison toggle', () => {
         render(<ThemeBuilder tenantId="1" />);
-        expect(screen.getAllByTestId('mini-chat-preview')).toHaveLength(2);
+        expect(screen.getAllByTestId('app-preview')).toHaveLength(1);
         expect(screen.getByText('theme.builder.preview.current')).toBeInTheDocument();
         expect(screen.getByText('theme.builder.preview.new')).toBeInTheDocument();
+    });
+
+    it('paints the preview from the engine and flips with the toggle', () => {
+        const { tokens } = computeOrisoPalette({ primary: '#a5000a', accent: '#646d78', signal: '#b1005e' }, 'light');
+        render(<ThemeBuilder tenantId="1" />);
+        const preview = screen.getByTestId('app-preview');
+        // default view: the draft ("Neu") — equals stored seeds before editing
+        expect(preview.style.getPropertyValue('--m3-primary')).toBe(tokens['--m3-primary']);
+        fireEvent.click(screen.getByText('theme.builder.preview.current'));
+        expect(screen.getByTestId('app-preview').style.getPropertyValue('--m3-primary')).toBe(tokens['--m3-primary']);
     });
 
     it('offers the three seed inputs: main, accent, signal', () => {
