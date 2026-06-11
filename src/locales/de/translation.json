@@ -931,8 +931,8 @@
     "theme.builder.accentColor": "Akzentfarbe",
     "theme.builder.signalColor": "Signalfarbe",
     "theme.builder.tooPale": "Die gewählte Hauptfarbe ist sehr blass — das Theme wirkt dadurch grau. Speichern ist trotzdem möglich.",
-    "theme.builder.preview.current": "Aktuell",
-    "theme.builder.preview.new": "Neu",
+    "theme.builder.preview.current": "Vorher",
+    "theme.builder.preview.new": "Nachher",
     "theme.builder.preview.empty": "Wählen Sie eine Hauptfarbe, um die Vorschau zu sehen.",
     "theme.builder.preview.headline": "Beratung",
     "theme.builder.preview.messageIn": "Guten Tag, wie kann ich Ihnen helfen?",
@@ -954,5 +954,16 @@
     "theme.builder.preview.type.interna": "Interna",
     "theme.builder.preview.editor.placeholder": "Nachricht an Klient:in schreiben",
     "theme.builder.preview.editor.send": "Senden",
-    "theme.builder.preview.editor.failed": "Nachricht konnte nicht gesendet werden."
+    "theme.builder.preview.editor.failed": "Nachricht konnte nicht gesendet werden.",
+    "theme.builder.preview.openGallery": "Große Vorschau",
+    "theme.builder.preview.today": "Heute",
+    "theme.builder.preview.screen.desktop": "Desktop-Gesamtansicht",
+    "theme.builder.preview.screen.chatHistory": "Chat-Verlauf",
+    "theme.builder.preview.screen.mobile": "Mobiler Chatraum",
+    "theme.builder.preview.screen.login": "Anmeldung",
+    "theme.builder.preview.login.headline": "Anmelden",
+    "theme.builder.preview.login.username": "Benutzername",
+    "theme.builder.preview.login.password": "Passwort",
+    "theme.builder.preview.login.submit": "Anmelden",
+    "theme.builder.preview.login.forgot": "Passwort vergessen?"
 }

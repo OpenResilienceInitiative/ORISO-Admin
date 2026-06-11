@@ -1,4 +1,4 @@
-import { Alert, Form, FormInstance, Radio } from 'antd';
+import { Alert, Button, Form, FormInstance, Radio } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../../CardEditable';
@@ -11,6 +11,7 @@ import { isReadOnlySetting } from '../../../../../utils/serverSettingsMeta';
 import { computeOrisoPalette } from '../../../../../utils/theme/orisoScheme';
 import { buildSeedUpdate, readSeeds, TenantSeeds } from '../../../../../utils/themeSeeds';
 import { AppPreview } from './AppPreview';
+import { PreviewGalleryModal } from './PreviewGalleryModal';
 import styles from './styles.module.scss';
 
 interface ThemeBuilderProps {
@@ -43,6 +44,7 @@ const seedIsTooPale = (seeds: TenantSeeds): boolean => {
 const ThemeBuilderForm = ({ form, storedSeeds, locks }: ThemeBuilderFormProps) => {
     const { t } = useTranslation();
     const [previewView, setPreviewView] = useState<'current' | 'new'>('new');
+    const [galleryOpen, setGalleryOpen] = useState(false);
     const primary = Form.useWatch(['theming', 'primaryColor'], form);
     const accent = Form.useWatch(['theming', 'accent'], form);
     const signal = Form.useWatch(['theming', 'signal'], form);
@@ -90,6 +92,15 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks }: ThemeBuilderFormProps) =
                     </Radio.Group>
                 </div>
                 <AppPreview seeds={previewView === 'new' ? draftSeeds : storedSeeds} />
+                <div className={styles.galleryOpenRow}>
+                    <Button onClick={() => setGalleryOpen(true)}>{t('theme.builder.preview.openGallery')}</Button>
+                </div>
+                <PreviewGalleryModal
+                    open={galleryOpen}
+                    onClose={() => setGalleryOpen(false)}
+                    draftSeeds={draftSeeds}
+                    storedSeeds={storedSeeds}
+                />
             </div>
         </>
     );

@@ -19,3 +19,40 @@
 .tooPaleAlert {
     margin-top: 12px;
 }
+
+.galleryOpenRow {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.galleryHeader {
+    display: flex;
+    align-items: center;
+    margin: 8px 0 12px;
+    gap: 10px;
+}
+
+.galleryCaption {
+    min-width: 180px;
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.galleryDots {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    gap: 6px;
+}
+
+.galleryDot {
+    width: 8px;
+    height: 8px;
+    background: var(--m3-outline-variant, #c4c7c8);
+    border-radius: 50%;
+
+    &[data-selected='true'] {
+        background: var(--m3-primary, #a5000a);
+    }
+}
