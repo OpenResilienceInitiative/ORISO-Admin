@@ -16,9 +16,8 @@ const getKeycloakAccessToken = (loginProps: {
         // console.log('🔍 getKeycloakAccessToken: username:', username);
         // console.log('🔍 getKeycloakAccessToken: tryUnencryptedForEmail:', tryUnencryptedForEmail);
 
-        const dataBody = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}${
-            otp ? `&otp=${otp}` : ``
-        }&client_id=app&grant_type=password`;
+        const dataBody = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}${otp ? `&otp=${otp}` : ``
+            }&client_id=app&grant_type=password`;
 
         const req = new Request(loginEndpoint, {
             method: 'POST',
