@@ -16,11 +16,7 @@ export const TenantGlobalSettings = () => {
                     <p>{t('tenants.globalSettings.superAdminWarning.description')}</p>
                 </div>
                 <div className={styles.permissionsCardWrap}>
-                    <PermissionsSettings
-                        tenantId={id || ''}
-                        superAdminControlMode
-                        visibleToggles={{ anonymousChat: false }}
-                    />
+                    <PermissionsSettings tenantId={id || ''} superAdminControlMode excludeCardKeys={['liveChat']} />
                 </div>
             </Col>
         </Row>
