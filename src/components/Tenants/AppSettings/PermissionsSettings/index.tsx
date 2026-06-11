@@ -131,32 +131,32 @@ interface PermissionsSettingsArgs {
 }
 
 type PermissionToggleVisibility = {
-    featureAnonymousChatEnabled?: boolean | null;
-    featureGroupChatV2Enabled?: boolean | null;
-    featureCallsEnabled?: boolean | null;
-    featureSupervisionEnabled?: boolean | null;
-    featureSupervisionAnonymousChatsEnabled?: boolean | null;
-    featureSupervisionOneOnOneChatsEnabled?: boolean | null;
-    featureAudioCallsEnabled?: boolean | null;
-    featureAudioCallsAnonymousChatsEnabled?: boolean | null;
-    featureAudioCallsOneOnOneChatsEnabled?: boolean | null;
-    featureAudioCallsGroupChatsEnabled?: boolean | null;
-    featureAudioCallsSupervisionChatsEnabled?: boolean | null;
-    featureVideoCallsEnabled?: boolean | null;
-    featureVideoCallsAnonymousChatsEnabled?: boolean | null;
-    featureVideoCallsOneOnOneChatsEnabled?: boolean | null;
-    featureVideoCallsGroupChatsEnabled?: boolean | null;
-    featureVideoCallsSupervisionChatsEnabled?: boolean | null;
-    featureThreadsEnabled?: boolean | null;
-    featureThreadsAnonymousChatsEnabled?: boolean | null;
-    featureThreadsGroupChatsEnabled?: boolean | null;
-    featureThreadsOneOnOneEnabled?: boolean | null;
-    featureThreadsSupervisionChatsEnabled?: boolean | null;
-    featureVoiceMessagesEnabled?: boolean | null;
-    featureVoiceMessagesAnonymousChatsEnabled?: boolean | null;
-    featureVoiceMessagesOneOnOneChatsEnabled?: boolean | null;
-    featureVoiceMessagesGroupChatsEnabled?: boolean | null;
-    featureVoiceMessagesSupervisionChatsEnabled?: boolean | null;
+    anonymousChat?: boolean;
+    groupChat?: boolean;
+    calls?: boolean;
+    supervision?: boolean;
+    supervisionAnonymousChats?: boolean;
+    supervisionOneOnOneChats?: boolean;
+    audioCalls?: boolean;
+    audioCallsAnonymousChats?: boolean;
+    audioCallsOneOnOneChats?: boolean;
+    audioCallsGroupChats?: boolean;
+    audioCallsSupervisionChats?: boolean;
+    videoCalls?: boolean;
+    videoCallsAnonymousChats?: boolean;
+    videoCallsOneOnOneChats?: boolean;
+    videoCallsGroupChats?: boolean;
+    videoCallsSupervisionChats?: boolean;
+    threads?: boolean;
+    threadsAnonymousChats?: boolean;
+    threadsOneOnOneChats?: boolean;
+    threadsGroupChats?: boolean;
+    threadsSupervisionChats?: boolean;
+    voiceMessages?: boolean;
+    voiceMessagesAnonymousChats?: boolean;
+    voiceMessagesOneOnOneChats?: boolean;
+    voiceMessagesGroupChats?: boolean;
+    voiceMessagesSupervisionChats?: boolean;
 };
 
 const DEFAULT_PERMISSION_SETTINGS = {
@@ -188,34 +188,7 @@ const DEFAULT_PERMISSION_SETTINGS = {
     featureVoiceMessagesSupervisionChatsEnabled: true,
 } as const;
 
-type AllowedPermissionToggleKey =
-    | 'anonymousChat'
-    | 'calls'
-    | 'supervision'
-    | 'supervisionAnonymousChats'
-    | 'supervisionOneOnOneChats'
-    | 'audioCalls'
-    | 'audioCallsAnonymousChats'
-    | 'audioCallsOneOnOneChats'
-    | 'audioCallsGroupChats'
-    | 'audioCallsSupervisionChats'
-    | 'videoCalls'
-    | 'videoCallsAnonymousChats'
-    | 'videoCallsOneOnOneChats'
-    | 'videoCallsGroupChats'
-    | 'videoCallsSupervisionChats'
-    | 'threads'
-    | 'threadsAnonymousChats'
-    | 'threadsOneOnOneChats'
-    | 'threadsGroupChats'
-    | 'threadsSupervisionChats'
-    | 'voiceMessages'
-    | 'voiceMessagesAnonymousChats'
-    | 'voiceMessagesOneOnOneChats'
-    | 'voiceMessagesGroupChats'
-    | 'voiceMessagesSupervisionChats';
-
-const PLATFORM_TOGGLE_FIELDS: Record<AllowedPermissionToggleKey, string[]> = {
+const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, string[]> = {
     anonymousChat: [
         'featureAnonymousChatEnabled',
         'featureVideoCallsAnonymousChatsEnabled',
@@ -224,11 +197,18 @@ const PLATFORM_TOGGLE_FIELDS: Record<AllowedPermissionToggleKey, string[]> = {
         'featureThreadsAnonymousChatsEnabled',
         'featureSupervisionAnonymousChatsEnabled',
     ],
+    groupChat: [
+        'featureGroupChatV2Enabled',
+        'featureVideoCallsGroupChatsEnabled',
+        'featureAudioCallsGroupChatsEnabled',
+        'featureVoiceMessagesGroupChatsEnabled',
+        'featureThreadsGroupChatsEnabled',
+    ],
     calls: ['featureCallsEnabled'],
     supervision: [
         'featureSupervisionEnabled',
-        'featureSupervisionAnonymousChatsEnabled',
-        'featureSupervisionOneOnOneChatsEnabled',
+        // 'featureSupervisionAnonymousChatsEnabled',
+        // 'featureSupervisionOneOnOneChatsEnabled',
         'featureVideoCallsSupervisionChatsEnabled',
         'featureAudioCallsSupervisionChatsEnabled',
         'featureVoiceMessagesSupervisionChatsEnabled',
@@ -282,26 +262,17 @@ const PLATFORM_TOGGLE_FIELDS: Record<AllowedPermissionToggleKey, string[]> = {
     voiceMessagesSupervisionChats: ['featureVoiceMessagesSupervisionChatsEnabled'],
 };
 
-const PERMISSION_SETTING_KEYS = new Set<string>(Object.keys(DEFAULT_PERMISSION_SETTINGS));
-
 const getForcedOffFields = (toggles?: PermissionToggleVisibility) => {
     if (!toggles) return new Set<string>();
 
     return Object.entries(toggles).reduce((fields, [toggleKey, enabled]) => {
-        if (enabled !== false) {
-            return fields;
+        if (enabled === false) {
+            const platformFields = PLATFORM_TOGGLE_FIELDS[toggleKey as keyof PermissionToggleVisibility];
+            if (platformFields) {
+                platformFields.forEach((field) => fields.add(field));
+                return fields;
+            }
         }
-
-        const platformFields = PLATFORM_TOGGLE_FIELDS[toggleKey as AllowedPermissionToggleKey];
-        if (platformFields) {
-            platformFields.forEach((field) => fields.add(field));
-            return fields;
-        }
-
-        if (PERMISSION_SETTING_KEYS.has(toggleKey)) {
-            fields.add(toggleKey);
-        }
-
         return fields;
     }, new Set<string>());
 };
@@ -332,35 +303,39 @@ const syncMasterTogglesToTenantAdminControls = (formData) => {
     const { settings } = next;
     const isEnabled = (key: string) => settings?.[key] !== false;
     const anonymousEnabled = isEnabled('featureAnonymousChatEnabled');
+    const groupEnabled = isEnabled('featureGroupChatV2Enabled');
+    const oneOnOneEnabled = isEnabled('featureCallsEnabled');
+    const supervisionEnabled = isEnabled('featureSupervisionEnabled');
 
     settings.tenantAdminControls = {
         ...(settings.tenantAdminControls ?? {}),
         allowedPermissionToggles: {
             anonymousChat: anonymousEnabled,
-            calls: isEnabled('featureCallsEnabled'),
-            supervision: isEnabled('featureSupervisionEnabled'),
+            groupChat: groupEnabled,
+            calls: oneOnOneEnabled,
+            supervision: supervisionEnabled,
             supervisionAnonymousChats: anonymousEnabled && isEnabled('featureSupervisionAnonymousChatsEnabled'),
-            supervisionOneOnOneChats: isEnabled('featureSupervisionOneOnOneChatsEnabled'),
+            supervisionOneOnOneChats: oneOnOneEnabled && isEnabled('featureSupervisionOneOnOneChatsEnabled'),
             audioCalls: isEnabled('featureAudioCallsEnabled'),
             audioCallsAnonymousChats: anonymousEnabled && isEnabled('featureAudioCallsAnonymousChatsEnabled'),
-            audioCallsOneOnOneChats: isEnabled('featureAudioCallsOneOnOneChatsEnabled'),
-            audioCallsGroupChats: isEnabled('featureAudioCallsGroupChatsEnabled'),
+            audioCallsOneOnOneChats: oneOnOneEnabled && isEnabled('featureAudioCallsOneOnOneChatsEnabled'),
+            audioCallsGroupChats: groupEnabled && isEnabled('featureAudioCallsGroupChatsEnabled'),
             audioCallsSupervisionChats: isEnabled('featureAudioCallsSupervisionChatsEnabled'),
             videoCalls: isEnabled('featureVideoCallsEnabled'),
             videoCallsAnonymousChats: anonymousEnabled && isEnabled('featureVideoCallsAnonymousChatsEnabled'),
-            videoCallsOneOnOneChats: isEnabled('featureVideoCallsOneOnOneChatsEnabled'),
-            videoCallsGroupChats: isEnabled('featureVideoCallsGroupChatsEnabled'),
-            videoCallsSupervisionChats: isEnabled('featureVideoCallsSupervisionChatsEnabled'),
+            videoCallsOneOnOneChats: oneOnOneEnabled && isEnabled('featureVideoCallsOneOnOneChatsEnabled'),
+            videoCallsGroupChats: groupEnabled && isEnabled('featureVideoCallsGroupChatsEnabled'),
+            videoCallsSupervisionChats: supervisionEnabled && isEnabled('featureVideoCallsSupervisionChatsEnabled'),
             threads: isEnabled('featureThreadsEnabled'),
             threadsAnonymousChats: anonymousEnabled && isEnabled('featureThreadsAnonymousChatsEnabled'),
-            threadsOneOnOneChats: isEnabled('featureThreadsOneOnOneEnabled'),
-            threadsGroupChats: isEnabled('featureThreadsGroupChatsEnabled'),
-            threadsSupervisionChats: isEnabled('featureThreadsSupervisionChatsEnabled'),
+            threadsOneOnOneChats: oneOnOneEnabled && isEnabled('featureThreadsOneOnOneEnabled'),
+            threadsGroupChats: groupEnabled && isEnabled('featureThreadsGroupChatsEnabled'),
+            threadsSupervisionChats: supervisionEnabled && isEnabled('featureThreadsSupervisionChatsEnabled'),
             voiceMessages: isEnabled('featureVoiceMessagesEnabled'),
             voiceMessagesAnonymousChats: anonymousEnabled && isEnabled('featureVoiceMessagesAnonymousChatsEnabled'),
-            voiceMessagesOneOnOneChats: isEnabled('featureVoiceMessagesOneOnOneChatsEnabled'),
-            voiceMessagesGroupChats: isEnabled('featureVoiceMessagesGroupChatsEnabled'),
-            voiceMessagesSupervisionChats: isEnabled('featureVoiceMessagesSupervisionChatsEnabled'),
+            voiceMessagesOneOnOneChats: oneOnOneEnabled && isEnabled('featureVoiceMessagesOneOnOneChatsEnabled'),
+            voiceMessagesGroupChats: groupEnabled && isEnabled('featureVoiceMessagesGroupChatsEnabled'),
+            voiceMessagesSupervisionChats: supervisionEnabled && isEnabled('featureVoiceMessagesSupervisionChatsEnabled'),
         },
     };
     return next;

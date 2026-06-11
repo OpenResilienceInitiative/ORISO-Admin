@@ -19,7 +19,7 @@ export const TenantGlobalSettings = () => {
                     <PermissionsSettings
                         tenantId={id || ''}
                         superAdminControlMode
-                        visibleToggles={{ featureAnonymousChatEnabled: false }}
+                        visibleToggles={{ anonymousChat: false }}
                     />
                 </div>
             </Col>
