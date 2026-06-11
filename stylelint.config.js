@@ -20,6 +20,15 @@ module.exports = {
     "keyframes-name-pattern": null,
 
     "at-rule-no-unknown": null,
+    // CSS modules scoping selector (vite resolves it at build time)
+    "selector-pseudo-class-no-unknown": [
+      true,
+      {
+        "ignorePseudoClasses": [
+          "global"
+        ]
+      }
+    ],
     "color-hex-length": "long",
     "selector-pseudo-element-colon-notation": "single",
     "property-no-vendor-prefix": true,
