@@ -1,6 +1,7 @@
-import { Alert, Button, Form, FormInstance, Radio } from 'antd';
+import { Alert, Form, FormInstance } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, BUTTON_TYPES } from '../../../../button/Button';
 import { CardEditable } from '../../../../CardEditable';
 import { FormColorSelectorField } from '../../../../FormColorSelectorField';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
@@ -10,8 +11,7 @@ import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminD
 import { isReadOnlySetting } from '../../../../../utils/serverSettingsMeta';
 import { computeOrisoPalette } from '../../../../../utils/theme/orisoScheme';
 import { buildSeedUpdate, readSeeds, TenantSeeds } from '../../../../../utils/themeSeeds';
-import { AppPreview } from './AppPreview';
-import { PreviewGalleryModal } from './PreviewGalleryModal';
+import { PreviewFrameModal } from './PreviewFrameModal';
 import styles from './styles.module.scss';
 
 interface ThemeBuilderProps {
@@ -43,8 +43,7 @@ const seedIsTooPale = (seeds: TenantSeeds): boolean => {
  */
 const ThemeBuilderForm = ({ form, storedSeeds, locks }: ThemeBuilderFormProps) => {
     const { t } = useTranslation();
-    const [previewView, setPreviewView] = useState<'current' | 'new'>('new');
-    const [galleryOpen, setGalleryOpen] = useState(false);
+    const [previewOpen, setPreviewOpen] = useState(false);
     const primary = Form.useWatch(['theming', 'primaryColor'], form);
     const accent = Form.useWatch(['theming', 'accent'], form);
     const signal = Form.useWatch(['theming', 'signal'], form);
@@ -79,25 +78,16 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks }: ThemeBuilderFormProps) =
                 <Alert className={styles.tooPaleAlert} type="warning" showIcon message={t('theme.builder.tooPale')} />
             )}
             <div className={styles.previewRow}>
-                <div className={styles.previewToolbar}>
-                    <Radio.Group
-                        size="small"
-                        optionType="button"
-                        buttonStyle="solid"
-                        value={previewView}
-                        onChange={(event) => setPreviewView(event.target.value)}
-                    >
-                        <Radio.Button value="current">{t('theme.builder.preview.current')}</Radio.Button>
-                        <Radio.Button value="new">{t('theme.builder.preview.new')}</Radio.Button>
-                    </Radio.Group>
-                </div>
-                <AppPreview seeds={previewView === 'new' ? draftSeeds : storedSeeds} />
-                <div className={styles.galleryOpenRow}>
-                    <Button onClick={() => setGalleryOpen(true)}>{t('theme.builder.preview.openGallery')}</Button>
-                </div>
-                <PreviewGalleryModal
-                    open={galleryOpen}
-                    onClose={() => setGalleryOpen(false)}
+                <span className={styles.previewHint}>{t('theme.builder.preview.hint')}</span>
+                {/* project Button: not bound to the form's DisabledContext —
+                    previewing needs no edit mode */}
+                <Button
+                    item={{ label: t('theme.builder.preview.open'), type: BUTTON_TYPES.SECONDARY }}
+                    buttonHandle={() => setPreviewOpen(true)}
+                />
+                <PreviewFrameModal
+                    open={previewOpen}
+                    onClose={() => setPreviewOpen(false)}
                     draftSeeds={draftSeeds}
                     storedSeeds={storedSeeds}
                 />

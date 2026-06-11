@@ -7,7 +7,6 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { computeOrisoPalette } from '../../../../../utils/theme/orisoScheme';
 import { ThemeBuilder } from '.';
 
 const mutateSpy = vi.fn();
@@ -50,21 +49,16 @@ const enterEditMode = (container: HTMLElement) => {
 };
 
 describe('ThemeBuilder page (Tests #14, #17)', () => {
-    it('shows one large app preview with a current/new comparison toggle', () => {
+    it('opens the sandboxed app preview with the draft seeds (Test #14)', () => {
         render(<ThemeBuilder tenantId="1" />);
-        expect(screen.getAllByTestId('app-preview')).toHaveLength(1);
-        expect(screen.getByText('theme.builder.preview.current')).toBeInTheDocument();
-        expect(screen.getByText('theme.builder.preview.new')).toBeInTheDocument();
-    });
-
-    it('paints the preview from the engine and flips with the toggle', () => {
-        const { tokens } = computeOrisoPalette({ primary: '#a5000a', accent: '#646d78', signal: '#b1005e' }, 'light');
-        render(<ThemeBuilder tenantId="1" />);
-        const preview = screen.getByTestId('app-preview');
-        // default view: the draft ("Neu") — equals stored seeds before editing
-        expect(preview.style.getPropertyValue('--m3-primary')).toBe(tokens['--m3-primary']);
-        fireEvent.click(screen.getByText('theme.builder.preview.current'));
-        expect(screen.getByTestId('app-preview').style.getPropertyValue('--m3-primary')).toBe(tokens['--m3-primary']);
+        fireEvent.click(screen.getByText('theme.builder.preview.open'));
+        const frame = screen.getByTitle('theme.builder.preview.frameTitle') as HTMLIFrameElement;
+        // the form's draft seeds travel into the REAL app's preview mode —
+        // engine parity is guaranteed because the app itself computes the
+        // palette through the same engine (THB-05 preview mode).
+        expect(frame.src).toContain('themePreviewPrimary=a5000a');
+        expect(frame.src).toContain('themePreviewAccent=646d78');
+        expect(frame.getAttribute('sandbox')).toBe('allow-scripts allow-same-origin');
     });
 
     it('offers the three seed inputs: main, accent, signal', () => {
