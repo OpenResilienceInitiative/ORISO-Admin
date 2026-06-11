@@ -27,3 +27,6 @@ yarn-error.log*
 
 .env
 graphify-out/*
+
+# Generated at container start by scripts/generate-runtime-env.js — never commit personal configs here
+public/env.js
