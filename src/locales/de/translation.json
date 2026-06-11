@@ -939,5 +939,20 @@
     "theme.builder.preview.messageOut": "Ich habe eine Frage zu meinem Termin.",
     "theme.builder.preview.error": "Nachricht konnte nicht gesendet werden.",
     "theme.builder.preview.inputPlaceholder": "Nachricht schreiben …",
-    "theme.builder.preview.send": "Senden"
+    "theme.builder.preview.send": "Senden",
+    "theme.builder.preview.nav.enquiries": "Anfragen",
+    "theme.builder.preview.nav.sessions": "Gespräche",
+    "theme.builder.preview.nav.timeline": "Zeitstrahl",
+    "theme.builder.preview.nav.drafts": "Entwürfe",
+    "theme.builder.preview.nav.profile": "Mein Profil",
+    "theme.builder.preview.nav.liveChat": "Live Chat",
+    "theme.builder.preview.nav.language": "Deutsch",
+    "theme.builder.preview.search": "Suche",
+    "theme.builder.preview.now": "jetzt",
+    "theme.builder.preview.type.liveChat": "Live Chat",
+    "theme.builder.preview.type.oneOnOne": "1-1 Beratung",
+    "theme.builder.preview.type.interna": "Interna",
+    "theme.builder.preview.editor.placeholder": "Nachricht an Klient:in schreiben",
+    "theme.builder.preview.editor.send": "Senden",
+    "theme.builder.preview.editor.failed": "Nachricht konnte nicht gesendet werden."
 }

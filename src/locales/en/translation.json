@@ -747,5 +747,20 @@
     "theme.builder.preview.messageOut": "I have a question about my appointment.",
     "theme.builder.preview.error": "The message could not be sent.",
     "theme.builder.preview.inputPlaceholder": "Write a message …",
-    "theme.builder.preview.send": "Send"
+    "theme.builder.preview.send": "Send",
+    "theme.builder.preview.nav.enquiries": "Enquiries",
+    "theme.builder.preview.nav.sessions": "Sessions",
+    "theme.builder.preview.nav.timeline": "Timeline",
+    "theme.builder.preview.nav.drafts": "Drafts",
+    "theme.builder.preview.nav.profile": "My profile",
+    "theme.builder.preview.nav.liveChat": "Live chat",
+    "theme.builder.preview.nav.language": "English",
+    "theme.builder.preview.search": "Search",
+    "theme.builder.preview.now": "now",
+    "theme.builder.preview.type.liveChat": "Live chat",
+    "theme.builder.preview.type.oneOnOne": "1-on-1 counselling",
+    "theme.builder.preview.type.interna": "Internal",
+    "theme.builder.preview.editor.placeholder": "Write a message to the client",
+    "theme.builder.preview.editor.send": "Send",
+    "theme.builder.preview.editor.failed": "The message could not be sent."
 }
