@@ -6,9 +6,13 @@
  * of maintained replicas.
  *
  * Security constraints locked here:
- * - sandbox="allow-scripts" WITHOUT allow-same-origin: the framed app
- *   runs on an opaque origin and cannot touch the admin's cookies,
- *   Keycloak tokens or storage.
+ * - sandbox="allow-scripts allow-same-origin" and nothing else: no
+ *   forms, no popups, no top navigation, no downloads. allow-same-origin
+ *   is required because the app talks to its API same-origin (proxied);
+ *   an opaque origin would send Origin: null and every call would fail
+ *   CORS (verified against app.oriso.org). Admin cookies and Keycloak
+ *   tokens stay unreachable either way: the app is cross-origin to the
+ *   admin, so the same-origin policy isolates it regardless of sandbox.
  * - the frame is purely visual: pointer events are blocked.
  * - the URL carries bare hex colour values only.
  *
@@ -57,8 +61,11 @@ describe('PreviewFrameModal', () => {
         );
         const frame = screen.getByTitle('theme.builder.preview.frameTitle') as HTMLIFrameElement;
         expect(frame.src).toContain('/login?themePreviewPrimary=a5000a');
-        // opaque origin: no access to admin cookies/tokens
-        expect(frame.getAttribute('sandbox')).toBe('allow-scripts');
+        // scripts + own origin only — no forms, popups, navigation, downloads
+        expect(frame.getAttribute('sandbox')).toBe('allow-scripts allow-same-origin');
+        expect(frame.getAttribute('sandbox')).not.toContain('allow-top-navigation');
+        expect(frame.getAttribute('sandbox')).not.toContain('allow-popups');
+        expect(frame.getAttribute('sandbox')).not.toContain('allow-forms');
         // purely visual
         expect(screen.getByTestId('preview-frame-shield')).toBeInTheDocument();
     });
