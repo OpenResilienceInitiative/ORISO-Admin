@@ -1,13 +1,11 @@
 flowchart LR
-  Page[src/pages/*] --> Hook[src/hooks/*]
-  Hook --> Api[src/api/<domain>/*]
+  Route[src/App.tsx route] --> Page[src/pages feature module]
+  Page --> Hook[src/hooks React Query hook]
+  Hook --> Api[src/api domain helper]
+  Api --> Config[src/appConfig endpoint]
   Api --> Fetch[src/api/fetchData.ts]
-  Fetch --> Auth[Keycloak cookie + refresh token]
-  Fetch --> Csrf[generateCsrfToken]
-  Fetch --> Config[src/appConfig.ts]
-  Config --> Backend[ORISO /service/* endpoints]
-  Backend --> Api
-  Api --> Hook
+  Fetch --> Headers[Auth + CSRF + language headers]
+  Fetch --> Service[ORISO backend service]
+  Service --> Hook
   Hook --> Page
-  Page --> Components[src/components/*]
-
+  Page --> UI[src/components shared UI]
