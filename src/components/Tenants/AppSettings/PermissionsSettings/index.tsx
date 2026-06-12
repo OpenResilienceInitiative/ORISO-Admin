@@ -1,11 +1,16 @@
-import { Form, FormInstance, notification } from 'antd';
+import { Form, FormInstance } from 'antd';
 import { FunctionComponent, SVGProps, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
+import { useAgencyAdminControls } from '../../../../hooks/useAgencyAdminControls.hook';
+import { useAgencyAdminControlsMutation } from '../../../../hooks/useAgencyAdminControlsMutation.hook';
+import { useAgencyData } from '../../../../hooks/useAgencyData';
+import { useAgencyUpdate } from '../../../../hooks/useAgencyUpdate';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
 import { useTenantAdminControlsMutation } from '../../../../hooks/useTenantAdminControlsMutation.hook';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
+import { AgencyAdminControls } from '../../../../types/AgencyAdminControls';
 import { PermissionToggleVisibility } from '../../../../types/PermissionToggleVisibility';
 import { TenantAdminControls } from '../../../../types/TenantAdminControls';
 import { ReactComponent as PenIcon } from '../../../../resources/img/svg/pen.svg';
@@ -120,13 +125,19 @@ const CheckToggle = ({ name, label, disabled, onAfterChange }: CheckToggleProps)
 );
 
 interface PermissionsSettingsCommonArgs {
-    tenantId: string;
+    tenantId?: string;
+    /** When set, edits agency-level feature flags using agency data only. */
+    agencyId?: string;
     /** Hide chat-type cards by key (e.g. liveChat on super-admin settings — managed under Global Configs). */
     excludeCardKeys?: Array<'oneOnOne' | 'liveChat' | 'group' | 'groupInternal'>;
 }
 
+export type PermissionsSettingsMode = 'superAdmin' | 'tenant' | 'agency';
+
 interface PermissionsSettingsArgs extends PermissionsSettingsCommonArgs {
-    superAdminControlMode?: boolean;
+    mode: PermissionsSettingsMode;
+    /** When true, platform restrictions are not applied (super admin viewing tenant/agency permissions). */
+    superAdminMode?: boolean;
 }
 
 const DEFAULT_PERMISSION_SETTINGS = {
@@ -280,57 +291,74 @@ const applyVisibleTogglesAsValues = (visibleToggles?: PermissionToggleVisibility
     return settings;
 };
 
-const syncMasterTogglesToTenantAdminControls = (formData) => {
-    const next = { ...formData, settings: { ...(formData?.settings ?? {}) } };
-    const { settings } = next;
+type AdminControlsAttribute = 'tenantAdminControls' | 'agencyAdminControls';
+
+const buildAllowedPermissionTogglesFromFeatureSettings = (settings: Record<string, unknown>) => {
     const isEnabled = (key: string) => settings?.[key] !== false;
     const anonymousEnabled = isEnabled('featureAnonymousChatEnabled');
     const groupEnabled = isEnabled('featureGroupChatV2Enabled');
     const oneOnOneEnabled = isEnabled('featureCallsEnabled');
     const supervisionEnabled = isEnabled('featureSupervisionEnabled');
 
-    settings.tenantAdminControls = {
-        ...(settings.tenantAdminControls ?? {}),
-        allowedPermissionToggles: {
-            anonymousChat: anonymousEnabled,
-            groupChat: groupEnabled,
-            calls: oneOnOneEnabled,
-            supervision: supervisionEnabled,
-            supervisionAnonymousChats: anonymousEnabled && isEnabled('featureSupervisionAnonymousChatsEnabled'),
-            supervisionOneOnOneChats: oneOnOneEnabled && isEnabled('featureSupervisionOneOnOneChatsEnabled'),
-            audioCalls: isEnabled('featureAudioCallsEnabled'),
-            audioCallsAnonymousChats: anonymousEnabled && isEnabled('featureAudioCallsAnonymousChatsEnabled'),
-            audioCallsOneOnOneChats: oneOnOneEnabled && isEnabled('featureAudioCallsOneOnOneChatsEnabled'),
-            audioCallsGroupChats: groupEnabled && isEnabled('featureAudioCallsGroupChatsEnabled'),
-            audioCallsSupervisionChats: isEnabled('featureAudioCallsSupervisionChatsEnabled'),
-            videoCalls: isEnabled('featureVideoCallsEnabled'),
-            videoCallsAnonymousChats: anonymousEnabled && isEnabled('featureVideoCallsAnonymousChatsEnabled'),
-            videoCallsOneOnOneChats: oneOnOneEnabled && isEnabled('featureVideoCallsOneOnOneChatsEnabled'),
-            videoCallsGroupChats: groupEnabled && isEnabled('featureVideoCallsGroupChatsEnabled'),
-            videoCallsSupervisionChats: supervisionEnabled && isEnabled('featureVideoCallsSupervisionChatsEnabled'),
-            threads: isEnabled('featureThreadsEnabled'),
-            threadsAnonymousChats: anonymousEnabled && isEnabled('featureThreadsAnonymousChatsEnabled'),
-            threadsOneOnOneChats: oneOnOneEnabled && isEnabled('featureThreadsOneOnOneEnabled'),
-            threadsGroupChats: groupEnabled && isEnabled('featureThreadsGroupChatsEnabled'),
-            threadsSupervisionChats: supervisionEnabled && isEnabled('featureThreadsSupervisionChatsEnabled'),
-            voiceMessages: isEnabled('featureVoiceMessagesEnabled'),
-            voiceMessagesAnonymousChats: anonymousEnabled && isEnabled('featureVoiceMessagesAnonymousChatsEnabled'),
-            voiceMessagesOneOnOneChats: oneOnOneEnabled && isEnabled('featureVoiceMessagesOneOnOneChatsEnabled'),
-            voiceMessagesGroupChats: groupEnabled && isEnabled('featureVoiceMessagesGroupChatsEnabled'),
-            voiceMessagesSupervisionChats:
-                supervisionEnabled && isEnabled('featureVoiceMessagesSupervisionChatsEnabled'),
-        },
+    return {
+        anonymousChat: anonymousEnabled,
+        groupChat: groupEnabled,
+        calls: oneOnOneEnabled,
+        supervision: supervisionEnabled,
+        supervisionAnonymousChats: anonymousEnabled && isEnabled('featureSupervisionAnonymousChatsEnabled'),
+        supervisionOneOnOneChats: oneOnOneEnabled && isEnabled('featureSupervisionOneOnOneChatsEnabled'),
+        audioCalls: isEnabled('featureAudioCallsEnabled'),
+        audioCallsAnonymousChats: anonymousEnabled && isEnabled('featureAudioCallsAnonymousChatsEnabled'),
+        audioCallsOneOnOneChats: oneOnOneEnabled && isEnabled('featureAudioCallsOneOnOneChatsEnabled'),
+        audioCallsGroupChats: groupEnabled && isEnabled('featureAudioCallsGroupChatsEnabled'),
+        audioCallsSupervisionChats: isEnabled('featureAudioCallsSupervisionChatsEnabled'),
+        videoCalls: isEnabled('featureVideoCallsEnabled'),
+        videoCallsAnonymousChats: anonymousEnabled && isEnabled('featureVideoCallsAnonymousChatsEnabled'),
+        videoCallsOneOnOneChats: oneOnOneEnabled && isEnabled('featureVideoCallsOneOnOneChatsEnabled'),
+        videoCallsGroupChats: groupEnabled && isEnabled('featureVideoCallsGroupChatsEnabled'),
+        videoCallsSupervisionChats: supervisionEnabled && isEnabled('featureVideoCallsSupervisionChatsEnabled'),
+        threads: isEnabled('featureThreadsEnabled'),
+        threadsAnonymousChats: anonymousEnabled && isEnabled('featureThreadsAnonymousChatsEnabled'),
+        threadsOneOnOneChats: oneOnOneEnabled && isEnabled('featureThreadsOneOnOneEnabled'),
+        threadsGroupChats: groupEnabled && isEnabled('featureThreadsGroupChatsEnabled'),
+        threadsSupervisionChats: supervisionEnabled && isEnabled('featureThreadsSupervisionChatsEnabled'),
+        voiceMessages: isEnabled('featureVoiceMessagesEnabled'),
+        voiceMessagesAnonymousChats: anonymousEnabled && isEnabled('featureVoiceMessagesAnonymousChatsEnabled'),
+        voiceMessagesOneOnOneChats: oneOnOneEnabled && isEnabled('featureVoiceMessagesOneOnOneChatsEnabled'),
+        voiceMessagesGroupChats: groupEnabled && isEnabled('featureVoiceMessagesGroupChatsEnabled'),
+        voiceMessagesSupervisionChats:
+            supervisionEnabled && isEnabled('featureVoiceMessagesSupervisionChatsEnabled'),
     };
+};
+
+const syncMasterTogglesToAdminControls = (
+    formData: { settings?: Record<string, unknown> },
+    controlsAttribute: AdminControlsAttribute,
+) => {
+    const next = { ...formData, settings: { ...(formData?.settings ?? {}) } };
+    const { settings } = next;
+
+    const existingControls = settings[controlsAttribute];
+    settings[controlsAttribute] = {
+        ...(typeof existingControls === 'object' && existingControls !== null
+            ? (existingControls as Record<string, unknown>)
+            : {}),
+        allowedPermissionToggles: buildAllowedPermissionTogglesFromFeatureSettings(settings),
+    };
+
     return next;
 };
 
-const buildTenantAdminControlsPayload = (
+const buildAdminControlsPayload = (
     formData: { settings?: Record<string, unknown> },
+    controlsAttribute: AdminControlsAttribute,
     existingToggles?: PermissionToggleVisibility,
     permissionsPageEnabled = true,
-): TenantAdminControls => {
-    const synced = syncMasterTogglesToTenantAdminControls(formData);
-    const syncedControls = synced.settings?.tenantAdminControls as TenantAdminControls | undefined;
+) => {
+    const synced = syncMasterTogglesToAdminControls(formData, controlsAttribute);
+    const syncedControls = synced.settings?.[controlsAttribute] as
+        | { allowedPermissionToggles?: PermissionToggleVisibility }
+        | undefined;
 
     return {
         permissionsPageEnabled,
@@ -340,6 +368,20 @@ const buildTenantAdminControlsPayload = (
         },
     };
 };
+
+const buildTenantAdminControlsPayload = (
+    formData: { settings?: Record<string, unknown> },
+    existingToggles?: PermissionToggleVisibility,
+    permissionsPageEnabled = true,
+): TenantAdminControls =>
+    buildAdminControlsPayload(formData, 'tenantAdminControls', existingToggles, permissionsPageEnabled);
+
+const buildAgencyAdminControlsPayload = (
+    formData: { settings?: Record<string, unknown> },
+    existingToggles?: PermissionToggleVisibility,
+    permissionsPageEnabled = true,
+): AgencyAdminControls =>
+    buildAdminControlsPayload(formData, 'agencyAdminControls', existingToggles, permissionsPageEnabled);
 
 type ChatTypeCardDef = {
     key: 'oneOnOne' | 'liveChat' | 'group' | 'groupInternal';
@@ -499,7 +541,8 @@ const isSubToggleDisabled = (card: ChatTypeCardDef, toggleField: string[], maste
 };
 
 type PermissionsSettingsViewProps = {
-    tenantId: string;
+    tenantId?: string;
+    agencyId?: string;
     disableSubTogglesWhenMasterOff: boolean;
     excludeCardKeys?: PermissionsSettingsCommonArgs['excludeCardKeys'];
     isLoading: boolean;
@@ -512,6 +555,7 @@ type PermissionsSettingsViewProps = {
 
 const PermissionsSettingsView = ({
     tenantId,
+    agencyId,
     disableSubTogglesWhenMasterOff,
     excludeCardKeys,
     isLoading,
@@ -594,11 +638,14 @@ const PermissionsSettingsView = ({
 
     return (
         <CardEditable
-            key={`permissions-${tenantId}-${formStateKey}`}
+            key={`permissions-${agencyId ? `agency-${agencyId}` : tenantId}-${formStateKey}`}
             className={styles.transparentCardWrapper}
             isLoading={isLoading}
             initialValues={initialValues}
             titleKey="tenants.permissions.title"
+            editMode
+            hideSaveButton
+            hideCancelButton
             onSave={onSave}
         >
             <div className={styles.cardGridOuter}>
@@ -725,9 +772,10 @@ const PermissionsSettingsView = ({
 };
 
 const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
-    const { t } = useTranslation();
-    const { data: platformControls, isLoading } = useTenantAdminControls(true);
+    const { data: platformControls, isLoading: isLoadingTenantControls } = useTenantAdminControls(true);
+    const { data: agencyPlatformControls, isLoading: isLoadingAgencyControls } = useAgencyAdminControls(true);
     const { mutate: updateTenantAdminControls } = useTenantAdminControlsMutation({ successMessageKey: false });
+    const { mutate: updateAgencyAdminControls } = useAgencyAdminControlsMutation({ successMessageKey: false });
 
     const allowedPermissionToggles = platformControls?.allowedPermissionToggles;
     const restrictedFields = useMemo(() => new Set<string>(), []);
@@ -737,12 +785,26 @@ const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Permission
             updateTenantAdminControls(
                 buildTenantAdminControlsPayload(
                     formData,
-                    allowedPermissionToggles,
+                    platformControls?.allowedPermissionToggles,
                     platformControls?.permissionsPageEnabled ?? true,
-                )
+                ),
+            );
+            updateAgencyAdminControls(
+                buildAgencyAdminControlsPayload(
+                    formData,
+                    agencyPlatformControls?.allowedPermissionToggles,
+                    agencyPlatformControls?.permissionsPageEnabled ?? true,
+                ),
             );
         },
-        [updateTenantAdminControls, allowedPermissionToggles, platformControls?.permissionsPageEnabled, t],
+        [
+            updateTenantAdminControls,
+            updateAgencyAdminControls,
+            platformControls?.allowedPermissionToggles,
+            platformControls?.permissionsPageEnabled,
+            agencyPlatformControls?.allowedPermissionToggles,
+            agencyPlatformControls?.permissionsPageEnabled,
+        ],
     );
 
     const initialValues = useMemo(
@@ -751,7 +813,7 @@ const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Permission
         }),
         [allowedPermissionToggles],
     );
-    const formStateKey = 'platform'
+    const formStateKey = 'platform';
 
     const handleToggleUpdate = useCallback<ToggleAfterChangeHandler>(
         (fieldPath, value, currentFormData) => {
@@ -779,6 +841,89 @@ const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Permission
             tenantId={tenantId}
             disableSubTogglesWhenMasterOff={false}
             excludeCardKeys={excludeCardKeys}
+            isLoading={isLoadingTenantControls || isLoadingAgencyControls}
+            initialValues={initialValues}
+            formStateKey={formStateKey}
+            restrictedFields={restrictedFields}
+            onToggleUpdate={handleToggleUpdate}
+            onSave={handleSave}
+        />
+    );
+};
+
+const AgencyPermissionsSettings = ({
+    agencyId,
+    excludeCardKeys,
+    superAdminMode = false,
+}: {
+    agencyId: string;
+    excludeCardKeys?: PermissionsSettingsCommonArgs['excludeCardKeys'];
+    superAdminMode?: boolean;
+}) => {
+    const { data: agencyData, isLoading } = useAgencyData({ id: agencyId });
+    const { mutate: updateAgency } = useAgencyUpdate(agencyId);
+
+    const allowedPermissionToggles = agencyData?.settings?.agencyAdminControls?.allowedPermissionToggles;
+    const restrictedFields = useMemo(
+        () => (superAdminMode ? new Set<string>() : getForcedOffFields(allowedPermissionToggles)),
+        [superAdminMode, allowedPermissionToggles],
+    );
+
+    const initialValues = useMemo(
+        () => ({
+            settings: {
+                ...DEFAULT_PERMISSION_SETTINGS,
+                ...applyForcedOffFields(agencyData?.settings, restrictedFields),
+            },
+        }),
+        [agencyData?.settings, restrictedFields],
+    );
+
+    const formStateKey = useMemo(
+        () => Array.from(restrictedFields).sort().join('|'),
+        [restrictedFields],
+    );
+
+    const handleToggleUpdate = useCallback<ToggleAfterChangeHandler>(
+        (fieldPath, value, currentFormData) => {
+            if (!agencyData) return;
+
+            const toggleUpdate = buildTogglePayload(fieldPath, value) as { settings?: Record<string, boolean> };
+            updateAgency({
+                settings: applyForcedOffFields(
+                    {
+                        ...agencyData.settings,
+                        ...(currentFormData?.settings ?? {}),
+                        ...toggleUpdate.settings,
+                    },
+                    restrictedFields,
+                ),
+            });
+        },
+        [agencyData, restrictedFields, updateAgency],
+    );
+
+    const handleSave = useCallback(
+        (formData: unknown) => {
+            const savedFormData = formData as { settings?: Record<string, unknown> };
+            updateAgency({
+                settings: applyForcedOffFields(
+                    {
+                        ...agencyData?.settings,
+                        ...savedFormData.settings,
+                    },
+                    restrictedFields,
+                ),
+            });
+        },
+        [agencyData?.settings, updateAgency, restrictedFields],
+    );
+
+    return (
+        <PermissionsSettingsView
+            agencyId={agencyId}
+            disableSubTogglesWhenMasterOff={!superAdminMode}
+            excludeCardKeys={excludeCardKeys}
             isLoading={isLoading}
             initialValues={initialValues}
             formStateKey={formStateKey}
@@ -789,7 +934,11 @@ const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Permission
     );
 };
 
-const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
+const TenantPermissionsSettings = ({
+    tenantId,
+    excludeCardKeys,
+    superAdminMode = false,
+}: PermissionsSettingsCommonArgs & { superAdminMode?: boolean }) => {
     const { data: tenantData, isLoading } = useSingleTenantData({ id: tenantId });
     const { mutate: updateTenantSettings } = useTenantAdminDataMutation({
         id: tenantId,
@@ -798,8 +947,8 @@ const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSet
 
     const allowedPermissionToggles = tenantData?.settings?.tenantAdminControls?.allowedPermissionToggles;
     const restrictedFields = useMemo(
-        () => getForcedOffFields(allowedPermissionToggles),
-        [allowedPermissionToggles],
+        () => (superAdminMode ? new Set<string>() : getForcedOffFields(allowedPermissionToggles)),
+        [superAdminMode, allowedPermissionToggles],
     );
 
     const initialValues = useMemo(
@@ -850,7 +999,7 @@ const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSet
     return (
         <PermissionsSettingsView
             tenantId={tenantId}
-            disableSubTogglesWhenMasterOff
+            disableSubTogglesWhenMasterOff={!superAdminMode}
             excludeCardKeys={excludeCardKeys}
             isLoading={isLoading}
             initialValues={initialValues}
@@ -862,5 +1011,32 @@ const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSet
     );
 };
 
-export const PermissionsSettings = ({ superAdminControlMode = false, ...props }: PermissionsSettingsArgs) =>
-    superAdminControlMode ? <SuperAdminPermissionsSettings {...props} /> : <TenantPermissionsSettings {...props} />;
+export const PermissionsSettings = ({
+    mode,
+    tenantId,
+    agencyId,
+    excludeCardKeys,
+    superAdminMode = false,
+}: PermissionsSettingsArgs) => {
+    switch (mode) {
+        case 'agency':
+            return (
+                <AgencyPermissionsSettings
+                    agencyId={agencyId!}
+                    excludeCardKeys={excludeCardKeys}
+                    superAdminMode={superAdminMode}
+                />
+            );
+        case 'superAdmin':
+            return <SuperAdminPermissionsSettings tenantId={tenantId!} excludeCardKeys={excludeCardKeys} />;
+        case 'tenant':
+        default:
+            return (
+                <TenantPermissionsSettings
+                    tenantId={tenantId!}
+                    excludeCardKeys={excludeCardKeys}
+                    superAdminMode={superAdminMode}
+                />
+            );
+    }
+};

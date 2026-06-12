@@ -19,8 +19,9 @@ export const featureFlags = {
 
 export const supportedLanguages = ['de', 'en', 'fr', 'ru', 'tr', 'uk', 'ti'];
 
-export const agencyDataAgencyId = (agencyId: string) => `${mainURL}/service/agencyadmin/agencies/${agencyId}`;
-export const agencyEndpointBase = `${mainURL}/service/agencyadmin/agencies`;
+export const agencyServiceAdminEndpoint = `${mainURL}/service/agencyadmin`;
+export const agencyDataAgencyId = (agencyId: string) => `${agencyServiceAdminEndpoint}/agencies/${agencyId}`;
+export const agencyEndpointBase = `${agencyServiceAdminEndpoint}/agencies`;
 export const agencyEventTypes = (agencyId: string) =>
     `${mainURL}/service/appointservice/agencies/${agencyId}/eventTypes`;
 export const agencyPostcodeRangeEndpointBase = `${mainURL}/service/agencyadmin/postcoderanges`;

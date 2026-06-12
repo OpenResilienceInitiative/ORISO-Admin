@@ -1,26 +1,26 @@
 import { notification } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient, UseMutationOptions } from 'react-query';
-import { updateTenantAdminControls } from '../api/tenant/updateTenantAdminControls';
-import { TenantAdminControls } from '../types/TenantAdminControls';
-import { TENANT_ADMIN_CONTROLS_KEY } from './useTenantAdminControls.hook';
+import { updateAgencyAdminControls } from '../api/agency/updateAgencyAdminControls';
+import { AgencyAdminControls } from '../types/AgencyAdminControls';
+import { AGENCY_ADMIN_CONTROLS_KEY } from './useAgencyAdminControls.hook';
 
-interface TenantAdminControlsMutationOptions
-    extends UseMutationOptions<unknown, unknown, Partial<TenantAdminControls>> {
+interface AgencyAdminControlsMutationOptions
+    extends UseMutationOptions<AgencyAdminControls, unknown, Partial<AgencyAdminControls>> {
     successMessageKey?: string | false;
 }
 
-export const useTenantAdminControlsMutation = ({
-    successMessageKey = 'tenants.message.setting.update',
+export const useAgencyAdminControlsMutation = ({
+    successMessageKey = 'tenants.message.settingsUpdate',
     ...options
-}: TenantAdminControlsMutationOptions = {}) => {
+}: AgencyAdminControlsMutationOptions = {}) => {
     const { t } = useTranslation();
     const queryClient = useQueryClient();
 
-    return useMutation(updateTenantAdminControls, {
+    return useMutation(updateAgencyAdminControls, {
         ...options,
         onSuccess: (responseData, updatedData) => {
-            queryClient.setQueryData([TENANT_ADMIN_CONTROLS_KEY], responseData);
+            queryClient.setQueryData([AGENCY_ADMIN_CONTROLS_KEY], responseData);
             if (successMessageKey !== false) {
                 notification.success({
                     message: t(successMessageKey),

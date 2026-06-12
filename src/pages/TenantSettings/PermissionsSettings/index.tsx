@@ -5,5 +5,10 @@ export const PermissionsSettingsPage = () => {
     const { tenantId, isSuperAdmin } = useUserRoles();
     const resolvedTenantId = tenantId && tenantId > 0 ? `${tenantId}` : '';
 
-    return <PermissionsSettings tenantId={resolvedTenantId} superAdminControlMode={isSuperAdmin} />;
+    return (
+        <PermissionsSettings
+            mode={isSuperAdmin ? 'superAdmin' : 'tenant'}
+            tenantId={resolvedTenantId}
+        />
+    );
 };

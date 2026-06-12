@@ -27,6 +27,7 @@ import { DataProcessingAgreement } from '../../../components/Tenants/LegalSettin
 import styles from '../../../components/Page/styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { PermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -67,6 +68,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { data: postCodes, isLoading: isLoadingPostCodes } = useAgencyPostCodesData({ id });
     const { isEnabled } = useFeatureContext();
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
+    const { isSuperAdmin } = useUserRoles();
     const [form] = Form.useForm();
     const { mutate } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
@@ -93,28 +95,28 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
 
     const demographicsInitialValues = isEnabled(FeatureFlag.Demographics)
         ? {
-              demographics: {
-                  age:
-                      agencyData?.demographics?.ageFrom !== undefined
-                          ? [agencyData.demographics.ageFrom, agencyData.demographics.ageTo]
-                          : [DEFAULT_MIN_AGE, DEFAULT_MAX_AGE],
-                  genders: (agencyData?.demographics?.genders || Object.values(Gender)).map((gender) => ({
-                      value: gender,
-                      label: t(`agency.gender.option.${gender.toLowerCase()}`),
-                  })),
-              },
-          }
+            demographics: {
+                age:
+                    agencyData?.demographics?.ageFrom !== undefined
+                        ? [agencyData.demographics.ageFrom, agencyData.demographics.ageTo]
+                        : [DEFAULT_MIN_AGE, DEFAULT_MAX_AGE],
+                genders: (agencyData?.demographics?.genders || Object.values(Gender)).map((gender) => ({
+                    value: gender,
+                    label: t(`agency.gender.option.${gender.toLowerCase()}`),
+                })),
+            },
+        }
         : {};
 
     const counsellingRelationsInitialValues = isReleaseToggleEnabled(ReleaseToggle.COUNSELLING_RELATIONS)
         ? {
-              counsellingRelations: (agencyData?.counsellingRelations || Object.values(CounsellingRelation)).map(
-                  (relation) => ({
-                      value: relation,
-                      label: t(`agency.relation.option.${relation.replace('_COUNSELLING', '').toLowerCase()}`),
-                  }),
-              ),
-          }
+            counsellingRelations: (agencyData?.counsellingRelations || Object.values(CounsellingRelation)).map(
+                (relation) => ({
+                    value: relation,
+                    label: t(`agency.relation.option.${relation.replace('_COUNSELLING', '').toLowerCase()}`),
+                }),
+            ),
+        }
         : {};
 
     const initialValues = {
@@ -148,10 +150,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 demographics:
                     mergedFormData.demographics?.age !== undefined
                         ? {
-                              ageFrom: mergedFormData.demographics.age[0],
-                              ageTo: mergedFormData.demographics.age[1],
-                              genders: mergedFormData.demographics.genders.map(({ value }) => value),
-                          }
+                            ageFrom: mergedFormData.demographics.age[0],
+                            ageTo: mergedFormData.demographics.age[1],
+                            genders: mergedFormData.demographics.genders.map(({ value }) => value),
+                        }
                         : mergedFormData.demographics,
                 topicIds: mergedFormData.topicIds?.map(({ value }) => value),
                 offline: !mergedFormData.online,
@@ -283,7 +285,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             <Col xs={12}>
                 <h3 className={styles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
             </Col>
-            <Col xs={12}>{agencyTenantId ? <PermissionsSettings tenantId={agencyTenantId} /> : null}</Col>
+            <Col xs={12}>
+                {id ? <PermissionsSettings mode="agency" agencyId={id} superAdminMode={isSuperAdmin} /> : null}
+            </Col>
         </Row>
     );
 

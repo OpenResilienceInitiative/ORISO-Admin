@@ -1,8 +1,8 @@
+import { AgencyData } from '../../types/agency';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData, FETCH_SUCCESS } from '../fetchData';
 import { agencyEndpointBase } from '../../appConfig';
-import { AgencyData } from '../../types/agency';
-import updateAgencyType from './updateAgencyType';
 import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant';
+import updateAgencyType from './updateAgencyType';
 import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
 
 /**
@@ -26,7 +26,7 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
 
     const topicIds = topics
         ?.map((topic) => (typeof topic === 'string' ? topic : topic?.id))
-        .filter((id) => !Number.isNaN(Number(id)));
+        .filter((topicId) => !Number.isNaN(Number(topicId)));
 
     const agencyDataRequestBody = {
         dioceseId: formInput.dioceseId ? parseInt(formInput.dioceseId, 10) : 0,
@@ -37,13 +37,14 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         city: formInput.city,
         consultingType: consultingTypeId,
         teamAgency: formInput.teamAgency,
-        offline: !formInput.online, // Convert from 'online' form field to 'offline' API field
+        offline: formInput.online !== undefined ? !formInput.online : formInput.offline,
         external: false,
         demographics: formInput.demographics,
         counsellingRelations: formInput.counsellingRelations,
         dataProtection: formInput.dataProtection,
         content: formInput.content,
         agencyLogo: formInput.agencyLogo,
+        settings: formInput.settings,
     };
 
     return fetchData({
@@ -53,7 +54,9 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_SUCCESS.CONTENT],
         bodyData: JSON.stringify(agencyDataRequestBody),
     }).then(async (response) => {
-        await updateAgencyPostCodeRange(agencyId, formInput.postCodes, '');
+        if (formInput.postCodes !== undefined) {
+            await updateAgencyPostCodeRange(agencyId, formInput.postCodes, '');
+        }
         // eslint-disable-next-line no-underscore-dangle
         return response?._embedded;
     });
