@@ -1,8 +1,11 @@
 import { useCallback, useMemo } from 'react';
+import { useAgencyAdminControls } from '../../../../hooks/useAgencyAdminControls.hook';
+import { useAgencyAdminControlsMutation } from '../../../../hooks/useAgencyAdminControlsMutation.hook';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
 import { useTenantAdminControlsMutation } from '../../../../hooks/useTenantAdminControlsMutation.hook';
 import { buildTogglePayload } from './permissionsToggleLogic';
 import {
+    buildAgencyAdminControlsPayload,
     applyVisibleTogglesAsValues,
     buildTenantAdminControlsPayload,
 } from './permissionsSettingsUtils';
@@ -10,8 +13,10 @@ import { PermissionsSettingsView } from './PermissionsSettingsView';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 
 export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
-    const { data: platformControls, isLoading } = useTenantAdminControls(true);
+    const { data: platformControls, isLoading: isLoadingTenantControls } = useTenantAdminControls(true);
+    const { data: agencyPlatformControls, isLoading: isLoadingAgencyControls } = useAgencyAdminControls(true);
     const { mutate: updateTenantAdminControls } = useTenantAdminControlsMutation({ successMessageKey: false });
+    const { mutate: updateAgencyAdminControls } = useAgencyAdminControlsMutation({ successMessageKey: false });
 
     const allowedPermissionToggles = platformControls?.allowedPermissionToggles;
     const restrictedFields = useMemo(() => new Set<string>(), []);
@@ -25,8 +30,22 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
                     platformControls?.permissionsPageEnabled ?? true,
                 ),
             );
+            updateAgencyAdminControls(
+                buildAgencyAdminControlsPayload(
+                    formData,
+                    agencyPlatformControls?.allowedPermissionToggles,
+                    agencyPlatformControls?.permissionsPageEnabled ?? true,
+                ),
+            );
         },
-        [updateTenantAdminControls, allowedPermissionToggles, platformControls?.permissionsPageEnabled],
+        [
+            updateTenantAdminControls,
+            updateAgencyAdminControls,
+            allowedPermissionToggles,
+            platformControls?.permissionsPageEnabled,
+            agencyPlatformControls?.allowedPermissionToggles,
+            agencyPlatformControls?.permissionsPageEnabled,
+        ],
     );
 
     const initialValues = useMemo(
@@ -59,10 +78,10 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
 
     return (
         <PermissionsSettingsView
-            tenantId={tenantId}
+            tenantId={tenantId || 'platform'}
             disableSubTogglesWhenMasterOff={false}
             excludeCardKeys={excludeCardKeys}
-            isLoading={isLoading}
+            isLoading={isLoadingTenantControls || isLoadingAgencyControls}
             initialValues={initialValues}
             formStateKey="platform"
             restrictedFields={restrictedFields}

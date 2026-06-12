@@ -7,10 +7,14 @@ export type ToggleAfterChangeHandler = (
 export type ChatTypeCardKey = 'oneOnOne' | 'liveChat' | 'group' | 'groupInternal';
 
 export type PermissionsSettingsCommonArgs = {
-    tenantId: string;
+    tenantId?: string;
+    /** When set, edits agency-level feature flags using agency data only. */
+    agencyId?: string;
     /** Hide chat-type cards by key (e.g. liveChat on super-admin settings — managed under Global Configs). */
     excludeCardKeys?: Array<ChatTypeCardKey>;
 };
+
+export type PermissionsSettingsMode = 'superAdmin' | 'tenant' | 'agency';
 
 export type ChatTypeCardDef = {
     key: ChatTypeCardKey;

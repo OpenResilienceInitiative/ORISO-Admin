@@ -1,23 +1,26 @@
 import { useCallback, useMemo } from 'react';
-import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
-import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
+import { useAgencyData } from '../../../../hooks/useAgencyData';
+import { useAgencyUpdate } from '../../../../hooks/useAgencyUpdate';
 import { buildTogglePayload } from './permissionsToggleLogic';
 import { applyForcedOffFields, DEFAULT_PERMISSION_SETTINGS, getForcedOffFields } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
-import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
+import type { ChatTypeCardKey, ToggleAfterChangeHandler } from './types';
 
-export const TenantPermissionsSettings = ({
-    tenantId,
+type AgencyPermissionsSettingsProps = {
+    agencyId: string;
+    excludeCardKeys?: Array<ChatTypeCardKey>;
+    superAdminMode?: boolean;
+};
+
+export const AgencyPermissionsSettings = ({
+    agencyId,
     excludeCardKeys,
     superAdminMode = false,
-}: PermissionsSettingsCommonArgs & { superAdminMode?: boolean }) => {
-    const { data: tenantData, isLoading } = useSingleTenantData({ id: tenantId });
-    const { mutate: updateTenantSettings } = useTenantAdminDataMutation({
-        id: tenantId,
-        successMessageKey: 'tenants.message.settingsUpdate',
-    });
+}: AgencyPermissionsSettingsProps) => {
+    const { data: agencyData, isLoading } = useAgencyData({ id: agencyId });
+    const { mutate: updateAgency } = useAgencyUpdate(agencyId);
 
-    const allowedPermissionToggles = tenantData?.settings?.tenantAdminControls?.allowedPermissionToggles;
+    const allowedPermissionToggles = agencyData?.settings?.agencyAdminControls?.allowedPermissionToggles;
     const restrictedFields = useMemo(
         () => (superAdminMode ? new Set<string>() : getForcedOffFields(allowedPermissionToggles)),
         [superAdminMode, allowedPermissionToggles],
@@ -25,26 +28,31 @@ export const TenantPermissionsSettings = ({
 
     const initialValues = useMemo(
         () => ({
-            ...tenantData,
             settings: {
                 ...DEFAULT_PERMISSION_SETTINGS,
-                ...applyForcedOffFields(tenantData?.settings ?? {}, restrictedFields),
+                ...applyForcedOffFields(agencyData?.settings, restrictedFields),
             },
         }),
-        [tenantData, restrictedFields],
+        [agencyData?.settings, restrictedFields],
     );
 
-    const formStateKey = useMemo(() => Array.from(restrictedFields).sort().join('|'), [restrictedFields]);
+    const formStateKey = useMemo(
+        () =>
+            [agencyId, superAdminMode ? 'super-admin' : 'agency-admin', ...Array.from(restrictedFields).sort()].join(
+                '|',
+            ),
+        [agencyId, superAdminMode, restrictedFields],
+    );
 
     const handleToggleUpdate = useCallback<ToggleAfterChangeHandler>(
         (fieldPath, value, currentFormData) => {
-            if (!tenantData) return;
+            if (!agencyData) return;
 
             const toggleUpdate = buildTogglePayload(fieldPath, value) as { settings?: Record<string, boolean> };
-            updateTenantSettings({
+            updateAgency({
                 settings: applyForcedOffFields(
                     {
-                        ...tenantData.settings,
+                        ...agencyData.settings,
                         ...(currentFormData?.settings ?? {}),
                         ...toggleUpdate.settings,
                     },
@@ -52,22 +60,28 @@ export const TenantPermissionsSettings = ({
                 ),
             });
         },
-        [tenantData, updateTenantSettings, restrictedFields],
+        [agencyData, restrictedFields, updateAgency],
     );
 
     const handleSave = useCallback(
         (formData: unknown) => {
             const savedFormData = formData as { settings?: Record<string, unknown> };
-            updateTenantSettings({
-                settings: applyForcedOffFields(savedFormData.settings, restrictedFields),
+            updateAgency({
+                settings: applyForcedOffFields(
+                    {
+                        ...agencyData?.settings,
+                        ...savedFormData.settings,
+                    },
+                    restrictedFields,
+                ),
             });
         },
-        [updateTenantSettings, restrictedFields],
+        [agencyData?.settings, updateAgency, restrictedFields],
     );
 
     return (
         <PermissionsSettingsView
-            tenantId={tenantId}
+            tenantId={`agency-${agencyId}`}
             disableSubTogglesWhenMasterOff={!superAdminMode}
             excludeCardKeys={excludeCardKeys}
             isLoading={isLoading}

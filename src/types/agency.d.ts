@@ -1,5 +1,6 @@
 import { PostCodeRange } from '../api/agency/getAgencyPostCodeRange';
 import { CounsellingRelation } from '../enums/CounsellingRelation';
+import { AgencyFeatureSettings } from './AgencySettings';
 import { TopicData } from './topic';
 
 export interface AgencyDemographicsData {
@@ -59,4 +60,5 @@ export interface AgencyData {
     agencyLogo: string | null;
     tenantId: number;
     tenantName?: string;
+    settings?: AgencyFeatureSettings;
 }

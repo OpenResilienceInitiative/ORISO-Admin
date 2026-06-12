@@ -19,6 +19,7 @@ export const clusterFeatureFlags = {
 
 export const supportedLanguages = ['de', 'en', 'fr', 'ru', 'tr', 'uk', 'ti'];
 
+export const agencyServiceAdminEndpoint = `${agencyServiceURL}/service/agencyadmin`;
 export const agencyDataAgencyId = (agencyId: string) => `${agencyServiceURL}/service/agencyadmin/agencies/${agencyId}`;
 export const agencyEndpointBase = `${agencyServiceURL}/service/agencyadmin/agencies`;
 export const agencyPostcodeRangeEndpointBase = `${agencyServiceURL}/service/agencyadmin/postcoderanges`;

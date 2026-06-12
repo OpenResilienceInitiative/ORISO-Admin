@@ -1,4 +1,5 @@
 import { PermissionToggleVisibility } from '../../../../types/PermissionToggleVisibility';
+import { AgencyAdminControls } from '../../../../types/AgencyAdminControls';
 import { TenantAdminControls } from '../../../../types/TenantAdminControls';
 import type { TenantSettings } from '../../../../types/tenant';
 import type { ChatTypeCardDef } from './types';
@@ -160,7 +161,12 @@ export const applyVisibleTogglesAsValues = (visibleToggles?: PermissionToggleVis
     return settings;
 };
 
-export const syncMasterTogglesToTenantAdminControls = (formData: { settings?: Record<string, unknown> }) => {
+type AdminControlsAttribute = 'tenantAdminControls' | 'agencyAdminControls';
+
+const syncMasterTogglesToAdminControls = (
+    formData: { settings?: Record<string, unknown> },
+    controlsAttribute: AdminControlsAttribute,
+) => {
     const settings: Record<string, unknown> = { ...(formData?.settings ?? {}) };
     const next = { ...formData, settings };
     const isEnabled = (key: string) => settings[key] !== false;
@@ -168,10 +174,10 @@ export const syncMasterTogglesToTenantAdminControls = (formData: { settings?: Re
     const groupEnabled = isEnabled('featureGroupChatV2Enabled');
     const oneOnOneEnabled = isEnabled('featureCallsEnabled');
     const supervisionEnabled = isEnabled('featureSupervisionEnabled');
-    const existingTenantAdminControls = (settings.tenantAdminControls as Record<string, unknown> | undefined) ?? {};
+    const existingAdminControls = (settings[controlsAttribute] as Record<string, unknown> | undefined) ?? {};
 
-    settings.tenantAdminControls = {
-        ...existingTenantAdminControls,
+    settings[controlsAttribute] = {
+        ...existingAdminControls,
         allowedPermissionToggles: {
             anonymousChat: anonymousEnabled,
             groupChat: groupEnabled,
@@ -205,6 +211,9 @@ export const syncMasterTogglesToTenantAdminControls = (formData: { settings?: Re
     return next;
 };
 
+export const syncMasterTogglesToTenantAdminControls = (formData: { settings?: Record<string, unknown> }) =>
+    syncMasterTogglesToAdminControls(formData, 'tenantAdminControls');
+
 export const buildTenantAdminControlsPayload = (
     formData: { settings?: Record<string, unknown> },
     existingToggles?: PermissionToggleVisibility,
@@ -212,6 +221,23 @@ export const buildTenantAdminControlsPayload = (
 ): TenantAdminControls => {
     const synced = syncMasterTogglesToTenantAdminControls(formData);
     const syncedControls = synced.settings?.tenantAdminControls as TenantAdminControls | undefined;
+
+    return {
+        permissionsPageEnabled,
+        allowedPermissionToggles: {
+            ...existingToggles,
+            ...syncedControls?.allowedPermissionToggles,
+        },
+    };
+};
+
+export const buildAgencyAdminControlsPayload = (
+    formData: { settings?: Record<string, unknown> },
+    existingToggles?: PermissionToggleVisibility,
+    permissionsPageEnabled = true,
+): AgencyAdminControls => {
+    const synced = syncMasterTogglesToAdminControls(formData, 'agencyAdminControls');
+    const syncedControls = synced.settings?.agencyAdminControls as AgencyAdminControls | undefined;
 
     return {
         permissionsPageEnabled,

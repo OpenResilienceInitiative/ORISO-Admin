@@ -319,10 +319,14 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     };
 
     const renderFunctionalitiesSettings = () => (
-        <>
-            <h3 className={styles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
-            {agencyTenantId ? <PermissionsSettings tenantId={agencyTenantId} /> : null}
-        </>
+        <Row gutter={[20, 10]}>
+            <Col xs={12}>
+                <h3 className={styles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
+            </Col>
+            <Col xs={12}>
+                {id ? <PermissionsSettings mode="agency" agencyId={id} superAdminMode={isSuperAdmin} /> : null}
+            </Col>
+        </Row>
     );
 
     const renderLegacyFunctionalitiesSettings = () => (
