@@ -17,6 +17,56 @@ import { useUserData } from '../../hooks/useUserData.hook';
 import { sendGlobalSmtpTestEmail } from '../../api/settings/sendGlobalSmtpTestEmail';
 import styles from '../Tenants/Edit/GlobalSettings/styles.module.scss';
 
+type GlobalSmtpSettingsFormValues = {
+    globalFeatureSystemNotificationEmailsEnabled: boolean;
+    globalSmtpEnabled: boolean;
+    globalSmtpHost: string;
+    globalSmtpPort: string;
+    globalSmtpSecure: boolean;
+    globalSmtpUsername: string;
+    globalSmtpPassword: string;
+    globalSmtpFrom: string;
+    globalSmtpEmailThemeColor: string;
+};
+
+const GLOBAL_SMTP_SETTING_KEYS: Array<keyof GlobalSmtpSettingsFormValues> = [
+    'globalFeatureSystemNotificationEmailsEnabled',
+    'globalSmtpEnabled',
+    'globalSmtpHost',
+    'globalSmtpPort',
+    'globalSmtpSecure',
+    'globalSmtpUsername',
+    'globalSmtpPassword',
+    'globalSmtpFrom',
+    'globalSmtpEmailThemeColor',
+];
+
+const normalizeGlobalSmtpSettings = (values: Partial<GlobalSmtpSettingsFormValues>): GlobalSmtpSettingsFormValues => ({
+    globalFeatureSystemNotificationEmailsEnabled: values.globalFeatureSystemNotificationEmailsEnabled ?? false,
+    globalSmtpEnabled: values.globalSmtpEnabled ?? false,
+    globalSmtpHost: values.globalSmtpHost ?? '',
+    globalSmtpPort: String(values.globalSmtpPort ?? '587'),
+    globalSmtpSecure: values.globalSmtpSecure ?? false,
+    globalSmtpUsername: values.globalSmtpUsername ?? '',
+    globalSmtpPassword: values.globalSmtpPassword ?? '',
+    globalSmtpFrom: values.globalSmtpFrom ?? '',
+    globalSmtpEmailThemeColor: (values.globalSmtpEmailThemeColor ?? '#0f3b8f').toLowerCase(),
+});
+
+const getChangedGlobalSmtpSettings = (
+    formData: Partial<GlobalSmtpSettingsFormValues>,
+    initial: GlobalSmtpSettingsFormValues,
+): Partial<GlobalSmtpSettingsFormValues> => {
+    const normalizedForm = normalizeGlobalSmtpSettings(formData);
+
+    return Object.fromEntries(
+        GLOBAL_SMTP_SETTING_KEYS.filter((key) => normalizedForm[key] !== initial[key]).map((key) => [
+            key,
+            normalizedForm[key],
+        ]),
+    ) as Partial<GlobalSmtpSettingsFormValues>;
+};
+
 export const GlobalSettingsPage = () => {
     return (
         <Page>
@@ -78,20 +128,18 @@ export const GlobalSmtpSettingsPage = () => {
     const { data: userData } = useUserData();
     const { mutate, isLoading } = useSettingsAdminMutation();
     const [isTestSending, setIsTestSending] = useState(false);
-    const initialValues = useMemo(
-        () => ({
-            globalFeatureSystemNotificationEmailsEnabled:
-                settings.globalFeatureSystemNotificationEmailsEnabled ?? false,
-            globalSmtpEnabled: settings.globalSmtpEnabled ?? false,
-            globalSmtpHost: settings.globalSmtpHost ?? '',
-            globalSmtpPort: settings.globalSmtpPort ?? '587',
-            globalSmtpSecure: settings.globalSmtpSecure ?? false,
-            globalSmtpUsername: settings.globalSmtpUsername ?? '',
-            globalSmtpPassword: settings.globalSmtpPassword ?? '',
-            globalSmtpFrom: settings.globalSmtpFrom ?? '',
-            globalSmtpEmailThemeColor: settings.globalSmtpEmailThemeColor ?? '#0f3b8f',
-        }),
-        [settings],
+    const initialValues = useMemo(() => normalizeGlobalSmtpSettings(settings), [settings]);
+    const handleSave = useCallback(
+        (formData: Partial<GlobalSmtpSettingsFormValues>) => {
+            const changedSettings = getChangedGlobalSmtpSettings(formData, initialValues);
+
+            if (Object.keys(changedSettings).length === 0) {
+                return;
+            }
+
+            mutate(changedSettings);
+        },
+        [initialValues, mutate],
     );
     const handleSendTestEmail = useCallback(async () => {
         const values = form.getFieldsValue(true);
@@ -152,7 +200,7 @@ export const GlobalSmtpSettingsPage = () => {
                     isLoading={isLoading}
                     initialValues={initialValues}
                     titleKey="globalSettings.smtp.title"
-                    onSave={mutate}
+                    onSave={handleSave}
                     formProp={form}
                 >
                     <div className={styles.checkGroup}>
