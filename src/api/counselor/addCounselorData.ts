@@ -1,6 +1,5 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { counselorEndpoint } from '../../appConfig';
-import { encodeUsername } from '../../utils/encryptionHelpers';
 import { CounselorData } from '../../types/counselor';
 import { putAgenciesForCounselor } from '../agency/putAgenciesForCounselor';
 

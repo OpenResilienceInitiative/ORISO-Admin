@@ -1,0 +1,519 @@
+.seedInputs {
+    display: grid;
+    gap: 12px;
+
+    :global(.colorIndicator) {
+        width: 36px;
+        height: 36px;
+        border: 1px solid rgb(0 0 0 / 10%);
+        border-radius: 50%;
+    }
+}
+
+.tooPaleAlert {
+    margin-top: 12px;
+}
+
+.previewRow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(342px, 407px));
+    align-items: start;
+    margin-top: 18px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    gap: 24px;
+}
+
+.previewColumn {
+    width: 100%;
+    min-width: 342px;
+    max-width: 407px;
+}
+
+.previewLabel {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.preview {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    aspect-ratio: 407 / 743;
+    min-height: 620px;
+    border: 1px solid color-mix(in srgb, var(--oriso-app-accent-container, #ffdad5) 84%, #ffffff 16%);
+    background: var(--oriso-app-chat-surface, #ffffff);
+    overflow: hidden;
+    border-radius: 0;
+    color: var(--m3-on-surface, #1a1c1e);
+    font-family: Inter, sans-serif;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.roomHeader {
+    display: flex;
+    min-height: 104px;
+    border-bottom: 1px solid var(--oriso-app-accent-container, #ffdad5);
+    background: var(--oriso-app-chat-surface, #ffffff);
+}
+
+.roomHeaderContent {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.roomHeaderTop {
+    display: flex;
+    align-items: center;
+    min-height: 62px;
+    padding: 9px 11px 0 18px;
+    gap: 8px;
+}
+
+.roomTitle {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--m3-secondary, #4c555f);
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 28px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.roundAction,
+.videoAction,
+.menuAction {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+}
+
+.roundAction {
+    width: 40px;
+    height: 40px;
+    background: var(--oriso-app-accent-container, #ffdad5);
+    border-radius: 50%;
+    color: var(--oriso-app-action, #cc1e1c);
+}
+
+.roundAction svg {
+    width: 18px;
+    height: 18px;
+}
+
+.roundAction svg path {
+    fill: currentcolor;
+}
+
+.videoAction {
+    width: 42px;
+    height: 40px;
+    background: var(--oriso-app-action, #cc1e1c);
+    border-radius: 14px;
+    color: var(--m3-on-primary, #ffffff);
+}
+
+.videoAction svg {
+    width: 19px;
+    height: 19px;
+}
+
+.videoAction svg path {
+    fill: currentcolor;
+}
+
+.menuAction {
+    width: 47px;
+    height: 40px;
+    border: 1px solid var(--oriso-app-accent-container, #ffdad5);
+    background: var(--oriso-app-chat-surface, #ffffff);
+    border-radius: 999px;
+    color: var(--m3-secondary, #4c555f);
+}
+
+.menuAction svg,
+.editorToolbar svg {
+    width: 16px;
+    height: 16px;
+}
+
+.menuAction svg path,
+.editorToolbar svg path {
+    stroke: currentcolor;
+}
+
+.roomHeaderBottom {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 2px 18px 14px 18px;
+    gap: 8px;
+}
+
+.avatarCluster {
+    display: flex;
+    align-items: center;
+}
+
+.avatarCluster span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 35px;
+    height: 35px;
+    margin-right: -10px;
+    border: 2px solid var(--oriso-app-chat-surface, #ffffff);
+    border-radius: 50%;
+}
+
+.addAvatar {
+    border-color: var(--m3-outline-variant, #c4c7c8) !important;
+    background: var(--oriso-app-chat-surface, #ffffff);
+    color: var(--m3-secondary, #4c555f);
+}
+
+.counsellorAvatar {
+    background: var(--oriso-app-action, #cc1e1c);
+    color: var(--m3-on-primary, #ffffff);
+}
+
+.addAvatar svg {
+    width: 20px;
+    height: 20px;
+}
+
+.counsellorAvatar svg {
+    width: 25px;
+    height: 25px;
+}
+
+.addAvatar svg path {
+    fill: currentcolor;
+    stroke: currentcolor;
+}
+
+.topicDivider {
+    display: flex;
+    align-items: flex-start;
+    min-height: 25px;
+    padding-left: 37px;
+}
+
+.topicDivider span {
+    padding: 1px 10px 2px;
+    background: var(--oriso-app-accent-container, #ffdad5);
+    border-radius: 0 0 4px 4px;
+    color: var(--m3-on-surface, #1a1c1e);
+    font-size: 14px;
+    line-height: 17px;
+}
+
+.chatCanvas {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 24px 18px 10px;
+    background: var(--oriso-app-chat-surface, #ffffff);
+    gap: 10px;
+}
+
+.outgoingGroup {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 72px;
+    align-items: end;
+    column-gap: 0;
+    margin-top: 0;
+    padding-left: 18px;
+}
+
+.outgoingBubble {
+    position: relative;
+    grid-column: 1;
+    grid-row: 1;
+    width: min(100%, 300px);
+    min-width: 0;
+    max-width: none;
+    padding: 18px 20px 11px;
+    background: var(--oriso-app-accent-container, #ffdad5);
+    border-radius: 16px 16px 0 16px;
+    color: var(--m3-on-surface, #1a1c1e);
+}
+
+.outgoingBubble::after {
+    position: absolute;
+    right: -24px;
+    bottom: 0;
+    width: 24px;
+    height: 38px;
+    background: var(--oriso-app-accent-container, #ffdad5);
+    clip-path: polygon(0 0, 0 100%, 100% 100%);
+    content: '';
+}
+
+.outgoingBubble p {
+    margin: 0;
+    font-size: 20px;
+    line-height: 27px;
+}
+
+.messageMeta {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 6px;
+    color: var(--m3-secondary, #4c555f);
+    font-size: 16px;
+    font-weight: 600;
+    gap: 5px;
+}
+
+.messageMeta svg {
+    width: 11px;
+    height: 11px;
+}
+
+.outgoingMenu {
+    position: static;
+    z-index: 2;
+    grid-column: 2;
+    grid-row: 1;
+    display: inline-flex;
+    align-items: center;
+    align-self: end;
+    justify-content: center;
+    justify-self: end;
+    margin-right: 6px;
+    margin-bottom: 39px;
+    color: #000000;
+}
+
+.outgoingMenu svg {
+    width: 16px;
+    height: 16px;
+}
+
+.outgoingMenu svg path {
+    fill: currentcolor;
+}
+
+.recipientLine {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    box-sizing: border-box;
+    grid-column: 1 / 3;
+    grid-row: 2;
+    min-width: 0;
+    width: 100%;
+    margin-top: 5px;
+    padding-right: 86px;
+    color: var(--m3-secondary, #4c555f);
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 18px;
+    text-align: right;
+}
+
+.recipientLine strong {
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--oriso-app-action, #cc1e1c);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 21px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.recipientLine span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.redAvatar {
+    position: static;
+    z-index: 3;
+    grid-column: 2;
+    grid-row: 2;
+    display: inline-flex;
+    align-items: center;
+    align-self: start;
+    box-sizing: border-box;
+    justify-content: center;
+    justify-self: end;
+    width: 72px;
+    height: 72px;
+    margin-top: -31px;
+    border: 8px solid var(--oriso-app-chat-surface, #ffffff);
+    background: var(--oriso-app-action, #cc1e1c);
+    border-radius: 50%;
+    color: var(--m3-on-primary, #ffffff);
+}
+
+.redAvatar svg {
+    width: 36px;
+    height: 36px;
+}
+
+.composer {
+    padding: 8px 11px 12px;
+    background: var(--oriso-app-chat-surface, #ffffff);
+}
+
+.mobileComposerNav {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items: center;
+    height: 30px;
+    border: 1px solid var(--oriso-app-accent-container, #ffdad5);
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    color: var(--m3-secondary, #4c555f);
+    text-align: center;
+}
+
+.mobileComposerNav span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobileComposerNav svg {
+    width: 24px;
+    height: 24px;
+}
+
+.mobileComposerNav svg path {
+    fill: currentcolor;
+}
+
+.dragHandle {
+    justify-self: center;
+    width: 56px;
+    height: 4px;
+    background: var(--oriso-app-accent-container, #ffdad5);
+    border-radius: 999px;
+}
+
+.editorBox {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--oriso-app-action, #cc1e1c);
+    background: var(--oriso-app-chat-surface, #ffffff);
+    border-radius: 4px 4px 24px 24px;
+}
+
+.editorToolbar {
+    display: flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0 68px 0 14px;
+    color: var(--m3-secondary, #4c555f);
+    gap: 16px;
+}
+
+.toolbarDivider {
+    width: 1px;
+    height: 25px;
+    background: var(--m3-secondary-container, #646d78);
+}
+
+.editorToolbar > svg,
+.toolbarIconWithCaret svg {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+}
+
+.editorToolbar > svg path,
+.toolbarIconWithCaret svg path {
+    fill: currentcolor;
+}
+
+.toolbarIconWithCaret {
+    position: relative;
+    display: inline-flex;
+}
+
+.toolbarIconWithCaret::after {
+    position: absolute;
+    right: -8px;
+    top: 5px;
+    width: 7px;
+    height: 7px;
+    border-top: 2px solid currentcolor;
+    border-right: 2px solid currentcolor;
+    transform: rotate(-45deg);
+    content: '';
+}
+
+.sendAction {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 61px;
+    background: var(--oriso-app-action, #cc1e1c);
+    border-radius: 0 4px 0 24px;
+    color: var(--m3-on-primary, #ffffff);
+}
+
+.sendAction svg {
+    width: 28px;
+    height: 28px;
+}
+
+.sendAction svg path {
+    fill: currentcolor;
+}
+
+.editorBox p {
+    margin: 24px 20px 38px;
+    color: var(--m3-outline, #747878);
+    font-size: 19px;
+    line-height: 25px;
+}
+
+@media (max-width: 1100px) {
+    .previewRow {
+        grid-template-columns: repeat(2, minmax(342px, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .previewRow {
+        grid-template-columns: minmax(0, 1fr);
+        overflow: visible;
+    }
+
+    .previewColumn {
+        min-width: 0;
+        max-width: none;
+    }
+
+    .preview {
+        min-height: 560px;
+    }
+
+    .outgoingBubble p {
+        font-size: 15px;
+        line-height: 21px;
+    }
+}

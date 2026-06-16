@@ -1,4 +1,4 @@
-import { Form, FormInstance, notification } from 'antd';
+import { Form, FormInstance } from 'antd';
 import { FunctionComponent, SVGProps, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
@@ -739,7 +739,7 @@ const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Permission
                     formData,
                     allowedPermissionToggles,
                     platformControls?.permissionsPageEnabled ?? true,
-                )
+                ),
             );
         },
         [updateTenantAdminControls, allowedPermissionToggles, platformControls?.permissionsPageEnabled, t],
@@ -751,7 +751,7 @@ const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Permission
         }),
         [allowedPermissionToggles],
     );
-    const formStateKey = 'platform'
+    const formStateKey = 'platform';
 
     const handleToggleUpdate = useCallback<ToggleAfterChangeHandler>(
         (fieldPath, value, currentFormData) => {
@@ -797,10 +797,7 @@ const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSet
     });
 
     const allowedPermissionToggles = tenantData?.settings?.tenantAdminControls?.allowedPermissionToggles;
-    const restrictedFields = useMemo(
-        () => getForcedOffFields(allowedPermissionToggles),
-        [allowedPermissionToggles],
-    );
+    const restrictedFields = useMemo(() => getForcedOffFields(allowedPermissionToggles), [allowedPermissionToggles]);
 
     const initialValues = useMemo(
         () => ({
@@ -813,10 +810,7 @@ const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSet
         [tenantData, restrictedFields],
     );
 
-    const formStateKey = useMemo(
-        () => Array.from(restrictedFields).sort().join('|'),
-        [restrictedFields],
-    );
+    const formStateKey = useMemo(() => Array.from(restrictedFields).sort().join('|'), [restrictedFields]);
 
     const handleToggleUpdate = useCallback<ToggleAfterChangeHandler>(
         (fieldPath, value, currentFormData) => {
