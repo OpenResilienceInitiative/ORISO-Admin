@@ -157,11 +157,8 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                                 : new Error(FETCH_ERRORS.CONFLICT),
                         );
                     } else if (response.status === 403) {
-                        // Temporarily disabled to allow admin pages to work while we fix role mapping
-                        // window.location.href = '/admin/access-denied';
-                        reject(new Error('403 Forbidden'));
-                    } else if (response.status === 401) {
-                        // console.log('🔍 fetchData: 401 Unauthorized - session expired, logging out');
+                        window.location.href = '/admin/access-denied';
+                    } else if (response.status === 401) {;
                         logout(true, routePathNames.login);
                         reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
                     } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL_SILENT)) {
