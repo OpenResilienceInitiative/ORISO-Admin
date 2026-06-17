@@ -22,7 +22,7 @@
     "jsx": "react-jsx",
 		"noImplicitAny": false,
 		"downlevelIteration": true,
-    "types": ["vite/client", "vite-plugin-svgr/client", "cypress", "vitest/globals"]
+    "types": ["vite/client", "vite-plugin-svgr/client", "cypress"]
   },
   "include": [
     "src",
@@ -30,6 +30,7 @@
     "src/setupTests.ts"
   ],
   "exclude": [
+    "*.test",
     "*.spec.js"
   ],
   "files": [
