@@ -1,5 +1,5 @@
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
-import { USER_TABLE_API_SAFE_ORDER, USER_TABLE_API_SAFE_SORT } from '../constants/userTableSort';
+import { USER_TABLE_API_SAFE_ORDER, USER_TABLE_API_SAFE_SORT, USER_TABLE_DEFAULT_ORDER } from '../constants/userTableSort';
 import { CounselorData } from '../types/counselor';
 import { HalResponseList, ResponseList } from '../types/ResponseList';
 import removeEmbedded from './removeEmbedded';
@@ -28,7 +28,7 @@ export const fetchUserSearchWithSortFallback = async ({
 }: FetchUserSearchParams): Promise<ResponseList<CounselorData>> => {
     const resolveField = normalizeSortField ?? ((field?: string) => field || USER_TABLE_API_SAFE_SORT);
     const field = resolveField(sortBy);
-    const sortOrder = order || USER_TABLE_API_SAFE_ORDER;
+    const sortOrder = order || USER_TABLE_DEFAULT_ORDER;
 
     const request = (sortField: string, sortDirection: string) =>
         fetchData({
