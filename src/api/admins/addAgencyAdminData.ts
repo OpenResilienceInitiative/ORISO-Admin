@@ -1,6 +1,5 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { agencyAdminEndpoint } from '../../appConfig';
-import { encodeUsername } from '../../utils/encryptionHelpers';
 import { AdminData } from '../../types/admin';
 import { putAgenciesForAgencyAdmin } from '../agency/putAgenciesForAdmin';
 
@@ -49,7 +48,7 @@ export const addAgencyAdminData = (adminData: Record<string, any>): Promise<Admi
                 firstname,
                 lastname,
                 email,
-                username: encodeUsername(username),
+                username, // MATRIX MIGRATION: backend handles encoding
                 twoFactorAuth,
                 tenantId: parseInt(tenantId, 10),
                 ...(password ? { password } : {}),
