@@ -42,7 +42,7 @@ export const useLoginMutation = (tenantId: string) => {
                         // console.log('🔍 useLoginMutation: Tenant access check passed');
                         return data;
                     })
-                    .catch((error) => {
+                    .catch(() => {
                         // console.log('🔍 useLoginMutation: Tenant access check failed:', error);
                         return Promise.reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
                     });
@@ -56,7 +56,7 @@ export const useLoginMutation = (tenantId: string) => {
                     apiServerSettings().then(setServerSettings);
                 }
             },
-            onError: (error) => {
+            onError: () => {
                 // console.log('🔍 useLoginMutation: onError called with error:', error);
             },
         },

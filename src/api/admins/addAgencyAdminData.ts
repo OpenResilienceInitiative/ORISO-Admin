@@ -62,19 +62,15 @@ export const addAgencyAdminData = (adminData: Record<string, any>): Promise<Admi
                     embeddedData = (data as { _embedded: AdminData })._embedded;
                 }
 
-                if (!embeddedData?.id) {
-                    throw new Error('Agency admin created but response did not include id');
-                }
+            if (!embeddedData?.id) {
+                throw new Error('Agency admin created but response did not include id');
+            }
 
-                // The account is already created at this point. Assigning agencies is a secondary
-                // step, so a failure here must not turn the whole creation into an error. Instead we
-                // flag it so the UI can show a non-blocking warning.
-                return putAgenciesForAgencyAdmin(
-                    embeddedData.id,
-                    adminData.agencies?.map(({ value }) => value) || [],
-                )
-                    .then(() => embeddedData)
-                    .catch(() => ({ ...embeddedData, agencyAssignmentFailed: true }));
-            })
-    );
+            // The account is already created at this point. Assigning agencies is a secondary
+            // step, so a failure here must not turn the whole creation into an error. Instead we
+            // flag it so the UI can show a non-blocking warning.
+            return putAgenciesForAgencyAdmin(embeddedData.id, adminData.agencies?.map(({ value }) => value) || [])
+                .then(() => embeddedData)
+                .catch(() => ({ ...embeddedData, agencyAssignmentFailed: true }));
+        });
 };

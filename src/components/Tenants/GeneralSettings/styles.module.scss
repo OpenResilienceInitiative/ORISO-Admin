@@ -1,0 +1,170 @@
+.appearancePage {
+    --dialog-card-height: clamp(500px, 61vh, 660px);
+    --appearance-stack-top-offset: 165px;
+
+    display: flex;
+    min-height: max(0px, calc(100dvh - var(--appearance-stack-top-offset)));
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    padding-bottom: 24px;
+}
+
+.cardDeck {
+    display: flex;
+    align-items: stretch;
+    gap: 24px;
+    overflow-x: auto;
+    padding: 0 4px 8px;
+    scroll-behavior: smooth;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.cardSlot {
+    flex: 0 0 min(417px, calc(100vw - 176px));
+    scroll-snap-align: start;
+}
+
+.cardSlotImages {
+    flex-basis: min(522px, calc(100vw - 176px));
+}
+
+.cardSlotTheme {
+    flex-basis: min(430px, calc(100vw - 176px));
+}
+
+.masterDataToggle {
+    margin-top: 12px;
+
+    :global(.ant-form-item-row) {
+        align-items: flex-start;
+        flex-wrap: nowrap;
+        gap: 18px;
+    }
+
+    :global(.ant-form-item-label) {
+        min-width: 0;
+        max-width: calc(100% - 78px);
+        flex: 1 1 calc(100% - 78px);
+        overflow: visible;
+        text-align: left;
+        white-space: normal;
+    }
+
+    :global(.ant-form-item-label > label) {
+        display: block;
+        width: 100%;
+        padding-bottom: 0;
+        white-space: normal;
+    }
+
+    :global(.ant-col.ant-form-item-control) {
+        max-width: 60px;
+        flex: 0 0 60px;
+        padding-top: 4px;
+    }
+
+    :global(.formSwitchField__container) {
+        justify-content: flex-end;
+    }
+}
+
+.masterDataToggleCopy {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    white-space: normal;
+}
+
+.masterDataToggleTitle {
+    color: #1b1b1c;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 20px;
+}
+
+.masterDataToggleDescription {
+    color: #444748;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+.sideScrollerFooter {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 40px;
+    padding: 0 24px;
+}
+
+.scrollButton {
+    display: inline-flex;
+    width: 128px;
+    height: 96px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 100px;
+    appearance: none;
+    background: #bec7d4;
+    color: #ffffff;
+    cursor: default;
+    transition: background 0.2s ease, transform 0.2s ease;
+
+    &:disabled {
+        background: #bec7d4;
+        opacity: 1;
+    }
+
+    &:active:not(:disabled) {
+        transform: scale(0.98);
+    }
+
+    svg {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+.scrollButtonActive {
+    background: #111923;
+    cursor: pointer;
+
+    &:hover {
+        background: #1c2735;
+    }
+}
+
+@media only screen and (max-width: 900px) {
+    .appearancePage {
+        --dialog-card-height: clamp(480px, 62vh, 600px);
+
+        min-height: auto;
+        justify-content: flex-start;
+    }
+
+    .cardDeck {
+        gap: 16px;
+    }
+
+    .cardSlot,
+    .cardSlotImages,
+    .cardSlotTheme {
+        flex-basis: min(88vw, calc(100vw - 144px));
+    }
+
+    .sideScrollerFooter {
+        margin-top: 32px;
+        padding: 0 8px;
+    }
+
+    .scrollButton {
+        width: 88px;
+        height: 56px;
+    }
+}

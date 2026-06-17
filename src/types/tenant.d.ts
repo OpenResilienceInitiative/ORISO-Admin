@@ -105,6 +105,8 @@ export interface TenantData extends BasicTenantData {
         associationLogo?: string;
         primaryColor: string;
         secondaryColor: string | null;
+        accent?: string | null;
+        signal?: string | null;
     };
     content: {
         impressum: string | null;

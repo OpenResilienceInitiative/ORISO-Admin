@@ -1,4 +1,4 @@
-import { Card } from 'antd';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
@@ -67,39 +67,58 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
             }),
         [applyPlatformEmailRestrictions, data],
     );
+    const renderSwitchLabel = useCallback(
+        (titleKey: string, descriptionKey?: string) => (
+            <span className={styles.switchCopy}>
+                <span className={styles.switchTitle}>{t(titleKey)}</span>
+                {descriptionKey && <span className={styles.switchDescription}>{t(descriptionKey)}</span>}
+            </span>
+        ),
+        [t],
+    );
 
     return (
-        <CardEditable
-            key={`smtp-${systemEmailsAllowed}-${smtpAllowed}`}
-            isLoading={isLoading}
-            initialValues={initialValues}
-            titleKey="tenants.appSettings.smtp.title"
-            onSave={(formData) => mutate(applyPlatformEmailRestrictions(formData))}
-        >
-            <Card className={styles.sectionCard} size="small" bordered>
-                <div className={styles.checkGroup}>
+        <div className={styles.smtpCardShell}>
+            <CardEditable
+                className={styles.smtpCard}
+                key={`smtp-${systemEmailsAllowed}-${smtpAllowed}`}
+                variant="dialog"
+                headerIcon={<EmailOutlinedIcon />}
+                isLoading={isLoading}
+                initialValues={initialValues}
+                titleKey="tenants.appSettings.smtp.title"
+                subTitleKey="tenants.appSettings.smtp.description"
+                onSave={(formData) => mutate(applyPlatformEmailRestrictions(formData))}
+            >
+                <div className={styles.fieldGrid}>
                     <FormSwitchField
-                        labelKey="tenants.appSettings.smtp.systemEmailToggle.title"
+                        className={styles.smtpSwitch}
+                        label={renderSwitchLabel(
+                            'tenants.appSettings.smtp.systemEmailToggle.title',
+                            'tenants.appSettings.smtp.systemEmailToggle.description',
+                        )}
                         name={['settings', 'featureSystemNotificationEmailsEnabled']}
                         inline
                         disableLabels
                         disabled={!systemEmailsAllowed}
+                        switchLabel={t('tenants.appSettings.smtp.systemEmailToggle.title')}
+                        switchVariant="m3"
                     />
-                    <p className={styles.checkInfo}>{t('tenants.appSettings.smtp.systemEmailToggle.description')}</p>
-                </div>
 
-                <div className={styles.checkGroup}>
                     <FormSwitchField
-                        labelKey="tenants.appSettings.smtp.smtpToggle.title"
+                        className={styles.smtpSwitch}
+                        label={renderSwitchLabel(
+                            'tenants.appSettings.smtp.smtpToggle.title',
+                            'tenants.appSettings.smtp.smtpToggle.description',
+                        )}
                         name={['settings', 'smtp', 'enabled']}
                         inline
                         disableLabels
                         disabled={!smtpAllowed}
+                        switchLabel={t('tenants.appSettings.smtp.smtpToggle.title')}
+                        switchVariant="m3"
                     />
-                    <p className={styles.checkInfo}>{t('tenants.appSettings.smtp.smtpToggle.description')}</p>
-                </div>
 
-                <div className={styles.fieldGrid}>
                     <FormInputField
                         labelKey="tenants.appSettings.smtp.host"
                         name={['settings', 'smtp', 'host']}
@@ -128,19 +147,23 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         disabled={!smtpAllowed}
                     />
                     <FormColorSelectorField
+                        className={styles.colorField}
                         labelKey="tenants.appSettings.smtp.emailThemeColor"
                         name={['settings', 'smtp', 'emailThemeColor']}
                         disabled={!smtpAllowed}
                     />
                     <FormSwitchField
-                        labelKey="tenants.appSettings.smtp.secure"
+                        className={styles.smtpSwitch}
+                        label={renderSwitchLabel('tenants.appSettings.smtp.secure')}
                         name={['settings', 'smtp', 'secure']}
                         inline
                         disableLabels
                         disabled={!smtpAllowed}
+                        switchLabel={t('tenants.appSettings.smtp.secure')}
+                        switchVariant="m3"
                     />
                 </div>
-            </Card>
-        </CardEditable>
+            </CardEditable>
+        </div>
     );
 };
