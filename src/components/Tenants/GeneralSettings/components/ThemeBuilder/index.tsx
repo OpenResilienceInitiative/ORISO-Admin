@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Form, FormInstance, Modal } from 'antd';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../../../Card';
@@ -49,6 +51,8 @@ const seedIsTooPale = (seeds: TenantSeeds): boolean => {
     }
     return computeOrisoPalette(seeds).tooPale;
 };
+
+const SCROLL_EPSILON = 8;
 
 const getThemeRows = (tokens: Record<string, string>, t: (key: string) => string) => [
     {
@@ -168,6 +172,11 @@ const PhoneThemePreview = ({ labelKey, seeds }: { labelKey: string; seeds: Tenan
 const ThemeEditorModal = ({ open, initialValues, storedSeeds, locks, onCancel, onSubmit }: ThemeEditorModalProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
+    const previewScrollerRef = useRef<HTMLDivElement>(null);
+    const [previewScrollState, setPreviewScrollState] = useState({
+        canScrollBackward: false,
+        canScrollForward: false,
+    });
     const accentDark = Form.useWatch(['theming', 'primaryColor'], form);
     const accentLight = Form.useWatch(['theming', 'accent'], form);
     const draftSeeds: TenantSeeds = {
@@ -180,6 +189,88 @@ const ThemeEditorModal = ({ open, initialValues, storedSeeds, locks, onCancel, o
             form.setFieldsValue(initialValues);
         }
     }, [form, initialValues, open]);
+
+    const updatePreviewScrollState = useCallback(() => {
+        const previewScroller = previewScrollerRef.current;
+
+        if (!previewScroller) {
+            return;
+        }
+
+        const maxScrollLeft = previewScroller.scrollWidth - previewScroller.clientWidth;
+        setPreviewScrollState({
+            canScrollBackward: previewScroller.scrollLeft > SCROLL_EPSILON,
+            canScrollForward: previewScroller.scrollLeft < maxScrollLeft - SCROLL_EPSILON,
+        });
+    }, []);
+
+    const scrollPreview = (direction: -1 | 1) => {
+        const previewScroller = previewScrollerRef.current;
+
+        if (!previewScroller) {
+            return;
+        }
+
+        previewScroller.scrollBy({
+            left: direction * Math.min(previewScroller.clientWidth * 0.82, 520),
+            behavior: 'smooth',
+        });
+    };
+
+    useEffect(() => {
+        let previewScroller: HTMLDivElement | null = null;
+        let frameId: number | undefined;
+        let timeoutId: number | undefined;
+        let intervalId: number | undefined;
+        let resizeObserver: ResizeObserver | undefined;
+
+        if (!open) {
+            return undefined;
+        }
+
+        const bindPreviewScroller = () => {
+            previewScroller = previewScrollerRef.current;
+
+            if (!previewScroller) {
+                frameId = window.requestAnimationFrame(bindPreviewScroller);
+                return;
+            }
+
+            updatePreviewScrollState();
+            timeoutId = window.setTimeout(updatePreviewScrollState, 0);
+            intervalId = window.setInterval(updatePreviewScrollState, 250);
+            resizeObserver =
+                typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updatePreviewScrollState) : undefined;
+
+            resizeObserver?.observe(previewScroller);
+            previewScroller.addEventListener('scroll', updatePreviewScrollState, { passive: true });
+            window.addEventListener('resize', updatePreviewScrollState);
+        };
+
+        bindPreviewScroller();
+
+        return () => {
+            if (frameId) {
+                window.cancelAnimationFrame(frameId);
+            }
+
+            if (timeoutId) {
+                window.clearTimeout(timeoutId);
+            }
+
+            if (intervalId) {
+                window.clearInterval(intervalId);
+            }
+
+            resizeObserver?.disconnect();
+
+            if (previewScroller) {
+                previewScroller.removeEventListener('scroll', updatePreviewScrollState);
+            }
+
+            window.removeEventListener('resize', updatePreviewScrollState);
+        };
+    }, [open, updatePreviewScrollState]);
 
     return (
         <Modal
@@ -220,10 +311,43 @@ const ThemeEditorModal = ({ open, initialValues, storedSeeds, locks, onCancel, o
                             </button>
                         </div>
                     </aside>
-                    <section className={styles.themePreviewPanel} aria-label={t('settings.colors')}>
-                        <PhoneThemePreview labelKey="theme.builder.preview.current" seeds={storedSeeds} />
-                        <PhoneThemePreview labelKey="theme.builder.preview.new" seeds={draftSeeds} />
-                    </section>
+                    <div className={styles.themePreviewRegion}>
+                        <section
+                            className={styles.themePreviewPanel}
+                            ref={previewScrollerRef}
+                            aria-label={t('settings.colors')}
+                        >
+                            <PhoneThemePreview labelKey="theme.builder.preview.current" seeds={storedSeeds} />
+                            <PhoneThemePreview labelKey="theme.builder.preview.new" seeds={draftSeeds} />
+                        </section>
+                        <div
+                            className={styles.themePreviewScrollerFooter}
+                            aria-label={t('theme.builder.preview.scroll')}
+                        >
+                            <button
+                                className={`${styles.themePreviewScrollButton} ${
+                                    previewScrollState.canScrollBackward ? styles.themePreviewScrollButtonActive : ''
+                                }`}
+                                type="button"
+                                aria-label={t('theme.builder.preview.previous')}
+                                disabled={!previewScrollState.canScrollBackward}
+                                onClick={() => scrollPreview(-1)}
+                            >
+                                <ArrowBackIcon />
+                            </button>
+                            <button
+                                className={`${styles.themePreviewScrollButton} ${
+                                    previewScrollState.canScrollForward ? styles.themePreviewScrollButtonActive : ''
+                                }`}
+                                type="button"
+                                aria-label={t('theme.builder.preview.next')}
+                                disabled={!previewScrollState.canScrollForward}
+                                onClick={() => scrollPreview(1)}
+                            >
+                                <ArrowForwardIcon />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </Form>
         </Modal>

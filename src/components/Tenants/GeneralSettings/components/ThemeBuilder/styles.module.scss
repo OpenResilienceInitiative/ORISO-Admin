@@ -148,22 +148,92 @@
     padding: 6px 0 0;
 }
 
+.themePreviewRegion {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
 .themePreviewPanel {
     display: grid;
+    flex: 1 1 auto;
+    align-items: start;
+    justify-content: flex-start;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 44px clamp(28px, 5vw, 72px);
+    gap: clamp(32px, 5vw, 72px);
+    grid-template-columns: repeat(2, minmax(480px, 500px));
+    scroll-padding: clamp(28px, 5vw, 72px);
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+}
+
+.themePreviewPanel::-webkit-scrollbar {
+    display: none;
+}
+
+.themePreviewScrollerFooter {
+    position: absolute;
+    right: clamp(28px, 5vw, 72px);
+    bottom: 38px;
+    left: clamp(28px, 5vw, 72px);
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+}
+
+.themePreviewScrollButton {
+    display: inline-flex;
+    width: 112px;
+    height: 72px;
     align-items: center;
     justify-content: center;
-    padding: 44px clamp(28px, 5vw, 72px);
-    gap: clamp(28px, 4vw, 56px);
-    grid-template-columns: repeat(2, minmax(240px, 354px));
+    border: 0;
+    border-radius: 100px;
+    appearance: none;
+    background: #bec7d4;
+    color: #ffffff;
+    cursor: default;
+    pointer-events: auto;
+    transition: background 0.2s ease, transform 0.2s ease;
+
+    &:disabled {
+        background: #bec7d4;
+        opacity: 1;
+    }
+
+    &:active:not(:disabled) {
+        transform: scale(0.98);
+    }
+
+    svg {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+.themePreviewScrollButtonActive {
+    background: #111923;
+    cursor: pointer;
+
+    &:hover {
+        background: #1c2735;
+    }
 }
 
 .phonePreview {
     display: flex;
     min-width: 0;
+    width: 100%;
     flex-direction: column;
     align-items: center;
     margin: 0;
     gap: 14px;
+    scroll-snap-align: center;
 }
 
 .phonePreviewLabel {
@@ -177,8 +247,8 @@
 
 .phoneFrame {
     position: relative;
-    width: min(100%, 354px);
-    aspect-ratio: 434 / 1056;
+    width: min(100%, 500px);
+    aspect-ratio: 500 / 1056;
 }
 
 .phoneFrame::before {
@@ -367,6 +437,11 @@
     width: 100%;
     min-width: 342px;
     max-width: 407px;
+}
+
+.previewColumn.phonePreviewColumn {
+    min-width: 0;
+    max-width: none;
 }
 
 .previewLabel {
@@ -837,7 +912,6 @@
 
     .themePreviewPanel {
         align-content: center;
-        overflow-x: auto;
         justify-content: flex-start;
         grid-template-columns: repeat(2, minmax(230px, 320px));
     }
@@ -863,6 +937,17 @@
     .themePreviewPanel {
         padding: 28px 24px 40px;
         grid-template-columns: minmax(240px, 320px);
+    }
+
+    .themePreviewScrollerFooter {
+        right: 24px;
+        bottom: 20px;
+        left: 24px;
+    }
+
+    .themePreviewScrollButton {
+        width: 88px;
+        height: 56px;
     }
 
     .previewRow {
