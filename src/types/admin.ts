@@ -16,4 +16,5 @@ export interface AdminData {
     deleteDate?: string;
     status: Status;
     twoFactorAuth?: boolean;
+    agencyAssignmentFailed?: boolean;
 }

@@ -258,6 +258,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         if (isTenants) {
             return (
                 <Button
+                    className={styles.createButton}
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={() =>
@@ -272,7 +273,13 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         const handleAdd = () => navigate(`${config.editPathPrefix}/add`);
 
         const addButton = (
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} disabled={atConsultantLimit}>
+            <Button
+                className={styles.createButton}
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleAdd}
+                disabled={atConsultantLimit}
+            >
                 {t('new')}
             </Button>
         );

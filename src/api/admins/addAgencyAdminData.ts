@@ -21,7 +21,9 @@ export const addAgencyAdminData = (adminData: Record<string, any>): Promise<Admi
         }
 
         const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
+        // The backend returns HAL responses (application/hal+json), so match any JSON content type
+        // rather than the exact "application/json".
+        if (!contentType.includes('json')) {
             return null;
         }
 
@@ -65,10 +67,15 @@ export const addAgencyAdminData = (adminData: Record<string, any>): Promise<Admi
                     throw new Error('Agency admin created but response did not include id');
                 }
 
+                // The account is already created at this point. Assigning agencies is a secondary
+                // step, so a failure here must not turn the whole creation into an error. Instead we
+                // flag it so the UI can show a non-blocking warning.
                 return putAgenciesForAgencyAdmin(
                     embeddedData.id,
                     adminData.agencies?.map(({ value }) => value) || [],
-                ).then(() => embeddedData);
+                )
+                    .then(() => embeddedData)
+                    .catch(() => ({ ...embeddedData, agencyAssignmentFailed: true }));
             })
     );
 };

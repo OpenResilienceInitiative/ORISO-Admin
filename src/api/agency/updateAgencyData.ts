@@ -42,6 +42,7 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         demographics: formInput.demographics,
         counsellingRelations: formInput.counsellingRelations,
         dataProtection: formInput.dataProtection,
+        content: formInput.content,
         agencyLogo: formInput.agencyLogo,
     };
 

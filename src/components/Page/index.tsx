@@ -1,18 +1,20 @@
 import { ChevronLeft } from '@mui/icons-material';
 import { Spin } from 'antd';
 import classNames from 'classnames';
-import React, { cloneElement, forwardRef, LegacyRef, useMemo } from 'react';
+import React, { cloneElement, forwardRef, LegacyRef, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
-import { ReactComponent as AppearanceIcon } from '../../resources/img/svg/permissions/appearance.svg';
-import { ReactComponent as EmailServerIcon } from '../../resources/img/svg/permissions/email_server.svg';
 import { ReactComponent as FunctionalitiesIcon } from '../../resources/img/svg/permissions/functionalities.svg';
-import { ReactComponent as FunctionalityAccessIcon } from '../../resources/img/svg/permissions/functionality_access.svg';
-import { ReactComponent as GlobalConfigIcon } from '../../resources/img/svg/permissions/global_config.svg';
 import { ReactComponent as GlobalSettingsIcon } from '../../resources/img/svg/permissions/global_settings.svg';
-import { ReactComponent as LegalIcon } from '../../resources/img/svg/permissions/legal.svg';
 import { ReactComponent as MasterDataIcon } from '../../resources/img/svg/permissions/master_data.svg';
 import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissions/tab_star.svg';
+import { ReactComponent as AppearanceIcon } from '../../resources/img/svg/settings-tabs/appearance.svg';
+import { ReactComponent as AppearanceFilledIcon } from '../../resources/img/svg/settings-tabs/appearance_filled.svg';
+import { ReactComponent as EmailServerIcon } from '../../resources/img/svg/settings-tabs/email_server.svg';
+import { ReactComponent as FunctionalityAccessIcon } from '../../resources/img/svg/settings-tabs/feature_access.svg';
+import { ReactComponent as GlobalConfigIcon } from '../../resources/img/svg/settings-tabs/global_configs.svg';
+import { ReactComponent as LegalIcon } from '../../resources/img/svg/settings-tabs/legal.svg';
+import { ReactComponent as MasterDataFilledIcon } from '../../resources/img/svg/settings-tabs/master_data.svg';
 import styles from './styles.module.scss';
 
 interface PageProps {
@@ -36,6 +38,7 @@ interface PageTitleProps {
 interface PageBackProps {
     title?: React.ReactChild;
     titleKey?: string;
+    titleMaxLength?: number;
     path: string;
     children?: React.ReactChild | React.ReactChild[];
     tabs?: Array<{ to: string; titleKey: string; iconName?: string; icon?: JSX.Element }>;
@@ -54,32 +57,78 @@ export const Page = ({ children, stickyHeader, isLoading }: PageProps) => {
     );
 };
 
-const tabIcons = {
-    appearance: AppearanceIcon,
-    email_server: EmailServerIcon,
-    functionalities: FunctionalitiesIcon,
-    functionality_access: FunctionalityAccessIcon,
-    global_config: GlobalConfigIcon,
-    global_settings: GlobalSettingsIcon,
-    legal: LegalIcon,
-    master_data: MasterDataIcon,
+const tabIcons: Record<
+    string,
+    {
+        outline: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+        filled?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+    }
+> = {
+    appearance: {
+        outline: AppearanceIcon,
+        filled: AppearanceFilledIcon,
+    },
+    email_server: {
+        outline: EmailServerIcon,
+    },
+    functionalities: {
+        outline: FunctionalitiesIcon,
+    },
+    functionality_access: {
+        outline: FunctionalityAccessIcon,
+    },
+    global_config: {
+        outline: GlobalConfigIcon,
+    },
+    global_settings: {
+        outline: GlobalSettingsIcon,
+    },
+    legal: {
+        outline: LegalIcon,
+    },
+    master_data: {
+        outline: MasterDataIcon,
+        filled: MasterDataFilledIcon,
+    },
 };
 
 const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: string; icon?: JSX.Element }> }) => {
     const { t } = useTranslation();
+    const tabsContainerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        tabsContainerRef.current?.querySelector('a.active')?.scrollIntoView({
+            block: 'nearest',
+            inline: 'nearest',
+        });
+    }, [tabs]);
 
     return (
-        <div className={styles.tabsContainer}>
+        <div className={styles.tabsContainer} ref={tabsContainerRef}>
             {tabs
                 ?.filter((tab) => tab && tab.to)
                 .map(({ icon, iconName, ...tab }) => {
-                    const TabIcon = iconName ? tabIcons[iconName] || TabStarIcon : TabStarIcon;
+                    const IconSet = iconName ? tabIcons[iconName] : undefined;
 
                     return (
-                        <NavLink className={styles.tab} to={tab.to} key={tab.titleKey}>
-                            <TabIcon className={styles.tabStar} width={20} height={20} />
-                            <span className={styles.tabLabel}>{t(tab.titleKey)}</span>
-                            {icon && cloneElement(icon, { className: styles.tabIcon })}
+                        <NavLink
+                            className={({ isActive }) => classNames(styles.tab, { active: isActive })}
+                            to={tab.to}
+                            key={tab.titleKey}
+                        >
+                            {({ isActive }) => {
+                                const TabIcon = isActive
+                                    ? IconSet?.filled || IconSet?.outline || TabStarIcon
+                                    : IconSet?.outline || TabStarIcon;
+
+                                return (
+                                    <>
+                                        <TabIcon className={styles.tabStar} width={20} height={20} />
+                                        <span className={styles.tabLabel}>{t(tab.titleKey)}</span>
+                                        {icon && cloneElement(icon, { className: styles.tabIcon })}
+                                    </>
+                                );
+                            }}
                         </NavLink>
                     );
                 })}
@@ -98,15 +147,24 @@ export const PageTitle = forwardRef(({ tabs, children }: PageTitleProps, ref) =>
     );
 });
 
-export const PageBack = forwardRef(({ path, title, titleKey, tabs, children }: PageBackProps, ref) => {
+const getTruncatedTitle = (title: React.ReactNode, titleMaxLength?: number) => {
+    if (!titleMaxLength || typeof title !== 'string' || title.length <= titleMaxLength) {
+        return title;
+    }
+
+    return `${title.slice(0, titleMaxLength)}...`;
+};
+
+export const PageBack = forwardRef(({ path, title, titleKey, titleMaxLength, tabs, children }: PageBackProps, ref) => {
     const { t } = useTranslation();
     const finalTabs = useMemo(() => tabs?.filter?.(Boolean) || [], [tabs]);
+    const headline = getTruncatedTitle(title ?? (titleKey ? t<string>(titleKey) : ''), titleMaxLength);
 
     return (
         <div className={styles.back} ref={ref as LegacyRef<HTMLDivElement>}>
             <NavLink to={path} className={classNames(styles.backLink, { [styles.backWithTabs]: !!finalTabs?.length })}>
                 <ChevronLeft />
-                <h3 className={styles.backHeadline}>{title || t(titleKey)}</h3>
+                <h3 className={styles.backHeadline}>{headline}</h3>
             </NavLink>
             {!!finalTabs?.length && finalTabs.length > 1 && <PageTabs tabs={finalTabs} />}
             {children}

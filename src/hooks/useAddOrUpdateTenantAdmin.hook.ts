@@ -22,7 +22,9 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
             }
 
             const contentType = response.headers.get('content-type') || '';
-            if (!contentType.includes('application/json')) {
+            // The backend returns HAL responses (application/hal+json), so match any JSON content
+            // type rather than the exact "application/json".
+            if (!contentType.includes('json')) {
                 return null;
             }
 

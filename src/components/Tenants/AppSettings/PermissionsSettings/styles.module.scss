@@ -34,88 +34,91 @@
     position: relative;
     width: 100%;
     font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    padding-bottom: 149px;
 }
 
 .cardGrid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(220px, 1fr));
-    gap: 24px;
-    padding: 8px 0;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 48px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding: 8px 0 18px;
     width: 100%;
 
-    @media screen and (max-width: 1440px) {
-        grid-template-columns: repeat(2, minmax(220px, 1fr));
-        gap: 20px;
+    &::-webkit-scrollbar {
+        display: none;
     }
 
-    @media screen and (max-width: 900px) {
-        display: flex;
-        flex-direction: row;
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
-        scrollbar-width: none;
-        padding: 8px 24px;
-        gap: 16px;
-
-        &::-webkit-scrollbar {
-            display: none;
-        }
-
-        .chatTypeCard {
-            flex: 0 0 min(100%, 320px);
-            scroll-snap-align: center;
-        }
+    .chatTypeCard {
+        flex: 0 0 clamp(370px, 28vw, 400px);
+        scroll-snap-align: start;
     }
 }
 
 .carouselArrow {
-    display: none;
+    display: inline-flex;
+    position: absolute;
+    bottom: 0;
+    width: 128px;
+    height: 96px;
+    border-radius: 100px;
+    background: #4c555f;
+    border: 0;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2;
+    color: #e7effc;
+    transition: background-color 180ms ease, opacity 180ms ease;
 
-    @media screen and (max-width: 900px) {
-        display: inline-flex;
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 40px;
-        height: 40px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.9);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        border: 0;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 2;
-        font-size: 20px;
-        color: #1b1b1c;
-
-        &:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
+    &:disabled {
+        background: #d9d9d9;
+        cursor: not-allowed;
     }
 }
 
 .carouselArrowLeft {
-    left: 8px;
+    left: 80px;
+
+    .carouselArrowIcon {
+        transform: rotate(180deg);
+    }
 }
 
 .carouselArrowRight {
-    right: 8px;
+    right: 80px;
+}
+
+.carouselArrowIcon {
+    width: 32px;
+    height: 32px;
+    display: block;
+
+    path {
+        fill: currentColor;
+    }
 }
 
 .chatTypeCard {
     background: #eae7e8;
+    border: 1px solid rgba(76, 85, 95, 0.22);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.16);
     border-radius: 28px;
-    padding: 32px 24px;
+    padding: 32px 32px 0;
     display: flex;
     flex-direction: column;
-    min-height: 520px;
+    min-height: 648px;
+    overflow: hidden;
     color: #1b1b1c;
-    transition: box-shadow 180ms ease;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
 
     &:hover {
-        box-shadow: 0 4px 18px rgba(39, 50, 112, 0.08);
+        border-color: rgba(76, 85, 95, 0.34);
+        box-shadow: 0 4px 18px rgba(39, 50, 112, 0.1);
     }
 }
 
@@ -177,11 +180,29 @@
 }
 
 .cardDescription {
-    font-size: 13px;
-    line-height: 18px;
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 500;
     color: #4c555f;
-    margin: 0 0 20px;
+    margin: 18px 0 28px;
+    min-height: 124px;
     text-align: left;
+    letter-spacing: 0.15px;
+
+    strong {
+        color: #444748;
+        font-weight: 700;
+    }
+}
+
+.cardDescriptionSecondary {
+    display: block;
+    margin-top: 14px;
+    color: #444748;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 16px;
+    letter-spacing: 0.4px;
 }
 
 .cardDivider {
@@ -197,12 +218,14 @@
     letter-spacing: 0.05em;
     color: #4c555f;
     margin-bottom: 8px;
+    text-align: center;
 }
 
 .togglesList {
     display: flex;
     flex-direction: column;
     gap: 0;
+    margin-bottom: 24px;
 }
 
 .toggleRow {
@@ -224,6 +247,75 @@
     font-weight: 500;
     flex: 1;
     min-width: 0;
+}
+
+.cardFooterActions {
+    margin: auto -32px 0;
+    min-height: 96px;
+    padding: 0 32px;
+    border-top: 1px solid rgba(28, 27, 31, 0.14);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+}
+
+.cardFooterAction {
+    appearance: none;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: rgba(76, 85, 95, 0.72);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    cursor: default;
+    text-align: center;
+    text-transform: none !important;
+    white-space: nowrap;
+
+    &:disabled {
+        opacity: 1;
+    }
+}
+
+.cardFooterActionAlert {
+    color: #bd000e;
+}
+
+.cardFooterIcon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: rgba(76, 85, 95, 0.72);
+
+    path {
+        fill: currentColor;
+    }
+}
+
+.cardFooterGear {
+    width: 16px;
+    height: 16px;
+    border: 3px solid currentColor;
+    border-radius: 50%;
+    box-sizing: border-box;
+    position: relative;
+    flex-shrink: 0;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 4px;
+        border-radius: 50%;
+        background: currentColor;
+    }
 }
 
 /* Custom SVG check toggle — renders exact Figma-spec SVGs for on/off */
@@ -255,5 +347,26 @@
         outline: 2px solid #273270;
         outline-offset: 2px;
         border-radius: 24px;
+    }
+}
+
+@media screen and (max-width: 767px) {
+    .cardGridOuter {
+        padding-bottom: 0;
+    }
+
+    .cardGrid {
+        flex-direction: column;
+        overflow-x: visible;
+        gap: 24px;
+
+        .chatTypeCard {
+            flex-basis: auto;
+            width: 100%;
+        }
+    }
+
+    .carouselArrow {
+        display: none;
     }
 }
