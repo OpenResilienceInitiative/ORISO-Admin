@@ -2,7 +2,6 @@ import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { tenantAdminsEndpoint } from '../appConfig';
 import { CounselorData } from '../types/counselor';
-import { encodeUsername } from '../utils/encryptionHelpers';
 import { TENANT_QUERY_KEY } from './useSingleTenantData';
 import { TENANT_ADMIN_QUERY_KEY, TENANT_ADMINS_QUERY_KEY, useTenantUserAdminData } from './useTenantUserAdminData';
 
@@ -43,7 +42,7 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
             const formValues = formData as CounselorData & { username?: string; password?: string };
             const resolvedUsername = formValues.username?.trim()
                 ? formValues.username.trim()
-                : data?.username || encodeUsername(formValues.email);
+                : data?.username || formValues.email; // MATRIX MIGRATION: backend handles encoding
 
             const { password, username: ignoredUsername, ...rest } = formValues;
             const body: Record<string, any> = { username: resolvedUsername, ...rest };
