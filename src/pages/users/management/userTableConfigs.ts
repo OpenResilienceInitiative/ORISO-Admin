@@ -61,7 +61,7 @@ const baseIdentityColumns = (): UserTableColumnConfig[] => [
 ];
 
 const tenantAdminIdentityColumns = (): UserTableColumnConfig[] => [
-    col('lastUpdated', true, false, 210),
+    col('lastUpdated', true, true, 210),
     col('status', true, false, 120),
     col('lastname', true, true, 130),
     col('firstname', true, true, 120),

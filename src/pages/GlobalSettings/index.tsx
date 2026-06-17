@@ -18,6 +18,7 @@ import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.h
 import { useUserData } from '../../hooks/useUserData.hook';
 import { sendGlobalSmtpTestEmail } from '../../api/settings/sendGlobalSmtpTestEmail';
 import styles from './styles.module.scss';
+import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
 
 export const GlobalSettingsPage = () => {
     return (
@@ -129,19 +130,8 @@ export const GlobalSmtpSettingsPage = () => {
             });
             message.success(t('globalSettings.smtp.test.success', { email: cleanedRecipientEmail }));
         } catch (error) {
-            if (error instanceof Response) {
-                try {
-                    const body = await error.json();
-                    const backendMessage = body?.message;
-                    if (backendMessage) {
-                        message.error(backendMessage);
-                        return;
-                    }
-                } catch {
-                    // ignore parse error and show fallback
-                }
-            }
-            message.error(t('globalSettings.smtp.test.error'));
+            const errorMessage = await extractApiErrorMessage(error, 'globalSettings.smtp.test.error');
+            message.error(errorMessage);
         } finally {
             setIsTestSending(false);
         }

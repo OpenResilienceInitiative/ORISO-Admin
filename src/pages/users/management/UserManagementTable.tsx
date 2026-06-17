@@ -190,6 +190,8 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         mainTenantSubdomain: settings.mainTenantSubdomainForSingleDomainMultitenancy,
         figmaTableHeader: figmaTableHeader && !isOrganizations,
         fixActionsColumn: !isMobile,
+        sortBy: tableState.sortBy,
+        order: tableState.order,
     }).filter((column) => column.key !== 'status' || config.showStatus);
 
     const setSearchDebounced = useDebouncedCallback((value: string) => {
