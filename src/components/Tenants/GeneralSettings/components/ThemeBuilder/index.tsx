@@ -1,14 +1,24 @@
-import { Alert, Form, FormInstance } from 'antd';
+import { useEffect, useState } from 'react';
+import { Alert, Form, FormInstance, Modal } from 'antd';
+import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import { useTranslation } from 'react-i18next';
-import { CardEditable } from '../../../../CardEditable';
+import { Card } from '../../../../Card';
 import { FormColorSelectorField } from '../../../../FormColorSelectorField';
+import { ReactComponent as PenIcon } from '../../../../../resources/img/svg/pen.svg';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
 import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.hook';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
 import { isReadOnlySetting } from '../../../../../utils/serverSettingsMeta';
 import { computeOrisoPalette } from '../../../../../utils/theme/orisoScheme';
-import { buildSeedUpdate, readSeeds, TenantSeeds } from '../../../../../utils/themeSeeds';
+import {
+    buildSeedUpdate,
+    getAccentDark,
+    getAccentLight,
+    readSeeds,
+    TenantSeeds,
+} from '../../../../../utils/themeSeeds';
+import iphoneFrame from '../../../../../resources/img/theme-preview/iphone-14-pro.png';
 import { MiniChatPreview } from './MiniChatPreview';
 import styles from './styles.module.scss';
 
@@ -20,61 +30,216 @@ interface ThemeBuilderProps {
 interface ThemeBuilderFormProps {
     form: FormInstance;
     storedSeeds: TenantSeeds;
-    locks: { primary: boolean; accent: boolean };
+    locks: { accentDark: boolean; accentLight: boolean };
+    editing: boolean;
+}
+
+interface ThemeEditorModalProps {
+    open: boolean;
+    initialValues: Record<string, unknown>;
+    storedSeeds: TenantSeeds;
+    locks: { accentDark: boolean; accentLight: boolean };
+    onCancel: () => void;
+    onSubmit: (values: any) => void;
 }
 
 const seedIsTooPale = (seeds: TenantSeeds): boolean => {
-    if (!seeds.primary) {
+    if (!getAccentDark(seeds)) {
         return false;
     }
     return computeOrisoPalette(seeds).tooPale;
 };
 
-const ThemeBuilderForm = ({ form, storedSeeds, locks }: ThemeBuilderFormProps) => {
+const getThemeRows = (tokens: Record<string, string>, t: (key: string) => string) => [
+    {
+        color: tokens['--oriso-app-accent-dark'],
+        label: t('theme.builder.accentDarkColor'),
+        description: t('theme.builder.summary.accentDark'),
+    },
+    {
+        color: tokens['--oriso-app-accent-light'],
+        label: t('theme.builder.accentLightColor'),
+        description: t('theme.builder.summary.accentLight'),
+    },
+    {
+        color: tokens['--m3-warning'],
+        label: t('theme.builder.summary.alertLabel'),
+        description: t('theme.builder.summary.alert'),
+    },
+    {
+        color: tokens['--m3-error'],
+        label: t('theme.builder.summary.errorLabel'),
+        description: t('theme.builder.summary.error'),
+    },
+];
+
+const ColorSummaryRow = ({ color, label, description }: { color: string; label: string; description: string }) => (
+    <div className={styles.colorSummaryRow}>
+        <span className={styles.colorSwatch} style={{ backgroundColor: color }} />
+        <span className={styles.colorText}>
+            <span className={styles.colorDescription}>{description}</span>
+            <span className={styles.colorLabel}>{label}</span>
+        </span>
+    </div>
+);
+
+const ThemeSummary = ({ seeds }: { seeds: TenantSeeds }) => {
     const { t } = useTranslation();
-    const primary = Form.useWatch(['theming', 'primaryColor'], form);
-    const accent = Form.useWatch(['theming', 'accent'], form);
+    const { tokens } = computeOrisoPalette(seeds);
+    const rows = getThemeRows(tokens, t);
+
+    return (
+        <div className={styles.colorSummary}>
+            {rows.map((row) => (
+                <ColorSummaryRow {...row} key={row.label} />
+            ))}
+        </div>
+    );
+};
+
+const ThemeBuilderForm = ({ form, storedSeeds, locks, editing }: ThemeBuilderFormProps) => {
+    const { t } = useTranslation();
+    const accentDark = Form.useWatch(['theming', 'primaryColor'], form);
+    const accentLight = Form.useWatch(['theming', 'accent'], form);
     const draftSeeds: TenantSeeds = {
-        primary: primary ?? storedSeeds.primary,
-        accent: accent ?? storedSeeds.accent,
+        accentDark: accentDark ?? getAccentDark(storedSeeds),
+        accentLight: accentLight ?? getAccentLight(storedSeeds),
     };
     const tooPale = seedIsTooPale(draftSeeds);
+    const { tokens } = computeOrisoPalette(draftSeeds);
+    const fixedRows = getThemeRows(tokens, t).slice(2);
+
+    if (!editing) {
+        return <ThemeSummary seeds={storedSeeds} />;
+    }
 
     return (
         <>
-            <div className={styles.seedInputs}>
+            <div className={styles.colorEditor}>
                 <FormColorSelectorField
-                    labelKey="theme.builder.primaryColor"
+                    className={styles.colorField}
+                    labelKey="theme.builder.accentDarkColor"
                     name={['theming', 'primaryColor']}
                     required
-                    disabled={locks.primary}
+                    disabled={locks.accentDark}
                 />
                 <FormColorSelectorField
-                    labelKey="theme.builder.accentColor"
+                    className={styles.colorField}
+                    labelKey="theme.builder.accentLightColor"
                     name={['theming', 'accent']}
-                    disabled={locks.accent}
+                    disabled={locks.accentLight}
                 />
+                {fixedRows.map((row) => (
+                    <ColorSummaryRow {...row} key={row.label} />
+                ))}
             </div>
             {tooPale && (
                 <Alert className={styles.tooPaleAlert} type="warning" showIcon message={t('theme.builder.tooPale')} />
             )}
-            <div className={styles.previewRow}>
-                <MiniChatPreview seeds={storedSeeds} labelKey="theme.builder.preview.current" />
-                <MiniChatPreview seeds={draftSeeds} labelKey="theme.builder.preview.new" />
-            </div>
         </>
+    );
+};
+
+const PhoneThemePreview = ({ labelKey, seeds }: { labelKey: string; seeds: TenantSeeds }) => {
+    const { t } = useTranslation();
+
+    return (
+        <figure className={styles.phonePreview}>
+            <figcaption className={styles.phonePreviewLabel}>{t(labelKey)}</figcaption>
+            <div className={styles.phoneFrame}>
+                <div className={styles.phoneScreen}>
+                    <MiniChatPreview
+                        className={styles.phonePreviewColumn}
+                        previewClassName={styles.phonePreviewCanvas}
+                        seeds={seeds}
+                        labelKey={labelKey}
+                        hideLabel
+                    />
+                </div>
+                <img className={styles.phoneFrameImage} src={iphoneFrame} alt="" aria-hidden="true" />
+                <span className={styles.phoneAddressText} aria-hidden="true">
+                    app.oriso.org
+                </span>
+            </div>
+        </figure>
+    );
+};
+
+const ThemeEditorModal = ({ open, initialValues, storedSeeds, locks, onCancel, onSubmit }: ThemeEditorModalProps) => {
+    const { t } = useTranslation();
+    const [form] = Form.useForm();
+    const accentDark = Form.useWatch(['theming', 'primaryColor'], form);
+    const accentLight = Form.useWatch(['theming', 'accent'], form);
+    const draftSeeds: TenantSeeds = {
+        accentDark: accentDark ?? getAccentDark(storedSeeds),
+        accentLight: accentLight ?? getAccentLight(storedSeeds),
+    };
+
+    useEffect(() => {
+        if (open) {
+            form.setFieldsValue(initialValues);
+        }
+    }, [form, initialValues, open]);
+
+    return (
+        <Modal
+            open={open}
+            footer={null}
+            closable={false}
+            destroyOnClose
+            width="100vw"
+            className={styles.themeFullscreenModal}
+            wrapClassName={styles.themeFullscreenModalWrap}
+            onCancel={onCancel}
+        >
+            <Form
+                validateTrigger={['onSubmit', 'onChange']}
+                labelAlign="left"
+                labelWrap
+                layout="vertical"
+                form={form}
+                size="large"
+                initialValues={initialValues}
+                onFinish={onSubmit}
+                className={styles.themeEditorForm}
+            >
+                <div className={styles.themeEditorShell}>
+                    <aside className={styles.themeEditorPanel}>
+                        <div className={styles.themeEditorIntro}>
+                            <PaletteOutlinedIcon />
+                            <h2>{t('settings.colors')}</h2>
+                            <p>{t('settings.colors.howto')}</p>
+                        </div>
+                        <ThemeBuilderForm form={form} storedSeeds={storedSeeds} locks={locks} editing />
+                        <div className={styles.themeEditorActions}>
+                            <button className={styles.themeTextButton} type="button" onClick={onCancel}>
+                                {t('card.edit.cancel')}
+                            </button>
+                            <button className={styles.themeTextButton} type="submit">
+                                {t('card.edit.save')}
+                            </button>
+                        </div>
+                    </aside>
+                    <section className={styles.themePreviewPanel} aria-label={t('settings.colors')}>
+                        <PhoneThemePreview labelKey="theme.builder.preview.current" seeds={storedSeeds} />
+                        <PhoneThemePreview labelKey="theme.builder.preview.new" seeds={draftSeeds} />
+                    </section>
+                </div>
+            </Form>
+        </Modal>
     );
 };
 
 export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) => {
     const { t } = useTranslation();
+    const [editorOpen, setEditorOpen] = useState(false);
     const { settings } = useAppConfigContext();
     const { data, isLoading } = useSingleTenantData({ id: tenantId });
     const { data: inheritedData } = usePublicTenantData();
     const { mutate } = useTenantAdminDataMutation({ id: tenantId });
 
     const locks = {
-        primary:
+        accentDark:
             readOnly ||
             isReadOnlySetting(settings.serverSettingsMeta, [
                 'primaryColor',
@@ -83,42 +248,74 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
                 'tenantThemingPrimaryColor',
                 'brandingPrimaryColor',
             ]),
-        accent:
+        accentLight:
             readOnly ||
             isReadOnlySetting(settings.serverSettingsMeta, ['accent', 'theming.accent', 'brandingAccentColor']),
     };
     const storedSeeds = readSeeds(data?.theming);
     const inheritedSeeds = readSeeds(inheritedData?.theming);
+    const effectiveAccentDark = getAccentDark(storedSeeds) || getAccentDark(inheritedSeeds);
+    const effectiveAccentLight = getAccentLight(storedSeeds) || getAccentLight(inheritedSeeds);
     const effectiveSeeds: TenantSeeds = {
-        primary: storedSeeds.primary || inheritedSeeds.primary,
-        accent: storedSeeds.accent || inheritedSeeds.accent,
+        accentDark: effectiveAccentDark,
+        accentLight: effectiveAccentLight,
+        primary: effectiveAccentDark,
+        accent: effectiveAccentLight,
     };
+    const { tokens } = computeOrisoPalette(effectiveSeeds);
     const initialValues = {
         theming: {
-            primaryColor: effectiveSeeds.primary,
-            accent: effectiveSeeds.accent,
+            primaryColor: effectiveAccentDark ?? tokens['--oriso-app-accent-dark'],
+            accent: effectiveAccentLight ?? tokens['--oriso-app-accent-light'],
         },
     };
     const onSubmit = (values) => {
         mutate({
             theming: buildSeedUpdate({
-                primary: values.theming?.primaryColor,
-                accent: values.theming?.accent,
+                accentDark: values.theming?.primaryColor,
+                accentLight: values.theming?.accent,
             }),
         });
+        setEditorOpen(false);
     };
+    const canEdit = !(locks.accentDark && locks.accentLight);
 
     return (
-        <CardEditable
-            key={`theme-builder-${effectiveSeeds.primary}-${effectiveSeeds.accent}-${locks.primary}-${locks.accent}`}
-            allowEdit={!(locks.primary && locks.accent)}
-            isLoading={isLoading}
-            initialValues={initialValues}
-            titleKey="theme.builder.title"
-            subTitle={t<string>('theme.builder.howto')}
-            onSave={onSubmit}
-        >
-            {({ form }) => <ThemeBuilderForm form={form} storedSeeds={effectiveSeeds} locks={locks} />}
-        </CardEditable>
+        <>
+            <Card
+                key={`theme-builder-${effectiveAccentDark}-${effectiveAccentLight}-${locks.accentDark}-${locks.accentLight}`}
+                isLoading={isLoading}
+                titleKey="settings.colors"
+                subTitle={t<string>('settings.colors.howto')}
+                variant="dialog"
+                headerIcon={<PaletteOutlinedIcon />}
+            >
+                <div className={styles.themeCardBody}>
+                    <ThemeSummary seeds={effectiveSeeds} />
+                </div>
+                {canEdit && (
+                    <div className={styles.themeCardFooter}>
+                        <button
+                            className={styles.themeFooterEditButton}
+                            type="button"
+                            onClick={() => setEditorOpen(true)}
+                        >
+                            <PenIcon />
+                            <span>{t('edit')}</span>
+                        </button>
+                    </div>
+                )}
+            </Card>
+            {canEdit && (
+                <ThemeEditorModal
+                    open={editorOpen}
+                    initialValues={initialValues}
+                    storedSeeds={effectiveSeeds}
+                    locks={locks}
+                    onCancel={() => setEditorOpen(false)}
+                    onSubmit={onSubmit}
+                />
+            )}
+        </>
     );
 };

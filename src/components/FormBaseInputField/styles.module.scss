@@ -20,12 +20,10 @@
     }
 }
 
-:global(.ant-form-vertical) :local(.item) {
-    :global(.ant-form-item-label) {
-        padding-bottom: 4px;
-    }
+.item :global(.ant-form-item-label) {
+    padding-bottom: 0;
+}
 
-    :global(label) {
-        height: initial;
-    }
+.item :global(label) {
+    height: 16px;
 }

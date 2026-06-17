@@ -1,4 +1,5 @@
 import { CSSProperties, useMemo } from 'react';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../../resources/img/svg/theme-preview/add.svg';
 import { ReactComponent as AudioCallIcon } from '../../../../../resources/img/svg/theme-preview/audio-call.svg';
@@ -16,22 +17,27 @@ import { ReactComponent as SendMessageIcon } from '../../../../../resources/img/
 import { ReactComponent as UndoIcon } from '../../../../../resources/img/svg/theme-preview/undo.svg';
 import { ReactComponent as VideoCallIcon } from '../../../../../resources/img/svg/theme-preview/video-call.svg';
 import { computeOrisoPalette } from '../../../../../utils/theme/orisoScheme';
-import { TenantSeeds } from '../../../../../utils/themeSeeds';
+import { getAccentDark, getAccentLight, TenantSeeds } from '../../../../../utils/themeSeeds';
 import styles from './styles.module.scss';
 
 interface MiniChatPreviewProps {
     seeds: TenantSeeds;
     labelKey: string;
+    className?: string;
+    previewClassName?: string;
+    hideLabel?: boolean;
 }
 
-export const MiniChatPreview = ({ seeds, labelKey }: MiniChatPreviewProps) => {
+export const MiniChatPreview = ({ seeds, labelKey, className, previewClassName, hideLabel }: MiniChatPreviewProps) => {
     const { t } = useTranslation();
-    const palette = useMemo(() => computeOrisoPalette(seeds), [seeds.primary, seeds.accent]);
+    const accentDark = getAccentDark(seeds);
+    const accentLight = getAccentLight(seeds);
+    const palette = useMemo(() => computeOrisoPalette(seeds), [accentDark, accentLight]);
 
     return (
-        <div className={styles.previewColumn}>
-            <span className={styles.previewLabel}>{t(labelKey)}</span>
-            <div className={styles.preview} style={palette.tokens as CSSProperties}>
+        <div className={classNames(styles.previewColumn, className)}>
+            {!hideLabel && <span className={styles.previewLabel}>{t(labelKey)}</span>}
+            <div className={classNames(styles.preview, previewClassName)} style={palette.tokens as CSSProperties}>
                 <header className={styles.roomHeader}>
                     <div className={styles.roomHeaderContent}>
                         <div className={styles.roomHeaderTop}>

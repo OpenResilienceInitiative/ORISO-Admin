@@ -1,17 +1,356 @@
-.seedInputs {
-    display: grid;
-    gap: 12px;
+.colorEditor,
+.colorSummary {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 0 8px;
+}
 
-    :global(.colorIndicator) {
-        width: 36px;
-        height: 36px;
-        border: 1px solid rgb(0 0 0 / 10%);
-        border-radius: 50%;
+.themeCardBody {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
+    padding: 20px 24px 0;
+}
+
+.themeCardFooter {
+    display: flex;
+    min-height: 64px;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: auto;
+    padding: 8px 24px;
+    border-top: 1px solid rgb(0 0 0 / 12%);
+}
+
+.themeFooterEditButton,
+.themeTextButton {
+    display: inline-flex;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 100px;
+    appearance: none;
+    background: transparent;
+    color: #273270;
+    cursor: pointer;
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    line-height: 20px;
+}
+
+.themeFooterEditButton svg {
+    width: 20px;
+    height: 20px;
+}
+
+.themeFullscreenModalWrap {
+    :global {
+        .ant-modal {
+            top: 0;
+            max-width: none;
+            padding-bottom: 0;
+        }
+
+        .ant-modal-content {
+            min-height: 100vh;
+            padding: 0;
+            overflow: hidden;
+            border-radius: 0;
+            background: var(--m3-surface, #fcf9f9);
+            box-shadow: none;
+        }
+
+        .ant-modal-body {
+            min-height: 100vh;
+            padding: 0;
+        }
+    }
+}
+
+.themeFullscreenModal {
+    margin: 0;
+}
+
+.themeEditorForm {
+    min-height: 100vh;
+}
+
+.themeEditorShell {
+    display: grid;
+    min-height: 100vh;
+    background: var(--m3-surface, #fcf9f9);
+    color: var(--m3-on-surface, #1b1b1c);
+    font-family: var(--m3-body-font-family);
+    grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+}
+
+.themeEditorPanel {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+    padding: 48px 36px 28px;
+    border-right: 1px solid rgb(0 0 0 / 12%);
+    background: var(--m3-surface-container-high, #eae7e8);
+}
+
+.themeEditorIntro {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 34px;
+    gap: 14px;
+
+    svg {
+        width: 40px;
+        height: 40px;
+        color: #444748;
+    }
+
+    h2 {
+        margin: 0;
+        color: #1b1b1c;
+        font-family: var(--m3-body-font-family);
+        font-size: 32px;
+        font-weight: 400;
+        letter-spacing: 0;
+        line-height: 40px;
+    }
+
+    p {
+        margin: 0;
+        color: #444748;
+        font-size: 14px;
+        font-weight: 400;
+        letter-spacing: 0.25px;
+        line-height: 20px;
+    }
+}
+
+.themeEditorActions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: auto;
+    padding-top: 28px;
+    gap: 8px;
+}
+
+.themeEditorPanel .colorEditor {
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    padding: 6px 0 0;
+}
+
+.themePreviewPanel {
+    display: grid;
+    align-items: center;
+    justify-content: center;
+    padding: 44px clamp(28px, 5vw, 72px);
+    gap: clamp(28px, 4vw, 56px);
+    grid-template-columns: repeat(2, minmax(240px, 354px));
+}
+
+.phonePreview {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    gap: 14px;
+}
+
+.phonePreviewLabel {
+    color: #444748;
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.1px;
+    line-height: 20px;
+}
+
+.phoneFrame {
+    position: relative;
+    width: min(100%, 354px);
+    aspect-ratio: 434 / 1056;
+}
+
+.phoneFrame::before {
+    position: absolute;
+    z-index: 0;
+    top: 2.8%;
+    right: 5.1%;
+    left: 5.1%;
+    height: 8.9%;
+    background: #000000;
+    border-radius: 48px 48px 0 0;
+    content: '';
+}
+
+.phoneScreen {
+    position: absolute;
+    z-index: 1;
+    top: 11.7%;
+    right: 5.1%;
+    bottom: 16.2%;
+    left: 5.1%;
+    overflow: hidden;
+    background: var(--oriso-app-chat-surface, #ffffff);
+}
+
+.phoneFrameImage {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.phoneAddressText {
+    position: absolute;
+    z-index: 3;
+    right: 24%;
+    bottom: 11.6%;
+    left: 24%;
+    display: flex;
+    height: 3.2%;
+    align-items: center;
+    justify-content: center;
+    background: #e8eaed;
+    color: #000000;
+    font-family: Arial, sans-serif;
+    font-size: clamp(9px, 1vw, 14px);
+    line-height: 1;
+    pointer-events: none;
+}
+
+.phonePreviewColumn {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    height: 100%;
+}
+
+.phonePreviewCanvas {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border: 0;
+    aspect-ratio: auto;
+    font-family: var(--m3-body-font-family);
+}
+
+.colorField {
+    width: 100%;
+    max-width: none;
+    padding: 4px 0;
+    margin-bottom: 0 !important;
+    border-bottom: 1px solid #d3d0d1;
+
+    :global {
+        .ant-form-item-control-input {
+            min-height: 0;
+        }
+
+        .colorSelector {
+            display: grid;
+            align-items: center;
+            padding: 0;
+            background: transparent;
+            gap: 12px;
+            grid-template-columns: 36px minmax(0, 1fr);
+        }
+
+        .colorSelector > div:not(.pickerWrapper) {
+            display: flex;
+            min-width: 0;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .colorSelector span {
+            color: #444748;
+            font-size: 10px;
+            font-weight: 500;
+            line-height: 12px;
+        }
+
+        .colorSelector h4.ant-typography {
+            overflow: hidden;
+            margin: 0;
+            color: #1b1b1c;
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 18px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .colorIndicator {
+            width: 26px;
+            height: 26px;
+            border: 1px solid rgb(0 0 0 / 8%);
+            border-radius: 50%;
+        }
+
+        .pickerWrapper {
+            z-index: 4;
+            bottom: 32px;
+            left: 0;
+        }
     }
 }
 
 .tooPaleAlert {
     margin-top: 12px;
+}
+
+.colorSummaryRow {
+    display: grid;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid #d3d0d1;
+    gap: 12px;
+    grid-template-columns: 36px minmax(0, 1fr);
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+
+.colorSwatch {
+    width: 26px;
+    height: 26px;
+    border: 1px solid rgb(0 0 0 / 8%);
+    border-radius: 50%;
+}
+
+.colorText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.colorDescription {
+    color: #444748;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 12px;
+}
+
+.colorLabel {
+    color: #1b1b1c;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 18px;
 }
 
 .previewRow {
@@ -43,7 +382,7 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    aspect-ratio: 407 / 743;
+    aspect-ratio: 407 / 693;
     min-height: 620px;
     border: 1px solid color-mix(in srgb, var(--oriso-app-accent-container, #ffdad5) 84%, #ffffff 16%);
     background: var(--oriso-app-chat-surface, #ffffff);
@@ -492,12 +831,40 @@
 }
 
 @media (max-width: 1100px) {
+    .themeEditorShell {
+        grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+    }
+
+    .themePreviewPanel {
+        align-content: center;
+        overflow-x: auto;
+        justify-content: flex-start;
+        grid-template-columns: repeat(2, minmax(230px, 320px));
+    }
+
     .previewRow {
         grid-template-columns: repeat(2, minmax(342px, 1fr));
     }
 }
 
 @media (max-width: 760px) {
+    .themeEditorShell {
+        min-height: 100vh;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .themeEditorPanel {
+        min-height: auto;
+        padding: 32px 24px 20px;
+        border-right: 0;
+        border-bottom: 1px solid rgb(0 0 0 / 12%);
+    }
+
+    .themePreviewPanel {
+        padding: 28px 24px 40px;
+        grid-template-columns: minmax(240px, 320px);
+    }
+
     .previewRow {
         grid-template-columns: minmax(0, 1fr);
         overflow: visible;

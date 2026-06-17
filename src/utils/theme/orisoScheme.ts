@@ -1,4 +1,4 @@
-import { TenantSeeds } from '../themeSeeds';
+import { getAccentDark, getAccentLight, TenantSeeds } from '../themeSeeds';
 
 export interface OrisoPaletteResult {
     tokens: Record<string, string>;
@@ -53,53 +53,61 @@ const saturation = (hex: string) => {
     return max === 0 ? 0 : (max - min) / max;
 };
 
-const defaultPrimaryTokens = (primary: string) => {
-    if (primary === '#a5000a') {
+const DEFAULT_ACCENT_DARK = '#a5000a';
+const DEFAULT_ACCENT_LIGHT = '#ffdad5';
+const DEFAULT_ACCENT_DIM = '#ffb4aa';
+const DEFAULT_ACCENT_ACTION = '#cc1e1c';
+const SYSTEM_ALERT = '#410001';
+const SYSTEM_ERROR = '#b1005e';
+
+const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) => {
+    if (!explicitAccentLight && accentDark === DEFAULT_ACCENT_DARK) {
         return {
-            primaryContainer: '#ffdad5',
-            primaryFixed: '#ffdad5',
-            primaryFixedDim: '#ffb4aa',
-            primaryAction: '#cc1e1c',
-            onPrimaryFixedVariant: '#930008',
+            accentLight: DEFAULT_ACCENT_LIGHT,
+            accentDim: DEFAULT_ACCENT_DIM,
+            accentAction: DEFAULT_ACCENT_ACTION,
+            onAccentLightVariant: '#930008',
         };
     }
 
+    const accentLight = explicitAccentLight ?? mix(accentDark, '#ffffff', 0.84);
+
     return {
-        primaryContainer: mix(primary, '#ffffff', 0.82),
-        primaryFixed: mix(primary, '#ffffff', 0.84),
-        primaryFixedDim: mix(primary, '#ffffff', 0.68),
-        primaryAction: primary,
-        onPrimaryFixedVariant: mix(primary, '#000000', 0.12),
+        accentLight,
+        accentDim: mix(accentLight, accentDark, 0.16),
+        accentAction: accentDark,
+        onAccentLightVariant: mix(accentDark, '#000000', 0.12),
     };
 };
 
 export const computeOrisoPalette = (seeds: TenantSeeds): OrisoPaletteResult => {
-    const primary = normalizeHex(seeds.primary) ?? '#a5000a';
-    const explicitAccent = normalizeHex(seeds.accent);
-    const accent = explicitAccent ?? primary;
-    const onPrimary = luminance(primary) > 0.62 ? '#141c25' : '#ffffff';
-    const { primaryContainer, primaryFixed, primaryFixedDim, primaryAction, onPrimaryFixedVariant } =
-        defaultPrimaryTokens(primary);
-    const onPrimaryContainer = luminance(primaryContainer) > 0.62 ? '#141c25' : '#ffffff';
-    const onAccent = luminance(accent) > 0.62 ? '#141c25' : '#ffffff';
+    const accentDark = normalizeHex(getAccentDark(seeds)) ?? DEFAULT_ACCENT_DARK;
+    const explicitAccentLight = normalizeHex(getAccentLight(seeds));
+    const { accentLight, accentDim, accentAction, onAccentLightVariant } = defaultAccentTokens(
+        accentDark,
+        explicitAccentLight,
+    );
+    const onAccentDark = luminance(accentDark) > 0.62 ? '#141c25' : '#ffffff';
+    const onAccentLight = luminance(accentLight) > 0.62 ? '#141c25' : '#ffffff';
+    const onAccentAction = luminance(accentAction) > 0.62 ? '#141c25' : '#ffffff';
 
     return {
-        tooPale: saturation(primary) < 0.12,
+        tooPale: saturation(accentDark) < 0.12,
         tokens: {
-            '--m3-primary': primary,
-            '--m3-on-primary': onPrimary,
-            '--m3-primary-container': primaryContainer,
-            '--m3-on-primary-container': onPrimaryContainer,
-            '--m3-primary-fixed': primaryFixed,
-            '--m3-primary-fixed-dim': primaryFixedDim,
-            '--m3-on-primary-fixed-variant': onPrimaryFixedVariant,
+            '--m3-primary': accentDark,
+            '--m3-on-primary': onAccentDark,
+            '--m3-primary-container': accentLight,
+            '--m3-on-primary-container': onAccentLight,
+            '--m3-primary-fixed': accentLight,
+            '--m3-primary-fixed-dim': accentDim,
+            '--m3-on-primary-fixed-variant': onAccentLightVariant,
             '--m3-secondary': '#4c555f',
             '--m3-on-secondary': '#ffffff',
             '--m3-secondary-container': '#646d78',
             '--m3-on-secondary-container': '#e7effc',
-            '--m3-error': '#b1005e',
+            '--m3-error': SYSTEM_ERROR,
             '--m3-on-error': '#ffffff',
-            '--m3-warning': '#946200',
+            '--m3-warning': SYSTEM_ALERT,
             '--m3-on-warning': '#ffffff',
             '--m3-surface': '#fcf9f9',
             '--m3-on-surface': '#1a1c1e',
@@ -110,11 +118,14 @@ export const computeOrisoPalette = (seeds: TenantSeeds): OrisoPaletteResult => {
             '--m3-on-surface-variant': '#444748',
             '--m3-outline': '#747878',
             '--m3-outline-variant': '#c4c7c8',
-            '--oriso-app-accent': accent,
-            '--oriso-app-on-accent': onAccent,
-            '--oriso-app-accent-container': explicitAccent ? mix(accent, '#ffffff', 0.84) : primaryFixed,
+            '--oriso-app-accent': accentDark,
+            '--oriso-app-accent-dark': accentDark,
+            '--oriso-app-accent-light': accentLight,
+            '--oriso-app-on-accent': onAccentDark,
+            '--oriso-app-accent-container': accentLight,
             '--oriso-app-chat-surface': '#ffffff',
-            '--oriso-app-action': explicitAccent ?? primaryAction,
+            '--oriso-app-action': accentAction,
+            '--oriso-app-on-action': onAccentAction,
         },
     };
 };

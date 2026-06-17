@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
 import { CardEditable } from '../../../../CardEditable';
 import { FormRadioGroupField } from '../../../../FormRadioGroupField';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
@@ -19,6 +20,9 @@ export const TypeOfLanguage = ({ tenantId, readOnly = false }: { tenantId: strin
             initialValues={{ ...data }}
             titleKey="tenants.typeOfLanguage.title"
             onSave={mutate}
+            variant="dialog"
+            editButtonPlacement="footer"
+            headerIcon={<TranslateOutlinedIcon />}
         >
             <FormRadioGroupField
                 labelKey="tenants.typeOfLanguage.radio.description"

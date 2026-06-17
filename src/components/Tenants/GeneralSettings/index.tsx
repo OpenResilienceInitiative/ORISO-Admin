@@ -1,4 +1,8 @@
-import { Col, Row } from 'antd';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
+import { useTranslation } from 'react-i18next';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { CardEditable } from '../../CardEditable';
@@ -14,12 +18,14 @@ import { NameAndSlogan } from './components/NameAndSlogan';
 import { ThemeBuilder } from './components/ThemeBuilder';
 import { TypeOfLanguage } from './components/TypeOfLanguage';
 import { AppConfigInterface } from '../../../types/AppConfigInterface';
+import styles from './styles.module.scss';
 
 interface GeneralSettingsProps {
     tenantId?: string;
 }
 
 const APPEARANCE_ALLOWED_STORAGE_KEY = 'oriso:tenantAdminControls.allowedPermissionToggles.appearance';
+const SCROLL_EPSILON = 8;
 
 const getStoredAppearanceAllowed = () => {
     try {
@@ -39,6 +45,12 @@ const setStoredAppearanceAllowed = (value: boolean) => {
 };
 
 export const GeneralSettings = ({ tenantId }: GeneralSettingsProps) => {
+    const cardDeckRef = useRef<HTMLDivElement>(null);
+    const [scrollState, setScrollState] = useState({
+        canScrollBackward: false,
+        canScrollForward: false,
+    });
+    const { t } = useTranslation();
     const { data } = useTenantData();
     const finalTenantId = tenantId || `${data?.id || ''}`;
     const { can } = useUserPermissions();
@@ -66,39 +78,136 @@ export const GeneralSettings = ({ tenantId }: GeneralSettingsProps) => {
         setManualSettings(formData);
         updateSettings(formData, options);
     };
+    const updateScrollState = useCallback(() => {
+        const cardDeck = cardDeckRef.current;
+
+        if (!cardDeck) {
+            return;
+        }
+
+        const maxScrollLeft = cardDeck.scrollWidth - cardDeck.clientWidth;
+        setScrollState({
+            canScrollBackward: cardDeck.scrollLeft > SCROLL_EPSILON,
+            canScrollForward: cardDeck.scrollLeft < maxScrollLeft - SCROLL_EPSILON,
+        });
+    }, []);
+    const scrollCards = (direction: -1 | 1) => {
+        const cardDeck = cardDeckRef.current;
+
+        if (!cardDeck) {
+            return;
+        }
+
+        cardDeck.scrollBy({
+            left: direction * Math.min(cardDeck.clientWidth * 0.86, 760),
+            behavior: 'smooth',
+        });
+    };
+
+    useEffect(() => {
+        const cardDeck = cardDeckRef.current;
+
+        if (!cardDeck) {
+            return undefined;
+        }
+
+        updateScrollState();
+        const timeoutId = window.setTimeout(updateScrollState, 0);
+        const resizeObserver =
+            typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateScrollState) : undefined;
+
+        resizeObserver?.observe(cardDeck);
+        cardDeck.addEventListener('scroll', updateScrollState, { passive: true });
+        window.addEventListener('resize', updateScrollState);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            resizeObserver?.disconnect();
+            cardDeck.removeEventListener('scroll', updateScrollState);
+            window.removeEventListener('resize', updateScrollState);
+        };
+    }, [updateScrollState]);
 
     return (
-        <Row gutter={[24, 24]}>
-            <Col span={12} sm={6}>
-                <CardEditable
-                    key={`tenant-master-data-editable-${appearanceEditable}`}
-                    allowEdit={isSuperAdmin}
-                    initialValues={tenantAdminControlsInitialValues}
-                    titleKey="settings.masterData.editable.title"
-                    onSave={onSaveTenantAdminControls}
-                >
-                    <FormSwitchField
-                        labelKey="settings.masterData.editable.toggle"
-                        name={['tenantAdminControls', 'allowedPermissionToggles', 'appearance']}
-                        inline
-                        disableLabels
-                        disabled={!isSuperAdmin}
-                    />
-                </CardEditable>
-                <NameAndSlogan tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+        <div className={styles.appearancePage}>
+            <div className={styles.cardDeck} ref={cardDeckRef}>
+                <div className={`${styles.cardSlot} ${styles.cardSlotImages}`}>
+                    <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                </div>
                 {can(PermissionAction.Update, Resource.Language) && (
-                    <>
+                    <div className={styles.cardSlot}>
                         <Languages tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                        <TypeOfLanguage tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </>
+                    </div>
                 )}
-            </Col>
-            <Col span={12} sm={6}>
-                <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-            </Col>
-            <Col span={24}>
-                <ThemeBuilder tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-            </Col>
-        </Row>
+                <div className={`${styles.cardSlot} ${styles.cardSlotTheme}`}>
+                    <ThemeBuilder tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                </div>
+                <div className={styles.cardSlot}>
+                    <CardEditable
+                        key={`tenant-master-data-editable-${appearanceEditable}`}
+                        allowEdit={isSuperAdmin}
+                        initialValues={tenantAdminControlsInitialValues}
+                        titleKey="settings.masterData.editable.title"
+                        subTitle={t<string>('settings.masterData.editable.subtitle')}
+                        onSave={onSaveTenantAdminControls}
+                        variant="dialog"
+                        editButtonPlacement="footer"
+                        headerIcon={<ManageAccountsOutlinedIcon />}
+                    >
+                        <FormSwitchField
+                            label={
+                                <span className={styles.masterDataToggleCopy}>
+                                    <span className={styles.masterDataToggleTitle}>
+                                        {t('settings.masterData.editable.toggle')}
+                                    </span>
+                                    <span className={styles.masterDataToggleDescription}>
+                                        {t('settings.masterData.editable.toggle.description')}
+                                    </span>
+                                </span>
+                            }
+                            name={['tenantAdminControls', 'allowedPermissionToggles', 'appearance']}
+                            inline
+                            disableLabels
+                            disabled={!isSuperAdmin}
+                            className={styles.masterDataToggle}
+                            switchLabel={t('settings.masterData.editable.toggle')}
+                            switchVariant="m3"
+                        />
+                    </CardEditable>
+                </div>
+                <div className={styles.cardSlot}>
+                    <NameAndSlogan tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                </div>
+                {can(PermissionAction.Update, Resource.Language) && (
+                    <div className={styles.cardSlot}>
+                        <TypeOfLanguage tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                    </div>
+                )}
+            </div>
+            <div className={styles.sideScrollerFooter} aria-label="Einstellungen scrollen">
+                <button
+                    className={`${styles.scrollButton} ${
+                        scrollState.canScrollBackward ? styles.scrollButtonActive : ''
+                    }`}
+                    type="button"
+                    aria-label="Vorherige Einstellungen anzeigen"
+                    disabled={!scrollState.canScrollBackward}
+                    onClick={() => scrollCards(-1)}
+                >
+                    <ArrowBackIcon />
+                </button>
+                <button
+                    className={`${styles.scrollButton} ${
+                        scrollState.canScrollForward ? styles.scrollButtonActive : ''
+                    }`}
+                    type="button"
+                    aria-label="Weitere Einstellungen anzeigen"
+                    disabled={!scrollState.canScrollForward}
+                    onClick={() => scrollCards(1)}
+                >
+                    <ArrowForwardIcon />
+                </button>
+            </div>
+        </div>
     );
 };

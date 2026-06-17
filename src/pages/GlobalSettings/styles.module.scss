@@ -1,5 +1,21 @@
-.smtpCardShell {
-    width: min(560px, 100%);
+.checkGroup {
+    margin-bottom: 16px;
+}
+
+.checkInfo {
+    width: calc(100% - 71px);
+    margin-top: 4px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.smtpPage {
+    display: grid;
+    max-width: 1128px;
+    align-items: stretch;
+    gap: 24px;
+    grid-template-columns: minmax(420px, 1fr) minmax(360px, 1fr);
 }
 
 .smtpCard {
@@ -127,9 +143,51 @@
     }
 }
 
+.testForm {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    padding: 24px;
+}
+
+.smtpActionButton {
+    width: fit-content;
+    min-width: 184px;
+    height: 48px;
+    padding: 0 24px;
+    border: 0;
+    border-radius: 100px;
+    background: #111923;
+    color: #ffffff;
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.1px;
+    line-height: 20px;
+    text-transform: none;
+
+    &:hover,
+    &:focus {
+        background: #1c2735;
+        color: #ffffff;
+    }
+}
+
+.testAction {
+    margin-top: 4px;
+}
+
+@media only screen and (max-width: 1000px) {
+    .smtpPage {
+        max-width: 560px;
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 @media only screen and (max-width: 640px) {
-    .smtpCardShell {
-        width: 100%;
+    .smtpPage {
+        max-width: 100%;
     }
 
     .smtpCard {

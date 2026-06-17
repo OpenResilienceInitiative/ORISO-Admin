@@ -1,0 +1,103 @@
+.languageChips,
+.languageToggleGroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 8px;
+    padding: 8px 0;
+}
+
+.languageChip {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    border: 1px solid #c4c7c8;
+    border-radius: 8px;
+    color: #444748;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
+.languageSelectorField {
+    margin-bottom: 0;
+
+    :global {
+        .ant-form-item-control-input {
+            min-height: 0;
+        }
+
+        .ant-form-item-explain-error {
+            margin-top: 8px;
+            color: #b1005e;
+            font-size: 12px;
+            line-height: 16px;
+        }
+    }
+}
+
+.languageToggleGroup {
+    width: 100%;
+}
+
+.languageToggle {
+    margin: 0 !important;
+    color: #141c25;
+
+    :global(.ant-checkbox) {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    > span:last-child {
+        display: inline-flex;
+        min-height: 32px;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 12px;
+        border: 1px solid #c4c7c8;
+        background: #ffffff;
+        border-radius: 8px;
+        color: #141c25;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0;
+        line-height: 20px;
+        text-rendering: geometricprecision;
+        white-space: nowrap;
+    }
+
+    &:global(.ant-checkbox-wrapper-checked) > span:last-child {
+        border-color: #d8e0e9;
+        background: #dfeaf6;
+        color: #141c25;
+        font-weight: 600;
+    }
+
+    &:global(.ant-checkbox-wrapper-disabled) > span:last-child {
+        cursor: default;
+        opacity: 1;
+    }
+
+    &:hover {
+        &:not(:global(.ant-checkbox-wrapper-disabled)) > span:last-child {
+            border-color: #111923;
+        }
+    }
+
+    &:focus-within {
+        > span:last-child {
+            outline: 2px solid #6ba6ff;
+            outline-offset: 2px;
+        }
+    }
+}

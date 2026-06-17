@@ -1,0 +1,149 @@
+.assetsLayout {
+    display: grid;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 23px;
+    grid-template-columns: minmax(150px, 176px) 1fr;
+}
+
+.assetUploader {
+    margin-bottom: 0;
+
+    :global {
+        .ant-form-item-label {
+            display: none;
+        }
+
+        .ant-form-item-control-input {
+            min-height: 0;
+        }
+
+        .ant-upload.ant-upload-select-picture-card {
+            display: flex;
+            width: 100%;
+            height: auto;
+            margin: 0;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+            background: #fdfdfd;
+        }
+
+        .ant-upload {
+            overflow: hidden;
+            transition:
+                box-shadow 0.2s ease,
+                transform 0.2s ease;
+        }
+
+        .ant-upload:hover {
+            box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+        }
+    }
+}
+
+.logoUploader {
+    :global {
+        .ant-upload.ant-upload-select-picture-card {
+            aspect-ratio: 1;
+            border-radius: 28px;
+        }
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            mix-blend-mode: luminosity;
+        }
+    }
+}
+
+.faviconUploader {
+    width: 54px;
+
+    :global {
+        .ant-upload.ant-upload-select-picture-card {
+            aspect-ratio: 1;
+            border-radius: 8px;
+        }
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+    }
+}
+
+.assetMetaColumn {
+    display: flex;
+    min-width: 116px;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.assetMeta,
+.assetMetaEnd {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: rgb(0 0 0 / 60%);
+}
+
+.assetMetaEnd {
+    align-items: flex-end;
+}
+
+.assetLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 19px;
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.assetSize {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 12px;
+}
+
+.faviconBlock {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+@media only screen and (min-height: 1000px) {
+    .assetsLayout {
+        grid-template-columns: minmax(180px, min(48%, 256px)) 1fr;
+    }
+
+    .faviconUploader {
+        width: 64px;
+    }
+
+    .assetMetaColumn {
+        gap: 28px;
+    }
+}
+
+@media only screen and (max-width: 720px) {
+    .assetsLayout {
+        align-items: flex-start;
+        grid-template-columns: 1fr;
+    }
+
+    .assetMetaColumn {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+}

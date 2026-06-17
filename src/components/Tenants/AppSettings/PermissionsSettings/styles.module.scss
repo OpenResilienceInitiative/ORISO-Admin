@@ -257,97 +257,10 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 14px;
 }
 
-.cardFooterAction {
-    appearance: none;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    color: rgba(76, 85, 95, 0.72);
-    font-family: inherit;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 16px;
-    cursor: default;
-    text-align: center;
-    text-transform: none !important;
-    white-space: nowrap;
-
-    &:disabled {
-        opacity: 1;
-    }
-}
-
-.cardFooterActionAlert {
-    color: #bd000e;
-}
-
-.cardFooterIcon {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-    color: rgba(76, 85, 95, 0.72);
-
-    path {
-        fill: currentColor;
-    }
-}
-
-.cardFooterGear {
-    width: 16px;
-    height: 16px;
-    border: 3px solid currentColor;
-    border-radius: 50%;
-    box-sizing: border-box;
-    position: relative;
-    flex-shrink: 0;
-
-    &::before {
-        content: '';
-        position: absolute;
-        inset: 4px;
-        border-radius: 50%;
-        background: currentColor;
-    }
-}
-
-/* Custom SVG check toggle — renders exact Figma-spec SVGs for on/off */
-.checkToggleButton {
-    appearance: none;
-    border: 0;
-    background: transparent;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 0;
-    flex-shrink: 0;
-
-    svg {
-        display: block;
-        width: 60px;
-        height: 48px;
-    }
-
-    &:disabled {
-        cursor: not-allowed;
-        opacity: 0.5;
-    }
-
-    &:focus-visible {
-        outline: 2px solid #273270;
-        outline-offset: 2px;
-        border-radius: 24px;
-    }
+.cardFooterEditButton {
+    flex: 0 0 auto;
 }
 
 @media screen and (max-width: 767px) {
