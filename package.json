@@ -89,7 +89,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^12.1.5",
     "@types/lodash.set": "^4.3.7",
-    "@types/node": "^17.0.16",
+    "@types/node": "^18.19.0",
     "@types/react": "^17.0.39",
     "@types/react-color": "^3.0.6",
     "@types/react-dom": "^17.0.11",
@@ -130,7 +130,7 @@
     "vite-plugin-eslint": "^1.8.1",
     "vite-plugin-svgr": "^3.2.0",
     "vite-tsconfig-paths": "^4.2.0",
-    "vitest": "^2.1.9",
+    "vitest": "^1.6.0",
     "wait-on": "^5.2.0"
   },
   "overrides": {
