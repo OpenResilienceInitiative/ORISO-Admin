@@ -29,6 +29,17 @@ const SORT_FIELD_BY_COLUMN: Partial<Record<UserTableColumnKey, string>> = {
     tenantOrgName: 'NAME',
 };
 
+const getColumnSortOrder = (
+    columnKey: UserTableColumnKey,
+    sortBy?: string,
+    order?: string,
+): 'ascend' | 'descend' | undefined => {
+    const apiField = SORT_FIELD_BY_COLUMN[columnKey];
+    if (!apiField || !sortBy || apiField !== sortBy) return undefined;
+    return order === 'DESC' ? 'descend' : 'ascend';
+};
+
+
 type TableRow = CounselorData | TenantData;
 
 interface UseUserTableColumnsParams {
@@ -45,6 +56,8 @@ interface UseUserTableColumnsParams {
     mainTenantSubdomain?: string;
     figmaTableHeader?: boolean;
     fixActionsColumn?: boolean;
+    sortBy?: string;
+    order?: string;
 }
 
 export const useUserTableColumns = ({
@@ -61,6 +74,8 @@ export const useUserTableColumns = ({
     mainTenantSubdomain,
     figmaTableHeader = false,
     fixActionsColumn = true,
+    sortBy,
+    order
 }: UseUserTableColumnsParams) => {
     const { t } = useTranslation();
     const config = USER_TABLE_CONFIGS[sectionId];
@@ -113,10 +128,10 @@ export const useUserTableColumns = ({
                 className: 'counselorList__column',
                 ...(sortable && apiSortField
                     ? {
-                          sorter: true,
-                          sortOrder: undefined,
-                          showSorterTooltip: false,
-                      }
+                        sorter: true,
+                        sortOrder: getColumnSortOrder(key, sortBy, order),
+                        showSorterTooltip: false,
+                    }
                     : {}),
             };
 
@@ -300,6 +315,8 @@ export const useUserTableColumns = ({
         t,
         showTenant,
         showSubdomain,
+        sortBy,
+        order
     ]);
 };
 
