@@ -72,5 +72,6 @@ export const addAgencyAdminData = (adminData: Record<string, any>): Promise<Admi
             return putAgenciesForAgencyAdmin(embeddedData.id, adminData.agencies?.map(({ value }) => value) || [])
                 .then(() => embeddedData)
                 .catch(() => ({ ...embeddedData, agencyAssignmentFailed: true }));
-        });
+        })
+    );
 };

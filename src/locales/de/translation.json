@@ -1408,7 +1408,7 @@
     "theme.builder.preview.recipient": "A. Kräger",
     "theme.builder.preview.error": "Beispielhinweis im Fehlerfarbton",
     "theme.builder.preview.inputPlaceholder": "Nachricht an Ratsuchende:r schreiben",
-    "theme.builder.preview.send": "Senden"
+    "theme.builder.preview.send": "Senden",
     "twoFactorAuth.switch.type.EMAIL": "E-Mail",
     "twoFactorAuth.switch.type.label": "Ihr 2. Faktor",
     "twoFactorAuth.title": "Zwei-Faktor-Authentifizierung",
