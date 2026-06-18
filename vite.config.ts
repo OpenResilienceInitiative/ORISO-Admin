@@ -4,6 +4,7 @@ import viteTsconfigPaths from 'vite-tsconfig-paths';
 import svgrPlugin from 'vite-plugin-svgr';
 import eslintPlugin from 'vite-plugin-eslint';
 import { existsSync, readFileSync } from 'node:fs';
+import { authBffDevPlugin } from './vite.authBffPlugin';
 
 // https://vitejs.dev/config/
 export default ({ mode }) => {
@@ -13,6 +14,7 @@ export default ({ mode }) => {
         base: process.env.BASE || '/admin',
         envPrefix: ['VITE_', 'REACT_APP_'],
         plugins: [
+            authBffDevPlugin(),
             react(),
             viteTsconfigPaths(),
             svgrPlugin(),

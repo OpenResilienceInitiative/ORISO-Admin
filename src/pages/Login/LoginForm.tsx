@@ -16,7 +16,7 @@ const LoginForm = () => {
     const { data: tenantData } = usePublicTenantData();
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const { mutate: login } = useLoginMutation(tenantData?.id);
+    const { mutate: login } = useLoginMutation(tenantData?.id != null ? `${tenantData.id}` : '');
     const [postLoading, setPostLoading] = useState(false);
     const [otpDisabled, setOtpDisabled] = useState(true);
     const [twoFactorType, setTwoFactorType] = useState(TwoFactorType.None);

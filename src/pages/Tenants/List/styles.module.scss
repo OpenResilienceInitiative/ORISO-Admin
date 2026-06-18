@@ -12,7 +12,153 @@
 
 .searchContainer {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px 24px;
+    width: 100%;
+    padding-left: 32px;
+
+    @media (max-width: 767px) {
+        padding-left: 0;
+    }
+}
+
+.searchWithButton {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
     gap: 24px;
+    width: 100%;
+    max-width: 640px;
+    min-width: 0;
+    flex: 0 1 640px;
+
+    @media (max-width: 767px) {
+        max-width: 100%;
+        flex: 1 1 100%;
+    }
+}
+
+.searchField {
+    flex: 0 0 499px;
+    min-width: 0;
+    width: 100%;
+    max-width: 499px;
+}
+
+.toolbarActions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+.createButton {
+    display: inline-flex;
+    min-width: 116px;
+    height: 56px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 24px;
+    border: 0;
+    border-radius: 28px;
+    background: #646d78 !important;
+    border-color: #646d78 !important;
+    box-shadow: none;
+    color: #ffffff;
+    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 16px;
+    font-weight: 600 !important;
+    line-height: 24px;
+    text-transform: none;
+    transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+
+    &:hover,
+    &:focus {
+        background: #56616c !important;
+        border-color: #56616c !important;
+        color: #ffffff;
+    }
+
+    &:active {
+        background: #4a535e !important;
+        border-color: #4a535e !important;
+        transform: translateY(1px);
+    }
+
+    &:disabled {
+        background: #d4d8de !important;
+        border-color: #d4d8de !important;
+        color: #7d8792;
+        transform: none;
+    }
+
+    :global {
+        .anticon {
+            display: inline-flex;
+            align-items: center;
+            font-size: 18px;
+            line-height: 1;
+        }
+    }
+}
+
+.tableContainer {
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    :global {
+        .ant-table {
+            background: transparent;
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .ant-table-container,
+        .ant-table-content {
+            min-width: 0;
+            background: var(--m3-surface-container-low, #f6f3f3);
+        }
+
+        .ant-table-thead > tr > th {
+            background: var(--m3-surface-container-highest, #e4e2e2);
+            border-bottom: none;
+            border-radius: 0 !important;
+            color: var(--m3-on-surface, #1b1b1c);
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            padding-top: 14px;
+            padding-bottom: 14px;
+            white-space: nowrap;
+        }
+
+        .ant-table-tbody > tr > td {
+            background: var(--m3-surface-container-low, #f6f3f3);
+            border-bottom: 1px solid var(--m3-surface-container-high, #eae7e8);
+            color: var(--m3-on-surface-variant, #444748);
+            vertical-align: middle;
+        }
+
+        .ant-table-tbody > tr:hover > td {
+            background: var(--m3-surface-container, #f0edee) !important;
+        }
+
+        .ant-table-cell-fix-right,
+        .ant-table-cell-fix-left {
+            background: inherit;
+        }
+
+        .counselorList__column {
+            min-width: 0;
+        }
+
+        .tableActionWrapper {
+            white-space: nowrap;
+        }
+    }
 }
 
 .subdomain {

@@ -3,6 +3,7 @@ import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fe
 import { tenantAdminEndpoint } from '../appConfig';
 import { TenantAdminData } from '../types/TenantAdminData';
 import { useSingleTenantData } from './useSingleTenantData';
+import { TENANTS_QUERY_KEY } from './useTenantsData';
 
 interface UseAddOrUpdateTenantOptions
     extends UseMutationOptions<TenantAdminData, Error, TenantAdminData, Error | Response> {
@@ -36,6 +37,7 @@ export const useAddOrUpdateTenant = ({ id, ...options }: UseAddOrUpdateTenantOpt
                 licensing: {
                     ...formData.licensing,
                 },
+                settings: { ...formData.settings },
             });
 
             return fetchData({
@@ -49,6 +51,7 @@ export const useAddOrUpdateTenant = ({ id, ...options }: UseAddOrUpdateTenantOpt
             ...options,
             onSuccess: (responseData, variables) => {
                 queryClient.setQueryData(['TENANT', responseData.id], { ...responseData, ...variables });
+                queryClient.invalidateQueries(TENANTS_QUERY_KEY);
                 options?.onSuccess?.(responseData, variables, null);
             },
         },

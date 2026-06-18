@@ -4,11 +4,15 @@ import { FormInputField } from '../../../../../components/FormInputField';
 import { FormTextAreaField } from '../../../../../components/FormTextAreaField';
 import { Card } from '../../../../../components/Card';
 
-export const AgencyGeneralInformation = () => {
+interface AgencyGeneralInformationProps {
+    asFields?: boolean;
+}
+
+export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationProps) => {
     const { t } = useTranslation();
 
-    return (
-        <Card titleKey="agency.edit.general.general_information">
+    const fields = (
+        <>
             <FormInputField
                 name="name"
                 labelKey="agency.edit.general.general_information.name"
@@ -43,6 +47,12 @@ export const AgencyGeneralInformation = () => {
                     />
                 </Col>
             </Row>
-        </Card>
+        </>
     );
+
+    if (asFields) {
+        return fields;
+    }
+
+    return <Card titleKey="agency.edit.general.general_information">{fields}</Card>;
 };

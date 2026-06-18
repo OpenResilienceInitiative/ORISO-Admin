@@ -1,6 +1,6 @@
 import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
 import { addAgencyAdminData } from '../api/admins/addAgencyAdminData';
-import { editAgencyAdminData } from '../api/admins/ediAgencytAdminData';
+import { editAgencyAdminData } from '../api/admins/editAgencyAdminData';
 import { addCounselorData } from '../api/counselor/addCounselorData';
 import { editCounselorData } from '../api/counselor/editCounselorData';
 import { TypeOfUser } from '../enums/TypeOfUser';
@@ -14,8 +14,8 @@ interface AddOrUpdateConsultantOptions
 }
 export const useAddOrUpdateConsultantOrAdmin = ({ id, typeOfUser, ...options }: AddOrUpdateConsultantOptions) => {
     const queryClient = useQueryClient();
-    return useMutation(
-        (formData) => {
+    return useMutation<CounselorData | AdminData, Error, CounselorData | AdminData, Error | Response>(
+        (formData): Promise<CounselorData | AdminData> => {
             if (typeOfUser.toLowerCase() === TypeOfUser.Consultants) {
                 return id ? editCounselorData(id, formData as CounselorData) : addCounselorData(formData);
             }

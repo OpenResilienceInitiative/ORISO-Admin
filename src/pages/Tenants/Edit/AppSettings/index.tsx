@@ -9,12 +9,13 @@ import { SmtpSettings } from '../../../../components/Tenants/AppSettings/SmtpSet
 
 export const TenantAppSettings = () => {
     const { id } = useParams<{ id: string }>();
-    const { hasRole } = useUserRoles();
+    const { hasRole, isSuperAdmin } = useUserRoles();
     const { settings } = useAppConfigContext();
+    const canSeeTenantAppSettings = isSuperAdmin || hasRole(UserRole.TenantAdmin);
 
     return (
         <Row gutter={[24, 24]}>
-            {hasRole(UserRole.TenantAdmin) && (
+            {canSeeTenantAppSettings && (
                 <Col span={12} sm={6}>
                     <SmtpSettings tenantId={id} />
                     <CommunicationSettings tenantId={id} />

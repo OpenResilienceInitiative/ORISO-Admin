@@ -3,13 +3,13 @@ import getPublicTenantData from '../api/tenant/getPublicTenantData';
 import getTenantData from '../api/tenant/getTenantData';
 import { useAppConfigContext } from '../context/useAppConfig';
 import { TenantData } from '../types/tenant';
-import { getValueFromCookie } from '../api/auth/accessSessionCookie';
+import { getAccessTokenForRequests } from '../api/auth/auth';
 import parseJwt from '../utils/parseJWT';
 
 export const TENANT_DATA_KEY = 'tenant-data';
 export const useTenantData = () => {
     const { settings } = useAppConfigContext();
-    const accessToken = getValueFromCookie('keycloak');
+    const accessToken = getAccessTokenForRequests();
     const parsedToken = accessToken ? parseJwt(accessToken || '') : null;
     let tokenTenantId: number | null = null;
     if (typeof parsedToken?.tenantId === 'number') {

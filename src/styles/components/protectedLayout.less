@@ -4,7 +4,7 @@
     .ant-layout-sider {
         z-index: 80;
         height: @mobileNavHeight;
-        background-color: #1f1f1f;
+        background-color: #141c25;
     }
 
     .mainMenu {
@@ -12,18 +12,13 @@
             display: flex;
             flex-direction: row;
             justify-content: space-around;
-            padding: 10px 0;
+            padding: 6px 0;
             margin: 0;
             list-style: none;
             overflow-x: auto;
-            gap: 12px;
-            padding-left: 5px;
-            padding-right: 5px;
-        }
-
-        .menuIcon svg {
-            width: 1.2rem;
-            height: 1.2rem;
+            gap: 8px;
+            padding-left: 4px;
+            padding-right: 4px;
         }
 
         .menuItem {
@@ -34,24 +29,35 @@
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                padding: 0;
+                padding: 4px;
                 border: none;
                 background: transparent;
                 color: #e7effc;
                 cursor: pointer;
-                font-size: 9px;
-                line-height: 11px;
-                justify-items: center;
-                opacity: 0.72;
+                font-size: 10px;
+                line-height: 12px;
+                opacity: 0.85;
                 text-align: center;
                 transition: all 160ms ease;
+                gap: 2px;
+
+                > div {
+                    width: 24px;
+                    height: 24px;
+                }
+
+                svg {
+                    width: 24px;
+                    height: 24px;
+                }
 
                 &:hover {
-                    opacity: 0.95;
+                    opacity: 1;
                 }
 
                 &.active {
                     opacity: 1;
+                    color: #e7effc;
                 }
             }
         }
@@ -75,10 +81,16 @@
             width: 100% !important;
             max-width: 100% !important;
         }
+
+        .mainMenu {
+            .lowerSidebar {
+                display: none;
+            }
+        }
     }
 }
 
-/* Desktop sidebar — strict Figma layout */
+/* Desktop sidebar */
 @media screen and (min-width: @screen-md) {
     .protectedLayout {
         padding-bottom: 0;
@@ -87,12 +99,12 @@
             position: sticky;
             top: 0;
             left: 0;
-            width: 132px;
-            min-width: 132px !important;
-            max-width: 132px !important;
-            flex: 0 0 132px !important;
+                width: 85px;
+                min-width: 85px !important;
+                max-width: 85px !important;
+                flex: 0 0 85px !important;
             height: 100vh;
-            background-color: #1f1f1f;
+            background-color: #141c25;
         }
 
         .logo {
@@ -101,121 +113,132 @@
 
         .mainMenu {
             height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px 4px;
 
             ul {
-                overflow-y: auto;
+                display: flex;
                 overflow-x: hidden;
-                height: 100%;
                 flex-direction: column;
                 align-items: center;
-                justify-content: flex-start;
-                padding: 24px 0 16px;
-                gap: 4px;
+                margin: 0;
+                padding: 0;
                 list-style: none;
+            }
+
+            .upperSidebar {
+                overflow-y: auto;
+                gap: 4px;
+                padding: 0;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+            }
+
+            .lowerSidebar {
+                gap: 4px;
+                padding: 8px 0 0;
             }
 
             .menuItem {
                 margin: 0;
-                width: 100px;
+                width: 100%;
                 display: flex;
                 justify-content: center;
 
                 a,
                 button {
-                    width: 92px;
-                    min-height: 140px;
-                    padding: 18px 6px;
+                    width: 83px;
+                    min-width: 60px;
+                    max-width: 96px;
+                    min-height: auto;
+                    padding: 4px;
                     box-sizing: border-box;
                     display: flex;
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
-                    gap: 10px;
-                    border-radius: 999px;
+                    gap: 4px;
+                    border-radius: 16px;
                     background: transparent;
                     color: #e7effc;
                     border: none;
                     cursor: pointer;
                     opacity: 1;
-                    font-size: 12px;
                     text-align: center;
-                    transition:
-                        background 160ms ease,
-                        color 160ms ease;
+                    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+                    transform: translateZ(0);
+                    transition: padding 800ms cubic-bezier(0.2, 0.78, 0.26, 1),
+                        border-radius 800ms cubic-bezier(0.2, 0.78, 0.26, 1), background-color 800ms ease,
+                        color 800ms ease, transform 800ms cubic-bezier(0.2, 0.78, 0.26, 1);
 
-                    .menuIcon {
+                    > div {
                         width: 40px;
                         height: 40px;
                         display: inline-flex;
                         align-items: center;
                         justify-content: center;
-                        color: inherit;
                         flex-shrink: 0;
+                        transition: color 800ms ease;
                     }
 
-                    .menuIcon svg {
-                        width: 2rem;
-                        height: 2rem;
+                    svg {
+                        width: 40px;
+                        height: 40px;
                         color: inherit;
-                        fill: currentColor;
-                    }
-
-                    .menuIcon svg path {
-                        fill: currentColor;
+                        transition: color 800ms ease, fill 800ms ease;
                     }
 
                     span {
-                        font-size: 12px;
-                        line-height: 14px;
-                        font-weight: 500;
+                        font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+                        font-size: 10px;
+                        line-height: 13px;
+                        font-weight: 600;
                         color: inherit;
                         text-align: center;
-                        word-break: break-word;
+                        hyphens: auto;
+                        overflow-wrap: anywhere;
+                        word-break: normal;
                         display: inline-block;
-                        max-width: 84px;
+                        max-width: 75px;
+                        letter-spacing: 0.2px;
+                        white-space: pre-line;
+                        transition: color 800ms ease;
                     }
 
                     &:hover:not(.active) {
-                        background: #646d78;
-                        color: #e7effc;
-                        opacity: 1;
+                        background: transparent;
+                        color: #ffffff;
 
-                        .menuIcon {
-                            color: #e7effc;
+                        svg {
+                            color: #ffffff;
                         }
 
                         span {
-                            color: #e7effc;
+                            color: #ffffff;
                         }
                     }
 
                     &.active {
                         background: #e7effc;
-                        color: #273270;
-                        opacity: 1;
+                        color: #141c25;
+                        border-radius: 50px;
+                        padding: 32px 4px;
 
-                        .menuIcon {
-                            color: #273270;
+                        > div {
+                            color: #141c25;
                         }
 
-                        .menuIcon svg,
-                        .menuIcon svg path {
-                            fill: #273270;
-                            color: #273270;
+                        svg {
+                            color: #141c25;
                         }
 
                         span {
-                            color: #273270;
+                            color: #141c25;
                             font-weight: 700;
                         }
                     }
-                }
-
-                &:last-child {
-                    display: flex;
-                    justify-content: center;
-                    margin-top: auto;
-                    padding: 8px 0 12px;
                 }
             }
 

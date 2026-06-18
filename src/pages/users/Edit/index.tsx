@@ -1,6 +1,6 @@
 import { Button, message, Space, Col, Row, Form } from 'antd';
 import { useWatch } from 'antd/lib/form/Form';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import { FETCH_ERRORS, X_REASON } from '../../../api/fetchData';
@@ -9,7 +9,7 @@ import { FormInputField } from '../../../components/FormInputField';
 import { FormPasswordField } from '../../../components/FormPasswordField';
 import { FormTextAreaField } from '../../../components/FormTextAreaField';
 import { Page } from '../../../components/Page';
-import { SelectFormField } from '../../../components/SelectFormField';
+import { SelectFormField, Option } from '../../../components/SelectFormField';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
@@ -20,31 +20,40 @@ import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { convertToOptions } from '../../../utils/convertToOptions';
 import { decodeUsername } from '../../../utils/encryptionHelpers';
 import { FormSwitchField } from '../../../components/FormSwitchField';
-import { useFeatureContext } from '../../../context/FeatureContext';
-import { FeatureFlag } from '../../../enums/FeatureFlag';
 import styles from './styles.module.scss';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { searchTenantData } from '../../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
+import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
+import { useTenantTopics } from '../../../hooks/useTenantTopics';
+import { useCounselorById } from '../../../hooks/useCounselorById';
+
+const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
+    const seen = new Set(current.map(({ value }) => value));
+    return [...current, ...incoming.filter(({ value }) => !seen.has(value))];
+};
 
 export const UserEditOrAdd = () => {
     const navigate = useNavigate();
     const [form] = Form.useForm();
     const { can } = useUserPermissions();
     const { t } = useTranslation();
-    const { isEnabled } = useFeatureContext();
     const { isSuperAdmin } = useUserRoles();
 
     const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
+    const isEditing = id !== 'add';
+    const isConsultantForm = typeOfUsers === TypeOfUser.Consultants;
     const { data: consultantsResponse, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
         search: id,
         typeOfUser: typeOfUsers,
-        enabled: !!id,
+        enabled: isEditing && !!id,
     });
     const { data: agenciesData, isLoading } = useAgenciesData({ pageSize: 10000 });
-
-    const isEditing = id !== 'add';
+    const { data: topics, isLoading: isLoadingTopics } = useTenantTopics(true);
+    const { data: consultantById, isLoading: isLoadingConsultantById } = useCounselorById({
+        id: isEditing && isConsultantForm ? id : undefined,
+    });
     const singleData = consultantsResponse?.data.find((c) => c.id === id);
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted] = useState(false);
@@ -52,6 +61,20 @@ export const UserEditOrAdd = () => {
     const [userTenantId, setUserTenantId] = useState<number>(0);
     const [filteredAgencies, setFilteredAgencies] = useState([]);
     const selectedTenant = Form.useWatch('tenantId', form);
+    const selectedAgencies = Form.useWatch('agencies', form) || [];
+    const selectedTopicIds = Form.useWatch('topicIds', form) || [];
+    const prevAgencyIdsRef = useRef<string[] | null>(null);
+    const topicsForList = topics?.filter((topic) => !selectedTopicIds.find(({ value }) => value === `${topic.id}`));
+    const topicOptions = [
+        ...selectedTopicIds.filter((selected) => !topics?.some((topic) => `${topic.id}` === selected.value)),
+        ...convertToOptions(topicsForList, 'name', 'id'),
+    ];
+    const hasSelectedAgencies = selectedAgencies.length > 0;
+    const consultantTopics = consultantById?.topics || [];
+    const showTopicsField =
+        isConsultantForm &&
+        topics?.length > 0 &&
+        (hasSelectedAgencies || (isEditing && consultantTopics.length > 0) || selectedTopicIds.length > 0);
 
     useEffect(() => {
         const { tenantId = 0 } = parseUserAuthInfo();
@@ -82,19 +105,81 @@ export const UserEditOrAdd = () => {
     useEffect(() => {
         if (isEditing) return;
         form.setFieldValue('agencies', []);
+        form.setFieldValue('topicIds', []);
+        prevAgencyIdsRef.current = [];
     }, [selectedTenant, isEditing]);
+
+    useEffect(() => {
+        if (!isConsultantForm || !hasSelectedAgencies) {
+            if (!isEditing) {
+                form.setFieldValue('topicIds', []);
+            }
+            prevAgencyIdsRef.current = hasSelectedAgencies ? prevAgencyIdsRef.current : [];
+            return;
+        }
+
+        const currentAgencyIds = selectedAgencies.map(({ value }) => String(value));
+
+        if (prevAgencyIdsRef.current === null && isEditing) {
+            prevAgencyIdsRef.current = currentAgencyIds;
+            return;
+        }
+
+        const newlyAddedAgencyIds = currentAgencyIds.filter(
+            (agencyId) => !(prevAgencyIdsRef.current || []).includes(agencyId),
+        );
+        prevAgencyIdsRef.current = currentAgencyIds;
+
+        if (newlyAddedAgencyIds.length === 0) {
+            return;
+        }
+
+        const newAgencyTopics = filteredAgencies
+            .filter((agency) => newlyAddedAgencyIds.includes(String(agency.id)))
+            .flatMap((agency) => agency.topics || []);
+
+        if (newAgencyTopics.length === 0) {
+            return;
+        }
+
+        const currentTopicIds: Option[] = form.getFieldValue('topicIds') || [];
+        form.setFieldValue(
+            'topicIds',
+            mergeTopicOptions(currentTopicIds, convertToOptions(newAgencyTopics, 'name', 'id')),
+        );
+    }, [selectedAgencies, filteredAgencies, isConsultantForm, hasSelectedAgencies, isEditing, form]);
+
+    useEffect(() => {
+        if (!isEditing || !isConsultantForm || !consultantById?.topics?.length) {
+            return;
+        }
+
+        form.setFieldsValue({
+            topicIds: convertToOptions(consultantById.topics, 'name', 'id'),
+        });
+        prevAgencyIdsRef.current = (form.getFieldValue('agencies') || []).map(({ value }) => String(value));
+    }, [consultantById, isEditing, isConsultantForm, form]);
 
     const { mutate } = useAddOrUpdateConsultantOrAdmin({
         id: isEditing ? id : null,
         typeOfUser: typeOfUsers,
         onSuccess: (response) => {
+            const messagePrefix = isConsultantForm ? 'counselor' : 'agencyAdmin';
             message.success({
-                content: t(`message.counselor.${isEditing ? 'update' : 'add'}`),
+                content: t(`message.${messagePrefix}.${isEditing ? 'update' : 'add'}`),
                 duration: 3,
             });
-            navigate(`/admin/users/${typeOfUsers}/${response.id}`);
+
+            if (!isEditing && (response as { agencyAssignmentFailed?: boolean })?.agencyAssignmentFailed) {
+                message.warning({
+                    content: t('message.agencyAdmin.agencyAssignmentFailed'),
+                    duration: 8,
+                });
+            }
+
+            navigate(`/admin/users/${typeOfUsers}`);
         },
-        onError: (error: Error | Response) => {
+        onError: async (error: Error | Response) => {
             if (error instanceof Response) {
                 switch (error.headers.get(FETCH_ERRORS.X_REASON)) {
                     case X_REASON.EMAIL_NOT_AVAILABLE: {
@@ -106,36 +191,35 @@ export const UserEditOrAdd = () => {
                                     FETCH_ERRORS.X_REASON,
                                 )}`,
                             ),
-                            duration: 3,
+                            duration: 8,
                         });
-                        break;
+                        return;
                     }
                     case X_REASON.USERNAME_NOT_AVAILABLE:
                         message.error({
                             content: t('message.error.USERNAME_NOT_AVAILABLE'),
-                            duration: 3,
+                            duration: 8,
                         });
-                        break;
+                        return;
                     case X_REASON.NUMBER_OF_LICENSES_EXCEEDED:
                         message.error({
                             content: t('message.error.NUMBER_OF_LICENSES_EXCEEDED'),
-                            duration: 3,
+                            duration: 8,
                         });
-                        break;
+                        return;
                     case X_REASON.PASSWORD_NOT_VALID:
                         message.error({
                             content: t('message.error.PASSWORD_NOT_VALID'),
-                            duration: 5,
+                            duration: 8,
                         });
-                        break;
+                        return;
                     default:
-                        message.error({
-                            content: t('message.error.default'),
-                            duration: 3,
-                        });
                         break;
                 }
             }
+
+            const content = await extractApiErrorMessage(error);
+            message.error({ content, duration: 8 });
         },
     });
 
@@ -144,7 +228,7 @@ export const UserEditOrAdd = () => {
     const isAbsentEnabled = useWatch('absent', form);
 
     return (
-        <Page isLoading={isLoadingConsultants || isLoading} stickyHeader>
+        <Page isLoading={isLoadingConsultants || isLoading || isLoadingTopics || isLoadingConsultantById} stickyHeader>
             <Page.BackWithActions path={`/admin/users/${typeOfUsers}`} titleKey="agency.add.general.headline">
                 {isReadOnly && (
                     <Button type="primary" onClick={() => setReadOnly(false)}>
@@ -176,6 +260,7 @@ export const UserEditOrAdd = () => {
                     }),
                     username: decodeUsername(singleData?.username || ''),
                     agencies: convertToOptions(singleData?.agencies || [], ['postcode', 'name', 'city'], 'id'),
+                    topicIds: convertToOptions(consultantById?.topics || [], 'name', 'id'),
                     tenantId: singleData?.tenantId?.toString() || (userTenantId > 0 && userTenantId.toString()) || '',
                 }}
             >
@@ -267,6 +352,18 @@ export const UserEditOrAdd = () => {
                                 placeholder="plsSelect"
                                 options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
                             />
+
+                            {showTopicsField && (
+                                <SelectFormField
+                                    label="topics.title"
+                                    name="topicIds"
+                                    labelInValue
+                                    isMulti
+                                    allowClear
+                                    placeholder="plsSelect"
+                                    options={topicOptions}
+                                />
+                            )}
 
                             {typeOfUsers === 'consultants' && (
                                 <>

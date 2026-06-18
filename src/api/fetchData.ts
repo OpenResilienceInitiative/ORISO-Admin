@@ -1,6 +1,7 @@
 import { message } from 'antd';
 import i18next from 'i18next';
 import { getValueFromCookie } from './auth/accessSessionCookie';
+import { getAccessTokenForRequests } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
 
@@ -22,6 +23,7 @@ export const FETCH_ERRORS = {
     BAD_REQUEST: 'BAD_REQUEST',
     BAD_REQUEST_WITH_RESPONSE: 'BAD_REQUEST_WITH_RESPONSE',
     CATCH_ALL: 'CATCH_ALL',
+    CATCH_ALL_SILENT: 'CATCH_ALL_SILENT',
     CONFLICT: 'CONFLICT',
     CONFLICT_WITH_RESPONSE: 'CONFLICT_WITH_RESPONSE',
     EMPTY: 'EMPTY',
@@ -74,7 +76,7 @@ interface FetchDataProps {
 
 export const fetchData = (props: FetchDataProps): Promise<any> =>
     new Promise((resolve, reject) => {
-        const accessToken = getValueFromCookie('keycloak');
+        const accessToken = getAccessTokenForRequests();
         // Check if manual authorization header is provided in headersData
         const manualAuth = (props.headersData as any)?.Authorization;
 
@@ -99,9 +101,8 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
         const localDevelopmentHeader = isLocalDevelopment ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
 
         const controller = new AbortController();
-        if (props.timeout) {
-            setTimeout(() => controller.abort(), props.timeout);
-        }
+        const timeoutMs = props.timeout ?? 30_000;
+        setTimeout(() => controller.abort(), timeoutMs);
         if (props.signal) {
             props.signal.addEventListener('abort', () => controller.abort());
         }
@@ -172,13 +173,16 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                         // console.log('🔍 fetchData: 401 Unauthorized - session expired, logging out');
                         logout(true, routePathNames.login);
                         reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
+                    } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL_SILENT)) {
+                        // Reject without showing a toast so the caller can decide how to handle it.
+                        reject(response);
                     } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL)) {
                         message.error({
                             content: i18next.t([
                                 `message.error.${response.headers.get(FETCH_ERRORS.X_REASON)}`,
                                 'message.error.default',
                             ]),
-                            duration: 3,
+                            duration: 8,
                         });
 
                         reject(new Error(FETCH_ERRORS.CATCH_ALL));

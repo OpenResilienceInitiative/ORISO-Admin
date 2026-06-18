@@ -8,6 +8,24 @@
     flex-direction: column;
 }
 
+.dialogContentClassName {
+    min-height: 100%;
+}
+
+.dialogCard {
+    --input-label-bg: var(--m3-surface-container-high);
+
+    height: var(--dialog-card-height, clamp(430px, 49.5vh, 598px));
+    padding: 0;
+    overflow: hidden;
+    border-radius: 28px;
+    background: #eae7e8;
+    font-family: var(--m3-body-font-family);
+    box-shadow:
+        0 1px 2px rgb(0 0 0 / 30%),
+        0 1px 3px 1px rgb(0 0 0 / 15%);
+}
+
 .cardTitle {
     display: flex;
     justify-content: space-between;
@@ -16,6 +34,12 @@
     &.hasSubtitle {
         margin-bottom: 0;
     }
+}
+
+.dialogCardTitle {
+    justify-content: center;
+    margin-bottom: 0;
+    padding: 24px 24px 0;
 }
 
 .titleContainer {
@@ -27,6 +51,39 @@
     }
 }
 
+.dialogTitleContainer {
+    width: 100%;
+    align-items: center;
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+
+    .title {
+        color: #1b1b1c;
+        font-family: var(--m3-body-font-family);
+        font-size: 24px;
+        font-weight: 400;
+        line-height: 32px;
+        text-align: center;
+    }
+}
+
+.headerIcon {
+    display: flex;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    color: #444748;
+
+    :global {
+        svg {
+            width: 40px;
+            height: 40px;
+        }
+    }
+}
+
 .cardSubTitle {
     margin-bottom: 20px;
     color: var(--label-color);
@@ -34,10 +91,28 @@
     font-weight: 400;
     line-height: 16px;
     margin-top: 5px;
+    white-space: pre-line;
+}
+
+.dialogCardSubTitle {
+    margin: 16px 0 0;
+    padding: 0 24px;
+    color: #444748;
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    letter-spacing: 0.25px;
+    line-height: 20px;
+    white-space: pre-line;
 }
 
 .container {
     flex-grow: 1;
+}
+
+.dialogContainer {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
 }
 
 .tooltip {

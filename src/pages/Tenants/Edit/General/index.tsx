@@ -1,4 +1,4 @@
-import { Button, Col, notification, Row } from 'antd';
+import { Col, notification, Row } from 'antd';
 import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'antd/lib/form/Form';
@@ -16,7 +16,7 @@ import routePathNames from '../../../../appConfig';
 import styles from './styles.module.scss';
 import { TenantAdminData } from '../../../../types/TenantAdminData';
 import { X_REASON } from '../../../../api/fetchData';
-import { useUserRoles } from '../../../../hooks/useUserRoles.hook';
+import { extractApiErrorMessage } from '../../../../utils/extractApiErrorMessage';
 
 export const GeneralTenantSettings = () => {
     const { id } = useParams<{ id: string }>();
@@ -24,7 +24,6 @@ export const GeneralTenantSettings = () => {
     const navigate = useNavigate();
     const [form] = useForm();
     const { settings } = useAppConfigContext();
-    const { isSuperAdmin } = useUserRoles();
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id, enabled: isEditing });
     const { mutate: createTenantAdmin } = useAddOrUpdateTenantAdmin({});
@@ -70,24 +69,21 @@ export const GeneralTenantSettings = () => {
                         notification.success({ message: t('tenants.created.modal.title') });
                         navigate(routePathNames.tenants);
                     };
-                    const rollbackAndExit = () => {
+                    const rollbackAndExit = async (error?: unknown) => {
+                        const conflictMessage = error
+                            ? await extractApiErrorMessage(error)
+                            : t('message.error.default');
                         deleteTenantData(rData.id)
                             .catch(() => undefined)
                             .finally(() => {
-                                notification.error({ message: t('message.error.default') });
+                                notification.error({ message: conflictMessage });
                                 navigate(routePathNames.tenants);
                             });
                     };
 
                     createTenantAdmin(payload, {
                         onSuccess: completeSuccess,
-                        onError: () => {
-                            // Retry once for transient backend/network issues; if it still fails, rollback tenant creation.
-                            createTenantAdmin(payload, {
-                                onSuccess: completeSuccess,
-                                onError: rollbackAndExit,
-                            });
-                        },
+                        onError: rollbackAndExit,
                     });
                 } else {
                     notification.success({ message: t('tenants.created.modal.title') });
@@ -222,16 +218,6 @@ export const GeneralTenantSettings = () => {
                                 />
                             </div>
                         </>
-                    )}
-                    {isEditing && isSuperAdmin && (
-                        <div className={styles.fieldGroup}>
-                            <Button
-                                type="default"
-                                onClick={() => navigate(`${routePathNames.tenants}/${id}/global-settings`)}
-                            >
-                                {t('tenants.edit.tabs.globalSettings')}
-                            </Button>
-                        </div>
                     )}
                 </CardEditable>
             </Col>
