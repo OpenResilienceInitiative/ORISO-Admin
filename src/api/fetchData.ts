@@ -100,9 +100,8 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
         const localDevelopmentHeader = isLocalDevelopment ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
 
         const controller = new AbortController();
-        if (props.timeout) {
-            setTimeout(() => controller.abort(), props.timeout);
-        }
+        const timeoutMs = props.timeout ?? 30_000;
+        setTimeout(() => controller.abort(), timeoutMs);
         if (props.signal) {
             props.signal.addEventListener('abort', () => controller.abort());
         }
