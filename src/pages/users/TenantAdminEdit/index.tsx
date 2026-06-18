@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Button, Col, Row, Form, notification } from 'antd';
+import { Button, Col, Row, Form, notification, Typography } from 'antd';
 import { FormInputField } from '../../../components/FormInputField';
+import { FormInputPasswordField } from '../../../components/FormInputPasswordField';
 import { Page } from '../../../components/Page';
 import { SelectFormField } from '../../../components/SelectFormField';
 import { useTenantUserAdminData } from '../../../hooks/useTenantUserAdminData';
@@ -15,10 +16,14 @@ import { getDomain } from '../../../utils/getDomain';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
+import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 
 export const TenantAdminEditOrAdd = () => {
-    const { search } = useLocation();
-    const tenantId = new URLSearchParams(search).get('tenantId');
+    const { search, pathname } = useLocation();
+    // Platform admins are tenant admins with the fixed platform id 0 (MT-04-12)
+    const isPlatformAdmin = pathname.includes('/platform-admins/');
+    const tenantId = isPlatformAdmin ? '0' : new URLSearchParams(search).get('tenantId');
+    const listPath = isPlatformAdmin ? routePathNames.platformAdmins : routePathNames.tenantAdmins;
     const { can } = useUserPermissions();
     const navigate = useNavigate();
     const [form] = Form.useForm();
@@ -27,32 +32,42 @@ export const TenantAdminEditOrAdd = () => {
     const isEditing = id !== 'add';
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const { data, isLoading: isLoadingConsultants } = useTenantUserAdminData({ id, enabled: isEditing });
-    const { data: tenants, isLoading } = useTenantsData({ perPage: 1000 });
+    const { data: tenants, isLoading } = useTenantsData({ perPage: 1000, enabled: !isPlatformAdmin });
 
     const { mutate } = useAddOrUpdateTenantAdmin({
         id: id !== 'add' ? id : '',
         onSuccess: () => {
-            navigate(routePathNames.tenantAdmins);
+            navigate(listPath);
             notification.success({
                 message: t(`tenantAdmins.message.${isEditing ? 'update' : 'add'}`),
             });
         },
+        onError: async (error) => {
+            const content = await extractApiErrorMessage(error);
+            notification.error({
+                message: content,
+                duration: 8,
+            });
+        },
     });
 
-    const onSave = useCallback((tmp: any) => mutate(tmp), []);
+    const onSave = useCallback(
+        (tmp: any) => mutate(isPlatformAdmin ? { ...tmp, tenantId: '0' } : tmp),
+        [isPlatformAdmin],
+    );
     const onCancel = useCallback(() => {
         if (isEditing) {
             setReadOnly(true);
         } else {
-            navigate(routePathNames.tenantAdmins);
+            navigate(listPath);
         }
-    }, [isEditing]);
+    }, [isEditing, listPath]);
 
     const title = isEditing ? `${data?.firstname} ${data?.lastname}` : t('tenantAdmins.edit.back');
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading}>
-            <Page.BackWithActions path="/admin/users/tenant-admins" title={title}>
+            <Page.BackWithActions path={listPath} title={title}>
                 {isReadOnly && (
                     <Button type="primary" onClick={() => setReadOnly(false)}>
                         {t('edit')}
@@ -108,33 +123,61 @@ export const TenantAdminEditOrAdd = () => {
                             />
                         </Card>
                     </Col>
-                    <Col span={12} md={6}>
-                        <Card titleKey="tenantAdmins.card.tenantTitle">
-                            <SelectFormField
-                                name="tenantId"
-                                placeholder="tenantAdmins.form.tenant"
-                                required
-                                disabled={isReadOnly || !can(PermissionAction.Update, Resource.TenantAdminUser)}
-                                className={styles.select}
-                            >
-                                {tenants?.data.map((option) => (
-                                    <SelectFormField.Option
-                                        key={option.id}
-                                        className={styles.option}
-                                        value={String(option.id)}
-                                        label={option.name}
-                                    >
-                                        <div className={styles.optionName}>{option.name}</div>
-                                        <div className={styles.optionGroup}>
-                                            <div className={styles.optionTenantId}>{option.id}</div>
-                                            {' | '}
-                                            <div className={styles.optionTenantSubdomain}>{getDomain()}</div>
-                                        </div>
-                                    </SelectFormField.Option>
-                                ))}
-                            </SelectFormField>
-                        </Card>
-                    </Col>
+                    {!isEditing && (
+                        <Col span={12} md={6}>
+                            <Card titleKey="tenantAdmins.card.credentialsTitle">
+                                <FormInputField
+                                    name="username"
+                                    labelKey="tenantAdmins.form.username"
+                                    placeholderKey="tenantAdmins.form.username"
+                                />
+                                <Typography.Text type="secondary">{t('tenantAdmins.hint.username')}</Typography.Text>
+                                <FormInputPasswordField
+                                    name="password"
+                                    labelKey="tenantAdmins.form.password"
+                                    placeholderKey="placeholder.password"
+                                    rules={[
+                                        {
+                                            validator: (_, value) =>
+                                                !value || value.length >= 8
+                                                    ? Promise.resolve()
+                                                    : Promise.reject(new Error(t('message.error.password.minLength'))),
+                                        },
+                                    ]}
+                                />
+                                <Typography.Text type="secondary">{t('tenantAdmins.hint.password')}</Typography.Text>
+                            </Card>
+                        </Col>
+                    )}
+                    {!isPlatformAdmin && (
+                        <Col span={12} md={6}>
+                            <Card titleKey="tenantAdmins.card.tenantTitle">
+                                <SelectFormField
+                                    name="tenantId"
+                                    placeholder="tenantAdmins.form.tenant"
+                                    required
+                                    disabled={isReadOnly || !can(PermissionAction.Update, Resource.TenantAdminUser)}
+                                    className={styles.select}
+                                >
+                                    {tenants?.data.map((option) => (
+                                        <SelectFormField.Option
+                                            key={option.id}
+                                            className={styles.option}
+                                            value={String(option.id)}
+                                            label={option.name}
+                                        >
+                                            <div className={styles.optionName}>{option.name}</div>
+                                            <div className={styles.optionGroup}>
+                                                <div className={styles.optionTenantId}>{option.id}</div>
+                                                {' | '}
+                                                <div className={styles.optionTenantSubdomain}>{getDomain()}</div>
+                                            </div>
+                                        </SelectFormField.Option>
+                                    ))}
+                                </SelectFormField>
+                            </Card>
+                        </Col>
+                    )}
                 </Row>
             </Form>
         </Page>

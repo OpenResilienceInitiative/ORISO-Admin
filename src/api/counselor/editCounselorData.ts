@@ -2,8 +2,17 @@ import { LabeledValue } from 'antd/lib/select';
 import { CounselorData } from '../../types/counselor';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { counselorEndpoint } from '../../appConfig';
-import { encodeUsername } from '../../utils/encryptionHelpers';
 import { putAgenciesForCounselor } from '../agency/putAgenciesForCounselor';
+
+const parseTopicIds = (formData: CounselorData): number[] => {
+    const topics = formData?.topicIds || formData?.topics;
+    return (
+        topics
+            ?.map((topic) => (typeof topic === 'string' ? topic : topic?.value || topic?.id))
+            .filter((id) => id != null && !Number.isNaN(Number(id)))
+            .map((id) => Number(id)) || []
+    );
+};
 
 /**
  * edit counselor
@@ -12,33 +21,19 @@ import { putAgenciesForCounselor } from '../agency/putAgenciesForCounselor';
  * @return data
  */
 export const editCounselorData = async (id: string, formData: CounselorData): Promise<CounselorData> => {
-    const {
-        firstname,
-        lastname,
-        formalLanguage,
-        email,
-        absent,
-        username,
-        absenceMessage,
-        twoFactorAuth,
-        isGroupchatConsultant,
-        isSupervisor,
-        tenantId,
-    } = formData;
+    const { firstname, lastname, formalLanguage, email, absent, absenceMessage, isSupervisor } = formData;
 
-    // just use needed data from whole form data
+    const topicIds = parseTopicIds(formData);
+
     const strippedCounselor = {
         firstname,
         lastname,
         formalLanguage,
         email,
         absent: !!absent,
-        username: encodeUsername(username),
-        ...(absent ? { absenceMessage } : {}),
-        twoFactorAuth,
-        isGroupchatConsultant,
-        isSupervisor,
-        tenantId: parseInt(tenantId, 10),
+        isSupervisor: !!isSupervisor,
+        topicIds,
+        ...(absent && absenceMessage ? { absenceMessage } : {}),
     };
 
     const ids = ((formData.agencies as LabeledValue[])?.map(({ value }) => value) || []) as string[];

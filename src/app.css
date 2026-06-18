@@ -28,17 +28,20 @@
     --lineHeight-l: calc(var(--fontSize-l) * 1.8);
     --lineHeight-xl: calc(var(--fontSize-xl) * 1.8);
     --lineHeight-2xl: calc(var(--fontSize-2xl) * 1.8);
+    --m3-body-font-family: 'Inter Variable', Arial, sans-serif;
 
     /* FormFields */
-    --input-padding: 0 12px 0 16px;
+    --input-padding: 16px;
     --input-border-radius: 4px;
-    --input-border-color: rgb(0 0 0 / 20%);
-    --input-active-border-color: rgb(0 0 0 / 90%);
-    --input-disabled-border-color: transparent;
-    --input-bg: white;
-    --input-disabled-bg: rgb(0 0 0 / 5%);
-    --input-disabled-color: rgb(0 0 0 / 40%);
-    --label-color: rgb(0 0 0 / 60%);
+    --input-border-color: var(--m3-outline);
+    --input-active-border-color: var(--m3-on-surface);
+    --input-disabled-border-color: rgb(68 71 72 / 38%);
+    --input-bg: transparent;
+    --input-disabled-bg: transparent;
+    --input-disabled-color: rgb(27 27 28 / 38%);
+    --input-placeholder-color: rgb(68 71 72 / 64%);
+    --input-label-bg: var(--m3-surface);
+    --label-color: var(--m3-on-surface-variant);
     --form-item-label-font-size: var(--fontSize-s);
     --form-item-label-height: auto;
     --form-item-margin-bottom: var(--spacing-sm);
@@ -86,6 +89,16 @@
     --info-color: #273270;
     --lightest-grey: #fafafa;
     --tag-success: #0a882f;
+    --m3-surface: #fcf9f9;
+    --m3-on-surface: #1b1b1c;
+    --m3-outline: #747878;
+    --m3-surface-variant: #e0e3e3;
+    --m3-on-surface-variant: #444748;
+    --m3-surface-container-lowest: #ffffff;
+    --m3-surface-container-low: #f6f3f3;
+    --m3-surface-container: #f0edee;
+    --m3-surface-container-high: #eae7e8;
+    --m3-surface-container-highest: #e4e2e2;
 
     /* YELLOW THEME */
     --yellow-1: #ffeed2;

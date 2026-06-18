@@ -4,6 +4,11 @@ export type ServerAppConfigInterface = {
 
 interface ServerAppConfigCustomInterface {
     mainTenantSubdomainForSingleDomainMultitenancy?: ServerAppConfigValueInterface<string>;
+    tenantAdminControls?: ServerAppConfigValueInterface<{
+        allowedPermissionToggles?: {
+            appearance?: boolean;
+        };
+    }>;
     releaseToggles?: Record<string, boolean>;
 }
 

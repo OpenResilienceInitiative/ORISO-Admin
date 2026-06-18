@@ -1,4 +1,4 @@
-import { getValueFromCookie } from '../api/auth/accessSessionCookie';
+import { getAccessTokenForRequests } from '../api/auth/auth';
 import { UserRole } from '../enums/UserRole';
 import parseJwt from '../utils/parseJWT';
 
@@ -13,7 +13,7 @@ export const useUserRoles = (): {
     let payload;
     let tokenRoles: UserRole[] = [];
 
-    const accessToken = getValueFromCookie('keycloak');
+    const accessToken = getAccessTokenForRequests();
 
     if (accessToken) {
         payload = parseJwt(accessToken);

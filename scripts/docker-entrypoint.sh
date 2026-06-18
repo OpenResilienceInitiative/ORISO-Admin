@@ -46,4 +46,5 @@ mkdir -p "$(dirname "$TARGET")"
     printf '%s\n' '};'
 } > "$TARGET"
 
+node /usr/share/nginx/html/admin-auth-bff/auth-bff-server.mjs &
 exec nginx -g 'daemon off;'

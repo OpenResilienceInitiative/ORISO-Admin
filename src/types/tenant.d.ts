@@ -47,6 +47,8 @@ export interface TenantSettings {
         permissionsPageEnabled?: boolean | null;
         allowedPermissionToggles?: {
             anonymousChat?: boolean | null;
+            groupChat?: boolean | null;
+            appearance?: boolean | null;
             calls?: boolean | null;
             supervision?: boolean | null;
             supervisionAnonymousChats?: boolean | null;
@@ -79,6 +81,7 @@ export interface BasicTenantData {
     id: number | null;
     key?: number | null;
     name: string;
+    beraterCount?: number;
     subdomain?: string;
     createDate?: string;
     startServiceDate?: string; // to-do: show startServiceDate instead of createDate
@@ -99,8 +102,11 @@ export interface TenantData extends BasicTenantData {
     theming: {
         logo: string;
         favicon: string;
+        associationLogo?: string;
         primaryColor: string;
         secondaryColor: string | null;
+        accent?: string | null;
+        signal?: string | null;
     };
     content: {
         impressum: string | null;

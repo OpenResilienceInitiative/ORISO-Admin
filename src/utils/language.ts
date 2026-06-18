@@ -5,6 +5,8 @@ export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
 export const DEFAULT_LANGUAGE: SupportedLanguage = 'en';
 
 export const LANGUAGE_STORAGE_KEY = 'oriso-admin.language';
+export const LANGUAGE_COOKIE_KEY = 'oriso-admin.language';
+const LANGUAGE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 export const LANGUAGE_OPTIONS = [
     {
@@ -37,15 +39,48 @@ export const detectBrowserLanguage = (): SupportedLanguage => {
         return DEFAULT_LANGUAGE;
     }
 
-    const candidates = [...(navigator.languages || []), navigator.language].filter(Boolean);
-    const hasGermanCandidate = candidates.some((candidate) => normalizeLanguage(candidate) === 'de');
+    const browserLanguage = navigator.languages?.[0] || navigator.language || '';
+    return browserLanguage.toLowerCase().startsWith('de') ? 'de' : DEFAULT_LANGUAGE;
+};
 
-    return hasGermanCandidate ? 'de' : DEFAULT_LANGUAGE;
+const getCookieValue = (name: string): string | null => {
+    if (typeof document === 'undefined') {
+        return null;
+    }
+
+    const targetName = `${name}=`;
+    const cookieParts = decodeURIComponent(document.cookie).split(';');
+
+    for (let index = 0; index < cookieParts.length; index += 1) {
+        const cookiePart = cookieParts[index].trim();
+
+        if (cookiePart.indexOf(targetName) === 0) {
+            return cookiePart.substring(targetName.length);
+        }
+    }
+
+    return null;
+};
+
+const setCookieValue = (name: string, value: string): void => {
+    if (typeof document === 'undefined') {
+        return;
+    }
+
+    document.cookie = `${name}=${encodeURIComponent(
+        value,
+    )};path=/;SameSite=Lax;Max-Age=${LANGUAGE_COOKIE_MAX_AGE_SECONDS}`;
 };
 
 export const getStoredLanguage = (): SupportedLanguage | null => {
     if (globalThis.window === undefined) {
         return null;
+    }
+
+    const cookieLanguage = normalizeLanguage(getCookieValue(LANGUAGE_COOKIE_KEY));
+
+    if (cookieLanguage) {
+        return cookieLanguage;
     }
 
     try {
@@ -63,6 +98,8 @@ export const storeLanguage = (language: SupportedLanguage): void => {
     if (globalThis.window === undefined) {
         return;
     }
+
+    setCookieValue(LANGUAGE_COOKIE_KEY, language);
 
     try {
         globalThis.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);

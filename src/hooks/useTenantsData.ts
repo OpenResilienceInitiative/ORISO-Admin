@@ -13,6 +13,8 @@ interface TenantsProps extends UseQueryOptions<ResponseList<TenantAdminData>> {
     dir?: string;
 }
 
+export const TENANTS_QUERY_KEY = 'TENANTS';
+
 export const useTenantsData = ({
     page,
     search,
@@ -22,7 +24,7 @@ export const useTenantsData = ({
     ...options
 }: TenantsProps) => {
     return useQuery<ResponseList<TenantAdminData>>(
-        ['TENANTS', page, perPage, search, sort, dir],
+        [TENANTS_QUERY_KEY, page, perPage, search, sort, dir],
         () => {
             return fetchData({
                 url: `${tenantAdminEndpoint}/search?page=${page || 1}&perPage=${perPage}&query=${

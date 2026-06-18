@@ -11,21 +11,23 @@ interface FormColorSelectorFieldProps {
     name?: string | string[];
     labelKey?: string;
     required?: boolean;
+    disabled?: boolean;
 }
 
 interface FormColorSelectorProps {
     onChange?: (value: string) => void;
     value?: string;
     labelKey?: string;
+    disabled?: boolean;
 }
 
-const FormColorSelectorLocal = ({ labelKey, onChange, value }: FormColorSelectorProps) => {
+const FormColorSelectorLocal = ({ labelKey, onChange, value, disabled }: FormColorSelectorProps) => {
     const contextDisabled = useContext(DisabledContext);
     const { t } = useTranslation();
 
     return (
         <ColorSelector
-            isLoading={contextDisabled}
+            isLoading={contextDisabled || disabled}
             label={t(labelKey)}
             tenantColor={value}
             setColorValue={(_, color: string) => onChange(color)}
@@ -34,10 +36,16 @@ const FormColorSelectorLocal = ({ labelKey, onChange, value }: FormColorSelector
     );
 };
 
-export const FormColorSelectorField = ({ className, name, labelKey, required }: FormColorSelectorFieldProps) => {
+export const FormColorSelectorField = ({
+    className,
+    name,
+    labelKey,
+    required,
+    disabled,
+}: FormColorSelectorFieldProps) => {
     return (
         <Form.Item className={classNames(className, styles.item)} name={name} rules={[{ required }]}>
-            <FormColorSelectorLocal labelKey={labelKey} />
+            <FormColorSelectorLocal labelKey={labelKey} disabled={disabled} />
         </Form.Item>
     );
 };

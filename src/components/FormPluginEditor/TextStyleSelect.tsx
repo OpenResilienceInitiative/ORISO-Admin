@@ -48,7 +48,7 @@ const TextStyleSelect = ({
             dropdownMatchSelectWidth={false}
             disabled={!blockType}
             value={blockType}
-            placeholder="Formatierung wählen"
+            placeholder={t('rte.placeholder')}
             onChange={handleToggle}
             options={TEXT_STYLES.map(({ label, value }) => ({
                 value,

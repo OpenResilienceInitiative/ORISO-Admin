@@ -33,6 +33,8 @@
         "react/destructuring-assignment": "off",
         "import/prefer-default-export": "off",
         "react/jsx-props-no-spreading": "off",
+        "prettier/prettier": "warn",
+        "react/no-unused-prop-types": "off",
         "react/function-component-definition": [
             2,
             {
@@ -44,7 +46,10 @@
         "react": {
             "version": "detect"
         },
-        " import/resolver": {
+        "import/resolver": {
+            "typescript": {
+                "project": "./tsconfig.json"
+            },
             "node": {
                 "extensions": [".js", ".jsx", ".ts", ".tsx"],
                 "moduleDirectory": ["node_modules", "src/"]

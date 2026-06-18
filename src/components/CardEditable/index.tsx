@@ -3,15 +3,17 @@ import classNames from 'classnames';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, ButtonItem, BUTTON_TYPES } from '../button/Button';
-import { ReactComponent as PenIcon } from '../../resources/img/svg/pen.svg';
 import { UnsavedChangesModal } from './components/UnsavedChanges';
 import styles from './styles.module.scss';
-import { Card } from '../Card';
+import { Card, CardVariant } from '../Card';
+import { EditButton } from '../EditButton';
 
 interface CardEditableProps {
     className?: string;
     isLoading?: boolean;
     fullHeight?: boolean;
+    variant?: CardVariant;
+    headerIcon?: React.ReactChild;
     initialValues?: Record<string, unknown>;
     titleKey: string;
     subTitle?: React.ReactChild;
@@ -21,7 +23,11 @@ interface CardEditableProps {
     children:
         | React.ReactElement
         | React.ReactElement[]
-        | ((data: { form: FormInstance<any>; editing: boolean }) => React.ReactElement | React.ReactElement[]);
+        | ((data: {
+              form: FormInstance<any>;
+              editing: boolean;
+              startEditing: () => void;
+          }) => React.ReactElement | React.ReactElement[]);
     onSave: <T>(formData: T, options?: { onError?: () => void }) => void;
     formProp?: FormInstance;
     editMode?: boolean;
@@ -30,6 +36,10 @@ interface CardEditableProps {
     tooltip?: string;
     allowUnsavedChanges?: boolean;
     editButton?: React.ReactChild;
+    editButtonPlacement?: 'header' | 'footer';
+    editLabelKey?: string;
+    /** When false, the card is view-only (no edit pencil). */
+    allowEdit?: boolean;
 }
 
 export const CardEditable = ({
@@ -50,7 +60,12 @@ export const CardEditable = ({
     formProp,
     tooltip,
     fullHeight,
-    editButton = <PenIcon className={styles.pencil} />,
+    editButton,
+    editButtonPlacement,
+    editLabelKey = 'edit',
+    variant = 'default',
+    headerIcon,
+    allowEdit = true,
 }: CardEditableProps) => {
     const [form] = Form.useForm(formProp);
     const { t } = useTranslation();
@@ -76,10 +91,17 @@ export const CardEditable = ({
         },
         [onSave],
     );
+    const canStartEditing = allowEdit && !editMode && !editing;
+    const finalEditButtonPlacement = editButtonPlacement ?? (variant === 'dialog' ? 'footer' : 'header');
+    const footerActionClassName = classNames(styles.footerActions, {
+        [styles.dialogFooterActions]: variant === 'dialog',
+    });
 
     return (
         <Card
             className={classNames(styles.card, className, { [styles.fullHeight]: fullHeight })}
+            variant={variant}
+            headerIcon={headerIcon}
             titleKey={titleKey}
             subTitle={subTitle}
             subTitleKey={subTitleKey}
@@ -87,11 +109,9 @@ export const CardEditable = ({
             isLoading={isLoading}
             cardTitleClassName={styles.cardTitleClassName}
             cardTitleChildren={
-                !editMode &&
-                !editing && (
-                    <button className={styles.editCard} type="button" onClick={() => setEditing(true)}>
-                        {editButton}
-                    </button>
+                canStartEditing &&
+                finalEditButtonPlacement === 'header' && (
+                    <EditButton showLabel={false} icon={editButton} onClick={() => setEditing(true)} />
                 )
             }
         >
@@ -106,12 +126,20 @@ export const CardEditable = ({
                 onFinish={onFormSubmit}
                 disabled={!editing}
                 initialValues={initialValues}
+                className={classNames({ [styles.dialogForm]: variant === 'dialog' })}
             >
-                {typeof children === 'function' ? children({ form, editing }) : children}
+                {typeof children === 'function'
+                    ? children({ form, editing, startEditing: () => setEditing(true) })
+                    : children}
             </Form>
 
+            {canStartEditing && finalEditButtonPlacement === 'footer' && (
+                <div className={footerActionClassName}>
+                    <EditButton icon={editButton} labelKey={editLabelKey} onClick={() => setEditing(true)} />
+                </div>
+            )}
             {editing && (!hideSaveButton || !hideCancelButton) && (
-                <div className={styles.footerActions}>
+                <div className={footerActionClassName}>
                     {!hideCancelButton && (
                         <Button
                             item={cancelEditButton}

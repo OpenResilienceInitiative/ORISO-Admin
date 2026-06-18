@@ -7,7 +7,10 @@ import { TranslatableFormField } from '../../../../TranslatableFormField';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
 import styles from './styles.module.scss';
-import FormPluginEditor from '../../../../FormPluginEditor/FormPluginEditor';
+import FormTipTapEditor from '../../../../FormPluginEditor/FormTipTapEditor';
+import { PermissionAction } from '../../../../../enums/PermissionAction';
+import { Resource } from '../../../../../enums/Resource';
+import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 
 interface LegalTextProps {
     tenantId: string | number;
@@ -29,6 +32,8 @@ export const LegalText = ({
     placeholders,
 }: LegalTextProps) => {
     const { t } = useTranslation();
+    const { can } = useUserPermissions();
+    const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const { data, isLoading } = useSingleTenantData({ id: tenantId });
     const { mutate: updateTenant } = useTenantAdminDataMutation({ id: tenantId });
     const [formDataContent, setFormData] = useState<Record<string, unknown>>();
@@ -48,6 +53,7 @@ export const LegalText = ({
         <>
             <CardEditable
                 allowUnsavedChanges
+                allowEdit={canEditLegalText}
                 isLoading={isLoading}
                 initialValues={{ ...data }}
                 titleKey={titleKey}
@@ -63,7 +69,7 @@ export const LegalText = ({
                 }}
             >
                 <TranslatableFormField name={fieldName}>
-                    <FormPluginEditor
+                    <FormTipTapEditor
                         placeholder={t(placeHolderKey)}
                         placeholders={placeholders}
                         itemProps={{

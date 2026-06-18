@@ -8,6 +8,7 @@ interface ConsultantsDataProps extends UseQueryOptions<CounselorData> {
     id: string;
 }
 export const TENANT_ADMIN_QUERY_KEY = 'TENANT_ADMIN';
+export const TENANT_ADMINS_QUERY_KEY = 'TENANT_ADMINS';
 
 export const useTenantUserAdminData = ({ id, ...options }: ConsultantsDataProps) => {
     return useQuery(

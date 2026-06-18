@@ -10,17 +10,13 @@ export const TenantGlobalSettings = () => {
 
     return (
         <Row gutter={[24, 24]}>
-            <Col span={12} sm={6}>
+            <Col span={24}>
                 <div className={styles.warningCard}>
                     <strong>{t('tenants.globalSettings.superAdminWarning.title')}</strong>
                     <p>{t('tenants.globalSettings.superAdminWarning.description')}</p>
                 </div>
                 <div className={styles.permissionsCardWrap}>
-                    <PermissionsSettings
-                        tenantId={id || ''}
-                        superAdminControlMode
-                        visibleToggles={{ anonymousChat: false }}
-                    />
+                    <PermissionsSettings tenantId={id || ''} superAdminControlMode excludeCardKeys={['liveChat']} />
                 </div>
             </Col>
         </Row>
