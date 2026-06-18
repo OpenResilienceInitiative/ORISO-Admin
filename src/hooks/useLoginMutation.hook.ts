@@ -49,9 +49,8 @@ export const useLoginMutation = (tenantId: string) => {
             });
         },
         {
-            onSuccess: (data) => {
-                // console.log('🔍 useLoginMutation: onSuccess called with data:', data);
-                setTokens(data.access_token, data.expires_in, data.refresh_token, data.refresh_expires_in);
+            onSuccess: async (data) => {
+                await setTokens(data.access_token, data.expires_in, data.refresh_token, data.refresh_expires_in);
                 if (settings.useApiClusterSettings) {
                     apiServerSettings().then(setServerSettings);
                 }
