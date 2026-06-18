@@ -1,7 +1,7 @@
 import { fetchData, FETCH_METHODS } from '../fetchData';
 import { tenantEndpoint } from '../../appConfig';
 import { TenantData } from '../../types/tenant';
-import { getValueFromCookie } from '../auth/accessSessionCookie';
+import { getAccessTokenForRequests } from '../auth/auth';
 import parseJwt from '../../utils/parseJWT';
 
 /**
@@ -13,7 +13,7 @@ const getTenantData = (tenantData: TenantData, useMultiTenancyWithSingleDomain: 
     // console.log('🔍 getTenantData: tenantData:', tenantData);
     // console.log('🔍 getTenantData: useMultiTenancyWithSingleDomain:', useMultiTenancyWithSingleDomain);
 
-    const accessToken = getValueFromCookie('keycloak');
+    const accessToken = getAccessTokenForRequests();
     // console.log('🔍 getTenantData: accessToken exists:', !!accessToken);
 
     let tenantId = tenantData.id;

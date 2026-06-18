@@ -1,6 +1,7 @@
 import { message } from 'antd';
 import i18next from 'i18next';
 import { getValueFromCookie } from './auth/accessSessionCookie';
+import { getAccessTokenForRequests } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
 
@@ -75,7 +76,7 @@ interface FetchDataProps {
 
 export const fetchData = (props: FetchDataProps): Promise<any> =>
     new Promise((resolve, reject) => {
-        const accessToken = getValueFromCookie('keycloak');
+        const accessToken = getAccessTokenForRequests();
         // Check if manual authorization header is provided in headersData
         const manualAuth = (props.headersData as any)?.Authorization;
 
