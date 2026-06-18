@@ -23,6 +23,8 @@ const refreshKeycloakAccessToken = (): Promise<LoginData> =>
                     resolve(dataResponse);
                 } else if (response.status === 401) {
                     reject(new Error('keycloakLogin'));
+                } else {
+                    reject(new Error(`Keycloak refresh failed with status ${response.status}`));
                 }
             })
             .catch(() => {

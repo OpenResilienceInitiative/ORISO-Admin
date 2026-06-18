@@ -36,8 +36,7 @@ const refreshTokens = (): Promise<void> => {
     const tokenExpiry = getTokenExpiryFromLocalStorage();
 
     if (tokenExpiry.refreshTokenValidUntilTime <= currentTime - RENEW_BEFORE_EXPIRY_IN_MS) {
-        // console.log('🔍 refreshTokens: Refresh token expired, but not logging out for debugging');
-        // logout(true, routePathNames.login);
+        logout(true, routePathNames.login);
         return Promise.resolve();
     }
 
@@ -92,9 +91,12 @@ export const handleTokenRefresh = (): Promise<void> => {
         } else if (accessTokenValidInMs <= 0) {
             // access token no longer valid but refresh token still valid, refresh tokens
             refreshTokens().then(() => {
+                // Re-read expiry from localStorage — refreshTokens() wrote fresh values
+                const currentTimeAfterRefresh = new Date().getTime();
+                const freshExpiry = getTokenExpiryFromLocalStorage();
                 startTimers({
-                    accessTokenValidInMs,
-                    refreshTokenValidInMs,
+                    accessTokenValidInMs: freshExpiry.accessTokenValidUntilTime - currentTimeAfterRefresh,
+                    refreshTokenValidInMs: freshExpiry.refreshTokenValidUntilTime - currentTimeAfterRefresh,
                 });
                 resolve();
             });

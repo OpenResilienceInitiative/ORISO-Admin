@@ -67,11 +67,10 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     }, []);
 
     useEffect(() => {
-        if (subdomain !== tenantData.subdomain && !settings.multitenancyWithSingleDomainEnabled) {
-            // console.log('🔍 ProtectedPageLayoutWrapper: Subdomain mismatch, but not logging out for debugging');
-            // console.log('🔍 ProtectedPageLayoutWrapper: subdomain:', subdomain);
-            // console.log('🔍 ProtectedPageLayoutWrapper: tenantData.subdomain:', tenantData.subdomain);
-            // logout(true);
+        // Guard: tenantData.subdomain is empty until the tenant query resolves.
+        // Only logout once we know the tenant and detect an actual mismatch.
+        if (tenantData.subdomain && subdomain !== tenantData.subdomain && !settings.multitenancyWithSingleDomainEnabled) {
+            logout(true);
         }
     }, [subdomain, tenantData.subdomain]);
 
