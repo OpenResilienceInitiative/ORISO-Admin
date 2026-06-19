@@ -66,7 +66,6 @@ interface FetchDataProps {
     url: string;
     method: string;
     headersData?: object;
-    rcValidation?: boolean;
     bodyData?: string;
     skipAuth?: boolean;
     responseHandling?: string[];
@@ -91,13 +90,6 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
 
         const csrfToken = generateCsrfToken();
 
-        const rcHeaders = props.rcValidation
-            ? {
-                  rcToken: getValueFromCookie('rc_token'),
-                  rcUserId: getValueFromCookie('rc_uid'),
-              }
-            : null;
-
         const localDevelopmentHeader = isLocalDevelopment ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
 
         const controller = new AbortController();
@@ -121,7 +113,6 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                 ...authorization,
                 'X-CSRF-TOKEN': csrfToken,
                 ...otherHeadersData,
-                ...rcHeaders,
                 ...localDevelopmentHeader,
             },
             credentials: 'include',
