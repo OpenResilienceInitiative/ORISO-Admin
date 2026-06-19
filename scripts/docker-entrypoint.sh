@@ -46,5 +46,33 @@ mkdir -p "$(dirname "$TARGET")"
     printf '%s\n' '};'
 } > "$TARGET"
 
+AUTH_BFF_PORT="${AUTH_BFF_PORT:-3001}"
+
+if ! command -v node >/dev/null 2>&1; then
+    echo "ERROR: node is required for auth BFF but was not found in PATH" >&2
+    exit 1
+fi
+
 node /usr/share/nginx/html/admin-auth-bff/auth-bff-server.mjs &
+AUTH_BFF_PID=$!
+
+i=0
+while [ "$i" -lt 50 ]; do
+    if node -e "const n=require('net');const c=n.connect(${AUTH_BFF_PORT},'127.0.0.1',()=>{c.end();process.exit(0)});c.on('error',()=>process.exit(1));" 2>/dev/null; then
+        break
+    fi
+    if ! kill -0 "$AUTH_BFF_PID" 2>/dev/null; then
+        echo "ERROR: Auth BFF exited before becoming ready on port ${AUTH_BFF_PORT}" >&2
+        exit 1
+    fi
+    i=$((i + 1))
+    sleep 0.1
+done
+
+if [ "$i" -ge 50 ]; then
+    echo "ERROR: Auth BFF did not start listening on port ${AUTH_BFF_PORT} within 5s" >&2
+    kill "$AUTH_BFF_PID" 2>/dev/null || true
+    exit 1
+fi
+
 exec nginx -g 'daemon off;'
