@@ -2,6 +2,7 @@ import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { agencyAdminEndpoint } from '../../appConfig';
 import { AdminData } from '../../types/admin';
 import { putAgenciesForAgencyAdmin } from '../agency/putAgenciesForAdmin';
+import { parseHalResponse } from '../../utils/parseHalResponse';
 
 /**
  * add new admin
@@ -10,29 +11,6 @@ import { putAgenciesForAgencyAdmin } from '../agency/putAgenciesForAdmin';
  */
 export const addAgencyAdminData = (adminData: Record<string, any>): Promise<AdminData> => {
     const { firstname, lastname, email, username, twoFactorAuth, tenantId, password } = adminData;
-    const parseSuccessfulResponse = async (response: unknown) => {
-        if (!(response instanceof Response)) {
-            return response;
-        }
-
-        if (response.status === 204) {
-            return null;
-        }
-
-        const contentType = response.headers.get('content-type') || '';
-        // The backend returns HAL responses (application/hal+json), so match any JSON content type
-        // rather than the exact "application/json".
-        if (!contentType.includes('json')) {
-            return null;
-        }
-
-        const rawBody = await response.clone().text();
-        if (!rawBody.trim()) {
-            return null;
-        }
-
-        return JSON.parse(rawBody);
-    };
 
     return (
         fetchData({
@@ -54,7 +32,7 @@ export const addAgencyAdminData = (adminData: Record<string, any>): Promise<Admi
                 ...(password ? { password } : {}),
             }),
         })
-            .then(parseSuccessfulResponse)
+            .then(parseHalResponse)
             .then((data: AdminData | { _embedded: AdminData } | null) => {
                 let embeddedData: AdminData | null = data as AdminData | null;
                 if (data && typeof data === 'object' && '_embedded' in data) {
