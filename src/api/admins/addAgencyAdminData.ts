@@ -33,7 +33,7 @@ export const addAgencyAdminData = (adminData: Record<string, any>): Promise<Admi
             }),
         })
             .then(parseHalResponse)
-            .then((data: AdminData | { _embedded: AdminData } | null) => {
+            .then((data: unknown) => {
                 let embeddedData: AdminData | null = data as AdminData | null;
                 if (data && typeof data === 'object' && '_embedded' in data) {
                     // eslint-disable-next-line no-underscore-dangle
