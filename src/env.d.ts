@@ -12,7 +12,6 @@ interface ImportMetaEnv {
     readonly VITE_COOKIE_DOMAIN: string;
     readonly VITE_COOKIE_SECURE: 'true' | 'false';
     readonly VITE_COOKIES_ALLOWEDLIST: string;
-    readonly VITE_APPOINTMENT_SERVICE_URL: string;
     readonly REACT_APP_API_URL: string;
     readonly REACT_APP_KEYCLOAK_URL: string;
     readonly REACT_APP_MATRIX_URL: string;
