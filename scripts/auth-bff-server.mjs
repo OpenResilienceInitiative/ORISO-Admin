@@ -11,7 +11,7 @@ const server = http.createServer((request, response) => {
     });
 });
 
-server.listen(port, () => {
+server.listen(port, '127.0.0.1', () => {
     // eslint-disable-next-line no-console
     console.log(`Auth BFF listening on port ${port}`);
 });
