@@ -7,17 +7,15 @@ import { visualizer } from 'rollup-plugin-visualizer';
 import { existsSync, readFileSync } from 'node:fs';
 import { authBffDevPlugin } from './vite.authBffPlugin';
 
-// React must stay in the same chunk as antd — splitting them caused vendor-antd to
-// execute before React was available (Cannot read properties of undefined reading 'Component').
+// All React-dependent libraries must share one chunk. Splitting them (e.g. vendor-antd,
+// vendor-draftjs, vendor-mui) causes init-order bugs: those bundles call React.createElement
+// / React.Component before the react chunk has executed.
+const vendorUiPattern =
+    /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler|antd|@ant-design|rc-|draft-js|@draft-js-plugins|immutable|@mui|@emotion|react-query|@tanstack)[\\/]/;
+
 const vendorChunkMatchers: Array<{ chunk: string; pattern: RegExp }> = [
-    {
-        chunk: 'vendor-react-antd',
-        pattern: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler|antd|@ant-design|rc-)[\\/]/,
-    },
-    { chunk: 'vendor-mui', pattern: /[\\/]node_modules[\\/](@mui|@emotion)[\\/]/ },
-    { chunk: 'vendor-draftjs', pattern: /[\\/]node_modules[\\/](draft-js|@draft-js-plugins|immutable)[\\/]/ },
+    { chunk: 'vendor-ui', pattern: vendorUiPattern },
     { chunk: 'vendor-dayjs', pattern: /[\\/]node_modules[\\/]dayjs[\\/]/ },
-    { chunk: 'vendor-query', pattern: /[\\/]node_modules[\\/](react-query|@tanstack)[\\/]/ },
 ];
 
 const resolveManualChunk = (id: string): string | undefined => {
