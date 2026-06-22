@@ -3,12 +3,32 @@ import react from '@vitejs/plugin-react';
 import viteTsconfigPaths from 'vite-tsconfig-paths';
 import svgrPlugin from 'vite-plugin-svgr';
 import eslintPlugin from 'vite-plugin-eslint';
+import { visualizer } from 'rollup-plugin-visualizer';
 import { existsSync, readFileSync } from 'node:fs';
 import { authBffDevPlugin } from './vite.authBffPlugin';
+
+const vendorChunkMatchers: Array<{ chunk: string; pattern: RegExp }> = [
+    { chunk: 'vendor-antd', pattern: /[\\/]node_modules[\\/](antd|@ant-design|rc-)[\\/]/ },
+    { chunk: 'vendor-mui', pattern: /[\\/]node_modules[\\/](@mui|@emotion)[\\/]/ },
+    { chunk: 'vendor-draftjs', pattern: /[\\/]node_modules[\\/](draft-js|@draft-js-plugins|immutable)[\\/]/ },
+    { chunk: 'vendor-dayjs', pattern: /[\\/]node_modules[\\/]dayjs[\\/]/ },
+    { chunk: 'vendor-react', pattern: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/ },
+    { chunk: 'vendor-query', pattern: /[\\/]node_modules[\\/](react-query|@tanstack)[\\/]/ },
+];
+
+const resolveManualChunk = (id: string): string | undefined => {
+    if (!id.includes('node_modules')) {
+        return undefined;
+    }
+
+    const match = vendorChunkMatchers.find(({ pattern }) => pattern.test(id));
+    return match?.chunk;
+};
 
 // https://vitejs.dev/config/
 export default ({ mode }) => {
     process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
+    const isAnalyze = mode === 'analyze';
 
     return defineConfig({
         base: process.env.BASE || '/admin',
@@ -25,7 +45,14 @@ export default ({ mode }) => {
                 failOnError: true,
                 fix: false,
             }),
-        ],
+            isAnalyze &&
+                visualizer({
+                    filename: 'build/stats.html',
+                    gzipSize: true,
+                    brotliSize: true,
+                    open: false,
+                }),
+        ].filter(Boolean),
         css: {
             preprocessorOptions: {
                 less: {
@@ -35,6 +62,12 @@ export default ({ mode }) => {
         },
         build: {
             outDir: 'build',
+            manifest: true,
+            rollupOptions: {
+                output: {
+                    manualChunks: resolveManualChunk,
+                },
+            },
         },
         server: {
             host: '0.0.0.0',
