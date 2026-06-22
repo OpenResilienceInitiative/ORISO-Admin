@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../../../components/CardEditable';
-import FormPluginEditor from '../../../../../components/FormPluginEditor/FormPluginEditor';
+import FormTipTapEditor from '../../../../../components/FormPluginEditor/FormTipTapEditor';
 import { TranslatableFormField } from '../../../../../components/TranslatableFormField';
 import { FeatureFlag } from '../../../../../enums/FeatureFlag';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
@@ -63,7 +63,7 @@ export const LegalTextSettings = ({ agencyData, field, initialValues, onSave }: 
             onSave={onSave}
         >
             <TranslatableFormField name={['content', field]}>
-                <FormPluginEditor
+                <FormTipTapEditor
                     placeholder={t(`agency.edit.settings.legal.${field}.placeholder`)}
                     placeholders={
                         isPrivacy && isEnabled(FeatureFlag.CentralDataProtectionTemplate)

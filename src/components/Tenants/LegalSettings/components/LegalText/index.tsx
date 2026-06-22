@@ -7,7 +7,7 @@ import { TranslatableFormField } from '../../../../TranslatableFormField';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
 import styles from './styles.module.scss';
-import FormPluginEditor from '../../../../FormPluginEditor/FormPluginEditor';
+import FormTipTapEditor from '../../../../FormPluginEditor/FormTipTapEditor';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
@@ -69,7 +69,7 @@ export const LegalText = ({
                 }}
             >
                 <TranslatableFormField name={fieldName}>
-                    <FormPluginEditor
+                    <FormTipTapEditor
                         placeholder={t(placeHolderKey)}
                         placeholders={placeholders}
                         itemProps={{
