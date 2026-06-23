@@ -1,6 +1,7 @@
 import { Button, message, Space, Col, Row, Form } from 'antd';
 import { useWatch } from 'antd/lib/form/Form';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import { FETCH_ERRORS, X_REASON } from '../../../api/fetchData';
@@ -28,6 +29,7 @@ import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
 import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { useCounselorById } from '../../../hooks/useCounselorById';
+import { GrantConsultantIdentityModal } from '../../../components/GrantConsultantIdentityModal';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
     const seen = new Set(current.map(({ value }) => value));
@@ -36,6 +38,7 @@ const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
 
 export const UserEditOrAdd = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [form] = Form.useForm();
     const { can } = useUserPermissions();
     const { t } = useTranslation();
@@ -55,6 +58,9 @@ export const UserEditOrAdd = () => {
         id: isEditing && isConsultantForm ? id : undefined,
     });
     const singleData = consultantsResponse?.data.find((c) => c.id === id);
+    const isAdminUserForm = typeOfUsers === TypeOfUser.AgencyAdmins || typeOfUsers === TypeOfUser.TenantAdmins;
+    const canGrantConsultantIdentity =
+        isEditing && isAdminUserForm && !!singleData && !singleData.hasOtherIdentity;
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted] = useState(false);
     const [tenantsData, setTenantsData] = useState([]);
@@ -230,6 +236,16 @@ export const UserEditOrAdd = () => {
     return (
         <Page isLoading={isLoadingConsultants || isLoading || isLoadingTopics || isLoadingConsultantById} stickyHeader>
             <Page.BackWithActions path={`/admin/users/${typeOfUsers}`} titleKey="agency.add.general.headline">
+                {canGrantConsultantIdentity && (
+                    <GrantConsultantIdentityModal
+                        adminId={id}
+                        tenantId={singleData?.tenantId}
+                        onSuccess={() => {
+                            queryClient.invalidateQueries([typeOfUsers.toUpperCase()]);
+                            navigate(`/admin/users/${typeOfUsers}`);
+                        }}
+                    />
+                )}
                 {isReadOnly && (
                     <Button type="primary" onClick={() => setReadOnly(false)}>
                         {t('edit')}

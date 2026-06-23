@@ -22,6 +22,7 @@ export interface CounselorData {
     twoFactorAuth?: boolean;
     isGroupchatConsultant?: boolean;
     isSupervisor?: boolean;
+    hasOtherIdentity?: boolean;
     tenantId: string;
     tenantName: string;
     tenantSubdomain?: string;
