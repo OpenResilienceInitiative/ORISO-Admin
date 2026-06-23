@@ -313,22 +313,43 @@ export const UserEditOrAdd = () => {
 
                             {!isEditing &&
                                 (typeOfUsers === TypeOfUser.Consultants || typeOfUsers === TypeOfUser.AgencyAdmins) && (
-                                    <FormPasswordField
-                                        name="password"
-                                        labelKey="counselor.password"
-                                        placeholderKey="placeholder.password"
-                                        required
-                                        rules={[
-                                            {
-                                                min: 8,
-                                                message: t('message.error.password.minLength'),
-                                            },
-                                            {
-                                                pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-                                                message: t('message.error.password.policy'),
-                                            },
-                                        ]}
-                                    />
+                                    <>
+                                        <FormPasswordField
+                                            name="password"
+                                            labelKey="counselor.password"
+                                            placeholderKey="placeholder.password"
+                                            required
+                                            rules={[
+                                                {
+                                                    min: 8,
+                                                    message: t('message.error.password.minLength'),
+                                                },
+                                                {
+                                                    pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
+                                                    message: t('message.error.password.policy'),
+                                                },
+                                            ]}
+                                        />
+                                        <FormPasswordField
+                                            name="passwordConfirmation"
+                                            labelKey="counselor.passwordConfirmation"
+                                            placeholderKey="placeholder.password"
+                                            required
+                                            dependencies={['password']}
+                                            rules={[
+                                                ({ getFieldValue }) => ({
+                                                    validator(_, value) {
+                                                        if (!value || getFieldValue('password') === value) {
+                                                            return Promise.resolve();
+                                                        }
+                                                        return Promise.reject(
+                                                            new Error(t('profile.passwordChange.error.passwordsNotMatch')),
+                                                        );
+                                                    },
+                                                }),
+                                            ]}
+                                        />
+                                    </>
                                 )}
                         </Card>
                     </Col>
