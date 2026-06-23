@@ -1,13 +1,16 @@
-import { getValueFromCookie } from './accessSessionCookie';
 import { logoutEndpoint } from '../../appConfig';
+import { getSessionRefreshToken } from './tokenSessionStore';
 
 const apiKeycloakLogout = (): Promise<any> =>
     new Promise((resolve, reject) => {
-        const url = logoutEndpoint;
-        const refreshToken = getValueFromCookie('refreshToken');
-        const data = `client_id=app&grant_type=refresh_token&refresh_token=${refreshToken}`;
+        const refreshToken = getSessionRefreshToken();
+        if (!refreshToken) {
+            resolve(null);
+            return;
+        }
 
-        const req = new Request(url, {
+        const data = `client_id=app&grant_type=refresh_token&refresh_token=${refreshToken}`;
+        const req = new Request(logoutEndpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',

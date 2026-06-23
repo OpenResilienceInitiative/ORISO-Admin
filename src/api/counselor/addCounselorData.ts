@@ -62,12 +62,7 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
             ],
             bodyData: JSON.stringify(strippedCounselor),
         })
-            .then((response) => {
-                if (response.status === 200) {
-                    return response.json();
-                }
-                return response.json();
-            })
+            .then((response) => response.json())
             // eslint-disable-next-line no-underscore-dangle
             .then((data: { _embedded: CounselorData }) => data?._embedded)
             .then((data) => {

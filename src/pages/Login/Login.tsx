@@ -7,7 +7,7 @@ import PublicPageLayoutWrapper from '../../components/Layout/PublicPageLayoutWra
 import { LanguageSelector } from '../../components/LanguageSelector';
 import LoginForm from './LoginForm';
 import routePathNames from '../../appConfig';
-import { getValueFromCookie } from '../../api/auth/accessSessionCookie';
+import { bootstrapAuthSession, getAccessTokenForRequests } from '../../api/auth/auth';
 import { getTokenExpiryFromLocalStorage } from '../../api/auth/accessSessionLocalStorage';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
@@ -21,7 +21,8 @@ import { useAppConfigContext } from '../../context/useAppConfig';
  */
 export const Login = () => {
     const { settings } = useAppConfigContext();
-    const accessToken = getValueFromCookie('keycloak');
+    const [sessionReady, setSessionReady] = useState(false);
+    const accessToken = getAccessTokenForRequests();
     const currentTime = Date.now();
     const tokenExpiry = getTokenExpiryFromLocalStorage();
     const { data: tenantData } = usePublicTenantData();
@@ -45,6 +46,16 @@ export const Login = () => {
      * using different route if isSuperAdmin
      */
     useEffect(() => {
+        bootstrapAuthSession().finally(() => {
+            setSessionReady(true);
+        });
+    }, []);
+
+    useEffect(() => {
+        if (!sessionReady) {
+            return;
+        }
+
         if (!accessToken || refreshTokenValidInMs <= 0 || accessTokenValidInMs <= 0) {
             return;
         }
@@ -65,6 +76,7 @@ export const Login = () => {
             setRedirectUrl(redirectPath);
         }
     }, [
+        sessionReady,
         accessToken,
         accessTokenValidInMs,
         refreshTokenValidInMs,
@@ -82,7 +94,7 @@ export const Login = () => {
             <div className="loginLanguageSelector">
                 <LanguageSelector variant="login" ariaLabelKey="language.loginSelectAriaLabel" />
             </div>
-            <Stage />
+            <Stage logo={tenantData?.theming?.logo} claim={tenantData?.content?.claim} />
             <Row align="middle" style={{ flex: '1 0 auto' }}>
                 <Col xs={{ span: 10, offset: 1 }} md={{ span: 6, offset: 3 }} xl={{ span: 4, offset: 6 }}>
                     <LoginForm />
