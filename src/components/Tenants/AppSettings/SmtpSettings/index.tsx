@@ -1,4 +1,4 @@
-import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import { Card } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
@@ -253,7 +253,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         switchVariant="m3"
                     />
                 </div>
-            </CardEditable>
-        </div>
+            </Card>
+        </CardEditable>
     );
 };
