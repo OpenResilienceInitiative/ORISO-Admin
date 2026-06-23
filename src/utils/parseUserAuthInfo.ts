@@ -1,4 +1,4 @@
-import { getValueFromCookie } from '../api/auth/accessSessionCookie';
+import { getAccessTokenForRequests } from '../api/auth/auth';
 import { UserData } from '../types/user';
 import parseJwt from './parseJWT';
 
@@ -7,6 +7,6 @@ import parseJwt from './parseJWT';
  * @returns UserData
  */
 export const parseUserAuthInfo = (): Partial<UserData> => {
-    const accessToken = getValueFromCookie('keycloak');
+    const accessToken = getAccessTokenForRequests();
     return accessToken ? parseJwt(accessToken || '') : {};
 };

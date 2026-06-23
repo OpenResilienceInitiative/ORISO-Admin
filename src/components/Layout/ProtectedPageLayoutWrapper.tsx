@@ -68,10 +68,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
 
     useEffect(() => {
         if (subdomain !== tenantData.subdomain && !settings.multitenancyWithSingleDomainEnabled) {
-            // console.log('🔍 ProtectedPageLayoutWrapper: Subdomain mismatch, but not logging out for debugging');
-            // console.log('🔍 ProtectedPageLayoutWrapper: subdomain:', subdomain);
-            // console.log('🔍 ProtectedPageLayoutWrapper: tenantData.subdomain:', tenantData.subdomain);
-            // logout(true);
+            logout(true);
         }
     }, [subdomain, tenantData.subdomain]);
 
@@ -113,7 +110,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     return (
         <>
             <Layout className="protectedLayout">
-                <Sider width={97}>
+                <Sider width={85}>
                     <div className="logo" />
                     <nav className="mainMenu">
                         <ul className="upperSidebar">

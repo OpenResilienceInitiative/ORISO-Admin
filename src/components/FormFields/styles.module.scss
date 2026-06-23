@@ -1,115 +1,167 @@
 .focused {
-    border-width: 2px;
     border-color: var(--input-active-border-color);
-    box-shadow: none;
+    box-shadow: 0 0 0 1px var(--input-active-border-color) inset;
     outline: none;
 }
 
 .input {
     width: 100%;
-    min-height: 48px;
-    padding: 0 12px 0 16px;
+    height: 56px;
+    min-height: 56px;
+    padding: var(--input-padding);
     border: 1px solid var(--input-border-color);
-    background: var(--input-bg);
     border-radius: var(--input-border-radius);
+    background: var(--input-bg);
+    box-shadow: none;
+    color: var(--m3-on-surface);
+    font-family: var(--m3-body-font-family);
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    line-height: 24px;
     outline: none;
-    transition: all 0.3s;
-
-    &:focus,
-    &:active,
-    &:hover {
-        border-width: 2px;
-        border-color: var(--input-active-border-color);
-        box-shadow: none;
-        outline: none;
-    }
-
-    &:focus {
-        padding-left: 15px;
-    }
-
-    &:not(:focus):hover,
-    &:global(.ant-input-disabled):hover {
-        border-width: 1px;
-    }
-
-    :global {
-        .ant-input-group-wrapper {
-            background: var(--input-bg);
-        }
-
-        .ant-input-group {
-            .ant-input-status-error {
-                border-top: 0;
-            }
-
-            .ant-input {
-                padding-left: 0;
-                border: 0;
-                background-color: transparent;
-                box-shadow: none;
-                outline: 0;
-            }
-
-            .ant-input-group-addon {
-                padding-right: 0;
-                border: 0;
-                background-color: transparent;
-                color: rgb(0 0 0 / 40%);
-            }
-        }
-    }
-
-    &:global(.ant-input-group-wrapper .ant-input) {
-        border: none;
-        background-color: transparent !important;
-    }
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
 }
 
-.disabled {
-    :global(.ant-input),
-    :global(.ant-input-number),
-    :global(.ant-select-disabled .ant-select-selector) {
-        border-color: var(--input-disabled-border-color) !important;
-        background: var(--input-disabled-bg) !important;
-        color: var(--input-disabled-color) !important;
-    }
+.input::placeholder {
+    color: var(--input-placeholder-color);
+    opacity: 1;
+}
+
+.input:focus,
+.input:active,
+.input:hover {
+    border-color: var(--input-active-border-color);
+    box-shadow: 0 0 0 1px var(--input-active-border-color) inset;
+    outline: none;
+}
+
+.input:not(:focus):hover,
+.input:global(.ant-input-disabled):hover {
+    box-shadow: none;
+}
+
+.input:disabled,
+.input:global(.ant-input-disabled) {
+    border-color: var(--input-disabled-border-color);
+    background: var(--input-disabled-bg);
+    box-shadow: none;
+    color: var(--input-disabled-color);
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.input:disabled::placeholder,
+.input:global(.ant-input-disabled)::placeholder {
+    color: var(--input-disabled-color);
+}
+
+.input :global(.ant-input-group-wrapper) {
+    background: var(--input-bg);
+}
+
+.input :global(.ant-input-group .ant-input-status-error) {
+    border-top: 0;
+}
+
+.input :global(.ant-input-group .ant-input) {
+    padding-left: 0;
+    border: 0;
+    background-color: transparent;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    box-shadow: none;
+    outline: 0;
+}
+
+.input :global(.ant-input-group .ant-input-group-addon) {
+    padding-right: 0;
+    border: 0;
+    background-color: transparent;
+    color: rgb(0 0 0 / 40%);
+}
+
+.input:global(.ant-input-group-wrapper .ant-input) {
+    border: none;
+    background-color: transparent !important;
+}
+
+.disabled :global(.ant-input),
+.disabled :global(.ant-input-number),
+.disabled :global(.ant-select-disabled .ant-select-selector) {
+    border-color: var(--input-disabled-border-color) !important;
+    background: var(--input-disabled-bg) !important;
+    color: var(--input-disabled-color) !important;
+    opacity: 1;
 }
 
 .item {
-    :global {
-        .ant-form-item-explain-error {
-            margin-top: 4px;
-            color: var(--form-error);
-            font-size: 12px;
-            font-weight: 400;
-            line-height: 16px;
-        }
-    }
+    margin-bottom: 24px;
+}
 
-    &:global(.ant-form-item-has-error):not(.ant-input-disabled) {
-        :local(.input),
-        :global(input) {
-            border-width: 2px !important;
-            border-color: var(--form-error) !important;
-            background: var(--input-bg);
-            box-shadow: none !important;
-        }
-    }
+.item :global(.ant-form-item-row) {
+    position: relative;
+}
 
-    :global(label.ant-form-item-required:not(.ant-form-item-required-mark-optional)) {
-        &:before {
-            content: '';
-        }
+.item :global(.ant-form-item-label) {
+    position: absolute;
+    z-index: 2;
+    top: -8px;
+    left: 12px;
+    max-width: calc(100% - 24px);
+    padding: 0 4px !important;
+    background: var(--input-label-bg);
+    line-height: 16px;
+    pointer-events: none;
+}
 
-        &:after {
-            display: inline-block;
-            margin-right: 4px;
-            color: var(--form-error);
-            content: '*';
-            font-family: SimSun, sans-serif;
-            font-size: 12px;
-            line-height: 1;
-        }
-    }
+.item :global(.ant-form-item-label > label) {
+    height: 16px;
+    color: var(--label-color);
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}
+
+.item :global(.ant-form-item-control) {
+    width: 100%;
+}
+
+.item :global(.ant-form-item-control-input) {
+    min-height: 56px;
+}
+
+.item :global(.ant-form-item-explain-error) {
+    margin-top: 4px;
+    padding: 0 16px;
+    color: var(--form-error);
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}
+
+.item:global(.ant-form-item-has-error):not(:global(.ant-input-disabled)) .input,
+.item:global(.ant-form-item-has-error):not(:global(.ant-input-disabled)) :global(input) {
+    border-color: var(--form-error) !important;
+    background: var(--input-bg);
+    box-shadow: 0 0 0 1px var(--form-error) inset !important;
+}
+
+.item :global(label.ant-form-item-required:not(.ant-form-item-required-mark-optional))::before {
+    content: '';
+}
+
+.item :global(label.ant-form-item-required:not(.ant-form-item-required-mark-optional))::after {
+    display: inline-block;
+    margin-right: 4px;
+    color: var(--form-error);
+    content: '*';
+    font-family: SimSun, sans-serif;
+    font-size: 12px;
+    line-height: 1;
 }

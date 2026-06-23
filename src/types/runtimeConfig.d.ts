@@ -11,7 +11,6 @@ export interface AppRuntimeConfig {
     COOKIE_SECURE?: string;
     CSRF_WHITELIST_HEADER?: string;
     COOKIES_ALLOWEDLIST?: string;
-    APPOINTMENT_SERVICE_URL?: string;
 }
 
 declare global {

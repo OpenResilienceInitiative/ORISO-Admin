@@ -1,0 +1,28 @@
+export type PermissionToggleVisibility = {
+    anonymousChat?: boolean;
+    groupChat?: boolean;
+    calls?: boolean;
+    supervision?: boolean;
+    supervisionAnonymousChats?: boolean;
+    supervisionOneOnOneChats?: boolean;
+    audioCalls?: boolean;
+    audioCallsAnonymousChats?: boolean;
+    audioCallsOneOnOneChats?: boolean;
+    audioCallsGroupChats?: boolean;
+    audioCallsSupervisionChats?: boolean;
+    videoCalls?: boolean;
+    videoCallsAnonymousChats?: boolean;
+    videoCallsOneOnOneChats?: boolean;
+    videoCallsGroupChats?: boolean;
+    videoCallsSupervisionChats?: boolean;
+    threads?: boolean;
+    threadsAnonymousChats?: boolean;
+    threadsOneOnOneChats?: boolean;
+    threadsGroupChats?: boolean;
+    threadsSupervisionChats?: boolean;
+    voiceMessages?: boolean;
+    voiceMessagesAnonymousChats?: boolean;
+    voiceMessagesOneOnOneChats?: boolean;
+    voiceMessagesGroupChats?: boolean;
+    voiceMessagesSupervisionChats?: boolean;
+};

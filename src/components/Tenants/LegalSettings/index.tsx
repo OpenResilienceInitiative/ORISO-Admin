@@ -1,4 +1,3 @@
-/* eslint-disable jsx-a11y/anchor-has-content */
 import { Col, Row } from 'antd';
 import { useTranslation, Trans } from 'react-i18next';
 import { CardEditable } from '../../CardEditable';
@@ -7,28 +6,24 @@ import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { LegalText } from './components/LegalText';
+import { DataProcessingAgreement } from './components/DataProcessingAgreement';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
-import { UserRole } from '../../../enums/UserRole';
 import styles from './styles.module.scss';
 import { FeatureFlag } from '../../../enums/FeatureFlag';
 import { useFeatureContext } from '../../../context/FeatureContext';
 
 interface LegalSettingsProps {
     tenantId?: string | number;
-    disableManageToggle?: boolean;
 }
 
-export const LegalSettings = ({ tenantId, disableManageToggle }: LegalSettingsProps) => {
+export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
     const { data } = useTenantData();
     const { t } = useTranslation();
-    const { hasRole, isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin } = useUserRoles();
     const finalTenantId = tenantId || `${data.id}`;
     const { settings } = useAppConfigContext();
     const { isEnabled } = useFeatureContext();
     const { mutate } = useSettingsAdminMutation();
-    const canShowExtraTexts =
-        (settings?.multitenancyWithSingleDomainEnabled && hasRole(UserRole.TenantAdmin) && !disableManageToggle) ||
-        !settings?.multitenancyWithSingleDomainEnabled;
 
     const LegalTextElement = (
         <LegalText
@@ -39,13 +34,7 @@ export const LegalSettings = ({ tenantId, disableManageToggle }: LegalSettingsPr
                 <Trans
                     i18nKey="privacy.subTitle"
                     components={{
-                        a: (
-                            <a
-                                href="https://www.caritas-beratungundhilfe.de/datenschutz"
-                                target="_blank"
-                                rel="noreferrer"
-                            />
-                        ),
+                        a: <span />,
                     }}
                 />
             }
@@ -66,43 +55,35 @@ export const LegalSettings = ({ tenantId, disableManageToggle }: LegalSettingsPr
         />
     );
 
-    if (!canShowExtraTexts) {
-        return (
-            <Row gutter={[24, 24]}>
-                <Col span={24} lg={12}>
-                    {LegalTextElement}
-                </Col>
-            </Row>
-        );
-    }
-
+    // Never hide modules, only disable them: the settings card, the data
+    // processing agreement, the imprint and the privacy statement are always
+    // visible in every view; editing stays restricted by permissions.
     return (
         <Row gutter={[24, 24]}>
             <Col span={24} lg={12}>
-                {!disableManageToggle &&
-                    settings?.multitenancyWithSingleDomainEnabled &&
-                    hasRole(UserRole.TenantAdmin) && (
-                        <CardEditable
-                            key={`legal-toggle-${settings.legalContentChangesBySingleTenantAdminsAllowed}`}
-                            allowEdit={isSuperAdmin}
-                            initialValues={{ ...settings }}
-                            titleKey="tenants.legal.singleTenantsManageLegal.title"
-                            onSave={mutate}
-                        >
-                            <div className={styles.checkGroup}>
-                                <FormSwitchField
-                                    labelKey="tenants.legal.singleTenantsManageLegal.setting.title"
-                                    name={['legalContentChangesBySingleTenantAdminsAllowed']}
-                                    inline
-                                    disableLabels
-                                    disabled={!isSuperAdmin}
-                                />
-                                <p className={styles.checkInfo}>
-                                    {t('tenants.legal.singleTenantsManageLegal.setting.description')}
-                                </p>
-                            </div>
-                        </CardEditable>
-                    )}
+                {settings?.multitenancyWithSingleDomainEnabled && (
+                    <CardEditable
+                        key={`legal-toggle-${settings.legalContentChangesBySingleTenantAdminsAllowed}`}
+                        allowEdit={isSuperAdmin}
+                        initialValues={{ ...settings }}
+                        titleKey="tenants.legal.singleTenantsManageLegal.title"
+                        onSave={mutate}
+                    >
+                        <div className={styles.checkGroup}>
+                            <FormSwitchField
+                                labelKey="tenants.legal.singleTenantsManageLegal.setting.title"
+                                name={['legalContentChangesBySingleTenantAdminsAllowed']}
+                                inline
+                                disableLabels
+                                disabled={!isSuperAdmin}
+                            />
+                            <p className={styles.checkInfo}>
+                                {t('tenants.legal.singleTenantsManageLegal.setting.description')}
+                            </p>
+                        </div>
+                    </CardEditable>
+                )}
+                <DataProcessingAgreement />
                 <LegalText
                     tenantId={finalTenantId}
                     fieldName={['content', 'impressum']}

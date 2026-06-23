@@ -1,3 +1,5 @@
+import DOMPurify from 'dompurify';
+
 export type HeadlineLevel = '1' | '2' | '3' | '4' | '5';
 interface HeadlineProps {
     text: string;
@@ -14,7 +16,7 @@ export const Headline = (props: HeadlineProps) => {
         <Tag
             className={`headline headline--${levelBasedClass} ${props.className ? props.className : ''}`}
             dangerouslySetInnerHTML={{
-                __html: props.text,
+                __html: DOMPurify.sanitize(props.text),
             }}
         />
     );

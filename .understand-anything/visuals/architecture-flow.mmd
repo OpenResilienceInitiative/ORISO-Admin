@@ -1,23 +1,14 @@
 flowchart TD
-  Browser[Browser /admin] --> Bootstrap[src/index.tsx]
-  Bootstrap --> Providers[React Query + App Config + AntD Locale]
-  Providers --> PublicRoutes[Login / 404 / Access Denied / Legal Links]
-  Providers --> ProtectedRoute[src/router/ProtectedRoute.tsx]
-  ProtectedRoute --> App[src/App.tsx]
-  App --> Layout[src/components/Layout/ProtectedPageLayoutWrapper.tsx]
-  App --> TenantPages[src/pages/Tenants + TenantSettings]
-  App --> AgencyPages[src/pages/Agency]
-  App --> UserPages[src/pages/users]
-  App --> TopicPages[src/pages/Topics]
-  App --> GlobalSettings[src/pages/GlobalSettings]
-  App --> LogsInviteStats[Logs + Invite Links + Statistic]
-  TenantPages --> Hooks[src/hooks]
-  AgencyPages --> Hooks
-  UserPages --> Hooks
-  TopicPages --> Hooks
-  GlobalSettings --> Hooks
-  Hooks --> ApiClients[src/api]
-  ApiClients --> FetchData[src/api/fetchData.ts]
-  FetchData --> Endpoints[src/appConfig.ts endpoints]
-  Endpoints --> Backend[ORISO backend services]
-
+  Index[src/index.tsx] --> App[src/App.tsx]
+  App --> ProtectedLayout[ProtectedPageLayoutWrapper]
+  App --> Pages[src/pages/**]
+  Pages --> Hooks[src/hooks/**]
+  Hooks --> Api[src/api/**]
+  Api --> Fetch[src/api/fetchData.ts]
+  Fetch --> Config[src/appConfig.ts]
+  Config --> Runtime[src/config/runtimeConfig.ts]
+  Runtime --> Env[public/env.js]
+  Config --> Backend[ORISO /service APIs]
+  Config --> Keycloak[Keycloak realm endpoints]
+  Pages --> Components[src/components/**]
+  Components --> Styles[src/styles + resources]

@@ -8,6 +8,8 @@ export interface TenantAdminData extends BasicTenantData {
         favicon?: string;
         primaryColor?: string;
         secondaryColor?: string | null;
+        accent?: string | null;
+        signal?: string | null;
     };
     content: {
         impressum: Record<string, string>;

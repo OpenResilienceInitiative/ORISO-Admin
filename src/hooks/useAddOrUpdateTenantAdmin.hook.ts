@@ -2,9 +2,9 @@ import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { tenantAdminsEndpoint } from '../appConfig';
 import { CounselorData } from '../types/counselor';
-import { encodeUsername } from '../utils/encryptionHelpers';
 import { TENANT_QUERY_KEY } from './useSingleTenantData';
 import { TENANT_ADMIN_QUERY_KEY, TENANT_ADMINS_QUERY_KEY, useTenantUserAdminData } from './useTenantUserAdminData';
+import { parseHalResponse } from '../utils/parseHalResponse';
 
 interface UseAddOrUpdateTenantAdminOptions
     extends UseMutationOptions<CounselorData, Error, CounselorData, Error | Response> {
@@ -15,35 +15,12 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
     const queryClient = useQueryClient();
     const { data } = useTenantUserAdminData({ id, enabled: !!id && id !== 'add' });
 
-    const normalizeSuccessfulResponse = async (response: unknown) => {
-        if (response instanceof Response) {
-            if (response.status === 204) {
-                return null;
-            }
-
-            const contentType = response.headers.get('content-type') || '';
-            // The backend returns HAL responses (application/hal+json), so match any JSON content
-            // type rather than the exact "application/json".
-            if (!contentType.includes('json')) {
-                return null;
-            }
-
-            const textBody = await response.clone().text();
-            if (!textBody.trim()) {
-                return null;
-            }
-
-            return JSON.parse(textBody);
-        }
-        return response;
-    };
-
     return useMutation(
         async (formData) => {
             const formValues = formData as CounselorData & { username?: string; password?: string };
             const resolvedUsername = formValues.username?.trim()
                 ? formValues.username.trim()
-                : data?.username || encodeUsername(formValues.email);
+                : data?.username || formValues.email; // MATRIX MIGRATION: backend handles encoding
 
             const { password, username: ignoredUsername, ...rest } = formValues;
             const body: Record<string, any> = { username: resolvedUsername, ...rest };
@@ -64,7 +41,7 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
                 bodyData,
             });
 
-            const normalizedResponse = await normalizeSuccessfulResponse(response);
+            const normalizedResponse = await parseHalResponse(response);
             if (normalizedResponse && typeof normalizedResponse === 'object' && '_embedded' in normalizedResponse) {
                 // eslint-disable-next-line no-underscore-dangle
                 const embeddedData = (normalizedResponse as { _embedded: CounselorData })._embedded;

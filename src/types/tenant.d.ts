@@ -47,6 +47,7 @@ export interface TenantSettings {
         permissionsPageEnabled?: boolean | null;
         allowedPermissionToggles?: {
             anonymousChat?: boolean | null;
+            groupChat?: boolean | null;
             appearance?: boolean | null;
             calls?: boolean | null;
             supervision?: boolean | null;
@@ -101,8 +102,11 @@ export interface TenantData extends BasicTenantData {
     theming: {
         logo: string;
         favicon: string;
+        associationLogo?: string;
         primaryColor: string;
         secondaryColor: string | null;
+        accent?: string | null;
+        signal?: string | null;
     };
     content: {
         impressum: string | null;

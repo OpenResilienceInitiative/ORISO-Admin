@@ -21,22 +21,15 @@ export const supportedLanguages = ['de', 'en', 'fr', 'ru', 'tr', 'uk', 'ti'];
 
 export const agencyDataAgencyId = (agencyId: string) => `${mainURL}/service/agencyadmin/agencies/${agencyId}`;
 export const agencyEndpointBase = `${mainURL}/service/agencyadmin/agencies`;
-export const agencyEventTypes = (agencyId: string) =>
-    `${mainURL}/service/appointservice/agencies/${agencyId}/eventTypes`;
 export const agencyPostcodeRangeEndpointBase = `${mainURL}/service/agencyadmin/postcoderanges`;
 export const consultantsHasAgencyEndpoint = (agencyId: string) =>
     `${mainURL}/service/useradmin/agencies/${agencyId}/consultants`;
-export const consultantsForAgencyEndpoint = (agencyId: string) =>
-    `${mainURL}/service/appointservice/agencies/${agencyId}/consultants`;
-export const consultantsForAgencyEventTypes = (agencyId: string, eventTypeId: number) =>
-    `${mainURL}/service/appointservice/agencies/${agencyId}/eventTypes/${eventTypeId}/`;
-export const consultantsForAgencyEventTypesNew = (agencyId: string) =>
-    `${mainURL}/service/appointservice/agencies/${agencyId}/eventTypes`;
 export const consultingTypeEndpoint = `${mainURL}/service/consultingtypes`;
 export const counselorEndpoint = `${mainURL}/service/useradmin/consultants`;
 export const diocesesEndpoint = `${mainURL}/service/agencyadmin/dioceses`;
 export const agencyAdminEndpoint = `${mainURL}/service/useradmin/agencyadmins`;
-export const eventTypeById = `${mainURL}/eventTypes/{eventTypeId}`;
+export const grantConsultantIdentityEndpoint = (adminId: string) =>
+    `${mainURL}/service/useradmin/admins/${adminId}/grant-consultant-identity`;
 export const loginEndpoint = keycloakAuthPath('/protocol/openid-connect/token');
 export const logoutEndpoint = keycloakAuthPath('/protocol/openid-connect/logout');
 export const tenantEndpoint = `${mainURL}/service/tenant/`;
@@ -77,7 +70,6 @@ const routePathNames = {
     agency: '/admin/agency',
     agencyAdmins: '/admin/users/agency-admins',
     agencyEdit: '/admin/agency/edit',
-    agencyEditInitialMeeting: '/admin/agency/:id/initial-meeting',
     agencyAdd: '/admin/agency/add',
     agencyAddGeneral: '/admin/agency/add/general',
     topics: '/admin/topics',
@@ -87,8 +79,8 @@ const routePathNames = {
     inactiveAccountAuditLogs: '/admin/logs/inactive-accounts',
     userProfile: '/admin/profil/',
     termsAndConditions: '/admin/agb',
-    imprint: 'https://www.caritas-beratungundhilfe.de/impressum',
-    privacy: 'https://www.caritas-beratungundhilfe.de/datenschutz',
+    imprint: '/impressum',
+    privacy: '/datenschutz',
     tenants: '/admin/tenants',
     usersTenants: '/admin/users/tenants',
     tenantAdmins: '/admin/users/tenant-admins',
@@ -99,7 +91,6 @@ const routePathNames = {
     linksCounsellor: '/admin/links/counsellor',
     linksExternalInbounds: '/admin/links/external-inbounds',
     loginResetPasswordLink: keycloakAuthPath('/login-actions/reset-credentials?client_id=account'),
-    appointmentServiceDevServer: runtimeConfig.appointmentServiceUrl,
 };
 
 export default routePathNames;

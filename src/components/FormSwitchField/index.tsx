@@ -1,8 +1,13 @@
 import { Form, Switch } from 'antd';
 import Paragraph from 'antd/lib/typography/Paragraph';
 import classNames from 'classnames';
+import DisabledContext from 'antd/es/config-provider/DisabledContext';
+import { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
+import { M3Switch } from '../M3Switch';
 import styles from './styles.module.scss';
+
+type SwitchVariant = 'antd' | 'm3';
 
 interface FormSwitchFieldProps {
     labelKey?: string;
@@ -19,6 +24,8 @@ interface FormSwitchFieldProps {
     disableLabels?: boolean;
     inverseValue?: boolean;
     className?: string;
+    switchLabel?: string;
+    switchVariant?: SwitchVariant;
 }
 
 interface FormSwitchFieldLocalProps {
@@ -30,6 +37,8 @@ interface FormSwitchFieldLocalProps {
     unCheckedKey: string;
     disableLabels?: boolean;
     inverseValue?: boolean;
+    switchLabel: string;
+    switchVariant: SwitchVariant;
 }
 
 const FormSwitchFieldLocal = ({
@@ -41,19 +50,29 @@ const FormSwitchFieldLocal = ({
     disableLabels,
     unCheckedKey,
     inverseValue,
+    switchLabel,
+    switchVariant,
 }: FormSwitchFieldLocalProps) => {
     const { t } = useTranslation();
+    const contextDisabled = useContext(DisabledContext);
+    const isDisabled = contextDisabled || disabled;
+    const fieldChecked = inverseValue ? !checked : checked;
+    const onSwitchChange = (value: boolean) => onChange?.(inverseValue ? !value : value);
 
     return (
         <div className="formSwitchField__container">
-            <Switch
-                disabled={disabled}
-                size="default"
-                onChange={(value) => onChange(inverseValue ? !value : value)}
-                checked={inverseValue ? !checked : checked}
-                checkedChildren={!disableLabels && t(checkedKey)}
-                unCheckedChildren={!disableLabels && t(unCheckedKey)}
-            />
+            {switchVariant === 'm3' ? (
+                <M3Switch disabled={isDisabled} label={switchLabel} onChange={onSwitchChange} checked={fieldChecked} />
+            ) : (
+                <Switch
+                    disabled={isDisabled}
+                    size="default"
+                    onChange={onSwitchChange}
+                    checked={fieldChecked}
+                    checkedChildren={!disableLabels && t(checkedKey)}
+                    unCheckedChildren={!disableLabels && t(unCheckedKey)}
+                />
+            )}
             {paragraphKey && <Paragraph className="desc__toggleText">{t(paragraphKey)}</Paragraph>}
         </div>
     );
@@ -74,9 +93,12 @@ export const FormSwitchField = ({
     disableLabels,
     checkedKey = 'yes',
     unCheckedKey = 'no',
+    switchLabel,
+    switchVariant = 'antd',
 }: FormSwitchFieldProps) => {
     const [t] = useTranslation();
     const message = errorMessage || t('form.errors.required');
+    const accessibleSwitchLabel = switchLabel || (typeof label === 'string' ? label : t(labelKey || checkedKey));
 
     return (
         <Form.Item
@@ -94,6 +116,8 @@ export const FormSwitchField = ({
                 disabled={disabled}
                 disableLabels={disableLabels}
                 inverseValue={inverseValue}
+                switchLabel={accessibleSwitchLabel}
+                switchVariant={switchVariant}
             />
         </Form.Item>
     );

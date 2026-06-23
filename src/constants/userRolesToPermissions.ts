@@ -27,10 +27,8 @@ export const useUserRolesToPermission = () => {
         !settings.multitenancyWithSingleDomainEnabled || settings.legalContentChangesBySingleTenantAdminsAllowed;
     const isMultiTenancyWithSingleDomain = settings.multitenancyWithSingleDomainEnabled;
     const isTopicsEnabled = data?.settings?.featureTopicsEnabled;
-    const isStatisticsEnabled = data?.settings?.featureStatisticsEnabled;
 
     // console.log('🔍 useUserRolesToPermission: isTopicsEnabled:', isTopicsEnabled);
-    // console.log('🔍 useUserRolesToPermission: isStatisticsEnabled:', isStatisticsEnabled);
 
     const permissions: Partial<Record<UserRole, UserPermissions>> = {
         [UserRole.RestrictedAgencyAdmin]: {
@@ -40,13 +38,14 @@ export const useUserRolesToPermission = () => {
         },
         [UserRole.AgencyAdmin]: {
             Agency: { read: true, create: true, update: true, delete: true },
+            Statistic: { read: true },
         },
         [UserRole.TenantAdmin]: {
             // Tenant-scoped admins can manage tenant settings, but only super-admins may create/delete tenants.
             Tenant: { read: true, update: true, create: isSuperAdmin, delete: isSuperAdmin },
             Language: { update: true },
             LegalText: { read: true, update: true },
-            Statistic: { read: isSuperAdmin || isStatisticsEnabled },
+            Statistic: { read: true },
             TenantAdminUser: {
                 read: true,
                 create: isSuperAdmin,
@@ -66,7 +65,7 @@ export const useUserRolesToPermission = () => {
                 read: isMultiTenancyWithSingleDomain || singleCanEditLegalText,
                 update: singleCanEditLegalText,
             },
-            Statistic: { read: isStatisticsEnabled },
+            Statistic: { read: true },
         },
         [UserRole.UserAdmin]: {
             Consultant: { read: true, create: true, update: true, delete: true },

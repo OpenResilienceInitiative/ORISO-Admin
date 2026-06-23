@@ -1,11 +1,14 @@
-import { Col, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
+import ArrowCircleLeftOutlinedIcon from '@mui/icons-material/ArrowCircleLeftOutlined';
+import ArrowCircleUpOutlinedIcon from '@mui/icons-material/ArrowCircleUpOutlined';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { CardEditable } from '../../../../CardEditable';
 import { FormFileUploaderField } from '../../../../FormFileUploaderField';
 import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.hook';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
+import styles from './styles.module.scss';
 
 const isReadOnlySetting = (meta: Record<string, { readOnly?: boolean }> | undefined, keys: string[]) =>
     keys.some((key) => meta?.[key]?.readOnly);
@@ -61,36 +64,60 @@ export const LogoAndFavicon = ({ tenantId, readOnly = false }: { tenantId: strin
             titleKey="settings.images.title"
             subTitle={t<string>('settings.images.howto')}
             onSave={mutate}
+            variant="dialog"
+            editButtonPlacement="footer"
+            headerIcon={<ImageOutlinedIcon />}
         >
-            <Row gutter={15}>
-                <Col xs={6} md={5} lg={4}>
-                    <FormFileUploaderField
-                        labelKey="organisation.logo"
-                        name={['theming', 'logo']}
-                        tooltip={t('settings.images.tooltip.logo')}
-                        disabled={logoReadOnly}
-                    />
-                </Col>
-                <Col xs={6} md={5} lg={4}>
-                    <FormFileUploaderField
-                        allowIcon
-                        labelKey="organisation.favicon"
-                        name={['theming', 'favicon']}
-                        tooltip={t('settings.images.tooltip.favicon')}
-                        disabled={faviconReadOnly}
-                    />
-                </Col>
-                {!settings.multitenancyWithSingleDomainEnabled && (
-                    <Col xs={6} md={5} lg={4}>
+            <div className={styles.assetsLayout}>
+                <FormFileUploaderField
+                    className={`${styles.assetUploader} ${styles.logoUploader}`}
+                    labelKey="organisation.logo"
+                    name={['theming', 'logo']}
+                    tooltip={t('settings.images.tooltip.logo')}
+                    disabled={logoReadOnly}
+                />
+                <div className={styles.assetMetaColumn}>
+                    <div className={styles.assetMeta}>
+                        <span className={styles.assetLabel}>
+                            <ArrowCircleLeftOutlinedIcon />
+                            {t('organisation.logo')}
+                        </span>
+                        <span className={styles.assetSize}>512x512px</span>
+                    </div>
+                    <div className={styles.faviconBlock}>
                         <FormFileUploaderField
-                            labelKey="organisation.associationLogo"
-                            name={['theming', 'associationLogo']}
-                            tooltip={t('settings.images.tooltip.associationLogo')}
-                            disabled={associationLogoReadOnly}
+                            className={`${styles.assetUploader} ${styles.faviconUploader}`}
+                            allowIcon
+                            labelKey="organisation.favicon"
+                            name={['theming', 'favicon']}
+                            tooltip={t('settings.images.tooltip.favicon')}
+                            disabled={faviconReadOnly}
                         />
-                    </Col>
-                )}
-            </Row>
+                        <div className={styles.assetMetaEnd}>
+                            <span className={styles.assetLabel}>
+                                {t('organisation.favicon')}
+                                <ArrowCircleUpOutlinedIcon />
+                            </span>
+                            <span className={styles.assetSize}>32x32px</span>
+                        </div>
+                    </div>
+                    {!settings.multitenancyWithSingleDomainEnabled && (
+                        <div className={styles.faviconBlock}>
+                            <FormFileUploaderField
+                                className={`${styles.assetUploader} ${styles.faviconUploader}`}
+                                labelKey="organisation.associationLogo"
+                                name={['theming', 'associationLogo']}
+                                tooltip={t('settings.images.tooltip.associationLogo')}
+                                disabled={associationLogoReadOnly}
+                            />
+                            <div className={styles.assetMetaEnd}>
+                                <span className={styles.assetLabel}>{t('organisation.associationLogo')}</span>
+                                <span className={styles.assetSize}>512x512px</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
         </CardEditable>
     );
 };

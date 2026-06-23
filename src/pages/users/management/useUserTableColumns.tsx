@@ -1,4 +1,5 @@
 import { HistoryOutlined } from '@ant-design/icons';
+import { Tag } from 'antd';
 import { ColumnProps } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +30,17 @@ const SORT_FIELD_BY_COLUMN: Partial<Record<UserTableColumnKey, string>> = {
     tenantOrgName: 'NAME',
 };
 
+const getColumnSortOrder = (
+    columnKey: UserTableColumnKey,
+    sortBy?: string,
+    order?: string,
+): 'ascend' | 'descend' | undefined => {
+    const apiField = SORT_FIELD_BY_COLUMN[columnKey];
+    if (!apiField || !sortBy || apiField !== sortBy) return undefined;
+    return order === 'DESC' ? 'descend' : 'ascend';
+};
+
+
 type TableRow = CounselorData | TenantData;
 
 interface UseUserTableColumnsParams {
@@ -45,6 +57,8 @@ interface UseUserTableColumnsParams {
     mainTenantSubdomain?: string;
     figmaTableHeader?: boolean;
     fixActionsColumn?: boolean;
+    sortBy?: string;
+    order?: string;
 }
 
 export const useUserTableColumns = ({
@@ -61,6 +75,8 @@ export const useUserTableColumns = ({
     mainTenantSubdomain,
     figmaTableHeader = false,
     fixActionsColumn = true,
+    sortBy,
+    order
 }: UseUserTableColumnsParams) => {
     const { t } = useTranslation();
     const config = USER_TABLE_CONFIGS[sectionId];
@@ -113,10 +129,10 @@ export const useUserTableColumns = ({
                 className: 'counselorList__column',
                 ...(sortable && apiSortField
                     ? {
-                          sorter: true,
-                          sortOrder: undefined,
-                          showSorterTooltip: false,
-                      }
+                        sorter: true,
+                        sortOrder: getColumnSortOrder(key, sortBy, order),
+                        showSorterTooltip: false,
+                    }
                     : {}),
             };
 
@@ -195,6 +211,15 @@ export const useUserTableColumns = ({
                                 return username;
                             }
                         },
+                    };
+                case 'hasOtherIdentity':
+                    return {
+                        ...base,
+                        title: t('users.table.hasOtherIdentity'),
+                        render: (_: unknown, record: TableRow) =>
+                            (record as CounselorData).hasOtherIdentity ? (
+                                <Tag>{t('users.table.hasOtherIdentity.badge')}</Tag>
+                            ) : null,
                     };
                 case 'agency':
                     return {
@@ -300,6 +325,8 @@ export const useUserTableColumns = ({
         t,
         showTenant,
         showSubdomain,
+        sortBy,
+        order
     ]);
 };
 

@@ -103,7 +103,6 @@ export const runtimeConfig = {
         .split(',')
         .map((entry) => entry.trim())
         .filter(Boolean),
-    appointmentServiceUrl: readConfigValue('APPOINTMENT_SERVICE_URL') ?? 'https://calcom-develop.suchtberatung.digital',
 };
 
 // Dedicated Keycloak hosts use {KEYCLOAK_URL}/realms/{realm}/...

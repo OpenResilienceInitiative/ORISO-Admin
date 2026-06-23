@@ -1,4 +1,6 @@
 import { Button, Col, Form, Row, message } from 'antd';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet } from 'react-router';
@@ -15,7 +17,8 @@ import { useAppConfigContext } from '../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.hook';
 import { useUserData } from '../../hooks/useUserData.hook';
 import { sendGlobalSmtpTestEmail } from '../../api/settings/sendGlobalSmtpTestEmail';
-import styles from '../Tenants/Edit/GlobalSettings/styles.module.scss';
+import styles from './styles.module.scss';
+import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
 
 export const GlobalSettingsPage = () => {
     return (
@@ -127,76 +130,102 @@ export const GlobalSmtpSettingsPage = () => {
             });
             message.success(t('globalSettings.smtp.test.success', { email: cleanedRecipientEmail }));
         } catch (error) {
-            if (error instanceof Response) {
-                try {
-                    const body = await error.json();
-                    const backendMessage = body?.message;
-                    if (backendMessage) {
-                        message.error(backendMessage);
-                        return;
-                    }
-                } catch {
-                    // ignore parse error and show fallback
-                }
-            }
-            message.error(t('globalSettings.smtp.test.error'));
+            const errorMessage = await extractApiErrorMessage(error, 'globalSettings.smtp.test.error');
+            message.error(errorMessage);
         } finally {
             setIsTestSending(false);
         }
     }, [form, t, testForm]);
+    const renderSwitchLabel = useCallback(
+        (titleKey: string, descriptionKey: string) => (
+            <span className={styles.switchCopy}>
+                <span className={styles.switchTitle}>{t(titleKey)}</span>
+                <span className={styles.switchDescription}>{t(descriptionKey)}</span>
+            </span>
+        ),
+        [t],
+    );
 
     return (
-        <Row gutter={[24, 24]}>
-            <Col span={12} sm={6}>
+        <div className={styles.smtpPage}>
+            <div>
                 <CardEditable
+                    className={styles.smtpCard}
+                    variant="dialog"
+                    headerIcon={<EmailOutlinedIcon />}
                     isLoading={isLoading}
                     initialValues={initialValues}
                     titleKey="globalSettings.smtp.title"
+                    subTitleKey="globalSettings.smtp.description"
                     onSave={mutate}
                     formProp={form}
                 >
-                    <div className={styles.checkGroup}>
+                    <div className={styles.fieldGrid}>
                         <FormSwitchField
-                            labelKey="globalSettings.smtp.systemEmailToggle.title"
+                            className={styles.smtpSwitch}
+                            label={renderSwitchLabel(
+                                'globalSettings.smtp.systemEmailToggle.title',
+                                'globalSettings.smtp.systemEmailToggle.description',
+                            )}
                             name={['globalFeatureSystemNotificationEmailsEnabled']}
                             inline
                             disableLabels
+                            switchLabel={t('globalSettings.smtp.systemEmailToggle.title')}
+                            switchVariant="m3"
                         />
-                    </div>
 
-                    <div className={styles.checkGroup}>
                         <FormSwitchField
-                            labelKey="globalSettings.smtp.smtpToggle.title"
+                            className={styles.smtpSwitch}
+                            label={renderSwitchLabel(
+                                'globalSettings.smtp.smtpToggle.title',
+                                'globalSettings.smtp.smtpToggle.description',
+                            )}
                             name={['globalSmtpEnabled']}
                             inline
                             disableLabels
+                            switchLabel={t('globalSettings.smtp.smtpToggle.title')}
+                            switchVariant="m3"
+                        />
+
+                        <FormInputField labelKey="globalSettings.smtp.host" name={['globalSmtpHost']} />
+                        <FormInputField labelKey="globalSettings.smtp.port" name={['globalSmtpPort']} />
+                        <FormInputField labelKey="globalSettings.smtp.username" name={['globalSmtpUsername']} />
+                        <FormInputPasswordField
+                            labelKey="globalSettings.smtp.password"
+                            name={['globalSmtpPassword']}
+                            autoComplete="current-password"
+                        />
+                        <FormInputField labelKey="globalSettings.smtp.from" name={['globalSmtpFrom']} />
+                        <FormColorSelectorField
+                            className={styles.colorField}
+                            labelKey="globalSettings.smtp.emailThemeColor"
+                            name={['globalSmtpEmailThemeColor']}
+                        />
+                        <FormSwitchField
+                            className={styles.smtpSwitch}
+                            label={renderSwitchLabel(
+                                'globalSettings.smtp.secure',
+                                'globalSettings.smtp.secure.description',
+                            )}
+                            name={['globalSmtpSecure']}
+                            inline
+                            disableLabels
+                            switchLabel={t('globalSettings.smtp.secure')}
+                            switchVariant="m3"
                         />
                     </div>
-
-                    <FormInputField labelKey="globalSettings.smtp.host" name={['globalSmtpHost']} />
-                    <FormInputField labelKey="globalSettings.smtp.port" name={['globalSmtpPort']} />
-                    <FormInputField labelKey="globalSettings.smtp.username" name={['globalSmtpUsername']} />
-                    <FormInputPasswordField
-                        labelKey="globalSettings.smtp.password"
-                        name={['globalSmtpPassword']}
-                        autoComplete="current-password"
-                    />
-                    <FormInputField labelKey="globalSettings.smtp.from" name={['globalSmtpFrom']} />
-                    <FormColorSelectorField
-                        labelKey="globalSettings.smtp.emailThemeColor"
-                        name={['globalSmtpEmailThemeColor']}
-                    />
-                    <FormSwitchField
-                        labelKey="globalSettings.smtp.secure"
-                        name={['globalSmtpSecure']}
-                        inline
-                        disableLabels
-                    />
                 </CardEditable>
-            </Col>
-            <Col span={12} sm={6}>
-                <Card titleKey="globalSettings.smtp.test.title">
+            </div>
+            <div>
+                <Card
+                    className={styles.smtpCard}
+                    variant="dialog"
+                    headerIcon={<SendOutlinedIcon />}
+                    titleKey="globalSettings.smtp.test.title"
+                    subTitleKey="globalSettings.smtp.test.description"
+                >
                     <Form
+                        className={styles.testForm}
                         form={testForm}
                         layout="vertical"
                         initialValues={{
@@ -209,15 +238,19 @@ export const GlobalSmtpSettingsPage = () => {
                             required
                             rules={[{ type: 'email', message: t('message.error.email.incorrect') }]}
                         />
-                        <div className={styles.checkGroup}>
-                            <Button loading={isTestSending} onClick={handleSendTestEmail}>
+                        <div className={styles.testAction}>
+                            <Button
+                                className={styles.smtpActionButton}
+                                loading={isTestSending}
+                                onClick={handleSendTestEmail}
+                            >
                                 {t('globalSettings.smtp.test.button')}
                             </Button>
                         </div>
                     </Form>
                 </Card>
-            </Col>
-        </Row>
+            </div>
+        </div>
     );
 };
 
