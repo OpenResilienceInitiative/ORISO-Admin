@@ -32,6 +32,7 @@
     "message.error.PASSWORD_NOT_VALID": "The password does not meet the security requirements. Use at least 8 characters with upper and lower case letters, at least one number, and one special character (e.g. @Consultantshazia1).",
     "message.error.EMAIL_NOT_AVAILABLE": "This email address is already in use.",
     "message.error.USERNAME_NOT_AVAILABLE": "This username is already taken.",
+    "message.error.ROLE_NOT_FOUND": "The required user role is missing from the system and could not be assigned. Please contact your administrator.",
     "message.error.NUMBER_OF_LICENSES_EXCEEDED": "You have reached the maximum number of consultants. Contact your admin to add more users or remove inactive consultants.",
     "message.error.default": "Something went wrong. Please try again later.",
     "profile.title": "Profile",
