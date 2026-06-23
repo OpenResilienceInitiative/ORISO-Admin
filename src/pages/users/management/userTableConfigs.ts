@@ -58,7 +58,7 @@ const baseIdentityColumns = (): UserTableColumnConfig[] => [
     col('lastname', true, true, 130),
     col('firstname', true, true, 120),
     col('email', true, true, 150),
-    col('username', true, false, 150),
+    col('username', true, true, 150),
 ];
 
 const tenantAdminIdentityColumns = (): UserTableColumnConfig[] => [
