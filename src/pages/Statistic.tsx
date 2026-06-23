@@ -272,6 +272,9 @@ const localizeCardMenuOption = (
     locale: string,
 ): CardMenuOption => ({
     ...option,
+    description: option.description
+        ? translateDashboardText(translate, option.description, locale)
+        : option.description,
     detail: option.detail ? translateDashboardText(translate, option.detail, locale) : option.detail,
     label: translateDashboardText(translate, option.label, locale),
     title: option.title ? translateDashboardText(translate, option.title, locale) : option.title,
@@ -1045,6 +1048,37 @@ const defaultMetricKeyByCardKey: Record<string, CardMenuKey> = {
     'voice-messages': 'voiceShare',
 };
 
+const metricMenuDescriptionByKey: Record<CardMenuKey, string> = {
+    activeAgencies: 'Zeigt, welche Beratungsstellen aktiv eingebunden sind und wo Kapazität entsteht.',
+    activeConversations: 'Macht heute aktive Gespräche sichtbar, damit Spitzen früh erkannt werden.',
+    activeCounselors: 'Zeigt aktive Beratende und hilft bei Dienst- und Vertretungsplanung.',
+    all: 'Bündelt alle Anfragen über die verfügbaren Chattypen hinweg.',
+    cases: 'Zeigt aktive Beratungsfälle und macht Falllasten schneller einschätzbar.',
+    consultations: 'Zeigt Beratungsgespräche und macht Nutzungsintensität je Zeitraum sichtbar.',
+    conversationsTotal: 'Zeigt laufende Gespräche für einen schnellen Blick auf die Aktivität.',
+    counselors: 'Zeigt verfügbare Beratende für Tagessteuerung und Auslastung.',
+    groups: 'Macht Gruppenanfragen sichtbar und unterstützt die Planung von Gesprächskreisen.',
+    liveChat: 'Zeigt Sofortkontakte, damit Live-Beratungszeiten besser geplant werden.',
+    messagesCounselors: 'Misst Antworten der Beratenden und unterstützt die Auslastungssteuerung.',
+    messagesPerSession: 'Zeigt die durchschnittliche Nachrichtentiefe pro Gespräch.',
+    messagesSeekers: 'Misst Aktivität der Ratsuchenden und zeigt Kommunikationsbedarf.',
+    oneToOne: 'Fokussiert klassische 1:1-Beratung und macht Nachfrage-Spitzen sichtbar.',
+    phoneShare: 'Zeigt, wie stark Telefonkontakte im Gesamtvolumen genutzt werden.',
+    previousMonth: 'Vergleicht, welches Thema im letzten Monat die Beratung geprägt hat.',
+    textMessagesTotal: 'Macht schriftliche Beratungsarbeit und asynchrone Kontakte sichtbar.',
+    threeMonthsAgo: 'Zeigt, ob Themen über drei Monate stabil bleiben oder kippen.',
+    topTopic: 'Zeigt das häufigste Thema und unterstützt Themen- und Ressourcenplanung.',
+    twoMonthsAgo: 'Vergleicht, welches Thema vor zwei Monaten besonders sichtbar war.',
+    videoCallCount: 'Zeigt die Anzahl der Videoanrufe für fachliche und technische Planung.',
+    videoShare: 'Macht Videoberatung als Anteil an allen Kontakten sichtbar.',
+    voiceShare: 'Zeigt Sprachnachrichten und deren Bedeutung für barriereärmere Kommunikation.',
+};
+
+const withMetricMenuDescription = (option: CardMenuOption): CardMenuOption => ({
+    ...option,
+    description: option.description || metricMenuDescriptionByKey[option.key],
+});
+
 const demoMetricOverridesByScope: Record<ScopeKey, Partial<Record<CardMenuKey, Partial<CardMenuOption>>>> = {
     platform: {
         activeAgencies: { value: '3' },
@@ -1748,7 +1782,9 @@ const getPersonalizedMetricCard = (
         menuLabel: 'Meine Kennzahl',
         menuOptions: dashboardMetricOptionsByScope[activeScope]
             .filter((option) => !duplicatedCommunicationMetricKeys.has(option.key))
-            .map((option) => applyDemoMetricOverride(option, activeScope, metricOverrides, option.key)),
+            .map((option) =>
+                withMetricMenuDescription(applyDemoMetricOverride(option, activeScope, metricOverrides, option.key)),
+            ),
     };
 };
 
@@ -2851,6 +2887,7 @@ const StatisticCard = ({ card, locale, menuValue, onMenuChange, translate }: Sta
                                 <span className="statisticDashboard__cardMenuEyebrow">{menuLabel}</span>
                                 {card.menuOptions.map((option) => {
                                     const isSelected = option.key === activeMenuKey;
+                                    const OptionIcon = option.icon || DisplayIcon;
 
                                     return (
                                         <button
@@ -2866,8 +2903,22 @@ const StatisticCard = ({ card, locale, menuValue, onMenuChange, translate }: Sta
                                                 setIsMenuOpen(false);
                                             }}
                                         >
-                                            <span>{option.label}</span>
-                                            <strong>{option.value}</strong>
+                                            <span className="statisticDashboard__cardMenuItemIcon" aria-hidden="true">
+                                                <OptionIcon />
+                                            </span>
+                                            <span className="statisticDashboard__cardMenuItemBody">
+                                                <span className="statisticDashboard__cardMenuItemRow">
+                                                    <span className="statisticDashboard__cardMenuItemTitle">
+                                                        {option.label}
+                                                    </span>
+                                                    <strong>{option.value}</strong>
+                                                </span>
+                                                {option.description && (
+                                                    <small className="statisticDashboard__cardMenuItemDescription">
+                                                        {option.description}
+                                                    </small>
+                                                )}
+                                            </span>
                                         </button>
                                     );
                                 })}

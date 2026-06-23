@@ -52,6 +52,7 @@ export interface CardMenuOption {
     label: string;
     title?: string;
     value: string;
+    description?: string;
     detail?: string;
     trend?: TrendBadgeDefinition;
     icon?: SvgIcon;
