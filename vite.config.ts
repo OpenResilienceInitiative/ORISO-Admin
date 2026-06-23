@@ -77,15 +77,14 @@ export default ({ mode }) => {
         },
         configureServer(server) {
             const envPath = `${process.cwd()}/public/env.js`;
+            // public/env.js is gitignored. Serve an in-memory fallback so the dev
+            // server works on a fresh checkout without the file being present.
+            const fallback = 'window.__APP_CONFIG__ = window.__APP_CONFIG__ || {};\n';
 
             const runtimeEnvPath = `${(process.env.BASE || '/admin').replace(/\/$/, '')}/env.js`;
-            server.middlewares.use(runtimeEnvPath, (_req, res, next) => {
-                if (!existsSync(envPath)) {
-                    next();
-                    return;
-                }
+            server.middlewares.use(runtimeEnvPath, (_req, res) => {
                 res.setHeader('Content-Type', 'application/javascript');
-                res.end(readFileSync(envPath));
+                res.end(existsSync(envPath) ? readFileSync(envPath) : fallback);
             });
         },
     });
