@@ -59,6 +59,8 @@ export const LegalText = ({
                 titleKey={titleKey}
                 subTitle={subTitle}
                 className={styles.card}
+                variant="dialog"
+                editButtonPlacement="footer"
                 onSave={(formData) => {
                     if (showConfirmationModal) {
                         setFormData(formData as Record<string, unknown>);

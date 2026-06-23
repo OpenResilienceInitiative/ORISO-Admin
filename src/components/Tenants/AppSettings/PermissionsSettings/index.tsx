@@ -1,6 +1,7 @@
 import { Form, FormInstance } from 'antd';
-import { FunctionComponent, SVGProps, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FunctionComponent, SVGProps, useCallback, useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { CardDeck } from '../../../CardDeck';
 import { CardEditable } from '../../../CardEditable';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
@@ -8,7 +9,6 @@ import { useTenantAdminControlsMutation } from '../../../../hooks/useTenantAdmin
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import { PermissionToggleVisibility } from '../../../../types/PermissionToggleVisibility';
 import { TenantAdminControls } from '../../../../types/TenantAdminControls';
-import { ReactComponent as ArrowRightIcon } from '../../../../resources/img/svg/permissions/arrow_right.svg';
 import { ReactComponent as OneOnOneIcon } from '../../../../resources/img/svg/permissions/one_on_one.svg';
 import { ReactComponent as LiveChatIcon } from '../../../../resources/img/svg/permissions/live_chat.svg';
 import { ReactComponent as GroupIcon } from '../../../../resources/img/svg/permissions/group.svg';
@@ -483,75 +483,9 @@ const PermissionsSettingsView = ({
     onSave,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
-    const gridRef = useRef<HTMLDivElement | null>(null);
-    const [scrollState, setScrollState] = useState({ canScrollLeft: false, canScrollRight: false });
     const cardsToRender = excludeCardKeys?.length
         ? CHAT_TYPE_CARDS.filter((card) => !excludeCardKeys.includes(card.key))
         : CHAT_TYPE_CARDS;
-    const updateScrollState = useCallback(() => {
-        const el = gridRef.current;
-        if (!el) return;
-
-        const maxScrollLeft = el.scrollWidth - el.clientWidth;
-        const canScroll = maxScrollLeft > 1;
-        const canScrollLeft = canScroll && el.scrollLeft > 1;
-        const canScrollRight = canScroll && el.scrollLeft < maxScrollLeft - 1;
-
-        setScrollState((previous) => {
-            if (previous.canScrollLeft === canScrollLeft && previous.canScrollRight === canScrollRight) {
-                return previous;
-            }
-
-            return { canScrollLeft, canScrollRight };
-        });
-    }, []);
-
-    const scrollByCard = useCallback(
-        (dir: 'left' | 'right') => {
-            const el = gridRef.current;
-            if (!el) return;
-            const firstCard = el.querySelector(`.${styles.chatTypeCard}`) as HTMLElement | null;
-            const computedStyle = window.getComputedStyle(el);
-            const gap = Number.parseFloat(computedStyle.columnGap || computedStyle.gap) || 48;
-            const step = firstCard ? firstCard.offsetWidth + gap : el.clientWidth * 0.9;
-            el.scrollBy({ left: dir === 'left' ? -step : step, behavior: 'smooth' });
-            window.setTimeout(updateScrollState, 260);
-        },
-        [updateScrollState],
-    );
-
-    useEffect(() => {
-        const el = gridRef.current;
-        const initialCheck = window.setTimeout(updateScrollState, 0);
-        const settledCheck = window.setTimeout(updateScrollState, 250);
-
-        if (!el) {
-            return () => {
-                window.clearTimeout(initialCheck);
-                window.clearTimeout(settledCheck);
-            };
-        }
-
-        updateScrollState();
-
-        const handleScroll = () => updateScrollState();
-        const handleResize = () => updateScrollState();
-        const observer =
-            typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(() => updateScrollState());
-
-        el.addEventListener('scroll', handleScroll, { passive: true });
-        window.addEventListener('resize', handleResize);
-        observer?.observe(el);
-        Array.from(el.children).forEach((child) => observer?.observe(child));
-
-        return () => {
-            window.clearTimeout(initialCheck);
-            window.clearTimeout(settledCheck);
-            el.removeEventListener('scroll', handleScroll);
-            window.removeEventListener('resize', handleResize);
-            observer?.disconnect();
-        };
-    }, [cardsToRender.length, isLoading, updateScrollState]);
 
     return (
         <CardEditable
@@ -564,119 +498,109 @@ const PermissionsSettingsView = ({
         >
             {({ editing, startEditing }) => (
                 <div className={styles.cardGridOuter}>
-                    <button
-                        type="button"
-                        className={`${styles.carouselArrow} ${styles.carouselArrowLeft}`}
-                        onClick={() => scrollByCard('left')}
-                        disabled={!scrollState.canScrollLeft}
-                        aria-label="Previous card"
+                    <CardDeck
+                        className={styles.cardGrid}
+                        ariaLabel={t('tenants.permissions.title')}
+                        previousLabel="Vorherige Berechtigungskarte anzeigen"
+                        nextLabel="Weitere Berechtigungskarte anzeigen"
                     >
-                        <ArrowRightIcon className={styles.carouselArrowIcon} aria-hidden />
-                    </button>
-                    <button
-                        type="button"
-                        className={`${styles.carouselArrow} ${styles.carouselArrowRight}`}
-                        onClick={() => scrollByCard('right')}
-                        disabled={!scrollState.canScrollRight}
-                        aria-label="Next card"
-                    >
-                        <ArrowRightIcon className={styles.carouselArrowIcon} aria-hidden />
-                    </button>
-                    <div className={styles.cardGrid} ref={gridRef}>
                         {cardsToRender.map((card) => (
-                            <Form.Item
-                                key={card.key}
-                                noStyle
-                                shouldUpdate={(prev, curr) => {
-                                    if (!card.masterField) return false;
-                                    const [, masterKey] = card.masterField;
-                                    return prev?.settings?.[masterKey] !== curr?.settings?.[masterKey];
-                                }}
-                            >
-                                {({ getFieldValue }) => {
-                                    const masterEnabled = card.masterField
-                                        ? getFieldValue(card.masterField) !== false
-                                        : true;
-                                    const CardIcon = card.Icon;
-                                    return (
-                                        <div className={styles.chatTypeCard}>
-                                            <div className={styles.cardHeader}>
-                                                <span className={styles.cardIcon} aria-hidden>
-                                                    <CardIcon width={40} height={40} />
-                                                </span>
-                                                <h3 className={styles.cardTitle}>{t(card.titleKey)}</h3>
-                                            </div>
-
-                                            <div className={styles.masterRow}>
-                                                <span className={styles.masterLabel}>
-                                                    {t('tenants.permissions.card.activated')}
-                                                </span>
-                                                {card.masterField ? (
-                                                    <CheckToggle
-                                                        name={card.masterField}
-                                                        label={t('tenants.permissions.card.activated')}
-                                                        disabled={restrictedFields.has(card.masterField[1])}
-                                                        onAfterChange={onToggleUpdate}
-                                                    />
-                                                ) : (
-                                                    <span className={styles.masterRowPlaceholder} aria-hidden>
-                                                        —
+                            <CardDeck.Item key={card.key} className={styles.chatTypeCardSlot}>
+                                <Form.Item
+                                    noStyle
+                                    shouldUpdate={(prev, curr) => {
+                                        if (!card.masterField) return false;
+                                        const [, masterKey] = card.masterField;
+                                        return prev?.settings?.[masterKey] !== curr?.settings?.[masterKey];
+                                    }}
+                                >
+                                    {({ getFieldValue }) => {
+                                        const masterEnabled = card.masterField
+                                            ? getFieldValue(card.masterField) !== false
+                                            : true;
+                                        const CardIcon = card.Icon;
+                                        return (
+                                            <div className={styles.chatTypeCard}>
+                                                <div className={styles.cardHeader}>
+                                                    <span className={styles.cardIcon} aria-hidden>
+                                                        <CardIcon width={40} height={40} />
                                                     </span>
-                                                )}
-                                            </div>
+                                                    <h3 className={styles.cardTitle}>{t(card.titleKey)}</h3>
+                                                </div>
 
-                                            <p className={styles.cardDescription}>
-                                                <Trans
-                                                    i18nKey={card.descriptionKey}
-                                                    components={{
-                                                        strong: <strong />,
-                                                        small: <span className={styles.cardDescriptionSecondary} />,
-                                                    }}
-                                                />
-                                            </p>
-
-                                            <div className={styles.cardDivider} />
-
-                                            <div className={styles.togglesSectionLabel}>
-                                                {t('tenants.permissions.card.configurableFeatures')}
-                                            </div>
-
-                                            <div className={styles.togglesList}>
-                                                {card.toggles.map((toggle) => (
-                                                    <div key={toggle.field.join('.')} className={styles.toggleRow}>
-                                                        <span className={styles.toggleLabel}>{t(toggle.labelKey)}</span>
+                                                <div className={styles.masterRow}>
+                                                    <span className={styles.masterLabel}>
+                                                        {t('tenants.permissions.card.activated')}
+                                                    </span>
+                                                    {card.masterField ? (
                                                         <CheckToggle
-                                                            name={toggle.field}
-                                                            label={t(toggle.labelKey)}
-                                                            disabled={
-                                                                restrictedFields.has(toggle.field[1]) ||
-                                                                (disableSubTogglesWhenMasterOff &&
-                                                                    isSubToggleDisabled(
-                                                                        card,
-                                                                        toggle.field,
-                                                                        masterEnabled,
-                                                                    ))
-                                                            }
+                                                            name={card.masterField}
+                                                            label={t('tenants.permissions.card.activated')}
+                                                            disabled={restrictedFields.has(card.masterField[1])}
                                                             onAfterChange={onToggleUpdate}
                                                         />
-                                                    </div>
-                                                ))}
-                                            </div>
+                                                    ) : (
+                                                        <span className={styles.masterRowPlaceholder} aria-hidden>
+                                                            —
+                                                        </span>
+                                                    )}
+                                                </div>
 
-                                            <div className={styles.cardFooterActions}>
-                                                {!editing && (
-                                                    <EditButton
-                                                        className={styles.cardFooterEditButton}
-                                                        onClick={startEditing}
+                                                <p className={styles.cardDescription}>
+                                                    <Trans
+                                                        i18nKey={card.descriptionKey}
+                                                        components={{
+                                                            strong: <strong />,
+                                                            small: <span className={styles.cardDescriptionSecondary} />,
+                                                        }}
                                                     />
-                                                )}
+                                                </p>
+
+                                                <div className={styles.cardDivider} />
+
+                                                <div className={styles.togglesSectionLabel}>
+                                                    {t('tenants.permissions.card.configurableFeatures')}
+                                                </div>
+
+                                                <div className={styles.togglesList}>
+                                                    {card.toggles.map((toggle) => (
+                                                        <div key={toggle.field.join('.')} className={styles.toggleRow}>
+                                                            <span className={styles.toggleLabel}>
+                                                                {t(toggle.labelKey)}
+                                                            </span>
+                                                            <CheckToggle
+                                                                name={toggle.field}
+                                                                label={t(toggle.labelKey)}
+                                                                disabled={
+                                                                    restrictedFields.has(toggle.field[1]) ||
+                                                                    (disableSubTogglesWhenMasterOff &&
+                                                                        isSubToggleDisabled(
+                                                                            card,
+                                                                            toggle.field,
+                                                                            masterEnabled,
+                                                                        ))
+                                                                }
+                                                                onAfterChange={onToggleUpdate}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <div className={styles.cardFooterActions}>
+                                                    {!editing && (
+                                                        <EditButton
+                                                            className={styles.cardFooterEditButton}
+                                                            onClick={startEditing}
+                                                        />
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    );
-                                }}
-                            </Form.Item>
+                                        );
+                                    }}
+                                </Form.Item>
+                            </CardDeck.Item>
                         ))}
-                    </div>
+                    </CardDeck>
                 </div>
             )}
         </CardEditable>

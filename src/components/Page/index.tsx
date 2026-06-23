@@ -20,7 +20,7 @@ import styles from './styles.module.scss';
 interface PageProps {
     isLoading?: boolean;
     stickyHeader?: boolean;
-    children?: React.ReactChild | React.ReactChild[];
+    children?: React.ReactNode;
 }
 
 interface PageTitleProps {
@@ -30,21 +30,21 @@ interface PageTitleProps {
     // eslint-disable-next-line react/no-unused-prop-types
     subTitleKey?: string;
     // eslint-disable-next-line react/no-unused-prop-types
-    subTitle?: React.ReactChild;
-    children?: React.ReactChild | React.ReactChild[];
+    subTitle?: React.ReactNode;
+    children?: React.ReactNode;
     tabs?: Array<{ to: string; titleKey; iconName?: string }>;
 }
 
 interface PageBackProps {
-    title?: React.ReactChild;
+    title?: React.ReactNode;
     titleKey?: string;
     titleMaxLength?: number;
     path: string;
-    children?: React.ReactChild | React.ReactChild[];
+    children?: React.ReactNode;
     tabs?: Array<{ to: string; titleKey: string; iconName?: string; icon?: JSX.Element }>;
 }
 
-export const Page = ({ children, stickyHeader, isLoading }: PageProps) => {
+export const Page = ({ children, stickyHeader = true, isLoading }: PageProps) => {
     return (
         <div
             className={classNames(styles.page, {
@@ -140,7 +140,7 @@ export const PageTitle = forwardRef(({ tabs, children }: PageTitleProps, ref) =>
     const finalTabs = useMemo(() => tabs?.filter?.(Boolean) || [], [tabs]);
 
     return (
-        <div className={styles.pageTitleContainer} ref={ref as LegacyRef<HTMLDivElement>}>
+        <div className={styles.pageTitleContainer} ref={ref as LegacyRef<HTMLDivElement>} data-admin-page-header>
             {children}
             {!!finalTabs?.length && finalTabs.length > 1 && <PageTabs tabs={finalTabs} />}
         </div>
@@ -161,7 +161,7 @@ export const PageBack = forwardRef(({ path, title, titleKey, titleMaxLength, tab
     const headline = getTruncatedTitle(title ?? (titleKey ? t<string>(titleKey) : ''), titleMaxLength);
 
     return (
-        <div className={styles.back} ref={ref as LegacyRef<HTMLDivElement>}>
+        <div className={styles.back} ref={ref as LegacyRef<HTMLDivElement>} data-admin-page-header>
             <NavLink to={path} className={classNames(styles.backLink, { [styles.backWithTabs]: !!finalTabs?.length })}>
                 <ChevronLeft />
                 <h3 className={styles.backHeadline}>{headline}</h3>

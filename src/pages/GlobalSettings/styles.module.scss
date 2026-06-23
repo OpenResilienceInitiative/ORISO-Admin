@@ -11,15 +11,20 @@
 }
 
 .smtpPage {
-    display: grid;
-    max-width: 1128px;
-    align-items: stretch;
-    gap: 24px;
-    grid-template-columns: minmax(420px, 1fr) minmax(360px, 1fr);
+    --card-deck-gap: 24px;
+    --card-deck-item-width: 520px;
+    --card-deck-footer-margin-top: 40px;
+    --card-deck-footer-padding: 0 24px;
+}
+
+.smtpCardSlot {
+    display: flex;
 }
 
 .smtpCard {
     --dialog-card-height: clamp(700px, 82vh, 1040px);
+
+    width: 100%;
 
     :global([class*='dialogCardSubTitle']) {
         margin-top: 24px;
@@ -180,8 +185,10 @@
 
 @media only screen and (max-width: 1000px) {
     .smtpPage {
-        max-width: 560px;
-        grid-template-columns: minmax(0, 1fr);
+        --card-deck-item-max-width: calc(100vw - 144px);
+        --card-deck-footer-padding: 0 8px;
+        --side-scroller-button-width: 88px;
+        --side-scroller-button-height: 56px;
     }
 }
 

@@ -8,6 +8,7 @@ interface SideScrollerFooterProps {
     canScrollBackward: boolean;
     canScrollForward: boolean;
     className?: string;
+    'data-admin-card-deck-footer'?: boolean;
     nextLabel: string;
     onScrollBackward: () => void;
     onScrollForward: () => void;
@@ -19,12 +20,17 @@ export const SideScrollerFooter = ({
     canScrollBackward,
     canScrollForward,
     className,
+    'data-admin-card-deck-footer': dataAdminCardDeckFooter,
     nextLabel,
     onScrollBackward,
     onScrollForward,
     previousLabel,
 }: SideScrollerFooterProps) => (
-    <div className={classNames(styles.footer, className)} aria-label={ariaLabel}>
+    <div
+        className={classNames(styles.footer, className)}
+        aria-label={ariaLabel}
+        data-admin-card-deck-footer={dataAdminCardDeckFooter || undefined}
+    >
         <button
             className={classNames(styles.button, { [styles.active]: canScrollBackward })}
             type="button"

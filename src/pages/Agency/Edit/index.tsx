@@ -6,6 +6,7 @@ import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
 import routePathNames from '../../../appConfig';
 import { Page } from '../../../components/Page';
+import { CardDeck } from '../../../components/CardDeck';
 import { useFeatureContext } from '../../../context/FeatureContext';
 import { FeatureFlag } from '../../../enums/FeatureFlag';
 import { Gender } from '../../../enums/Gender';
@@ -222,41 +223,51 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const renderGeneralSettings = () => {
         if (isEditing) {
             return (
-                <Row gutter={[20, 10]}>
-                    <Col xs={12}>
-                        <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
-                    </Col>
-                    <Col xs={12} lg={6}>
-                        <CardEditable
-                            allowUnsavedChanges
-                            initialValues={initialValues}
-                            titleKey="agency.edit.general.general_information"
-                            onSave={onSaveCard}
-                        >
-                            <AgencyGeneralInformation asFields />
-                        </CardEditable>
-                    </Col>
-                    <Col xs={12} lg={6}>
-                        <CardEditable
-                            allowUnsavedChanges
-                            initialValues={initialValues}
-                            titleKey="agency.form.registrationSettings.title"
-                            onSave={onSaveCard}
-                        >
-                            <RegistrationSettings consultingTypeId={agencyData?.consultingType} asFields />
-                        </CardEditable>
-                    </Col>
-                    <Col xs={12} lg={6}>
-                        <CardEditable
-                            allowUnsavedChanges
-                            initialValues={initialValues}
-                            titleKey="agency.edit.settings.title"
-                            onSave={onSaveCard}
-                        >
-                            <AgencySettings isEditMode={isEditing} asFields />
-                        </CardEditable>
-                    </Col>
-                </Row>
+                <>
+                    <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
+                    <CardDeck
+                        ariaLabel={t(`agency.edit.settings.general.title`)}
+                        previousLabel="Vorherige Karte anzeigen"
+                        nextLabel="Weitere Karte anzeigen"
+                    >
+                        <CardDeck.Item>
+                            <CardEditable
+                                allowUnsavedChanges
+                                initialValues={initialValues}
+                                titleKey="agency.edit.general.general_information"
+                                variant="dialog"
+                                editButtonPlacement="footer"
+                                onSave={onSaveCard}
+                            >
+                                <AgencyGeneralInformation asFields />
+                            </CardEditable>
+                        </CardDeck.Item>
+                        <CardDeck.Item>
+                            <CardEditable
+                                allowUnsavedChanges
+                                initialValues={initialValues}
+                                titleKey="agency.form.registrationSettings.title"
+                                variant="dialog"
+                                editButtonPlacement="footer"
+                                onSave={onSaveCard}
+                            >
+                                <RegistrationSettings consultingTypeId={agencyData?.consultingType} asFields />
+                            </CardEditable>
+                        </CardDeck.Item>
+                        <CardDeck.Item>
+                            <CardEditable
+                                allowUnsavedChanges
+                                initialValues={initialValues}
+                                titleKey="agency.edit.settings.title"
+                                variant="dialog"
+                                editButtonPlacement="footer"
+                                onSave={onSaveCard}
+                            >
+                                <AgencySettings isEditMode={isEditing} asFields />
+                            </CardEditable>
+                        </CardDeck.Item>
+                    </CardDeck>
+                </>
             );
         }
 
@@ -285,12 +296,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     };
 
     const renderFunctionalitiesSettings = () => (
-        <Row gutter={[20, 10]}>
-            <Col xs={12}>
-                <h3 className={styles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
-            </Col>
-            <Col xs={12}>{agencyTenantId ? <PermissionsSettings tenantId={agencyTenantId} /> : null}</Col>
-        </Row>
+        <>
+            <h3 className={styles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
+            {agencyTenantId ? <PermissionsSettings tenantId={agencyTenantId} /> : null}
+        </>
     );
 
     const renderLegacyFunctionalitiesSettings = () => (
@@ -316,39 +325,43 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     );
 
     const renderLegalSettings = () => (
-        <Row gutter={[20, 10]}>
-            <Col xs={12}>
-                <h3 className={styles.backHeadline}>
-                    {t(`agency.edit.settings.legal.title`)}{' '}
-                    {legalDataMissing && <ErrorOutlinedIcon fontSize="small" color="error" />}
-                </h3>
-            </Col>
-            <Col xs={12} lg={6}>
-                <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />
-            </Col>
-            <Col xs={12} lg={6}>
-                <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
-            </Col>
-            <Col xs={12} lg={6}>
-                <LegalTextSettings
-                    agencyData={agencyData}
-                    field="impressum"
-                    initialValues={initialValues}
-                    onSave={onSaveCard}
-                />
-            </Col>
-            <Col xs={12} lg={6}>
-                <LegalTextSettings
-                    agencyData={agencyData}
-                    field="privacy"
-                    initialValues={initialValues}
-                    onSave={onSaveCard}
-                />
-            </Col>
-            <Col xs={12} lg={6}>
-                <DataProcessingAgreement />
-            </Col>
-        </Row>
+        <>
+            <h3 className={styles.backHeadline}>
+                {t(`agency.edit.settings.legal.title`)}{' '}
+                {legalDataMissing && <ErrorOutlinedIcon fontSize="small" color="error" />}
+            </h3>
+            <CardDeck
+                ariaLabel={t(`agency.edit.settings.legal.title`)}
+                previousLabel="Vorherige Rechtskarte anzeigen"
+                nextLabel="Weitere Rechtskarte anzeigen"
+            >
+                <CardDeck.Item>
+                    <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />
+                </CardDeck.Item>
+                <CardDeck.Item>
+                    <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
+                </CardDeck.Item>
+                <CardDeck.Item>
+                    <LegalTextSettings
+                        agencyData={agencyData}
+                        field="impressum"
+                        initialValues={initialValues}
+                        onSave={onSaveCard}
+                    />
+                </CardDeck.Item>
+                <CardDeck.Item>
+                    <LegalTextSettings
+                        agencyData={agencyData}
+                        field="privacy"
+                        initialValues={initialValues}
+                        onSave={onSaveCard}
+                    />
+                </CardDeck.Item>
+                <CardDeck.Item>
+                    <DataProcessingAgreement />
+                </CardDeck.Item>
+            </CardDeck>
+        </>
     );
 
     return (

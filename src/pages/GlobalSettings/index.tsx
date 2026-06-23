@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet } from 'react-router';
 import { Page } from '../../components/Page';
+import { CardDeck } from '../../components/CardDeck';
 import { CardEditable } from '../../components/CardEditable';
 import { Card } from '../../components/Card';
 import { FormSwitchField } from '../../components/FormSwitchField';
@@ -147,8 +148,13 @@ export const GlobalSmtpSettingsPage = () => {
     );
 
     return (
-        <div className={styles.smtpPage}>
-            <div>
+        <CardDeck
+            className={styles.smtpPage}
+            ariaLabel="Globale SMTP-Einstellungen scrollen"
+            previousLabel="Vorherige SMTP-Karte anzeigen"
+            nextLabel="Weitere SMTP-Karte anzeigen"
+        >
+            <CardDeck.Item className={styles.smtpCardSlot}>
                 <CardEditable
                     className={styles.smtpCard}
                     variant="dialog"
@@ -215,8 +221,8 @@ export const GlobalSmtpSettingsPage = () => {
                         />
                     </div>
                 </CardEditable>
-            </div>
-            <div>
+            </CardDeck.Item>
+            <CardDeck.Item className={styles.smtpCardSlot}>
                 <Card
                     className={styles.smtpCard}
                     variant="dialog"
@@ -249,8 +255,8 @@ export const GlobalSmtpSettingsPage = () => {
                         </div>
                     </Form>
                 </Card>
-            </div>
-        </div>
+            </CardDeck.Item>
+        </CardDeck>
     );
 };
 

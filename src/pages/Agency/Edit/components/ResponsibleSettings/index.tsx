@@ -74,6 +74,8 @@ export const ResponsibleSettings = ({ initialValues, onSave }: ResponsibleSettin
                 allowUnsavedChanges
                 initialValues={initialValues}
                 titleKey="agency.edit.settings.legal.responsible.title"
+                variant="dialog"
+                editButtonPlacement="footer"
                 onSave={onSave}
             >
                 <ResponsibleSettingsFields />
@@ -82,7 +84,7 @@ export const ResponsibleSettings = ({ initialValues, onSave }: ResponsibleSettin
     }
 
     return (
-        <Card titleKey="agency.edit.settings.legal.responsible.title">
+        <Card titleKey="agency.edit.settings.legal.responsible.title" variant="dialog">
             <ResponsibleSettingsFields />
         </Card>
     );

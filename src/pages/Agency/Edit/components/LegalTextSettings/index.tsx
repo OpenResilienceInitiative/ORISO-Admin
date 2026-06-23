@@ -60,6 +60,8 @@ export const LegalTextSettings = ({ agencyData, field, initialValues, onSave }: 
             isLoading={isLoading}
             titleKey={`agency.edit.settings.legal.${field}.title`}
             subTitle={t<string>(`agency.edit.settings.legal.${field}.subtitle`)}
+            variant="dialog"
+            editButtonPlacement="footer"
             onSave={onSave}
         >
             <TranslatableFormField name={['content', field]}>

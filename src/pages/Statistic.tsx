@@ -3335,17 +3335,16 @@ export const Statistic = () => {
 
     return (
         <Page>
+            <Page.Title>
+                <AdminSegmentedTabs
+                    className="statisticDashboard__scopeTabs"
+                    activeId={activeScope}
+                    ariaLabel={translateDashboardText(translate, 'Statistik-Ebene', locale)}
+                    items={scopeTabItems}
+                    onChange={(scopeKey) => setActiveScope(scopeKey as ScopeKey)}
+                />
+            </Page.Title>
             <div className="statisticDashboardPage">
-                <Page.Title>
-                    <AdminSegmentedTabs
-                        className="statisticDashboard__scopeTabs"
-                        activeId={activeScope}
-                        ariaLabel={translateDashboardText(translate, 'Statistik-Ebene', locale)}
-                        items={scopeTabItems}
-                        onChange={(scopeKey) => setActiveScope(scopeKey as ScopeKey)}
-                    />
-                </Page.Title>
-
                 <div className="statisticDashboard">
                     {activeScope !== 'agency' && (
                         <StatisticFilterBar

@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import { useTranslation } from 'react-i18next';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
+import { CardDeck } from '../../CardDeck';
 import { CardEditable } from '../../CardEditable';
 import { FormSwitchField } from '../../FormSwitchField';
-import { SideScrollerFooter } from '../../SideScrollerFooter';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
@@ -24,7 +23,6 @@ interface GeneralSettingsProps {
 }
 
 const APPEARANCE_ALLOWED_STORAGE_KEY = 'oriso:tenantAdminControls.allowedPermissionToggles.appearance';
-const SCROLL_EPSILON = 8;
 
 const getStoredAppearanceAllowed = () => {
     try {
@@ -44,11 +42,6 @@ const setStoredAppearanceAllowed = (value: boolean) => {
 };
 
 export const GeneralSettings = ({ tenantId }: GeneralSettingsProps) => {
-    const cardDeckRef = useRef<HTMLDivElement>(null);
-    const [scrollState, setScrollState] = useState({
-        canScrollBackward: false,
-        canScrollForward: false,
-    });
     const { t } = useTranslation();
     const { data } = useTenantData();
     const finalTenantId = tenantId || `${data?.id || ''}`;
@@ -77,71 +70,26 @@ export const GeneralSettings = ({ tenantId }: GeneralSettingsProps) => {
         setManualSettings(formData);
         updateSettings(formData, options);
     };
-    const updateScrollState = useCallback(() => {
-        const cardDeck = cardDeckRef.current;
-
-        if (!cardDeck) {
-            return;
-        }
-
-        const maxScrollLeft = cardDeck.scrollWidth - cardDeck.clientWidth;
-        setScrollState({
-            canScrollBackward: cardDeck.scrollLeft > SCROLL_EPSILON,
-            canScrollForward: cardDeck.scrollLeft < maxScrollLeft - SCROLL_EPSILON,
-        });
-    }, []);
-    const scrollCards = (direction: -1 | 1) => {
-        const cardDeck = cardDeckRef.current;
-
-        if (!cardDeck) {
-            return;
-        }
-
-        cardDeck.scrollBy({
-            left: direction * Math.min(cardDeck.clientWidth * 0.86, 760),
-            behavior: 'smooth',
-        });
-    };
-
-    useEffect(() => {
-        const cardDeck = cardDeckRef.current;
-
-        if (!cardDeck) {
-            return undefined;
-        }
-
-        updateScrollState();
-        const timeoutId = window.setTimeout(updateScrollState, 0);
-        const resizeObserver =
-            typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateScrollState) : undefined;
-
-        resizeObserver?.observe(cardDeck);
-        cardDeck.addEventListener('scroll', updateScrollState, { passive: true });
-        window.addEventListener('resize', updateScrollState);
-
-        return () => {
-            window.clearTimeout(timeoutId);
-            resizeObserver?.disconnect();
-            cardDeck.removeEventListener('scroll', updateScrollState);
-            window.removeEventListener('resize', updateScrollState);
-        };
-    }, [updateScrollState]);
-
     return (
         <div className={styles.appearancePage}>
-            <div className={styles.cardDeck} ref={cardDeckRef}>
-                <div className={`${styles.cardSlot} ${styles.cardSlotImages}`}>
+            <CardDeck
+                className={styles.cardDeck}
+                ariaLabel="Einstellungen scrollen"
+                previousLabel="Vorherige Einstellungen anzeigen"
+                nextLabel="Weitere Einstellungen anzeigen"
+            >
+                <CardDeck.Item className={styles.cardSlotImages}>
                     <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                </div>
+                </CardDeck.Item>
                 {can(PermissionAction.Update, Resource.Language) && (
-                    <div className={styles.cardSlot}>
+                    <CardDeck.Item>
                         <Languages tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </div>
+                    </CardDeck.Item>
                 )}
-                <div className={`${styles.cardSlot} ${styles.cardSlotTheme}`}>
+                <CardDeck.Item className={styles.cardSlotTheme}>
                     <ThemeBuilder tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                </div>
-                <div className={styles.cardSlot}>
+                </CardDeck.Item>
+                <CardDeck.Item>
                     <CardEditable
                         key={`tenant-master-data-editable-${appearanceEditable}`}
                         allowEdit={isSuperAdmin}
@@ -173,26 +121,16 @@ export const GeneralSettings = ({ tenantId }: GeneralSettingsProps) => {
                             switchVariant="m3"
                         />
                     </CardEditable>
-                </div>
-                <div className={styles.cardSlot}>
+                </CardDeck.Item>
+                <CardDeck.Item>
                     <NameAndSlogan tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                </div>
+                </CardDeck.Item>
                 {can(PermissionAction.Update, Resource.Language) && (
-                    <div className={styles.cardSlot}>
+                    <CardDeck.Item>
                         <TypeOfLanguage tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </div>
+                    </CardDeck.Item>
                 )}
-            </div>
-            <SideScrollerFooter
-                className={styles.sideScrollerFooter}
-                ariaLabel="Einstellungen scrollen"
-                previousLabel="Vorherige Einstellungen anzeigen"
-                nextLabel="Weitere Einstellungen anzeigen"
-                canScrollBackward={scrollState.canScrollBackward}
-                canScrollForward={scrollState.canScrollForward}
-                onScrollBackward={() => scrollCards(-1)}
-                onScrollForward={() => scrollCards(1)}
-            />
+            </CardDeck>
         </div>
     );
 };

@@ -1,5 +1,5 @@
-import { Col, Row } from 'antd';
 import { useTranslation, Trans } from 'react-i18next';
+import { CardDeck } from '../../CardDeck';
 import { CardEditable } from '../../CardEditable';
 import { FormSwitchField } from '../../FormSwitchField';
 import { useAppConfigContext } from '../../../context/useAppConfig';
@@ -59,14 +59,20 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
     // processing agreement, the imprint and the privacy statement are always
     // visible in every view; editing stays restricted by permissions.
     return (
-        <Row gutter={[24, 24]}>
-            <Col span={24} lg={12}>
-                {settings?.multitenancyWithSingleDomainEnabled && (
+        <CardDeck
+            ariaLabel={t('settings.subhead.legal')}
+            previousLabel="Vorherige Rechtskarte anzeigen"
+            nextLabel="Weitere Rechtskarte anzeigen"
+        >
+            {settings?.multitenancyWithSingleDomainEnabled && (
+                <CardDeck.Item>
                     <CardEditable
                         key={`legal-toggle-${settings.legalContentChangesBySingleTenantAdminsAllowed}`}
                         allowEdit={isSuperAdmin}
                         initialValues={{ ...settings }}
                         titleKey="tenants.legal.singleTenantsManageLegal.title"
+                        variant="dialog"
+                        editButtonPlacement="footer"
                         onSave={mutate}
                     >
                         <div className={styles.checkGroup}>
@@ -82,8 +88,12 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                             </p>
                         </div>
                     </CardEditable>
-                )}
+                </CardDeck.Item>
+            )}
+            <CardDeck.Item>
                 <DataProcessingAgreement />
+            </CardDeck.Item>
+            <CardDeck.Item>
                 <LegalText
                     tenantId={finalTenantId}
                     fieldName={['content', 'impressum']}
@@ -91,24 +101,22 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                     subTitle={t<string>('imprint.subTitle')}
                     placeHolderKey="settings.imprint.placeholder"
                 />
-                {/* <LegalText
-                    tenantId={finalTenantId}
-                    fieldName={['content', 'termsAndConditions']}
-                    titleKey="termsAndConditions.title"
-                    subTitle={t<string>('termsAndConditions.subTitle')}
-                    placeHolderKey="settings.termsAndConditions.placeholder"
-                    showConfirmationModal={{
-                        titleKey: 'termsAndConditions.confirmation.title',
-                        contentKey: 'termsAndConditions.confirmation.content',
-                        cancelLabelKey: 'termsAndConditions.confirmation.confirm',
-                        okLabelKey: 'termsAndConditions.confirmation.cancel',
-                        field: ['content', 'confirmTermsAndConditions'],
-                    }}
-                /> */}
-            </Col>
-            <Col span={24} lg={12}>
-                {LegalTextElement}
-            </Col>
-        </Row>
+            </CardDeck.Item>
+            {/* <LegalText
+                tenantId={finalTenantId}
+                fieldName={['content', 'termsAndConditions']}
+                titleKey="termsAndConditions.title"
+                subTitle={t<string>('termsAndConditions.subTitle')}
+                placeHolderKey="settings.termsAndConditions.placeholder"
+                showConfirmationModal={{
+                    titleKey: 'termsAndConditions.confirmation.title',
+                    contentKey: 'termsAndConditions.confirmation.content',
+                    cancelLabelKey: 'termsAndConditions.confirmation.confirm',
+                    okLabelKey: 'termsAndConditions.confirmation.cancel',
+                    field: ['content', 'confirmTermsAndConditions'],
+                }}
+            /> */}
+            <CardDeck.Item>{LegalTextElement}</CardDeck.Item>
+        </CardDeck>
     );
 };

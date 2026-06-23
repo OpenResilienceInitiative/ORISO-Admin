@@ -1,19 +1,12 @@
 .page {
     display: flex;
-    min-height: calc(100% - 49px);
+    min-height: 100%;
     background: var(--m3-surface-container, #f0edee);
 }
 
 .stickyHeaderPage {
     .content {
-        padding-top: 0;
-        padding-left: 0;
-        padding-right: 0;
-    }
-
-    .back + *,
-    .pageTitleContainer + * {
-        padding: 0 64px;
+        padding: 0 64px 64px;
     }
 
     .back,
@@ -21,7 +14,8 @@
         position: sticky;
         background: var(--m3-surface-container, #f0edee);
         z-index: 900;
-        padding: 24px 24px 64px;
+        margin: 0 -64px;
+        padding: 24px 64px 48px;
         top: 0;
     }
 }
@@ -219,6 +213,18 @@
 }
 
 @media (max-width: 768px) {
+    .stickyHeaderPage {
+        .content {
+            padding: 0 24px 48px;
+        }
+
+        .back,
+        .pageTitleContainer {
+            margin: 0 -24px;
+            padding: 20px 24px 32px;
+        }
+    }
+
     .tab {
         min-height: 64px;
         padding: 20px 24px;
