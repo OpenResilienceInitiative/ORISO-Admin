@@ -15,8 +15,15 @@
         background: var(--m3-surface-container, #f0edee);
         z-index: 900;
         margin: 0 -64px;
-        padding: 24px 64px 48px;
         top: 0;
+    }
+
+    .back {
+        padding: 24px 64px 48px;
+    }
+
+    .pageTitleContainer {
+        padding: 23px 24px 0;
     }
 }
 
@@ -60,7 +67,7 @@
     background: #646d78;
     border-radius: 12px;
     cursor: pointer;
-    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
+    font-family: var(--m3-body-font-family);
     font-size: 20px;
     font-weight: 400;
     letter-spacing: 0;
@@ -221,7 +228,14 @@
         .back,
         .pageTitleContainer {
             margin: 0 -24px;
+        }
+
+        .back {
             padding: 20px 24px 32px;
+        }
+
+        .pageTitleContainer {
+            padding: 20px 24px 0;
         }
     }
 

@@ -101,6 +101,17 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
         can(PermissionAction.Read, Resource.Tenant) || can(PermissionAction.Read, Resource.LegalText);
     const navLanguage = i18n.resolvedLanguage || i18n.language;
     const navLabel = (key: string, fallbackKey: string) => t(key, t(fallbackKey));
+    const navLabels = {
+        account: navLabel('sidebar.account', 'profile.title'),
+        agency: navLabel('sidebar.agency', 'agency'),
+        links: navLabel('sidebar.links', 'links.navTitle'),
+        logout: navLabel('sidebar.logout', 'logout'),
+        logs: navLabel('sidebar.logs', 'logs.title'),
+        settings: navLabel('sidebar.settings', 'settings.title'),
+        statistics: navLabel('sidebar.statistics', 'statistic.title'),
+        tenants: navLabel('sidebar.tenants', 'tenants.navTitle'),
+        users: navLabel('sidebar.users', 'users.allUsers'),
+    };
 
     const settingsPath = getDefaultSettingsPath({
         isSuperAdmin,
@@ -121,12 +132,14 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 <li key="theme" className="menuItem">
                                     <NavLink
                                         to={settingsPath}
+                                        aria-label={navLabels.settings}
+                                        title={navLabels.settings}
                                         className={({ isActive }) =>
                                             isActive || checkActive(routePathNames.themeSettings) ? 'active' : ''
                                         }
                                     >
                                         <NavIcon path={routePathNames.themeSettings} />
-                                        <span lang={navLanguage}>{navLabel('sidebar.settings', 'settings.title')}</span>
+                                        <span lang={navLanguage}>{navLabels.settings}</span>
                                     </NavLink>
                                 </li>
                             )}
@@ -135,12 +148,12 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 <li key="tenants" className="menuItem">
                                     <NavLink
                                         to={routePathNames.tenants}
+                                        aria-label={navLabels.tenants}
+                                        title={navLabels.tenants}
                                         className={classNames({ active: checkActive(routePathNames.tenants) })}
                                     >
                                         <NavIcon path={routePathNames.tenants} />
-                                        <span lang={navLanguage}>
-                                            {navLabel('sidebar.tenants', 'tenants.navTitle')}
-                                        </span>
+                                        <span lang={navLanguage}>{navLabels.tenants}</span>
                                     </NavLink>
                                 </li>
                             )}
@@ -149,10 +162,12 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 <li className="menuItem">
                                     <NavLink
                                         to={routePathNames.agency}
+                                        aria-label={navLabels.agency}
+                                        title={navLabels.agency}
                                         className={classNames({ active: checkActive(routePathNames.agency) })}
                                     >
                                         <NavIcon path={routePathNames.agency} />
-                                        <span lang={navLanguage}>{navLabel('sidebar.agency', 'agency')}</span>
+                                        <span lang={navLanguage}>{navLabels.agency}</span>
                                     </NavLink>
                                 </li>
                             )}
@@ -163,10 +178,12 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 <li key="counselors" className="menuItem">
                                     <NavLink
                                         to={usersPage()}
+                                        aria-label={navLabels.users}
+                                        title={navLabels.users}
                                         className={classNames({ active: checkActive('/admin/users') })}
                                     >
                                         <NavIcon path="/admin/users" />
-                                        <span lang={navLanguage}>{navLabel('sidebar.users', 'users.allUsers')}</span>
+                                        <span lang={navLanguage}>{navLabels.users}</span>
                                     </NavLink>
                                 </li>
                             )}
@@ -175,12 +192,12 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 <li key="statistics" className="menuItem">
                                     <NavLink
                                         to={routePathNames.statistic}
+                                        aria-label={navLabels.statistics}
+                                        title={navLabels.statistics}
                                         className={({ isActive }) => (isActive ? 'active' : '')}
                                     >
                                         <NavIcon path={routePathNames.statistic} />
-                                        <span lang={navLanguage}>
-                                            {navLabel('sidebar.statistics', 'statistic.title')}
-                                        </span>
+                                        <span lang={navLanguage}>{navLabels.statistics}</span>
                                     </NavLink>
                                 </li>
                             )}
@@ -191,6 +208,8 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 <li key="links" className="menuItem">
                                     <NavLink
                                         to={routePathNames.links}
+                                        aria-label={navLabels.links}
+                                        title={navLabels.links}
                                         className={({ isActive }) =>
                                             isActive || location.pathname.startsWith(`${routePathNames.links}/`)
                                                 ? 'active'
@@ -198,7 +217,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                         }
                                     >
                                         <NavIcon path={routePathNames.links} />
-                                        <span lang={navLanguage}>{navLabel('sidebar.links', 'links.navTitle')}</span>
+                                        <span lang={navLanguage}>{navLabels.links}</span>
                                     </NavLink>
                                 </li>
                             )}
@@ -209,10 +228,12 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                     <li key="logs" className="menuItem">
                                         <NavLink
                                             to={routePathNames.logs}
+                                            aria-label={navLabels.logs}
+                                            title={navLabels.logs}
                                             className={({ isActive }) => (isActive ? 'active' : '')}
                                         >
                                             <NavIcon path={routePathNames.logs} />
-                                            <span lang={navLanguage}>{navLabel('sidebar.logs', 'logs.title')}</span>
+                                            <span lang={navLanguage}>{navLabels.logs}</span>
                                         </NavLink>
                                     </li>
                                 )}
@@ -221,12 +242,12 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 <li key="inactive-audit-logs" className="menuItem">
                                     <NavLink
                                         to={routePathNames.inactiveAccountAuditLogs}
+                                        aria-label={navLabels.logs}
+                                        title={navLabels.logs}
                                         className={({ isActive }) => (isActive ? 'active' : '')}
                                     >
                                         <NavIcon path={routePathNames.inactiveAccountAuditLogs} />
-                                        <span lang={navLanguage}>
-                                            {navLabel('sidebar.logs', 'inactiveAudit.title')}
-                                        </span>
+                                        <span lang={navLanguage}>{navLabels.logs}</span>
                                     </NavLink>
                                 </li>
                             )}
@@ -236,18 +257,25 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                             <li className="menuItem">
                                 <NavLink
                                     to={routePathNames.userProfile}
+                                    aria-label={navLabels.account}
+                                    title={navLabels.account}
                                     className={({ isActive }) => (isActive ? 'active' : '')}
                                 >
                                     <NavIcon path={routePathNames.userProfile} />
-                                    <span lang={navLanguage}>{navLabel('sidebar.account', 'profile.title')}</span>
+                                    <span lang={navLanguage}>{navLabels.account}</span>
                                 </NavLink>
                             </li>
 
                             <li className="menuItem">
-                                <button onClick={handleLogout} type="button">
+                                <button
+                                    onClick={handleLogout}
+                                    type="button"
+                                    aria-label={navLabels.logout}
+                                    title={navLabels.logout}
+                                >
                                     <NavIcon path="logout" />
                                     <span className="logout" lang={navLanguage}>
-                                        {navLabel('sidebar.logout', 'logout')}
+                                        {navLabels.logout}
                                     </span>
                                 </button>
                             </li>

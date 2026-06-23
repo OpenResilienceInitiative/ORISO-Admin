@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router';
-import { useState } from 'react';
+import { cloneElement, useState } from 'react';
 import routePathNames from '../../appConfig';
 import { ReactComponent as DisplaySettingsActiveIcon } from '../../resources/img/svg/navbar/display_settings_active.svg';
 import { ReactComponent as DisplaySettingsHoverIcon } from '../../resources/img/svg/navbar/display_settings_hover.svg';
@@ -40,7 +40,14 @@ interface Props {
 
 type IconState = 'active' | 'hover' | 'inactive';
 
-const selectIcon = (state: IconState, icons: Record<IconState, JSX.Element>) => icons[state];
+const decorateIcon = (icon: JSX.Element) =>
+    cloneElement(icon, {
+        'aria-hidden': true,
+        focusable: 'false',
+        role: 'presentation',
+    });
+
+const selectIcon = (state: IconState, icons: Record<IconState, JSX.Element>) => decorateIcon(icons[state]);
 
 const getIconState = (isActive: boolean, hover: boolean): IconState => {
     if (isActive) {
@@ -91,7 +98,7 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
                 inactive: <CounselingInactiveIcon />,
             });
         case routePathNames.topics:
-            return iconState === 'inactive' ? <TopicsInactiveIcon /> : <TopicsActiveIcon />;
+            return decorateIcon(iconState === 'inactive' ? <TopicsInactiveIcon /> : <TopicsActiveIcon />);
         case routePathNames.statistic:
             return selectIcon(iconState, {
                 active: <StatisticsActiveIcon />,
@@ -133,7 +140,7 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
                 inactive: <LogoutInactiveIcon />,
             });
         default:
-            return <div />;
+            return <div aria-hidden="true" />;
     }
 };
 
@@ -141,7 +148,7 @@ export const NavIcon = ({ path }: Props) => {
     const [hover, setHover] = useState(false);
 
     return (
-        <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+        <div aria-hidden="true" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
             <Icon path={path} hover={hover} />
         </div>
     );

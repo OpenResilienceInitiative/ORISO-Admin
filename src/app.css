@@ -28,7 +28,7 @@
     --lineHeight-l: calc(var(--fontSize-l) * 1.8);
     --lineHeight-xl: calc(var(--fontSize-xl) * 1.8);
     --lineHeight-2xl: calc(var(--fontSize-2xl) * 1.8);
-    --m3-body-font-family: 'Inter Variable', Arial, sans-serif;
+    --m3-body-font-family: 'Inter Variable', Inter, Arial, sans-serif;
 
     /* FormFields */
     --input-padding: 16px;
