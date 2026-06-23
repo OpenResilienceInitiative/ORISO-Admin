@@ -1,6 +1,7 @@
 import { removeAllCookies } from './accessSessionCookie';
 import apiKeycloakLogout from './apiLogoutKeycloak';
 import { removeTokenExpiryFromLocalStorage } from './accessSessionLocalStorage';
+import { invalidateAuthSession } from './invalidateAuthSession';
 import routePathNames from '../../appConfig';
 
 let isRequestInProgress = false;
@@ -12,7 +13,8 @@ const redirectAfterLogout = (altRedirectUrl?: string) => {
     }, 100);
 };
 
-const invalidateCookies = (withRedirect = true, redirectUrl?: string) => {
+const invalidateCookies = async (withRedirect = true, redirectUrl?: string) => {
+    await invalidateAuthSession();
     removeAllCookies();
     removeTokenExpiryFromLocalStorage();
     if (withRedirect) {
@@ -26,7 +28,6 @@ const logout = (withRedirect = true, redirectUrl?: string): any => {
     }
     isRequestInProgress = true;
     const clearUserData = () => {
-        // remove storages
         localStorage.clear();
         sessionStorage.clear();
     };
@@ -34,11 +35,11 @@ const logout = (withRedirect = true, redirectUrl?: string): any => {
     apiKeycloakLogout()
         .then(() => {
             clearUserData();
-            invalidateCookies(withRedirect, redirectUrl);
+            return invalidateCookies(withRedirect, redirectUrl);
         })
         .catch(() => {
             clearUserData();
-            invalidateCookies(withRedirect, redirectUrl);
+            return invalidateCookies(withRedirect, redirectUrl);
         });
     return null;
 };

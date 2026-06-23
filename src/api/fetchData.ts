@@ -1,6 +1,7 @@
 import { message } from 'antd';
 import i18next from 'i18next';
 import { getValueFromCookie } from './auth/accessSessionCookie';
+import { getAccessTokenForRequests } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
 
@@ -65,7 +66,6 @@ interface FetchDataProps {
     url: string;
     method: string;
     headersData?: object;
-    rcValidation?: boolean;
     bodyData?: string;
     skipAuth?: boolean;
     responseHandling?: string[];
@@ -75,7 +75,7 @@ interface FetchDataProps {
 
 export const fetchData = (props: FetchDataProps): Promise<any> =>
     new Promise((resolve, reject) => {
-        const accessToken = getValueFromCookie('keycloak');
+        const accessToken = getAccessTokenForRequests();
         // Check if manual authorization header is provided in headersData
         const manualAuth = (props.headersData as any)?.Authorization;
 
@@ -90,19 +90,11 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
 
         const csrfToken = generateCsrfToken();
 
-        const rcHeaders = props.rcValidation
-            ? {
-                  rcToken: getValueFromCookie('rc_token'),
-                  rcUserId: getValueFromCookie('rc_uid'),
-              }
-            : null;
-
         const localDevelopmentHeader = isLocalDevelopment ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
 
         const controller = new AbortController();
-        if (props.timeout) {
-            setTimeout(() => controller.abort(), props.timeout);
-        }
+        const timeoutMs = props.timeout ?? 30_000;
+        setTimeout(() => controller.abort(), timeoutMs);
         if (props.signal) {
             props.signal.addEventListener('abort', () => controller.abort());
         }
@@ -121,7 +113,6 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                 ...authorization,
                 'X-CSRF-TOKEN': csrfToken,
                 ...otherHeadersData,
-                ...rcHeaders,
                 ...localDevelopmentHeader,
             },
             credentials: 'include',

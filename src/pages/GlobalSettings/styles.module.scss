@@ -1,0 +1,196 @@
+.checkGroup {
+    margin-bottom: 16px;
+}
+
+.checkInfo {
+    width: calc(100% - 71px);
+    margin-top: 4px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.smtpPage {
+    display: grid;
+    max-width: 1128px;
+    align-items: stretch;
+    gap: 24px;
+    grid-template-columns: minmax(420px, 1fr) minmax(360px, 1fr);
+}
+
+.smtpCard {
+    --dialog-card-height: clamp(700px, 82vh, 1040px);
+
+    :global([class*='dialogCardSubTitle']) {
+        margin-top: 24px;
+    }
+
+    :global([class*='dialogForm']) {
+        padding-bottom: 24px;
+    }
+}
+
+.smtpSwitch {
+    margin-bottom: 18px;
+
+    :global(.ant-form-item-row) {
+        align-items: flex-start;
+        flex-wrap: nowrap;
+        gap: 16px;
+    }
+
+    :global(.ant-form-item-label) {
+        min-width: 0;
+        max-width: calc(100% - 76px);
+        flex: 1 1 calc(100% - 76px);
+        overflow: visible;
+        text-align: left;
+        white-space: normal;
+    }
+
+    :global(.ant-form-item-label > label) {
+        display: block;
+        width: 100%;
+        padding-bottom: 0;
+        white-space: normal;
+    }
+
+    :global(.ant-col.ant-form-item-control) {
+        max-width: 60px;
+        flex: 0 0 60px;
+        padding-top: 0;
+    }
+
+    :global(.ant-form-item-control-input) {
+        min-height: 48px;
+    }
+
+    :global(.formSwitchField__container) {
+        justify-content: flex-end;
+    }
+}
+
+.switchCopy {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    white-space: normal;
+}
+
+.switchTitle {
+    color: var(--m3-on-surface, #1b1b1c);
+    font-family: var(--m3-body-font-family);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 20px;
+}
+
+.switchDescription {
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 20px;
+}
+
+.fieldGrid {
+    display: grid;
+    gap: 0;
+    grid-template-columns: 1fr;
+}
+
+.colorField {
+    max-width: none;
+    margin-bottom: 20px;
+
+    :global(.colorSelector) {
+        width: 100%;
+        padding: 0;
+        background: transparent;
+        border-radius: 0;
+        gap: 16px;
+    }
+
+    :global(.colorIndicator) {
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
+        border-radius: 0;
+    }
+
+    :global(.colorSelector span) {
+        color: var(--m3-on-surface-variant, #444748);
+        font-family: var(--m3-body-font-family);
+        font-size: 12px;
+        letter-spacing: 0.4px;
+        line-height: 16px;
+    }
+
+    :global(.colorSelector h4.ant-typography) {
+        margin: 0;
+        color: #2c3a4b;
+        font-family: var(--m3-body-font-family);
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0;
+        line-height: 24px;
+    }
+
+    :global(.pickerWrapper) {
+        z-index: 20;
+    }
+}
+
+.testForm {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    padding: 24px;
+}
+
+.smtpActionButton {
+    width: fit-content;
+    min-width: 184px;
+    height: 48px;
+    padding: 0 24px;
+    border: 0;
+    border-radius: 100px;
+    background: #111923;
+    color: #ffffff;
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.1px;
+    line-height: 20px;
+    text-transform: none;
+
+    &:hover,
+    &:focus {
+        background: #1c2735;
+        color: #ffffff;
+    }
+}
+
+.testAction {
+    margin-top: 4px;
+}
+
+@media only screen and (max-width: 1000px) {
+    .smtpPage {
+        max-width: 560px;
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media only screen and (max-width: 640px) {
+    .smtpPage {
+        max-width: 100%;
+    }
+
+    .smtpCard {
+        --dialog-card-height: auto;
+    }
+}

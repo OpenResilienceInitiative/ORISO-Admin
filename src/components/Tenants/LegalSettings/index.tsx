@@ -1,4 +1,3 @@
-/* eslint-disable jsx-a11y/anchor-has-content */
 import { Col, Row } from 'antd';
 import { useTranslation, Trans } from 'react-i18next';
 import { CardEditable } from '../../CardEditable';
@@ -35,13 +34,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                 <Trans
                     i18nKey="privacy.subTitle"
                     components={{
-                        a: (
-                            <a
-                                href="https://www.caritas-beratungundhilfe.de/datenschutz"
-                                target="_blank"
-                                rel="noreferrer"
-                            />
-                        ),
+                        a: <span />,
                     }}
                 />
             }

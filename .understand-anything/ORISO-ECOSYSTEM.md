@@ -1,6 +1,6 @@
 # ORISO Ecosystem Connection
 
-`ORISO-Admin` is the administrative frontend for the wider ORISO/Online-Beratung system.
+`ORISO-Admin` is the administrative control plane for the wider ORISO/Online-Beratung system.
 
 ## Connected Systems
 
@@ -8,60 +8,50 @@
 
 `src/appConfig.ts` defines service endpoints under `mainURL`, including:
 
-- `/service/tenant`
-- `/service/tenant/public`
-- `/service/tenant/access`
+- `/service/tenant`, `/service/tenant/public`, and `/service/tenant/access`
 - `/service/tenantadmin`
-- `/service/agencyadmin`
-- `/service/useradmin`
+- `/service/useradmin/tenantadmins`
+- `/service/useradmin/agencyadmins`
+- `/service/useradmin/consultants`
 - `/service/users`
-- `/service/topic`
-- `/service/topicadmin`
-- `/service/settings`
-- `/service/settingsadmin`
+- `/service/topic` and `/service/topicadmin`
+- `/service/settings` and `/service/settingsadmin`
 - `/service/statistics/registration`
+- `/service/users/supervisors/logs`
+- `/service/users/inactive-accounts/audit-logs`
 
 The admin app depends on these services for tenant configuration, user administration, agency management, settings, statistics, invite links, and audit views.
 
 ### Keycloak / Auth Service
 
-Auth endpoints are built in `src/appConfig.ts`:
+Auth endpoints are built through `keycloakAuthPath`:
 
-- `/auth/realms/online-beratung/protocol/openid-connect/token`
-- `/auth/realms/online-beratung/protocol/openid-connect/logout`
+- token exchange: `/realms/{realm}/protocol/openid-connect/token`
+- logout: `/realms/{realm}/protocol/openid-connect/logout`
 
-`src/api/auth/getAccessToken.ts`, `src/api/auth/auth.ts`, and `src/router/ProtectedRoute.tsx` own the frontend token lifecycle.
+`runtimeConfig.ts` supports a dedicated `KEYCLOAK_URL` or legacy API-hosted auth fallback under `/auth/realms/{realm}`.
 
-### ORISO Frontend
+### Public ORISO Frontend
 
-This admin repo and `ORISO-Frontend` share domain concepts and some architectural ideas:
-
-- tenant identity and subdomain handling
-- Keycloak tokens and tenant claims
-- ORISO backend service endpoints
-- feature flags and server-driven settings
-- invite link and anonymous/tenant access concepts
-- shared naming around tenants, agencies, consultants, users, topics, and legal text
-
-The public/client-facing app consumes the configured tenant experience. This admin app manages much of that configuration.
+This admin repo and the public ORISO frontend share concepts around tenants, subdomains, Keycloak tokens, tenant claims, backend service endpoints, feature flags, invite links, language settings, and legal text. The public app consumes the tenant experience that this admin app configures.
 
 ### Appointment / Cal.com Integration
 
-`src/appConfig.ts` contains appointment-service endpoints and `appointmentServiceDevServer`. Agency initial-meeting and event-type screens use appointment-service-related API paths.
+`src/appConfig.ts` exposes appointment-service endpoints for agency event types and consultants. `runtimeConfig.appointmentServiceUrl` defaults to the configured appointment service URL and is used by route constants for development workflows.
 
-### Kubernetes / Delivery
+### Runtime Deployment
 
 Delivery is represented by:
 
 - `Dockerfile`
 - `nginx.conf`
-- `ingress.yaml`
-- `deploy-admin.sh`
-- `deploy-development.sh`
+- `scripts/docker-entrypoint.sh`
+- `scripts/generate-runtime-env.js`
+- `.github/workflows/*.yml`
+- `.github/actions/*/action.yml`
 
-The built app is served from `/usr/share/nginx/html/admin`. Kubernetes ingress currently targets `admin.oriso.site` and a service named `admin` on port `9000`.
+The built app is served from `/usr/share/nginx/html/admin`. The container writes `env.js` from deployment environment variables before starting nginx.
 
 ## Ecosystem Role
 
-`ORISO-Admin` is the control plane for the ORISO tenant ecosystem. It does not provide counseling UI itself; it configures tenants, agencies, users, permissions, messaging/legal/settings flags, and global system behavior that other ORISO applications depend on.
-
+`ORISO-Admin` does not provide the counseling UI itself. It configures tenants, agencies, users, permissions, messaging/legal/settings flags, invite-link access paths, statistics visibility, and global system behavior that other ORISO applications depend on.

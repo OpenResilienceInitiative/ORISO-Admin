@@ -25,7 +25,6 @@ COOKIE_DOMAIN=$(pick VITE_COOKIE_DOMAIN REACT_APP_COOKIE_DOMAIN || true)
 COOKIE_SECURE=$(pick VITE_COOKIE_SECURE REACT_APP_COOKIE_SECURE || true)
 CSRF_WHITELIST_HEADER=$(pick VITE_CSRF_WHITELIST_HEADER VITE_CSRF_WHITELIST_HEADER_FOR_LOCAL_DEVELOPMENT REACT_APP_CSRF_WHITELIST_HEADER || true)
 COOKIES_ALLOWEDLIST=$(pick VITE_COOKIES_ALLOWEDLIST REACT_APP_COOKIES_ALLOWEDLIST || true)
-APPOINTMENT_SERVICE_URL=$(pick VITE_APPOINTMENT_SERVICE_URL REACT_APP_APPOINTMENT_SERVICE_URL || true)
 
 mkdir -p "$(dirname "$TARGET")"
 
@@ -42,8 +41,36 @@ mkdir -p "$(dirname "$TARGET")"
     [ -n "$COOKIE_SECURE" ] && printf '  "COOKIE_SECURE": "%s",\n' "$COOKIE_SECURE"
     [ -n "$CSRF_WHITELIST_HEADER" ] && printf '  "CSRF_WHITELIST_HEADER": "%s",\n' "$CSRF_WHITELIST_HEADER"
     [ -n "$COOKIES_ALLOWEDLIST" ] && printf '  "COOKIES_ALLOWEDLIST": "%s",\n' "$COOKIES_ALLOWEDLIST"
-    [ -n "$APPOINTMENT_SERVICE_URL" ] && printf '  "APPOINTMENT_SERVICE_URL": "%s",\n' "$APPOINTMENT_SERVICE_URL"
     printf '%s\n' '};'
 } > "$TARGET"
+
+AUTH_BFF_PORT="${AUTH_BFF_PORT:-3001}"
+
+if ! command -v node >/dev/null 2>&1; then
+    echo "ERROR: node is required for auth BFF but was not found in PATH" >&2
+    exit 1
+fi
+
+node /usr/share/nginx/html/admin-auth-bff/auth-bff-server.mjs &
+AUTH_BFF_PID=$!
+
+i=0
+while [ "$i" -lt 50 ]; do
+    if node -e "const n=require('net');const c=n.connect(${AUTH_BFF_PORT},'127.0.0.1',()=>{c.end();process.exit(0)});c.on('error',()=>process.exit(1));" 2>/dev/null; then
+        break
+    fi
+    if ! kill -0 "$AUTH_BFF_PID" 2>/dev/null; then
+        echo "ERROR: Auth BFF exited before becoming ready on port ${AUTH_BFF_PORT}" >&2
+        exit 1
+    fi
+    i=$((i + 1))
+    sleep 0.1
+done
+
+if [ "$i" -ge 50 ]; then
+    echo "ERROR: Auth BFF did not start listening on port ${AUTH_BFF_PORT} within 5s" >&2
+    kill "$AUTH_BFF_PID" 2>/dev/null || true
+    exit 1
+fi
 
 exec nginx -g 'daemon off;'

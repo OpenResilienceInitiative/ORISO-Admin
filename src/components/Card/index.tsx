@@ -7,10 +7,14 @@ import { Tooltip } from '../tooltip/Tooltip';
 import { ReactComponent as InfoIcon } from '../../resources/img/svg/i.svg';
 import styles from './styles.module.scss';
 
+export type CardVariant = 'default' | 'dialog';
+
 interface CardProps {
     className?: string;
     isLoading?: boolean;
     fullHeight?: boolean;
+    variant?: CardVariant;
+    headerIcon?: React.ReactChild;
     titleKey: string;
     subTitle?: React.ReactChild;
     subTitleKey?: string;
@@ -30,21 +34,29 @@ export const Card = ({
     tooltip,
     cardTitleChildren,
     cardTitleClassName,
+    variant = 'default',
+    headerIcon,
     children,
 }: CardProps) => {
     const { t } = useTranslation();
+    const isDialog = variant === 'dialog';
 
     return (
         <Box
-            className={classNames(styles.card, className, { [styles.fullHeight]: fullHeight })}
-            contentClassName={styles.contentClassName}
+            className={classNames(styles.card, className, {
+                [styles.fullHeight]: fullHeight,
+                [styles.dialogCard]: isDialog,
+            })}
+            contentClassName={classNames(styles.contentClassName, { [styles.dialogContentClassName]: isDialog })}
         >
             <div
                 className={classNames(styles.cardTitle, cardTitleClassName, {
                     [styles.hasSubtitle]: subTitle || subTitleKey,
+                    [styles.dialogCardTitle]: isDialog,
                 })}
             >
-                <div className={styles.titleContainer}>
+                <div className={classNames(styles.titleContainer, { [styles.dialogTitleContainer]: isDialog })}>
+                    {headerIcon && <div className={styles.headerIcon}>{headerIcon}</div>}
                     <Title className={classNames(styles.title)} level={5}>
                         {t(titleKey)}
                     </Title>
@@ -58,9 +70,16 @@ export const Card = ({
                 {cardTitleChildren}
             </div>
             {(subTitle || subTitleKey) && (
-                <div className={classNames(styles.cardSubTitle)}>{subTitle || t(subTitleKey)}</div>
+                <div className={classNames(styles.cardSubTitle, { [styles.dialogCardSubTitle]: isDialog })}>
+                    {subTitle || t(subTitleKey)}
+                </div>
             )}
-            <div className={classNames(styles.container, { [styles.isLoading]: isLoading })}>
+            <div
+                className={classNames(styles.container, {
+                    [styles.isLoading]: isLoading,
+                    [styles.dialogContainer]: isDialog,
+                })}
+            >
                 {isLoading && <Spin />}
                 {!isLoading && children}
             </div>

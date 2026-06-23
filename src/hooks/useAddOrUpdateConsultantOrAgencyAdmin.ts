@@ -1,6 +1,6 @@
 import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
 import { addAgencyAdminData } from '../api/admins/addAgencyAdminData';
-import { editAgencyAdminData } from '../api/admins/ediAgencytAdminData';
+import { editAgencyAdminData } from '../api/admins/editAgencyAdminData';
 import { addCounselorData } from '../api/counselor/addCounselorData';
 import { editCounselorData } from '../api/counselor/editCounselorData';
 import { TypeOfUser } from '../enums/TypeOfUser';

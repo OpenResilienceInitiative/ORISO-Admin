@@ -12,6 +12,45 @@ Generated for the current repository only: `ORISO-Admin`.
 - [Visual Artifacts](./visuals/)
 - [Knowledge Graph JSON](./knowledge-graph.json)
 
+## Current Graph
+
+- Latest analyzed commit: `1a367cd463191425e4ee61f02ec5f1a35d6b02bf`
+- Analyzed at: `2026-06-12T02:52:58.608Z`
+- Files analyzed: `527`
+- Nodes: `1091`
+- Edges: `1614`
+- Layers: `13`
+- Tour steps: `7`
+
+File categories:
+
+```json
+{
+  "infra": 5,
+  "config": 17,
+  "code": 384,
+  "docs": 9,
+  "script": 3,
+  "markup": 109
+}
+```
+
+Node types:
+
+```json
+{
+  "file": 492,
+  "config": 15,
+  "pipeline": 5,
+  "document": 9,
+  "resource": 3,
+  "service": 3,
+  "function": 500,
+  "class": 2,
+  "endpoint": 62
+}
+```
+
 ## Graph Outputs
 
 ```bash
@@ -20,14 +59,6 @@ Generated for the current repository only: `ORISO-Admin`.
 .understand-anything/meta.json
 .understand-anything/config.json
 ```
-
-Current graph size:
-
-- Files analyzed: `458`
-- Nodes: `776`
-- Edges: `1,547`
-- Layers: `13`
-- Tour steps: `6`
 
 ## Open The Dashboard
 
@@ -41,11 +72,7 @@ GRAPH_DIR="$PROJECT_DIR" pnpm exec vite --host 127.0.0.1
 
 Set `UNDERSTAND_ANYTHING_DASHBOARD` to your local Understand-Anything `packages/dashboard` directory.
 
-The access token is printed in the terminal when the dashboard starts. Use the full line that starts with `Dashboard URL`, for example:
-
-```bash
-http://127.0.0.1:5173/?token=<token>
-```
+Use the full dashboard URL printed by Vite, including the `?token=...` query string. The dashboard will not load this graph from the ORISO Admin app URL.
 
 ## Updating The Graph
 
@@ -57,15 +84,8 @@ Auto-update is enabled in `.understand-anything/config.json`:
 }
 ```
 
-The equivalent setup command is:
-
-```bash
-/understand . --auto-update
-```
-
 If the local environment does not run the Understand-Anything auto-update hook, rebuild after meaningful changes with:
 
 ```bash
 /understand . --full
 ```
-
