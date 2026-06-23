@@ -94,7 +94,7 @@ export const Login = () => {
             <div className="loginLanguageSelector">
                 <LanguageSelector variant="login" ariaLabelKey="language.loginSelectAriaLabel" />
             </div>
-            <Stage />
+            <Stage logo={tenantData?.theming?.logo} claim={tenantData?.content?.claim} />
             <Row align="middle" style={{ flex: '1 0 auto' }}>
                 <Col xs={{ span: 10, offset: 1 }} md={{ span: 6, offset: 3 }} xl={{ span: 4, offset: 6 }}>
                     <LoginForm />
