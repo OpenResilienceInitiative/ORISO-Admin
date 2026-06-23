@@ -7,7 +7,7 @@ interface CounselorByIdProps extends UseQueryOptions<CounselorData> {
 }
 
 export const useCounselorById = ({ id, ...options }: CounselorByIdProps) => {
-    return useQuery<CounselorData>(['CONSULTANT', id], () => getCounselorById(id), {
+    return useQuery<CounselorData>(['CONSULTANT', id], () => getCounselorById(id!), {
         ...options,
         enabled: !!id && id !== 'add',
     });
