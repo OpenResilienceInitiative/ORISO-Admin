@@ -66,6 +66,7 @@ const refreshTokens = (): Promise<void> => {
     const tokenExpiry = getTokenExpiryFromLocalStorage();
 
     if (tokenExpiry.refreshTokenValidUntilTime <= currentTime - RENEW_BEFORE_EXPIRY_IN_MS) {
+        logout(true, routePathNames.login);
         return Promise.resolve();
     }
 

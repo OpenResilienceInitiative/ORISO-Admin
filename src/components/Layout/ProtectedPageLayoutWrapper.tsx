@@ -67,7 +67,9 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     }, []);
 
     useEffect(() => {
-        if (subdomain !== tenantData.subdomain && !settings.multitenancyWithSingleDomainEnabled) {
+        // Guard: tenantData.subdomain is empty until the tenant query resolves.
+        // Only logout once we know the tenant and detect an actual mismatch.
+        if (tenantData.subdomain && subdomain !== tenantData.subdomain && !settings.multitenancyWithSingleDomainEnabled) {
             logout(true);
         }
     }, [subdomain, tenantData.subdomain]);
