@@ -21,9 +21,11 @@
     border-radius: 28px;
     background: #eae7e8;
     font-family: var(--m3-body-font-family);
-    box-shadow:
-        0 1px 2px rgb(0 0 0 / 30%),
-        0 1px 3px 1px rgb(0 0 0 / 15%);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px 1px rgb(0 0 0 / 15%);
+}
+
+.dialogAutoHeight {
+    height: auto;
 }
 
 .cardTitle {
@@ -113,6 +115,10 @@
     display: flex;
     min-height: 0;
     flex-direction: column;
+}
+
+.dialogContentPadding {
+    padding: 20px 24px 24px;
 }
 
 .tooltip {

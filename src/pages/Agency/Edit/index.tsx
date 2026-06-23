@@ -172,13 +172,19 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 onError: () => {
                     setSubmitted(false);
                 },
-                onSuccess: () => {
+                onSuccess: (response) => {
                     navigate(routePathNames.agency);
 
                     notification.success({
                         message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                         duration: 3,
                     });
+                    if (response?.consultantAssignmentFailed) {
+                        notification.warning({
+                            message: t('message.agency.consultantAssignmentFailed'),
+                            duration: 8,
+                        });
+                    }
                     setSubmitted(false);
                     setReadOnly(true);
                 },

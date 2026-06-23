@@ -7,25 +7,6 @@
     padding: 0 0 8px;
 }
 
-.themeCardBody {
-    display: flex;
-    flex: 1 1 auto;
-    min-height: 0;
-    flex-direction: column;
-    padding: 20px 24px 0;
-}
-
-.themeCardFooter {
-    display: flex;
-    min-height: 64px;
-    align-items: center;
-    justify-content: flex-end;
-    margin-top: auto;
-    padding: 8px 24px;
-    border-top: 1px solid rgb(0 0 0 / 12%);
-}
-
-.themeFooterEditButton,
 .themeTextButton {
     display: inline-flex;
     height: 40px;
@@ -44,11 +25,6 @@
     font-weight: 500;
     letter-spacing: 0.1px;
     line-height: 20px;
-}
-
-.themeFooterEditButton svg {
-    width: 20px;
-    height: 20px;
 }
 
 .themeFullscreenModalWrap {
@@ -177,6 +153,9 @@
 }
 
 .themePreviewScrollerFooter {
+    --side-scroller-button-width: 112px;
+    --side-scroller-button-height: 72px;
+
     position: absolute;
     right: clamp(28px, 5vw, 72px);
     bottom: 38px;
@@ -184,45 +163,6 @@
     display: flex;
     justify-content: space-between;
     pointer-events: none;
-}
-
-.themePreviewScrollButton {
-    display: inline-flex;
-    width: 112px;
-    height: 72px;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: 100px;
-    appearance: none;
-    background: #bec7d4;
-    color: #ffffff;
-    cursor: default;
-    pointer-events: auto;
-    transition: background 0.2s ease, transform 0.2s ease;
-
-    &:disabled {
-        background: #bec7d4;
-        opacity: 1;
-    }
-
-    &:active:not(:disabled) {
-        transform: scale(0.98);
-    }
-
-    svg {
-        width: 32px;
-        height: 32px;
-    }
-}
-
-.themePreviewScrollButtonActive {
-    background: #111923;
-    cursor: pointer;
-
-    &:hover {
-        background: #1c2735;
-    }
 }
 
 .phonePreview {
@@ -940,14 +880,12 @@
     }
 
     .themePreviewScrollerFooter {
+        --side-scroller-button-width: 88px;
+        --side-scroller-button-height: 56px;
+
         right: 24px;
         bottom: 20px;
         left: 24px;
-    }
-
-    .themePreviewScrollButton {
-        width: 88px;
-        height: 56px;
     }
 
     .previewRow {

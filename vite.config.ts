@@ -29,8 +29,9 @@ const resolveManualChunk = (id: string): string | undefined => {
 
 // https://vitejs.dev/config/
 export default ({ mode }) => {
-    process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
+    process.env = { ...loadEnv(mode, process.cwd()), ...process.env };
     const isAnalyze = mode === 'analyze';
+    const devApiProxyTarget = process.env.VITE_DEV_API_PROXY_TARGET;
 
     return defineConfig({
         base: process.env.BASE || '/admin',
@@ -74,6 +75,20 @@ export default ({ mode }) => {
         server: {
             host: '0.0.0.0',
             port: (process.env.VITE_PORT as unknown as number) || 9000,
+            proxy: devApiProxyTarget
+                ? {
+                      '^/(service|api/v1|auth)': {
+                          target: devApiProxyTarget,
+                          changeOrigin: true,
+                          secure: true,
+                          configure: (proxy) => {
+                              proxy.on('proxyReq', (proxyReq) => {
+                                  proxyReq.removeHeader('cookie');
+                              });
+                          },
+                      },
+                  }
+                : undefined,
         },
         configureServer(server) {
             const envPath = `${process.cwd()}/public/env.js`;

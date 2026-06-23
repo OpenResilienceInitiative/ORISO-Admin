@@ -1,5 +1,5 @@
 .appearancePage {
-    --dialog-card-height: clamp(500px, 61vh, 660px);
+    --dialog-card-height: clamp(540px, 68vh, 720px);
     --appearance-stack-top-offset: 165px;
 
     display: flex;
@@ -26,16 +26,16 @@
 }
 
 .cardSlot {
-    flex: 0 0 min(417px, calc(100vw - 176px));
+    flex: 0 0 min(392px, calc(100vw - 176px));
     scroll-snap-align: start;
 }
 
 .cardSlotImages {
-    flex-basis: min(522px, calc(100vw - 176px));
+    flex-basis: min(500px, calc(100vw - 176px));
 }
 
 .cardSlotTheme {
-    flex-basis: min(430px, calc(100vw - 176px));
+    flex-basis: min(392px, calc(100vw - 176px));
 }
 
 .masterDataToggle {
@@ -102,47 +102,9 @@
     padding: 0 24px;
 }
 
-.scrollButton {
-    display: inline-flex;
-    width: 128px;
-    height: 96px;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: 100px;
-    appearance: none;
-    background: #bec7d4;
-    color: #ffffff;
-    cursor: default;
-    transition: background 0.2s ease, transform 0.2s ease;
-
-    &:disabled {
-        background: #bec7d4;
-        opacity: 1;
-    }
-
-    &:active:not(:disabled) {
-        transform: scale(0.98);
-    }
-
-    svg {
-        width: 32px;
-        height: 32px;
-    }
-}
-
-.scrollButtonActive {
-    background: #111923;
-    cursor: pointer;
-
-    &:hover {
-        background: #1c2735;
-    }
-}
-
 @media only screen and (max-width: 900px) {
     .appearancePage {
-        --dialog-card-height: clamp(480px, 62vh, 600px);
+        --dialog-card-height: clamp(500px, 64vh, 640px);
 
         min-height: auto;
         justify-content: flex-start;
@@ -159,12 +121,10 @@
     }
 
     .sideScrollerFooter {
+        --side-scroller-button-width: 88px;
+        --side-scroller-button-height: 56px;
+
         margin-top: 32px;
         padding: 0 8px;
-    }
-
-    .scrollButton {
-        width: 88px;
-        height: 56px;
     }
 }

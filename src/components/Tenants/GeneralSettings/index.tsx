@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import { useTranslation } from 'react-i18next';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { CardEditable } from '../../CardEditable';
 import { FormSwitchField } from '../../FormSwitchField';
+import { SideScrollerFooter } from '../../SideScrollerFooter';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
@@ -184,30 +183,16 @@ export const GeneralSettings = ({ tenantId }: GeneralSettingsProps) => {
                     </div>
                 )}
             </div>
-            <div className={styles.sideScrollerFooter} aria-label="Einstellungen scrollen">
-                <button
-                    className={`${styles.scrollButton} ${
-                        scrollState.canScrollBackward ? styles.scrollButtonActive : ''
-                    }`}
-                    type="button"
-                    aria-label="Vorherige Einstellungen anzeigen"
-                    disabled={!scrollState.canScrollBackward}
-                    onClick={() => scrollCards(-1)}
-                >
-                    <ArrowBackIcon />
-                </button>
-                <button
-                    className={`${styles.scrollButton} ${
-                        scrollState.canScrollForward ? styles.scrollButtonActive : ''
-                    }`}
-                    type="button"
-                    aria-label="Weitere Einstellungen anzeigen"
-                    disabled={!scrollState.canScrollForward}
-                    onClick={() => scrollCards(1)}
-                >
-                    <ArrowForwardIcon />
-                </button>
-            </div>
+            <SideScrollerFooter
+                className={styles.sideScrollerFooter}
+                ariaLabel="Einstellungen scrollen"
+                previousLabel="Vorherige Einstellungen anzeigen"
+                nextLabel="Weitere Einstellungen anzeigen"
+                canScrollBackward={scrollState.canScrollBackward}
+                canScrollForward={scrollState.canScrollForward}
+                onScrollBackward={() => scrollCards(-1)}
+                onScrollForward={() => scrollCards(1)}
+            />
         </div>
     );
 };
