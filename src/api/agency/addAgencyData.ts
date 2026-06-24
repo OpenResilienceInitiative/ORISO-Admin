@@ -1,5 +1,6 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { agencyEndpointBase } from '../../appConfig';
+import { withLegacyDioceseId } from '../legacyCaritasApiDefaults';
 import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
 import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
@@ -13,9 +14,7 @@ function buildAgencyDataRequestBody(
     const topicIds = topics
         ?.map((topic) => (typeof topic === 'string' ? topic : topic?.value || topic?.id))
         .filter((id) => id != null && !Number.isNaN(Number(id)));
-    const requestBody: any = {
-        // diocese in case of SAAS is not relevant object but enforced by API
-        // dioceseId: formData.dioceseId ? parseInt(formData.dioceseId, 10) : 0,
+    const requestBody: any = withLegacyDioceseId({
         name: formData.name,
         description: formData.description ? formData.description : '',
         postcode: formData.postcode,
@@ -28,7 +27,7 @@ function buildAgencyDataRequestBody(
         dataProtection: formData.dataProtection || { agreement: true, agreementDate: new Date().toISOString() },
         tenantId,
         agencyLogo: formData.agencyLogo || '',
-    };
+    });
 
     // Only include optional fields if they have values
     if (topicIds && topicIds.length > 0) {

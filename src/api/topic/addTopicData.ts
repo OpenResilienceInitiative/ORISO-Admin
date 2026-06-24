@@ -1,17 +1,18 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { topicEndpoint } from '../../appConfig';
+import { withLegacyDioceseId } from '../legacyCaritasApiDefaults';
 
 function buildTopicDataRequestBody(formData: Record<string, any>) {
-    return JSON.stringify({
-        // diocese in case of SAAS is not relevant object but enforced by API
-        dioceseId: 0,
-        name: formData.name,
-        description: formData.description,
-        internalIdentifier: formData.internalIdentifier,
-        status: formData.status ? 'ACTIVE' : 'INACTIVE',
-        // enforced by admin API, without business value for SAAS
-        external: false,
-    });
+    return JSON.stringify(
+        withLegacyDioceseId({
+            name: formData.name,
+            description: formData.description,
+            internalIdentifier: formData.internalIdentifier,
+            status: formData.status ? 'ACTIVE' : 'INACTIVE',
+            // enforced by admin API, without business value for SAAS
+            external: false,
+        }),
+    );
 }
 
 async function createTopic(topicDataRequestBody: string) {

@@ -256,7 +256,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                             titleKey="agency.form.registrationSettings.title"
                             onSave={onSaveCard}
                         >
-                            <RegistrationSettings consultingTypeId={agencyData?.consultingType} asFields />
+                            <RegistrationSettings asFields />
                         </CardEditable>
                     </Col>
                     <Col xs={12} lg={6}>
@@ -290,7 +290,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     </Col>
                     <Col xs={12} lg={6}>
                         <AgencyGeneralInformation />
-                        <RegistrationSettings consultingTypeId={agencyData?.consultingType} />
+                        <RegistrationSettings />
                     </Col>
                     <Col xs={12} lg={6}>
                         <AgencySettings isEditMode={isEditing} />
