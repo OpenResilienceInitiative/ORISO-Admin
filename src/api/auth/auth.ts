@@ -75,6 +75,47 @@ const refreshTokens = (): Promise<void> => {
     );
 };
 
+let inflightTokenRefresh: Promise<boolean> | null = null;
+
+/**
+ * Refresh the access/refresh token via the BFF and repopulate the in-memory token
+ * store. Concurrent callers share a single in-flight refresh. Resolves to `true`
+ * when a fresh token was obtained, `false` otherwise (e.g. the refresh token is
+ * gone or already expired). Unlike {@link refreshTokens} this never logs the user
+ * out by itself — the caller decides what to do on failure. Used by fetchData to
+ * self-heal a single 401 (lapsed/empty access token) before forcing a logout.
+ */
+export const tryRefreshAccessToken = (): Promise<boolean> => {
+    if (inflightTokenRefresh) {
+        return inflightTokenRefresh;
+    }
+
+    inflightTokenRefresh = refreshAuthTokensViaBff()
+        .then((response) => {
+            if (!response?.access_token || !response.refresh_token) {
+                return false;
+            }
+
+            setSessionTokens(response.access_token, response.refresh_token);
+            setTokenExpiryInLocalStorage(
+                'auth.access_token_valid_until',
+                resolveExpiresInSeconds(response.access_token, response.expires_in),
+            );
+            setTokenExpiryInLocalStorage(
+                'auth.refresh_token_valid_until',
+                resolveExpiresInSeconds(response.refresh_token, response.refresh_expires_in),
+            );
+
+            return true;
+        })
+        .catch(() => false)
+        .finally(() => {
+            inflightTokenRefresh = null;
+        });
+
+    return inflightTokenRefresh;
+};
+
 const startTimers = ({
     accessTokenValidInMs,
     refreshTokenValidInMs,
