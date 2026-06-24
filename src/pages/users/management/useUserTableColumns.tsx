@@ -27,6 +27,7 @@ const SORT_FIELD_BY_COLUMN: Partial<Record<UserTableColumnKey, string>> = {
     lastname: 'LASTNAME',
     firstname: 'FIRSTNAME',
     email: 'EMAIL',
+    username: 'USERNAME',
     tenantOrgName: 'NAME',
 };
 
