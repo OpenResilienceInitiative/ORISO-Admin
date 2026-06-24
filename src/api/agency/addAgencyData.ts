@@ -1,5 +1,6 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { agencyEndpointBase } from '../../appConfig';
+import { withLegacyDioceseId } from '../legacyCaritasApiDefaults';
 import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
 import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
@@ -13,9 +14,7 @@ function buildAgencyDataRequestBody(
     const topicIds = topics
         ?.map((topic) => (typeof topic === 'string' ? topic : topic?.value || topic?.id))
         .filter((id) => id != null && !Number.isNaN(Number(id)));
-    const requestBody: any = {
-        // diocese in case of SAAS is not relevant object but enforced by API
-        // dioceseId: formData.dioceseId ? parseInt(formData.dioceseId, 10) : 0,
+    const requestBody: any = withLegacyDioceseId({
         name: formData.name,
         description: formData.description ? formData.description : '',
         postcode: formData.postcode,
@@ -28,7 +27,7 @@ function buildAgencyDataRequestBody(
         dataProtection: formData.dataProtection || { agreement: true, agreementDate: new Date().toISOString() },
         tenantId,
         agencyLogo: formData.agencyLogo || '',
-    };
+    });
 
     // Only include optional fields if they have values
     if (topicIds && topicIds.length > 0) {
@@ -56,6 +55,22 @@ async function createAgency(agencyDataRequestBody: string) {
     });
 }
 
+export function resolveAgencyTenantId(selectedTenantIdValue: unknown, tokenTenantIdValue: unknown): number | undefined {
+    const selectedTenantId = Number(selectedTenantIdValue);
+
+    if (Number.isFinite(selectedTenantId) && selectedTenantId > 0) {
+        return selectedTenantId;
+    }
+
+    const tokenTenantId = Number(tokenTenantIdValue);
+
+    if (Number.isFinite(tokenTenantId) && tokenTenantId > 0) {
+        return tokenTenantId;
+    }
+
+    return undefined;
+}
+
 /**
  * add new agency
  * @param agencyData
@@ -64,9 +79,12 @@ async function createAgency(agencyDataRequestBody: string) {
 async function addAgencyData(agencyData: Record<string, any>) {
     // Prefer explicitly selected tenant from form (superadmin flow).
     // Fallback to JWT tenant for tenant-admin users.
-    const { tenantId: tokenTenantId = 1 } = parseUserAuthInfo();
-    const selectedTenantId = Number(agencyData?.tenantId);
-    const tenantId = Number.isFinite(selectedTenantId) && selectedTenantId > 0 ? selectedTenantId : tokenTenantId;
+    const { tenantId: tokenTenantId } = parseUserAuthInfo();
+    const tenantId = resolveAgencyTenantId(agencyData?.tenantId, tokenTenantId);
+
+    if (!tenantId) {
+        throw new Error('A valid tenantId is required to create an agency.');
+    }
 
     const consultingTypeId =
         agencyData.consultingType !== null && agencyData.consultingType !== undefined

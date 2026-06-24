@@ -48,6 +48,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "prestart": "node scripts/generate-runtime-env.js",
     "start": "vite",
     "build": "tsc && vite build",
     "build:analyze": "tsc && vite build --mode analyze",
@@ -60,7 +61,7 @@
     "lint:formatting": "prettier . --write --ignore-unknown --check",
     "prettier:css": "prettier **/*.scss --write ",
     "test:integration": "cypress open",
-    "test:integration:cli": "concurrently --kill-others --success first \"cross-env BROWSER=none API_URL_FOR_LOCAL_DEVELOPMENT=test VITE_PORT=3000 yarn run start\" \"wait-on http://localhost:3000 && cypress run\""
+    "test:integration:cli": "concurrently --kill-others --success first \"cross-env BROWSER=none yarn run start\" \"wait-on http://localhost:9000/admin && cypress run\""
   },
   "eslintConfig": {
     "extends": [

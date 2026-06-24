@@ -2,6 +2,7 @@ import merge from 'lodash.merge';
 import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { topicAdminEndpoint } from '../appConfig';
+import { withLegacyDioceseId } from '../api/legacyCaritasApiDefaults';
 import { TopicAdminData } from '../types/TopicAdmin';
 import { TOPIC_ADMIN_KEY, useTopicAdmin } from './useTopicAdmin';
 
@@ -17,20 +18,21 @@ export const useAddOrUpdateTopicAdmin = ({ id, ...options }: UseAddOrUpdateTopic
     return useMutation(
         (formData) => {
             const bodyData = JSON.stringify(
-                merge({}, topicData, {
-                    ...formData,
-                    name: {
-                        ...(formData?.name || {}),
-                        translate: undefined,
-                    },
-                    description: {
-                        ...(formData?.description || {}),
-                        translate: undefined,
-                    },
-                    external: false,
-                    dioceseId: 0,
-                    status: formData.status ? 'ACTIVE' : 'INACTIVE',
-                }),
+                withLegacyDioceseId(
+                    merge({}, topicData, {
+                        ...formData,
+                        name: {
+                            ...(formData?.name || {}),
+                            translate: undefined,
+                        },
+                        description: {
+                            ...(formData?.description || {}),
+                            translate: undefined,
+                        },
+                        external: false,
+                        status: formData.status ? 'ACTIVE' : 'INACTIVE',
+                    }),
+                ),
             );
 
             return fetchData({

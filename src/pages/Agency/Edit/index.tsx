@@ -27,6 +27,7 @@ import { DataProcessingAgreement } from '../../../components/Tenants/LegalSettin
 import styles from '../../../components/Page/styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { PermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -67,6 +68,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { data: postCodes, isLoading: isLoadingPostCodes } = useAgencyPostCodesData({ id });
     const { isEnabled } = useFeatureContext();
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
+    const { isSuperAdmin } = useUserRoles();
     const [form] = Form.useForm();
     const { mutate } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
@@ -168,6 +170,23 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         (formData) => {
             setSubmitted(true);
 
+            const selectedTenantId = Number(formData?.tenantId);
+            if (isSuperAdmin && (!Number.isFinite(selectedTenantId) || selectedTenantId <= 0)) {
+                form.setFields([
+                    {
+                        name: 'tenantId',
+                        errors: [t('form.errors.required')],
+                    },
+                ]);
+                notification.error({
+                    message: t('agency.edit.general.more_settings.tenant.title'),
+                    description: t('form.errors.required'),
+                    duration: 5,
+                });
+                setSubmitted(false);
+                return;
+            }
+
             mutate(buildAgencyUpdateData(formData), {
                 onError: () => {
                     setSubmitted(false);
@@ -184,7 +203,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 },
             });
         },
-        [buildAgencyUpdateData, isEditing, mutate, navigate, t],
+        [buildAgencyUpdateData, form, isEditing, isSuperAdmin, mutate, navigate, t],
     );
 
     const onSaveCard = useCallback(
@@ -237,7 +256,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                             titleKey="agency.form.registrationSettings.title"
                             onSave={onSaveCard}
                         >
-                            <RegistrationSettings consultingTypeId={agencyData?.consultingType} asFields />
+                            <RegistrationSettings asFields />
                         </CardEditable>
                     </Col>
                     <Col xs={12} lg={6}>
@@ -271,7 +290,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     </Col>
                     <Col xs={12} lg={6}>
                         <AgencyGeneralInformation />
-                        <RegistrationSettings consultingTypeId={agencyData?.consultingType} />
+                        <RegistrationSettings />
+                    </Col>
+                    <Col xs={12} lg={6}>
+                        <AgencySettings isEditMode={isEditing} />
                     </Col>
                 </Row>
             </Form>
