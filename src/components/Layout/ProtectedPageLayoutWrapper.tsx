@@ -67,11 +67,10 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     }, []);
 
     useEffect(() => {
-        if (subdomain !== tenantData.subdomain && !settings.multitenancyWithSingleDomainEnabled) {
-            // console.log('🔍 ProtectedPageLayoutWrapper: Subdomain mismatch, but not logging out for debugging');
-            // console.log('🔍 ProtectedPageLayoutWrapper: subdomain:', subdomain);
-            // console.log('🔍 ProtectedPageLayoutWrapper: tenantData.subdomain:', tenantData.subdomain);
-            // logout(true);
+        // Guard: tenantData.subdomain is empty until the tenant query resolves.
+        // Only logout once we know the tenant and detect an actual mismatch.
+        if (tenantData.subdomain && subdomain !== tenantData.subdomain && !settings.multitenancyWithSingleDomainEnabled) {
+            logout(true);
         }
     }, [subdomain, tenantData.subdomain]);
 
@@ -158,19 +157,20 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 </li>
                             )}
 
-                            {can(PermissionAction.Read, Resource.Agency) && !hasRole(UserRole.RestrictedAgencyAdmin) && (
-                                <li className="menuItem">
-                                    <NavLink
-                                        to={routePathNames.agency}
-                                        aria-label={navLabels.agency}
-                                        title={navLabels.agency}
-                                        className={classNames({ active: checkActive(routePathNames.agency) })}
-                                    >
-                                        <NavIcon path={routePathNames.agency} />
-                                        <span lang={navLanguage}>{navLabels.agency}</span>
-                                    </NavLink>
-                                </li>
-                            )}
+                            {can(PermissionAction.Read, Resource.Agency) &&
+                                (hasRole(UserRole.AgencyAdmin) || !hasRole(UserRole.RestrictedAgencyAdmin)) && (
+                                    <li className="menuItem">
+                                        <NavLink
+                                            to={routePathNames.agency}
+                                            aria-label={navLabels.agency}
+                                            title={navLabels.agency}
+                                            className={classNames({ active: checkActive(routePathNames.agency) })}
+                                        >
+                                            <NavIcon path={routePathNames.agency} />
+                                            <span lang={navLanguage}>{navLabels.agency}</span>
+                                        </NavLink>
+                                    </li>
+                                )}
 
                             {(can(PermissionAction.Read, Resource.Consultant) ||
                                 can(PermissionAction.Read, Resource.AgencyAdminUser) ||

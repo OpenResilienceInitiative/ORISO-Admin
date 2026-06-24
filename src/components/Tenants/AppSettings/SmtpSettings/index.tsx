@@ -1,4 +1,4 @@
-import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import { Card } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
@@ -26,6 +26,26 @@ const DEFAULT_SMTP_SETTINGS = {
     },
 } as const;
 
+const isBlank = (value?: string | number | boolean | null) => value === undefined || value === null || value === '';
+
+const inheritString = (value: string | null | undefined, inheritedValue: string) =>
+    isBlank(value) ? inheritedValue : value;
+
+const inheritBoolean = (value: boolean | null | undefined, inheritedValue: boolean) =>
+    value === undefined || value === null ? inheritedValue : value;
+
+const inheritNumber = (value: number | null | undefined, inheritedValue: number) =>
+    value === undefined || value === null ? inheritedValue : value;
+
+const normalizeSmtpPort = (value: string | undefined) => {
+    if (isBlank(value)) {
+        return DEFAULT_SMTP_SETTINGS.smtp.port;
+    }
+
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : DEFAULT_SMTP_SETTINGS.smtp.port;
+};
+
 export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
     const { t } = useTranslation();
     const { settings } = useAppConfigContext();
@@ -36,6 +56,34 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
     });
     const systemEmailsAllowed = settings.globalFeatureSystemNotificationEmailsEnabled !== false;
     const smtpAllowed = settings.globalSmtpEnabled !== false;
+    const inheritedSettings = useMemo(
+        () => ({
+            featureSystemNotificationEmailsEnabled:
+                settings.globalFeatureSystemNotificationEmailsEnabled ??
+                DEFAULT_SMTP_SETTINGS.featureSystemNotificationEmailsEnabled,
+            smtp: {
+                enabled: settings.globalSmtpEnabled ?? DEFAULT_SMTP_SETTINGS.smtp.enabled,
+                host: settings.globalSmtpHost ?? DEFAULT_SMTP_SETTINGS.smtp.host,
+                port: normalizeSmtpPort(settings.globalSmtpPort),
+                secure: settings.globalSmtpSecure ?? DEFAULT_SMTP_SETTINGS.smtp.secure,
+                username: settings.globalSmtpUsername ?? DEFAULT_SMTP_SETTINGS.smtp.username,
+                password: settings.globalSmtpPassword ?? DEFAULT_SMTP_SETTINGS.smtp.password,
+                from: settings.globalSmtpFrom ?? DEFAULT_SMTP_SETTINGS.smtp.from,
+                emailThemeColor: settings.globalSmtpEmailThemeColor ?? DEFAULT_SMTP_SETTINGS.smtp.emailThemeColor,
+            },
+        }),
+        [
+            settings.globalFeatureSystemNotificationEmailsEnabled,
+            settings.globalSmtpEmailThemeColor,
+            settings.globalSmtpEnabled,
+            settings.globalSmtpFrom,
+            settings.globalSmtpHost,
+            settings.globalSmtpPassword,
+            settings.globalSmtpPort,
+            settings.globalSmtpSecure,
+            settings.globalSmtpUsername,
+        ],
+    );
     const applyPlatformEmailRestrictions = useCallback(
         (formData) => ({
             ...formData,
@@ -52,20 +100,66 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
         }),
         [smtpAllowed, systemEmailsAllowed],
     );
-    const initialValues = useMemo(
-        () =>
-            applyPlatformEmailRestrictions({
-                ...data,
-                settings: {
-                    ...DEFAULT_SMTP_SETTINGS,
-                    ...(data?.settings ?? {}),
-                    smtp: {
-                        ...DEFAULT_SMTP_SETTINGS.smtp,
-                        ...(data?.settings?.smtp ?? {}),
-                    },
+    const initialValues = useMemo(() => {
+        const tenantSettings = data?.settings ?? {};
+        const tenantSmtpSettings = tenantSettings.smtp ?? {};
+
+        return applyPlatformEmailRestrictions({
+            ...data,
+            settings: {
+                ...DEFAULT_SMTP_SETTINGS,
+                ...inheritedSettings,
+                ...tenantSettings,
+                featureSystemNotificationEmailsEnabled: inheritBoolean(
+                    tenantSettings.featureSystemNotificationEmailsEnabled,
+                    inheritedSettings.featureSystemNotificationEmailsEnabled,
+                ),
+                smtp: {
+                    ...DEFAULT_SMTP_SETTINGS.smtp,
+                    ...inheritedSettings.smtp,
+                    ...tenantSmtpSettings,
+                    enabled: inheritBoolean(tenantSmtpSettings.enabled, inheritedSettings.smtp.enabled),
+                    host: inheritString(tenantSmtpSettings.host, inheritedSettings.smtp.host),
+                    port: inheritNumber(tenantSmtpSettings.port, inheritedSettings.smtp.port),
+                    secure: inheritBoolean(tenantSmtpSettings.secure, inheritedSettings.smtp.secure),
+                    username: inheritString(tenantSmtpSettings.username, inheritedSettings.smtp.username),
+                    password: inheritString(tenantSmtpSettings.password, inheritedSettings.smtp.password),
+                    from: inheritString(tenantSmtpSettings.from, inheritedSettings.smtp.from),
+                    emailThemeColor: inheritString(
+                        tenantSmtpSettings.emailThemeColor,
+                        inheritedSettings.smtp.emailThemeColor,
+                    ),
                 },
-            }),
-        [applyPlatformEmailRestrictions, data],
+            },
+        });
+    }, [applyPlatformEmailRestrictions, data, inheritedSettings]);
+    const formKey = useMemo(
+        () =>
+            [
+                'smtp',
+                tenantId,
+                systemEmailsAllowed,
+                smtpAllowed,
+                inheritedSettings.featureSystemNotificationEmailsEnabled,
+                inheritedSettings.smtp.enabled,
+                inheritedSettings.smtp.host,
+                inheritedSettings.smtp.port,
+                inheritedSettings.smtp.secure,
+                inheritedSettings.smtp.username,
+                inheritedSettings.smtp.password,
+                inheritedSettings.smtp.from,
+                inheritedSettings.smtp.emailThemeColor,
+                data?.settings?.featureSystemNotificationEmailsEnabled,
+                data?.settings?.smtp?.enabled,
+                data?.settings?.smtp?.host,
+                data?.settings?.smtp?.port,
+                data?.settings?.smtp?.secure,
+                data?.settings?.smtp?.username,
+                data?.settings?.smtp?.password,
+                data?.settings?.smtp?.from,
+                data?.settings?.smtp?.emailThemeColor,
+            ].join('|'),
+        [data, inheritedSettings, smtpAllowed, systemEmailsAllowed, tenantId],
     );
     const renderSwitchLabel = useCallback(
         (titleKey: string, descriptionKey?: string) => (
@@ -78,19 +172,15 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
     );
 
     return (
-        <div className={styles.smtpCardShell}>
-            <CardEditable
-                className={styles.smtpCard}
-                key={`smtp-${systemEmailsAllowed}-${smtpAllowed}`}
-                variant="dialog"
-                headerIcon={<EmailOutlinedIcon />}
-                isLoading={isLoading}
-                initialValues={initialValues}
-                titleKey="tenants.appSettings.smtp.title"
-                subTitleKey="tenants.appSettings.smtp.description"
-                onSave={(formData) => mutate(applyPlatformEmailRestrictions(formData))}
-            >
-                <div className={styles.fieldGrid}>
+        <CardEditable
+            key={formKey}
+            isLoading={isLoading}
+            initialValues={initialValues}
+            titleKey="tenants.appSettings.smtp.title"
+            onSave={(formData) => mutate(applyPlatformEmailRestrictions(formData))}
+        >
+            <Card className={styles.sectionCard} size="small" bordered>
+                <div className={styles.checkGroup}>
                     <FormSwitchField
                         className={styles.smtpSwitch}
                         label={renderSwitchLabel(
@@ -163,7 +253,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         switchVariant="m3"
                     />
                 </div>
-            </CardEditable>
-        </div>
+            </Card>
+        </CardEditable>
     );
 };

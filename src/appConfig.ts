@@ -28,6 +28,8 @@ export const consultingTypeEndpoint = `${mainURL}/service/consultingtypes`;
 export const counselorEndpoint = `${mainURL}/service/useradmin/consultants`;
 export const diocesesEndpoint = `${mainURL}/service/agencyadmin/dioceses`;
 export const agencyAdminEndpoint = `${mainURL}/service/useradmin/agencyadmins`;
+export const grantConsultantIdentityEndpoint = (adminId: string) =>
+    `${mainURL}/service/useradmin/admins/${adminId}/grant-consultant-identity`;
 export const loginEndpoint = keycloakAuthPath('/protocol/openid-connect/token');
 export const logoutEndpoint = keycloakAuthPath('/protocol/openid-connect/logout');
 export const tenantEndpoint = `${mainURL}/service/tenant/`;

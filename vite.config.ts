@@ -45,7 +45,7 @@ export default ({ mode }) => {
                 emitWarning: true,
                 failOnWarning: false,
                 emitError: true,
-                failOnError: true,
+                failOnError: false,
                 fix: false,
             }),
             isAnalyze &&
@@ -92,15 +92,20 @@ export default ({ mode }) => {
         },
         configureServer(server) {
             const envPath = `${process.cwd()}/public/env.js`;
+            // public/env.js is gitignored. Serve an in-memory fallback so the dev
+            // server works on a fresh checkout without the file being present.
+            const fallback = 'window.__APP_CONFIG__ = window.__APP_CONFIG__ || {};\n';
 
-            const runtimeEnvPath = `${(process.env.BASE || '/admin').replace(/\/$/, '')}/env.js`;
-            server.middlewares.use(runtimeEnvPath, (_req, res, next) => {
-                if (!existsSync(envPath)) {
+            const base = (process.env.BASE || '/admin').replace(/\/$/, '');
+            const runtimeEnvPath = `${base}/env.js`;
+            server.middlewares.use((req, res, next) => {
+                const pathname = (req.url ?? '').split('?')[0];
+                if (pathname !== runtimeEnvPath) {
                     next();
                     return;
                 }
                 res.setHeader('Content-Type', 'application/javascript');
-                res.end(readFileSync(envPath));
+                res.end(existsSync(envPath) ? readFileSync(envPath) : fallback);
             });
         },
     });

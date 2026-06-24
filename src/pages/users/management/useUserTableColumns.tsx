@@ -1,4 +1,5 @@
 import { HistoryOutlined } from '@ant-design/icons';
+import { Tag } from 'antd';
 import { ColumnProps } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +27,7 @@ const SORT_FIELD_BY_COLUMN: Partial<Record<UserTableColumnKey, string>> = {
     lastname: 'LASTNAME',
     firstname: 'FIRSTNAME',
     email: 'EMAIL',
+    username: 'USERNAME',
     tenantOrgName: 'NAME',
 };
 
@@ -210,6 +212,15 @@ export const useUserTableColumns = ({
                                 return username;
                             }
                         },
+                    };
+                case 'hasOtherIdentity':
+                    return {
+                        ...base,
+                        title: t('users.table.hasOtherIdentity'),
+                        render: (_: unknown, record: TableRow) =>
+                            (record as CounselorData).hasOtherIdentity ? (
+                                <Tag>{t('users.table.hasOtherIdentity.badge')}</Tag>
+                            ) : null,
                     };
                 case 'agency':
                     return {

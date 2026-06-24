@@ -19,6 +19,7 @@ export type UserTableColumnKey =
     | 'tenantOrgName'
     | 'tenantId'
     | 'maxConsultants'
+    | 'hasOtherIdentity'
     | 'actions';
 
 export interface UserTableColumnConfig {
@@ -57,7 +58,7 @@ const baseIdentityColumns = (): UserTableColumnConfig[] => [
     col('lastname', true, true, 130),
     col('firstname', true, true, 120),
     col('email', true, true, 150),
-    col('username', true, false, 150),
+    col('username', true, true, 150),
 ];
 
 const tenantAdminIdentityColumns = (): UserTableColumnConfig[] => [
@@ -115,6 +116,7 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         columns: [
             ...baseIdentityColumns(),
             col('agency', true, false, 250),
+            col('hasOtherIdentity', true, false, 160),
             col('tenant', true, false, 100),
             col('actions', true, false, 100),
         ],
@@ -133,6 +135,7 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         columns: [
             ...baseIdentityColumns(),
             col('agency', true, false, 250),
+            col('hasOtherIdentity', true, false, 160),
             col('tenant', true, false, 100),
             col('actions', true, false, 100),
         ],
@@ -151,6 +154,7 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         columns: [
             ...tenantAdminIdentityColumns(),
             col('subdomain', true, false, 200),
+            col('hasOtherIdentity', true, false, 160),
             col('tenant', true, false, 100),
             col('actions', true, false, 100),
         ],
