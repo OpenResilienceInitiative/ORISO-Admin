@@ -30,7 +30,9 @@
   ],
   "exclude": [
     "*.test",
-    "*.spec.js"
+    "*.spec.js",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
   ],
   "files": [
     "index.d.ts",

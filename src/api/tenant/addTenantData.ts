@@ -2,11 +2,14 @@ import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { tenantEndpoint } from '../../appConfig';
 
 /**
- * add new tenant
- * @param tenantData
- * @return data
+ * Build the stripped create payload from whole form data.
+ *
+ * Pure function (no side effects) so it can be unit-tested without a DOM /
+ * network. Includes the NEW optional top-level `address` and `description`
+ * fields and deliberately EXCLUDES the frontend-only `topic` field (the
+ * backend has no `topic` column).
  */
-const addTenantData = (tenantData: Record<string, any>) => {
+export const buildTenantCreatePayload = (tenantData: Record<string, any>) => {
     const {
         name,
         subdomain,
@@ -17,10 +20,12 @@ const addTenantData = (tenantData: Record<string, any>) => {
         consultingType,
         twoFactorAuth,
         videoFeature,
+        address,
+        description,
     } = tenantData;
 
     // just use needed data from whole form data
-    const strippedTenant = {
+    return {
         name,
         subdomain,
         createDate,
@@ -30,7 +35,18 @@ const addTenantData = (tenantData: Record<string, any>) => {
         consultingType,
         twoFactorAuth,
         videoFeature,
+        address,
+        description,
     };
+};
+
+/**
+ * add new tenant
+ * @param tenantData
+ * @return data
+ */
+const addTenantData = (tenantData: Record<string, any>) => {
+    const strippedTenant = buildTenantCreatePayload(tenantData);
 
     return fetchData({
         url: tenantEndpoint,

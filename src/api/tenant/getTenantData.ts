@@ -55,6 +55,9 @@ const getTenantData = (tenantData: TenantData, useMultiTenancyWithSingleDomain: 
                 privacy: checkNull(response.privacy),
                 termsAndConditions: checkNull(response.termsAndConditions),
                 secondaryColor: checkNull(response.secondaryColor),
+                // NEW optional shared API fields
+                address: checkNull(response.address),
+                description: checkNull(response.description),
             };
 
             // console.log('🔍 getTenantData: SUCCESS - Final result:', result);
