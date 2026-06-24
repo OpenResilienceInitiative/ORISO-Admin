@@ -2,7 +2,16 @@ import React from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from 'react-query';
 import { AgencyPageEdit } from './index';
+
+// Render AgencyPageEdit inside a QueryClientProvider so child components that use
+// react-query (e.g. RegistrationSettings → useConsultantsOrAdminsData) don't throw
+// "No QueryClient set". Retries are off so a missing queryFn never hangs the test.
+const renderWithClient = (ui: React.ReactElement) => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+};
 
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
@@ -126,6 +135,10 @@ vi.mock('../../../hooks/useTenantTopics', () => ({
     useTenantTopics: () => ({ data: [], isLoading: false }),
 }));
 
+vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
+    useConsultantsOrAdminsData: () => ({ data: { data: [] }, isLoading: false }),
+}));
+
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
     useUserRoles: () => ({
         hasRole: () => true,
@@ -168,7 +181,7 @@ describe('AgencyPageEdit create flow', () => {
     });
 
     it('renders the tenant assignment field for super-admin agency creation', async () => {
-        render(<AgencyPageEdit />);
+        renderWithClient(<AgencyPageEdit />);
 
         expect(await screen.findByText('Trägerzuordnung')).toBeInTheDocument();
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
@@ -176,7 +189,7 @@ describe('AgencyPageEdit create flow', () => {
 
     it('does not submit a new agency without a selected tenant', async () => {
         const user = userEvent.setup();
-        render(<AgencyPageEdit />);
+        renderWithClient(<AgencyPageEdit />);
 
         fireEvent.change(screen.getByPlaceholderText('Name'), { target: { value: 'Neue Beratungsstelle' } });
         fireEvent.change(screen.getByPlaceholderText('PLZ'), { target: { value: '86161' } });
