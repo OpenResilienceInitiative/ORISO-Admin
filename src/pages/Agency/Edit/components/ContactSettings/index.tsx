@@ -109,6 +109,8 @@ export const ContactSettings = ({ initialValues, onSave, type }: ContactSettings
                 allowUnsavedChanges
                 initialValues={initialValues}
                 titleKey="agency.edit.settings.legal.contact.title"
+                variant="dialog"
+                editButtonPlacement="footer"
                 onSave={onSave}
             >
                 {({ form }) => <ContactSettingsFields form={form} type={type} />}
@@ -117,7 +119,7 @@ export const ContactSettings = ({ initialValues, onSave, type }: ContactSettings
     }
 
     return (
-        <Card titleKey="agency.edit.settings.legal.contact.title">
+        <Card titleKey="agency.edit.settings.legal.contact.title" variant="dialog">
             <ContactSettingsFields type={type} />
         </Card>
     );

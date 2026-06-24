@@ -1,8 +1,21 @@
 .input {
 }
 
+.input :global(.ant-input-number) {
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    padding: 0 16px;
+}
+
+.input :global(.ant-input-number-input-wrap) {
+    display: flex;
+    width: 100%;
+    align-items: center;
+}
+
 .input :global(.ant-input-number-input) {
-    height: 54px;
+    height: 24px;
     padding: 0;
     color: var(--m3-on-surface);
     font-family: var(--m3-body-font-family);

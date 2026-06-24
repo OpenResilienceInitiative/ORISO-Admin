@@ -19,9 +19,11 @@ export const UsersList = () => {
     return (
         <Page>
             {isUsersHub ? (
-                <div className={styles.usersHubHeader}>
-                    <UserSectionPills />
-                </div>
+                <Page.Title>
+                    <div className={styles.usersHubHeader}>
+                        <UserSectionPills />
+                    </div>
+                </Page.Title>
             ) : (
                 <Page.Title titleKey="users.title" />
             )}

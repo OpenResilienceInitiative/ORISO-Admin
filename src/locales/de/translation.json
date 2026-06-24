@@ -994,5 +994,21 @@
     "twoFactorAuth.switch.type.EMAIL": "E-Mail",
     "twoFactorAuth.switch.type.label": "Ihr 2. Faktor",
     "twoFactorAuth.title": "Zwei-Faktor-Authentifizierung",
-    "users.allUsers": "Nutzer*innen"
+    "users.allUsers": "Nutzer*innen",
+    "agency.cardDeck.next": "Weitere Karte anzeigen",
+    "agency.cardDeck.previous": "Vorherige Karte anzeigen",
+    "agency.form.registrationSettings.assignmentWarning": "Damit die Beratungsstelle in der Registrierung sichtbar gestellt werden kann, wählen Sie mindestens eine:n vorher angelegte:n Berater:in aus.",
+    "agency.form.registrationSettings.consultants.label": "Berater:innen hinzufügen",
+    "agency.form.registrationSettings.consultants.placeholder": "Berater:innen auswählen",
+    "globalSettings.smtp.cardDeck.ariaLabel": "Globale SMTP-Einstellungen scrollen",
+    "globalSettings.smtp.cardDeck.next": "Weitere SMTP-Karte anzeigen",
+    "globalSettings.smtp.cardDeck.previous": "Vorherige SMTP-Karte anzeigen",
+    "legal.cardDeck.next": "Weitere Rechtskarte anzeigen",
+    "legal.cardDeck.previous": "Vorherige Rechtskarte anzeigen",
+    "message.agency.consultantAssignmentFailed": "Die Beratungsstelle wurde angelegt, aber nicht alle Berater:innen konnten zugeordnet werden.",
+    "permissions.cardDeck.next": "Weitere Berechtigungskarte anzeigen",
+    "permissions.cardDeck.previous": "Vorherige Berechtigungskarte anzeigen",
+    "tenant.settings.cardDeck.ariaLabel": "Einstellungen scrollen",
+    "tenant.settings.cardDeck.next": "Weitere Einstellungen anzeigen",
+    "tenant.settings.cardDeck.previous": "Vorherige Einstellungen anzeigen"
 }

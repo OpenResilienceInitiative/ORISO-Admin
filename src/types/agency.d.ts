@@ -25,6 +25,8 @@ export interface AgencyData {
     counsellingRelations: CounsellingRelation[];
     topics: TopicData[];
     topicIds: Array<{ value: string; label: string }> | string[];
+    consultantIds?: Array<{ value: string; label: string }> | string[];
+    consultantAssignmentFailed?: boolean;
     demographics?: AgencyDemographicsData;
     description: string;
     offline: boolean;

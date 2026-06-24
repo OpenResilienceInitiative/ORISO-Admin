@@ -13,6 +13,8 @@ interface CardProps {
     className?: string;
     isLoading?: boolean;
     fullHeight?: boolean;
+    autoHeight?: boolean;
+    dialogContentPadding?: boolean;
     variant?: CardVariant;
     headerIcon?: React.ReactChild;
     titleKey: string;
@@ -31,6 +33,8 @@ export const Card = ({
     subTitle,
     subTitleKey,
     fullHeight,
+    autoHeight,
+    dialogContentPadding,
     tooltip,
     cardTitleChildren,
     cardTitleClassName,
@@ -46,6 +50,7 @@ export const Card = ({
             className={classNames(styles.card, className, {
                 [styles.fullHeight]: fullHeight,
                 [styles.dialogCard]: isDialog,
+                [styles.dialogAutoHeight]: isDialog && autoHeight,
             })}
             contentClassName={classNames(styles.contentClassName, { [styles.dialogContentClassName]: isDialog })}
         >
@@ -78,6 +83,7 @@ export const Card = ({
                 className={classNames(styles.container, {
                     [styles.isLoading]: isLoading,
                     [styles.dialogContainer]: isDialog,
+                    [styles.dialogContentPadding]: isDialog && dialogContentPadding,
                 })}
             >
                 {isLoading && <Spin />}

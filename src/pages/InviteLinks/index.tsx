@@ -1,4 +1,4 @@
-import { Button, Form, InputNumber, message, Select, Space, Table, Tag } from 'antd';
+import { Button, Form, InputNumber, message, Select, Space, Tag } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AgencyInviteLinkDTO, createInviteLink, listInviteLinks } from '../../api/invitelinks/invitelinks';
@@ -9,6 +9,7 @@ import { useAgenciesData } from '../../hooks/useAgencysData';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import { appURL } from '../../appConfig';
+import { ListingTable } from '../../components/ListingTable';
 
 interface TenantOption {
     id: number;
@@ -189,7 +190,7 @@ export const InviteLinksPage = () => {
                     </Button>
                 </Form.Item>
             </Form>
-            <Table
+            <ListingTable
                 rowKey="id"
                 loading={loadingLinks}
                 dataSource={links}

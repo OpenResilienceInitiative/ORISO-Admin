@@ -33,31 +33,33 @@ export const LinksPage = () => {
 
     return (
         <Page>
-            <div className={styles.pageHeader}>
-                <div className={pageStyles.tabsContainer}>
-                    {LINK_TABS.map((tab) =>
-                        tab.disabled ? (
-                            <span
-                                className={classNames(pageStyles.tab, styles.tabDisabled)}
-                                key={tab.titleKey}
-                                aria-disabled="true"
-                            >
-                                <TabStarIcon className={pageStyles.tabStar} width={20} height={20} />
-                                <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
-                            </span>
-                        ) : (
-                            <NavLink className={pageStyles.tab} to={tab.to} key={tab.titleKey}>
-                                <TabStarIcon className={pageStyles.tabStar} width={20} height={20} />
-                                <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
-                            </NavLink>
-                        ),
-                    )}
+            <Page.Title>
+                <div className={styles.pageHeader}>
+                    <div className={pageStyles.tabsContainer}>
+                        {LINK_TABS.map((tab) =>
+                            tab.disabled ? (
+                                <span
+                                    className={classNames(pageStyles.tab, styles.tabDisabled)}
+                                    key={tab.titleKey}
+                                    aria-disabled="true"
+                                >
+                                    <TabStarIcon className={pageStyles.tabStar} width={20} height={20} />
+                                    <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
+                                </span>
+                            ) : (
+                                <NavLink className={pageStyles.tab} to={tab.to} key={tab.titleKey}>
+                                    <TabStarIcon className={pageStyles.tabStar} width={20} height={20} />
+                                    <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
+                                </NavLink>
+                            ),
+                        )}
+                    </div>
+                    <NavLink to={routePathNames.userProfile} className={styles.myAccessButton}>
+                        <PersonOutline />
+                        <span>{t('links.myAccess', 'Mein Zugang')}</span>
+                    </NavLink>
                 </div>
-                <NavLink to={routePathNames.userProfile} className={styles.myAccessButton}>
-                    <PersonOutline />
-                    <span>{t('links.myAccess', 'Mein Zugang')}</span>
-                </NavLink>
-            </div>
+            </Page.Title>
             <Outlet />
         </Page>
     );

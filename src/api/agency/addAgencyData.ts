@@ -4,6 +4,7 @@ import { withLegacyDioceseId } from '../legacyCaritasApiDefaults';
 import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
 import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
+import { assignAgencyToConsultants } from './assignAgencyToConsultants';
 
 function buildAgencyDataRequestBody(
     consultingTypeResponseId: string | number,
@@ -96,6 +97,17 @@ async function addAgencyData(agencyData: Record<string, any>) {
     // eslint-disable-next-line no-underscore-dangle
     const agencyResponseData = agencyCreationResponse._embedded;
     await updateAgencyPostCodeRange(agencyResponseData.id, agencyData.postCodes || [], 'POST');
+
+    if (agencyData.consultantIds?.length > 0) {
+        try {
+            await assignAgencyToConsultants(agencyResponseData.id, agencyData.consultantIds);
+        } catch {
+            return {
+                ...agencyResponseData,
+                consultantAssignmentFailed: true,
+            };
+        }
+    }
 
     return agencyResponseData;
 }

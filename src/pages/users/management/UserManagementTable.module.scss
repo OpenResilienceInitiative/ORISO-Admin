@@ -122,8 +122,7 @@
 .tableContainer {
     width: 100%;
     min-width: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: visible;
 
     :global {
         .ant-table-container,
@@ -248,6 +247,8 @@
     }
 
     .tableContainer {
+        overflow: visible;
+
         :global {
             .ant-table-cell-fix-right,
             .ant-table-cell-fix-left {

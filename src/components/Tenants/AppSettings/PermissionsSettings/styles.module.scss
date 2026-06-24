@@ -34,73 +34,14 @@
     position: relative;
     width: 100%;
     font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
-    padding-bottom: 149px;
 }
 
 .cardGrid {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 48px;
-    overflow-x: auto;
-    scroll-behavior: smooth;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    padding: 8px 0 18px;
-    width: 100%;
-
-    &::-webkit-scrollbar {
-        display: none;
-    }
-
-    .chatTypeCard {
-        flex: 0 0 clamp(370px, 28vw, 400px);
-        scroll-snap-align: start;
-    }
-}
-
-.carouselArrow {
-    display: inline-flex;
-    position: absolute;
-    bottom: 0;
-    width: 128px;
-    height: 96px;
-    border-radius: 100px;
-    background: #4c555f;
-    border: 0;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 2;
-    color: #e7effc;
-    transition: background-color 180ms ease, opacity 180ms ease;
-
-    &:disabled {
-        background: #d9d9d9;
-        cursor: not-allowed;
-    }
-}
-
-.carouselArrowLeft {
-    left: 80px;
-
-    .carouselArrowIcon {
-        transform: rotate(180deg);
-    }
-}
-
-.carouselArrowRight {
-    right: 80px;
-}
-
-.carouselArrowIcon {
-    width: 32px;
-    height: 32px;
-    display: block;
-
-    path {
-        fill: currentColor;
-    }
+    --card-deck-gap: 48px;
+    --card-deck-padding: 8px 0 18px;
+    --card-deck-item-width: clamp(370px, 28vw, 400px);
+    --card-deck-footer-margin-top: 35px;
+    --card-deck-footer-padding: 0 80px;
 }
 
 .chatTypeCard {
@@ -263,23 +204,17 @@
     flex: 0 0 auto;
 }
 
+.chatTypeCardSlot {
+    display: flex;
+}
+
 @media screen and (max-width: 767px) {
-    .cardGridOuter {
-        padding-bottom: 0;
-    }
-
     .cardGrid {
-        flex-direction: column;
-        overflow-x: visible;
-        gap: 24px;
-
-        .chatTypeCard {
-            flex-basis: auto;
-            width: 100%;
-        }
-    }
-
-    .carouselArrow {
-        display: none;
+        --card-deck-gap: 24px;
+        --card-deck-item-max-width: calc(100vw - 144px);
+        --card-deck-footer-padding: 0 8px;
+        --card-deck-footer-margin-top: 28px;
+        --side-scroller-button-width: 88px;
+        --side-scroller-button-height: 56px;
     }
 }

@@ -15,7 +15,7 @@ export const DataProcessingAgreement = () => {
     const isActive = settings?.legalContentChangesBySingleTenantAdminsAllowed;
 
     return (
-        <Card titleKey="tenants.legal.dataProcessingAgreement.title" className={styles.card}>
+        <Card titleKey="tenants.legal.dataProcessingAgreement.title" className={styles.card} variant="dialog">
             <p className={styles.description}>{t('tenants.legal.dataProcessingAgreement.description')}</p>
             <p className={styles.status}>
                 {t(

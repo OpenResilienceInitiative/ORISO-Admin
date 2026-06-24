@@ -1,0 +1,59 @@
+.root {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.deck {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: stretch;
+    gap: var(--card-deck-gap, 24px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: var(--card-deck-padding, 0 4px 8px);
+    scroll-behavior: smooth;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.item {
+    display: flex;
+    flex: 0 0 min(var(--card-deck-item-width, 392px), var(--card-deck-item-max-width, calc(100vw - 176px)));
+    min-width: 0;
+    scroll-snap-align: start;
+
+    > * {
+        width: 100%;
+    }
+}
+
+.footer {
+    margin-top: var(--card-deck-footer-margin-top, 40px);
+    padding: var(--card-deck-footer-padding, 0 24px);
+}
+
+@media (max-width: 450px) {
+    .deck {
+        flex-direction: column;
+        gap: var(--card-deck-mobile-gap, 24px);
+        overflow: visible;
+        padding: var(--card-deck-mobile-padding, 0);
+        scroll-snap-type: none;
+    }
+
+    .item {
+        width: 100%;
+        flex-basis: auto;
+    }
+
+    .footer {
+        display: none;
+    }
+}

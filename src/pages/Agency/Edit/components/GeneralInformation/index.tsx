@@ -21,7 +21,7 @@ export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationP
             />
 
             <Row gutter={[20, 10]}>
-                <Col xs={4} lg={4}>
+                <Col xs={12} sm={4}>
                     <FormInputField
                         name="postcode"
                         labelKey="agency.edit.general.address.postcode"
@@ -31,7 +31,7 @@ export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationP
                         rules={[{ min: 5, required: true, message: t('agency.postcode.minimum') }]}
                     />
                 </Col>
-                <Col xs={8} lg={8}>
+                <Col xs={12} sm={8}>
                     <FormInputField
                         name="city"
                         labelKey="agency.edit.general.address.city"
@@ -54,5 +54,9 @@ export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationP
         return fields;
     }
 
-    return <Card titleKey="agency.edit.general.general_information">{fields}</Card>;
+    return (
+        <Card autoHeight dialogContentPadding titleKey="agency.edit.general.general_information" variant="dialog">
+            {fields}
+        </Card>
+    );
 };

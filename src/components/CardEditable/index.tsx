@@ -33,6 +33,7 @@ interface CardEditableProps {
     editMode?: boolean;
     hideSaveButton?: boolean;
     hideCancelButton?: boolean;
+    onEdit?: () => void;
     tooltip?: string;
     allowUnsavedChanges?: boolean;
     editButton?: React.ReactChild;
@@ -56,6 +57,7 @@ export const CardEditable = ({
     editMode,
     hideSaveButton,
     hideCancelButton,
+    onEdit,
     onSave,
     formProp,
     tooltip,
@@ -96,6 +98,14 @@ export const CardEditable = ({
     const footerActionClassName = classNames(styles.footerActions, {
         [styles.dialogFooterActions]: variant === 'dialog',
     });
+    const startEditing = useCallback(() => {
+        if (onEdit) {
+            onEdit();
+            return;
+        }
+
+        setEditing(true);
+    }, [onEdit]);
 
     return (
         <Card
@@ -111,7 +121,7 @@ export const CardEditable = ({
             cardTitleChildren={
                 canStartEditing &&
                 finalEditButtonPlacement === 'header' && (
-                    <EditButton showLabel={false} icon={editButton} onClick={() => setEditing(true)} />
+                    <EditButton showLabel={false} icon={editButton} onClick={startEditing} />
                 )
             }
         >
@@ -128,14 +138,12 @@ export const CardEditable = ({
                 initialValues={initialValues}
                 className={classNames({ [styles.dialogForm]: variant === 'dialog' })}
             >
-                {typeof children === 'function'
-                    ? children({ form, editing, startEditing: () => setEditing(true) })
-                    : children}
+                {typeof children === 'function' ? children({ form, editing, startEditing }) : children}
             </Form>
 
             {canStartEditing && finalEditButtonPlacement === 'footer' && (
                 <div className={footerActionClassName}>
-                    <EditButton icon={editButton} labelKey={editLabelKey} onClick={() => setEditing(true)} />
+                    <EditButton icon={editButton} labelKey={editLabelKey} onClick={startEditing} />
                 </div>
             )}
             {editing && (!hideSaveButton || !hideCancelButton) && (
