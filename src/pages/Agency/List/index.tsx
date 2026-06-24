@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Grid, Tag } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { DownOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
 import { ColumnProps } from 'antd/lib/table';
+import classNames from 'classnames';
 import { useNavigate } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
 import EditButtons from '../../../components/EditableTable/EditButtons';
@@ -34,6 +35,7 @@ export const AgencyList = () => {
         order: undefined,
         pageSize: 10,
     });
+    const [expandedTopicRows, setExpandedTopicRows] = useState<string[]>([]);
     const { data, isLoading, refetch } = useAgenciesData({ ...tableState });
     const { can } = useUserPermissions();
     const { isSuperAdmin } = useUserRoles();
@@ -51,11 +53,24 @@ export const AgencyList = () => {
     }, []);
 
     const setSearchDebounced = useDebouncedCallback((search?: string) => {
+        setExpandedTopicRows([]);
         setTableState((tmpData) => ({ ...tmpData, current: 1, search }));
     }, 100);
     const tenantNameById = new Map(
         (tenantsData?.data || []).map((tenant) => [Number(tenant.id), String(tenant.name || '')]),
     );
+
+    const isTopicRowExpanded = useCallback(
+        (record: AgencyData) => expandedTopicRows.includes(String(record.id)),
+        [expandedTopicRows],
+    );
+
+    const toggleTopicRow = useCallback((record: AgencyData) => {
+        const rowId = String(record.id);
+        setExpandedTopicRows((current) =>
+            current.includes(rowId) ? current.filter((id) => id !== rowId) : [...current, rowId],
+        );
+    }, []);
 
     const columnsData = [
         {
@@ -151,29 +166,35 @@ export const AgencyList = () => {
                       title: t('topics.title'),
                       dataIndex: 'topics',
                       key: 'topics',
-                      width: 100,
-                      ellipsis: true,
-                      render: (topics: TopicData[]) => {
+                      width: 300,
+                      ellipsis: false,
+                      render: (topics: TopicData[], record: AgencyData) => {
                           if (topics) {
-                              const visibleTopics = [...topics];
+                              const visibleTopics = [...topics].filter(Boolean);
+                              const isExpanded = isTopicRowExpanded(record);
 
                               if (isTopicsFeatureActive && visibleTopics.length === 0) {
                                   return (
-                                      <div className="TopicList__agencies" style={{ color: 'red' }}>
+                                      <div className={classNames('TopicList__agencies', styles.topicsEmpty)}>
                                           {t('agency.noTopics')}
                                       </div>
                                   );
                               }
 
-                              return visibleTopics.map((topicItem) => {
-                                  return topicItem ? (
-                                      <div key={topicItem.id} className="TopicList__agencies">
-                                          <span>{topicItem.name}</span>
-                                      </div>
-                                  ) : (
-                                      ''
-                                  );
-                              });
+                              return (
+                                  <div
+                                      className={classNames('TopicList__agencies', styles.topicsList, {
+                                          [styles.topicsListExpanded]: isExpanded,
+                                      })}
+                                      aria-expanded={isExpanded}
+                                  >
+                                      {visibleTopics.map((topicItem) => (
+                                          <span key={topicItem.id} className={styles.topicChip}>
+                                              {topicItem.name}
+                                          </span>
+                                      ))}
+                                  </div>
+                              );
                           }
 
                           return null;
@@ -210,12 +231,31 @@ export const AgencyList = () => {
             className: 'agencyList__column',
         },
         {
-            width: 80,
+            width: 140,
             title: '',
             key: 'edit',
             render: (_: any, record: AgencyData) => {
+                const hasTopics = Array.isArray(record.topics) && record.topics.filter(Boolean).length > 0;
+                const topicsExpanded = isTopicRowExpanded(record);
+
                 return (
-                    <div className="tableActionWrapper">
+                    <div className={classNames('tableActionWrapper', styles.agencyActionWrapper)}>
+                        {can(PermissionAction.Read, Resource.Topic) && hasTopics && (
+                            <button
+                                className={classNames(styles.topicToggleButton, {
+                                    [styles.topicToggleButtonExpanded]: topicsExpanded,
+                                })}
+                                type="button"
+                                aria-label={topicsExpanded ? t('agency.topics.collapse') : t('agency.topics.expand')}
+                                aria-expanded={topicsExpanded}
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    toggleTopicRow(record);
+                                }}
+                            >
+                                {topicsExpanded ? <UpOutlined /> : <DownOutlined />}
+                            </button>
+                        )}
                         <EditButtons
                             isDisabled={record.status === 'IN_DELETION'}
                             handleEdit={() => {
@@ -235,6 +275,7 @@ export const AgencyList = () => {
 
     const tableChangeHandler = (pagination: any, filters: any, sorter: any) => {
         const { current, pageSize } = pagination;
+        setExpandedTopicRows([]);
         // ID and createDate columns use frontend sorting, so skip backend sort for them
         if (sorter.field && sorter.field.toLowerCase() !== 'id' && sorter.field.toLowerCase() !== 'createdate') {
             const sortBy = sorter.field.toUpperCase();
