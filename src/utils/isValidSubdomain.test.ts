@@ -1,56 +1,38 @@
-/* eslint-disable no-console */
-/**
- * Pure-logic test for isValidSubdomain.
- *
- * NOTE: this repo has no jest and Cypress e2e cannot run bare. This file is a
- * self-contained, runnable assertion harness:
- *     npx ts-node --transpile-only --compiler-options '{"module":"commonjs"}' src/utils/isValidSubdomain.test.ts
- * It does NOT run in CI (CI only does `CI=false npm run build`).
- */
+import { describe, it, expect } from 'vitest';
 import { isValidSubdomain, SUBDOMAIN_PATTERN } from './isValidSubdomain';
 
-let failures = 0;
-const assert = (label: string, actual: unknown, expected: unknown) => {
-    const ok = actual === expected;
-    if (!ok) {
-        failures += 1;
-        console.error(`  FAIL: ${label} -> got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`);
-    } else {
-        console.log(`  ok: ${label}`);
-    }
-};
+describe('isValidSubdomain', () => {
+    it.each(['caritas', 'caritas-online', 'a', 'tenant1', 'a1b2-c3', '123', 'x-y-z'])(
+        'accepts valid subdomain "%s"',
+        (value) => {
+            expect(isValidSubdomain(value)).toBe(true);
+        },
+    );
 
-console.log('isValidSubdomain');
+    // emptiness is handled by the separate `required` rule, so it counts as valid here
+    it.each([
+        ['empty string', ''],
+        ['undefined', undefined],
+        ['null', null],
+    ])('treats %s as valid', (_label, value) => {
+        expect(isValidSubdomain(value as string | null | undefined)).toBe(true);
+    });
 
-// valid cases
-['caritas', 'caritas-online', 'a', 'tenant1', 'a1b2-c3', '123', 'x-y-z'].forEach((v) =>
-    assert(`valid "${v}"`, isValidSubdomain(v), true),
-);
+    it.each([
+        ['uppercase', 'Caritas'],
+        ['leading hyphen', '-caritas'],
+        ['trailing hyphen', 'caritas-'],
+        ['space', 'cari tas'],
+        ['underscore', 'cari_tas'],
+        ['dot', 'cari.tas'],
+        ['non-ascii', 'cäritas'],
+        ['accent', 'café'],
+    ])('rejects invalid subdomain (%s)', (_label, value) => {
+        expect(isValidSubdomain(value)).toBe(false);
+    });
 
-// empty/nullish are considered "valid" here (required is a separate rule)
-assert('empty string', isValidSubdomain(''), true);
-assert('undefined', isValidSubdomain(undefined), true);
-assert('null', isValidSubdomain(null), true);
-
-// invalid cases
-[
-    'Caritas', // uppercase
-    '-caritas', // leading hyphen
-    'caritas-', // trailing hyphen
-    'cari tas', // space
-    'cari_tas', // underscore
-    'cari.tas', // dot
-    'cäritas', // non-ascii
-    'café', // accent
-].forEach((v) => assert(`invalid "${v}"`, isValidSubdomain(v), false));
-
-// the exported pattern is the same one used by the form rule
-assert('pattern matches valid', SUBDOMAIN_PATTERN.test('caritas-online'), true);
-assert('pattern rejects invalid', SUBDOMAIN_PATTERN.test('-bad-'), false);
-
-if (failures > 0) {
-    console.error(`\nisValidSubdomain: ${failures} assertion(s) FAILED`);
-    process.exit(1);
-} else {
-    console.log('\nisValidSubdomain: ALL PASSED');
-}
+    it('exports the same pattern the form rule uses', () => {
+        expect(SUBDOMAIN_PATTERN.test('caritas-online')).toBe(true);
+        expect(SUBDOMAIN_PATTERN.test('-bad-')).toBe(false);
+    });
+});
