@@ -1,5 +1,6 @@
 import { PermissionToggleVisibility } from '../../../../types/PermissionToggleVisibility';
 import { TenantAdminControls } from '../../../../types/TenantAdminControls';
+import type { TenantSettings } from '../../../../types/tenant';
 import type { ChatTypeCardDef } from './types';
 
 export const DEFAULT_PERMISSION_SETTINGS = {
@@ -124,12 +125,12 @@ export const getForcedOffFields = (toggles?: PermissionToggleVisibility) => {
 };
 
 export const applyForcedOffFields = (
-    settings: Record<string, unknown> | undefined,
+    settings: TenantSettings | Record<string, unknown> | undefined,
     forcedOffFields: Set<string>,
 ) => {
     if (forcedOffFields.size === 0) return settings;
 
-    const nextSettings = { ...(settings ?? {}) };
+    const nextSettings = { ...(settings ?? {}) } as Record<string, unknown>;
     forcedOffFields.forEach((field) => {
         nextSettings[field] = false;
     });
@@ -160,16 +161,17 @@ export const applyVisibleTogglesAsValues = (visibleToggles?: PermissionToggleVis
 };
 
 export const syncMasterTogglesToTenantAdminControls = (formData: { settings?: Record<string, unknown> }) => {
-    const next = { ...formData, settings: { ...(formData?.settings ?? {}) } };
-    const { settings } = next;
-    const isEnabled = (key: string) => settings?.[key] !== false;
+    const settings: Record<string, unknown> = { ...(formData?.settings ?? {}) };
+    const next = { ...formData, settings };
+    const isEnabled = (key: string) => settings[key] !== false;
     const anonymousEnabled = isEnabled('featureAnonymousChatEnabled');
     const groupEnabled = isEnabled('featureGroupChatV2Enabled');
     const oneOnOneEnabled = isEnabled('featureCallsEnabled');
     const supervisionEnabled = isEnabled('featureSupervisionEnabled');
+    const existingTenantAdminControls = (settings.tenantAdminControls as Record<string, unknown> | undefined) ?? {};
 
     settings.tenantAdminControls = {
-        ...(settings.tenantAdminControls ?? {}),
+        ...existingTenantAdminControls,
         allowedPermissionToggles: {
             anonymousChat: anonymousEnabled,
             groupChat: groupEnabled,
