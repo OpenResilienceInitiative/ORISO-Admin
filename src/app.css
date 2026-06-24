@@ -99,19 +99,20 @@
     --m3-surface-container: #f0edee;
     --m3-surface-container-high: #eae7e8;
     --m3-surface-container-highest: #e4e2e2;
-    /* M3 secondary/tertiary container roles (OrisoScheme, seed #A5000A) */
+    /* M3 container/fixed roles (OrisoScheme, seed #A5000A), aligned with ORISO-Frontend tokens */
     --m3-secondary-container: #e8ebee;
-    --m3-on-secondary-container: #39424b;
+    --m3-on-secondary-container: #e7effc;
+    --m3-primary-fixed: #ffdad5;
     --m3-tertiary-container: #ffdad6;
     --m3-on-tertiary-container: #410005;
 
     /*
      * Lottie recolor roles. The login stage has a dark (#1f1f1f) background, so
-     * the animation is recolored to the bright "container" tones: figures use
-     * the light secondary container, accents use the light tertiary container.
+     * the animation is recolored to bright tones: figures use on-secondary-
+     * container (light blue), accents use primary-fixed (coral).
      */
-    --oriso-lottie-secondary-color: var(--m3-secondary-container, #e8ebee);
-    --oriso-lottie-accent-color: var(--m3-tertiary-container, #ffdad6);
+    --oriso-lottie-secondary-color: var(--m3-on-secondary-container, #e7effc);
+    --oriso-lottie-accent-color: var(--m3-primary-fixed, #ffdad5);
 
     /* YELLOW THEME */
     --yellow-1: #ffeed2;

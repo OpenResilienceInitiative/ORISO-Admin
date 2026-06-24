@@ -4,8 +4,9 @@ import Lottie, { LottieRefCurrentProps } from 'lottie-react';
 import { recolorLottieAccent } from './lottieColorUtils';
 
 // Fallbacks used when the CSS variables cannot be resolved (e.g. SSR / tests).
-const DEFAULT_ACCENT_COLOR = '#ffb4aa';
-const DEFAULT_SECONDARY_COLOR = '#e8ebee';
+// Match the --oriso-lottie-* roles: accent = primary-fixed, figures = on-secondary-container.
+const DEFAULT_ACCENT_COLOR = '#ffdad5';
+const DEFAULT_SECONDARY_COLOR = '#e7effc';
 
 const readCssColor = (cssVariableName: string, fallbackColor: string) => {
     if (typeof window === 'undefined') {
