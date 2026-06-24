@@ -64,6 +64,21 @@ describe('applyAdminInvertedTheme', () => {
         warn.mockRestore();
     });
 
+    it('clears previously applied admin tokens when a later seed is invalid', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const root = document.createElement('div');
+
+        applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED }, root);
+        expect(root.style.getPropertyValue('--m3-surface')).not.toBe('');
+
+        const applied = applyAdminInvertedTheme({ primaryColor: 'not-a-hex' }, root);
+
+        expect(applied).toBe(false);
+        expect(root.style.getPropertyValue('--m3-surface')).toBe('');
+        expect(root.style.getPropertyValue('--m3-primary')).toBe('');
+        warn.mockRestore();
+    });
+
     it.each([
         ['--m3-on-surface', '--m3-surface'],
         ['--m3-on-surface', '--m3-surface-container-lowest'],
