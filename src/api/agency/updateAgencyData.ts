@@ -1,5 +1,6 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData, FETCH_SUCCESS } from '../fetchData';
 import { agencyEndpointBase } from '../../appConfig';
+import { withLegacyDioceseId } from '../legacyCaritasApiDefaults';
 import { AgencyData } from '../../types/agency';
 import updateAgencyType from './updateAgencyType';
 import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant';
@@ -28,8 +29,7 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         ?.map((topic) => (typeof topic === 'string' ? topic : topic?.id))
         .filter((id) => !Number.isNaN(Number(id)));
 
-    const agencyDataRequestBody = {
-        dioceseId: formInput.dioceseId ? parseInt(formInput.dioceseId, 10) : 0,
+    const agencyDataRequestBody = withLegacyDioceseId({
         name: formInput.name,
         description: formInput.description,
         topicIds,
@@ -44,7 +44,7 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         dataProtection: formInput.dataProtection,
         content: formInput.content,
         agencyLogo: formInput.agencyLogo,
-    };
+    });
 
     return fetchData({
         url: `${agencyEndpointBase}/${agencyModel.id}`,

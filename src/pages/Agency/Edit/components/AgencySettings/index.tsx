@@ -9,8 +9,6 @@ import { Option, SelectFormField } from '../../../../../components/SelectFormFie
 import { Card } from '../../../../../components/Card';
 import { SliderFormField } from '../../../../../components/SliderFormField';
 import { useTenantTopics } from '../../../../../hooks/useTenantTopics';
-import { getDiocesesData } from '../../../../../api/agency/getDiocesesData';
-import getConsultingTypes from '../../../../../api/consultingtype/getConsultingTypes';
 import styles from './styles.module.scss';
 import { CounsellingRelation } from '../../../../../enums/CounsellingRelation';
 import { ReleaseToggle } from '../../../../../enums/ReleaseToggle';
@@ -30,9 +28,6 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
     const genders = Form.useWatch<Option[]>(['demographics', 'genders']) || [];
     const counsellingRelations = Form.useWatch<Option[]>('counsellingRelations') || [];
 
-    const [diocesesData, setDiocesesData] = useState([]);
-    const [consultingTypes, setConsultingTypes] = useState([]);
-
     const { isEnabled } = useFeatureContext();
     const { isSuperAdmin } = useUserRoles();
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
@@ -45,31 +40,14 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
     );
 
     useEffect(() => {
-        // Load dioceses and consulting types only if feature flag enabled
-        if (isEnabled(FeatureFlag.ConsultingTypesForAgencies)) {
-            getConsultingTypes()
-                .then((cTypes) => setConsultingTypes(cTypes))
-                .catch((error) => {
-                    // console.error('Failed to load consulting types:', error);
-                    setConsultingTypes([]);
-                });
-            getDiocesesData()
-                .then((dioceses) => setDiocesesData(dioceses))
-                .catch((error) => {
-                    // console.error('Failed to load dioceses:', error);
-                    setDiocesesData([]);
-                });
-        }
-
         if (isSuperAdmin) {
             searchTenantData({ perPage: 1000 })
                 .then(({ data }) => setTenantsData(data))
-                .catch((error) => {
-                    // console.error('Failed to load tenants:', error);
+                .catch(() => {
                     setTenantsData([]);
                 });
         }
-    }, [isSuperAdmin, isEnabled]);
+    }, [isSuperAdmin]);
 
     const fields = (
         <>
@@ -84,7 +62,6 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
                 />
             )}
 
-            {/* Topics - ALWAYS VISIBLE (no feature flag) */}
             {topics?.length > 0 && (
                 <SelectFormField
                     label="topics.title"
@@ -97,30 +74,6 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
                 />
             )}
 
-            {/* Diocese - HIDDEN (feature flag required) */}
-            {isEnabled(FeatureFlag.ConsultingTypesForAgencies) && (
-                <SelectFormField
-                    label="agency.edit.general.more_settings.diocese.title"
-                    name="dioceseId"
-                    placeholder="plsSelect"
-                    options={convertToOptions(diocesesData, ['id', 'name'], 'id')}
-                />
-            )}
-
-            {/* Consulting Type - HIDDEN (feature flag required) */}
-            {isEnabled(FeatureFlag.ConsultingTypesForAgencies) && (
-                <SelectFormField
-                    label="agency"
-                    name="consultingType"
-                    placeholder="plsSelect"
-                    options={consultingTypes.map((ct) => ({
-                        value: String(ct.id || ''),
-                        label: String(ct.titles?.default || ct.id || 'Unknown'),
-                    }))}
-                />
-            )}
-
-            {/* Demographics - HIDDEN (feature flag required) */}
             {isEnabled(FeatureFlag.Demographics) && (
                 <>
                     <SliderFormField
@@ -145,7 +98,6 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
                 </>
             )}
 
-            {/* Counselling Relations - HIDDEN (release toggle required) */}
             {isReleaseToggleEnabled(ReleaseToggle.COUNSELLING_RELATIONS) && (
                 <SelectFormField
                     required

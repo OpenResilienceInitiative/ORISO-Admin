@@ -1,7 +1,7 @@
 import { Alert, Divider, Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Card } from '../../../../../components/Card';
 import { FormRadioGroupField } from '../../../../../components/FormRadioGroupField';
 import { SelectFormField } from '../../../../../components/SelectFormField';
@@ -11,17 +11,13 @@ import { useAgencyHasConsultants } from '../../../../../hooks/useAgencyHasConsul
 import { useConsultantsOrAdminsData } from '../../../../../hooks/useConsultantsOrAdminsData';
 import { PostCodeRanges } from './PostCodeRanges';
 import styles from './styles.module.scss';
-import getConsultingTypes from '../../../../../api/consultingtype/getConsultingTypes';
-import { useFeatureContext } from '../../../../../context/FeatureContext';
-import { FeatureFlag } from '../../../../../enums/FeatureFlag';
 import { convertToOptions } from '../../../../../utils/convertToOptions';
 
 interface RegistrationSettingsProps {
-    consultingTypeId?: string;
     asFields?: boolean;
 }
 
-export const RegistrationSettings = ({ consultingTypeId, asFields }: RegistrationSettingsProps) => {
+export const RegistrationSettings = ({ asFields }: RegistrationSettingsProps) => {
     const { t } = useTranslation();
     const { id } = useParams();
     const form = Form.useFormInstance();
@@ -36,8 +32,6 @@ export const RegistrationSettings = ({ consultingTypeId, asFields }: Registratio
         pageSize: 1000,
         enabled: showConsultantAssignment,
     });
-    const [showAutoselectPostcodeWarning, setShowAutoselectPostcodeWarning] = useState(false);
-    const { isEnabled } = useFeatureContext();
     const consultantOptions = useMemo(() => {
         const activeConsultants = (consultants?.data || []).filter(
             ({ deleteDate }) => deleteDate === undefined || deleteDate === 'null',
@@ -46,24 +40,6 @@ export const RegistrationSettings = ({ consultingTypeId, asFields }: Registratio
         return convertToOptions(activeConsultants, ['firstname', 'lastname', 'email'], 'id');
     }, [consultants?.data]);
     const needsConsultantAssignment = id === 'add' ? !hasSelectedConsultants : !hasConsultants;
-
-    useEffect(() => {
-        if (!consultingTypeId || !isEnabled(FeatureFlag.ConsultingTypesForAgencies)) {
-            setShowAutoselectPostcodeWarning(false);
-            return;
-        }
-
-        getConsultingTypes()
-            .then((cTypes) => {
-                const consultingType = cTypes.find((cType) => cType.id === consultingTypeId);
-                setShowAutoselectPostcodeWarning(consultingType?.registration.autoSelectPostcode);
-            })
-            .catch(() => {
-                // console.error('Failed to fetch consulting types:', error);
-                // Don't show warning if consulting types can't be fetched
-                setShowAutoselectPostcodeWarning(false);
-            });
-    }, [consultingTypeId, isEnabled]);
 
     useEffect(() => {
         if (id === 'add' && !hasSelectedConsultants) {
@@ -105,14 +81,6 @@ export const RegistrationSettings = ({ consultingTypeId, asFields }: Registratio
                 disabled={needsConsultantAssignment}
             />
             <Divider />
-
-            {showAutoselectPostcodeWarning && (
-                <Alert
-                    className={styles.warning}
-                    type="warning"
-                    description={t('agency.form.registrationSettings.autoSelectPostcodeWarning')}
-                />
-            )}
 
             <FormRadioGroupField
                 className={styles.radioGroup}
