@@ -1,6 +1,5 @@
 import { message } from 'antd';
 import i18next from 'i18next';
-import { getValueFromCookie } from './auth/accessSessionCookie';
 import { getAccessTokenForRequests, tryRefreshAccessToken } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
@@ -73,7 +72,7 @@ interface FetchDataProps {
     signal?: AbortSignal;
     // Internal flag: set on the single automatic retry after a token refresh so a
     // genuinely-unauthenticated request cannot loop. Not part of the public API.
-    _retriedAfterRefresh?: boolean;
+    retriedAfterRefresh?: boolean;
 }
 
 const executeFetchData = (props: FetchDataProps): Promise<any> =>
@@ -212,12 +211,12 @@ export const fetchData = async (props: FetchDataProps): Promise<any> => {
     } catch (error) {
         const isUnauthorized = error instanceof Error && error.message === FETCH_ERRORS.UNAUTHORIZED;
 
-        if (isUnauthorized && !props.skipAuth && !props._retriedAfterRefresh) {
+        if (isUnauthorized && !props.skipAuth && !props.retriedAfterRefresh) {
             const refreshed = await tryRefreshAccessToken();
             if (refreshed) {
                 // Retry once through fetchData (not executeFetchData) so a retry that
                 // is still unauthorized also runs the logout fallback below.
-                return fetchData({ ...props, _retriedAfterRefresh: true });
+                return fetchData({ ...props, retriedAfterRefresh: true });
             }
         }
 
