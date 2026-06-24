@@ -4,12 +4,11 @@ import { useTenantData } from '../hooks/useTenantData.hook';
 import { useUserRoles } from '../hooks/useUserRoles.hook';
 import { UserPermission, UserPermissions } from '../types/UserPermission';
 
-// Roles are merged in this order; later entries override earlier ones (lodash.merge).
-// RestrictedAgencyAdmin only NARROWS agency permissions (no create/delete), so it must
-// have the LOWEST precedence: when an account also holds a broader role such as
-// AgencyAdmin or TenantAdmin, that broader grant must win. Keeping it first means a
-// mixed-role platform admin (e.g. agency-admin + restricted-agency-admin) is not
-// silently downgraded to read/update-only.
+// A mixed-role account gets the UNION of its roles' permissions: mergeUserPermissions
+// ORs each action across all roles, so a permission granted by ANY role is kept. This
+// is order-independent, so a narrowing role like RestrictedAgencyAdmin can never
+// silently downgrade a broader role (e.g. agency-admin + restricted-agency-admin keeps
+// the agency create/delete grants). The order below is retained only for stable output.
 const rolesPriority: UserRole[] = [
     UserRole.RestrictedAgencyAdmin,
     UserRole.AgencyAdmin,
