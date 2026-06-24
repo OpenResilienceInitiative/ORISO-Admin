@@ -13,10 +13,6 @@ export const clusterFeatureFlags = {
     useApiClusterSettings: true, // Fetch server settings from /service/settings
 };
 
-export const featureFlags = {
-    useConsultingTypesForAgencies: false, // Use consulting types for agency creation
-};
-
 export const supportedLanguages = ['de', 'en', 'fr', 'ru', 'tr', 'uk', 'ti'];
 
 export const agencyDataAgencyId = (agencyId: string) => `${mainURL}/service/agencyadmin/agencies/${agencyId}`;
@@ -26,7 +22,6 @@ export const consultantsHasAgencyEndpoint = (agencyId: string) =>
     `${mainURL}/service/useradmin/agencies/${agencyId}/consultants`;
 export const consultingTypeEndpoint = `${mainURL}/service/consultingtypes`;
 export const counselorEndpoint = `${mainURL}/service/useradmin/consultants`;
-export const diocesesEndpoint = `${mainURL}/service/agencyadmin/dioceses`;
 export const agencyAdminEndpoint = `${mainURL}/service/useradmin/agencyadmins`;
 export const grantConsultantIdentityEndpoint = (adminId: string) =>
     `${mainURL}/service/useradmin/admins/${adminId}/grant-consultant-identity`;
