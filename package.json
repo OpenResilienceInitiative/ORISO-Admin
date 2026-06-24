@@ -47,6 +47,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "prestart": "node scripts/generate-runtime-env.js",
     "start": "vite",
     "build": "tsc && vite build",
     "build:analyze": "tsc && vite build --mode analyze",
