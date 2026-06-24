@@ -74,9 +74,9 @@ export const GeneralSettings = ({ tenantId }: GeneralSettingsProps) => {
         <div className={styles.appearancePage}>
             <CardDeck
                 className={styles.cardDeck}
-                ariaLabel="Einstellungen scrollen"
-                previousLabel="Vorherige Einstellungen anzeigen"
-                nextLabel="Weitere Einstellungen anzeigen"
+                ariaLabel={t('tenant.settings.cardDeck.ariaLabel')}
+                previousLabel={t('tenant.settings.cardDeck.previous')}
+                nextLabel={t('tenant.settings.cardDeck.next')}
             >
                 <CardDeck.Item className={styles.cardSlotImages}>
                     <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />

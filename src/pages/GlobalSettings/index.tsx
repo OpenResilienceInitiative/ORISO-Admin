@@ -150,9 +150,9 @@ export const GlobalSmtpSettingsPage = () => {
     return (
         <CardDeck
             className={styles.smtpPage}
-            ariaLabel="Globale SMTP-Einstellungen scrollen"
-            previousLabel="Vorherige SMTP-Karte anzeigen"
-            nextLabel="Weitere SMTP-Karte anzeigen"
+            ariaLabel={t('globalSettings.smtp.cardDeck.ariaLabel')}
+            previousLabel={t('globalSettings.smtp.cardDeck.previous')}
+            nextLabel={t('globalSettings.smtp.cardDeck.next')}
         >
             <CardDeck.Item className={styles.smtpCardSlot}>
                 <CardEditable

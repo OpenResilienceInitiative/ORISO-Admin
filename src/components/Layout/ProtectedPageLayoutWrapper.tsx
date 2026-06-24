@@ -103,6 +103,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     const navLabels = {
         account: navLabel('sidebar.account', 'profile.title'),
         agency: navLabel('sidebar.agency', 'agency'),
+        inactiveAudit: navLabel('sidebar.inactiveAudit', 'inactiveAudit.title'),
         links: navLabel('sidebar.links', 'links.navTitle'),
         logout: navLabel('sidebar.logout', 'logout'),
         logs: navLabel('sidebar.logs', 'logs.title'),
@@ -242,12 +243,12 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 <li key="inactive-audit-logs" className="menuItem">
                                     <NavLink
                                         to={routePathNames.inactiveAccountAuditLogs}
-                                        aria-label={navLabels.logs}
-                                        title={navLabels.logs}
+                                        aria-label={navLabels.inactiveAudit}
+                                        title={navLabels.inactiveAudit}
                                         className={({ isActive }) => (isActive ? 'active' : '')}
                                     >
                                         <NavIcon path={routePathNames.inactiveAccountAuditLogs} />
-                                        <span lang={navLanguage}>{navLabels.logs}</span>
+                                        <span lang={navLanguage}>{navLabels.inactiveAudit}</span>
                                     </NavLink>
                                 </li>
                             )}

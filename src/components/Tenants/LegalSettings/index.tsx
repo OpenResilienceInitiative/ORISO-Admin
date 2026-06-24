@@ -61,8 +61,8 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
     return (
         <CardDeck
             ariaLabel={t('settings.subhead.legal')}
-            previousLabel="Vorherige Rechtskarte anzeigen"
-            nextLabel="Weitere Rechtskarte anzeigen"
+            previousLabel={t('legal.cardDeck.previous')}
+            nextLabel={t('legal.cardDeck.next')}
         >
             {settings?.multitenancyWithSingleDomainEnabled && (
                 <CardDeck.Item>

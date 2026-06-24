@@ -227,8 +227,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
                     <CardDeck
                         ariaLabel={t(`agency.edit.settings.general.title`)}
-                        previousLabel="Vorherige Karte anzeigen"
-                        nextLabel="Weitere Karte anzeigen"
+                        previousLabel={t('agency.cardDeck.previous')}
+                        nextLabel={t('agency.cardDeck.next')}
                     >
                         <CardDeck.Item>
                             <CardEditable
@@ -332,8 +332,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             </h3>
             <CardDeck
                 ariaLabel={t(`agency.edit.settings.legal.title`)}
-                previousLabel="Vorherige Rechtskarte anzeigen"
-                nextLabel="Weitere Rechtskarte anzeigen"
+                previousLabel={t('legal.cardDeck.previous')}
+                nextLabel={t('legal.cardDeck.next')}
             >
                 <CardDeck.Item>
                     <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />

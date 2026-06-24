@@ -610,5 +610,19 @@
     "users.sectionPills.counsellorAdmins": "Counsellor Admin",
     "users.sectionPills.counsellors": "Counsellors",
     "users.sectionPills.platformAdmins": "Platform Admin",
-    "users.sectionPills.tenantAdmins": "Tenant Admin"
+    "users.sectionPills.tenantAdmins": "Tenant Admin",
+    "tenant.settings.cardDeck.ariaLabel": "Scroll settings",
+    "tenant.settings.cardDeck.previous": "Show previous settings",
+    "tenant.settings.cardDeck.next": "Show more settings",
+    "legal.cardDeck.previous": "Show previous legal card",
+    "legal.cardDeck.next": "Show more legal cards",
+    "permissions.cardDeck.previous": "Show previous permission card",
+    "permissions.cardDeck.next": "Show more permission cards",
+    "globalSettings.smtp.cardDeck.ariaLabel": "Scroll global SMTP settings",
+    "globalSettings.smtp.cardDeck.previous": "Show previous SMTP card",
+    "globalSettings.smtp.cardDeck.next": "Show more SMTP cards",
+    "agency.cardDeck.previous": "Show previous card",
+    "agency.cardDeck.next": "Show more cards",
+    "theme.builder.preview.previous": "Show previous color preview",
+    "theme.builder.preview.next": "Show next color preview"
 }

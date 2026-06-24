@@ -501,8 +501,8 @@ const PermissionsSettingsView = ({
                     <CardDeck
                         className={styles.cardGrid}
                         ariaLabel={t('tenants.permissions.title')}
-                        previousLabel="Vorherige Berechtigungskarte anzeigen"
-                        nextLabel="Weitere Berechtigungskarte anzeigen"
+                        previousLabel={t('permissions.cardDeck.previous')}
+                        nextLabel={t('permissions.cardDeck.next')}
                     >
                         {cardsToRender.map((card) => (
                             <CardDeck.Item key={card.key} className={styles.chatTypeCardSlot}>
