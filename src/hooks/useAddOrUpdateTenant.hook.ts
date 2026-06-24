@@ -34,6 +34,10 @@ export const useAddOrUpdateTenant = ({ id, ...options }: UseAddOrUpdateTenantOpt
                 ...data,
                 name: formData.name,
                 subdomain: resolvedSubdomain,
+                // NEW optional shared API fields. `topic` is FE-only and intentionally
+                // never forwarded to the backend.
+                address: formData.address,
+                description: formData.description,
                 licensing: {
                     ...formData.licensing,
                 },

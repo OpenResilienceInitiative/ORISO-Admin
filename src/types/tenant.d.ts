@@ -83,6 +83,10 @@ export interface BasicTenantData {
     name: string;
     beraterCount?: number;
     subdomain?: string;
+    /** Optional postal address of the tenant (NEW shared API field). */
+    address?: string;
+    /** Optional free-text description of the tenant (NEW shared API field). */
+    description?: string;
     createDate?: string;
     startServiceDate?: string; // to-do: show startServiceDate instead of createDate
     updateDate?: string;

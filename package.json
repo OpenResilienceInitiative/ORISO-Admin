@@ -28,6 +28,7 @@
     "lodash.merge": "^4.6.2",
     "lodash.mergewith": "^4.6.2",
     "lodash.set": "^4.3.2",
+    "lottie-react": "^2.4.1",
     "rc-field-form": "^1.27.3",
     "react": "^17.0.2",
     "react-app-polyfill": "^3.0.0",
