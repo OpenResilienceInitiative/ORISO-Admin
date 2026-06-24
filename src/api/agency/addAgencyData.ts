@@ -56,6 +56,22 @@ async function createAgency(agencyDataRequestBody: string) {
     });
 }
 
+export function resolveAgencyTenantId(selectedTenantIdValue: unknown, tokenTenantIdValue: unknown): number | undefined {
+    const selectedTenantId = Number(selectedTenantIdValue);
+
+    if (Number.isFinite(selectedTenantId) && selectedTenantId > 0) {
+        return selectedTenantId;
+    }
+
+    const tokenTenantId = Number(tokenTenantIdValue);
+
+    if (Number.isFinite(tokenTenantId) && tokenTenantId > 0) {
+        return tokenTenantId;
+    }
+
+    return undefined;
+}
+
 /**
  * add new agency
  * @param agencyData
@@ -64,9 +80,12 @@ async function createAgency(agencyDataRequestBody: string) {
 async function addAgencyData(agencyData: Record<string, any>) {
     // Prefer explicitly selected tenant from form (superadmin flow).
     // Fallback to JWT tenant for tenant-admin users.
-    const { tenantId: tokenTenantId = 1 } = parseUserAuthInfo();
-    const selectedTenantId = Number(agencyData?.tenantId);
-    const tenantId = Number.isFinite(selectedTenantId) && selectedTenantId > 0 ? selectedTenantId : tokenTenantId;
+    const { tenantId: tokenTenantId } = parseUserAuthInfo();
+    const tenantId = resolveAgencyTenantId(agencyData?.tenantId, tokenTenantId);
+
+    if (!tenantId) {
+        throw new Error('A valid tenantId is required to create an agency.');
+    }
 
     const consultingTypeId =
         agencyData.consultingType !== null && agencyData.consultingType !== undefined
