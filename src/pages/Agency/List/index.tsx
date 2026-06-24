@@ -186,7 +186,6 @@ export const AgencyList = () => {
                                       className={classNames('TopicList__agencies', styles.topicsList, {
                                           [styles.topicsListExpanded]: isExpanded,
                                       })}
-                                      aria-expanded={isExpanded}
                                   >
                                       {visibleTopics.map((topicItem) => (
                                           <span key={topicItem.id} className={styles.topicChip}>
@@ -235,12 +234,13 @@ export const AgencyList = () => {
             title: '',
             key: 'edit',
             render: (_: any, record: AgencyData) => {
-                const hasTopics = Array.isArray(record.topics) && record.topics.filter(Boolean).length > 0;
+                const topicCount = Array.isArray(record.topics) ? record.topics.filter(Boolean).length : 0;
+                const hasExpandableTopics = topicCount > 1;
                 const topicsExpanded = isTopicRowExpanded(record);
 
                 return (
                     <div className={classNames('tableActionWrapper', styles.agencyActionWrapper)}>
-                        {can(PermissionAction.Read, Resource.Topic) && hasTopics && (
+                        {can(PermissionAction.Read, Resource.Topic) && hasExpandableTopics && (
                             <button
                                 className={classNames(styles.topicToggleButton, {
                                     [styles.topicToggleButtonExpanded]: topicsExpanded,
