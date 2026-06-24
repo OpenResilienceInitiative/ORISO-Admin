@@ -56,6 +56,13 @@ const MuiControl = ({
     const errors = form?.getFieldError(fieldName as any) ?? [];
     // Keep height stable: always render a helperText line (' ' when empty).
     const helperText = (isError && errors[0]) || helpText || ' ';
+    const muiInputProps =
+        endAdornment || inputProps
+            ? {
+                  ...(endAdornment ? { endAdornment } : {}),
+                  ...(inputProps ? { inputProps } : {}),
+              }
+            : undefined;
 
     return (
         <TextField
@@ -73,8 +80,7 @@ const MuiControl = ({
             error={isError}
             helperText={helperText}
             autoComplete={autoComplete}
-            inputProps={inputProps}
-            InputProps={endAdornment ? { endAdornment } : undefined}
+            InputProps={muiInputProps}
         />
     );
 };
@@ -103,15 +109,7 @@ export interface MuiFormFieldProps {
  * antd `Form.Item` (noStyle) wrapping a Material UI outlined `TextField`.
  * Default text variant; bind/validation handled by antd, presentation by MUI.
  */
-export const MuiFormField = ({
-    name,
-    label,
-    rules,
-    required,
-    dependencies,
-    normalize,
-    ...rest
-}: MuiFormFieldProps) => (
+export const MuiFormField = ({ name, label, rules, required, dependencies, normalize, ...rest }: MuiFormFieldProps) => (
     <Form.Item
         name={name as any}
         rules={rules}
@@ -181,9 +179,6 @@ export const MuiPasswordFormField = ({
 /**
  * Multiline variant (e.g. description).
  */
-export const MuiMultilineFormField = ({
-    minRows = 3,
-    ...props
-}: Omit<MuiFormFieldProps, 'multiline' | 'type'>) => (
+export const MuiMultilineFormField = ({ minRows = 3, ...props }: Omit<MuiFormFieldProps, 'multiline' | 'type'>) => (
     <MuiFormField {...props} multiline minRows={minRows} />
 );

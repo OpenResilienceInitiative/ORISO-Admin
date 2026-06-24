@@ -1,9 +1,8 @@
-import merge from 'lodash.merge';
 import { useAppConfigContext } from '../context/useAppConfig';
 import { UserRole } from '../enums/UserRole';
 import { useTenantData } from '../hooks/useTenantData.hook';
 import { useUserRoles } from '../hooks/useUserRoles.hook';
-import { UserPermissions } from '../types/UserPermission';
+import { UserPermission, UserPermissions } from '../types/UserPermission';
 
 const rolesPriority: UserRole[] = [
     UserRole.AgencyAdmin,
@@ -13,6 +12,27 @@ const rolesPriority: UserRole[] = [
     UserRole.RestrictedAgencyAdmin,
     UserRole.TenantAdmin,
 ];
+
+export const mergeUserPermissions = (...permissionSets: Array<UserPermissions | undefined>): UserPermissions =>
+    permissionSets.reduce<Record<string, UserPermission>>((mergedPermissions, permissionSet) => {
+        const nextPermissions = { ...mergedPermissions };
+
+        Object.entries(permissionSet || {}).forEach(([resource, permissionsByAction]) => {
+            const mergedResourcePermissions = {
+                ...(nextPermissions[resource] || {}),
+            } as UserPermission;
+
+            Object.entries(permissionsByAction || {}).forEach(([action, isAllowed]) => {
+                const actionKey = action as keyof UserPermission;
+                mergedResourcePermissions[actionKey] =
+                    Boolean(mergedResourcePermissions[actionKey]) || Boolean(isAllowed);
+            });
+
+            nextPermissions[resource] = mergedResourcePermissions;
+        });
+
+        return nextPermissions;
+    }, {}) as UserPermissions;
 
 export const useUserRolesToPermission = () => {
     const { roles, isSuperAdmin } = useUserRoles();
@@ -76,10 +96,7 @@ export const useUserRolesToPermission = () => {
     const filteredRoles = rolesPriority.filter((role) => roles.includes(role));
     // console.log('🔍 useUserRolesToPermission: filteredRoles:', filteredRoles);
 
-    const finalPermissions = filteredRoles.reduce(
-        (current, role) => merge(current, permissions[role] || {}),
-        {} as UserPermissions,
-    );
+    const finalPermissions = mergeUserPermissions(...filteredRoles.map((role) => permissions[role]));
     // console.log('🔍 useUserRolesToPermission: finalPermissions:', finalPermissions);
 
     return finalPermissions;
