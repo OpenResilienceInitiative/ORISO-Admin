@@ -18,6 +18,7 @@ import { useReleasesToggle } from './hooks/useReleasesToggle.hook';
 import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { UserRole } from './enums/UserRole';
+import { canReadCaseHandoverAdmin } from './constants/caseHandoverAccess';
 import { useAppConfigContext } from './context/useAppConfig';
 import {
     LazyAgencyList,
@@ -116,8 +117,7 @@ export const App = () => {
     const canReadTenant = can(PermissionAction.Read, Resource.Tenant);
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
-    const canReadCaseHandoverAdmin =
-        isSuperAdmin || (!hasRole(UserRole.RestrictedAgencyAdmin) && can(PermissionAction.Read, Resource.Consultant));
+    const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, hasRole, can);
 
     return isLoading ? (
         <Initialization />
@@ -199,7 +199,7 @@ export const App = () => {
                             }
                         />
                         {!isSuperAdmin && <Route path={routePathNames.logs} element={<LazySupervisorLogsPage />} />}
-                        {canReadCaseHandoverAdmin && (
+                        {showCaseHandoverLogs && (
                             <Route path={routePathNames.caseHandoverLogs} element={<LazyCaseHandoverLogsPage />} />
                         )}
                         {isSuperAdmin && (

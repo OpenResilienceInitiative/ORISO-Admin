@@ -9,6 +9,9 @@ import {
     useCaseHandoverReasonPoliciesData,
     useCaseHandoverReasonPoliciesMutation,
 } from '../../../hooks/useCaseHandoverReasonPolicies';
+import { useUserPermissions } from '../../../hooks/useUserPermission';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { canEditCaseHandoverReasonPolicies } from '../../../constants/caseHandoverAccess';
 import { CaseHandoverLogEntry } from '../../../types/caseHandoverLogs';
 import { CaseHandoverReasonPolicy } from '../../../types/caseHandoverReasonPolicy';
 
@@ -29,6 +32,9 @@ const statusColor = (status: string) => {
 
 export const CaseHandoverLogsPage = () => {
     const { t } = useTranslation();
+    const { can } = useUserPermissions();
+    const { isSuperAdmin } = useUserRoles();
+    const canEditReasonPolicies = canEditCaseHandoverReasonPolicies(isSuperAdmin, can);
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(20);
     const { data, isLoading } = useCaseHandoverLogsData({ page, perPage });
@@ -69,6 +75,7 @@ export const CaseHandoverLogsPage = () => {
                 render: (value: string, row) => (
                     <Input
                         value={value}
+                        disabled={!canEditReasonPolicies}
                         aria-label={`${t('caseHandoverLogs.policy.table.label')} (${row.code})`}
                         onChange={(event) => updatePolicy(row.code, { label: event.target.value })}
                     />
@@ -82,6 +89,7 @@ export const CaseHandoverLogsPage = () => {
                 render: (value: boolean, row) => (
                     <Switch
                         checked={value}
+                        disabled={!canEditReasonPolicies}
                         aria-label={`${t('caseHandoverLogs.policy.table.clientConsentRequired')} (${row.code})`}
                         onChange={(checked) => updatePolicy(row.code, { clientConsentRequired: checked })}
                     />
@@ -95,6 +103,7 @@ export const CaseHandoverLogsPage = () => {
                 render: (value: boolean, row) => (
                     <Switch
                         checked={value !== false}
+                        disabled={!canEditReasonPolicies}
                         aria-label={`${t('caseHandoverLogs.policy.table.accessAllowed')} (${row.code})`}
                         onChange={(checked) => updatePolicy(row.code, { accessAllowed: checked })}
                     />
@@ -108,6 +117,7 @@ export const CaseHandoverLogsPage = () => {
                 render: (value: boolean, row) => (
                     <Switch
                         checked={value}
+                        disabled={!canEditReasonPolicies}
                         aria-label={`${t('caseHandoverLogs.policy.table.enabled')} (${row.code})`}
                         onChange={(checked) => updatePolicy(row.code, { enabled: checked })}
                     />
@@ -122,6 +132,7 @@ export const CaseHandoverLogsPage = () => {
                     <InputNumber
                         min={1}
                         value={value}
+                        disabled={!canEditReasonPolicies}
                         aria-label={`${t('caseHandoverLogs.policy.table.displayOrder')} (${row.code})`}
                         onChange={(nextValue) =>
                             updatePolicy(row.code, { displayOrder: Number(nextValue ?? row.displayOrder ?? 100) })
@@ -136,7 +147,7 @@ export const CaseHandoverLogsPage = () => {
                 ellipsis: true,
             },
         ],
-        [t, updatePolicy],
+        [t, updatePolicy, canEditReasonPolicies],
     );
 
     const columns: ColumnType<CaseHandoverLogEntry>[] = useMemo(
@@ -216,14 +227,16 @@ export const CaseHandoverLogsPage = () => {
                         pagination={false}
                         scroll={{ x: 1200, y: 'auto' }}
                     />
-                    <Button
-                        type="primary"
-                        loading={updateReasonPolicies.isLoading}
-                        disabled={!editablePolicies.length || isLoadingReasonPolicies}
-                        onClick={() => updateReasonPolicies.mutate(editablePolicies)}
-                    >
-                        {t('caseHandoverLogs.policy.save')}
-                    </Button>
+                    {canEditReasonPolicies && (
+                        <Button
+                            type="primary"
+                            loading={updateReasonPolicies.isLoading}
+                            disabled={!editablePolicies.length || isLoadingReasonPolicies}
+                            onClick={() => updateReasonPolicies.mutate(editablePolicies)}
+                        >
+                            {t('caseHandoverLogs.policy.save')}
+                        </Button>
+                    )}
                 </Space>
                 <ListingTable<CaseHandoverLogEntry>
                     rowKey={(row) => `${row.requestId}`}
