@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { mergeUserPermissions } from './userRolesToPermissions';
+import { UserRole } from '../enums/UserRole';
+import { getEffectivePermissionRoles, mergeUserPermissions } from './userRolesToPermissions';
 
 describe('mergeUserPermissions', () => {
-    it('keeps broader agency grants when a user also has restricted agency admin', () => {
+    it('keeps broader agency grants when effective roles contain agency admin', () => {
         const merged = mergeUserPermissions(
             {
                 Agency: { read: true, create: true, update: true, delete: true },
@@ -18,24 +19,29 @@ describe('mergeUserPermissions', () => {
         expect(merged.Statistic?.read).toBe(true);
     });
 
-    it('keeps user-admin grants when mixed with restricted agency admin', () => {
-        const merged = mergeUserPermissions(
-            {
-                AgencyAdminUser: { read: true, create: true, update: true, delete: true },
-            },
-            {
-                AgencyAdminUser: { read: false, create: false, update: false, delete: false },
-            },
-        );
-
-        expect(merged.AgencyAdminUser).toEqual({ read: true, create: true, update: true, delete: true });
-    });
-
     it('leaves an action denied when no role grants it', () => {
         const merged = mergeUserPermissions({
             Agency: { create: false },
         });
 
         expect(merged.Agency?.create).toBe(false);
+    });
+});
+
+describe('getEffectivePermissionRoles', () => {
+    it('uses only restricted agency permissions when no full agency-admin role is present', () => {
+        const roles = getEffectivePermissionRoles([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin]);
+
+        expect(roles).toEqual([UserRole.RestrictedAgencyAdmin]);
+    });
+
+    it('keeps broader admin roles for agency super admins', () => {
+        const roles = getEffectivePermissionRoles([
+            UserRole.RestrictedAgencyAdmin,
+            UserRole.UserAdmin,
+            UserRole.AgencyAdmin,
+        ]);
+
+        expect(roles).toEqual([UserRole.RestrictedAgencyAdmin, UserRole.AgencyAdmin, UserRole.UserAdmin]);
     });
 });

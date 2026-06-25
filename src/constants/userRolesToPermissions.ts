@@ -4,11 +4,6 @@ import { useTenantData } from '../hooks/useTenantData.hook';
 import { useUserRoles } from '../hooks/useUserRoles.hook';
 import { UserPermission, UserPermissions } from '../types/UserPermission';
 
-// A mixed-role account gets the UNION of its roles' permissions: mergeUserPermissions
-// ORs each action across all roles, so a permission granted by ANY role is kept. This
-// is order-independent, so a narrowing role like RestrictedAgencyAdmin can never
-// silently downgrade a broader role (e.g. agency-admin + restricted-agency-admin keeps
-// the agency create/delete grants). The order below is retained only for stable output.
 const rolesPriority: UserRole[] = [
     UserRole.RestrictedAgencyAdmin,
     UserRole.AgencyAdmin,
@@ -17,6 +12,16 @@ const rolesPriority: UserRole[] = [
     UserRole.SingleTenantAdmin,
     UserRole.TenantAdmin,
 ];
+
+export const getEffectivePermissionRoles = (roles: UserRole[]): UserRole[] => {
+    const filteredRoles = rolesPriority.filter((role) => roles.includes(role));
+
+    if (filteredRoles.includes(UserRole.RestrictedAgencyAdmin) && !filteredRoles.includes(UserRole.AgencyAdmin)) {
+        return [UserRole.RestrictedAgencyAdmin];
+    }
+
+    return filteredRoles;
+};
 
 export const mergeUserPermissions = (...permissionSets: Array<UserPermissions | undefined>): UserPermissions =>
     permissionSets.reduce<Record<string, UserPermission>>((mergedPermissions, permissionSet) => {
@@ -98,7 +103,7 @@ export const useUserRolesToPermission = () => {
         },
     };
 
-    const filteredRoles = rolesPriority.filter((role) => roles.includes(role));
+    const filteredRoles = getEffectivePermissionRoles(roles);
     // console.log('🔍 useUserRolesToPermission: filteredRoles:', filteredRoles);
 
     const finalPermissions = mergeUserPermissions(...filteredRoles.map((role) => permissions[role]));
