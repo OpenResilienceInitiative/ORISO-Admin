@@ -6,6 +6,7 @@ import { SelectFormField } from '../SelectFormField';
 import { useAgenciesData } from '../../hooks/useAgencysData';
 import { convertToOptions } from '../../utils/convertToOptions';
 import { grantConsultantIdentityData } from '../../api/admins/grantConsultantIdentityData';
+import { isActiveDeleteDate } from '../../utils/deleteDate';
 
 interface GrantConsultantIdentityModalProps {
     adminId: string;
@@ -34,7 +35,7 @@ export const GrantConsultantIdentityModal = ({
     const tenantIdNumber = tenantId !== undefined && tenantId !== null ? parseInt(`${tenantId}`, 10) : undefined;
     const availableAgencies = (agenciesData?.data || []).filter(
         (agency) =>
-            agency.deleteDate === 'null' &&
+            isActiveDeleteDate(agency.deleteDate) &&
             (tenantIdNumber === undefined || agency.tenantId === tenantIdNumber),
     );
 
