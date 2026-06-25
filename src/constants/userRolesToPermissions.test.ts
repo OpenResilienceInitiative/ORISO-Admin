@@ -35,6 +35,12 @@ describe('getEffectivePermissionRoles', () => {
         expect(roles).toEqual([UserRole.RestrictedAgencyAdmin]);
     });
 
+    it('drops any secondary role for restricted agency admins without full agency-admin', () => {
+        const roles = getEffectivePermissionRoles([UserRole.RestrictedAgencyAdmin, UserRole.TopicAdmin]);
+
+        expect(roles).toEqual([UserRole.RestrictedAgencyAdmin]);
+    });
+
     it('keeps broader admin roles for agency super admins', () => {
         const roles = getEffectivePermissionRoles([
             UserRole.RestrictedAgencyAdmin,
