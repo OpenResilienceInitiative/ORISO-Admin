@@ -4,6 +4,12 @@ import { readSeeds, ThemingSeedFields } from './themeSeeds';
 export const DEFAULT_ADMIN_SEED = '#A5000A';
 const ADMIN_THEME_TOKEN_PREFIX = '--m3-';
 
+export const clearAdminInvertedThemeTokens = (root: HTMLElement = document.documentElement): void => {
+    Array.from(root.style)
+        .filter((name) => name.startsWith(ADMIN_THEME_TOKEN_PREFIX))
+        .forEach((name) => root.style.removeProperty(name));
+};
+
 const normalizeSeed = (
     value: string | null | undefined,
     label: string,
@@ -58,9 +64,7 @@ export const applyAdminInvertedTheme = (
     } catch (error) {
         // eslint-disable-next-line no-console
         console.warn('Admin theming: stored seed is invalid, keeping the static palette.', error);
-        Array.from(root.style)
-            .filter((name) => name.startsWith(ADMIN_THEME_TOKEN_PREFIX))
-            .forEach((name) => root.style.removeProperty(name));
+        clearAdminInvertedThemeTokens(root);
         return false;
     }
 };

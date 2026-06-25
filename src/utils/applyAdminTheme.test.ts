@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_ADMIN_SEED, applyAdminInvertedTheme } from './applyAdminTheme';
+import { DEFAULT_ADMIN_SEED, applyAdminInvertedTheme, clearAdminInvertedThemeTokens } from './applyAdminTheme';
 import { computeOrisoPalette } from './theme/orisoScheme';
 
 const BENCHMARK_SEED = '#a5000a';
@@ -72,6 +72,17 @@ describe('applyAdminInvertedTheme', () => {
         expect(root.style.length).toBe(0);
         expect(warn).toHaveBeenCalled();
         warn.mockRestore();
+    });
+
+    it('clears applied admin tokens from the root element', () => {
+        const root = document.createElement('div');
+        applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED }, root);
+        expect(root.style.getPropertyValue('--m3-surface')).not.toBe('');
+
+        clearAdminInvertedThemeTokens(root);
+
+        expect(root.style.getPropertyValue('--m3-surface')).toBe('');
+        expect(root.style.getPropertyValue('--m3-primary')).toBe('');
     });
 
     it('clears previously applied admin tokens when a later seed is invalid', () => {
