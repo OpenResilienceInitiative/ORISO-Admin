@@ -4,11 +4,9 @@ import { ThemingSeedFields } from '../utils/themeSeeds';
 
 export const useAdminInvertedTheme = (theming: ThemingSeedFields | null | undefined, isReady = true) => {
     useEffect(() => {
-        if (!isReady) {
-            return;
+        if (isReady) {
+            applyAdminInvertedTheme(theming);
         }
-
-        applyAdminInvertedTheme(theming);
 
         return () => {
             clearAdminInvertedThemeTokens();
