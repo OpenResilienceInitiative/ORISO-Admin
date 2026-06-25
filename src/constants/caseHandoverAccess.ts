@@ -5,6 +5,9 @@ import { UserRole } from '../enums/UserRole';
 type CanFn = (action: PermissionAction | PermissionAction[], resource: Resource) => boolean;
 type HasRoleFn = (role: UserRole | UserRole[]) => boolean;
 
+export const canSeeSupervisorLogs = (isSuperAdmin: boolean, hasRole: HasRoleFn, can: CanFn): boolean =>
+    !isSuperAdmin && !hasRole(UserRole.RestrictedAgencyAdmin) && can(PermissionAction.Read, Resource.Consultant);
+
 export const canReadCaseHandoverAdmin = (isSuperAdmin: boolean, hasRole: HasRoleFn, can: CanFn): boolean =>
     isSuperAdmin || (!hasRole(UserRole.RestrictedAgencyAdmin) && can(PermissionAction.Read, Resource.Consultant));
 

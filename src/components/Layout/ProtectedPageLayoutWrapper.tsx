@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import routePathNames from '../../appConfig';
 import { getDefaultSettingsPath } from '../../constants/settingsTabs';
-import { canReadCaseHandoverAdmin } from '../../constants/caseHandoverAccess';
+import { canReadCaseHandoverAdmin, canSeeSupervisorLogs } from '../../constants/caseHandoverAccess';
 import SiteFooter from './SiteFooter';
 import { handleTokenRefresh } from '../../api/auth/auth';
 import logout from '../../api/auth/logout';
@@ -103,8 +103,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
 
     const canSeeSettingsMenu =
         can(PermissionAction.Read, Resource.Tenant) || can(PermissionAction.Read, Resource.LegalText);
-    const canSeeCounsellorLogs =
-        !isSuperAdmin && can(PermissionAction.Read, Resource.Consultant) && !hasRole(UserRole.RestrictedAgencyAdmin);
+    const canSeeCounsellorLogs = canSeeSupervisorLogs(isSuperAdmin, hasRole, can);
     const canSeeCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, hasRole, can);
     const navLanguage = i18n.resolvedLanguage || i18n.language;
     const navLabel = (key: string, fallbackKey: string) => t(key, t(fallbackKey));

@@ -18,7 +18,7 @@ import { useReleasesToggle } from './hooks/useReleasesToggle.hook';
 import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { UserRole } from './enums/UserRole';
-import { canReadCaseHandoverAdmin } from './constants/caseHandoverAccess';
+import { canReadCaseHandoverAdmin, canSeeSupervisorLogs } from './constants/caseHandoverAccess';
 import { useAppConfigContext } from './context/useAppConfig';
 import {
     LazyAgencyList,
@@ -118,6 +118,7 @@ export const App = () => {
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, hasRole, can);
+    const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, hasRole, can);
 
     return isLoading ? (
         <Initialization />
@@ -198,10 +199,26 @@ export const App = () => {
                                 canReadStatistic ? <LazyStatistic /> : <Navigate to="/admin/access-denied" replace />
                             }
                         />
-                        {!isSuperAdmin && <Route path={routePathNames.logs} element={<LazySupervisorLogsPage />} />}
-                        {showCaseHandoverLogs && (
-                            <Route path={routePathNames.caseHandoverLogs} element={<LazyCaseHandoverLogsPage />} />
-                        )}
+                        <Route
+                            path={routePathNames.logs}
+                            element={
+                                showSupervisorLogs ? (
+                                    <LazySupervisorLogsPage />
+                                ) : (
+                                    <Navigate to="/admin/access-denied" replace />
+                                )
+                            }
+                        />
+                        <Route
+                            path={routePathNames.caseHandoverLogs}
+                            element={
+                                showCaseHandoverLogs ? (
+                                    <LazyCaseHandoverLogsPage />
+                                ) : (
+                                    <Navigate to="/admin/access-denied" replace />
+                                )
+                            }
+                        />
                         {isSuperAdmin && (
                             <Route
                                 path={routePathNames.inactiveAccountAuditLogs}
