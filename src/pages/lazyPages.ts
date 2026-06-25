@@ -40,6 +40,7 @@ export const LazyUnifiedSmtpSettingsPage = lazyNamed(
     'UnifiedSmtpSettingsPage',
 );
 export const LazySupervisorLogsPage = lazyNamed(() => import('./Logs/SupervisorLogs'), 'SupervisorLogsPage');
+export const LazyCaseHandoverLogsPage = lazyNamed(() => import('./Logs/CaseHandoverLogs'), 'CaseHandoverLogsPage');
 export const LazyInactiveAccountAuditLogsPage = lazyNamed(
     () => import('./Logs/InactiveAccountAuditLogs'),
     'InactiveAccountAuditLogsPage',

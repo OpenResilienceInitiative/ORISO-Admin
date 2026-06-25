@@ -23,6 +23,7 @@ import {
     LazyAgencyList,
     LazyAgencyPageEdit,
     LazyAppSettingsPage,
+    LazyCaseHandoverLogsPage,
     LazyExternalInboundsTab,
     LazyGeneralSettingsPage,
     LazyGeneralTenantSettings,
@@ -115,6 +116,8 @@ export const App = () => {
     const canReadTenant = can(PermissionAction.Read, Resource.Tenant);
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
+    const canReadCaseHandoverAdmin =
+        isSuperAdmin || (!hasRole(UserRole.RestrictedAgencyAdmin) && can(PermissionAction.Read, Resource.Consultant));
 
     return isLoading ? (
         <Initialization />
@@ -196,6 +199,9 @@ export const App = () => {
                             }
                         />
                         {!isSuperAdmin && <Route path={routePathNames.logs} element={<LazySupervisorLogsPage />} />}
+                        {canReadCaseHandoverAdmin && (
+                            <Route path={routePathNames.caseHandoverLogs} element={<LazyCaseHandoverLogsPage />} />
+                        )}
                         {isSuperAdmin && (
                             <Route
                                 path={routePathNames.inactiveAccountAuditLogs}
