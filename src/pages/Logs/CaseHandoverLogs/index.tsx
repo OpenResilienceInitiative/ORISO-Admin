@@ -47,7 +47,7 @@ export const CaseHandoverLogsPage = () => {
             setEditablePolicies(
                 reasonPolicies.map((policy) => ({
                     ...policy,
-                    accessAllowed: policy.accessAllowed ?? true,
+                    accessAllowed: policy.accessAllowed === true,
                 })),
             );
         }
@@ -102,7 +102,7 @@ export const CaseHandoverLogsPage = () => {
                 width: 160,
                 render: (value: boolean, row) => (
                     <Switch
-                        checked={value !== false}
+                        checked={value === true}
                         disabled={!canEditReasonPolicies}
                         aria-label={`${t('caseHandoverLogs.policy.table.accessAllowed')} (${row.code})`}
                         onChange={(checked) => updatePolicy(row.code, { accessAllowed: checked })}

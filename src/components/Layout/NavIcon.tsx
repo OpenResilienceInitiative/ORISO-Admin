@@ -61,7 +61,9 @@ const getIconState = (isActive: boolean, hover: boolean): IconState => {
 
 const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
     const currentPath = useLocation().pathname;
-    const iconState = getIconState(currentPath.includes(path), hover);
+    const isActivePath =
+        path === routePathNames.logs ? currentPath === routePathNames.logs : currentPath.includes(path);
+    const iconState = getIconState(isActivePath, hover);
 
     switch (path) {
         case routePathNames.themeSettings:
