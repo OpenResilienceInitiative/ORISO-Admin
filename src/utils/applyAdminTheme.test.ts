@@ -53,6 +53,16 @@ describe('applyAdminInvertedTheme', () => {
         expect(root.style.getPropertyValue('--m3-surface')).toBe(tokens['--m3-surface']);
     });
 
+    it('ignores an invalid accent seed when the primary seed is valid', () => {
+        const root = document.createElement('div');
+        const applied = applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED, accent: 'not-a-hex' }, root);
+        const { tokens } = computeOrisoPalette({ accentDark: BENCHMARK_SEED }, 'inverted');
+
+        expect(applied).toBe(true);
+        expect(root.style.getPropertyValue('--m3-primary')).toBe(tokens['--m3-primary']);
+        expect(root.style.getPropertyValue('--m3-primary-container')).toBe(tokens['--m3-primary-container']);
+    });
+
     it('keeps the static palette on an invalid stored seed', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const root = document.createElement('div');

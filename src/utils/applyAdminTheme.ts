@@ -4,7 +4,11 @@ import { readSeeds, ThemingSeedFields } from './themeSeeds';
 export const DEFAULT_ADMIN_SEED = '#A5000A';
 const ADMIN_THEME_TOKEN_PREFIX = '--m3-';
 
-const normalizeSeed = (value: string | null | undefined, label: string): string | undefined => {
+const normalizeSeed = (
+    value: string | null | undefined,
+    label: string,
+    { optional = false }: { optional?: boolean } = {},
+): string | undefined => {
     if (!value?.trim()) {
         return undefined;
     }
@@ -16,6 +20,10 @@ const normalizeSeed = (value: string | null | undefined, label: string): string 
             : withHash;
 
     if (!/^#[0-9a-f]{6}$/i.test(expanded)) {
+        if (optional) {
+            return undefined;
+        }
+
         throw new Error(`Admin theming: ${label} seed is not a valid hex colour.`);
     }
 
@@ -29,7 +37,7 @@ export const applyAdminInvertedTheme = (
     try {
         const seeds = readSeeds(theming);
         const primary = normalizeSeed(seeds.primary ?? seeds.accentDark, 'primary') ?? DEFAULT_ADMIN_SEED;
-        const accent = normalizeSeed(seeds.accent ?? seeds.accentLight, 'accent');
+        const accent = normalizeSeed(seeds.accent ?? seeds.accentLight, 'accent', { optional: true });
         const { tokens } = computeOrisoPalette(
             {
                 accentDark: primary,
