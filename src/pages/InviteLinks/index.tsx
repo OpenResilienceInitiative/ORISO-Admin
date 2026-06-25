@@ -10,6 +10,7 @@ import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import { appURL } from '../../appConfig';
 import { ListingTable } from '../../components/ListingTable';
+import { isActiveDeleteDate } from '../../utils/deleteDate';
 
 interface TenantOption {
     id: number;
@@ -53,7 +54,7 @@ export const InviteLinksPage = () => {
     const filteredAgencies = useMemo(() => {
         const all = (agenciesResp?.data as any[]) || [];
         if (!selectedTenantId) return [];
-        return all.filter((a: any) => a.deleteDate === 'null' && a.tenantId === Number(selectedTenantId));
+        return all.filter((a: any) => isActiveDeleteDate(a.deleteDate) && a.tenantId === Number(selectedTenantId));
     }, [agenciesResp, selectedTenantId]);
 
     const loadLinks = useCallback(() => {
