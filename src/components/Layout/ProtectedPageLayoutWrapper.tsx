@@ -235,6 +235,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                             {canSeeCounsellorLogs && (
                                 <li key="logs" className="menuItem">
                                     <NavLink
+                                        end
                                         to={routePathNames.logs}
                                         aria-label={navLabels.logs}
                                         title={navLabels.logs}
@@ -254,7 +255,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                         title={navLabels.caseHandoverLogs}
                                         className={({ isActive }) => (isActive ? 'active' : '')}
                                     >
-                                        <NavIcon path={routePathNames.logs} />
+                                        <NavIcon path={routePathNames.caseHandoverLogs} />
                                         <span lang={navLanguage}>{navLabels.caseHandoverLogs}</span>
                                     </NavLink>
                                 </li>
