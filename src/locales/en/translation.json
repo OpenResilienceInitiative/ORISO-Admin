@@ -27,6 +27,7 @@
     "message.form.login.otp.APP": "Please enter the code from your app for two-factor authentication.",
     "message.form.login.otp.EMAIL": "Please enter the code from your email for two-factor authentication.",
     "message.error.auth.login": "Login failed. Please check username/email and password.",
+    "message.error.auth.adminOnly": "This account cannot access the admin portal. Please use an admin account.",
     "message.error.password.minLength": "Password must be at least 8 characters long.",
     "message.error.password.policy": "Password must include upper and lower case letters, at least one number, and at least one special character.",
     "message.error.PASSWORD_NOT_VALID": "The password does not meet the security requirements. Use at least 8 characters with upper and lower case letters, at least one number, and one special character (e.g. @Consultantshazia1).",
