@@ -173,12 +173,16 @@ export const AgencyList = () => {
                               const visibleTopics = [...topics].filter(Boolean);
                               const isExpanded = isTopicRowExpanded(record);
 
-                              if (isTopicsFeatureActive && visibleTopics.length === 0) {
-                                  return (
-                                      <div className={classNames('TopicList__agencies', styles.topicsEmpty)}>
-                                          {t('agency.noTopics')}
-                                      </div>
-                                  );
+                              if (visibleTopics.length === 0) {
+                                  if (isTopicsFeatureActive) {
+                                      return (
+                                          <div className={classNames('TopicList__agencies', styles.topicsEmpty)}>
+                                              {t('agency.noTopics')}
+                                          </div>
+                                      );
+                                  }
+
+                                  return null;
                               }
 
                               return (
@@ -188,7 +192,7 @@ export const AgencyList = () => {
                                       })}
                                   >
                                       {visibleTopics.map((topicItem) => (
-                                          <span key={topicItem.id} className={styles.topicChip}>
+                                          <span key={topicItem.id} className={styles.topicChip} title={topicItem.name}>
                                               {topicItem.name}
                                           </span>
                                       ))}
@@ -253,7 +257,7 @@ export const AgencyList = () => {
                                     toggleTopicRow(record);
                                 }}
                             >
-                                {topicsExpanded ? <UpOutlined /> : <DownOutlined />}
+                                {topicsExpanded ? <UpOutlined aria-hidden /> : <DownOutlined aria-hidden />}
                             </button>
                         )}
                         <EditButtons
