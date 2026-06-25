@@ -8,7 +8,7 @@ import CustomPersonIcon from '../../components/CustomIcons/Person';
 import routePathNames from '../../appConfig';
 import CustomVerifiedIcon from '../../components/CustomIcons/Verified';
 import { FETCH_ERRORS } from '../../api/fetchData';
-import { useLoginMutation } from '../../hooks/useLoginMutation.hook';
+import { ADMIN_PORTAL_ACCESS_DENIED, useLoginMutation } from '../../hooks/useLoginMutation.hook';
 import { TwoFactorType } from '../../enums/TwoFactorType';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 
@@ -33,7 +33,9 @@ const LoginForm = () => {
             onError: (error) => {
                 if (error.message === FETCH_ERRORS.BAD_REQUEST) {
                     setOtpDisabled(false);
-                    setTwoFactorType(error.options.data.otpType);
+                    setTwoFactorType(error.options?.data.otpType || TwoFactorType.None);
+                } else if (error.message === ADMIN_PORTAL_ACCESS_DENIED) {
+                    message.error(t('message.error.auth.adminOnly'));
                 } else {
                     message.error(t('message.error.auth.login'));
                 }
