@@ -58,9 +58,13 @@ const AgencyInitialMeetingRedirect = () => {
 };
 
 export const App = () => {
-    const { data: publicTenantData } = usePublicTenantData();
+    const {
+        data: publicTenantData,
+        isLoading: isPublicTenantLoading,
+        isFetched: isPublicTenantFetched,
+    } = usePublicTenantData();
     const { isLoading, data } = useTenantData();
-    useAdminInvertedTheme(publicTenantData?.theming);
+    useAdminInvertedTheme(publicTenantData?.theming, isPublicTenantFetched || !isPublicTenantLoading);
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
     const location = useLocation();
