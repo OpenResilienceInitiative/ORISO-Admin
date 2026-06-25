@@ -7,6 +7,7 @@ import { tenantAccessEndpoint } from '../appConfig';
 import { useAppConfigContext } from '../context/useAppConfig';
 import { TwoFactorType } from '../enums/TwoFactorType';
 import { LoginData } from '../types/loginData';
+import { hasAdminPortalAccess } from '../utils/adminPortalAccess';
 
 interface LoginParams {
     username: string;
@@ -16,10 +17,12 @@ interface LoginParams {
 
 interface ErrorLogin {
     message: string;
-    options: {
+    options?: {
         data: { otpType: TwoFactorType };
     };
 }
+
+export const ADMIN_PORTAL_ACCESS_DENIED = 'adminPortalAccessDenied';
 
 export const useLoginMutation = (tenantId: string) => {
     const { settings, setServerSettings } = useAppConfigContext();
@@ -29,6 +32,10 @@ export const useLoginMutation = (tenantId: string) => {
         async ({ username, password, otp }: any) => {
             // console.log('🔍 useLoginMutation: Starting login process');
             return getAccessToken({ username, password, otp }).then((data) => {
+                if (!hasAdminPortalAccess(data.access_token)) {
+                    return Promise.reject(new Error(ADMIN_PORTAL_ACCESS_DENIED));
+                }
+
                 // console.log('🔍 useLoginMutation: Got access token, checking tenant access');
                 // We'll check in the server if we're allowed to access the app
                 return fetchData({

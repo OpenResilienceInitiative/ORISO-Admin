@@ -43,6 +43,7 @@
     "message.error.default": "Es ist ein Fehler aufgetreten. Bitte versuchen Sie es später noch einmal.",
     "message.error.unexpected": "Der Vorgang wurde abgebrochen.",
     "message.error.auth.login": "Login fehlgeschlagen. Bitte überprüfen Sie Benutzernamen/E-Mail und Passwort.",
+    "message.error.auth.adminOnly": "Dieses Konto kann nicht auf die Verwaltung zugreifen. Bitte verwenden Sie ein Admin-Konto.",
     "message.error.auth.setPassword": "Passwortänderung fehlgeschlagen! Bitte überprüfen Sie, ob Sie den richtigen Link geöffnet haben. Sie können auch einen neuen Link anfordern.",
     "message.error.auth.resetPassword": "Zurücksetzen fehlgeschlagen.",
     "message.error.upload.filetype": "Sie können nur JPG-/PNG- oder ICO-Formate auswählen.",
