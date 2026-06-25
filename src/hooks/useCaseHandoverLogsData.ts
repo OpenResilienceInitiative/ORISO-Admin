@@ -13,7 +13,7 @@ export const useCaseHandoverLogsData = ({ page, perPage, ...options }: CaseHando
         ['CASE_HANDOVER_LOGS', page, perPage],
         () =>
             fetchData({
-                url: `${caseHandoverLogsEndpoint}?page=${page}&perPage=${perPage}`,
+                url: `${caseHandoverLogsEndpoint}?page=${page || 1}&perPage=${perPage}`,
                 method: FETCH_METHODS.GET,
                 skipAuth: false,
                 responseHandling: [],

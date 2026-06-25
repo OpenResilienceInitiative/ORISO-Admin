@@ -67,7 +67,11 @@ export const CaseHandoverLogsPage = () => {
                 key: 'label',
                 width: 280,
                 render: (value: string, row) => (
-                    <Input value={value} onChange={(event) => updatePolicy(row.code, { label: event.target.value })} />
+                    <Input
+                        value={value}
+                        aria-label={`${t('caseHandoverLogs.policy.table.label')} (${row.code})`}
+                        onChange={(event) => updatePolicy(row.code, { label: event.target.value })}
+                    />
                 ),
             },
             {
@@ -78,6 +82,7 @@ export const CaseHandoverLogsPage = () => {
                 render: (value: boolean, row) => (
                     <Switch
                         checked={value}
+                        aria-label={`${t('caseHandoverLogs.policy.table.clientConsentRequired')} (${row.code})`}
                         onChange={(checked) => updatePolicy(row.code, { clientConsentRequired: checked })}
                     />
                 ),
@@ -90,6 +95,7 @@ export const CaseHandoverLogsPage = () => {
                 render: (value: boolean, row) => (
                     <Switch
                         checked={value !== false}
+                        aria-label={`${t('caseHandoverLogs.policy.table.accessAllowed')} (${row.code})`}
                         onChange={(checked) => updatePolicy(row.code, { accessAllowed: checked })}
                     />
                 ),
@@ -100,7 +106,11 @@ export const CaseHandoverLogsPage = () => {
                 key: 'enabled',
                 width: 140,
                 render: (value: boolean, row) => (
-                    <Switch checked={value} onChange={(checked) => updatePolicy(row.code, { enabled: checked })} />
+                    <Switch
+                        checked={value}
+                        aria-label={`${t('caseHandoverLogs.policy.table.enabled')} (${row.code})`}
+                        onChange={(checked) => updatePolicy(row.code, { enabled: checked })}
+                    />
                 ),
             },
             {
@@ -112,6 +122,7 @@ export const CaseHandoverLogsPage = () => {
                     <InputNumber
                         min={1}
                         value={value}
+                        aria-label={`${t('caseHandoverLogs.policy.table.displayOrder')} (${row.code})`}
                         onChange={(nextValue) =>
                             updatePolicy(row.code, { displayOrder: Number(nextValue ?? row.displayOrder ?? 100) })
                         }
