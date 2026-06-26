@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { AgencyList } from './index';
 import styles from './styles.module.scss';
 
@@ -192,5 +192,35 @@ describe('AgencyList topic rendering', () => {
 
         expect(screen.getByRole('button', { name: 'Expand topics' })).toBeInTheDocument();
         expect(screen.getByText('Topic A')).not.toHaveClass(styles.topicChipSingle);
+    });
+
+    it('expands long multi-topic chips when the expand button is clicked', () => {
+        const longTopicName =
+            'A very long topic name that should become fully readable after expanding the topic list';
+        mocks.agencies = [
+            buildAgency([
+                { id: 1, name: longTopicName },
+                { id: 2, name: 'Topic B' },
+            ]),
+        ];
+
+        render(<AgencyList />);
+
+        const expandButton = screen.getByRole('button', { name: 'Expand topics' });
+        expect(expandButton).toHaveAttribute('aria-expanded', 'false');
+
+        fireEvent.click(expandButton);
+
+        expect(screen.getByRole('button', { name: 'Collapse topics' })).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByText(longTopicName)).toHaveClass(styles.topicChipExpanded);
+        expect(screen.getByTestId('topics-agency-1').firstElementChild).toHaveClass(styles.topicsListExpanded);
+    });
+
+    it('shows the empty-state message when topics are enabled but none are assigned', () => {
+        mocks.agencies = [buildAgency([])];
+
+        render(<AgencyList />);
+
+        expect(screen.getByText('No topics assigned')).toBeInTheDocument();
     });
 });

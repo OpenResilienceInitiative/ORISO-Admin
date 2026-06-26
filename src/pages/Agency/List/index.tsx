@@ -196,6 +196,7 @@ export const AgencyList = () => {
                                           <span
                                               key={topicItem.id ?? topicItem.name}
                                               className={classNames(styles.topicChip, {
+                                                  [styles.topicChipExpanded]: isExpanded,
                                                   [styles.topicChipSingle]: hasSingleTopic,
                                               })}
                                               title={topicItem.name}
