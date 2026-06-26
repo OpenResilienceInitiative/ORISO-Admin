@@ -1011,5 +1011,8 @@
     "permissions.cardDeck.previous": "Vorherige Berechtigungskarte anzeigen",
     "tenant.settings.cardDeck.ariaLabel": "Einstellungen scrollen",
     "tenant.settings.cardDeck.next": "Weitere Einstellungen anzeigen",
-    "tenant.settings.cardDeck.previous": "Vorherige Einstellungen anzeigen"
+    "tenant.settings.cardDeck.previous": "Vorherige Einstellungen anzeigen",
+    "searchInput.clear": "Suche löschen",
+    "searchInput.submit": "Suche ausführen",
+    "agency.postcode.minimum": "Die Postleitzahl muss aus 5 Ziffern bestehen."
 }
