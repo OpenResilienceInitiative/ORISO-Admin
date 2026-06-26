@@ -24,7 +24,9 @@ export interface AgencyData {
     city: string;
     counsellingRelations: CounsellingRelation[];
     topics: TopicData[];
-    topicIds: Array<{ value: string; label: string }> | string[];
+    // ADR-003 #3: an agency maps to exactly one topic, so the form value is a single
+    // Option ({ value, label }) or undefined; the API request body still carries string[].
+    topicIds: { value: string; label: string } | string[] | undefined;
     consultantIds?: Array<{ value: string; label: string }> | string[];
     consultantAssignmentFailed?: boolean;
     demographics?: AgencyDemographicsData;

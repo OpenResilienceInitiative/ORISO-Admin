@@ -24,7 +24,9 @@ interface AgencySettingsProps {
 export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) => {
     const [t] = useTranslation();
 
-    const topicIds = Form.useWatch<Option[]>('topicIds') || [];
+    // ADR-003 #3: an agency maps to exactly one topic (= one department), so the topic
+    // picker below is single-select. With labelInValue + single mode antd stores a single
+    // Option (or undefined when cleared), not an array — so no array-based filtering here.
     const genders = Form.useWatch<Option[]>(['demographics', 'genders']) || [];
     const counsellingRelations = Form.useWatch<Option[]>('counsellingRelations') || [];
 
@@ -33,7 +35,6 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
     const [tenantsData, setTenantsData] = useState([]);
     const { data: topics, isLoading: isLoadingTopics } = useTenantTopics(true);
-    const topicsForList = topics?.filter(({ id }) => !topicIds.find(({ value }) => value === `${id}`));
     const gendersForList = Object.values(Gender).filter((name) => !genders.find(({ value }) => value === `${name}`));
     const counsellingRelationsForList = Object.values(CounsellingRelation).filter(
         (relation) => !counsellingRelations.find(({ value }) => value === `${relation}`),
@@ -67,10 +68,9 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
                     label="topics.title"
                     name="topicIds"
                     labelInValue
-                    isMulti
                     allowClear
                     placeholder="plsSelect"
-                    options={convertToOptions(topicsForList, 'name', 'id')}
+                    options={convertToOptions(topics, 'name', 'id')}
                 />
             )}
 

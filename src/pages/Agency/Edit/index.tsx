@@ -127,7 +127,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         ...counsellingRelationsInitialValues,
         postCodeRangesActive: !hasOnlyDefaultRangeDefined(postCodes || []),
         online: agencyData?.id ? !agencyData?.offline : false,
-        topicIds: convertToOptions(agencyData?.topics, 'name', 'id', true),
+        // ADR-003 #3: single-select topic picker. With labelInValue + single mode antd
+        // expects a single Option ({ value, label }) — so take the first/only topic, or
+        // undefined when the agency has no topic.
+        topicIds: convertToOptions(agencyData?.topics, 'name', 'id', true)[0],
         tenantId: agencyTenantId,
     };
 
@@ -156,7 +159,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                               genders: mergedFormData.demographics.genders.map(({ value }) => value),
                           }
                         : mergedFormData.demographics,
-                topicIds: mergedFormData.topicIds?.map(({ value }) => value),
+                // ADR-003 #3: single-select → a single Option (or undefined when cleared).
+                // Normalise to the string[] of length 0/1 that the agency API builders expect
+                // (they treat each entry as a topic id via `typeof topic === 'string'`).
+                topicIds: mergedFormData.topicIds?.value != null ? [mergedFormData.topicIds.value] : [],
                 offline: !mergedFormData.online,
                 counsellingRelations: mergedFormData.counsellingRelations?.map(
                     (relation) => relation.value || relation,

@@ -23,10 +23,19 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
     const consultingTypeId =
         formInput.consultingType !== null ? parseInt(formInput.consultingType, 10) : await getConsultingType4Tenant();
 
-    const topics = formInput?.topicIds || formInput?.topics;
+    // ADR-003 #3: the agency form's topicIds is now a single Option ({ value, label }),
+    // a string[], or undefined. Normalise to an array before mapping; fall back to the
+    // backend `topics` (TopicData[]) when the form didn't carry topicIds.
+    const rawTopics = formInput?.topicIds ?? formInput?.topics;
+    const topics = Array.isArray(rawTopics) ? rawTopics : [rawTopics].filter(Boolean);
 
     const topicIds = topics
-        ?.map((topic) => (typeof topic === 'string' ? topic : topic?.id))
+        ?.map((topic) => {
+            if (typeof topic === 'string') {
+                return topic;
+            }
+            return 'value' in topic ? topic.value : topic?.id;
+        })
         .filter((id) => !Number.isNaN(Number(id)));
 
     const agencyDataRequestBody = withLegacyDioceseId({
