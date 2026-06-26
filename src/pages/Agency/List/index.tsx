@@ -171,6 +171,7 @@ export const AgencyList = () => {
                       render: (topics: TopicData[], record: AgencyData) => {
                           if (topics) {
                               const visibleTopics = [...topics].filter(Boolean);
+                              const hasSingleTopic = visibleTopics.length === 1;
                               const isExpanded = isTopicRowExpanded(record);
 
                               if (visibleTopics.length === 0) {
@@ -192,7 +193,13 @@ export const AgencyList = () => {
                                       })}
                                   >
                                       {visibleTopics.map((topicItem) => (
-                                          <span key={topicItem.id} className={styles.topicChip} title={topicItem.name}>
+                                          <span
+                                              key={topicItem.id ?? topicItem.name}
+                                              className={classNames(styles.topicChip, {
+                                                  [styles.topicChipSingle]: hasSingleTopic,
+                                              })}
+                                              title={topicItem.name}
+                                          >
                                               {topicItem.name}
                                           </span>
                                       ))}

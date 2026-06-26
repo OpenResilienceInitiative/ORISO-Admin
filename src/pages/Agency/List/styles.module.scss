@@ -192,6 +192,15 @@
     white-space: nowrap;
 }
 
+.topicChipSingle {
+    overflow: visible;
+    justify-content: flex-start;
+    text-align: left;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
 .topicsEmpty {
     color: var(--form-error);
 }
