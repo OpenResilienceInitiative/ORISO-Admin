@@ -92,6 +92,7 @@ vi.mock('../../../hooks/useUserRoles.hook', () => ({
 describe('CaseHandoverLogsPage', () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.reasonPolicies[0].policyAuthority = null;
     });
 
     it('allows editing policy authority and sends it in the save payload', async () => {
@@ -108,6 +109,26 @@ describe('CaseHandoverLogsPage', () => {
                 expect.objectContaining({
                     code: 'MEDICAL',
                     policyAuthority: 'Tenant policy board',
+                }),
+            ]);
+        });
+    });
+
+    it('normalizes a cleared policy authority back to null before saving', async () => {
+        mocks.reasonPolicies[0].policyAuthority = 'Tenant policy board';
+        const user = userEvent.setup();
+
+        render(<CaseHandoverLogsPage />);
+
+        const input = await screen.findByRole('textbox', { name: 'Policy authority (MEDICAL)' });
+        await user.clear(input);
+        await user.click(screen.getByRole('button', { name: 'Save policies' }));
+
+        await waitFor(() => {
+            expect(mocks.mutate).toHaveBeenCalledWith([
+                expect.objectContaining({
+                    code: 'MEDICAL',
+                    policyAuthority: null,
                 }),
             ]);
         });

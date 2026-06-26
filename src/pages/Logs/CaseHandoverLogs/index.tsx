@@ -30,6 +30,12 @@ const statusColor = (status: string) => {
     }
 };
 
+const normalizeReasonPoliciesForSave = (policies: CaseHandoverReasonPolicy[]) =>
+    policies.map((policy) => ({
+        ...policy,
+        policyAuthority: policy.policyAuthority === '' ? null : policy.policyAuthority,
+    }));
+
 export const CaseHandoverLogsPage = () => {
     const { t } = useTranslation();
     const { can } = useUserPermissions();
@@ -240,7 +246,7 @@ export const CaseHandoverLogsPage = () => {
                             type="primary"
                             loading={updateReasonPolicies.isLoading}
                             disabled={!editablePolicies.length || isLoadingReasonPolicies}
-                            onClick={() => updateReasonPolicies.mutate(editablePolicies)}
+                            onClick={() => updateReasonPolicies.mutate(normalizeReasonPoliciesForSave(editablePolicies))}
                         >
                             {t('caseHandoverLogs.policy.save')}
                         </Button>
