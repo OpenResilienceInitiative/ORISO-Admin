@@ -25,6 +25,7 @@
 
 ## Review Expectations
 
-- CodeRabbit and Cursor should compare PRs against `origin/dev` for normal ORISO Admin feature work.
+- Cursor should compare PRs against `origin/dev` for normal ORISO Admin feature work.
+- CodeRabbit is optional/manual and should not be treated as the primary automated reviewer.
 - Automated review should flag missing tests, duplicated admin patterns, unsafe auth/API changes, and mergeability risks.
 - Only auto-fix issues that are clearly scoped and testable. Leave architectural or ambiguous changes as review comments.
