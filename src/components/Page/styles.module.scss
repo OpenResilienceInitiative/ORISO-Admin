@@ -186,6 +186,13 @@
     flex: 0 0 auto;
     gap: 16px;
     min-width: 0;
+    color: var(--m3-on-surface, #1b1b1c);
+    text-decoration: none;
+
+    &:hover,
+    &:focus {
+        color: var(--m3-on-surface, #1b1b1c);
+    }
 
     > svg {
         box-sizing: border-box;
