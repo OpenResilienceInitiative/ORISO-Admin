@@ -144,7 +144,15 @@ export const CaseHandoverLogsPage = () => {
                 title: t('caseHandoverLogs.policy.table.policyAuthority'),
                 dataIndex: 'policyAuthority',
                 key: 'policyAuthority',
-                ellipsis: true,
+                width: 220,
+                render: (value: string | null | undefined, row) => (
+                    <Input
+                        value={value ?? ''}
+                        disabled={!canEditReasonPolicies}
+                        aria-label={`${t('caseHandoverLogs.policy.table.policyAuthority')} (${row.code})`}
+                        onChange={(event) => updatePolicy(row.code, { policyAuthority: event.target.value })}
+                    />
+                ),
             },
         ],
         [t, updatePolicy, canEditReasonPolicies],
