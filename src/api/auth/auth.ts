@@ -189,9 +189,15 @@ export const handleTokenRefresh = (): Promise<void> => {
                     resolve();
                 } else if (accessTokenValidInMs <= 0) {
                     refreshTokens().then(() => {
+                        // refreshTokens() has just renewed the access token and written the
+                        // fresh expiry to localStorage. Re-read it here: the pre-refresh
+                        // accessTokenValidInMs is <= 0, so reusing it would compute a negative
+                        // refresh interval and arm no renewal timer at all (silent re-expiry).
+                        const refreshedTime = new Date().getTime();
+                        const refreshedExpiry = getTokenExpiryFromLocalStorage();
                         startTimers({
-                            accessTokenValidInMs,
-                            refreshTokenValidInMs,
+                            accessTokenValidInMs: refreshedExpiry.accessTokenValidUntilTime - refreshedTime,
+                            refreshTokenValidInMs: refreshedExpiry.refreshTokenValidUntilTime - refreshedTime,
                         });
                         resolve();
                     });
