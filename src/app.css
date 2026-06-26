@@ -131,7 +131,7 @@
 }
 
 body {
-    background: #f2efea;
+    background: var(--m3-background, #f2efea);
 }
 
 .ant-layout {
