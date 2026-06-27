@@ -1,6 +1,11 @@
 export interface AppRuntimeConfig {
     API_URL?: string;
     KEYCLOAK_URL?: string;
+    USER_SERVICE_ORIGIN?: string;
+    AGENCY_SERVICE_ORIGIN?: string;
+    TENANT_SERVICE_ORIGIN?: string;
+    CONSULTING_TYPE_SERVICE_ORIGIN?: string;
+    KEYCLOAK_ORIGIN?: string;
     APP_URL?: string;
     MATRIX_URL?: string;
     KEYCLOAK_REALM?: string;

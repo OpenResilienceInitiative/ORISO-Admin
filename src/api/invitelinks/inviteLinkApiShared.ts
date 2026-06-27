@@ -1,9 +1,8 @@
-import { mainURL } from '../../appConfig';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 
-/** POST/GET {{baseUrl}}/useradmin/invitelinks — see invite-link-apis.json */
-export const invitelinksEndpoint = `${mainURL}/service/useradmin/invitelinks`;
+export { invitelinksEndpoint } from '../../appConfig';
 
+/** POST/GET {{baseUrl}}/useradmin/invitelinks — see invite-link-apis.json */
 export interface PagedInviteLinksResponse<T> {
     content: T[];
     totalElements: number;
