@@ -179,6 +179,8 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                         });
 
                         reject(new Error(FETCH_ERRORS.CATCH_ALL));
+                    } else {
+                        reject(new Error(`API call error: ${response.status} ${response.statusText}`));
                     }
                 } else {
                     // Handle unhandled response status - reject with appropriate error
