@@ -12,6 +12,8 @@ const serviceOriginKeys = [
 
 const loadAppConfig = async (config: AppRuntimeConfig = {}) => {
     vi.resetModules();
+    vi.stubEnv('VITE_USE_HTTPS', '');
+    vi.stubEnv('REACT_APP_USE_HTTPS', '');
     serviceOriginKeys.forEach((key) => {
         vi.stubEnv(`VITE_${key}`, '');
         vi.stubEnv(`REACT_APP_${key}`, '');
