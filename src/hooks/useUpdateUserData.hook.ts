@@ -1,6 +1,6 @@
 import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
-import { mainURL } from '../appConfig';
+import { userAdminDataEndpoint } from '../appConfig';
 import { CounselorData } from '../types/counselor';
 import { USER_DATA_KEY } from './useUserData.hook';
 
@@ -15,7 +15,7 @@ export const useUpdateUserData = (
             });
 
             return fetchData({
-                url: `${mainURL}/service/useradmin/data`,
+                url: userAdminDataEndpoint,
                 method: FETCH_METHODS.PATCH,
                 responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.CONFLICT_WITH_RESPONSE],
                 bodyData,
