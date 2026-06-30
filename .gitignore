@@ -33,3 +33,4 @@ graphify-out/*
 
 # Generated at container start by scripts/generate-runtime-env.js — never commit personal configs here
 public/env.js
+storybook-static
