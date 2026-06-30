@@ -15,7 +15,6 @@ import {
     Redo,
     Title,
     FormatListBulleted,
-    FormatListNumbered,
     FormatQuote,
     DataObject,
     Code,
@@ -101,15 +100,67 @@ const Toolbar = ({ editor }: { editor: Editor }) => {
             </div>
             <span className={styles.vDivider} />
             <div className={styles.toolGroup}>
-                <ToolButton title="Heading" active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-                    <Title />
-                </ToolButton>
-                <ToolButton title="Bullet list" active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>
-                    <FormatListBulleted />
-                </ToolButton>
-                <ToolButton title="Numbered list" active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
-                    <FormatListNumbered />
-                </ToolButton>
+                <Dropdown
+                    trigger={['click']}
+                    menu={{
+                        selectable: true,
+                        selectedKeys: [
+                            // eslint-disable-next-line no-nested-ternary
+                            editor.isActive('heading', { level: 1 })
+                                ? 'h1'
+                                : editor.isActive('heading', { level: 2 })
+                                ? 'h2'
+                                : editor.isActive('heading', { level: 3 })
+                                ? 'h3'
+                                : 'p',
+                        ],
+                        items: [
+                            { key: 'p', label: 'Normaler Text' },
+                            { key: 'h1', label: 'Überschrift 1' },
+                            { key: 'h2', label: 'Überschrift 2' },
+                            { key: 'h3', label: 'Überschrift 3' },
+                        ],
+                        onClick: ({ key }) => {
+                            if (key === 'p') editor.chain().focus().setParagraph().run();
+                            else editor.chain().focus().toggleHeading({ level: Number(key.slice(1)) as 1 | 2 | 3 }).run();
+                        },
+                    }}
+                >
+                    <button
+                        type="button"
+                        className={`${styles.toolBtn} ${styles.menuBtn} ${editor.isActive('heading') ? styles.active : ''}`}
+                        onMouseDown={(e) => e.preventDefault()}
+                        title="Textformat"
+                    >
+                        <Title />
+                        <ArrowDropDown className={styles.caret} />
+                    </button>
+                </Dropdown>
+                <Dropdown
+                    trigger={['click']}
+                    menu={{
+                        items: [
+                            { key: 'bullet', label: 'Aufzählung' },
+                            { key: 'ordered', label: 'Nummerierte Liste' },
+                        ],
+                        onClick: ({ key }) =>
+                            key === 'bullet'
+                                ? editor.chain().focus().toggleBulletList().run()
+                                : editor.chain().focus().toggleOrderedList().run(),
+                    }}
+                >
+                    <button
+                        type="button"
+                        className={`${styles.toolBtn} ${styles.menuBtn} ${
+                            editor.isActive('bulletList') || editor.isActive('orderedList') ? styles.active : ''
+                        }`}
+                        onMouseDown={(e) => e.preventDefault()}
+                        title="Listen"
+                    >
+                        <FormatListBulleted />
+                        <ArrowDropDown className={styles.caret} />
+                    </button>
+                </Dropdown>
                 <ToolButton title="Blockquote" active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
                     <FormatQuote />
                 </ToolButton>
@@ -270,11 +321,23 @@ export const M3RichTextEditor = ({
                     {maximized ? <FullscreenExit /> : <Fullscreen />}
                     <span>{maximized ? 'Fenster verkleinern' : 'Fenster maximieren'}</span>
                 </button>
-                <button type="button" className={styles.outlineBtn} title="Version history (backend pending)">
-                    <History />
-                    <span>{versionLabel}</span>
-                    <ArrowDropDown />
-                </button>
+                <Dropdown
+                    trigger={['click']}
+                    menu={{
+                        items: [
+                            { key: 'latest', label: 'Aktuelle Version (Entwurf)' },
+                            { key: 'published', label: 'Veröffentlichte Version' },
+                            { type: 'divider' },
+                            { key: 'history', label: 'Versionsverlauf (Backend folgt)', disabled: true },
+                        ],
+                    }}
+                >
+                    <button type="button" className={styles.outlineBtn} title="Versionsverlauf">
+                        <History />
+                        <span>{versionLabel}</span>
+                        <ArrowDropDown />
+                    </button>
+                </Dropdown>
             </div>
 
             <hr className={styles.divider} />

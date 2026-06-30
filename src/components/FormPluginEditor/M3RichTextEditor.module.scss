@@ -170,6 +170,25 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         font-size: 14px;
         font-weight: 500;
     }
+
+    // M3 keyboard focus ring
+    &:focus-visible {
+        outline: 2px solid $m3-primary;
+        outline-offset: 1px;
+    }
+
+    // Dropdown menu button: icon + small caret (heading / list)
+    &.menuBtn {
+        width: auto;
+        gap: 0;
+        padding: 0 6px;
+
+        .caret {
+            width: 14px;
+            height: 14px;
+            margin-left: -2px;
+        }
+    }
 }
 
 // Editor surface
@@ -183,6 +202,13 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     background: #fff;
     border: 1px solid $m3-outline-variant;
     border-radius: 14px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    // M3 focus state: the text surface highlights with the primary colour.
+    &:focus-within {
+        border-color: $m3-primary;
+        box-shadow: 0 0 0 1px $m3-primary;
+    }
 
     :global(.ProseMirror) {
         min-height: 248px;
