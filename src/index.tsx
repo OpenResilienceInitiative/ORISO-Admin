@@ -1,7 +1,7 @@
 import 'react-app-polyfill/stable';
 import { useEffect, useState } from 'react';
 import { QueryClientProvider } from 'react-query';
-import { render } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ConfigProvider, message } from 'antd';
 import { Locale } from 'antd/lib/locale-provider';
@@ -75,7 +75,9 @@ const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) =>
     return <ConfigProvider locale={myLanguages[language]}>{children}</ConfigProvider>;
 };
 
-render(
+const container = document.getElementById('root');
+const root = createRoot(container as HTMLElement);
+root.render(
     <QueryClientProvider client={queryClient}>
         <UseAppConfigProvider>
             <AppSettingsWrapper>
@@ -104,5 +106,4 @@ render(
             </AppSettingsWrapper>
         </UseAppConfigProvider>
     </QueryClientProvider>, // Contextprovider does not work at the moment as they have an error there
-    document.getElementById('root'),
 );

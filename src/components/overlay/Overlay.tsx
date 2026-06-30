@@ -113,7 +113,7 @@ export const Overlay = (props: {
         return activeOverlay.headline;
     };
 
-    const illustration = activeOverlay.svg;
+    const Illustration = activeOverlay.svg;
     return (
         <div
             className={clsx(
@@ -163,7 +163,7 @@ export const Overlay = (props: {
                                 'overlay__illustration--neutral': activeOverlay.illustrationBackground === 'neutral',
                             })}
                         >
-                            {illustration}
+                            {Illustration && <Illustration />}
                         </span>
                     </div>
                 )}
