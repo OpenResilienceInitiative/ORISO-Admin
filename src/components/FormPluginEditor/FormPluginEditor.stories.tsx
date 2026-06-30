@@ -51,3 +51,19 @@ export const Disabled: Story = {
         itemProps: { label: 'Rechtstext (schreibgeschützt)' },
     },
 };
+
+// Fresh empty Form (no initialValues) so the placeholder is visible.
+export const Empty: Story = {
+    args: {
+        name: 'legalText',
+        placeholder: 'Rechtstext eingeben …',
+        itemProps: { label: 'Rechtstext' },
+    },
+    decorators: [
+        (Story) => (
+            <Form style={{ maxWidth: 720 }}>
+                <Story />
+            </Form>
+        ),
+    ],
+};

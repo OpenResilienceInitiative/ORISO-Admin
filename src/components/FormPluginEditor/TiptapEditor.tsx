@@ -1,9 +1,10 @@
-import { useContext, useEffect } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
+import Placeholder from '@tiptap/extension-placeholder';
 import {
     FormatBold,
     FormatItalic,
@@ -147,6 +148,10 @@ const Toolbar = ({ editor, placeholders }: { editor: Editor; placeholders?: { [k
 
 const TiptapEditor = ({ value = '', onChange, onBlur, onFocus, placeholder, placeholders }: TiptapEditorProps) => {
     const disabled = useContext(DisabledContext);
+    // The placeholder extension reads the (possibly i18n-translated) text via
+    // this ref, so a runtime language switch is picked up without re-mounting.
+    const placeholderRef = useRef(placeholder);
+    placeholderRef.current = placeholder;
 
     const editor = useEditor({
         extensions: [
@@ -154,13 +159,13 @@ const TiptapEditor = ({ value = '', onChange, onBlur, onFocus, placeholder, plac
             Underline,
             Link.configure({ openOnClick: false, autolink: false }),
             Image,
+            Placeholder.configure({ placeholder: () => placeholderRef.current || '' }),
         ],
         content: value,
         editable: !disabled,
-        editorProps: { attributes: { class: 'RichEditor-editor', 'data-placeholder': placeholder || '' } },
+        editorProps: { attributes: { class: 'RichEditor-editor' } },
         onUpdate: ({ editor: e }) => {
-            const html = e.getHTML();
-            onChange?.(isEmptyHtml(html) ? '' : html);
+            onChange?.(e.isEmpty ? '' : e.getHTML());
         },
         onFocus: () => onFocus?.(),
         onBlur: () => onBlur?.(),
@@ -170,9 +175,9 @@ const TiptapEditor = ({ value = '', onChange, onBlur, onFocus, placeholder, plac
     // without feeding our own onUpdate back into a loop.
     useEffect(() => {
         if (!editor) return;
-        const current = editor.getHTML();
         const incoming = value || '';
-        if (incoming !== current && !(isEmptyHtml(incoming) && isEmptyHtml(current))) {
+        const current = editor.isEmpty ? '' : editor.getHTML();
+        if (incoming !== current && !(isEmptyHtml(incoming) && editor.isEmpty)) {
             editor.commands.setContent(incoming, false);
         }
     }, [value, editor]);
@@ -180,6 +185,12 @@ const TiptapEditor = ({ value = '', onChange, onBlur, onFocus, placeholder, plac
     useEffect(() => {
         editor?.setEditable(!disabled);
     }, [disabled, editor]);
+
+    // Re-render the placeholder decoration when the placeholder text changes
+    // at runtime (e.g. the user switches the UI language).
+    useEffect(() => {
+        if (editor) editor.view.dispatch(editor.state.tr);
+    }, [placeholder, editor]);
 
     if (!editor) return null;
 

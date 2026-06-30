@@ -134,3 +134,13 @@
         background: rgba(0, 0, 0, 0.1);
     }
 }
+
+// TipTap (@tiptap/extension-placeholder) shows the placeholder on the empty
+// first paragraph via this attr; mirrors the former draft-js placeholder.
+.ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
