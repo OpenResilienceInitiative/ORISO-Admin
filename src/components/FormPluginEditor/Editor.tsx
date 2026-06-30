@@ -105,7 +105,7 @@ const Editor = ({
         [editorState],
     );
 
-    const editorRef = useRef<any>();
+    const editorRef = useRef<any>(undefined);
     const focus = useCallback(() => {
         editorRef.current.focus();
     }, []);

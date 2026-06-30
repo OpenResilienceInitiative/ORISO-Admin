@@ -1,5 +1,7 @@
 import DOMPurify from 'dompurify';
 
+import type { JSX } from "react";
+
 export type HeadlineLevel = '1' | '2' | '3' | '4' | '5';
 interface HeadlineProps {
     text: string;

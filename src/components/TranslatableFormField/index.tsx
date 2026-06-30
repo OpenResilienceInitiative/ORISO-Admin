@@ -11,7 +11,7 @@ import styles from './styles.module.scss';
 
 export interface TranslatableFormFieldProps {
     name: string | string[];
-    children: React.ReactElement;
+    children: React.ReactElement<any>;
 }
 
 export const TranslatableFormField = ({ name, children }: TranslatableFormFieldProps) => {

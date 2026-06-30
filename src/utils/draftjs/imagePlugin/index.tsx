@@ -21,7 +21,7 @@ export default (config: ImagePluginConfig = {}): EditorPlugin => {
 
     const { component, target = '_self', rel = 'noreferrer noopener' } = config;
 
-    const DecoratedImage = ({ children, ...props }: ImageProps): ReactElement => (
+    const DecoratedImage = ({ children, ...props }: ImageProps): ReactElement<any> => (
         <Image {...props} target={target} rel={rel} component={component}>
             {children}
         </Image>

@@ -19,7 +19,7 @@ export interface PlaceholderProps {
 }
 
 // The component we render when we encounter a hyperlink in the text
-const Placeholder = (props: PlaceholderProps): ReactElement => {
+const Placeholder = (props: PlaceholderProps): ReactElement<any> => {
     const {
         children,
         entityKey,
@@ -64,9 +64,9 @@ const Placeholder = (props: PlaceholderProps): ReactElement => {
             <span contentEditable={false}>{children}</span>
             {!disabled && (
                 /* eslint-disable-next-line jsx-a11y/click-events-have-key-events,jsx-a11y/no-static-element-interactions */
-                <span contentEditable={false} className={styles['placeholder--delete']} onClick={handleDelete}>
+                (<span contentEditable={false} className={styles['placeholder--delete']} onClick={handleDelete}>
                     <CloseCircleFilled />
-                </span>
+                </span>)
             )}
         </span>
     );

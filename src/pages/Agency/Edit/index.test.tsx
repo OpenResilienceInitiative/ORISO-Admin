@@ -8,7 +8,7 @@ import { AgencyPageEdit } from './index';
 // Render AgencyPageEdit inside a QueryClientProvider so child components that use
 // react-query (e.g. RegistrationSettings → useConsultantsOrAdminsData) don't throw
 // "No QueryClient set". Retries are off so a missing queryFn never hangs the test.
-const renderWithClient = (ui: React.ReactElement) => {
+const renderWithClient = (ui: React.ReactElement<any>) => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 };

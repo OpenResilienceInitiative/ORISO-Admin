@@ -8,10 +8,10 @@ export interface ModalProps {
     cancelLabelKey?: string;
     okLabelKey?: string;
     contentKey?: string;
-    children?: React.ReactChild | React.ReactChild[];
+    children?: React.ReactElement<any> | number | string | (React.ReactElement<any> | number | string)[];
     onConfirm?: () => void;
     onClose?: () => void;
-    footer?: React.ReactChild;
+    footer?: React.ReactElement<any> | number | string;
 }
 
 export const ModalSuccess = ({

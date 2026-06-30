@@ -26,14 +26,14 @@ const findWithRegex = (regex, contentBlock, placeholders, callback) => {
 };
 
 const DecoratedPlaceholder = (store, placeholders) =>
-    function PlaceholderComponent(props: PlaceholderProps): ReactElement {
+    (function PlaceholderComponent(props: PlaceholderProps): ReactElement<any> {
         const { t } = useTranslation();
         const editorState = store.getEditorState();
         const contentState = editorState.getCurrentContent();
 
         const { key } = contentState.getEntity(props.entityKey).getData();
         return <Placeholder {...props}>{t(placeholders[key])}</Placeholder>;
-    };
+    });
 
 export default (config: PlaceholderPluginConfig = {}): EditorPlugin => {
     const store: PlaceholderPluginStore = {

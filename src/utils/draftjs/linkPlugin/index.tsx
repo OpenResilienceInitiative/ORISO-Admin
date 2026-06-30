@@ -13,7 +13,7 @@ export interface LinkPluginConfig {
 export default (config: LinkPluginConfig = {}): EditorPlugin => {
     const { target = '_self', rel = 'noreferrer noopener' } = config;
 
-    const DecoratedLink = ({ children, ...props }: LinkProps): ReactElement => (
+    const DecoratedLink = ({ children, ...props }: LinkProps): ReactElement<any> => (
         <Link {...props} target={target} rel={rel}>
             {children}
         </Link>

@@ -1,7 +1,7 @@
 import { ChevronLeft } from '@mui/icons-material';
 import { Spin } from 'antd';
 import classNames from 'classnames';
-import React, { cloneElement, forwardRef, LegacyRef, useEffect, useMemo, useRef } from 'react';
+import React, { cloneElement, forwardRef, Ref, useEffect, useMemo, useRef, type JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import { ReactComponent as FunctionalitiesIcon } from '../../resources/img/svg/permissions/functionalities.svg';
@@ -140,7 +140,7 @@ export const PageTitle = forwardRef(({ tabs, children }: PageTitleProps, ref) =>
     const finalTabs = useMemo(() => tabs?.filter?.(Boolean) || [], [tabs]);
 
     return (
-        <div className={styles.pageTitleContainer} ref={ref as LegacyRef<HTMLDivElement>} data-admin-page-header>
+        <div className={styles.pageTitleContainer} ref={ref as Ref<HTMLDivElement>} data-admin-page-header>
             {children}
             {!!finalTabs?.length && finalTabs.length > 1 && <PageTabs tabs={finalTabs} />}
         </div>
@@ -161,7 +161,7 @@ export const PageBack = forwardRef(({ path, title, titleKey, titleMaxLength, tab
     const headline = getTruncatedTitle(title ?? (titleKey ? t<string>(titleKey) : ''), titleMaxLength);
 
     return (
-        <div className={styles.back} ref={ref as LegacyRef<HTMLDivElement>} data-admin-page-header>
+        <div className={styles.back} ref={ref as Ref<HTMLDivElement>} data-admin-page-header>
             <NavLink to={path} className={classNames(styles.backLink, { [styles.backWithTabs]: !!finalTabs?.length })}>
                 <ChevronLeft />
                 <h3 className={styles.backHeadline}>{headline}</h3>

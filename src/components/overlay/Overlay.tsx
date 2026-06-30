@@ -1,6 +1,6 @@
 /* eslint-disable  @typescript-eslint/ban-types */
 import * as React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import * as ReactDOM from 'react-dom';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';

@@ -16,7 +16,7 @@ interface LegalTextProps {
     tenantId: string | number;
     fieldName: string[];
     titleKey: string;
-    subTitle: string | React.ReactChild;
+    subTitle: string | React.ReactElement<any> | number | string;
     placeHolderKey: string;
     showConfirmationModal?: Omit<ModalProps, 'onClose' | 'onConfirm'> & { field: string[] };
     placeholders?: { [key: string]: string };
