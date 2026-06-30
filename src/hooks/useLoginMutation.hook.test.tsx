@@ -1,8 +1,8 @@
 import React from 'react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider, setLogger } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { tenantAccessEndpoint } from '../appConfig';
 import { FETCH_METHODS } from '../api/fetchData';
 import { ADMIN_PORTAL_ACCESS_DENIED, useLoginMutation } from './useLoginMutation.hook';
@@ -93,14 +93,6 @@ const renderLoginMutation = () => {
 };
 
 describe('useLoginMutation', () => {
-    beforeAll(() => {
-        setLogger({
-            error: () => undefined,
-            log: console.log,
-            warn: console.warn,
-        });
-    });
-
     beforeEach(() => {
         mocks.apiServerSettings.mockReset();
         mocks.fetchData.mockReset();
@@ -128,6 +120,7 @@ describe('useLoginMutation', () => {
                 loginResponse,
                 { username: 'admin@example.com', password: 'correct-password', otp: '123456' },
                 undefined,
+                expect.anything(),
             );
         });
         expect(mocks.getAccessToken).toHaveBeenCalledWith({
@@ -157,6 +150,7 @@ describe('useLoginMutation', () => {
                 new Error(ADMIN_PORTAL_ACCESS_DENIED),
                 { username: 'admin@example.com', password: 'correct-password', otp: '123456' },
                 undefined,
+                expect.anything(),
             );
         });
         expect(mocks.fetchData).not.toHaveBeenCalled();

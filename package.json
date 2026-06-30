@@ -12,6 +12,8 @@
     "@emotion/styled": "^11.10.5",
     "@mui/icons-material": "^5.18.0",
     "@mui/material": "^5.18.0",
+    "@tanstack/react-query": "^5.101.2",
+    "@tanstack/react-query-devtools": "^5.101.2",
     "@types/dompurify": "^3.0.5",
     "antd": "^5.29.3",
     "axios": "^0.25.0",

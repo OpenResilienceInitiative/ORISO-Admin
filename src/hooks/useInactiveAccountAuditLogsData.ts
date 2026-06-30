@@ -1,9 +1,10 @@
-import { QueryOptions, useQuery, UseQueryOptions } from 'react-query';
+import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
 import { inactiveAccountAuditLogsEndpoint } from '../appConfig';
 import { InactiveAccountAuditLogsResponse } from '../types/inactiveAccountAuditLogs';
 
-interface InactiveAccountAuditLogsDataProps extends UseQueryOptions<InactiveAccountAuditLogsResponse> {
+interface InactiveAccountAuditLogsDataProps
+    extends Omit<UseQueryOptions<InactiveAccountAuditLogsResponse>, 'queryKey' | 'queryFn'> {
     page: number;
     perPage: number;
     accountRole?: string;
@@ -29,19 +30,17 @@ export const useInactiveAccountAuditLogsData = ({
         params.set('accountId', accountId.trim());
     }
 
-    return useQuery(
-        ['INACTIVE_ACCOUNT_AUDIT_LOGS', page, perPage, accountRole ?? '', accountId ?? ''],
-        () =>
+    return useQuery({
+        queryKey: ['INACTIVE_ACCOUNT_AUDIT_LOGS', page, perPage, accountRole ?? '', accountId ?? ''],
+        queryFn: () =>
             fetchData({
                 url: `${inactiveAccountAuditLogsEndpoint}?${params.toString()}`,
                 method: FETCH_METHODS.GET,
                 skipAuth: false,
                 responseHandling: [],
             }),
-        {
-            ...options,
-            retry: false,
-            refetchOnWindowFocus: false,
-        } as QueryOptions<InactiveAccountAuditLogsResponse>,
-    );
+        ...(options as object),
+        retry: false,
+        refetchOnWindowFocus: false,
+    });
 };

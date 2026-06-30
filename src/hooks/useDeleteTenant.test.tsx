@@ -1,7 +1,7 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('../api/tenant/deleteTenantData', () => ({ deleteTenantData: vi.fn() }));
 
@@ -35,8 +35,8 @@ describe('useDeleteTenant', () => {
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
         expect(deleteMock).toHaveBeenCalledWith(42);
-        expect(invalidateQueries).toHaveBeenCalledWith(TENANTS_QUERY_KEY);
-        expect(removeQueries).toHaveBeenCalledWith(['TENANT', 42]);
+        expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: [TENANTS_QUERY_KEY] });
+        expect(removeQueries).toHaveBeenCalledWith({ queryKey: ['TENANT', 42] });
         expect(onSuccess).toHaveBeenCalled();
     });
 });

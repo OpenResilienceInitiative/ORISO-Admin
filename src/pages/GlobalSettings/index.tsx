@@ -80,7 +80,7 @@ export const GlobalSmtpSettingsPage = () => {
     const [testForm] = Form.useForm();
     const { settings } = useAppConfigContext();
     const { data: userData } = useUserData();
-    const { mutate, isLoading } = useSettingsAdminMutation();
+    const { mutate, isPending } = useSettingsAdminMutation();
     const [isTestSending, setIsTestSending] = useState(false);
     const initialValues = useMemo(
         () => ({
@@ -159,7 +159,7 @@ export const GlobalSmtpSettingsPage = () => {
                     className={styles.smtpCard}
                     variant="dialog"
                     headerIcon={<EmailOutlinedIcon />}
-                    isLoading={isLoading}
+                    isLoading={isPending}
                     initialValues={initialValues}
                     titleKey="globalSettings.smtp.title"
                     subTitleKey="globalSettings.smtp.description"

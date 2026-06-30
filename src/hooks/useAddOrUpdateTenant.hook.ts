@@ -1,4 +1,4 @@
-import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
+import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { tenantAdminEndpoint } from '../appConfig';
 import { TenantAdminData } from '../types/TenantAdminData';
@@ -24,8 +24,8 @@ export const useAddOrUpdateTenant = ({ id, ...options }: UseAddOrUpdateTenantOpt
         return `${base}-${Date.now().toString().slice(-6)}`;
     };
 
-    return useMutation(
-        (formData) => {
+    return useMutation({
+        mutationFn: (formData) => {
             const resolvedSubdomain =
                 typeof formData.subdomain === 'string' && formData.subdomain.trim() !== ''
                     ? formData.subdomain
@@ -51,13 +51,11 @@ export const useAddOrUpdateTenant = ({ id, ...options }: UseAddOrUpdateTenantOpt
                 bodyData,
             });
         },
-        {
-            ...options,
-            onSuccess: (responseData, variables) => {
-                queryClient.setQueryData(['TENANT', responseData.id], { ...responseData, ...variables });
-                queryClient.invalidateQueries(TENANTS_QUERY_KEY);
-                options?.onSuccess?.(responseData, variables, null);
-            },
+        ...options,
+        onSuccess: (responseData, variables, onMutateResult, context) => {
+            queryClient.setQueryData(['TENANT', responseData.id], { ...responseData, ...variables });
+            queryClient.invalidateQueries({ queryKey: [TENANTS_QUERY_KEY] });
+            options?.onSuccess?.(responseData, variables, onMutateResult, context);
         },
-    );
+    });
 };
