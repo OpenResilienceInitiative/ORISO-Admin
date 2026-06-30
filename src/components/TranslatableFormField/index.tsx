@@ -1,9 +1,6 @@
 import { Form, Select } from 'antd';
-import { FieldContext } from 'rc-field-form';
-import { cloneElement, useContext, useMemo } from 'react';
-import { CheckCircleTwoTone, WarningTwoTone } from '@ant-design/icons';
+import { cloneElement, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import DisabledContext from 'antd/es/config-provider/DisabledContext';
 import classNames from 'classnames';
 import { SelectFormField } from '../SelectFormField';
 import { useTenantAdminData } from '../../hooks/useTenantAdminData.hook';
@@ -14,27 +11,19 @@ export interface TranslatableFormFieldProps {
     children: React.ReactElement<any>;
 }
 
+// Per-language editing is OPTIONAL: the language switcher only lets you edit
+// each active language if you want to. There is intentionally no "fill all
+// languages" requirement (that was a wrong constraint). Machine translation
+// (opt-in, via API, clearly labelled) is planned as a later helper.
 export const TranslatableFormField = ({ name, children }: TranslatableFormFieldProps) => {
     const { t } = useTranslation();
     const { data: tenantData } = useTenantAdminData();
     const namePath = name instanceof Array ? name : [name];
-    const isDisabled = useContext(DisabledContext);
-    const formContext = useContext(FieldContext);
     const fieldData = Form.useWatch([...namePath]);
     const languages = useMemo(
         () => tenantData?.settings?.activeLanguages || ['de'],
         [tenantData?.settings?.activeLanguages],
     );
-
-    const errors = languages
-        .map((lng) => {
-            const fieldErrors = formContext.getFieldError([...namePath, lng]);
-            const fieldValue = formContext.getFieldValue([...namePath, lng]);
-            return !fieldValue || fieldErrors.length > 0 ? lng : null;
-        })
-        .filter(Boolean);
-
-    const hasErrors = useMemo(() => errors.length > 0, [errors]);
 
     return (
         <>
@@ -43,21 +32,11 @@ export const TranslatableFormField = ({ name, children }: TranslatableFormFieldP
                     initialValue="de"
                     label="languages"
                     name={[...namePath, 'translate']}
-                    required
-                    validateStatus={hasErrors && !isDisabled && 'error'}
-                    help={hasErrors && !isDisabled && t('form.errors.fillAllLanguages')}
                     className={styles.translateField}
                 >
                     {languages.map((language) => (
                         <Select.Option value={language} key={language}>
-                            <div className={styles.containerLabel}>
-                                {t(`language.${language}`)}
-                                {errors.includes(language) ? (
-                                    <WarningTwoTone twoToneColor="#FF9F00" />
-                                ) : (
-                                    <CheckCircleTwoTone twoToneColor="#4FCC5C" />
-                                )}
-                            </div>
+                            {t(`language.${language}`)}
                         </Select.Option>
                     ))}
                 </SelectFormField>

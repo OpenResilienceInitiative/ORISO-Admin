@@ -74,9 +74,9 @@ export const LegalText = ({
                     <FormPluginEditor
                         placeholder={t(placeHolderKey)}
                         placeholders={placeholders}
-                        itemProps={{
-                            rules: [{ required: true }],
-                        }}
+                        // Legal texts are optional — no required rule (machine
+                        // translation as an opt-in helper is planned later).
+                        itemProps={{}}
                     />
                 </TranslatableFormField>
             </CardEditable>
