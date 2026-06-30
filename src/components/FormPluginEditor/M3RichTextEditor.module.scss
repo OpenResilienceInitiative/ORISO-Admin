@@ -1,0 +1,273 @@
+// MUI Material 3 "Tip Tap Editor Module" — tokens from Figma (Admin.ORISO,
+// node 1:34903). Mirrors the M3 sys tokens; brand primary #273270, M3 seed
+// primary #a5000a (publish accent).
+
+$m3-surface: #eae7e8;
+$m3-on-surface: #1b1b1c;
+$m3-on-surface-variant: #444748;
+$m3-outline-variant: #c4c7c8;
+$m3-divider: rgba(100, 109, 120, 0.11);
+$m3-primary: #273270;
+$m3-publish: #a5000a;
+$m3-state-hover: rgba(68, 71, 72, 0.08);
+$m3-state-active: rgba(39, 50, 112, 0.12);
+
+.module {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 800px;
+    min-width: 280px;
+    overflow: hidden;
+    background: $m3-surface;
+    border-radius: 28px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+    color: $m3-on-surface;
+    font-family: 'Inter Variable', Inter, Arial, sans-serif;
+
+    &.maximized {
+        position: fixed;
+        inset: 24px;
+        z-index: 1100;
+        max-width: none;
+        height: auto;
+    }
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    padding: 24px;
+
+    .headerIcon {
+        font-size: 40px;
+        color: $m3-on-surface-variant;
+    }
+
+    .title {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 400;
+        line-height: 32px;
+        text-align: center;
+        color: $m3-on-surface;
+    }
+}
+
+.languageRow {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 16px 8px;
+}
+
+// M3 split button (language)
+.splitButton {
+    display: flex;
+    gap: 2px;
+
+    .leading,
+    .trailing {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 48px;
+        border: 1px solid $m3-outline-variant;
+        background: transparent;
+        cursor: pointer;
+        color: $m3-on-surface-variant;
+        transition: background 0.15s ease;
+
+        &:hover {
+            background: $m3-state-hover;
+        }
+    }
+
+    .leading {
+        gap: 8px;
+        padding: 0 20px;
+        font-size: 16px;
+        font-weight: 500;
+        letter-spacing: 0.15px;
+        border-radius: 24px 4px 4px 24px;
+    }
+
+    .trailing {
+        width: 48px;
+        border-radius: 4px 24px 24px 4px;
+    }
+}
+
+.divider {
+    height: 1px;
+    margin: 4px 0;
+    background: $m3-outline-variant;
+    opacity: 0.5;
+    border: 0;
+}
+
+// Toolbar
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    padding: 8px 16px;
+}
+
+.toolGroup {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+}
+
+.vDivider {
+    width: 1px;
+    height: 24px;
+    margin: 0 4px;
+    background: $m3-divider;
+}
+
+.toolBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: $m3-on-surface-variant;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    &:hover:not(:disabled) {
+        background: $m3-state-hover;
+    }
+
+    &.active {
+        background: $m3-state-active;
+        color: $m3-primary;
+    }
+
+    &:disabled {
+        color: rgba(68, 71, 72, 0.38);
+        cursor: default;
+    }
+
+    &.withLabel {
+        width: auto;
+        gap: 4px;
+        padding: 0 10px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+}
+
+// Editor surface
+.editorWrap {
+    padding: 0 16px;
+}
+
+.editor {
+    min-height: 280px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid $m3-outline-variant;
+    border-radius: 14px;
+
+    :global(.ProseMirror) {
+        min-height: 248px;
+        outline: none;
+    }
+
+    :global(.ProseMirror p.is-editor-empty:first-child::before) {
+        content: attr(data-placeholder);
+        float: left;
+        height: 0;
+        color: rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+    }
+}
+
+// Bottom action rows
+.subActions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px 4px;
+}
+
+.outlineBtn {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid $m3-outline-variant;
+    border-radius: 12px;
+    background: transparent;
+    color: $m3-on-surface-variant;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    cursor: pointer;
+
+    &:hover {
+        background: $m3-state-hover;
+    }
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 8px 16px 16px;
+}
+
+.textBtn {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    height: 40px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 100px;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    cursor: pointer;
+
+    &:hover {
+        background: $m3-state-hover;
+    }
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    &.publish {
+        color: $m3-publish;
+    }
+
+    &.draft {
+        color: $m3-primary;
+    }
+}
