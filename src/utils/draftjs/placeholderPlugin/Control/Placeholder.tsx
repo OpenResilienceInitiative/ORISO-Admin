@@ -69,7 +69,7 @@ export const PlaceholderControl = ({
                 <Select
                     size="small"
                     placeholder={t('editor.plugin.placeholder.select.placeholder')}
-                    dropdownMatchSelectWidth={false}
+                    popupMatchSelectWidth={false}
                     value={null}
                     disabled={disabled}
                     onChange={insertPlaceholder}

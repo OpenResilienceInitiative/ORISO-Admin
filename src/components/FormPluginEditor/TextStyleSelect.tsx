@@ -45,7 +45,7 @@ const TextStyleSelect = ({
         <Select
             size="small"
             className="RichEditor-styleSelect"
-            dropdownMatchSelectWidth={false}
+            popupMatchSelectWidth={false}
             disabled={!blockType}
             value={blockType}
             placeholder={t('rte.placeholder')}
