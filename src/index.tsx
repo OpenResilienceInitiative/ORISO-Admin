@@ -4,7 +4,7 @@ import { QueryClientProvider } from 'react-query';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ConfigProvider, message } from 'antd';
-import { Locale } from 'antd/lib/locale-provider';
+import { Locale } from 'antd/lib/locale';
 import de_DE from 'antd/es/locale/de_DE';
 import en_GB from 'antd/es/locale/en_GB';
 import { App } from './App';
@@ -72,7 +72,14 @@ const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) =>
         };
     }, []);
 
-    return <ConfigProvider locale={myLanguages[language]}>{children}</ConfigProvider>;
+    return (
+        <ConfigProvider
+            locale={myLanguages[language]}
+            theme={{ token: { colorPrimary: '#273270', colorLink: '#273270', borderRadius: 4 } }}
+        >
+            {children}
+        </ConfigProvider>
+    );
 };
 
 const container = document.getElementById('root');

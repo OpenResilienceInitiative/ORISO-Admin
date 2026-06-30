@@ -3,7 +3,7 @@ import { RichUtils, SelectionState } from 'draft-js';
 import React, { MouseEvent, ReactNode, useCallback, useMemo } from 'react';
 import { DraftJsStyleButtonProps } from '@draft-js-plugins/buttons';
 import { Button } from 'antd';
-import { ButtonType } from 'antd/lib/button/button';
+import type { ButtonType } from 'antd/lib/button';
 
 interface ButtonProps extends DraftJsStyleButtonProps {
     type: ButtonType;
