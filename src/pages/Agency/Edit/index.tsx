@@ -25,6 +25,7 @@ import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
 import { LegalTextSettings } from './components/LegalTextSettings';
 import { DataProcessingAgreement } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreement';
+import { DepartmentDataProtectionContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentDataProtectionContainer';
 import styles from '../../../components/Page/styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { PermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings';
@@ -382,6 +383,18 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 <CardDeck.Item>
                     <DataProcessingAgreement />
                 </CardDeck.Item>
+                {agencyData?.id &&
+                    (agencyData.topics || [])
+                        .filter((topic) => topic.id != null)
+                        .map((topic) => (
+                            <CardDeck.Item key={`dpp-${topic.id}`}>
+                                <DepartmentDataProtectionContainer
+                                    agencyId={Number(agencyData.id)}
+                                    topicId={topic.id as number}
+                                    departmentName={topic.name}
+                                />
+                            </CardDeck.Item>
+                        ))}
             </CardDeck>
         </>
     );

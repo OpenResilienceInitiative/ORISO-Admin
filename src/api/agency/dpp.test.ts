@@ -11,8 +11,23 @@ vi.mock('../../appConfig', () => ({ agencyEndpointBase: '/service/agencyadmin/ag
 
 // eslint-disable-next-line import/first
 import { publishDepartmentDpp } from './publishDepartmentDpp';
+// eslint-disable-next-line import/first
+import { getDepartmentDpp } from './getDepartmentDpp';
 
 beforeEach(() => fetchData.mockClear());
+
+describe('getDepartmentDpp', () => {
+    it('GETs the Fachbereich DPP endpoint with auth', () => {
+        getDepartmentDpp(7, 42);
+        expect(fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                url: '/service/agencyadmin/agencies/7/topics/42/dpp',
+                method: 'GET',
+                skipAuth: false,
+            }),
+        );
+    });
+});
 
 describe('publishDepartmentDpp', () => {
     it('PUTs the Fachbereich DPP endpoint with the content map and publish flag', () => {
