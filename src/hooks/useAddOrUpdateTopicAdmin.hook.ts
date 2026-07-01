@@ -1,5 +1,5 @@
 import merge from 'lodash.merge';
-import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
+import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { topicAdminEndpoint } from '../appConfig';
 import { withLegacyDioceseId } from '../api/legacyCaritasApiDefaults';
@@ -15,8 +15,8 @@ export const useAddOrUpdateTopicAdmin = ({ id, ...options }: UseAddOrUpdateTopic
     const { data: topicData } = useTopicAdmin({ id, enabled: !!id });
     const queryClient = useQueryClient();
 
-    return useMutation(
-        (formData) => {
+    return useMutation({
+        mutationFn: (formData) => {
             const bodyData = JSON.stringify(
                 withLegacyDioceseId(
                     merge({}, topicData, {
@@ -42,12 +42,10 @@ export const useAddOrUpdateTopicAdmin = ({ id, ...options }: UseAddOrUpdateTopic
                 bodyData,
             });
         },
-        {
-            ...options,
-            onSuccess: (response, vars, context) => {
-                queryClient.invalidateQueries(TOPIC_ADMIN_KEY);
-                options?.onSuccess?.(response, vars, context);
-            },
+        ...options,
+        onSuccess: (response, vars, onMutateResult, context) => {
+            queryClient.invalidateQueries({ queryKey: [TOPIC_ADMIN_KEY] });
+            options?.onSuccess?.(response, vars, onMutateResult, context);
         },
-    );
+    });
 };

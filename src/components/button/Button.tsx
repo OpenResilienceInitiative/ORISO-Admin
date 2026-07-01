@@ -1,5 +1,5 @@
 /* eslint-disable  @typescript-eslint/ban-types */
-import { useEffect } from 'react';
+import { useEffect, type JSX } from 'react';
 
 export const BUTTON_TYPES = {
     PRIMARY: 'PRIMARY',

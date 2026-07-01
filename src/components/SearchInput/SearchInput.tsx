@@ -36,7 +36,7 @@ export const SearchInput = ({
 }: SearchInputProps) => {
     const { t } = useTranslation();
     const [internalSearchValue, setInternalSearchValue] = useState('');
-    const timerRef = useRef<ReturnType<typeof setTimeout>>();
+    const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
     const defaultPlaceholder = t('search-placeholder');
     const isControlled = value !== undefined;
     const searchValue = isControlled ? value : internalSearchValue;

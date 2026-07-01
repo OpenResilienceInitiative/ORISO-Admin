@@ -1,7 +1,7 @@
 import { notification } from 'antd';
 import mergeWith from 'lodash.mergewith';
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQueryClient, UseMutationOptions } from 'react-query';
+import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
 import { tenantAdminEndpoint } from '../appConfig';
 import { TenantAdminData } from '../types/TenantAdminData';
@@ -43,8 +43,8 @@ export const useTenantAdminDataMutation = ({
     const queryClient = useQueryClient();
     const { data: tenantAdminData } = useSingleTenantData({ id, enabled: !!id && id !== 'add' });
 
-    return useMutation(
-        (data: Partial<TenantAdminData>) => {
+    return useMutation({
+        mutationFn: (data: Partial<TenantAdminData>) => {
             return fetchData({
                 url: `${tenantAdminEndpoint}/${id}`,
                 method: FETCH_METHODS.PUT,
@@ -53,16 +53,14 @@ export const useTenantAdminDataMutation = ({
                 responseHandling: [],
             });
         },
-        {
-            ...options,
-            onSuccess: (responseData, updatedData) => {
-                queryClient.setQueryData(TENANT_ADMIN_DATA_KEY, mergeData(tenantAdminData, updatedData));
-                notification.success({
-                    message: t(successMessageKey),
-                    duration: 3,
-                });
-                options?.onSuccess?.(responseData, updatedData, null);
-            },
+        ...options,
+        onSuccess: (responseData, updatedData, onMutateResult, context) => {
+            queryClient.setQueryData([TENANT_ADMIN_DATA_KEY], mergeData(tenantAdminData, updatedData));
+            notification.success({
+                message: t(successMessageKey),
+                duration: 3,
+            });
+            options?.onSuccess?.(responseData, updatedData, onMutateResult, context);
         },
-    );
+    });
 };

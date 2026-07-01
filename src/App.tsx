@@ -1,4 +1,5 @@
 import { Suspense, useEffect } from 'react';
+import 'antd/dist/reset.css';
 import './styles/App.less';
 import './app.css';
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router';

@@ -10,11 +10,26 @@ const serviceOriginKeys = [
     'KEYCLOAK_ORIGIN',
 ];
 
+// Every runtime-config key, so the test is hermetic and ignores any ambient
+// .env (e.g. a local api.oriso.org config) — config is driven solely by
+// window.__APP_CONFIG__ below.
+const runtimeEnvKeys = [
+    ...serviceOriginKeys,
+    'USE_HTTPS',
+    'USE_API_URL',
+    'API_URL',
+    'KEYCLOAK_URL',
+    'APP_URL',
+    'MATRIX_URL',
+    'KEYCLOAK_REALM',
+    'KEYCLOAK_CLIENT_ID',
+    'COOKIE_DOMAIN',
+    'COOKIE_SECURE',
+];
+
 const loadAppConfig = async (config: AppRuntimeConfig = {}) => {
     vi.resetModules();
-    vi.stubEnv('VITE_USE_HTTPS', '');
-    vi.stubEnv('REACT_APP_USE_HTTPS', '');
-    serviceOriginKeys.forEach((key) => {
+    runtimeEnvKeys.forEach((key) => {
         vi.stubEnv(`VITE_${key}`, '');
         vi.stubEnv(`REACT_APP_${key}`, '');
     });

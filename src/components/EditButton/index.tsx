@@ -6,7 +6,7 @@ import styles from './styles.module.scss';
 interface EditButtonProps {
     className?: string;
     disabled?: boolean;
-    icon?: React.ReactChild;
+    icon?: React.ReactElement<any> | number | string;
     label?: string;
     labelKey?: string;
     onClick?: () => void;

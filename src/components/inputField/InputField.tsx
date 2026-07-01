@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { Text } from '../text/Text';
 import { ReactComponent as ShowPasswordIcon } from '../../resources/img/svg/eye.svg';
 import { ReactComponent as HidePasswordIcon } from '../../resources/img/svg/eye-closed.svg';

@@ -32,7 +32,9 @@
     "*.test",
     "*.spec.js",
     "src/**/*.test.ts",
-    "src/**/*.test.tsx"
+    "src/**/*.test.tsx",
+    "src/**/*.stories.ts",
+    "src/**/*.stories.tsx"
   ],
   "files": [
     "index.d.ts",

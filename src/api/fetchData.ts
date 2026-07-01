@@ -174,7 +174,7 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                             content: i18next.t([
                                 `message.error.${response.headers.get(FETCH_ERRORS.X_REASON)}`,
                                 'message.error.default',
-                            ]),
+                            ]) as string,
                             duration: 8,
                         });
 

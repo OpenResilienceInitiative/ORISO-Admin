@@ -6,7 +6,7 @@ import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { LegalText } from './components/LegalText';
-import { DataProcessingAgreement } from './components/DataProcessingAgreement';
+import { DataProcessingAgreementContainer } from './components/DataProcessingAgreementContainer';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import styles from './styles.module.scss';
 import { FeatureFlag } from '../../../enums/FeatureFlag';
@@ -91,7 +91,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                 </CardDeck.Item>
             )}
             <CardDeck.Item>
-                <DataProcessingAgreement />
+                <DataProcessingAgreementContainer tenantId={finalTenantId} />
             </CardDeck.Item>
             <CardDeck.Item>
                 <LegalText

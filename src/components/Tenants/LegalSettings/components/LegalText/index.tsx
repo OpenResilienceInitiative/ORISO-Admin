@@ -16,7 +16,7 @@ interface LegalTextProps {
     tenantId: string | number;
     fieldName: string[];
     titleKey: string;
-    subTitle: string | React.ReactChild;
+    subTitle: string | React.ReactElement<any> | number | string;
     placeHolderKey: string;
     showConfirmationModal?: Omit<ModalProps, 'onClose' | 'onConfirm'> & { field: string[] };
     placeholders?: { [key: string]: string };
@@ -74,9 +74,9 @@ export const LegalText = ({
                     <FormPluginEditor
                         placeholder={t(placeHolderKey)}
                         placeholders={placeholders}
-                        itemProps={{
-                            rules: [{ required: true }],
-                        }}
+                        // Legal texts are optional — no required rule (machine
+                        // translation as an opt-in helper is planned later).
+                        itemProps={{}}
                     />
                 </TranslatableFormField>
             </CardEditable>

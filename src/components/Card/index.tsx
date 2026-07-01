@@ -16,14 +16,14 @@ interface CardProps {
     autoHeight?: boolean;
     dialogContentPadding?: boolean;
     variant?: CardVariant;
-    headerIcon?: React.ReactChild;
+    headerIcon?: React.ReactElement<any> | number | string;
     titleKey: string;
-    subTitle?: React.ReactChild;
+    subTitle?: React.ReactElement<any> | number | string;
     subTitleKey?: string;
     cardTitleClassName?: string;
     tooltip?: string;
-    children: React.ReactChild | React.ReactChild[];
-    cardTitleChildren?: React.ReactChild | React.ReactChild[];
+    children: React.ReactElement<any> | number | string | (React.ReactElement<any> | number | string)[];
+    cardTitleChildren?: React.ReactElement<any> | number | string | (React.ReactElement<any> | number | string)[];
 }
 
 export const Card = ({

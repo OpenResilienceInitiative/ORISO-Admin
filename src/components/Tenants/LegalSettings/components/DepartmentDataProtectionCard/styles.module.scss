@@ -1,0 +1,20 @@
+.header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.department {
+    font-weight: 600;
+}
+
+.description {
+    margin-bottom: 12px;
+}
+
+.actions {
+    margin-top: 12px;
+    width: 100%;
+    justify-content: flex-end;
+}

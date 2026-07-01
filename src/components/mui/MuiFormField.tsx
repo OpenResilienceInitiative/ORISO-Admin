@@ -26,6 +26,7 @@ interface MuiControlProps {
     helpText?: string;
     inputProps?: Record<string, any>;
     endAdornment?: React.ReactNode;
+    startAdornment?: React.ReactNode;
 }
 
 /**
@@ -49,6 +50,7 @@ const MuiControl = ({
     helpText,
     inputProps,
     endAdornment,
+    startAdornment,
 }: MuiControlProps) => {
     const { status } = Form.Item.useStatus();
     const form = Form.useFormInstance();
@@ -57,9 +59,10 @@ const MuiControl = ({
     // Keep height stable: always render a helperText line (' ' when empty).
     const helperText = (isError && errors[0]) || helpText || ' ';
     const muiInputProps =
-        endAdornment || inputProps
+        endAdornment || startAdornment || inputProps
             ? {
                   ...(endAdornment ? { endAdornment } : {}),
+                  ...(startAdornment ? { startAdornment } : {}),
                   ...(inputProps ? { inputProps } : {}),
               }
             : undefined;
@@ -101,6 +104,7 @@ export interface MuiFormFieldProps {
     helpText?: string;
     inputProps?: Record<string, any>;
     endAdornment?: React.ReactNode;
+    startAdornment?: React.ReactNode;
     /** antd normalize hook (used by the number variant to coerce to a Number). */
     normalize?: (value: any, prevValue: any, allValues: any) => any;
 }

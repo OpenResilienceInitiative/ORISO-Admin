@@ -1,4 +1,4 @@
-import { useMutation } from 'react-query';
+import { useMutation } from '@tanstack/react-query';
 import { apiServerSettings } from '../api/settings/apiServerSettings';
 import { setTokens } from '../api/auth/auth';
 import getAccessToken from '../api/auth/getAccessToken';
@@ -27,9 +27,9 @@ export const ADMIN_PORTAL_ACCESS_DENIED = 'adminPortalAccessDenied';
 export const useLoginMutation = (tenantId: string) => {
     const { settings, setServerSettings } = useAppConfigContext();
 
-    return useMutation<LoginData, ErrorLogin, LoginParams>(
-        ['login', 'user-data', tenantId],
-        async ({ username, password, otp }: any) => {
+    return useMutation<LoginData, ErrorLogin, LoginParams>({
+        mutationKey: ['login', 'user-data', tenantId],
+        mutationFn: async ({ username, password, otp }: any) => {
             // console.log('🔍 useLoginMutation: Starting login process');
             return getAccessToken({ username, password, otp }).then((data) => {
                 if (!hasAdminPortalAccess(data.access_token)) {
@@ -55,16 +55,14 @@ export const useLoginMutation = (tenantId: string) => {
                     });
             });
         },
-        {
-            onSuccess: async (data) => {
-                await setTokens(data.access_token, data.expires_in, data.refresh_token, data.refresh_expires_in);
-                if (settings.useApiClusterSettings) {
-                    apiServerSettings().then(setServerSettings);
-                }
-            },
-            onError: () => {
-                // console.log('🔍 useLoginMutation: onError called with error:', error);
-            },
+        onSuccess: async (data) => {
+            await setTokens(data.access_token, data.expires_in, data.refresh_token, data.refresh_expires_in);
+            if (settings.useApiClusterSettings) {
+                apiServerSettings().then(setServerSettings);
+            }
         },
-    );
+        onError: () => {
+            // console.log('🔍 useLoginMutation: onError called with error:', error);
+        },
+    });
 };

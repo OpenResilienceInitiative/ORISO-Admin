@@ -1,7 +1,7 @@
 import { Button, message, Space, Col, Row, Form } from 'antd';
 import { useWatch } from 'antd/lib/form/Form';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQueryClient } from 'react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import { FETCH_ERRORS, X_REASON } from '../../../api/fetchData';
@@ -241,7 +241,7 @@ export const UserEditOrAdd = () => {
                         adminId={id}
                         tenantId={singleData?.tenantId}
                         onSuccess={() => {
-                            queryClient.invalidateQueries([typeOfUsers.toUpperCase()]);
+                            queryClient.invalidateQueries({ queryKey: [typeOfUsers.toUpperCase()] });
                             navigate(`/admin/users/${typeOfUsers}`);
                         }}
                     />

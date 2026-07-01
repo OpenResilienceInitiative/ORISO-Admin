@@ -1,0 +1,14 @@
+.viewer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.selector {
+    justify-content: flex-end;
+    width: 100%;
+}
+
+.select {
+    min-width: 240px;
+}
