@@ -17,4 +17,4 @@ jobs:
     - name: Build frontend application
       uses: ./.github/actions/node-build
       with:
-        node_version: '18'
+        node_version: '22.12.0'

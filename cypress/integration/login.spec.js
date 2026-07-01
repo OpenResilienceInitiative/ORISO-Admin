@@ -16,14 +16,27 @@ describe('login page', () => {
         cy.get('#basic_password').type('test-password', { log: false });
         cy.get('button[type="submit"]').should('not.be.disabled');
     });
+
+    it('toggles password visibility from the login form', () => {
+        cy.get('#basic_password').type('test-password', { log: false });
+        cy.get('#basic_password').should('have.attr', 'type', 'password');
+
+        cy.get('.ant-input-password-icon').click();
+        cy.get('#basic_password').should('have.attr', 'type', 'text');
+
+        cy.get('.ant-input-password-icon').click();
+        cy.get('#basic_password').should('have.attr', 'type', 'password');
+    });
 });
 
 const authenticatedSuite = (title, fn) => {
     describe(title, () => {
-        before(function () {
-            if (!Cypress.env('userOne') || !Cypress.env('passwordOne')) {
-                this.skip();
-            }
+        before(function skipWithoutAuthenticatedUser() {
+            cy.env(['userOne', 'passwordOne']).then(({ userOne, passwordOne }) => {
+                if (!userOne || !passwordOne) {
+                    this.skip();
+                }
+            });
         });
 
         fn();

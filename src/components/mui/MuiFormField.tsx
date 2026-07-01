@@ -56,11 +56,11 @@ const MuiControl = ({
     const errors = form?.getFieldError(fieldName as any) ?? [];
     // Keep height stable: always render a helperText line (' ' when empty).
     const helperText = (isError && errors[0]) || helpText || ' ';
-    const muiInputProps =
+    const slotProps =
         endAdornment || inputProps
             ? {
-                  ...(endAdornment ? { endAdornment } : {}),
-                  ...(inputProps ? { inputProps } : {}),
+                  ...(endAdornment ? { input: { endAdornment } } : {}),
+                  ...(inputProps ? { htmlInput: inputProps } : {}),
               }
             : undefined;
 
@@ -80,7 +80,7 @@ const MuiControl = ({
             error={isError}
             helperText={helperText}
             autoComplete={autoComplete}
-            InputProps={muiInputProps}
+            slotProps={slotProps}
         />
     );
 };
