@@ -1,5 +1,5 @@
 import { Col, Row } from 'antd';
-import { useParams } from 'react-router';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PermissionsSettings } from '../../../../components/Tenants/AppSettings/PermissionsSettings';
 import styles from './styles.module.scss';

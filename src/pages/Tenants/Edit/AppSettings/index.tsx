@@ -1,5 +1,5 @@
 import { Col, Row } from 'antd';
-import { useParams } from 'react-router';
+import { useParams } from 'react-router-dom';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { UserRole } from '../../../../enums/UserRole';
 import { useUserRoles } from '../../../../hooks/useUserRoles.hook';

@@ -92,7 +92,8 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
 
         const csrfToken = generateCsrfToken();
 
-        const localDevelopmentHeader = isLocalDevelopment ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
+        const localDevelopmentHeader =
+            isLocalDevelopment && CSRF_WHITELIST_HEADER ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
 
         const controller = new AbortController();
         const timeoutMs = props.timeout ?? 30_000;
