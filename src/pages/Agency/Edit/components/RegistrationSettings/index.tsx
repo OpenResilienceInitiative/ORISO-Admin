@@ -1,6 +1,6 @@
 import { Alert, Divider, Form } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
+import { useParams } from 'react-router-dom';
 import { useEffect, useMemo } from 'react';
 import { Card } from '../../../../../components/Card';
 import { FormRadioGroupField } from '../../../../../components/FormRadioGroupField';

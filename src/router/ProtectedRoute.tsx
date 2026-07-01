@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useLocation } from 'react-router';
+import { Navigate, useLocation } from 'react-router-dom';
 import routePathNames from '../appConfig';
 import { getTokenExpiryFromLocalStorage } from '../api/auth/accessSessionLocalStorage';
 import { bootstrapAuthSession, getAccessTokenForRequests, getRefreshTokenForRequests } from '../api/auth/auth';

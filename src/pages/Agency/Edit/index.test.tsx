@@ -48,8 +48,8 @@ vi.mock('react-i18next', () => ({
     useTranslation: () => Object.assign([t], { t, i18n: { language: 'de' } }),
 }));
 
-vi.mock('react-router', async () => {
-    const actual = await vi.importActual<typeof import('react-router')>('react-router');
+vi.mock('react-router-dom', async () => {
+    const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
     return {
         ...actual,
         useNavigate: () => mocks.navigate,

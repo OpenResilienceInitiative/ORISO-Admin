@@ -2,7 +2,7 @@ import { Suspense, useEffect } from 'react';
 import 'antd/dist/reset.css';
 import './styles/App.less';
 import './app.css';
-import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router';
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import ProtectedPageLayoutWrapper from './components/Layout/ProtectedPageLayoutWrapper';
 import { PageLoader } from './components/Layout/PageLoader';
 import routePathNames from './appConfig';

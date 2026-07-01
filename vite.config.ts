@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import viteTsconfigPaths from 'vite-tsconfig-paths';
 import svgrPlugin from 'vite-plugin-svgr';
 import eslintPlugin from 'vite-plugin-eslint';
 import { visualizer } from 'rollup-plugin-visualizer';
@@ -65,8 +64,13 @@ export default ({ mode }) => {
             authBffDevPlugin(),
             runtimeEnvPlugin(),
             react(),
-            viteTsconfigPaths(),
-            svgrPlugin(),
+            svgrPlugin({
+                include: '**/*.svg',
+                svgrOptions: {
+                    exportType: 'named',
+                    namedExport: 'ReactComponent',
+                },
+            }),
             eslintPlugin({
                 emitWarning: true,
                 failOnWarning: false,
@@ -88,6 +92,9 @@ export default ({ mode }) => {
                     javascriptEnabled: true,
                 },
             },
+        },
+        resolve: {
+            tsconfigPaths: true,
         },
         build: {
             outDir: 'build',

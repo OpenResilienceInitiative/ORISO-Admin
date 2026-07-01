@@ -3,7 +3,7 @@ import { useWatch } from 'antd/lib/form/Form';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FETCH_ERRORS, X_REASON } from '../../../api/fetchData';
 import { Card } from '../../../components/Card';
 import { FormInputField } from '../../../components/FormInputField';

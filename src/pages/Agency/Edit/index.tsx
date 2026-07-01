@@ -1,7 +1,7 @@
 import { Button, Col, Form, notification, Row } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
 import routePathNames from '../../../appConfig';

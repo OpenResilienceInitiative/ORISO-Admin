@@ -3,7 +3,7 @@ import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Outlet } from 'react-router';
+import { Navigate, Outlet } from 'react-router-dom';
 import { Page } from '../../components/Page';
 import { CardDeck } from '../../components/CardDeck';
 import { CardEditable } from '../../components/CardEditable';

@@ -58,12 +58,18 @@ const MuiControl = ({
     const errors = form?.getFieldError(fieldName as any) ?? [];
     // Keep height stable: always render a helperText line (' ' when empty).
     const helperText = (isError && errors[0]) || helpText || ' ';
-    const muiInputProps =
-        endAdornment || startAdornment || inputProps
+    const inputSlotProps =
+        endAdornment || startAdornment
             ? {
                   ...(endAdornment ? { endAdornment } : {}),
                   ...(startAdornment ? { startAdornment } : {}),
-                  ...(inputProps ? { inputProps } : {}),
+              }
+            : undefined;
+    const slotProps =
+        inputSlotProps || inputProps
+            ? {
+                  ...(inputSlotProps ? { input: inputSlotProps } : {}),
+                  ...(inputProps ? { htmlInput: inputProps } : {}),
               }
             : undefined;
 
@@ -83,7 +89,7 @@ const MuiControl = ({
             error={isError}
             helperText={helperText}
             autoComplete={autoComplete}
-            InputProps={muiInputProps}
+            slotProps={slotProps}
         />
     );
 };
@@ -166,10 +172,11 @@ export const MuiPasswordFormField = ({
                 <InputAdornment position="end">
                     <IconButton
                         aria-label="toggle password visibility"
+                        aria-pressed={visible}
+                        data-testid="password-visibility-toggle"
                         onClick={() => setVisible((prev) => !prev)}
                         onMouseDown={(event) => event.preventDefault()}
                         edge="end"
-                        tabIndex={-1}
                         size="small"
                     >
                         {visible ? <VisibilityOff /> : <Visibility />}

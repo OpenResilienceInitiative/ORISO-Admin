@@ -1,4 +1,4 @@
-import { PersonOutline } from '@mui/icons-material';
+import { PersonOutlined } from '@mui/icons-material';
 import classNames from 'classnames';
 import { Navigate, NavLink, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -55,7 +55,7 @@ export const LinksPage = () => {
                         )}
                     </div>
                     <NavLink to={routePathNames.userProfile} className={styles.myAccessButton}>
-                        <PersonOutline />
+                        <PersonOutlined />
                         <span>{t('links.myAccess', 'Mein Zugang')}</span>
                     </NavLink>
                 </div>

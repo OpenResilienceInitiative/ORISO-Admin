@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { Preview } from '@storybook/react-vite';
 import { MemoryRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider } from 'antd';
 import de_DE from 'antd/es/locale/de_DE';
 
