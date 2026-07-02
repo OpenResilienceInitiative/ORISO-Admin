@@ -17,9 +17,13 @@ export const PermissionsSettings = ({
     ...props
 }: PermissionsSettingsArgs) => {
     if (mode === 'agency') {
+        if (!props.agencyId) {
+            return null;
+        }
+
         return (
             <AgencyPermissionsSettings
-                agencyId={props.agencyId!}
+                agencyId={props.agencyId}
                 excludeCardKeys={props.excludeCardKeys}
                 superAdminMode={superAdminMode}
             />
