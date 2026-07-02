@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     applyForcedOffFields,
     applyVisibleTogglesAsValues,
+    buildAgencyAdminControlsPayload,
     buildTenantAdminControlsPayload,
     getForcedOffFields,
     isSubToggleDisabled,
@@ -61,6 +62,23 @@ describe('permissions settings utils', () => {
         expect(result).toMatchObject({
             permissionsPageEnabled: false,
             allowedPermissionToggles: {
+                calls: false,
+                groupChat: true,
+            },
+        });
+    });
+
+    it('preserves agency appearance toggle while building agency admin controls payload', () => {
+        const result = buildAgencyAdminControlsPayload(
+            { settings: { featureCallsEnabled: false } },
+            { appearance: true, groupChat: true },
+            false,
+        );
+
+        expect(result).toMatchObject({
+            permissionsPageEnabled: false,
+            allowedPermissionToggles: {
+                appearance: true,
                 calls: false,
                 groupChat: true,
             },

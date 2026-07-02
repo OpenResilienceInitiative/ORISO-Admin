@@ -1,5 +1,6 @@
 import { PermissionToggleVisibility } from '../../../../types/PermissionToggleVisibility';
 import { AgencyAdminControls } from '../../../../types/AgencyAdminControls';
+import { AgencyAdminAllowedPermissionToggles } from '../../../../types/AgencyAdminAllowedPermissionToggles';
 import { TenantAdminControls } from '../../../../types/TenantAdminControls';
 import type { TenantSettings } from '../../../../types/tenant';
 import type { ChatTypeCardDef } from './types';
@@ -233,7 +234,7 @@ export const buildTenantAdminControlsPayload = (
 
 export const buildAgencyAdminControlsPayload = (
     formData: { settings?: Record<string, unknown> },
-    existingToggles?: PermissionToggleVisibility,
+    existingToggles?: AgencyAdminAllowedPermissionToggles,
     permissionsPageEnabled = true,
 ): AgencyAdminControls => {
     const synced = syncMasterTogglesToAdminControls(formData, 'agencyAdminControls');
