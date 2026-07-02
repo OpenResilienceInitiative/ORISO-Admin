@@ -9,13 +9,15 @@ const meta = {
     component: FormPluginEditor,
     parameters: { layout: 'padded' },
     decorators: [
-        (Story) => (
+        (Story, context) => (
             <Form
                 style={{ maxWidth: 720 }}
-                initialValues={{
-                    legalText:
-                        '<p>Willkommen bei <strong>ORISO</strong>.</p><p>Bitte beachten Sie unsere <em>Datenschutzhinweise</em>.</p>',
-                }}
+                initialValues={
+                    context.parameters.formInitialValues ?? {
+                        legalText:
+                            '<p>Willkommen bei <strong>ORISO</strong>.</p><p>Bitte beachten Sie unsere <em>Datenschutzhinweise</em>.</p>',
+                    }
+                }
             >
                 <Story />
             </Form>
@@ -59,11 +61,5 @@ export const Empty: Story = {
         placeholder: 'Rechtstext eingeben …',
         itemProps: { label: 'Rechtstext' },
     },
-    decorators: [
-        (Story) => (
-            <Form style={{ maxWidth: 720 }}>
-                <Story />
-            </Form>
-        ),
-    ],
+    parameters: { formInitialValues: {} },
 };
