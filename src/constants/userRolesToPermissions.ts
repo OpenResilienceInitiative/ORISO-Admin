@@ -16,10 +16,6 @@ const rolesPriority: UserRole[] = [
 export const getEffectivePermissionRoles = (roles: UserRole[]): UserRole[] => {
     const filteredRoles = rolesPriority.filter((role) => roles.includes(role));
 
-    if (filteredRoles.includes(UserRole.RestrictedAgencyAdmin) && !filteredRoles.includes(UserRole.AgencyAdmin)) {
-        return [UserRole.RestrictedAgencyAdmin];
-    }
-
     return filteredRoles;
 };
 

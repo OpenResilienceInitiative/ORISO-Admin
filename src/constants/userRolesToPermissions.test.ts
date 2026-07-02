@@ -29,16 +29,16 @@ describe('mergeUserPermissions', () => {
 });
 
 describe('getEffectivePermissionRoles', () => {
-    it('uses only restricted agency permissions when no full agency-admin role is present', () => {
+    it('keeps unrelated secondary roles when restricted agency admins have no full agency-admin role', () => {
         const roles = getEffectivePermissionRoles([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin]);
 
-        expect(roles).toEqual([UserRole.RestrictedAgencyAdmin]);
+        expect(roles).toEqual([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin]);
     });
 
-    it('drops any secondary role for restricted agency admins without full agency-admin', () => {
-        const roles = getEffectivePermissionRoles([UserRole.RestrictedAgencyAdmin, UserRole.TopicAdmin]);
+    it('keeps tenant admin permissions for restricted agency admins without full agency-admin', () => {
+        const roles = getEffectivePermissionRoles([UserRole.RestrictedAgencyAdmin, UserRole.TenantAdmin]);
 
-        expect(roles).toEqual([UserRole.RestrictedAgencyAdmin]);
+        expect(roles).toEqual([UserRole.RestrictedAgencyAdmin, UserRole.TenantAdmin]);
     });
 
     it('keeps broader admin roles for agency super admins', () => {
