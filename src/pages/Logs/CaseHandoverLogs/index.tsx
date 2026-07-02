@@ -244,9 +244,11 @@ export const CaseHandoverLogsPage = () => {
                     {canEditReasonPolicies && (
                         <Button
                             type="primary"
-                            loading={updateReasonPolicies.isLoading}
+                            loading={updateReasonPolicies.isPending}
                             disabled={!editablePolicies.length || isLoadingReasonPolicies}
-                            onClick={() => updateReasonPolicies.mutate(normalizeReasonPoliciesForSave(editablePolicies))}
+                            onClick={() =>
+                                updateReasonPolicies.mutate(normalizeReasonPoliciesForSave(editablePolicies))
+                            }
                         >
                             {t('caseHandoverLogs.policy.save')}
                         </Button>
