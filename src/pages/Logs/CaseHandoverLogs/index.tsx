@@ -1,4 +1,4 @@
-import { Button, Input, InputNumber, Space, Switch, Tag } from 'antd';
+import { Alert, Button, Input, InputNumber, Space, Switch, Tag } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ColumnType } from 'antd/lib/table';
@@ -43,8 +43,12 @@ export const CaseHandoverLogsPage = () => {
     const canEditReasonPolicies = canEditCaseHandoverReasonPolicies(isSuperAdmin, can);
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(20);
-    const { data, isLoading } = useCaseHandoverLogsData({ page, perPage });
-    const { data: reasonPolicies, isLoading: isLoadingReasonPolicies } = useCaseHandoverReasonPoliciesData();
+    const { data, isLoading, isError: isLogsError } = useCaseHandoverLogsData({ page, perPage });
+    const {
+        data: reasonPolicies,
+        isLoading: isLoadingReasonPolicies,
+        isError: isReasonPoliciesError,
+    } = useCaseHandoverReasonPoliciesData();
     const updateReasonPolicies = useCaseHandoverReasonPoliciesMutation();
     const [editablePolicies, setEditablePolicies] = useState<CaseHandoverReasonPolicy[]>([]);
 
@@ -233,6 +237,7 @@ export const CaseHandoverLogsPage = () => {
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <h2>{t('caseHandoverLogs.policy.title')}</h2>
+                    {isReasonPoliciesError && <Alert type="error" message={t('error.loading')} showIcon />}
                     <ListingTable<CaseHandoverReasonPolicy>
                         rowKey={(row) => row.code}
                         loading={isLoadingReasonPolicies}
@@ -245,7 +250,7 @@ export const CaseHandoverLogsPage = () => {
                         <Button
                             type="primary"
                             loading={updateReasonPolicies.isPending}
-                            disabled={!editablePolicies.length || isLoadingReasonPolicies}
+                            disabled={!editablePolicies.length || isLoadingReasonPolicies || isReasonPoliciesError}
                             onClick={() =>
                                 updateReasonPolicies.mutate(normalizeReasonPoliciesForSave(editablePolicies))
                             }
@@ -254,6 +259,7 @@ export const CaseHandoverLogsPage = () => {
                         </Button>
                     )}
                 </Space>
+                {isLogsError && <Alert type="error" message={t('error.loading')} showIcon />}
                 <ListingTable<CaseHandoverLogEntry>
                     rowKey={(row) => `${row.requestId}`}
                     loading={isLoading}
