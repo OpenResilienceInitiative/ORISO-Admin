@@ -60,6 +60,8 @@
     "build:check": "npm run build && node scripts/bundleCheck.mjs",
     "serve": "vite preview",
     "storybook": "storybook dev -p 6006",
+    "typecheck:storybook": "tsc --noEmit --project tsconfig.storybook.json",
+    "prebuild-storybook": "npm run typecheck:storybook",
     "build-storybook": "storybook build",
     "test": "vitest run",
     "lint": "yarn run lint:css && yarn run lint:js && yarn run lint:formatting",

@@ -2,6 +2,22 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Form } from 'antd';
 import FormPluginEditor from './FormPluginEditor';
 
+type FormInitialValues = Record<string, unknown>;
+type FormPluginEditorParameters = {
+    formInitialValues?: FormInitialValues;
+};
+type FormPluginEditorStory = StoryObj<typeof meta> & {
+    parameters?: StoryObj<typeof meta>['parameters'] & FormPluginEditorParameters;
+};
+
+const defaultFormInitialValues: FormInitialValues = {
+    legalText:
+        '<p>Willkommen bei <strong>ORISO</strong>.</p><p>Bitte beachten Sie unsere <em>Datenschutzhinweise</em>.</p>',
+};
+
+const getFormInitialValues = (parameters: FormPluginEditorParameters): FormInitialValues =>
+    parameters.formInitialValues ?? defaultFormInitialValues;
+
 // Renders the TipTap rich-text editor in isolation (toolbar + HTML content +
 // placeholder insertion). Doubles as the React 19 smoke test for the editor.
 const meta = {
@@ -9,13 +25,10 @@ const meta = {
     component: FormPluginEditor,
     parameters: { layout: 'padded' },
     decorators: [
-        (Story) => (
+        (Story, context) => (
             <Form
                 style={{ maxWidth: 720 }}
-                initialValues={{
-                    legalText:
-                        '<p>Willkommen bei <strong>ORISO</strong>.</p><p>Bitte beachten Sie unsere <em>Datenschutzhinweise</em>.</p>',
-                }}
+                initialValues={getFormInitialValues(context.parameters)}
             >
                 <Story />
             </Form>
@@ -24,7 +37,7 @@ const meta = {
 } satisfies Meta<typeof FormPluginEditor>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = FormPluginEditorStory;
 
 export const Default: Story = {
     args: {
@@ -59,11 +72,5 @@ export const Empty: Story = {
         placeholder: 'Rechtstext eingeben …',
         itemProps: { label: 'Rechtstext' },
     },
-    decorators: [
-        (Story) => (
-            <Form style={{ maxWidth: 720 }}>
-                <Story />
-            </Form>
-        ),
-    ],
+    parameters: { formInitialValues: {} },
 };
