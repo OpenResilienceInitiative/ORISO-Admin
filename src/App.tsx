@@ -19,6 +19,7 @@ import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { UserRole } from './enums/UserRole';
 import { useAppConfigContext } from './context/useAppConfig';
+import { useAdminInvertedTheme } from './hooks/useAdminInvertedTheme.hook';
 import {
     LazyAgencyList,
     LazyAgencyPageEdit,
@@ -58,8 +59,13 @@ const AgencyInitialMeetingRedirect = () => {
 };
 
 export const App = () => {
-    const { data: publicTenantData } = usePublicTenantData();
+    const {
+        data: publicTenantData,
+        isLoading: isPublicTenantLoading,
+        isFetched: isPublicTenantFetched,
+    } = usePublicTenantData();
     const { isLoading, data } = useTenantData();
+    useAdminInvertedTheme(publicTenantData?.theming, isPublicTenantFetched || !isPublicTenantLoading);
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
     const location = useLocation();
