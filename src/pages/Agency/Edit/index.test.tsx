@@ -99,8 +99,8 @@ vi.mock('../../../components/Tenants/AppSettings/PermissionsSettings', () => ({
     PermissionsSettings: () => <div />,
 }));
 
-vi.mock('../../../components/Tenants/LegalSettings/components/DataProcessingAgreement', () => ({
-    DataProcessingAgreement: () => <div />,
+vi.mock('../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer', () => ({
+    DataProcessingAgreementContainer: () => <div />,
 }));
 
 vi.mock('../../../context/FeatureContext', () => ({
