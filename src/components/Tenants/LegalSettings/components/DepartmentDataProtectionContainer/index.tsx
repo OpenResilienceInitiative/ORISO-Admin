@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useDepartmentDpp } from '../../../../../hooks/useDepartmentDpp.hook';
 import { usePublishDepartmentDpp } from '../../../../../hooks/usePublishDepartmentDpp.hook';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
+import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
 import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
 
@@ -30,6 +31,7 @@ export const DepartmentDataProtectionContainer = ({
     const { data, isLoading } = useDepartmentDpp(agencyId, topicId);
     const { mutate: publish, isPending } = usePublishDepartmentDpp(agencyId, topicId);
     const { data: tenantData } = useTenantAdminData();
+    const { translate } = useTranslateLegalContent();
 
     const contentByLanguage = useMemo(() => parseLegalContentMap(data?.content), [data?.content]);
     const languages = useMemo(
@@ -52,6 +54,7 @@ export const DepartmentDataProtectionContainer = ({
             publicationStatus={data?.publicationStatus}
             onSave={(contentByLang, doPublish) => publish({ content: contentByLang, publish: doPublish })}
             saving={isPending}
+            onTranslate={translate}
         />
     );
 };

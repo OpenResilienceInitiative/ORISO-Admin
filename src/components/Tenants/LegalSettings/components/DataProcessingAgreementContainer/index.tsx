@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useDpaVersions } from '../../../../../hooks/useDpaVersions.hook';
 import { usePublishDpa } from '../../../../../hooks/usePublishDpa.hook';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
+import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
 import { DpaVersion } from '../../../../../types/dpa';
 import { LegalVersion } from '../LegalVersionViewer';
 import { DataProcessingAgreementCard } from '../DataProcessingAgreementCard';
@@ -32,6 +33,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     const { data: versions = [] } = useDpaVersions(id, Number.isFinite(id) && id > 0);
     const { mutate: publish, isPending } = usePublishDpa(id);
     const { data: tenantData } = useTenantAdminData();
+    const { translate } = useTranslateLegalContent();
 
     const latestContentByLanguage = useMemo(
         () => parseLegalContentMap((versions as DpaVersion[])[0]?.content),
@@ -68,6 +70,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
             versions={mapped}
             onPublish={publish}
             publishing={isPending}
+            onTranslate={readOnly ? undefined : translate}
             readOnly={readOnly}
         />
     );

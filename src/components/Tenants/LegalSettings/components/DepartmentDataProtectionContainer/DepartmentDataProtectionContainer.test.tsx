@@ -19,6 +19,10 @@ vi.mock('../../../../../hooks/usePublishDepartmentDpp.hook', () => ({
 }));
 
 // Stub the card to a plain node that echoes props and exposes onSave.
+vi.mock('../../../../../hooks/useTranslateLegalContent.hook', () => ({
+    useTranslateLegalContent: () => ({ translate: vi.fn(), isTranslating: false }),
+}));
+
 vi.mock('../DepartmentDataProtectionCard', () => ({
     DepartmentDataProtectionCard: ({
         initialContentByLanguage,
@@ -36,10 +40,7 @@ vi.mock('../DepartmentDataProtectionCard', () => ({
             data-status={publicationStatus}
             data-name={departmentName}
         >
-            <button
-                type="button"
-                onClick={() => onSave({ ...initialContentByLanguage, en: '<p>edited</p>' }, true)}
-            >
+            <button type="button" onClick={() => onSave({ ...initialContentByLanguage, en: '<p>edited</p>' }, true)}>
                 save
             </button>
         </div>
