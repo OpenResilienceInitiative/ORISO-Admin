@@ -56,6 +56,8 @@ export const inactiveAccountAuditLogsEndpoint = `${userServiceURL}/service/users
 export const agencyAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/agencyadmins/search`;
 export const registrationDataEndpoint = `${mainURL}/service/statistics/registration`;
 export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/invitelinks`;
+export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;
+export const inviteEmailTemplatesEndpoint = `${userServiceURL}/service/useradmin/invite-email-templates`;
 export const XHRheader = { AcceptLanguage: 'de' };
 
 /*
