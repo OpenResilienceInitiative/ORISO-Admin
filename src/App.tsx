@@ -24,6 +24,7 @@ import {
     LazyAgencyList,
     LazyAgencyPageEdit,
     LazyAppSettingsPage,
+    LazyCounsellorInvitesTab,
     LazyExternalInboundsTab,
     LazyGeneralSettingsPage,
     LazyGeneralTenantSettings,
@@ -43,6 +44,7 @@ import {
     LazyTenantGlobalSettings,
     LazyTenantSettingsLayout,
     LazyTenantThemeSettings,
+    LazyTenantInvitesTab,
     LazyTenantsList,
     LazyTopicEditOrAdd,
     LazyTopicList,
@@ -265,14 +267,8 @@ export const App = () => {
                         <Route path="/admin/invite-links" element={<LazyInviteLinksPage />} />
                         <Route path="/admin/links" element={<LazyLinksPage />}>
                             <Route index element={<LazyLinksIndexRedirect />} />
-                            <Route
-                                path="tenants"
-                                element={<Navigate to={routePathNames.linksExternalInbounds} replace />}
-                            />
-                            <Route
-                                path="counsellor"
-                                element={<Navigate to={routePathNames.linksExternalInbounds} replace />}
-                            />
+                            <Route path="tenants" element={<LazyTenantInvitesTab />} />
+                            <Route path="counsellor" element={<LazyCounsellorInvitesTab />} />
                             <Route path="external-inbounds" element={<LazyExternalInboundsTab />} />
                         </Route>
                     </Routes>
