@@ -16,7 +16,14 @@ runs:
 
   - name: Install dependencies
     shell: bash
-    run: npm ci
+    # --ignore-scripts blocks arbitrary dependency postinstall scripts from
+    # executing in CI (supply-chain hardening). Admin is a Vite app and does
+    # not rely on any dependency lifecycle script to build.
+    run: npm ci --ignore-scripts
+
+  - name: Run unit tests
+    shell: bash
+    run: npm test
 
   - name: Build app
     shell: bash
