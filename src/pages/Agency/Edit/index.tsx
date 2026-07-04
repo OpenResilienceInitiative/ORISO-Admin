@@ -24,7 +24,7 @@ import { useAgencyLegalDataMissing } from '../../../hooks/useAgencyLegalDataMiss
 import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
 import { LegalTextSettings } from './components/LegalTextSettings';
-import { DataProcessingAgreement } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreement';
+import { DataProcessingAgreementContainer } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer';
 import { DepartmentDataProtectionContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentDataProtectionContainer';
 import styles from '../../../components/Page/styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
@@ -381,7 +381,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     />
                 </CardDeck.Item>
                 <CardDeck.Item>
-                    <DataProcessingAgreement />
+                    {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
+                    <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />
                 </CardDeck.Item>
                 {agencyData?.id &&
                     (agencyData.topics || [])

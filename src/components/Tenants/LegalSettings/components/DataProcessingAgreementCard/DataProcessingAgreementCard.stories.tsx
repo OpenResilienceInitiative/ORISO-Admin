@@ -28,15 +28,33 @@ const versions = [
 
 export const WithHistory: Story = {
     args: {
-        initialContent:
-            '<h1>Auftragsverarbeitungsvertrag</h1><p>Aktueller Entwurf, bereit zum Veröffentlichen …</p>',
+        initialContentByLanguage: {
+            de: '<h1>Auftragsverarbeitungsvertrag</h1><p>Aktueller Entwurf, bereit zum Veröffentlichen …</p>',
+            en: '<h1>Data processing agreement</h1><p>Current draft, ready to publish …</p>',
+        },
+        languages: ['de', 'en'],
+        defaultLanguage: 'de',
         versions,
     },
 };
 
 export const FirstPublish: Story = {
     args: {
-        initialContent: '',
+        initialContentByLanguage: {},
+        languages: ['de'],
         versions: [],
+    },
+};
+
+export const ReadOnly: Story = {
+    args: {
+        initialContentByLanguage: {
+            de: '<h1>Auftragsverarbeitungsvertrag</h1><p>Veröffentlichte Fassung — auf Träger-Ebene verwaltet.</p>',
+            en: '<h1>Data processing agreement</h1><p>Published version — managed at tenant level.</p>',
+        },
+        languages: ['de', 'en'],
+        defaultLanguage: 'de',
+        versions,
+        readOnly: true,
     },
 };
