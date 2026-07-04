@@ -15,11 +15,20 @@ type FormEditorProps = {
     className?: string;
     placeholders?: { [key: string]: string };
     itemProps: FormItemProps;
+    /** Anchor navigation for long texts (heading ids + jump chips). Defaults to ON in TiptapEditor. */
+    enableAnchors?: boolean;
 };
 
 // antd Form.Item injects `value` (HTML string) + `onChange` into the single
 // child (TiptapEditor); we add the static editor props alongside.
-const FormPluginEditor = ({ placeholder, className, placeholders, itemProps, name }: FormEditorProps) => {
+const FormPluginEditor = ({
+    placeholder,
+    className,
+    placeholders,
+    itemProps,
+    name,
+    enableAnchors,
+}: FormEditorProps) => {
     const disabled = useContext(DisabledContext);
     const [focused, setFocused] = useState(false);
 
@@ -34,6 +43,7 @@ const FormPluginEditor = ({ placeholder, className, placeholders, itemProps, nam
                 <TiptapEditor
                     placeholder={placeholder}
                     placeholders={placeholders}
+                    enableAnchors={enableAnchors}
                     onFocus={() => setFocused(true)}
                     onBlur={() => setFocused(false)}
                 />
