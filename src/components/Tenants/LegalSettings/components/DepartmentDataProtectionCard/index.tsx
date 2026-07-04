@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { Button, Space, Tag } from 'antd';
+import { Alert, Button, Space, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../../../Card';
 import TiptapEditor from '../../../../FormPluginEditor/TiptapEditor';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
-import { mergeLegalContentMap } from '../../utils/legalContentLanguages';
+import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
+import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
+import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
 import styles from './styles.module.scss';
 
 export type DepartmentPublicationStatus = 'DRAFT' | 'PUBLISHED';
@@ -27,12 +28,19 @@ interface DepartmentDataProtectionCardProps {
      */
     onSave: (contentByLanguage: Record<string, string>, publish: boolean) => void;
     saving?: boolean;
+    /**
+     * Machine-translation call (wired by the container). When present, publishing offers
+     * the translate-on-publish modal and non-source languages get a per-field
+     * "translate from the original" button. Draft saves never translate.
+     */
+    onTranslate?: (request: TranslateRequest) => Promise<TranslateResponse>;
 }
 
 /**
  * Editor card for a department's (Fachbereich = agency × topic) own data privacy policy
  * (Datenschutzerklärung). Mirrors the tenant DPA card but is per-Fachbereich: it has no version
  * history and offers both a draft-save and a publish action, with the current status shown as a tag.
+ * Publishing offers to machine-translate the source text into the other active languages.
  */
 export const DepartmentDataProtectionCard = ({
     departmentName,
@@ -42,16 +50,38 @@ export const DepartmentDataProtectionCard = ({
     publicationStatus = 'DRAFT',
     onSave,
     saving,
+    onTranslate,
 }: DepartmentDataProtectionCardProps) => {
     const { t } = useTranslation();
-    const [edits, setEdits] = useState<Record<string, string>>({});
-    const [activeLanguage, setActiveLanguage] = useState(
-        defaultLanguage && languages.includes(defaultLanguage) ? defaultLanguage : languages[0],
-    );
     const published = publicationStatus === 'PUBLISHED';
-
-    const currentContent = edits[activeLanguage] ?? initialContentByLanguage[activeLanguage] ?? '';
-    const save = (publish: boolean) => onSave(mergeLegalContentMap(initialContentByLanguage, edits), publish);
+    const {
+        activeLanguage,
+        setActiveLanguage,
+        currentContent,
+        sourceLanguage,
+        targetLanguages,
+        contentMapWithEdits,
+        handleEditorChange,
+        buildPublishMap,
+        requestPublish,
+        modalOpen,
+        closeModal,
+        translating,
+        modalErrorKey,
+        translateAndPublish,
+        publishWithoutTranslation,
+        showFieldTranslate,
+        fieldTranslateDisabled,
+        fieldTranslating,
+        fieldErrorKey,
+        translateActiveField,
+    } = useLegalContentTranslation({
+        initialContentByLanguage,
+        languages,
+        defaultLanguage,
+        onTranslate,
+        onPublish: (contentByLanguage) => onSave(contentByLanguage, true),
+    });
 
     return (
         <Card titleKey="tenants.legal.departmentDataProtection.title" variant="dialog">
@@ -66,22 +96,51 @@ export const DepartmentDataProtectionCard = ({
 
             <p className={styles.description}>{t('tenants.legal.departmentDataProtection.description')}</p>
 
-            <LegalContentLanguageSelect languages={languages} value={activeLanguage} onChange={setActiveLanguage} />
-
-            <TiptapEditor
-                key={activeLanguage}
-                value={currentContent}
-                onChange={(html) => setEdits((prev) => ({ ...prev, [activeLanguage]: html }))}
+            <LegalContentLanguageSelect
+                languages={languages}
+                value={activeLanguage}
+                onChange={setActiveLanguage}
+                sourceLanguage={sourceLanguage}
+                contentMap={contentMapWithEdits}
             />
 
+            {showFieldTranslate && (
+                <div className={styles.translateField}>
+                    <Button
+                        size="small"
+                        loading={fieldTranslating}
+                        disabled={fieldTranslateDisabled}
+                        onClick={translateActiveField}
+                    >
+                        {t('legal.translation.field.button')}
+                    </Button>
+                    {fieldErrorKey && (
+                        <Alert type="error" showIcon message={t(fieldErrorKey)} className={styles.fieldError} />
+                    )}
+                </div>
+            )}
+
+            <TiptapEditor key={activeLanguage} value={currentContent} onChange={handleEditorChange} />
+
             <Space className={styles.actions}>
-                <Button loading={saving} onClick={() => save(false)}>
+                <Button loading={saving} onClick={() => onSave(buildPublishMap(), false)}>
                     {t('tenants.legal.departmentDataProtection.saveDraft')}
                 </Button>
-                <Button type="primary" loading={saving} onClick={() => save(true)}>
+                <Button type="primary" loading={saving} onClick={requestPublish}>
                     {t('tenants.legal.departmentDataProtection.publish')}
                 </Button>
             </Space>
+
+            <TranslateOnPublishModal
+                open={modalOpen}
+                sourceLanguage={sourceLanguage}
+                targetLanguages={targetLanguages}
+                translating={translating}
+                errorKey={modalErrorKey}
+                onConfirm={translateAndPublish}
+                onSkip={publishWithoutTranslation}
+                onCancel={closeModal}
+            />
         </Card>
     );
 };

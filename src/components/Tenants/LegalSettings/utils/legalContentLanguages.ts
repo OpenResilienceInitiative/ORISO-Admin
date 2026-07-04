@@ -7,7 +7,7 @@
  */
 
 /** HTML values TipTap emits for "nothing written". */
-const isEmptyHtml = (html: string | undefined): boolean => !html || html === '<p></p>';
+export const isEmptyHtml = (html: string | undefined): boolean => !html || html === '<p></p>';
 
 /**
  * Keys that we offer for editing: plain language codes like `de`, `en` or `de-CH`.

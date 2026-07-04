@@ -1,11 +1,21 @@
 import React from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DepartmentDataProtectionCard } from './index';
 
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({ t: (_k: string, fallback?: string) => fallback ?? _k }),
+    useTranslation: () => ({
+        t: (key: string, options?: unknown) => {
+            if (typeof options === 'string') {
+                return options;
+            }
+            if (options && typeof options === 'object') {
+                return `${key}:${Object.values(options).join(':')}`;
+            }
+            return key;
+        },
+    }),
 }));
 
 // TipTap pulls heavy editor deps; stub it to a plain node that echoes its value
@@ -130,5 +140,66 @@ describe('DepartmentDataProtectionCard', () => {
     it('renders the department name when provided', () => {
         render(<DepartmentDataProtectionCard departmentName="Suchtberatung" onSave={() => undefined} />);
         expect(screen.getByText('Suchtberatung')).toBeInTheDocument();
+    });
+});
+
+describe('DepartmentDataProtectionCard — translate on publish', () => {
+    const confirmButtonName = 'legal.translation.modal.confirm';
+
+    const onTranslateMock = () =>
+        vi.fn().mockResolvedValue({
+            translations: { en: { content: '<p>EN-MT</p>' } },
+            provider: 'openrouter',
+            model: 'test-model',
+        });
+
+    it('opens the translate modal on publish and saves the merged map incl. __meta', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        const onTranslate = onTranslateMock();
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="de"
+                onSave={onSave}
+                onTranslate={onTranslate}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: publishButtonName }));
+        await user.click(await screen.findByRole('button', { name: confirmButtonName }));
+
+        await waitFor(() => expect(onSave).toHaveBeenCalled());
+        expect(onTranslate).toHaveBeenCalledWith({
+            sourceLang: 'de',
+            targetLangs: ['en'],
+            texts: { content: '<p>DE</p>' },
+        });
+        const [savedMap, published] = onSave.mock.calls[0];
+        expect(published).toBe(true);
+        expect(savedMap.en).toBe('<p>EN-MT</p>');
+        expect(JSON.parse(savedMap.en__meta)).toMatchObject({ mt: true, src: 'de' });
+    });
+
+    it('never opens the modal for a draft save (no translation)', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        const onTranslate = onTranslateMock();
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="de"
+                onSave={onSave}
+                onTranslate={onTranslate}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: draftButtonName }));
+
+        expect(onTranslate).not.toHaveBeenCalled();
+        expect(onSave).toHaveBeenCalledWith({ de: '<p>DE</p>' }, false);
+        expect(screen.queryByRole('button', { name: confirmButtonName })).not.toBeInTheDocument();
     });
 });

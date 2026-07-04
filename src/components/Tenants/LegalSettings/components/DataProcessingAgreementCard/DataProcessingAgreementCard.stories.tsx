@@ -46,6 +46,31 @@ export const FirstPublish: Story = {
     },
 };
 
+/**
+ * Language selector with status labels: German is the source ("Deutsch (Original)"),
+ * English was machine-translated ("Englisch (maschinell übersetzt)" — from its `__meta`
+ * entry). The publish button opens the translate-on-publish modal (mocked translate call).
+ */
+export const WithMachineTranslatedLanguage: Story = {
+    args: {
+        initialContentByLanguage: {
+            de: '<h1>Auftragsverarbeitungsvertrag</h1><p>Deutscher Originaltext …</p>',
+            en: '<h1>Data processing agreement</h1><p>Machine-translated English text …</p>',
+            en__meta: '{"mt":true,"src":"de","at":"2026-07-01T10:00:00Z"}',
+        },
+        languages: ['de', 'en', 'fr'],
+        defaultLanguage: 'de',
+        versions: [],
+        onTranslate: async ({ targetLangs }) => ({
+            translations: Object.fromEntries(
+                targetLangs.map((lang) => [lang, { content: `<p>[${lang}] machine translation …</p>` }]),
+            ),
+            provider: 'openrouter',
+            model: 'demo',
+        }),
+    },
+};
+
 export const ReadOnly: Story = {
     args: {
         initialContentByLanguage: {

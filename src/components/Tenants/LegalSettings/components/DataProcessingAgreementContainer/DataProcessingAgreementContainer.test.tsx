@@ -17,6 +17,9 @@ vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminD
 vi.mock('../../../../../hooks/usePublishDpa.hook', () => ({
     usePublishDpa: () => ({ mutate: publishMutate, isPending: false }),
 }));
+vi.mock('../../../../../hooks/useTranslateLegalContent.hook', () => ({
+    useTranslateLegalContent: () => ({ translate: vi.fn(), isTranslating: false }),
+}));
 
 // Stub the card to a plain node that echoes props and exposes onPublish.
 vi.mock('../DataProcessingAgreementCard', () => ({
@@ -37,10 +40,7 @@ vi.mock('../DataProcessingAgreementCard', () => ({
             data-contents={(versions ?? []).map((v: any) => v.content).join('|')}
             data-read-only={readOnly ? 'true' : 'false'}
         >
-            <button
-                type="button"
-                onClick={() => onPublish({ ...initialContentByLanguage, en: '<p>edited</p>' })}
-            >
+            <button type="button" onClick={() => onPublish({ ...initialContentByLanguage, en: '<p>edited</p>' })}>
                 publish
             </button>
         </div>
