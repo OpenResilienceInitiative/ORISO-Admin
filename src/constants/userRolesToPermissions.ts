@@ -40,6 +40,40 @@ export const mergeUserPermissions = (...permissionSets: Array<UserPermissions | 
         return nextPermissions;
     }, {}) as UserPermissions;
 
+// Roles that legitimately manage agency admins and therefore lift the restricted-agency-admin
+// ceiling. A full agency admin outranks the restricted variant, and a tenant admin manages the
+// agency admins inside their tenant by design. `user-admin` is deliberately NOT in this list:
+// a restricted agency admin who also holds `user-admin` must not regain the AgencyAdminUser
+// surface through the permission union (privilege escalation).
+const AGENCY_ADMIN_CEILING_OVERRIDE_ROLES: UserRole[] = [UserRole.AgencyAdmin, UserRole.TenantAdmin];
+
+/**
+ * Enforces the restricted-agency-admin ceiling on the already-merged permissions.
+ *
+ * Permissions are merged as a boolean-OR union across all of a user's roles, so a secondary role
+ * (e.g. `user-admin`) can re-grant the `AgencyAdminUser` management surface that the
+ * `restricted-agency-admin` role explicitly withholds. When a user is a restricted agency admin
+ * and holds no genuinely higher agency role, the `AgencyAdminUser` resource is forced back to
+ * fully denied. All other resources (Consultant, Topic, Tenant, Statistic, …) are left untouched,
+ * so orthogonal roles keep their legitimate permissions.
+ */
+export const enforceRestrictedAgencyAdminCeiling = (
+    permissions: UserPermissions,
+    roles: UserRole[],
+): UserPermissions => {
+    const isRestrictedAgencyAdmin = roles.includes(UserRole.RestrictedAgencyAdmin);
+    const hasOverridingAgencyRole = AGENCY_ADMIN_CEILING_OVERRIDE_ROLES.some((role) => roles.includes(role));
+
+    if (!isRestrictedAgencyAdmin || hasOverridingAgencyRole) {
+        return permissions;
+    }
+
+    return {
+        ...permissions,
+        AgencyAdminUser: { read: false, create: false, update: false, delete: false },
+    };
+};
+
 export const useUserRolesToPermission = () => {
     const { roles, isSuperAdmin } = useUserRoles();
     const { data } = useTenantData();
@@ -102,7 +136,8 @@ export const useUserRolesToPermission = () => {
     const filteredRoles = getEffectivePermissionRoles(roles);
     // console.log('🔍 useUserRolesToPermission: filteredRoles:', filteredRoles);
 
-    const finalPermissions = mergeUserPermissions(...filteredRoles.map((role) => permissions[role]));
+    const mergedPermissions = mergeUserPermissions(...filteredRoles.map((role) => permissions[role]));
+    const finalPermissions = enforceRestrictedAgencyAdminCeiling(mergedPermissions, filteredRoles);
     // console.log('🔍 useUserRolesToPermission: finalPermissions:', finalPermissions);
 
     return finalPermissions;
