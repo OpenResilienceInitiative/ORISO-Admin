@@ -59,9 +59,18 @@ const getIconState = (isActive: boolean, hover: boolean): IconState => {
     return 'inactive';
 };
 
+const isCurrentPathActive = (currentPath: string, path: string): boolean => {
+    if (path === routePathNames.logs) {
+        return currentPath === routePathNames.logs;
+    }
+
+    return currentPath === path || currentPath.startsWith(`${path}/`);
+};
+
 const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
     const currentPath = useLocation().pathname;
-    const iconState = getIconState(currentPath.includes(path), hover);
+    const isActivePath = isCurrentPathActive(currentPath, path);
+    const iconState = getIconState(isActivePath, hover);
 
     switch (path) {
         case routePathNames.themeSettings:
@@ -106,6 +115,7 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
                 inactive: <StatisticsInactiveIcon />,
             });
         case routePathNames.logs:
+        case routePathNames.caseHandoverLogs:
         case routePathNames.inactiveAccountAuditLogs:
             return selectIcon(iconState, {
                 active: <LogsActiveIcon />,
