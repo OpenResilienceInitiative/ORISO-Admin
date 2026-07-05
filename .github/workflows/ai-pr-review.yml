@@ -132,17 +132,33 @@ jobs:
           # piping the mutable `curl https://cursor.com/install | bash` installer
           # into a shell. That installer runs whatever code the vendor serves at
           # request time inside a job that holds a write-capable token, which is a
-          # prompt-injection / supply-chain surface. Cursor does not publish a
-          # checksum for the tarball, so the pinned immutable version URL is the
-          # integrity anchor. Bump CURSOR_CLI_VERSION deliberately to upgrade.
+          # prompt-injection / supply-chain surface.
+          #
+          # Cursor publishes no checksum for the tarball, so we anchor integrity
+          # ourselves: the download is verified against a reviewed SHA-256 pinned
+          # here per architecture before it is extracted. Any change to the bytes
+          # the versioned URL serves fails the job. Bump CURSOR_CLI_VERSION AND
+          # the matching checksum deliberately to upgrade (recompute with
+          # `curl -fSL <url> | shasum -a 256`).
           CURSOR_CLI_VERSION: "2026.07.01-41b2de7"
+          CURSOR_CLI_SHA256_X64: "c30df9f1e518bd626ec58a97528e5978bcea6e2372193a87db0d38b857dcc193"
+          CURSOR_CLI_SHA256_ARM64: "55566abfe87a9d28346d50c7dc71cfcf0dc6135df6198b4661e4d5dd68796d11"
         run: |
           set -euo pipefail
-          arch="$(uname -m)"; case "$arch" in x86_64|amd64) arch=x64;; arm64|aarch64) arch=arm64;; esac
+          arch="$(uname -m)"
+          case "$arch" in
+            x86_64|amd64) arch=x64; expected_sha="${CURSOR_CLI_SHA256_X64}";;
+            arm64|aarch64) arch=arm64; expected_sha="${CURSOR_CLI_SHA256_ARM64}";;
+            *) echo "::error::Unsupported architecture for Cursor CLI: $arch"; exit 1;;
+          esac
           install_dir="$HOME/.local/share/cursor-agent/versions/${CURSOR_CLI_VERSION}"
           mkdir -p "$install_dir" "$HOME/.local/bin"
+          tarball="$(mktemp)"
           curl -fSL "https://downloads.cursor.com/lab/${CURSOR_CLI_VERSION}/linux/${arch}/agent-cli-package.tar.gz" \
-            | tar --strip-components=1 -xzf - -C "$install_dir"
+            -o "$tarball"
+          echo "${expected_sha}  ${tarball}" | sha256sum -c -
+          tar --strip-components=1 -xzf "$tarball" -C "$install_dir"
+          rm -f "$tarball"
           ln -sf "$install_dir/cursor-agent" "$HOME/.local/bin/cursor-agent"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           "$HOME/.local/bin/cursor-agent" --version
