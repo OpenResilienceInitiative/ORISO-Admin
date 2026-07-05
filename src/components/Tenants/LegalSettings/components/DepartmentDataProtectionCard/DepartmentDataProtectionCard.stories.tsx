@@ -15,10 +15,26 @@ export const Published: Story = {
     args: {
         departmentName: 'Schwangerschaftsberatung',
         publicationStatus: 'PUBLISHED',
-        initialContent:
-            '<h1>Datenschutzerklärung</h1>' +
-            '<p>Fachbereich Schwangerschaftsberatung. Verantwortlicher, Zwecke, Rechtsgrundlagen, ' +
-            'Speicherdauer und Betroffenenrechte.</p>',
+        initialContentByLanguage: {
+            de:
+                '<h1>Datenschutzerklärung</h1>' +
+                '<p>Fachbereich Schwangerschaftsberatung. Verantwortlicher, Zwecke, Rechtsgrundlagen, ' +
+                'Speicherdauer und Betroffenenrechte.</p>',
+        },
+        languages: ['de'],
+    },
+};
+
+export const Multilingual: Story = {
+    args: {
+        departmentName: 'Suchtberatung',
+        publicationStatus: 'PUBLISHED',
+        initialContentByLanguage: {
+            de: '<h1>Datenschutzerklärung</h1><p>Deutsche Fassung des Fachbereichs Suchtberatung.</p>',
+            en: '<h1>Data privacy policy</h1><p>English version of the addiction counselling department.</p>',
+        },
+        languages: ['de', 'en'],
+        defaultLanguage: 'de',
     },
 };
 
@@ -26,13 +42,17 @@ export const Draft: Story = {
     args: {
         departmentName: 'Suchtberatung',
         publicationStatus: 'DRAFT',
-        initialContent: '<p>Entwurf der Datenschutzerklärung – noch nicht veröffentlicht …</p>',
+        initialContentByLanguage: {
+            de: '<p>Entwurf der Datenschutzerklärung – noch nicht veröffentlicht …</p>',
+        },
+        languages: ['de'],
     },
 };
 
 export const Empty: Story = {
     args: {
         departmentName: 'Neuer Fachbereich',
-        initialContent: '',
+        initialContentByLanguage: {},
+        languages: ['de'],
     },
 };

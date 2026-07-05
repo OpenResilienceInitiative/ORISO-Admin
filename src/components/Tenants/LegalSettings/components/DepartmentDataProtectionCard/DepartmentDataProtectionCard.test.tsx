@@ -1,16 +1,35 @@
 import React from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DepartmentDataProtectionCard } from './index';
 
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({ t: (_k: string, fallback?: string) => fallback ?? _k }),
+    useTranslation: () => ({
+        t: (key: string, options?: unknown) => {
+            if (typeof options === 'string') {
+                return options;
+            }
+            if (options && typeof options === 'object') {
+                return `${key}:${Object.values(options).join(':')}`;
+            }
+            return key;
+        },
+    }),
 }));
 
-// TipTap pulls heavy editor deps; stub it to a plain node that echoes its value.
+// TipTap pulls heavy editor deps; stub it to a plain node that echoes its value
+// and lets the test emit an edit when an onChange handler is wired.
 vi.mock('../../../../FormPluginEditor/TiptapEditor', () => ({
-    default: ({ value }: { value: string }) => <div data-testid="editor" data-value={value} />,
+    default: ({ value, onChange }: { value: string; onChange?: (html: string) => void }) => (
+        <div data-testid="editor" data-value={value}>
+            {onChange && (
+                <button type="button" onClick={() => onChange('<p>edited</p>')}>
+                    edit
+                </button>
+            )}
+        </div>
+    ),
 }));
 
 beforeAll(() => {
@@ -29,43 +48,158 @@ beforeAll(() => {
     });
 });
 
+const publishButtonName = 'tenants.legal.departmentDataProtection.publish';
+const draftButtonName = 'tenants.legal.departmentDataProtection.saveDraft';
+
 describe('DepartmentDataProtectionCard', () => {
-    it('publishes the current content (publish=true)', async () => {
+    it('publishes the complete content map (publish=true)', async () => {
         const user = userEvent.setup();
         const onSave = vi.fn();
-        render(<DepartmentDataProtectionCard initialContent="<p>x</p>" onSave={onSave} />);
+        render(<DepartmentDataProtectionCard initialContentByLanguage={{ de: '<p>x</p>' }} onSave={onSave} />);
 
-        await user.click(screen.getByRole('button', { name: 'Veröffentlichen' }));
+        await user.click(screen.getByRole('button', { name: publishButtonName }));
 
-        expect(onSave).toHaveBeenCalledWith('<p>x</p>', true);
+        expect(onSave).toHaveBeenCalledWith({ de: '<p>x</p>' }, true);
     });
 
     it('stores a draft (publish=false)', async () => {
         const user = userEvent.setup();
         const onSave = vi.fn();
-        render(<DepartmentDataProtectionCard initialContent="<p>x</p>" onSave={onSave} />);
+        render(<DepartmentDataProtectionCard initialContentByLanguage={{ de: '<p>x</p>' }} onSave={onSave} />);
 
-        await user.click(screen.getByRole('button', { name: 'Als Entwurf speichern' }));
+        await user.click(screen.getByRole('button', { name: draftButtonName }));
 
-        expect(onSave).toHaveBeenCalledWith('<p>x</p>', false);
+        expect(onSave).toHaveBeenCalledWith({ de: '<p>x</p>' }, false);
+    });
+
+    it('keeps the other languages when saving after editing only one language', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="en"
+                onSave={onSave}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: publishButtonName }));
+
+        expect(onSave).toHaveBeenCalledWith({ de: '<p>DE</p>', en: '<p>edited</p>' }, true);
+    });
+
+    it('passes unknown keys through untouched on save', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', de__meta: 'meta' }}
+                languages={['de', 'en']}
+                defaultLanguage="de"
+                onSave={onSave}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: draftButtonName }));
+
+        expect(onSave).toHaveBeenCalledWith({ de: '<p>edited</p>', de__meta: 'meta' }, false);
+    });
+
+    it('switches the edited language via the language select', async () => {
+        const user = userEvent.setup();
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="de"
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
+
+        await user.click(screen.getByRole('combobox'));
+        await user.click(await screen.findByTitle('en'));
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
     });
 
     it('shows the published status tag', () => {
-        render(
-            <DepartmentDataProtectionCard publicationStatus="PUBLISHED" onSave={() => undefined} />,
-        );
-        expect(screen.getByText('Veröffentlicht')).toBeInTheDocument();
+        render(<DepartmentDataProtectionCard publicationStatus="PUBLISHED" onSave={() => undefined} />);
+        expect(screen.getByText('tenants.legal.departmentDataProtection.status.published')).toBeInTheDocument();
     });
 
     it('shows the draft status tag by default', () => {
         render(<DepartmentDataProtectionCard onSave={() => undefined} />);
-        expect(screen.getByText('Entwurf')).toBeInTheDocument();
+        expect(screen.getByText('tenants.legal.departmentDataProtection.status.draft')).toBeInTheDocument();
     });
 
     it('renders the department name when provided', () => {
-        render(
-            <DepartmentDataProtectionCard departmentName="Suchtberatung" onSave={() => undefined} />,
-        );
+        render(<DepartmentDataProtectionCard departmentName="Suchtberatung" onSave={() => undefined} />);
         expect(screen.getByText('Suchtberatung')).toBeInTheDocument();
+    });
+});
+
+describe('DepartmentDataProtectionCard — translate on publish', () => {
+    const confirmButtonName = 'legal.translation.modal.confirm';
+
+    const onTranslateMock = () =>
+        vi.fn().mockResolvedValue({
+            translations: { en: { content: '<p>EN-MT</p>' } },
+            provider: 'openrouter',
+            model: 'test-model',
+        });
+
+    it('opens the translate modal on publish and saves the merged map incl. __meta', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        const onTranslate = onTranslateMock();
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="de"
+                onSave={onSave}
+                onTranslate={onTranslate}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: publishButtonName }));
+        await user.click(await screen.findByRole('button', { name: confirmButtonName }));
+
+        await waitFor(() => expect(onSave).toHaveBeenCalled());
+        expect(onTranslate).toHaveBeenCalledWith({
+            sourceLang: 'de',
+            targetLangs: ['en'],
+            texts: { content: '<p>DE</p>' },
+        });
+        const [savedMap, published] = onSave.mock.calls[0];
+        expect(published).toBe(true);
+        expect(savedMap.en).toBe('<p>EN-MT</p>');
+        expect(JSON.parse(savedMap.en__meta)).toMatchObject({ mt: true, src: 'de' });
+    });
+
+    it('never opens the modal for a draft save (no translation)', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        const onTranslate = onTranslateMock();
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="de"
+                onSave={onSave}
+                onTranslate={onTranslate}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: draftButtonName }));
+
+        expect(onTranslate).not.toHaveBeenCalled();
+        expect(onSave).toHaveBeenCalledWith({ de: '<p>DE</p>' }, false);
+        expect(screen.queryByRole('button', { name: confirmButtonName })).not.toBeInTheDocument();
     });
 });

@@ -18,6 +18,7 @@ import { useAppConfigContext } from '../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.hook';
 import { useUserData } from '../../hooks/useUserData.hook';
 import { sendGlobalSmtpTestEmail } from '../../api/settings/sendGlobalSmtpTestEmail';
+import { TranslationApiKeysCardContainer } from '../../components/GlobalSettings/TranslationApiKeysCardContainer';
 import styles from './styles.module.scss';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
 
@@ -69,6 +70,9 @@ export const GlobalLoginSettingsPage = () => {
                         />
                     </div>
                 </CardEditable>
+            </Col>
+            <Col span={12} sm={6}>
+                <TranslationApiKeysCardContainer />
             </Col>
         </Row>
     );

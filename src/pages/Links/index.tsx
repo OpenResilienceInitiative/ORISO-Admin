@@ -9,17 +9,18 @@ import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissio
 import styles from './styles.module.scss';
 
 export { ExternalInboundsTab } from './ExternalInboundsTab';
+export { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
 
 const LINK_TABS = [
     {
         to: routePathNames.linksTenants,
         titleKey: 'links.tabs.tenants',
-        disabled: true,
+        disabled: false,
     },
     {
         to: routePathNames.linksCounsellor,
         titleKey: 'links.tabs.counsellor',
-        disabled: true,
+        disabled: false,
     },
     {
         to: routePathNames.linksExternalInbounds,
@@ -65,4 +66,4 @@ export const LinksPage = () => {
     );
 };
 
-export const LinksIndexRedirect = () => <Navigate to={routePathNames.linksExternalInbounds} replace />;
+export const LinksIndexRedirect = () => <Navigate to={routePathNames.linksTenants} replace />;

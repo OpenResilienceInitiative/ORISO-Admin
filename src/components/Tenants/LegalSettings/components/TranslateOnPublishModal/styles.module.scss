@@ -1,0 +1,15 @@
+.languageList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.providerHint {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.error {
+    margin-top: 8px;
+}

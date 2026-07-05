@@ -28,15 +28,58 @@ const versions = [
 
 export const WithHistory: Story = {
     args: {
-        initialContent:
-            '<h1>Auftragsverarbeitungsvertrag</h1><p>Aktueller Entwurf, bereit zum Veröffentlichen …</p>',
+        initialContentByLanguage: {
+            de: '<h1>Auftragsverarbeitungsvertrag</h1><p>Aktueller Entwurf, bereit zum Veröffentlichen …</p>',
+            en: '<h1>Data processing agreement</h1><p>Current draft, ready to publish …</p>',
+        },
+        languages: ['de', 'en'],
+        defaultLanguage: 'de',
         versions,
     },
 };
 
 export const FirstPublish: Story = {
     args: {
-        initialContent: '',
+        initialContentByLanguage: {},
+        languages: ['de'],
         versions: [],
+    },
+};
+
+/**
+ * Language selector with status labels: German is the source ("Deutsch (Original)"),
+ * English was machine-translated ("Englisch (maschinell übersetzt)" — from its `__meta`
+ * entry). The publish button opens the translate-on-publish modal (mocked translate call).
+ */
+export const WithMachineTranslatedLanguage: Story = {
+    args: {
+        initialContentByLanguage: {
+            de: '<h1>Auftragsverarbeitungsvertrag</h1><p>Deutscher Originaltext …</p>',
+            en: '<h1>Data processing agreement</h1><p>Machine-translated English text …</p>',
+            en__meta: '{"mt":true,"src":"de","at":"2026-07-01T10:00:00Z"}',
+        },
+        languages: ['de', 'en', 'fr'],
+        defaultLanguage: 'de',
+        versions: [],
+        onTranslate: async ({ targetLangs }) => ({
+            translations: Object.fromEntries(
+                targetLangs.map((lang) => [lang, { content: `<p>[${lang}] machine translation …</p>` }]),
+            ),
+            provider: 'openrouter',
+            model: 'demo',
+        }),
+    },
+};
+
+export const ReadOnly: Story = {
+    args: {
+        initialContentByLanguage: {
+            de: '<h1>Auftragsverarbeitungsvertrag</h1><p>Veröffentlichte Fassung — auf Träger-Ebene verwaltet.</p>',
+            en: '<h1>Data processing agreement</h1><p>Published version — managed at tenant level.</p>',
+        },
+        languages: ['de', 'en'],
+        defaultLanguage: 'de',
+        versions,
+        readOnly: true,
     },
 };
