@@ -60,6 +60,8 @@
     "agency.list.id": "ID",
     "agency.list.createdDate": "Created date",
     "agency.list.searchPlaceholder": "Search by name or city",
+    "agency.topics.collapse": "Collapse topics",
+    "agency.topics.expand": "Expand topics",
     "agency.modal.headline.delete": "Delete agency?",
     "agency.modal.text.delete": "Do you really want to delete this agency? This action cannot be undone.",
     "agency.modal.btn.ok.uppercase": "DELETE",

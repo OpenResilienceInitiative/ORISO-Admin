@@ -370,6 +370,8 @@
     "agency.list.createdDate": "Erstellt am",
     "agency.list.id": "ID",
     "agency.list.searchPlaceholder": "Suche nach Name oder Stadt",
+    "agency.topics.collapse": "Themen einklappen",
+    "agency.topics.expand": "Themen ausklappen",
     "agencyAdmins.title": "Agentur-Admins",
     "agencyAdmins.title.text": "{{userCount}} Agentur-Admins",
     "consultants.title.text": "{{userCount}} Berater",
