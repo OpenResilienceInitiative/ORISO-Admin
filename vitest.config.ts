@@ -20,7 +20,10 @@ export default defineConfig({
         globals: true,
         server: {
             deps: {
-                inline: [/node_modules\/@mui\//],
+                // tippy.js ships a CJS main whose default export breaks under
+                // Node's ESM interop; inlining lets Vite resolve its ESM build
+                // for @tiptap's BubbleMenu in jsdom tests.
+                inline: [/node_modules\/@mui\//, /node_modules\/@tiptap\//, /node_modules\/tippy\.js\//],
             },
         },
         setupFiles: './src/test/setup.ts',

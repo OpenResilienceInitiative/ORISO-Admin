@@ -1,0 +1,20 @@
+.provider {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 12px 0;
+
+    & + .provider {
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+    }
+}
+
+.providerName {
+    display: block;
+}
+
+.currentKey {
+    display: block;
+    margin-bottom: 4px;
+}

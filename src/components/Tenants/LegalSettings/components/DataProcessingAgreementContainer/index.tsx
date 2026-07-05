@@ -2,36 +2,47 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDpaVersions } from '../../../../../hooks/useDpaVersions.hook';
 import { usePublishDpa } from '../../../../../hooks/usePublishDpa.hook';
+import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
+import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
 import { DpaVersion } from '../../../../../types/dpa';
 import { LegalVersion } from '../LegalVersionViewer';
 import { DataProcessingAgreementCard } from '../DataProcessingAgreementCard';
+import {
+    getEditableLanguages,
+    parseLegalContentMap,
+    pickLegalContentLanguage,
+} from '../../utils/legalContentLanguages';
 
 interface DataProcessingAgreementContainerProps {
     tenantId: string | number;
+    /** Read-only view (agency page): the DPA is managed at tenant (Träger) level. */
+    readOnly?: boolean;
 }
 
-/** Reads the stored multilingual JSON content and returns the HTML for the active language. */
-const pickLanguage = (jsonContent: string, lang: string): string => {
-    try {
-        const map = JSON.parse(jsonContent) as Record<string, string>;
-        return map[lang] ?? Object.values(map)[0] ?? '';
-    } catch {
-        // Not a JSON map (older/plain content) — show it as-is.
-        return jsonContent ?? '';
-    }
-};
-
 /**
- * Container for the DPA card: loads the tenant's published versions, maps them to the read-only
- * viewer's shape (formatted label + active-language HTML), and wires the publish mutation.
+ * Container for the DPA card: loads the tenant's published versions and the tenant's active
+ * languages, hands the card the complete latest content map for per-language editing, and wires
+ * the publish mutation. The card submits the complete merged map, so publishing in one UI
+ * language never drops the other languages (or unknown keys) any more.
  */
-export const DataProcessingAgreementContainer = ({ tenantId }: DataProcessingAgreementContainerProps) => {
+export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataProcessingAgreementContainerProps) => {
     const { t, i18n } = useTranslation();
     const id = Number(tenantId);
     const lang = i18n.language?.split('-')[0] || 'de';
 
-    const { data: versions = [] } = useDpaVersions(id);
+    const { data: versions = [] } = useDpaVersions(id, Number.isFinite(id) && id > 0);
     const { mutate: publish, isPending } = usePublishDpa(id);
+    const { data: tenantData } = useTenantAdminData();
+    const { translate } = useTranslateLegalContent();
+
+    const latestContentByLanguage = useMemo(
+        () => parseLegalContentMap((versions as DpaVersion[])[0]?.content),
+        [versions],
+    );
+    const languages = useMemo(
+        () => getEditableLanguages(tenantData?.settings?.activeLanguages, latestContentByLanguage),
+        [tenantData?.settings?.activeLanguages, latestContentByLanguage],
+    );
 
     const mapped: LegalVersion[] = useMemo(
         () =>
@@ -42,11 +53,8 @@ export const DataProcessingAgreementContainer = ({ tenantId }: DataProcessingAgr
                     : date.toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' });
                 return {
                     id: version.activationDate,
-                    label:
-                        index === 0
-                            ? `${dateLabel} ${t('tenants.legal.version.current', '(aktuell)')}`
-                            : dateLabel,
-                    content: pickLanguage(version.content, lang),
+                    label: index === 0 ? `${dateLabel} ${t('tenants.legal.version.current')}` : dateLabel,
+                    content: pickLegalContentLanguage(version.content, lang),
                 };
             }),
         [versions, lang, t],
@@ -54,10 +62,16 @@ export const DataProcessingAgreementContainer = ({ tenantId }: DataProcessingAgr
 
     return (
         <DataProcessingAgreementCard
-            initialContent={mapped[0]?.content ?? ''}
+            // remount when the stored content changes (e.g. after a publish) so the editor resets to it
+            key={`${id}-${(versions as DpaVersion[])[0]?.activationDate ?? ''}`}
+            initialContentByLanguage={latestContentByLanguage}
+            languages={languages}
+            defaultLanguage={lang}
             versions={mapped}
-            onPublish={(html) => publish({ [lang]: html })}
+            onPublish={publish}
             publishing={isPending}
+            onTranslate={readOnly ? undefined : translate}
+            readOnly={readOnly}
         />
     );
 };

@@ -127,6 +127,12 @@
     }
 }
 
+.actionGroup {
+    display: inline-flex;
+    gap: 8px;
+    white-space: nowrap;
+}
+
 .statusTag {
     margin: 0;
     border-radius: 4px;

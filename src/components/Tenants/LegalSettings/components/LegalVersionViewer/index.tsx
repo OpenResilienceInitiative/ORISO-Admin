@@ -38,13 +38,13 @@ export const LegalVersionViewer = ({ versions, defaultVersionId }: LegalVersionV
     return (
         <div className={styles.viewer}>
             <Space className={styles.selector} align="center">
-                <Typography.Text>{t('tenants.legal.version.label', 'Version')}</Typography.Text>
+                <Typography.Text>{t('tenants.legal.version.label')}</Typography.Text>
                 <Select
                     value={selected.id}
                     onChange={setSelectedId}
                     options={versions.map((v) => ({ value: v.id, label: v.label }))}
                     className={styles.select}
-                    aria-label={t('tenants.legal.version.label', 'Version')}
+                    aria-label={t('tenants.legal.version.label')}
                 />
             </Space>
             <ConfigProvider componentDisabled>

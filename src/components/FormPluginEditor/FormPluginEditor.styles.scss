@@ -135,6 +135,36 @@
     }
 }
 
+// Anchor navigation: horizontal, scrollable chip row above the editor
+// content (turns into a swipeable tag row on narrow screens) + the
+// BubbleMenu box for linking selected text to an anchor.
+.RichEditor {
+    &-anchorNav {
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 4px;
+        overflow-x: auto;
+        padding: 8px 12px;
+        border-bottom: 1px solid #0009;
+
+        .ant-tag {
+            margin-inline-end: 0;
+            flex: 0 0 auto;
+            cursor: pointer;
+            user-select: none;
+        }
+    }
+
+    &-anchorBubble {
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 6px;
+        padding: 4px;
+        box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08);
+    }
+}
+
 // TipTap (@tiptap/extension-placeholder) shows the placeholder on the empty
 // first paragraph via this attr; mirrors the former draft-js placeholder.
 .ProseMirror p.is-editor-empty:first-child::before {
