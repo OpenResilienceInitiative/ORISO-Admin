@@ -1,4 +1,4 @@
-import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
+import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { tenantAdminsEndpoint } from '../appConfig';
 import { CounselorData } from '../types/counselor';
@@ -15,8 +15,8 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
     const queryClient = useQueryClient();
     const { data } = useTenantUserAdminData({ id, enabled: !!id && id !== 'add' });
 
-    return useMutation(
-        async (formData) => {
+    return useMutation({
+        mutationFn: async (formData) => {
             const formValues = formData as CounselorData & { username?: string; password?: string };
             const resolvedUsername = formValues.username?.trim()
                 ? formValues.username.trim()
@@ -52,16 +52,14 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
                 ...(formValues as CounselorData),
             } as CounselorData;
         },
-        {
-            ...options,
-            onSuccess: (responseData, variables) => {
-                if (responseData?.id) {
-                    queryClient.setQueryData([TENANT_ADMIN_QUERY_KEY, responseData.id], responseData);
-                }
-                queryClient.invalidateQueries(TENANT_ADMINS_QUERY_KEY);
-                queryClient.removeQueries([TENANT_QUERY_KEY]);
-                options?.onSuccess?.(responseData, variables, null);
-            },
+        ...options,
+        onSuccess: (responseData, variables, onMutateResult, context) => {
+            if (responseData?.id) {
+                queryClient.setQueryData([TENANT_ADMIN_QUERY_KEY, responseData.id], responseData);
+            }
+            queryClient.invalidateQueries({ queryKey: [TENANT_ADMINS_QUERY_KEY] });
+            queryClient.removeQueries({ queryKey: [TENANT_QUERY_KEY] });
+            options?.onSuccess?.(responseData, variables, onMutateResult, context);
         },
-    );
+    });
 };

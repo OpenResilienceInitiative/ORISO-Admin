@@ -1,17 +1,17 @@
 .content {
     height: 100vh;
     overflow: auto;
-    background: #f0edee;
+    background: var(--m3-surface-container, #f0edee);
 
     :global(.ant-layout-content) {
-        background: #f0edee;
+        background: var(--m3-surface-container, #f0edee);
     }
 }
 
 .mainContent {
-    background: #f0edee;
+    background: var(--m3-surface-container, #f0edee);
 
     :global(.ant-layout) {
-        background: #f0edee;
+        background: var(--m3-surface-container, #f0edee);
     }
 }

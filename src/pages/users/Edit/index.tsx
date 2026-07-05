@@ -1,9 +1,9 @@
 import { Button, message, Space, Col, Row, Form } from 'antd';
 import { useWatch } from 'antd/lib/form/Form';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQueryClient } from 'react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FETCH_ERRORS, X_REASON } from '../../../api/fetchData';
 import { Card } from '../../../components/Card';
 import { FormInputField } from '../../../components/FormInputField';
@@ -30,6 +30,7 @@ import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { useCounselorById } from '../../../hooks/useCounselorById';
 import { GrantConsultantIdentityModal } from '../../../components/GrantConsultantIdentityModal';
+import { isActiveDeleteDate } from '../../../utils/deleteDate';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
     const seen = new Set(current.map(({ value }) => value));
@@ -59,8 +60,7 @@ export const UserEditOrAdd = () => {
     });
     const singleData = consultantsResponse?.data.find((c) => c.id === id);
     const isAdminUserForm = typeOfUsers === TypeOfUser.AgencyAdmins || typeOfUsers === TypeOfUser.TenantAdmins;
-    const canGrantConsultantIdentity =
-        isEditing && isAdminUserForm && !!singleData && !singleData.hasOtherIdentity;
+    const canGrantConsultantIdentity = isEditing && isAdminUserForm && !!singleData && !singleData.hasOtherIdentity;
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted] = useState(false);
     const [tenantsData, setTenantsData] = useState([]);
@@ -101,7 +101,7 @@ export const UserEditOrAdd = () => {
             if (!tenantId) return [];
             return data?.filter(
                 ({ deleteDate, tenantId: agencyTenantId }) =>
-                    deleteDate === 'null' && agencyTenantId === parseInt(tenantId, 10),
+                    isActiveDeleteDate(deleteDate) && agencyTenantId === parseInt(tenantId, 10),
             );
         };
 
@@ -241,7 +241,7 @@ export const UserEditOrAdd = () => {
                         adminId={id}
                         tenantId={singleData?.tenantId}
                         onSuccess={() => {
-                            queryClient.invalidateQueries([typeOfUsers.toUpperCase()]);
+                            queryClient.invalidateQueries({ queryKey: [typeOfUsers.toUpperCase()] });
                             navigate(`/admin/users/${typeOfUsers}`);
                         }}
                     />
@@ -359,7 +359,9 @@ export const UserEditOrAdd = () => {
                                                             return Promise.resolve();
                                                         }
                                                         return Promise.reject(
-                                                            new Error(t('profile.passwordChange.error.passwordsNotMatch')),
+                                                            new Error(
+                                                                t('profile.passwordChange.error.passwordsNotMatch'),
+                                                            ),
                                                         );
                                                     },
                                                 }),

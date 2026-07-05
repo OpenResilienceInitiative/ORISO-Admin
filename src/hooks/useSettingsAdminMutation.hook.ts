@@ -1,6 +1,6 @@
 import { message } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useMutation, UseMutationOptions } from 'react-query';
+import { useMutation, UseMutationOptions } from '@tanstack/react-query';
 import { apiServerSettings } from '../api/settings/apiServerSettings';
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
 import { serverSettingsAdminEndpoint } from '../appConfig';
@@ -10,8 +10,8 @@ export const useSettingsAdminMutation = (options?: UseMutationOptions<Partial<un
     const { t } = useTranslation();
     const { settings, setManualSettings, setServerSettings } = useAppConfigContext();
 
-    return useMutation(
-        (data) => {
+    return useMutation({
+        mutationFn: (data) => {
             return fetchData({
                 url: serverSettingsAdminEndpoint,
                 method: FETCH_METHODS.PATCH,
@@ -26,9 +26,8 @@ export const useSettingsAdminMutation = (options?: UseMutationOptions<Partial<un
                 responseHandling: [],
             });
         },
-        {
-            ...options,
-            onSuccess: (responseData, updatedData) => {
+        ...options,
+        onSuccess: (responseData, updatedData, onMutateResult, context) => {
                 setManualSettings({
                     legalContentChangesBySingleTenantAdminsAllowed:
                         settings.legalContentChangesBySingleTenantAdminsAllowed,
@@ -41,8 +40,7 @@ export const useSettingsAdminMutation = (options?: UseMutationOptions<Partial<un
                     content: t('message.success.setting.update'),
                     duration: 3,
                 });
-                options?.onSuccess?.(responseData, updatedData, null);
+                options?.onSuccess?.(responseData, updatedData, onMutateResult, context);
             },
-        },
-    );
+    });
 };

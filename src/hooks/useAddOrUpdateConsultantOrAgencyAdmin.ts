@@ -1,4 +1,4 @@
-import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
+import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { addAgencyAdminData } from '../api/admins/addAgencyAdminData';
 import { editAgencyAdminData } from '../api/admins/editAgencyAdminData';
 import { addCounselorData } from '../api/counselor/addCounselorData';
@@ -14,20 +14,18 @@ interface AddOrUpdateConsultantOptions
 }
 export const useAddOrUpdateConsultantOrAdmin = ({ id, typeOfUser, ...options }: AddOrUpdateConsultantOptions) => {
     const queryClient = useQueryClient();
-    return useMutation<CounselorData | AdminData, Error, CounselorData | AdminData, Error | Response>(
-        (formData): Promise<CounselorData | AdminData> => {
+    return useMutation<CounselorData | AdminData, Error, CounselorData | AdminData, Error | Response>({
+        mutationFn: (formData): Promise<CounselorData | AdminData> => {
             if (typeOfUser.toLowerCase() === TypeOfUser.Consultants) {
                 return id ? editCounselorData(id, formData as CounselorData) : addCounselorData(formData);
             }
             return id ? editAgencyAdminData(id, formData as AdminData) : addAgencyAdminData(formData as AdminData);
         },
-        {
-            ...options,
-            onSuccess: (...all) => {
-                queryClient.invalidateQueries({ queryKey: ['HAS_CONSULTANTS'] });
-                queryClient.invalidateQueries({ queryKey: [typeOfUser.toUpperCase()] });
-                options.onSuccess?.(...all);
-            },
+        ...options,
+        onSuccess: (...all) => {
+            queryClient.invalidateQueries({ queryKey: ['HAS_CONSULTANTS'] });
+            queryClient.invalidateQueries({ queryKey: [typeOfUser.toUpperCase()] });
+            options.onSuccess?.(...all);
         },
-    );
+    });
 };

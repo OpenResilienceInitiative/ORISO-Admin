@@ -1,7 +1,6 @@
 import { message } from 'antd';
 import i18next from 'i18next';
-import { getValueFromCookie } from './auth/accessSessionCookie';
-import { getAccessTokenForRequests } from './auth/auth';
+import { getAccessTokenForRequests, tryRefreshAccessToken } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
 
@@ -71,9 +70,12 @@ interface FetchDataProps {
     responseHandling?: string[];
     timeout?: number;
     signal?: AbortSignal;
+    // Internal flag: set on the single automatic retry after a token refresh so a
+    // genuinely-unauthenticated request cannot loop. Not part of the public API.
+    retriedAfterRefresh?: boolean;
 }
 
-export const fetchData = (props: FetchDataProps): Promise<any> =>
+const executeFetchData = (props: FetchDataProps): Promise<any> =>
     new Promise((resolve, reject) => {
         const accessToken = getAccessTokenForRequests();
         // Check if manual authorization header is provided in headersData
@@ -90,7 +92,8 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
 
         const csrfToken = generateCsrfToken();
 
-        const localDevelopmentHeader = isLocalDevelopment ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
+        const localDevelopmentHeader =
+            isLocalDevelopment && CSRF_WHITELIST_HEADER ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
 
         const controller = new AbortController();
         const timeoutMs = props.timeout ?? 30_000;
@@ -158,8 +161,11 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                         );
                     } else if (response.status === 403) {
                         window.location.href = '/admin/access-denied';
-                    } else if (response.status === 401) {;
-                        logout(true, routePathNames.login);
+                    } else if (response.status === 401) {
+                        // Don't force a logout here. fetchData()'s wrapper attempts a single
+                        // token refresh + retry before falling back to logout, so a lapsed or
+                        // empty access token self-heals instead of dropping the user on the
+                        // login page mid-action (e.g. while creating an agency).
                         reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
                     } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL_SILENT)) {
                         // Reject without showing a toast so the caller can decide how to handle it.
@@ -169,11 +175,13 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                             content: i18next.t([
                                 `message.error.${response.headers.get(FETCH_ERRORS.X_REASON)}`,
                                 'message.error.default',
-                            ]),
+                            ]) as string,
                             duration: 8,
                         });
 
                         reject(new Error(FETCH_ERRORS.CATCH_ALL));
+                    } else {
+                        reject(new Error(`API call error: ${response.status} ${response.statusText}`));
                     }
                 } else {
                     // Handle unhandled response status - reject with appropriate error
@@ -191,3 +199,34 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                 }
             });
     });
+
+/**
+ * Public request helper. Wraps {@link executeFetchData} with a self-healing 401
+ * handler: when an authenticated request comes back 401 (typically a lapsed or
+ * empty access token in this tab), refresh the token via the BFF and retry the
+ * request exactly once. Only if the retry is still unauthorized — or there is no
+ * valid session to refresh — do we fall back to logging the user out. This stops
+ * the "logged out while creating an agency" forced-logout.
+ */
+export const fetchData = async (props: FetchDataProps): Promise<any> => {
+    try {
+        return await executeFetchData(props);
+    } catch (error) {
+        const isUnauthorized = error instanceof Error && error.message === FETCH_ERRORS.UNAUTHORIZED;
+
+        if (isUnauthorized && !props.skipAuth && !props.retriedAfterRefresh) {
+            const refreshed = await tryRefreshAccessToken();
+            if (refreshed) {
+                // Retry once through fetchData (not executeFetchData) so a retry that
+                // is still unauthorized also runs the logout fallback below.
+                return fetchData({ ...props, retriedAfterRefresh: true });
+            }
+        }
+
+        if (isUnauthorized && !props.skipAuth) {
+            logout(true, routePathNames.login);
+        }
+
+        throw error;
+    }
+};

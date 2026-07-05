@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button, Col, Row, Form, notification, Typography } from 'antd';
 import { FormInputField } from '../../../components/FormInputField';
 import { FormInputPasswordField } from '../../../components/FormInputPasswordField';

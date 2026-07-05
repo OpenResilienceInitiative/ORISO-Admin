@@ -47,6 +47,7 @@ const getAuthBffConfig = () => {
 
     return {
         cookieDomain: readEnv('VITE_COOKIE_DOMAIN', 'REACT_APP_COOKIE_DOMAIN') || '',
+        cookiePath: readEnv('VITE_AUTH_COOKIE_PATH', 'REACT_APP_AUTH_COOKIE_PATH') || '/admin',
         cookieSecure: readBooleanEnv('VITE_COOKIE_SECURE', readBooleanEnv('REACT_APP_COOKIE_SECURE', useHttps)),
         loginEndpoint,
         keycloakClientId,
@@ -58,8 +59,9 @@ const buildAuthCookieAttributes = (config, { httpOnly = true, maxAge } = {}) => 
     const domain = config.cookieDomain ? `; Domain=${config.cookieDomain}` : '';
     const httpOnlyFlag = httpOnly ? '; HttpOnly' : '';
     const maxAgeFlag = typeof maxAge === 'number' && maxAge > 0 ? `; Max-Age=${Math.floor(maxAge)}` : '';
+    const path = config.cookiePath || '/admin';
 
-    return `; Path=/; SameSite=Strict${secure}${domain}${httpOnlyFlag}${maxAgeFlag}`;
+    return `; Path=${path}; SameSite=Strict${secure}${domain}${httpOnlyFlag}${maxAgeFlag}`;
 };
 
 const parseCookies = (cookieHeader = '') =>
@@ -83,7 +85,7 @@ const appendSetCookie = (response, cookieValue) => {
 };
 
 const buildAuthTokenCookies = (config, payload) => {
-    const cookies = [];
+    const cookies = buildRootPathAuthTokenClearCookies(config);
 
     if (payload.access_token) {
         cookies.push(
@@ -106,6 +108,24 @@ const buildAuthTokenCookies = (config, payload) => {
 
 const buildClearAuthTokenCookies = (config) => {
     const clearAttributes = buildAuthCookieAttributes(config, { httpOnly: true }).replace(
+        /; Max-Age=\d+/,
+        '; Max-Age=0',
+    );
+
+    return [
+        `${AUTH_ACCESS_TOKEN_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 GMT${clearAttributes}`,
+        `${AUTH_REFRESH_TOKEN_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 GMT${clearAttributes}`,
+        ...buildRootPathAuthTokenClearCookies(config),
+    ];
+};
+
+const buildRootPathAuthTokenClearCookies = (config) => {
+    if (!config.cookiePath || config.cookiePath === '/') {
+        return [];
+    }
+
+    const rootPathConfig = { ...config, cookiePath: '/' };
+    const clearAttributes = buildAuthCookieAttributes(rootPathConfig, { httpOnly: true }).replace(
         /; Max-Age=\d+/,
         '; Max-Age=0',
     );

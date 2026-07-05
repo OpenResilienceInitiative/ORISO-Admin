@@ -1,6 +1,6 @@
 /* eslint-disable  @typescript-eslint/ban-types */
 import * as React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import * as ReactDOM from 'react-dom';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
@@ -113,7 +113,7 @@ export const Overlay = (props: {
         return activeOverlay.headline;
     };
 
-    const illustration = activeOverlay.svg;
+    const Illustration = activeOverlay.svg;
     return (
         <div
             className={clsx(
@@ -163,7 +163,7 @@ export const Overlay = (props: {
                                 'overlay__illustration--neutral': activeOverlay.illustrationBackground === 'neutral',
                             })}
                         >
-                            {illustration}
+                            {Illustration && <Illustration />}
                         </span>
                     </div>
                 )}

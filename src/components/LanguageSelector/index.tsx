@@ -43,9 +43,9 @@ export const LanguageSelector = ({
                     }
                 }}
                 aria-label={ariaLabel}
-                popupClassName={isLoginVariant ? 'loginLanguageSelectorDropdown' : undefined}
-                bordered={!isLoginVariant}
-                dropdownMatchSelectWidth={!isLoginVariant}
+                classNames={{ popup: { root: isLoginVariant ? 'loginLanguageSelectorDropdown' : undefined } }}
+                variant={isLoginVariant ? 'borderless' : 'outlined'}
+                popupMatchSelectWidth={!isLoginVariant}
             />
         </div>
     );

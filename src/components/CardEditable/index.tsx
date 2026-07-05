@@ -13,21 +13,21 @@ interface CardEditableProps {
     isLoading?: boolean;
     fullHeight?: boolean;
     variant?: CardVariant;
-    headerIcon?: React.ReactChild;
+    headerIcon?: React.ReactElement<any> | number | string;
     initialValues?: Record<string, unknown>;
     titleKey: string;
-    subTitle?: React.ReactChild;
+    subTitle?: React.ReactElement<any> | number | string;
     subTitleKey?: string;
     saveKey?: string;
     cancelKey?: string;
     children:
-        | React.ReactElement
-        | React.ReactElement[]
+        | React.ReactElement<any>
+        | React.ReactElement<any>[]
         | ((data: {
               form: FormInstance<any>;
               editing: boolean;
               startEditing: () => void;
-          }) => React.ReactElement | React.ReactElement[]);
+          }) => React.ReactElement<any> | React.ReactElement<any>[]);
     onSave: <T>(formData: T, options?: { onError?: () => void }) => void;
     formProp?: FormInstance;
     editMode?: boolean;
@@ -36,7 +36,7 @@ interface CardEditableProps {
     onEdit?: () => void;
     tooltip?: string;
     allowUnsavedChanges?: boolean;
-    editButton?: React.ReactChild;
+    editButton?: React.ReactElement<any> | number | string;
     editButtonPlacement?: 'header' | 'footer';
     editLabelKey?: string;
     /** When false, the card is view-only (no edit pencil). */

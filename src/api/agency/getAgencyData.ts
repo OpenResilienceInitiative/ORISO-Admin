@@ -4,6 +4,7 @@ import { FETCH_METHODS, fetchData } from '../fetchData';
 import removeEmbedded from '../../utils/removeEmbedded';
 import { AgencyData } from '../../types/agency';
 import { ResponseList } from '../../types/ResponseList';
+import { isActiveDeleteDate } from '../../utils/deleteDate';
 
 export const DEFAULT_SORT = 'NAME';
 export const DEFAULT_ORDER = 'ASC';
@@ -22,7 +23,7 @@ const getAgencyData = (params: TableState & { search?: string }) => {
     order = order.toUpperCase();
 
     const resolveAgencyStatus = (el: any) => {
-        if (el.deleteDate !== 'null') {
+        if (!isActiveDeleteDate(el.deleteDate)) {
             return 'IN_DELETION';
         }
         return 'CREATED';

@@ -75,9 +75,8 @@ export const LegalTextSettings = ({ agencyData, field, initialValues, onSave }: 
                               }
                             : undefined
                     }
-                    itemProps={{
-                        rules: [{ required: true }],
-                    }}
+                    // Legal texts are optional (no required rule).
+                    itemProps={{}}
                 />
             </TranslatableFormField>
         </CardEditable>

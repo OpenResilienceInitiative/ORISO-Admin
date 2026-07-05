@@ -1,7 +1,8 @@
 import { Suspense, useEffect } from 'react';
+import 'antd/dist/reset.css';
 import './styles/App.less';
 import './app.css';
-import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router';
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import ProtectedPageLayoutWrapper from './components/Layout/ProtectedPageLayoutWrapper';
 import { PageLoader } from './components/Layout/PageLoader';
 import routePathNames from './appConfig';
@@ -18,10 +19,12 @@ import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { UserRole } from './enums/UserRole';
 import { useAppConfigContext } from './context/useAppConfig';
+import { useAdminInvertedTheme } from './hooks/useAdminInvertedTheme.hook';
 import {
     LazyAgencyList,
     LazyAgencyPageEdit,
     LazyAppSettingsPage,
+    LazyCounsellorInvitesTab,
     LazyExternalInboundsTab,
     LazyGeneralSettingsPage,
     LazyGeneralTenantSettings,
@@ -41,6 +44,7 @@ import {
     LazyTenantGlobalSettings,
     LazyTenantSettingsLayout,
     LazyTenantThemeSettings,
+    LazyTenantInvitesTab,
     LazyTenantsList,
     LazyTopicEditOrAdd,
     LazyTopicList,
@@ -57,8 +61,13 @@ const AgencyInitialMeetingRedirect = () => {
 };
 
 export const App = () => {
-    const { data: publicTenantData } = usePublicTenantData();
+    const {
+        data: publicTenantData,
+        isLoading: isPublicTenantLoading,
+        isFetched: isPublicTenantFetched,
+    } = usePublicTenantData();
     const { isLoading, data } = useTenantData();
+    useAdminInvertedTheme(publicTenantData?.theming, isPublicTenantFetched || !isPublicTenantLoading);
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
     const location = useLocation();
@@ -258,14 +267,8 @@ export const App = () => {
                         <Route path="/admin/invite-links" element={<LazyInviteLinksPage />} />
                         <Route path="/admin/links" element={<LazyLinksPage />}>
                             <Route index element={<LazyLinksIndexRedirect />} />
-                            <Route
-                                path="tenants"
-                                element={<Navigate to={routePathNames.linksExternalInbounds} replace />}
-                            />
-                            <Route
-                                path="counsellor"
-                                element={<Navigate to={routePathNames.linksExternalInbounds} replace />}
-                            />
+                            <Route path="tenants" element={<LazyTenantInvitesTab />} />
+                            <Route path="counsellor" element={<LazyCounsellorInvitesTab />} />
                             <Route path="external-inbounds" element={<LazyExternalInboundsTab />} />
                         </Route>
                     </Routes>

@@ -11,7 +11,7 @@ type SwitchVariant = 'antd' | 'm3';
 
 interface FormSwitchFieldProps {
     labelKey?: string;
-    label?: React.ReactChild;
+    label?: React.ReactElement<any> | number | string;
     name: string | string[];
     help?: string;
     disabled?: boolean;

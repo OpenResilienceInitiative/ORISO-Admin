@@ -1,4 +1,4 @@
-import { QueryOptions, useQuery, UseQueryOptions } from 'react-query';
+import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { tenantAdminsSearchEndpoint } from '../appConfig';
 import {
     USER_TABLE_DEFAULT_ORDER,
@@ -17,7 +17,8 @@ export const PLATFORM_ADMINS_QUERY_KEY = 'PLATFORM_ADMINS';
 const PLATFORM_ADMINS_FETCH_SIZE = 100;
 const PLATFORM_TENANT_ID = '0';
 
-interface PlatformAdminsDataProps extends UseQueryOptions<ResponseList<CounselorData>> {
+interface PlatformAdminsDataProps
+    extends Omit<UseQueryOptions<ResponseList<CounselorData>>, 'queryKey' | 'queryFn'> {
     search?: string;
     current?: number;
     sortBy?: string;
@@ -32,10 +33,10 @@ export const usePlatformAdminsData = ({
     order,
     pageSize,
     ...options
-}: PlatformAdminsDataProps = {}) => {
-    return useQuery(
-        [PLATFORM_ADMINS_QUERY_KEY, search, current, sortBy, order, pageSize],
-        async () => {
+}: PlatformAdminsDataProps = {} as PlatformAdminsDataProps) => {
+    return useQuery({
+        queryKey: [PLATFORM_ADMINS_QUERY_KEY, search, current, sortBy, order, pageSize],
+        queryFn: async () => {
             const response = await fetchUserSearchWithSortFallback({
                 url: `${tenantAdminsSearchEndpoint}?query=${encodeURIComponent(
                     search || '*',
@@ -58,11 +59,9 @@ export const usePlatformAdminsData = ({
                 data: platformAdmins.slice((page - 1) * perPage, page * perPage),
             };
         },
-        {
-            ...options,
-            retry: false,
-            refetchOnMount: 'always',
-            refetchOnWindowFocus: false,
-        } as QueryOptions<ResponseList<CounselorData>>,
-    );
+        ...(options as object),
+        retry: false,
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: false,
+    });
 };

@@ -35,7 +35,7 @@ export interface AgencyData {
     teamAgency: boolean;
     consultingType: string;
     status: string | undefined;
-    deleteDate: string | undefined;
+    deleteDate: string | null | undefined;
     createDate?: string; // Already returned by backend
     updateDate?: string; // Already returned by backend
     dioceseId?: string;

@@ -164,3 +164,24 @@
         }
     }
 }
+
+// Desktop split-screen: the .stage is a fixed, opaque 40vw branding panel on
+// the left (z-index 20). The antd grid offsets (xl=25%, md=12.5%) are smaller
+// than 40vw, so the login form would render *behind* the stage. Place the form
+// row in the remaining right 60vw and centre it. (antd v5 regression: the
+// previous antd.less grid happened to position it clear of the stage.)
+@media screen and (min-width: @screen-md) {
+    .publicContent.login > .ant-row {
+        align-self: flex-end;
+        width: 60vw;
+        justify-content: center;
+    }
+
+    .publicContent.login > .ant-row > .ant-col {
+        flex: 0 0 auto;
+        width: auto;
+        min-width: 280px;
+        max-width: 320px;
+        margin-inline-start: 0 !important;
+    }
+}

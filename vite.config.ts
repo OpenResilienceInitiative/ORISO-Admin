@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import viteTsconfigPaths from 'vite-tsconfig-paths';
 import svgrPlugin from 'vite-plugin-svgr';
 import eslintPlugin from 'vite-plugin-eslint';
 import { visualizer } from 'rollup-plugin-visualizer';
@@ -27,6 +26,31 @@ const resolveManualChunk = (id: string): string | undefined => {
     return match?.chunk;
 };
 
+const runtimeEnvPlugin = () => ({
+    name: 'runtime-env',
+    configureServer(server) {
+        const envPath = `${process.cwd()}/public/env.js`;
+        // public/env.js is gitignored. Serve an in-memory fallback so the dev
+        // server works on a fresh checkout without the file being present.
+        const fallback = 'window.__APP_CONFIG__ = window.__APP_CONFIG__ || {};\n';
+
+        const base = (process.env.BASE || '/admin').replace(/\/$/, '');
+        const runtimeEnvPath = `${base}/env.js`;
+        const runtimeEnvPaths = new Set([runtimeEnvPath, base ? `${base}${runtimeEnvPath}` : runtimeEnvPath]);
+
+        server.middlewares.use((req, res, next) => {
+            const pathname = (req.url ?? '').split('?')[0];
+            if (!runtimeEnvPaths.has(pathname)) {
+                next();
+                return;
+            }
+
+            res.setHeader('Content-Type', 'application/javascript');
+            res.end(existsSync(envPath) ? readFileSync(envPath) : fallback);
+        });
+    },
+});
+
 // https://vitejs.dev/config/
 export default ({ mode }) => {
     process.env = { ...loadEnv(mode, process.cwd()), ...process.env };
@@ -38,9 +62,15 @@ export default ({ mode }) => {
         envPrefix: ['VITE_', 'REACT_APP_'],
         plugins: [
             authBffDevPlugin(),
+            runtimeEnvPlugin(),
             react(),
-            viteTsconfigPaths(),
-            svgrPlugin(),
+            svgrPlugin({
+                include: '**/*.svg',
+                svgrOptions: {
+                    exportType: 'named',
+                    namedExport: 'ReactComponent',
+                },
+            }),
             eslintPlugin({
                 emitWarning: true,
                 failOnWarning: false,
@@ -62,6 +92,9 @@ export default ({ mode }) => {
                     javascriptEnabled: true,
                 },
             },
+        },
+        resolve: {
+            tsconfigPaths: true,
         },
         build: {
             outDir: 'build',
@@ -89,24 +122,6 @@ export default ({ mode }) => {
                       },
                   }
                 : undefined,
-        },
-        configureServer(server) {
-            const envPath = `${process.cwd()}/public/env.js`;
-            // public/env.js is gitignored. Serve an in-memory fallback so the dev
-            // server works on a fresh checkout without the file being present.
-            const fallback = 'window.__APP_CONFIG__ = window.__APP_CONFIG__ || {};\n';
-
-            const base = (process.env.BASE || '/admin').replace(/\/$/, '');
-            const runtimeEnvPath = `${base}/env.js`;
-            server.middlewares.use((req, res, next) => {
-                const pathname = (req.url ?? '').split('?')[0];
-                if (pathname !== runtimeEnvPath) {
-                    next();
-                    return;
-                }
-                res.setHeader('Content-Type', 'application/javascript');
-                res.end(existsSync(envPath) ? readFileSync(envPath) : fallback);
-            });
         },
     });
 };

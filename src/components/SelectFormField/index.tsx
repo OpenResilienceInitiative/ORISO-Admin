@@ -26,7 +26,7 @@ export interface SelectFormFieldProps {
     disabled?: boolean;
     errorMessage?: string;
     labelInValue?: boolean;
-    children?: React.ReactElement[];
+    children?: React.ReactElement<any>[];
     validateStatus?: ValidateStatus;
     initialValue?: string | string[];
     rules?: Rule[];

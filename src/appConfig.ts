@@ -8,6 +8,10 @@ const { subdomain } = getLocationVariables();
 export const mainURL = runtimeConfig.apiBaseUrl;
 export const appURL = runtimeConfig.appBaseUrl;
 export const matrixURL = runtimeConfig.matrixBaseUrl;
+const userServiceURL = runtimeConfig.userServiceOrigin;
+const agencyServiceURL = runtimeConfig.agencyServiceOrigin;
+const tenantServiceURL = runtimeConfig.tenantServiceOrigin;
+const consultingTypeServiceURL = runtimeConfig.consultingTypeServiceOrigin;
 
 export const clusterFeatureFlags = {
     useApiClusterSettings: true, // Fetch server settings from /service/settings
@@ -15,40 +19,45 @@ export const clusterFeatureFlags = {
 
 export const supportedLanguages = ['de', 'en', 'fr', 'ru', 'tr', 'uk', 'ti'];
 
-export const agencyDataAgencyId = (agencyId: string) => `${mainURL}/service/agencyadmin/agencies/${agencyId}`;
-export const agencyEndpointBase = `${mainURL}/service/agencyadmin/agencies`;
-export const agencyPostcodeRangeEndpointBase = `${mainURL}/service/agencyadmin/postcoderanges`;
+export const agencyDataAgencyId = (agencyId: string) => `${agencyServiceURL}/service/agencyadmin/agencies/${agencyId}`;
+export const agencyEndpointBase = `${agencyServiceURL}/service/agencyadmin/agencies`;
+export const agencyPostcodeRangeEndpointBase = `${agencyServiceURL}/service/agencyadmin/postcoderanges`;
 export const consultantsHasAgencyEndpoint = (agencyId: string) =>
-    `${mainURL}/service/useradmin/agencies/${agencyId}/consultants`;
-export const consultingTypeEndpoint = `${mainURL}/service/consultingtypes`;
-export const counselorEndpoint = `${mainURL}/service/useradmin/consultants`;
-export const agencyAdminEndpoint = `${mainURL}/service/useradmin/agencyadmins`;
+    `${userServiceURL}/service/useradmin/agencies/${agencyId}/consultants`;
+export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consultingtypes`;
+export const counselorEndpoint = `${userServiceURL}/service/useradmin/consultants`;
+export const agencyAdminEndpoint = `${userServiceURL}/service/useradmin/agencyadmins`;
 export const grantConsultantIdentityEndpoint = (adminId: string) =>
-    `${mainURL}/service/useradmin/admins/${adminId}/grant-consultant-identity`;
+    `${userServiceURL}/service/useradmin/admins/${adminId}/grant-consultant-identity`;
 export const loginEndpoint = keycloakAuthPath('/protocol/openid-connect/token');
 export const logoutEndpoint = keycloakAuthPath('/protocol/openid-connect/logout');
-export const tenantEndpoint = `${mainURL}/service/tenant/`;
-export const tenantAccessEndpoint = `${mainURL}/service/tenant/access`;
-export const tenantAdminEndpoint = `${mainURL}/service/tenantadmin`;
-export const serverSettingsEndpoint = `${mainURL}/service/settings`;
-export const serverSettingsAdminEndpoint = `${mainURL}/service/settingsadmin`;
-export const baseTenantPublicEndpoint = `${mainURL}/service/tenant/public`;
+export const tenantEndpoint = `${tenantServiceURL}/service/tenant/`;
+export const tenantAccessEndpoint = `${tenantServiceURL}/service/tenant/access`;
+export const tenantAdminEndpoint = `${tenantServiceURL}/service/tenantadmin`;
+export const serverSettingsEndpoint = `${consultingTypeServiceURL}/service/settings`;
+export const serverSettingsAdminEndpoint = `${consultingTypeServiceURL}/service/settingsadmin`;
+export const baseTenantPublicEndpoint = `${tenantServiceURL}/service/tenant/public`;
 export const tenantPublicEndpoint = `${baseTenantPublicEndpoint}/${subdomain}`;
-export const topicEndpoint = `${mainURL}/service/topic/`;
-export const topicAdminEndpoint = `${mainURL}/service/topicadmin`;
-export const tenantAdminsEndpoint = `${mainURL}/service/useradmin/tenantadmins`;
-export const tenantAdminsSearchEndpoint = `${mainURL}/service/useradmin/tenantadmins/search`;
-export const twoFactorAuth = `${mainURL}/service/users/2fa`;
-export const twoFactorAuthApp = `${mainURL}/service/users/2fa/app`;
-export const twoFactorAuthAppEmail = `${mainURL}/service/users/2fa/email`;
-export const userDataEndpoint = `${mainURL}/service/users/data`;
-export const globalSmtpTestEmailEndpoint = `${mainURL}/service/users/system-notification-emails/test`;
-export const usersConsultantEndpoint = `${mainURL}/service/users/consultants`;
-export const usersConsultantsSearchEndpoint = `${mainURL}/service/users/consultants/search`;
-export const supervisorLogsEndpoint = `${mainURL}/service/users/supervisors/logs`;
-export const inactiveAccountAuditLogsEndpoint = `${mainURL}/service/users/inactive-accounts/audit-logs`;
-export const agencyAdminsSearchEndpoint = `${mainURL}/service/useradmin/agencyadmins/search`;
+export const topicEndpoint = `${consultingTypeServiceURL}/service/topic/`;
+export const topicAdminEndpoint = `${agencyServiceURL}/service/topicadmin`;
+export const tenantAdminsEndpoint = `${userServiceURL}/service/useradmin/tenantadmins`;
+export const tenantAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/tenantadmins/search`;
+export const twoFactorAuth = `${userServiceURL}/service/users/2fa`;
+export const twoFactorAuthApp = `${userServiceURL}/service/users/2fa/app`;
+export const twoFactorAuthAppEmail = `${userServiceURL}/service/users/2fa/email`;
+export const userDataEndpoint = `${userServiceURL}/service/users/data`;
+export const userAdminDataEndpoint = `${userServiceURL}/service/useradmin/data`;
+export const userPasswordChangeEndpoint = `${userServiceURL}/service/users/password/change`;
+export const globalSmtpTestEmailEndpoint = `${userServiceURL}/service/users/system-notification-emails/test`;
+export const usersConsultantEndpoint = `${userServiceURL}/service/users/consultants`;
+export const usersConsultantsSearchEndpoint = `${userServiceURL}/service/users/consultants/search`;
+export const supervisorLogsEndpoint = `${userServiceURL}/service/users/supervisors/logs`;
+export const inactiveAccountAuditLogsEndpoint = `${userServiceURL}/service/users/inactive-accounts/audit-logs`;
+export const agencyAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/agencyadmins/search`;
 export const registrationDataEndpoint = `${mainURL}/service/statistics/registration`;
+export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/invitelinks`;
+export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;
+export const inviteEmailTemplatesEndpoint = `${userServiceURL}/service/useradmin/invite-email-templates`;
 export const XHRheader = { AcceptLanguage: 'de' };
 
 /*

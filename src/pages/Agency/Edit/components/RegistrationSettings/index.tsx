@@ -1,6 +1,6 @@
 import { Alert, Divider, Form } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
+import { useParams } from 'react-router-dom';
 import { useEffect, useMemo } from 'react';
 import { Card } from '../../../../../components/Card';
 import { FormRadioGroupField } from '../../../../../components/FormRadioGroupField';
@@ -12,6 +12,7 @@ import { useConsultantsOrAdminsData } from '../../../../../hooks/useConsultantsO
 import { PostCodeRanges } from './PostCodeRanges';
 import styles from './styles.module.scss';
 import { convertToOptions } from '../../../../../utils/convertToOptions';
+import { isActiveRecord } from '../../../../../utils/deleteDate';
 
 interface RegistrationSettingsProps {
     asFields?: boolean;
@@ -33,9 +34,7 @@ export const RegistrationSettings = ({ asFields }: RegistrationSettingsProps) =>
         enabled: showConsultantAssignment,
     });
     const consultantOptions = useMemo(() => {
-        const activeConsultants = (consultants?.data || []).filter(
-            ({ deleteDate }) => deleteDate === undefined || deleteDate === 'null',
-        );
+        const activeConsultants = (consultants?.data || []).filter(isActiveRecord);
 
         return convertToOptions(activeConsultants, ['firstname', 'lastname', 'email'], 'id');
     }, [consultants?.data]);

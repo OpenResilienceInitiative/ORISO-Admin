@@ -84,11 +84,17 @@ if (useApiUrl && apiHost) {
     apiBaseUrl = toAbsoluteUrl(`${hostPrefix}${apiHost}`, useHttps);
 }
 
+const serviceOrigin = (key: string): string => toAbsoluteUrl(readConfigValue(key), useHttps) || apiBaseUrl;
+
 export const runtimeConfig = {
     useHttps,
     useApiUrl,
     apiBaseUrl,
     keycloakBaseUrl,
+    userServiceOrigin: serviceOrigin('USER_SERVICE_ORIGIN'),
+    agencyServiceOrigin: serviceOrigin('AGENCY_SERVICE_ORIGIN'),
+    tenantServiceOrigin: serviceOrigin('TENANT_SERVICE_ORIGIN'),
+    consultingTypeServiceOrigin: serviceOrigin('CONSULTING_TYPE_SERVICE_ORIGIN'),
     appBaseUrl: toAbsoluteUrl(appHost, useHttps) || apiBaseUrl,
     matrixBaseUrl: matrixHost ? toAbsoluteUrl(matrixHost, useHttps) : '',
     keycloakRealm: readConfigValue('KEYCLOAK_REALM') ?? 'online-beratung',
@@ -108,9 +114,10 @@ export const runtimeConfig = {
 // Dedicated Keycloak hosts use {KEYCLOAK_URL}/realms/{realm}/...
 // Legacy API-hosted auth falls back to {API_URL}/auth/realms/{realm}/...
 export const keycloakAuthPath = (path: string) => {
+    const keycloakOrigin = serviceOrigin('KEYCLOAK_ORIGIN');
     const realmBaseUrl = runtimeConfig.keycloakBaseUrl
         ? `${runtimeConfig.keycloakBaseUrl}/realms`
-        : `${runtimeConfig.apiBaseUrl}/auth/realms`;
+        : `${keycloakOrigin}/auth/realms`;
 
     return `${realmBaseUrl}/${runtimeConfig.keycloakRealm}${path}`;
 };

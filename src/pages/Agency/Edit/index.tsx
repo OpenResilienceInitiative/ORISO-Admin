@@ -1,7 +1,7 @@
 import { Button, Col, Form, notification, Row } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
 import routePathNames from '../../../appConfig';
@@ -24,7 +24,8 @@ import { useAgencyLegalDataMissing } from '../../../hooks/useAgencyLegalDataMiss
 import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
 import { LegalTextSettings } from './components/LegalTextSettings';
-import { DataProcessingAgreement } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreement';
+import { DataProcessingAgreementContainer } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer';
+import { DepartmentDataProtectionContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentDataProtectionContainer';
 import styles from '../../../components/Page/styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { PermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings';
@@ -380,8 +381,21 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     />
                 </CardDeck.Item>
                 <CardDeck.Item>
-                    <DataProcessingAgreement />
+                    {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
+                    <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />
                 </CardDeck.Item>
+                {agencyData?.id &&
+                    (agencyData.topics || [])
+                        .filter((topic) => topic.id != null)
+                        .map((topic) => (
+                            <CardDeck.Item key={`dpp-${topic.id}`}>
+                                <DepartmentDataProtectionContainer
+                                    agencyId={Number(agencyData.id)}
+                                    topicId={topic.id as number}
+                                    departmentName={topic.name}
+                                />
+                            </CardDeck.Item>
+                        ))}
             </CardDeck>
         </>
     );

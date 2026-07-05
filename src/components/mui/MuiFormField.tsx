@@ -26,6 +26,7 @@ interface MuiControlProps {
     helpText?: string;
     inputProps?: Record<string, any>;
     endAdornment?: React.ReactNode;
+    startAdornment?: React.ReactNode;
 }
 
 /**
@@ -49,6 +50,7 @@ const MuiControl = ({
     helpText,
     inputProps,
     endAdornment,
+    startAdornment,
 }: MuiControlProps) => {
     const { status } = Form.Item.useStatus();
     const form = Form.useFormInstance();
@@ -56,11 +58,18 @@ const MuiControl = ({
     const errors = form?.getFieldError(fieldName as any) ?? [];
     // Keep height stable: always render a helperText line (' ' when empty).
     const helperText = (isError && errors[0]) || helpText || ' ';
-    const muiInputProps =
-        endAdornment || inputProps
+    const inputSlotProps =
+        endAdornment || startAdornment
             ? {
                   ...(endAdornment ? { endAdornment } : {}),
-                  ...(inputProps ? { inputProps } : {}),
+                  ...(startAdornment ? { startAdornment } : {}),
+              }
+            : undefined;
+    const slotProps =
+        inputSlotProps || inputProps
+            ? {
+                  ...(inputSlotProps ? { input: inputSlotProps } : {}),
+                  ...(inputProps ? { htmlInput: inputProps } : {}),
               }
             : undefined;
 
@@ -80,7 +89,7 @@ const MuiControl = ({
             error={isError}
             helperText={helperText}
             autoComplete={autoComplete}
-            InputProps={muiInputProps}
+            slotProps={slotProps}
         />
     );
 };
@@ -101,6 +110,7 @@ export interface MuiFormFieldProps {
     helpText?: string;
     inputProps?: Record<string, any>;
     endAdornment?: React.ReactNode;
+    startAdornment?: React.ReactNode;
     /** antd normalize hook (used by the number variant to coerce to a Number). */
     normalize?: (value: any, prevValue: any, allValues: any) => any;
 }
@@ -162,10 +172,11 @@ export const MuiPasswordFormField = ({
                 <InputAdornment position="end">
                     <IconButton
                         aria-label="toggle password visibility"
+                        aria-pressed={visible}
+                        data-testid="password-visibility-toggle"
                         onClick={() => setVisible((prev) => !prev)}
                         onMouseDown={(event) => event.preventDefault()}
                         edge="end"
-                        tabIndex={-1}
                         size="small"
                     >
                         {visible ? <VisibilityOff /> : <Visibility />}
