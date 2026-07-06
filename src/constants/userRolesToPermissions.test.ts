@@ -30,6 +30,9 @@ const SINGLE_TENANT_ADMIN_PERMISSIONS: UserPermissions = {
     Tenant: { read: true, update: true },
     Statistic: { read: true },
 };
+const TOPIC_ADMIN_PERMISSIONS: UserPermissions = {
+    Topic: { read: true, create: true, update: true, delete: true },
+};
 const DENIED_AGENCY_ADMIN_USER = { read: false, create: false, update: false, delete: false };
 
 describe('mergeUserPermissions', () => {
@@ -131,6 +134,7 @@ describe('restricted agency admin permission policy', () => {
             [UserRole.TenantAdmin]: TENANT_ADMIN_PERMISSIONS,
             [UserRole.AgencyAdmin]: FULL_AGENCY_ADMIN_PERMISSIONS,
             [UserRole.SingleTenantAdmin]: SINGLE_TENANT_ADMIN_PERMISSIONS,
+            [UserRole.TopicAdmin]: TOPIC_ADMIN_PERMISSIONS,
         };
         const effectiveRoles = getEffectivePermissionRoles(roles);
         const merged = mergeUserPermissions(...effectiveRoles.map((role) => fragmentByRole[role]));
@@ -173,6 +177,15 @@ describe('restricted agency admin permission policy', () => {
         // stays limited: no agency-admin management and no statistics.
         expect(permissions.AgencyAdminUser).toEqual(DENIED_AGENCY_ADMIN_USER);
         expect(permissions.Statistic?.read).toBe(false);
+    });
+
+    it('preserves an orthogonal Topic grant while capping a restricted agency admin', () => {
+        const permissions = resolve(UserRole.RestrictedAgencyAdmin, UserRole.TopicAdmin);
+
+        // The ceiling only caps the restricted role's own surface; a topic admin's orthogonal
+        // Topic rights must survive.
+        expect(permissions.AgencyAdminUser).toEqual(DENIED_AGENCY_ADMIN_USER);
+        expect(permissions.Topic).toEqual({ read: true, create: true, update: true, delete: true });
     });
 
     it('keeps full agency-admin rights for a restricted agency admin who is also a full agency admin', () => {
