@@ -161,6 +161,7 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                         );
                     } else if (response.status === 403) {
                         window.location.href = '/admin/access-denied';
+                        reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
                     } else if (response.status === 401) {
                         // Don't force a logout here. fetchData()'s wrapper attempts a single
                         // token refresh + retry before falling back to logout, so a lapsed or

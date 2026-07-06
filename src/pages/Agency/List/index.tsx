@@ -36,7 +36,7 @@ export const AgencyList = () => {
         pageSize: 10,
     });
     const [expandedTopicRows, setExpandedTopicRows] = useState<string[]>([]);
-    const { data, isLoading, refetch } = useAgenciesData({ ...tableState });
+    const { data, isLoading, isError, refetch } = useAgenciesData({ ...tableState });
     const { can } = useUserPermissions();
     const { isSuperAdmin } = useUserRoles();
     const { data: tenantsData } = useTenantsData({ perPage: 1000, page: 1, enabled: isSuperAdmin });
@@ -347,7 +347,9 @@ export const AgencyList = () => {
                     pagination={pagination}
                     onChange={tableChangeHandler}
                     rowKey="id"
-                    locale={{ emptyText: t('tenants.list.empty') }}
+                    locale={{
+                        emptyText: isError ? t('message.error.default') : t('tenants.list.empty'),
+                    }}
                 />
             </div>
             {agencyToDelete && <AgencyDeletionModal agencyModel={agencyToDelete} onClose={onClose} />}

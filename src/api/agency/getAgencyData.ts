@@ -1,6 +1,6 @@
 import { agencyEndpointBase } from '../../appConfig';
 
-import { FETCH_METHODS, fetchData } from '../fetchData';
+import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import removeEmbedded from '../../utils/removeEmbedded';
 import { AgencyData } from '../../types/agency';
 import { ResponseList } from '../../types/ResponseList';
@@ -32,12 +32,12 @@ const getAgencyData = (params: TableState & { search?: string }) => {
     const searchQuery = params.search || '*';
 
     return fetchData({
-        url: `${agencyEndpointBase}/?q=${encodeURIComponent(searchQuery)}&page=${params.current || 1}&perPage=${
+        url: `${agencyEndpointBase}?q=${encodeURIComponent(searchQuery)}&page=${params.current || 1}&perPage=${
             params?.pageSize || 10
         }&order=${order}&field=${sortBy}`,
         method: FETCH_METHODS.GET,
         skipAuth: false,
-        responseHandling: [],
+        responseHandling: [FETCH_ERRORS.CATCH_ALL],
     })
         .then((result) => {
             // eslint-disable-next-line no-underscore-dangle
