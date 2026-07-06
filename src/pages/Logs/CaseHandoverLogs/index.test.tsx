@@ -1,37 +1,9 @@
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import { CaseHandoverLogsPage } from './index';
 
-const mocks = vi.hoisted(() => ({
-    mutate: vi.fn(),
-    reasonPolicies: [
-        {
-            code: 'MEDICAL',
-            label: 'Medical reason',
-            clientConsentRequired: true,
-            accessAllowed: true,
-            enabled: true,
-            displayOrder: 1,
-            policyAuthority: null,
-        },
-    ],
-}));
-
-const translations: Record<string, string> = {
-    'caseHandoverLogs.policy.title': 'Reason policies',
-    'caseHandoverLogs.policy.save': 'Save policies',
-    'caseHandoverLogs.policy.table.code': 'Code',
-    'caseHandoverLogs.policy.table.label': 'Label',
-    'caseHandoverLogs.policy.table.clientConsentRequired': 'Client consent',
-    'caseHandoverLogs.policy.table.accessAllowed': 'Access allowed',
-    'caseHandoverLogs.policy.table.enabled': 'Enabled',
-    'caseHandoverLogs.policy.table.displayOrder': 'Order',
-    'caseHandoverLogs.policy.table.policyAuthority': 'Policy authority',
-};
-
-const t = (key: string) => translations[key] || key;
+const t = (key: string) => key;
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t }),
@@ -45,9 +17,10 @@ vi.mock('../../../components/Page', () => {
 
 vi.mock('../../../components/ListingTable', () => ({
     ListingTable: ({ columns = [], dataSource = [] }: any) => (
-        <div>
+        <div data-testid="listing-table">
+            <div data-testid="columns">{columns.map((column: any) => String(column.title)).join('|')}</div>
             {dataSource.map((row: any, rowIndex: number) => (
-                <div key={row.code ?? row.requestId ?? rowIndex}>
+                <div key={row.requestId ?? rowIndex} data-testid="log-row">
                     {columns.map((column: any, columnIndex: number) => {
                         const value = column.dataIndex ? row[column.dataIndex] : undefined;
                         const cell = column.render ? column.render(value, row, rowIndex) : value;
@@ -61,76 +34,48 @@ vi.mock('../../../components/ListingTable', () => ({
 
 vi.mock('../../../hooks/useCaseHandoverLogsData', () => ({
     useCaseHandoverLogsData: () => ({
-        data: { data: [], total: 0, page: 1, perPage: 20 },
+        data: {
+            data: [
+                {
+                    requestId: 1,
+                    sessionId: 42,
+                    status: 'GRANTED',
+                    auditOutcome: 'GRANTED_WITHOUT_CONSENT',
+                    reasonCode: 'COUNSELLOR_IS_ILL',
+                    reasonLabel: 'Counsellor is ill',
+                    explanation: 'should no longer be shown',
+                    clientConsentRequired: true,
+                    createdAt: '2026-07-01T10:00:00Z',
+                    requesterName: 'Requesting Counsellor',
+                    previousName: 'Previous Counsellor',
+                },
+            ],
+            total: 1,
+            page: 1,
+            perPage: 20,
+        },
         isLoading: false,
-    }),
-}));
-
-vi.mock('../../../hooks/useCaseHandoverReasonPolicies', () => ({
-    useCaseHandoverReasonPoliciesData: () => ({
-        data: mocks.reasonPolicies,
-        isLoading: false,
-    }),
-    useCaseHandoverReasonPoliciesMutation: () => ({
-        isLoading: false,
-        mutate: mocks.mutate,
-    }),
-}));
-
-vi.mock('../../../hooks/useUserPermission', () => ({
-    useUserPermissions: () => ({
-        can: () => true,
-    }),
-}));
-
-vi.mock('../../../hooks/useUserRoles.hook', () => ({
-    useUserRoles: () => ({
-        isSuperAdmin: false,
     }),
 }));
 
 describe('CaseHandoverLogsPage', () => {
-    beforeEach(() => {
-        mocks.mutate.mockReset();
-        mocks.reasonPolicies[0].policyAuthority = null;
-    });
-
-    it('allows editing policy authority and sends it in the save payload', async () => {
-        const user = userEvent.setup();
-
+    it('renders the audit log entries (who, when, reason, outcome)', () => {
         render(<CaseHandoverLogsPage />);
 
-        const input = await screen.findByRole('textbox', { name: 'Policy authority (MEDICAL)' });
-        await user.type(input, 'Tenant policy board');
-        await user.click(screen.getByRole('button', { name: 'Save policies' }));
-
-        await waitFor(() => {
-            expect(mocks.mutate).toHaveBeenCalledWith([
-                expect.objectContaining({
-                    code: 'MEDICAL',
-                    policyAuthority: 'Tenant policy board',
-                }),
-            ]);
-        });
+        expect(screen.getByText('Counsellor is ill')).toBeInTheDocument();
+        expect(screen.getByText('Requesting Counsellor')).toBeInTheDocument();
+        expect(screen.getByText('Previous Counsellor')).toBeInTheDocument();
+        expect(screen.getByText('GRANTED_WITHOUT_CONSENT')).toBeInTheDocument();
     });
 
-    it('normalizes a cleared policy authority back to null before saving', async () => {
-        mocks.reasonPolicies[0].policyAuthority = 'Tenant policy board';
-        const user = userEvent.setup();
-
+    it('is results-only: no policy editing and no free-text explanation column', () => {
         render(<CaseHandoverLogsPage />);
 
-        const input = await screen.findByRole('textbox', { name: 'Policy authority (MEDICAL)' });
-        await user.clear(input);
-        await user.click(screen.getByRole('button', { name: 'Save policies' }));
-
-        await waitFor(() => {
-            expect(mocks.mutate).toHaveBeenCalledWith([
-                expect.objectContaining({
-                    code: 'MEDICAL',
-                    policyAuthority: null,
-                }),
-            ]);
-        });
+        const columnTitles = screen.getByTestId('columns').textContent ?? '';
+        expect(columnTitles).not.toContain('caseHandoverLogs.table.explanation');
+        expect(columnTitles).not.toContain('caseHandoverLogs.table.consent');
+        expect(screen.queryByText('caseHandoverLogs.policy.title')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'caseHandoverLogs.policy.save' })).not.toBeInTheDocument();
+        expect(screen.queryByText('should no longer be shown')).not.toBeInTheDocument();
     });
 });

@@ -1,0 +1,65 @@
+import { describe, expect, it } from 'vitest';
+import {
+    applyClientConsent,
+    applyModuleEnabled,
+    getNotificationTemplateSample,
+    isAdvisorConsentImplicit,
+    isHandoverModuleEnabled,
+    NOTIFICATION_LANGUAGES,
+    NOTIFICATION_TEMPLATE_SAMPLES,
+    sortPoliciesByDisplayOrder,
+} from './caseHandoverCardUtils';
+import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+
+const policy = (overrides: Partial<CaseHandoverReasonPolicy>): CaseHandoverReasonPolicy => ({
+    code: 'COUNSELLOR_IS_ILL',
+    label: 'Counsellor is ill',
+    clientConsentRequired: false,
+    accessAllowed: true,
+    enabled: true,
+    displayOrder: 10,
+    policyAuthority: null,
+    ...overrides,
+});
+
+describe('caseHandoverCardUtils', () => {
+    it('sorts policies by displayOrder, unknown order last', () => {
+        const sorted = sortPoliciesByDisplayOrder([
+            policy({ code: 'B', displayOrder: 20 }),
+            policy({ code: 'C', displayOrder: undefined as unknown as number }),
+            policy({ code: 'A', displayOrder: 10 }),
+        ]);
+        expect(sorted.map((p) => p.code)).toEqual(['A', 'B', 'C']);
+    });
+
+    it('module counts as enabled while any reason is enabled', () => {
+        expect(isHandoverModuleEnabled([policy({ enabled: false }), policy({ code: 'X', enabled: true })])).toBe(true);
+        expect(isHandoverModuleEnabled([policy({ enabled: false })])).toBe(false);
+        expect(isHandoverModuleEnabled([])).toBe(false);
+    });
+
+    it('master toggle writes enabled on every reason', () => {
+        const result = applyModuleEnabled([policy({ enabled: true }), policy({ code: 'X', enabled: false })], false);
+        expect(result.every((p) => p.enabled === false)).toBe(true);
+    });
+
+    it('client-consent change only touches the addressed reason', () => {
+        const result = applyClientConsent([policy({ code: 'A' }), policy({ code: 'B' })], 'B', true);
+        expect(result.find((p) => p.code === 'A')?.clientConsentRequired).toBe(false);
+        expect(result.find((p) => p.code === 'B')?.clientConsentRequired).toBe(true);
+    });
+
+    it('advisor consent is implicit only for advice requests', () => {
+        expect(isAdvisorConsentImplicit('COUNSELLOR_ASKED_FOR_ADVICE')).toBe(true);
+        expect(isAdvisorConsentImplicit('COUNSELLOR_IS_ILL')).toBe(false);
+    });
+
+    it('provides a notification sample for every seeded reason in every language', () => {
+        Object.keys(NOTIFICATION_TEMPLATE_SAMPLES).forEach((code) => {
+            NOTIFICATION_LANGUAGES.forEach((language) => {
+                expect(getNotificationTemplateSample(code, language)).not.toEqual('');
+            });
+        });
+        expect(getNotificationTemplateSample('UNKNOWN', 'de')).toEqual('');
+    });
+});
