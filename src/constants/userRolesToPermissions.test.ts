@@ -26,6 +26,10 @@ const FULL_AGENCY_ADMIN_PERMISSIONS: UserPermissions = {
     Agency: { read: true, create: true, update: true, delete: true },
     Statistic: { read: true },
 };
+const SINGLE_TENANT_ADMIN_PERMISSIONS: UserPermissions = {
+    Tenant: { read: true, update: true },
+    Statistic: { read: true },
+};
 const DENIED_AGENCY_ADMIN_USER = { read: false, create: false, update: false, delete: false };
 
 describe('mergeUserPermissions', () => {
@@ -126,6 +130,7 @@ describe('restricted agency admin permission policy', () => {
             [UserRole.UserAdmin]: USER_ADMIN_PERMISSIONS,
             [UserRole.TenantAdmin]: TENANT_ADMIN_PERMISSIONS,
             [UserRole.AgencyAdmin]: FULL_AGENCY_ADMIN_PERMISSIONS,
+            [UserRole.SingleTenantAdmin]: SINGLE_TENANT_ADMIN_PERMISSIONS,
         };
         const effectiveRoles = getEffectivePermissionRoles(roles);
         const merged = mergeUserPermissions(...effectiveRoles.map((role) => fragmentByRole[role]));
@@ -151,6 +156,23 @@ describe('restricted agency admin permission policy', () => {
 
         expect(permissions.AgencyAdminUser).toEqual({ read: true, create: true, update: true, delete: true });
         expect(permissions.Tenant).toEqual({ read: true, update: true, create: false, delete: false });
+    });
+
+    it('keeps statistics visible for a restricted agency admin who is also a full agency admin', () => {
+        const permissions = resolve(UserRole.RestrictedAgencyAdmin, UserRole.AgencyAdmin);
+
+        // Full agency admins see the statistics of their Beratungsstelle; the restricted flag must
+        // not strip that.
+        expect(permissions.Statistic?.read).toBe(true);
+    });
+
+    it('caps statistics for a restricted agency admin who is only also a single-tenant admin', () => {
+        const permissions = resolve(UserRole.RestrictedAgencyAdmin, UserRole.SingleTenantAdmin);
+
+        // single-tenant-admin does not outrank the restricted ceiling, so the restricted actor
+        // stays limited: no agency-admin management and no statistics.
+        expect(permissions.AgencyAdminUser).toEqual(DENIED_AGENCY_ADMIN_USER);
+        expect(permissions.Statistic?.read).toBe(false);
     });
 
     it('keeps full agency-admin rights for a restricted agency admin who is also a full agency admin', () => {
