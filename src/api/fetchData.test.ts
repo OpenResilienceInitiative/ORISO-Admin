@@ -134,4 +134,21 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
+
+    it('rejects on 403 so callers can leave loading states', async () => {
+        const location = { href: '' };
+        vi.stubGlobal('window', { location });
+        const fetchMock = vi.fn().mockResolvedValue(response(403));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/agencyadmin/agencies?q=*',
+                method: FETCH_METHODS.GET,
+                responseHandling: [],
+            }),
+        ).rejects.toThrow(FETCH_ERRORS.NOT_ALLOWED);
+
+        expect(location.href).toBe('/admin/access-denied');
+    });
 });
