@@ -68,7 +68,8 @@ const useHttps = readBooleanConfig('USE_HTTPS', true);
 const useApiUrl = readBooleanConfig('USE_API_URL', true);
 const { subdomain, origin } = getLocationVariables();
 
-const apiHost = stripUrlProtocol(readConfigValue('API_URL') ?? '');
+const configuredApiUrl = readConfigValue('API_URL') ?? '';
+const apiHost = stripUrlProtocol(configuredApiUrl);
 const keycloakHost = readConfigValue('KEYCLOAK_URL');
 const keycloakBaseUrl = keycloakHost ? toAbsoluteUrl(keycloakHost, useHttps) : '';
 const configuredAppHost = stripUrlProtocol(readConfigValue('APP_URL') ?? '');
@@ -78,7 +79,7 @@ const matrixHost = stripUrlProtocol(readConfigValue('MATRIX_URL') ?? '');
 let apiBaseUrl = origin;
 
 if (useApiUrl && apiHost) {
-    apiBaseUrl = toAbsoluteUrl(apiHost, useHttps);
+    apiBaseUrl = toAbsoluteUrl(configuredApiUrl, useHttps);
 } else if (origin.includes('localhost') && apiHost) {
     const hostPrefix = subdomain && subdomain !== 'localhost' ? `${subdomain}.` : '';
     apiBaseUrl = toAbsoluteUrl(`${hostPrefix}${apiHost}`, useHttps);

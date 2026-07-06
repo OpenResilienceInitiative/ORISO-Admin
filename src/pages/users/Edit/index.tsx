@@ -409,40 +409,67 @@ export const UserEditOrAdd = () => {
                         </Card>
                     </Col>
                     <Col xs={12} lg={6}>
-                        <Card titleKey="settings.title">
-                            <SelectFormField
-                                name="tenantId"
-                                placeholder="tenantAdmins.form.tenant"
-                                required
-                                disabled={isReadOnly || isEditing || !isSuperAdmin}
-                                className={styles.select}
-                                label="tenantAdmins.form.tenantAssignment"
-                                options={convertToOptions(tenantsData || [], 'name', 'id')}
-                            />
-
-                            <SelectFormField
-                                name="agencies"
-                                label="agency"
-                                labelInValue
-                                isMulti
-                                placeholder="plsSelect"
-                                options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
-                            />
-
-                            {showTopicsField && (
+                        <Space direction="vertical" size={20} className={styles.columnStack}>
+                            <Card titleKey="settings.title">
                                 <SelectFormField
-                                    label="topics.title"
-                                    name="topicIds"
+                                    name="tenantId"
+                                    placeholder="tenantAdmins.form.tenant"
+                                    required
+                                    disabled={isReadOnly || isEditing || !isSuperAdmin}
+                                    className={styles.select}
+                                    label="tenantAdmins.form.tenantAssignment"
+                                    options={convertToOptions(tenantsData || [], 'name', 'id')}
+                                />
+
+                                <SelectFormField
+                                    name="agencies"
+                                    label="agency"
                                     labelInValue
                                     isMulti
-                                    allowClear
                                     placeholder="plsSelect"
-                                    options={topicOptions}
+                                    options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
                                 />
-                            )}
 
-                            {typeOfUsers === 'consultants' && (
-                                <>
+                                {showTopicsField && (
+                                    <SelectFormField
+                                        label="topics.title"
+                                        name="topicIds"
+                                        labelInValue
+                                        isMulti
+                                        allowClear
+                                        placeholder="plsSelect"
+                                        options={topicOptions}
+                                    />
+                                )}
+
+                                {isConsultantForm && (
+                                    <>
+                                        <Space align="center">
+                                            <FormSwitchField
+                                                labelKey="counselor.formalLanguage.title"
+                                                name="formalLanguage"
+                                            />
+                                            {/* Temporarily hidden: {isEditing && <FormSwitchField labelKey="counselor.absent" name="absent" />} */}
+                                            {/* Temporarily hidden: {isEnabled(FeatureFlag.GroupChatV2) && (
+                                                <FormSwitchField
+                                                    labelKey="counselor.isGroupChatConsultant"
+                                                    name="isGroupchatConsultant"
+                                                />
+                                            )} */}
+                                            <FormSwitchField labelKey="counselor.isSupervisor" name="isSupervisor" />
+                                        </Space>
+                                        {isAbsentEnabled && (
+                                            <FormTextAreaField
+                                                labelKey="counselor.absenceMessage"
+                                                name="absenceMessage"
+                                            />
+                                        )}
+                                    </>
+                                )}
+                            </Card>
+
+                            {isConsultantForm && (
+                                <Card titleKey="counselor.publicSlug.status.title">
                                     <FormInputField
                                         name="publicSlug"
                                         labelKey="counselor.publicSlug"
@@ -485,26 +512,9 @@ export const UserEditOrAdd = () => {
                                             </Button>
                                         </Space>
                                     )}
-                                    <Space align="center">
-                                        <FormSwitchField
-                                            labelKey="counselor.formalLanguage.title"
-                                            name="formalLanguage"
-                                        />
-                                        {/* Temporarily hidden: {isEditing && <FormSwitchField labelKey="counselor.absent" name="absent" />} */}
-                                        {/* Temporarily hidden: {isEnabled(FeatureFlag.GroupChatV2) && (
-                                            <FormSwitchField
-                                                labelKey="counselor.isGroupChatConsultant"
-                                                name="isGroupchatConsultant"
-                                            />
-                                        )} */}
-                                        <FormSwitchField labelKey="counselor.isSupervisor" name="isSupervisor" />
-                                    </Space>
-                                    {isAbsentEnabled && (
-                                        <FormTextAreaField labelKey="counselor.absenceMessage" name="absenceMessage" />
-                                    )}
-                                </>
+                                </Card>
                             )}
-                        </Card>
+                        </Space>
                     </Col>
                 </Row>
             </Form>

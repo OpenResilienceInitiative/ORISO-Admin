@@ -67,4 +67,12 @@ describe('appConfig service origins', () => {
             'https://api.oriso.org/auth/realms/online-beratung/protocol/openid-connect/token',
         );
     });
+
+    it('preserves an explicit API URL protocol when USE_HTTPS is false for local development', async () => {
+        const config = await loadAppConfig({
+            USE_HTTPS: 'false',
+        });
+
+        expect(config.tenantAccessEndpoint).toBe('https://api.oriso.org/service/tenant/access');
+    });
 });
