@@ -1,4 +1,4 @@
-import { Button, message, Space, Col, Row, Form } from 'antd';
+import { Alert, Button, message, Space, Col, Row, Form } from 'antd';
 import { useWatch } from 'antd/lib/form/Form';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from 'react-query';
@@ -69,6 +69,9 @@ export const UserEditOrAdd = () => {
     const selectedTenant = Form.useWatch('tenantId', form);
     const selectedAgencies = Form.useWatch('agencies', form) || [];
     const selectedTopicIds = Form.useWatch('topicIds', form) || [];
+    const publicSlug = Form.useWatch('publicSlug', form);
+    const pendingPublicSlug = Form.useWatch('pendingPublicSlug', form);
+    const publicSlugStatus = Form.useWatch('publicSlugStatus', form);
     const prevAgencyIdsRef = useRef<string[] | null>(null);
     const topicsForList = topics?.filter((topic) => !selectedTopicIds.find(({ value }) => value === `${topic.id}`));
     const topicOptions = [
@@ -232,6 +235,36 @@ export const UserEditOrAdd = () => {
     const onSave = useCallback((data) => mutate(data), []);
     const onCancel = useCallback(() => navigate(`/admin/users/${typeOfUsers}`), []);
     const isAbsentEnabled = useWatch('absent', form);
+    const activePublicSlug = publicSlug || consultantById?.publicSlug;
+    const pendingSlug = pendingPublicSlug || consultantById?.pendingPublicSlug;
+    const slugStatus = publicSlugStatus || consultantById?.publicSlugStatus;
+    let publicSlugAlertType: 'info' | 'success' | 'warning' = 'info';
+    let publicSlugAlertDescription = t('counselor.publicSlug.status.empty');
+
+    if (pendingSlug) {
+        publicSlugAlertType = 'warning';
+        publicSlugAlertDescription = t('counselor.publicSlug.status.pending', { slug: pendingSlug });
+    } else if (slugStatus === 'REJECTED') {
+        publicSlugAlertDescription = t('counselor.publicSlug.status.rejected');
+    } else if (activePublicSlug) {
+        publicSlugAlertType = 'success';
+        publicSlugAlertDescription = t('counselor.publicSlug.status.active', { slug: activePublicSlug });
+    }
+
+    const approvePendingPublicSlug = () => {
+        form.setFieldsValue({
+            publicSlug: pendingSlug,
+            rejectPendingPublicSlug: false,
+        });
+        form.submit();
+    };
+
+    const rejectPendingPublicSlug = () => {
+        form.setFieldsValue({
+            rejectPendingPublicSlug: true,
+        });
+        form.submit();
+    };
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading || isLoadingTopics || isLoadingConsultantById} stickyHeader>
@@ -277,6 +310,10 @@ export const UserEditOrAdd = () => {
                     username: decodeUsername(singleData?.username || ''),
                     agencies: convertToOptions(singleData?.agencies || [], ['postcode', 'name', 'city'], 'id'),
                     topicIds: convertToOptions(consultantById?.topics || [], 'name', 'id'),
+                    publicSlug: consultantById?.publicSlug || singleData?.publicSlug || '',
+                    pendingPublicSlug: consultantById?.pendingPublicSlug || singleData?.pendingPublicSlug || '',
+                    publicSlugStatus: consultantById?.publicSlugStatus || singleData?.publicSlugStatus || '',
+                    rejectPendingPublicSlug: false,
                     tenantId: singleData?.tenantId?.toString() || (userTenantId > 0 && userTenantId.toString()) || '',
                 }}
             >
@@ -406,6 +443,48 @@ export const UserEditOrAdd = () => {
 
                             {typeOfUsers === 'consultants' && (
                                 <>
+                                    <FormInputField
+                                        name="publicSlug"
+                                        labelKey="counselor.publicSlug"
+                                        placeholderKey="placeholder.publicSlug"
+                                        rules={[
+                                            {
+                                                pattern: /^[a-z]+(-[a-z]+)*$/,
+                                                message: t('message.error.publicSlug.format'),
+                                            },
+                                        ]}
+                                    />
+                                    <Form.Item name="pendingPublicSlug" hidden>
+                                        <input />
+                                    </Form.Item>
+                                    <Form.Item name="publicSlugStatus" hidden>
+                                        <input />
+                                    </Form.Item>
+                                    <Form.Item name="rejectPendingPublicSlug" hidden>
+                                        <input />
+                                    </Form.Item>
+                                    {isEditing && (
+                                        <Alert
+                                            type={publicSlugAlertType}
+                                            showIcon
+                                            message={t('counselor.publicSlug.status.title')}
+                                            description={publicSlugAlertDescription}
+                                        />
+                                    )}
+                                    {pendingSlug && (
+                                        <Space>
+                                            <Button
+                                                type="primary"
+                                                disabled={isReadOnly}
+                                                onClick={approvePendingPublicSlug}
+                                            >
+                                                {t('counselor.publicSlug.approve')}
+                                            </Button>
+                                            <Button disabled={isReadOnly} onClick={rejectPendingPublicSlug}>
+                                                {t('counselor.publicSlug.reject')}
+                                            </Button>
+                                        </Space>
+                                    )}
                                     <Space align="center">
                                         <FormSwitchField
                                             labelKey="counselor.formalLanguage.title"
