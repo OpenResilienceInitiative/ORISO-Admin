@@ -23,6 +23,32 @@ export const isAdvisorAbsentReason = (code: string) => ADVISOR_ABSENT_REASON_COD
 export const sortPoliciesByDisplayOrder = (policies: CaseHandoverReasonPolicy[]) =>
     [...policies].sort((a, b) => (a.displayOrder ?? 100) - (b.displayOrder ?? 100));
 
+/** "Rechtsverletzung": shown as a disabled placeholder tab until the reason is
+ *  seeded in the backend — a responsible authority (e.g. the organisation's
+ *  legal counsel) can be assigned to it later (Frank, 2026-07-06). */
+export const LEGAL_VIOLATION_PLACEHOLDER_CODE = 'LEGAL_VIOLATION';
+
+export type DisplayReason = {
+    code: string;
+    policy: CaseHandoverReasonPolicy | null;
+    isPlaceholder: boolean;
+};
+
+/** Tabs to render: all backend reasons in display order, plus the legal-violation
+ *  placeholder as long as the backend does not seed it itself. */
+export const buildDisplayReasons = (policies: CaseHandoverReasonPolicy[]): DisplayReason[] => {
+    const sorted = sortPoliciesByDisplayOrder(policies);
+    const reasons: DisplayReason[] = sorted.map((policy) => ({
+        code: policy.code,
+        policy,
+        isPlaceholder: false,
+    }));
+    if (!sorted.some((policy) => policy.code === LEGAL_VIOLATION_PLACEHOLDER_CODE)) {
+        reasons.push({ code: LEGAL_VIOLATION_PLACEHOLDER_CODE, policy: null, isPlaceholder: true });
+    }
+    return reasons;
+};
+
 /** Master "Aktiviert": the module counts as on while any reason is enabled. */
 export const isHandoverModuleEnabled = (policies: CaseHandoverReasonPolicy[]) =>
     policies.some((policy) => policy.enabled);
@@ -70,6 +96,12 @@ export const NOTIFICATION_TEMPLATE_SAMPLES: Record<string, Partial<Record<Notifi
         en: 'Due to an emergency, your case has been handed over to {new advisor}.',
         tr: 'Acil bir durum nedeniyle vakanız {yeni danışman} adlı danışmana devredildi.',
         uk: 'Через надзвичайну ситуацію вашу справу передано {новий консультант}.',
+    },
+    LEGAL_VIOLATION: {
+        de: 'Aus rechtlichen Gründen wurde dein Fall an {neue Berater*in} übergeben.',
+        en: 'For legal reasons, your case has been handed over to {new advisor}.',
+        tr: 'Yasal nedenlerle vakanız {yeni danışman} adlı danışmana devredildi.',
+        uk: 'З юридичних причин вашу справу передано {новий консультант}.',
     },
 };
 

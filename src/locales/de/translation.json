@@ -688,6 +688,8 @@
     "tenants.permissions.card.caseHandover.reason.OTHER_EMERGENCY": "Notfall",
     "tenants.permissions.card.caseHandover.reason.COUNSELLOR_IS_ILL": "Krankheit",
     "tenants.permissions.card.caseHandover.reason.COUNSELLOR_LEFT": "Ausgeschieden",
+    "tenants.permissions.card.caseHandover.reason.LEGAL_VIOLATION": "Rechtsverletzung",
+    "tenants.permissions.card.caseHandover.placeholderHint": "Platzhalter – noch nicht aktiv. Hier kann später eine zuständige Stelle (z. B. die Rechtsberatung des Trägers) hinterlegt werden.",
     "tenants.permissions.card.oneOnOne.title": "1 zu 1 Beratungen",
     "tenants.permissions.card.oneOnOne.description": "Ratsuchende finden lokale Beratende für Online-Gespräche und Treffen vor Ort.<small><strong>Bei Deaktivierung:</strong> Die lokale Suche und diese Beratungsoption werden auf der Login-Seite komplett ausgeblendet.</small>",
     "tenants.permissions.card.liveChat.title": "Live Chat",

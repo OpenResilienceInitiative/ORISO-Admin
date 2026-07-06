@@ -1049,6 +1049,8 @@
     "tenants.permissions.card.caseHandover.reason.OTHER_EMERGENCY": "Emergency",
     "tenants.permissions.card.caseHandover.reason.COUNSELLOR_IS_ILL": "Illness",
     "tenants.permissions.card.caseHandover.reason.COUNSELLOR_LEFT": "Left the organisation",
+    "tenants.permissions.card.caseHandover.reason.LEGAL_VIOLATION": "Legal violation",
+    "tenants.permissions.card.caseHandover.placeholderHint": "Placeholder – not active yet. A responsible authority (e.g. the organisation's legal counsel) can be assigned here later.",
     "tenants.permissions.card.forceSelection": "Force selection",
     "tenants.permissions.chatTypes.anonymous": "Anonymous chats",
     "tenants.permissions.chatTypes.group": "Group chats",

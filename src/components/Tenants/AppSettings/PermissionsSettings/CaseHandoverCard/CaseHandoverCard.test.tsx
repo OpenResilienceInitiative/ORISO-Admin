@@ -110,6 +110,18 @@ describe('CaseHandoverCard', () => {
         });
     });
 
+    it('shows the legal-violation placeholder tab with disabled consent controls and no persistence', async () => {
+        const user = userEvent.setup();
+        render(<CaseHandoverCard />);
+
+        // t() is mocked to return the key, so the label falls back to the raw code.
+        await user.click(screen.getByRole('tab', { name: 'LEGAL_VIOLATION' }));
+
+        expect(screen.getByText('tenants.permissions.card.caseHandover.placeholderHint')).toBeInTheDocument();
+        expect(screen.getByRole('switch', { name: /caseHandover.consentClient.*LEGAL_VIOLATION/ })).toBeDisabled();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
     it('advisor consent and opt-out controls are visible but disabled (backend pending)', () => {
         render(<CaseHandoverCard />);
 

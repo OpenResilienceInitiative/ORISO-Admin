@@ -40,6 +40,24 @@
     font-weight: 600;
 }
 
+/* Placeholder reason (not backend-seeded yet): selectable to inspect, greyed out. */
+.reasonTabPlaceholder {
+    color: rgba(27, 27, 28, 0.38);
+
+    &.reasonTabActive {
+        color: rgba(27, 27, 28, 0.55);
+        border-bottom-color: rgba(27, 27, 28, 0.38);
+    }
+}
+
+.placeholderHint {
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0.4px;
+    color: #444748;
+    margin: 8px 0 0;
+}
+
 .consentRows {
     display: flex;
     flex-direction: column;

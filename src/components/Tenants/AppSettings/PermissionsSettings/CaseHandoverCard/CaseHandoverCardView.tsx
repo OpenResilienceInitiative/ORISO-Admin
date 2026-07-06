@@ -5,11 +5,12 @@ import { ReactComponent as CaseHandoverIcon } from '../../../../../resources/img
 import { M3Switch } from '../../../../M3Switch';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
 import {
+    buildDisplayReasons,
+    DisplayReason,
     getNotificationTemplateSample,
     isAdvisorConsentImplicit,
     NOTIFICATION_LANGUAGES,
     NotificationLanguage,
-    sortPoliciesByDisplayOrder,
 } from './caseHandoverCardUtils';
 import cardStyles from '../styles.module.scss';
 import styles from './styles.module.scss';
@@ -51,16 +52,18 @@ export const CaseHandoverCardView = ({
     onClientConsentChange,
 }: CaseHandoverCardViewProps) => {
     const { t } = useTranslation();
-    const sortedPolicies = useMemo(() => sortPoliciesByDisplayOrder(policies), [policies]);
+    const displayReasons = useMemo(() => buildDisplayReasons(policies), [policies]);
     const [activeReasonCode, setActiveReasonCode] = useState<string | null>(null);
     const [activeLanguage, setActiveLanguage] = useState<NotificationLanguage>('de');
 
-    const activePolicy = sortedPolicies.find((policy) => policy.code === activeReasonCode) ?? sortedPolicies[0] ?? null;
+    const activeReason: DisplayReason | null =
+        displayReasons.find((reason) => reason.code === activeReasonCode) ?? displayReasons[0] ?? null;
+    const activePolicy = activeReason?.policy ?? null;
 
-    const reasonLabel = (policy: CaseHandoverReasonPolicy) => {
-        const key = `tenants.permissions.card.caseHandover.reason.${policy.code}`;
+    const reasonLabel = (reason: DisplayReason) => {
+        const key = `tenants.permissions.card.caseHandover.reason.${reason.code}`;
         const translated = t(key);
-        return translated === key ? policy.label : translated;
+        return translated === key ? reason.policy?.label ?? reason.code : translated;
     };
 
     const comingSoon = t('tenants.permissions.card.caseHandover.comingSoon');
@@ -112,37 +115,50 @@ export const CaseHandoverCardView = ({
                         role="tablist"
                         aria-label={t('tenants.permissions.card.caseHandover.reasonsAria')}
                     >
-                        {sortedPolicies.map((policy) => {
-                            const isActive = policy.code === activePolicy?.code;
+                        {displayReasons.map((reason) => {
+                            const isActive = reason.code === activeReason?.code;
                             return (
                                 <button
-                                    key={policy.code}
+                                    key={reason.code}
                                     type="button"
                                     role="tab"
                                     aria-selected={isActive}
-                                    className={`${styles.reasonTab} ${isActive ? styles.reasonTabActive : ''}`}
-                                    onClick={() => setActiveReasonCode(policy.code)}
+                                    className={`${styles.reasonTab} ${isActive ? styles.reasonTabActive : ''} ${
+                                        reason.isPlaceholder ? styles.reasonTabPlaceholder : ''
+                                    }`}
+                                    onClick={() => setActiveReasonCode(reason.code)}
                                 >
-                                    {reasonLabel(policy)}
+                                    {reasonLabel(reason)}
                                 </button>
                             );
                         })}
                     </div>
 
-                    {activePolicy && (
+                    {activeReason && (
                         <div className={styles.consentRows}>
                             <div className={cardStyles.toggleRow}>
                                 <span className={cardStyles.toggleLabel}>
                                     {t('tenants.permissions.card.caseHandover.consentClient')}
                                 </span>
-                                <M3Switch
-                                    checked={activePolicy.clientConsentRequired}
-                                    disabled={!canEdit || !moduleEnabled}
-                                    label={`${t('tenants.permissions.card.caseHandover.consentClient')} (${reasonLabel(
-                                        activePolicy,
-                                    )})`}
-                                    onChange={(value) => onClientConsentChange(activePolicy.code, value)}
-                                />
+                                <Tooltip title={activeReason.isPlaceholder ? comingSoon : undefined}>
+                                    <span>
+                                        <M3Switch
+                                            checked={activePolicy?.clientConsentRequired ?? false}
+                                            disabled={
+                                                activeReason.isPlaceholder ||
+                                                !activePolicy ||
+                                                !canEdit ||
+                                                !moduleEnabled
+                                            }
+                                            label={`${t(
+                                                'tenants.permissions.card.caseHandover.consentClient',
+                                            )} (${reasonLabel(activeReason)})`}
+                                            onChange={(value) =>
+                                                activePolicy && onClientConsentChange(activePolicy.code, value)
+                                            }
+                                        />
+                                    </span>
+                                </Tooltip>
                             </div>
                             <div className={cardStyles.toggleRow}>
                                 <span className={cardStyles.toggleLabel}>
@@ -151,15 +167,20 @@ export const CaseHandoverCardView = ({
                                 <Tooltip title={comingSoon}>
                                     <span>
                                         <M3Switch
-                                            checked={isAdvisorConsentImplicit(activePolicy.code)}
+                                            checked={isAdvisorConsentImplicit(activeReason.code)}
                                             disabled
                                             label={`${t(
                                                 'tenants.permissions.card.caseHandover.consentAdvisor',
-                                            )} (${reasonLabel(activePolicy)})`}
+                                            )} (${reasonLabel(activeReason)})`}
                                         />
                                     </span>
                                 </Tooltip>
                             </div>
+                            {activeReason.isPlaceholder && (
+                                <p className={styles.placeholderHint}>
+                                    {t('tenants.permissions.card.caseHandover.placeholderHint')}
+                                </p>
+                            )}
                         </div>
                     )}
 
@@ -191,7 +212,7 @@ export const CaseHandoverCardView = ({
                                 {t('tenants.permissions.card.caseHandover.systemNotification')}
                             </span>
                             <p className={styles.notificationFieldText}>
-                                {activePolicy ? getNotificationTemplateSample(activePolicy.code, activeLanguage) : ''}
+                                {activeReason ? getNotificationTemplateSample(activeReason.code, activeLanguage) : ''}
                             </p>
                         </div>
                     </Tooltip>

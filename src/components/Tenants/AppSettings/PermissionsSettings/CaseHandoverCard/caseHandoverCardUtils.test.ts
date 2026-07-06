@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
     applyClientConsent,
     applyModuleEnabled,
+    buildDisplayReasons,
     getNotificationTemplateSample,
     isAdvisorConsentImplicit,
     isHandoverModuleEnabled,
+    LEGAL_VIOLATION_PLACEHOLDER_CODE,
     NOTIFICATION_LANGUAGES,
     NOTIFICATION_TEMPLATE_SAMPLES,
     sortPoliciesByDisplayOrder,
@@ -47,6 +49,17 @@ describe('caseHandoverCardUtils', () => {
         const result = applyClientConsent([policy({ code: 'A' }), policy({ code: 'B' })], 'B', true);
         expect(result.find((p) => p.code === 'A')?.clientConsentRequired).toBe(false);
         expect(result.find((p) => p.code === 'B')?.clientConsentRequired).toBe(true);
+    });
+
+    it('appends the legal-violation placeholder tab unless the backend seeds it', () => {
+        const reasons = buildDisplayReasons([policy({ code: 'A', displayOrder: 10 })]);
+        expect(reasons.map((r) => r.code)).toEqual(['A', LEGAL_VIOLATION_PLACEHOLDER_CODE]);
+        expect(reasons[1].isPlaceholder).toBe(true);
+        expect(reasons[1].policy).toBeNull();
+
+        const seeded = buildDisplayReasons([policy({ code: LEGAL_VIOLATION_PLACEHOLDER_CODE, displayOrder: 60 })]);
+        expect(seeded).toHaveLength(1);
+        expect(seeded[0].isPlaceholder).toBe(false);
     });
 
     it('advisor consent is implicit only for advice requests', () => {
