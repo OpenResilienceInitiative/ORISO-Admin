@@ -1,5 +1,70 @@
+.globalConfigGrid {
+    display: grid;
+    max-width: 1120px;
+    align-items: start;
+    gap: 24px;
+    grid-template-columns: minmax(280px, 340px) minmax(360px, 560px);
+}
+
+.globalConfigCardSlot,
+.translationCardSlot {
+    min-width: 0;
+}
+
+.loginFunctionCard {
+    width: 100%;
+    min-height: 240px;
+
+    :global([class*='cardTitle']) {
+        align-items: flex-start;
+    }
+
+    :global(h5.ant-typography) {
+        color: #1b1b1c;
+        font-family: var(--m3-body-font-family);
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0;
+        line-height: 28px;
+    }
+}
+
 .checkGroup {
-    margin-bottom: 16px;
+    margin-top: 40px;
+    margin-bottom: 0;
+
+    :global(.ant-form-item-row) {
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 16px;
+    }
+
+    :global(.ant-form-item-label) {
+        min-width: 0;
+        flex: 1 1 auto;
+        overflow: visible;
+        white-space: normal;
+    }
+
+    :global(.ant-form-item-label > label) {
+        height: auto;
+        color: #1b1b1c;
+        font-family: var(--m3-body-font-family);
+        font-size: 18px;
+        font-weight: 400;
+        letter-spacing: 0;
+        line-height: 28px;
+        white-space: normal;
+    }
+
+    :global(.ant-col.ant-form-item-control) {
+        max-width: 72px;
+        flex: 0 0 72px;
+    }
+
+    :global(.formSwitchField__container) {
+        justify-content: flex-end;
+    }
 }
 
 .checkInfo {
@@ -12,7 +77,8 @@
 
 .smtpPage {
     --card-deck-gap: 24px;
-    --card-deck-item-width: 520px;
+    --card-deck-item-width: 425px;
+    --card-deck-item-max-width: 425px;
     --card-deck-footer-margin-top: 40px;
     --card-deck-footer-padding: 0 24px;
 }
@@ -22,16 +88,14 @@
 }
 
 .smtpCard {
-    --dialog-card-height: clamp(700px, 82vh, 1040px);
-
     width: 100%;
 
-    :global([class*='dialogCardSubTitle']) {
-        margin-top: 24px;
+    :global([class*='dialogCardTitle']) {
+        min-height: 112px;
     }
 
-    :global([class*='dialogForm']) {
-        padding-bottom: 24px;
+    :global([class*='dialogTitleContainer']) {
+        min-height: 88px;
     }
 }
 
@@ -83,20 +147,20 @@
 }
 
 .switchTitle {
-    color: var(--m3-on-surface, #1b1b1c);
+    color: #1b1b1c;
     font-family: var(--m3-body-font-family);
     font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0;
-    line-height: 20px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    line-height: 24px;
 }
 
 .switchDescription {
-    color: var(--m3-on-surface-variant, #444748);
+    color: #444748;
     font-family: var(--m3-body-font-family);
     font-size: 14px;
     font-weight: 400;
-    letter-spacing: 0;
+    letter-spacing: 0.25px;
     line-height: 20px;
 }
 
@@ -153,7 +217,7 @@
     min-height: 0;
     flex: 1 1 auto;
     flex-direction: column;
-    padding: 24px;
+    padding: 20px 24px 24px;
 }
 
 .smtpActionButton {
@@ -183,6 +247,13 @@
     margin-top: 4px;
 }
 
+@media only screen and (max-width: 760px) {
+    .globalConfigGrid {
+        max-width: 100%;
+        grid-template-columns: minmax(280px, 1fr);
+    }
+}
+
 @media only screen and (max-width: 1000px) {
     .smtpPage {
         --card-deck-item-max-width: calc(100vw - 144px);
@@ -193,6 +264,10 @@
 }
 
 @media only screen and (max-width: 640px) {
+    .globalConfigGrid {
+        gap: 16px;
+    }
+
     .smtpPage {
         max-width: 100%;
     }

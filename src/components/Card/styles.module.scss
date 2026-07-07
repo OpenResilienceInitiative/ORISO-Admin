@@ -5,17 +5,23 @@
 .contentClassName {
     display: flex;
     height: 100%;
+    min-height: 0;
     flex-direction: column;
 }
 
 .dialogContentClassName {
-    min-height: 100%;
+    min-height: 0;
 }
 
 .dialogCard {
-    --input-label-bg: var(--m3-surface-container-high);
+    --admin-form-field-surface: var(--admin-form-card-surface, #eae7e8);
+    --input-label-bg: var(--admin-form-field-surface);
 
-    height: var(--dialog-card-height, clamp(430px, 49.5vh, 598px));
+    display: flex;
+    height: var(--dialog-card-height, clamp(560px, 62dvh, 640px));
+    max-height: var(--dialog-card-max-height, calc(100dvh - 320px));
+    min-height: 0;
+    flex-direction: column;
     padding: 0;
     overflow: hidden;
     border-radius: 28px;
@@ -112,6 +118,8 @@
 }
 
 .container {
+    min-height: 0;
+    flex: 1 1 auto;
     flex-grow: 1;
 }
 
@@ -119,6 +127,24 @@
     display: flex;
     min-height: 0;
     flex-direction: column;
+    overflow: hidden;
+
+    :global {
+        .ant-row:not(.ant-form-item-row) {
+            flex-direction: column;
+            margin-right: 0 !important;
+            margin-left: 0 !important;
+            row-gap: 12px;
+        }
+
+        .ant-row:not(.ant-form-item-row) > .ant-col {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 0 0 auto !important;
+            padding-right: 0 !important;
+            padding-left: 0 !important;
+        }
+    }
 }
 
 .dialogContentPadding {

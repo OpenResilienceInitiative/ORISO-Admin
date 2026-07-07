@@ -13,10 +13,10 @@ import { useTranslation } from 'react-i18next';
 import { DisplayStatus } from '../../types/userDisplayStatus';
 import { Status } from '../../types/status';
 
-const successColor = '#4FCC5C';
-const attentionColor = '#FF9F00';
-const errorColor = '#FF0000';
-const mutedColor = '#8C8C8C';
+const successColor = 'var(--admin-status-success, var(--tag-success, #0a882f))';
+const attentionColor = 'var(--admin-status-warning, var(--warning-dark, #ff9f00))';
+const errorColor = 'var(--admin-status-error, var(--form-error, #cc0000))';
+const mutedColor = 'var(--admin-status-muted, var(--m3-outline, #747878))';
 
 const StatusIcons = ({
     status,

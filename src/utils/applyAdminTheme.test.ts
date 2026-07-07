@@ -53,6 +53,24 @@ describe('applyAdminInvertedTheme', () => {
         expect(root.style.getPropertyValue('--m3-surface')).toBe(tokens['--m3-surface']);
     });
 
+    it('writes stable light admin workspace tokens alongside the inverted shell tokens', () => {
+        const root = document.createElement('div');
+        const applied = applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED }, root);
+        const { tokens } = computeOrisoPalette({ accentDark: BENCHMARK_SEED }, 'inverted');
+
+        expect(applied).toBe(true);
+        expect(root.style.getPropertyValue('--m3-surface')).toBe(tokens['--m3-surface']);
+        expect(root.style.getPropertyValue('--admin-workspace-background')).toBe('#e4e2e2');
+        expect(root.style.getPropertyValue('--admin-search-surface')).toBe('#fcf9f9');
+        expect(root.style.getPropertyValue('--admin-search-text')).toBe('#444748');
+        expect(root.style.getPropertyValue('--admin-table-surface')).toBe('#f6f3f3');
+        expect(root.style.getPropertyValue('--admin-table-header-surface')).toBe('#e4e2e2');
+        expect(root.style.getPropertyValue('--admin-table-text')).toBe('#444748');
+        expect(root.style.getPropertyValue('--admin-form-field-surface')).toBe('#f6f3f3');
+        expect(root.style.getPropertyValue('--admin-form-card-surface')).toBe('#eae7e8');
+        expect(root.style.getPropertyValue('--admin-form-label-text')).toBe('#444748');
+    });
+
     it('ignores an invalid accent seed when the primary seed is valid', () => {
         const root = document.createElement('div');
         const applied = applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED, accent: 'not-a-hex' }, root);
@@ -83,6 +101,10 @@ describe('applyAdminInvertedTheme', () => {
 
         expect(root.style.getPropertyValue('--m3-surface')).toBe('');
         expect(root.style.getPropertyValue('--m3-primary')).toBe('');
+        expect(root.style.getPropertyValue('--admin-workspace-background')).toBe('');
+        expect(root.style.getPropertyValue('--admin-search-surface')).toBe('');
+        expect(root.style.getPropertyValue('--admin-table-surface')).toBe('');
+        expect(root.style.getPropertyValue('--admin-form-field-surface')).toBe('');
     });
 
     it('clears previously applied admin tokens when a later seed is invalid', () => {

@@ -34,14 +34,17 @@
     --input-padding: 16px;
     --input-border-radius: 4px;
     --input-border-color: var(--m3-outline);
-    --input-active-border-color: var(--m3-on-surface);
-    --input-disabled-border-color: color-mix(in srgb, var(--m3-outline) 38%, transparent);
-    --input-bg: transparent;
-    --input-disabled-bg: transparent;
-    --input-disabled-color: color-mix(in srgb, var(--m3-on-surface) 38%, transparent);
-    --input-placeholder-color: color-mix(in srgb, var(--m3-on-surface-variant) 64%, transparent);
-    --input-label-bg: var(--m3-surface);
-    --label-color: var(--m3-on-surface-variant);
+    --admin-form-field-text: #1b1b1c;
+    --admin-form-muted-text: #444748;
+    --admin-form-disabled-text: #444748;
+    --input-active-border-color: var(--admin-form-field-text);
+    --input-disabled-border-color: color-mix(in srgb, var(--m3-outline) 56%, transparent);
+    --input-bg: var(--admin-form-field-surface, #f6f3f3);
+    --input-disabled-bg: var(--input-bg);
+    --input-disabled-color: var(--admin-form-disabled-text);
+    --input-placeholder-color: color-mix(in srgb, var(--admin-form-muted-text) 64%, transparent);
+    --input-label-bg: var(--admin-form-field-surface, #f6f3f3);
+    --label-color: var(--admin-form-label-text, var(--admin-form-muted-text));
     --form-item-label-font-size: var(--fontSize-s);
     --form-item-label-height: auto;
     --form-item-margin-bottom: var(--spacing-sm);
@@ -104,9 +107,42 @@
        previous #e8ebee drifted and left the light on-colour text unreadable. */
     --m3-secondary-container: #646d78;
     --m3-on-secondary-container: #e7effc;
+    --m3-primary: #a5000a;
+    --m3-on-primary: #ffffff;
+    --m3-primary-container: #ffdad5;
+    --m3-on-primary-container: #141c25;
     --m3-primary-fixed: #ffdad5;
     --m3-tertiary-container: #ffdad6;
     --m3-on-tertiary-container: #410005;
+    --oriso-app-accent-dark: #a5000a;
+    --admin-control-selected: var(--oriso-app-accent-dark, var(--m3-primary, #a5000a));
+    --admin-workspace-background: #e4e2e2;
+    --admin-search-surface: #fcf9f9;
+    --admin-search-text: #444748;
+    --admin-search-placeholder: #444748;
+    --admin-search-icon: #444748;
+    --admin-search-hover-surface: #f0edee;
+    --admin-table-surface: #f6f3f3;
+    --admin-table-header-surface: #e4e2e2;
+    --admin-table-row-hover-surface: #f0edee;
+    --admin-table-border: #eae7e8;
+    --admin-table-text: #444748;
+    --admin-table-header-text: #1b1b1c;
+    --admin-table-chip-surface: #e4e2e2;
+    --admin-table-chip-border: #c4c7c8;
+    --admin-table-chip-text: #444748;
+    --admin-status-success: var(--tag-success, #0a882f);
+    --admin-status-success-container: color-mix(
+        in srgb,
+        var(--admin-status-success) 14%,
+        var(--m3-surface-container-low)
+    );
+    --admin-status-success-border: color-mix(in srgb, var(--admin-status-success) 42%, transparent);
+    --admin-status-error: var(--form-error, #cc0000);
+    --admin-status-error-container: color-mix(in srgb, var(--admin-status-error) 12%, var(--m3-surface-container-low));
+    --admin-status-error-border: color-mix(in srgb, var(--admin-status-error) 42%, transparent);
+    --admin-status-warning: var(--warning-dark, #ff9f00);
+    --admin-status-muted: var(--m3-outline, #747878);
 
     /*
      * Lottie recolor roles. The login stage has a dark (#1f1f1f) background, so
@@ -133,9 +169,20 @@
 }
 
 body {
-    background: var(--m3-background, #f2efea);
+    background: var(--admin-workspace-background, #e4e2e2);
 }
 
 .ant-layout {
     height: 100%;
+}
+
+.ant-table-wrapper {
+    --admin-table-fixed-cell-shadow: transparent;
+}
+
+.ant-table-wrapper .ant-table-cell-fix-left-last::after,
+.ant-table-wrapper .ant-table-cell-fix-right-first::after,
+.ant-table-wrapper .ant-table-ping-left .ant-table-cell-fix-left-last::after,
+.ant-table-wrapper .ant-table-ping-right .ant-table-cell-fix-right-first::after {
+    box-shadow: none !important;
 }

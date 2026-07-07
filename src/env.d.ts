@@ -16,6 +16,7 @@ interface ImportMetaEnv {
     readonly VITE_USE_HTTPS: 'true' | 'false';
     readonly VITE_COOKIE_DOMAIN: string;
     readonly VITE_COOKIE_SECURE: 'true' | 'false';
+    readonly VITE_HOSTNAMES_WITHOUT_COOKIE_DOMAIN: string;
     readonly VITE_COOKIES_ALLOWEDLIST: string;
     readonly REACT_APP_API_URL: string;
     readonly REACT_APP_KEYCLOAK_URL: string;
@@ -24,6 +25,7 @@ interface ImportMetaEnv {
     readonly REACT_APP_TENANT_SERVICE_ORIGIN?: string;
     readonly REACT_APP_CONSULTING_TYPE_SERVICE_ORIGIN?: string;
     readonly REACT_APP_KEYCLOAK_ORIGIN?: string;
+    readonly REACT_APP_HOSTNAMES_WITHOUT_COOKIE_DOMAIN?: string;
     readonly REACT_APP_MATRIX_URL: string;
 }
 

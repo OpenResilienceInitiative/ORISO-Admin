@@ -25,6 +25,7 @@ const runtimeEnvKeys = [
     'KEYCLOAK_CLIENT_ID',
     'COOKIE_DOMAIN',
     'COOKIE_SECURE',
+    'HOSTNAMES_WITHOUT_COOKIE_DOMAIN',
 ];
 
 const loadAppConfig = async (config: AppRuntimeConfig = {}) => {

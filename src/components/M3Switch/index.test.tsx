@@ -29,4 +29,13 @@ describe('M3Switch', () => {
 
         expect(onChange).not.toHaveBeenCalled();
     });
+
+    it('uses the primary selected-state token for its checked track', () => {
+        const { container } = render(<M3Switch checked label="Enable calls" />);
+
+        expect(container.querySelector('rect[width="52"]')).toHaveAttribute(
+            'fill',
+            'var(--admin-control-selected, var(--m3-primary, #A5000A))',
+        );
+    });
 });

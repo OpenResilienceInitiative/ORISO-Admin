@@ -1,7 +1,7 @@
 import 'react-app-polyfill/stable';
 import { useEffect, useState, type JSX } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { createRoot } from 'react-dom/client';
+import { createRoot, type Root } from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ConfigProvider, message } from 'antd';
 import { Locale } from 'antd/lib/locale';
@@ -31,6 +31,12 @@ const myLanguages: LangMap = {
     de: de_DE,
     en: en_GB,
 };
+
+declare global {
+    interface Window {
+        orisoAdminRoot?: Root;
+    }
+}
 
 /**
  * ant design message config
@@ -81,7 +87,12 @@ const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) =>
 };
 
 const container = document.getElementById('root');
-const root = createRoot(container as HTMLElement);
+if (!container) {
+    throw new Error('Application root element not found');
+}
+
+const root = window.orisoAdminRoot ?? createRoot(container);
+window.orisoAdminRoot = root;
 root.render(
     <QueryClientProvider client={queryClient}>
         <UseAppConfigProvider>

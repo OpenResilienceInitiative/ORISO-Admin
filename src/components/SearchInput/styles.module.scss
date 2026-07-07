@@ -6,7 +6,7 @@
     max-width: 499px;
     align-items: center;
     overflow: hidden;
-    background: var(--m3-surface-container-lowest, #ffffff);
+    background: var(--admin-search-surface, #fcf9f9);
     border-radius: 28px;
 
     &:focus-within {
@@ -28,7 +28,7 @@
             border: 0;
             background: transparent;
             border-radius: 28px 0 0 28px;
-            color: var(--m3-on-surface-variant, #444748);
+            color: var(--admin-search-text, #444748);
             font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
             font-size: 16px;
             font-weight: 400;
@@ -37,7 +37,7 @@
             box-shadow: none;
 
             &::placeholder {
-                color: var(--m3-on-surface-variant, #444748);
+                color: var(--admin-search-placeholder, #444748);
                 opacity: 1;
             }
 
@@ -67,18 +67,18 @@
     background: transparent;
     border-radius: 0 28px 28px 0;
     box-shadow: none;
-    color: var(--m3-on-surface-variant, #444748);
+    color: var(--admin-search-icon, #444748);
     cursor: pointer;
     transition: background 160ms ease, color 160ms ease;
 
     &:hover,
     &:focus {
-        background: rgb(68 71 72 / 8%);
-        color: var(--m3-on-surface-variant, #444748);
+        background: var(--admin-search-hover-surface, #f0edee);
+        color: var(--admin-search-icon, #444748);
     }
 
     &:focus-visible {
-        outline: 2px solid var(--m3-on-surface-variant, #444748);
+        outline: 2px solid var(--admin-search-icon, #444748);
         outline-offset: -4px;
     }
 

@@ -1,4 +1,4 @@
-import { Button, Col, Form, Row, message } from 'antd';
+import { Button, Form, message } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { useCallback, useMemo, useState } from 'react';
@@ -53,9 +53,10 @@ export const GlobalLoginSettingsPage = () => {
     const initialValues = useMemo(() => ({ ...data }), [data]);
 
     return (
-        <Row gutter={[24, 24]}>
-            <Col span={12} sm={6}>
+        <div className={styles.globalConfigGrid}>
+            <section className={styles.globalConfigCardSlot}>
                 <CardEditable
+                    className={styles.loginFunctionCard}
                     isLoading={isLoading}
                     initialValues={initialValues}
                     titleKey="tenants.globalSettings.anonymousChat.title"
@@ -70,11 +71,11 @@ export const GlobalLoginSettingsPage = () => {
                         />
                     </div>
                 </CardEditable>
-            </Col>
-            <Col span={12} sm={6}>
+            </section>
+            <section className={styles.translationCardSlot}>
                 <TranslationApiKeysCardContainer />
-            </Col>
-        </Row>
+            </section>
+        </div>
     );
 };
 

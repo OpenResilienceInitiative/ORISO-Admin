@@ -4,7 +4,11 @@
     height: auto;
     min-height: 112px;
     padding: 16px;
+    overflow: auto;
+    overflow-wrap: anywhere;
     resize: vertical;
+    text-overflow: clip;
+    white-space: pre-wrap;
 }
 
 .item {

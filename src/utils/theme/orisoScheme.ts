@@ -62,6 +62,26 @@ const DEFAULT_ACCENT_ACTION = '#cc1e1c';
 const SYSTEM_ALERT = '#410001';
 const SYSTEM_ERROR = '#b1005e';
 const DARK_TEXT = '#141c25';
+const ADMIN_TABLE_TOKENS = {
+    '--admin-workspace-background': '#e4e2e2',
+    '--admin-search-surface': '#fcf9f9',
+    '--admin-search-text': '#444748',
+    '--admin-search-placeholder': '#444748',
+    '--admin-search-icon': '#444748',
+    '--admin-search-hover-surface': '#f0edee',
+    '--admin-table-surface': '#f6f3f3',
+    '--admin-table-header-surface': '#e4e2e2',
+    '--admin-table-row-hover-surface': '#f0edee',
+    '--admin-table-border': '#eae7e8',
+    '--admin-table-text': '#444748',
+    '--admin-table-header-text': '#1b1b1c',
+    '--admin-table-chip-surface': '#e4e2e2',
+    '--admin-table-chip-border': '#c4c7c8',
+    '--admin-table-chip-text': '#444748',
+    '--admin-form-field-surface': '#f6f3f3',
+    '--admin-form-card-surface': '#eae7e8',
+    '--admin-form-label-text': '#444748',
+};
 
 const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) => {
     if (!explicitAccentLight && accentDark === DEFAULT_ACCENT_DARK) {
@@ -91,6 +111,7 @@ const invertedTokens = (accentDark: string, accentLight: string, accentDim: stri
     const action = mix(accentLight, '#ffffff', 0.1);
 
     return {
+        ...ADMIN_TABLE_TOKENS,
         '--m3-primary': primary,
         '--m3-on-primary': readableOn(primary),
         '--m3-primary-container': primaryContainer,
@@ -156,6 +177,7 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
     return {
         tooPale,
         tokens: {
+            ...ADMIN_TABLE_TOKENS,
             '--m3-primary': accentDark,
             '--m3-on-primary': onAccentDark,
             '--m3-primary-container': accentLight,
