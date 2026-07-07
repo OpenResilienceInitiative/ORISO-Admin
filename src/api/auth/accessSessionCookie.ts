@@ -47,7 +47,11 @@ export const getValueFromCookie = (targetValue: string): string => {
 export const removeAllCookies = (): void => {
     document.cookie.split(';').forEach((c) => {
         const name = c.trim().split('=')[0];
-        if (runtimeConfig.cookiesAllowedList.includes(name) || name === LANGUAGE_COOKIE_KEY || isAuthTokenCookie(name)) {
+        if (
+            runtimeConfig.cookiesAllowedList.includes(name) ||
+            name === LANGUAGE_COOKIE_KEY ||
+            isAuthTokenCookie(name)
+        ) {
             return;
         }
 

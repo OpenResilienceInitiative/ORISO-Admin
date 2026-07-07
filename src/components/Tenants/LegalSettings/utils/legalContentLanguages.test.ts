@@ -60,11 +60,7 @@ describe('isEditableLanguageKey', () => {
 
 describe('getEditableLanguages', () => {
     it('uses the active languages plus stored plain language keys', () => {
-        expect(getEditableLanguages(['de', 'en'], { de: 'x', fr: 'y', de__meta: 'm' })).toEqual([
-            'de',
-            'en',
-            'fr',
-        ]);
+        expect(getEditableLanguages(['de', 'en'], { de: 'x', fr: 'y', de__meta: 'm' })).toEqual(['de', 'en', 'fr']);
     });
 
     it('defaults to de when no active languages are configured', () => {
@@ -82,9 +78,9 @@ describe('mergeLegalContentMap', () => {
     });
 
     it('passes unknown keys through untouched', () => {
-        expect(
-            mergeLegalContentMap({ de: '<p>DE</p>', de__meta: 'm', fr: '<p>FR</p>' }, { de: '<p>new</p>' }),
-        ).toEqual({ de: '<p>new</p>', de__meta: 'm', fr: '<p>FR</p>' });
+        expect(mergeLegalContentMap({ de: '<p>DE</p>', de__meta: 'm', fr: '<p>FR</p>' }, { de: '<p>new</p>' })).toEqual(
+            { de: '<p>new</p>', de__meta: 'm', fr: '<p>FR</p>' },
+        );
     });
 
     it('does not add languages that stayed empty', () => {

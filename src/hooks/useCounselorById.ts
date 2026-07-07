@@ -9,7 +9,8 @@ interface CounselorByIdProps extends Omit<UseQueryOptions<CounselorData>, 'query
 export const useCounselorById = ({ id, ...options }: CounselorByIdProps) => {
     return useQuery<CounselorData>({
         queryKey: ['CONSULTANT', id],
-        queryFn: () => getCounselorById(id!),
+        // `enabled` below guarantees id is set before the query runs.
+        queryFn: () => getCounselorById(id as string),
         ...options,
         enabled: !!id && id !== 'add',
     });

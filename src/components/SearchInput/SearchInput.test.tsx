@@ -10,8 +10,8 @@ const t = (key: string, fallback?: string) =>
         'searchInput.clear': 'Clear search',
         'searchInput.submit': 'Run search',
     }[key] ||
-        fallback ||
-        key);
+    fallback ||
+    key);
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t }),

@@ -37,10 +37,7 @@ const findEntryChunk = (manifest) => {
 
 const findUsersChunk = (manifest) =>
     Object.values(manifest).find(
-        (item) =>
-            typeof item.src === 'string' &&
-            item.src.includes('pages/users/List') &&
-            item.file.endsWith('.js'),
+        (item) => typeof item.src === 'string' && item.src.includes('pages/users/List') && item.file.endsWith('.js'),
     );
 
 const run = async () => {

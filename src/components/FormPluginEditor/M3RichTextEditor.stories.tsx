@@ -15,7 +15,15 @@ type Story = StoryObj<typeof meta>;
 const ControlledEditor = (args: Parameters<typeof M3RichTextEditor>[0]) => {
     const [value, setValue] = useState(args.value ?? '');
     const [language, setLanguage] = useState(args.language ?? 'de');
-    return <M3RichTextEditor {...args} value={value} onChange={setValue} language={language} onLanguageChange={setLanguage} />;
+    return (
+        <M3RichTextEditor
+            {...args}
+            value={value}
+            onChange={setValue}
+            language={language}
+            onLanguageChange={setLanguage}
+        />
+    );
 };
 
 export const Imprint: Story = {

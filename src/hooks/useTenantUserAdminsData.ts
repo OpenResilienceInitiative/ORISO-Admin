@@ -10,8 +10,7 @@ import { ResponseList } from '../types/ResponseList';
 import { fetchUserSearchWithSortFallback } from '../utils/fetchUserSearchWithSortFallback';
 import { TENANT_ADMINS_QUERY_KEY } from './useTenantUserAdminData';
 
-interface TenantUserAdminDataProps
-    extends Omit<UseQueryOptions<ResponseList<CounselorData>>, 'queryKey' | 'queryFn'> {
+interface TenantUserAdminDataProps extends Omit<UseQueryOptions<ResponseList<CounselorData>>, 'queryKey' | 'queryFn'> {
     search?: string;
     current?: number;
     sortBy?: string;
@@ -19,14 +18,9 @@ interface TenantUserAdminDataProps
     pageSize?: number;
 }
 
-export const useTenantAdminsData = ({
-    search,
-    current,
-    sortBy,
-    order,
-    pageSize,
-    ...options
-}: TenantUserAdminDataProps = {} as TenantUserAdminDataProps) => {
+export const useTenantAdminsData = (
+    { search, current, sortBy, order, pageSize, ...options }: TenantUserAdminDataProps = {} as TenantUserAdminDataProps,
+) => {
     return useQuery({
         queryKey: [TENANT_ADMINS_QUERY_KEY, search, current, sortBy, order, pageSize],
         queryFn: () =>

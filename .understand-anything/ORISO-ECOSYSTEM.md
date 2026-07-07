@@ -8,17 +8,17 @@
 
 `src/appConfig.ts` defines service endpoints under `mainURL`, including:
 
-- `/service/tenant`, `/service/tenant/public`, and `/service/tenant/access`
-- `/service/tenantadmin`
-- `/service/useradmin/tenantadmins`
-- `/service/useradmin/agencyadmins`
-- `/service/useradmin/consultants`
-- `/service/users`
-- `/service/topic` and `/service/topicadmin`
-- `/service/settings` and `/service/settingsadmin`
-- `/service/statistics/registration`
-- `/service/users/supervisors/logs`
-- `/service/users/inactive-accounts/audit-logs`
+-   `/service/tenant`, `/service/tenant/public`, and `/service/tenant/access`
+-   `/service/tenantadmin`
+-   `/service/useradmin/tenantadmins`
+-   `/service/useradmin/agencyadmins`
+-   `/service/useradmin/consultants`
+-   `/service/users`
+-   `/service/topic` and `/service/topicadmin`
+-   `/service/settings` and `/service/settingsadmin`
+-   `/service/statistics/registration`
+-   `/service/users/supervisors/logs`
+-   `/service/users/inactive-accounts/audit-logs`
 
 The admin app depends on these services for tenant configuration, user administration, agency management, settings, statistics, invite links, and audit views.
 
@@ -26,8 +26,8 @@ The admin app depends on these services for tenant configuration, user administr
 
 Auth endpoints are built through `keycloakAuthPath`:
 
-- token exchange: `/realms/{realm}/protocol/openid-connect/token`
-- logout: `/realms/{realm}/protocol/openid-connect/logout`
+-   token exchange: `/realms/{realm}/protocol/openid-connect/token`
+-   logout: `/realms/{realm}/protocol/openid-connect/logout`
 
 `runtimeConfig.ts` supports a dedicated `KEYCLOAK_URL` or legacy API-hosted auth fallback under `/auth/realms/{realm}`.
 
@@ -43,12 +43,12 @@ This admin repo and the public ORISO frontend share concepts around tenants, sub
 
 Delivery is represented by:
 
-- `Dockerfile`
-- `nginx.conf`
-- `scripts/docker-entrypoint.sh`
-- `scripts/generate-runtime-env.js`
-- `.github/workflows/*.yml`
-- `.github/actions/*/action.yml`
+-   `Dockerfile`
+-   `nginx.conf`
+-   `scripts/docker-entrypoint.sh`
+-   `scripts/generate-runtime-env.js`
+-   `.github/workflows/*.yml`
+-   `.github/actions/*/action.yml`
 
 The built app is served from `/usr/share/nginx/html/admin`. The container writes `env.js` from deployment environment variables before starting nginx.
 

@@ -57,7 +57,13 @@ export type M3RichTextEditorProps = {
 
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
 
-type ToolButtonProps = { onClick: () => void; active?: boolean; disabled?: boolean; title: string; children: React.ReactNode };
+type ToolButtonProps = {
+    onClick: () => void;
+    active?: boolean;
+    disabled?: boolean;
+    title: string;
+    children: React.ReactNode;
+};
 const ToolButton = ({ onClick, active, disabled, title, children }: ToolButtonProps) => (
     <button
         type="button"
@@ -88,13 +94,23 @@ const Toolbar = ({ editor }: { editor: Editor }) => {
         if (url) editor.chain().focus().setImage({ src: url }).run();
     };
 
+    const activeHeadingLevel = [1, 2, 3].find((level) => editor.isActive('heading', { level }));
+
     return (
         <div className={styles.toolbar} data-testid="m3-toolbar">
             <div className={styles.toolGroup}>
-                <ToolButton title="Undo" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
+                <ToolButton
+                    title="Undo"
+                    onClick={() => editor.chain().focus().undo().run()}
+                    disabled={!editor.can().undo()}
+                >
                     <Undo />
                 </ToolButton>
-                <ToolButton title="Redo" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>
+                <ToolButton
+                    title="Redo"
+                    onClick={() => editor.chain().focus().redo().run()}
+                    disabled={!editor.can().redo()}
+                >
                     <Redo />
                 </ToolButton>
             </div>
@@ -104,16 +120,7 @@ const Toolbar = ({ editor }: { editor: Editor }) => {
                     trigger={['click']}
                     menu={{
                         selectable: true,
-                        selectedKeys: [
-                            // eslint-disable-next-line no-nested-ternary
-                            editor.isActive('heading', { level: 1 })
-                                ? 'h1'
-                                : editor.isActive('heading', { level: 2 })
-                                ? 'h2'
-                                : editor.isActive('heading', { level: 3 })
-                                ? 'h3'
-                                : 'p',
-                        ],
+                        selectedKeys: [activeHeadingLevel ? `h${activeHeadingLevel}` : 'p'],
                         items: [
                             { key: 'p', label: 'Normaler Text' },
                             { key: 'h1', label: 'Überschrift 1' },
@@ -122,13 +129,20 @@ const Toolbar = ({ editor }: { editor: Editor }) => {
                         ],
                         onClick: ({ key }) => {
                             if (key === 'p') editor.chain().focus().setParagraph().run();
-                            else editor.chain().focus().toggleHeading({ level: Number(key.slice(1)) as 1 | 2 | 3 }).run();
+                            else
+                                editor
+                                    .chain()
+                                    .focus()
+                                    .toggleHeading({ level: Number(key.slice(1)) as 1 | 2 | 3 })
+                                    .run();
                         },
                     }}
                 >
                     <button
                         type="button"
-                        className={`${styles.toolBtn} ${styles.menuBtn} ${editor.isActive('heading') ? styles.active : ''}`}
+                        className={`${styles.toolBtn} ${styles.menuBtn} ${
+                            editor.isActive('heading') ? styles.active : ''
+                        }`}
                         onMouseDown={(e) => e.preventDefault()}
                         title="Textformat"
                     >
@@ -161,31 +175,63 @@ const Toolbar = ({ editor }: { editor: Editor }) => {
                         <ArrowDropDown className={styles.caret} />
                     </button>
                 </Dropdown>
-                <ToolButton title="Blockquote" active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+                <ToolButton
+                    title="Blockquote"
+                    active={editor.isActive('blockquote')}
+                    onClick={() => editor.chain().focus().toggleBlockquote().run()}
+                >
                     <FormatQuote />
                 </ToolButton>
-                <ToolButton title="Code block" active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
+                <ToolButton
+                    title="Code block"
+                    active={editor.isActive('codeBlock')}
+                    onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+                >
                     <DataObject />
                 </ToolButton>
             </div>
             <span className={styles.vDivider} />
             <div className={styles.toolGroup}>
-                <ToolButton title="Bold" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
+                <ToolButton
+                    title="Bold"
+                    active={editor.isActive('bold')}
+                    onClick={() => editor.chain().focus().toggleBold().run()}
+                >
                     <FormatBold />
                 </ToolButton>
-                <ToolButton title="Italic" active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}>
+                <ToolButton
+                    title="Italic"
+                    active={editor.isActive('italic')}
+                    onClick={() => editor.chain().focus().toggleItalic().run()}
+                >
                     <FormatItalic />
                 </ToolButton>
-                <ToolButton title="Strikethrough" active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()}>
+                <ToolButton
+                    title="Strikethrough"
+                    active={editor.isActive('strike')}
+                    onClick={() => editor.chain().focus().toggleStrike().run()}
+                >
                     <StrikethroughS />
                 </ToolButton>
-                <ToolButton title="Inline code" active={editor.isActive('code')} onClick={() => editor.chain().focus().toggleCode().run()}>
+                <ToolButton
+                    title="Inline code"
+                    active={editor.isActive('code')}
+                    onClick={() => editor.chain().focus().toggleCode().run()}
+                >
                     <Code />
                 </ToolButton>
-                <ToolButton title="Underline" active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+                <ToolButton
+                    title="Underline"
+                    active={editor.isActive('underline')}
+                    onClick={() => editor.chain().focus().toggleUnderline().run()}
+                >
                     <FormatUnderlined />
                 </ToolButton>
-                <ToolButton title="Highlight" active={editor.isActive('highlight')} onClick={() => editor.chain().focus().toggleHighlight().run()}>
+                <ToolButton
+                    title="Highlight"
+                    active={editor.isActive('highlight')}
+                    onClick={() => editor.chain().focus().toggleHighlight().run()}
+                >
                     <BorderColor />
                 </ToolButton>
                 <ToolButton title="Link" active={editor.isActive('link')} onClick={promptLink}>
@@ -194,31 +240,61 @@ const Toolbar = ({ editor }: { editor: Editor }) => {
             </div>
             <span className={styles.vDivider} />
             <div className={styles.toolGroup}>
-                <ToolButton title="Superscript" active={editor.isActive('superscript')} onClick={() => editor.chain().focus().toggleSuperscript().run()}>
+                <ToolButton
+                    title="Superscript"
+                    active={editor.isActive('superscript')}
+                    onClick={() => editor.chain().focus().toggleSuperscript().run()}
+                >
                     <SuperscriptIcon />
                 </ToolButton>
-                <ToolButton title="Subscript" active={editor.isActive('subscript')} onClick={() => editor.chain().focus().toggleSubscript().run()}>
+                <ToolButton
+                    title="Subscript"
+                    active={editor.isActive('subscript')}
+                    onClick={() => editor.chain().focus().toggleSubscript().run()}
+                >
                     <SubscriptIcon />
                 </ToolButton>
             </div>
             <span className={styles.vDivider} />
             <div className={styles.toolGroup}>
-                <ToolButton title="Align left" active={editor.isActive({ textAlign: 'left' })} onClick={() => editor.chain().focus().setTextAlign('left').run()}>
+                <ToolButton
+                    title="Align left"
+                    active={editor.isActive({ textAlign: 'left' })}
+                    onClick={() => editor.chain().focus().setTextAlign('left').run()}
+                >
                     <FormatAlignLeft />
                 </ToolButton>
-                <ToolButton title="Align center" active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()}>
+                <ToolButton
+                    title="Align center"
+                    active={editor.isActive({ textAlign: 'center' })}
+                    onClick={() => editor.chain().focus().setTextAlign('center').run()}
+                >
                     <FormatAlignCenter />
                 </ToolButton>
-                <ToolButton title="Align right" active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()}>
+                <ToolButton
+                    title="Align right"
+                    active={editor.isActive({ textAlign: 'right' })}
+                    onClick={() => editor.chain().focus().setTextAlign('right').run()}
+                >
                     <FormatAlignRight />
                 </ToolButton>
-                <ToolButton title="Justify" active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()}>
+                <ToolButton
+                    title="Justify"
+                    active={editor.isActive({ textAlign: 'justify' })}
+                    onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+                >
                     <FormatAlignJustify />
                 </ToolButton>
             </div>
             <span className={styles.vDivider} />
             <div className={styles.toolGroup}>
-                <button type="button" className={`${styles.toolBtn} ${styles.withLabel}`} onMouseDown={(e) => e.preventDefault()} onClick={promptImage} title="Add image">
+                <button
+                    type="button"
+                    className={`${styles.toolBtn} ${styles.withLabel}`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={promptImage}
+                    title="Add image"
+                >
                     <ImageIcon />
                     <span>Add</span>
                 </button>
@@ -343,11 +419,19 @@ export const M3RichTextEditor = ({
             <hr className={styles.divider} />
 
             <div className={styles.actions}>
-                <button type="button" className={`${styles.textBtn} ${styles.publish}`} onClick={() => onPublish?.(html())}>
+                <button
+                    type="button"
+                    className={`${styles.textBtn} ${styles.publish}`}
+                    onClick={() => onPublish?.(html())}
+                >
                     <Share />
                     <span>Veröffentlichen</span>
                 </button>
-                <button type="button" className={`${styles.textBtn} ${styles.draft}`} onClick={() => onSaveDraft?.(html())}>
+                <button
+                    type="button"
+                    className={`${styles.textBtn} ${styles.draft}`}
+                    onClick={() => onSaveDraft?.(html())}
+                >
                     <Edit />
                     <span>Entwurf bearbeiten</span>
                 </button>

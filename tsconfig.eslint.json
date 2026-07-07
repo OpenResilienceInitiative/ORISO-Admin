@@ -1,0 +1,8 @@
+{
+    // Type-aware linting config: extends the build tsconfig but also includes
+    // co-located tests, stories and the root config files so ESLint can parse
+    // every file it lints (tsconfig.json excludes them from the build).
+    "extends": "./tsconfig.json",
+    "include": ["src", "cypress", "*.ts", "*.tsx"],
+    "exclude": []
+}

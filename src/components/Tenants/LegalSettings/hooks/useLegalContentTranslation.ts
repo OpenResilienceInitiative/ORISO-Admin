@@ -87,7 +87,7 @@ export const useLegalContentTranslation = ({
             if (!(activeLanguage in prev)) {
                 return prev;
             }
-            const { [activeLanguage]: _dropped, ...rest } = prev;
+            const { [activeLanguage]: dropped, ...rest } = prev;
             return rest;
         });
         setFieldErrorKey(null);

@@ -7,8 +7,7 @@ import parseJwt from './parseJWT';
 const browserAtob = (b64: string): string => Buffer.from(b64, 'base64').toString('binary');
 
 // Real JWTs use unpadded base64url.
-const toBase64Url = (payload: unknown): string =>
-    Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+const toBase64Url = (payload: unknown): string => Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
 
 const makeToken = (payload: unknown): string => `header.${toBase64Url(payload)}.signature`;
 

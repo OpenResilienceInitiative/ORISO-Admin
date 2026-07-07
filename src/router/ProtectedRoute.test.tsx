@@ -72,7 +72,11 @@ describe('ProtectedRoute', () => {
     });
 
     it('shows the initialization state while the auth session bootstraps', () => {
-        mocks.bootstrapAuthSession.mockReturnValue(new Promise(() => undefined));
+        mocks.bootstrapAuthSession.mockReturnValue(
+            new Promise(() => {
+                /* never resolves: keep the bootstrap pending */
+            }),
+        );
 
         renderProtectedRoute();
 

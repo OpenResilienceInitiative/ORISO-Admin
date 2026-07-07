@@ -89,17 +89,23 @@ const buildAuthTokenCookies = (config, payload) => {
 
     if (payload.access_token) {
         cookies.push(
-            `${AUTH_ACCESS_TOKEN_COOKIE}=${encodeURIComponent(payload.access_token)}${buildAuthCookieAttributes(config, {
-                maxAge: payload.expires_in,
-            })}`,
+            `${AUTH_ACCESS_TOKEN_COOKIE}=${encodeURIComponent(payload.access_token)}${buildAuthCookieAttributes(
+                config,
+                {
+                    maxAge: payload.expires_in,
+                },
+            )}`,
         );
     }
 
     if (payload.refresh_token) {
         cookies.push(
-            `${AUTH_REFRESH_TOKEN_COOKIE}=${encodeURIComponent(payload.refresh_token)}${buildAuthCookieAttributes(config, {
-                maxAge: payload.refresh_expires_in,
-            })}`,
+            `${AUTH_REFRESH_TOKEN_COOKIE}=${encodeURIComponent(payload.refresh_token)}${buildAuthCookieAttributes(
+                config,
+                {
+                    maxAge: payload.refresh_expires_in,
+                },
+            )}`,
         );
     }
 

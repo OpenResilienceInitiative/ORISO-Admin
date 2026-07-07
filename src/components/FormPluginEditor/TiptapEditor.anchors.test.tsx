@@ -66,9 +66,7 @@ describe('TiptapEditor — anchor navigation (edit mode)', () => {
 
     it('stamps ids onto legacy content without anchors when opened for editing', async () => {
         const onChange = vi.fn();
-        const { container } = render(
-            <TiptapEditor value={'<h2>Geltungsbereich</h2><p>Text</p>'} onChange={onChange} />,
-        );
+        const { container } = render(<TiptapEditor value="<h2>Geltungsbereich</h2><p>Text</p>" onChange={onChange} />);
         await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(1));
         await waitFor(() => expect(onChange).toHaveBeenCalled());
         const lastHtml = onChange.mock.calls[onChange.mock.calls.length - 1][0] as string;

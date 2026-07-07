@@ -195,8 +195,7 @@ describe('AgencyList topic rendering', () => {
     });
 
     it('expands long multi-topic chips when the expand button is clicked', () => {
-        const longTopicName =
-            'A very long topic name that should become fully readable after expanding the topic list';
+        const longTopicName = 'A very long topic name that should become fully readable after expanding the topic list';
         mocks.agencies = [
             buildAgency([
                 { id: 1, name: longTopicName },

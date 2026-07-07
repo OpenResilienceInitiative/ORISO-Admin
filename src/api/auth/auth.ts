@@ -1,17 +1,8 @@
 import logout from './logout';
-import {
-    bootstrapAuthSessionViaBff,
-    refreshAuthTokensViaBff,
-    setAuthTokensViaBff,
-} from './authBffClient';
+import { bootstrapAuthSessionViaBff, refreshAuthTokensViaBff, setAuthTokensViaBff } from './authBffClient';
 import { getTokenExpiryFromLocalStorage, setTokenExpiryInLocalStorage } from './accessSessionLocalStorage';
 import routePathNames from '../../appConfig';
-import {
-    getSessionAccessToken,
-    getSessionRefreshToken,
-    hasSessionTokens,
-    setSessionTokens,
-} from './tokenSessionStore';
+import { getSessionAccessToken, getSessionRefreshToken, hasSessionTokens, setSessionTokens } from './tokenSessionStore';
 
 import parseJwt from '../../utils/parseJWT';
 

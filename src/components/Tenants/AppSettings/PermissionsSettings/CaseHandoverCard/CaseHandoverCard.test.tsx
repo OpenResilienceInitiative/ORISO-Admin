@@ -76,14 +76,17 @@ describe('CaseHandoverCard', () => {
         await user.click(screen.getByRole('switch', { name: 'tenants.permissions.card.activated' }));
 
         await waitFor(() => {
-            expect(mocks.mutate).toHaveBeenCalledWith([
-                expect.objectContaining({
-                    code: 'COUNSELLOR_ASKED_FOR_ADVICE',
-                    enabled: false,
-                    policyAuthority: null,
-                }),
-                expect.objectContaining({ code: 'COUNSELLOR_IS_ILL', enabled: false }),
-            ], expect.anything());
+            expect(mocks.mutate).toHaveBeenCalledWith(
+                [
+                    expect.objectContaining({
+                        code: 'COUNSELLOR_ASKED_FOR_ADVICE',
+                        enabled: false,
+                        policyAuthority: null,
+                    }),
+                    expect.objectContaining({ code: 'COUNSELLOR_IS_ILL', enabled: false }),
+                ],
+                expect.anything(),
+            );
         });
     });
 
@@ -99,16 +102,19 @@ describe('CaseHandoverCard', () => {
         );
 
         await waitFor(() => {
-            expect(mocks.mutate).toHaveBeenCalledWith([
-                expect.objectContaining({
-                    code: 'COUNSELLOR_ASKED_FOR_ADVICE',
-                    clientConsentRequired: false,
-                }),
-                expect.objectContaining({
-                    code: 'COUNSELLOR_IS_ILL',
-                    clientConsentRequired: false,
-                }),
-            ], expect.anything());
+            expect(mocks.mutate).toHaveBeenCalledWith(
+                [
+                    expect.objectContaining({
+                        code: 'COUNSELLOR_ASKED_FOR_ADVICE',
+                        clientConsentRequired: false,
+                    }),
+                    expect.objectContaining({
+                        code: 'COUNSELLOR_IS_ILL',
+                        clientConsentRequired: false,
+                    }),
+                ],
+                expect.anything(),
+            );
         });
     });
 

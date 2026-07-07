@@ -2,11 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import { buildTogglePayload } from './permissionsToggleLogic';
-import {
-    applyForcedOffFields,
-    DEFAULT_PERMISSION_SETTINGS,
-    getForcedOffFields,
-} from './permissionsSettingsUtils';
+import { applyForcedOffFields, DEFAULT_PERMISSION_SETTINGS, getForcedOffFields } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 

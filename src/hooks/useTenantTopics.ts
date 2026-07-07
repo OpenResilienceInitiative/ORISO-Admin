@@ -10,7 +10,7 @@ export const useTenantTopics = (onlyActive?: boolean) => {
                 .then((topics) => {
                     return onlyActive ? topics.filter(({ status }) => status === 'ACTIVE') : topics;
                 })
-                .catch((error) => {
+                .catch(() => {
                     // console.error('Failed to fetch topics:', error);
                     // Return empty array if topics service is not available
                     return [];

@@ -37,7 +37,7 @@ const config: StorybookConfig = {
                     },
                 },
                 build: { rollupOptions: { output: { manualChunks: undefined } } },
-            }
+            },
         );
     },
 };
