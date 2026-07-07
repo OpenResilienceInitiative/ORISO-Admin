@@ -84,7 +84,7 @@ export const DepartmentDataProtectionCard = ({
     });
 
     return (
-        <Card titleKey="tenants.legal.departmentDataProtection.title" variant="dialog">
+        <Card titleKey="tenants.legal.departmentDataProtection.title" variant="dialog" className={styles.card}>
             <div className={styles.header}>
                 {departmentName && <span className={styles.department}>{departmentName}</span>}
                 <Tag color={published ? 'green' : 'default'}>

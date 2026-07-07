@@ -7,6 +7,12 @@ const meta = {
     title: 'Organisms/M3 Rich Text Editor',
     component: M3RichTextEditor,
     parameters: { layout: 'centered' },
+    // The red footer actions only render when handlers are wired — stub them so
+    // the stories show the complete Figma design.
+    args: {
+        onPublish: () => undefined,
+        onSaveDraft: () => undefined,
+    },
 } satisfies Meta<typeof M3RichTextEditor>;
 
 export default meta;
