@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Skeleton, Tooltip } from 'antd';
 import { ReactComponent as CaseHandoverIcon } from '../../../../../resources/img/svg/permissions/case_handover.svg';
 import { M3Switch } from '../../../../M3Switch';
+import { M3Checkbox } from '../../../../M3Checkbox';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
 import {
     buildDisplayReasons,
@@ -89,15 +90,28 @@ export const CaseHandoverCardView = ({
                 <span className={cardStyles.cardIcon} aria-hidden>
                     <CaseHandoverIcon width={40} height={40} />
                 </span>
-                <h3 className={cardStyles.cardTitle}>{t('tenants.permissions.card.caseHandover.title')}</h3>
+                <h3 className={`${cardStyles.cardTitle} ${styles.cardTitleM3}`}>
+                    {t('tenants.permissions.card.caseHandover.title')}
+                </h3>
             </div>
 
             {isLoading ? (
                 <Skeleton active paragraph={{ rows: 6 }} />
             ) : (
                 <>
-                    <div className={cardStyles.masterRow}>
-                        <span className={cardStyles.masterLabel}>{t('tenants.permissions.card.activated')}</span>
+                    <div className={styles.featureRow}>
+                        <Tooltip title={comingSoon}>
+                            <span tabIndex={0}>
+                                <M3Checkbox
+                                    checked={false}
+                                    disabled
+                                    label={`${t('tenants.permissions.card.caseHandover.enforceOption')}: ${t(
+                                        'tenants.permissions.card.activated',
+                                    )}`}
+                                />
+                            </span>
+                        </Tooltip>
+                        <span className={styles.featureLabel}>{t('tenants.permissions.card.activated')}</span>
                         <M3Switch
                             checked={moduleEnabled}
                             disabled={!canEdit}
@@ -106,12 +120,21 @@ export const CaseHandoverCardView = ({
                         />
                     </div>
 
-                    <p className={`${cardStyles.cardDescription} ${styles.cardDescriptionCompact}`}>
-                        {t('tenants.permissions.card.caseHandover.description')}
-                    </p>
+                    <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.description')}</p>
 
-                    <div className={cardStyles.toggleRow}>
-                        <span className={cardStyles.toggleLabel}>
+                    <div className={styles.featureRow}>
+                        <Tooltip title={comingSoon}>
+                            <span tabIndex={0}>
+                                <M3Checkbox
+                                    checked={false}
+                                    disabled
+                                    label={`${t('tenants.permissions.card.caseHandover.enforceOption')}: ${t(
+                                        'tenants.permissions.card.caseHandover.optOutMessage',
+                                    )}`}
+                                />
+                            </span>
+                        </Tooltip>
+                        <span className={styles.featureLabel}>
                             {t('tenants.permissions.card.caseHandover.optOutMessage')}
                         </span>
                         <Tooltip title={comingSoon}>

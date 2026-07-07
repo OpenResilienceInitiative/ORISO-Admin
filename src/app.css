@@ -99,8 +99,10 @@
     --m3-surface-container: #f0edee;
     --m3-surface-container-high: #eae7e8;
     --m3-surface-container-highest: #e4e2e2;
-    /* M3 container/fixed roles (OrisoScheme, seed #A5000A), aligned with ORISO-Frontend tokens */
-    --m3-secondary-container: #e8ebee;
+    /* M3 container/fixed roles (OrisoScheme, seed #A5000A). secondary-container is
+       the mid slate (#646D78) from the runtime OrisoScheme (light) and Figma; the
+       previous #e8ebee drifted and left the light on-colour text unreadable. */
+    --m3-secondary-container: #646d78;
     --m3-on-secondary-container: #e7effc;
     --m3-primary-fixed: #ffdad5;
     --m3-tertiary-container: #ffdad6;
