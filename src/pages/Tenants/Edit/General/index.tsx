@@ -162,9 +162,7 @@ export const GeneralTenantSettings = () => {
                                         name="subdomain"
                                         label={t('tenants.add.form.subdomain.placeholder')}
                                         disabled
-                                        endAdornment={
-                                            <span className={styles.domainSuffix}>.{getDomain()}</span>
-                                        }
+                                        endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
                                     />
                                 </div>
                             )}
@@ -220,9 +218,7 @@ export const GeneralTenantSettings = () => {
                                         label={t('tenants.add.form.subdomain.placeholder')}
                                         required
                                         rules={[requiredRule, subdomainFormatRule]}
-                                        endAdornment={
-                                            <span className={styles.domainSuffix}>.{getDomain()}</span>
-                                        }
+                                        endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
                                     />
                                 </div>
                             )}
