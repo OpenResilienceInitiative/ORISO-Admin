@@ -24,7 +24,6 @@ interface AgencySettingsProps {
 export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) => {
     const [t] = useTranslation();
 
-    const topicIds = Form.useWatch<Option[]>('topicIds') || [];
     const genders = Form.useWatch<Option[]>(['demographics', 'genders']) || [];
     const counsellingRelations = Form.useWatch<Option[]>('counsellingRelations') || [];
 
@@ -33,7 +32,6 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
     const [tenantsData, setTenantsData] = useState([]);
     const { data: topics, isLoading: isLoadingTopics } = useTenantTopics(true);
-    const topicsForList = topics?.filter(({ id }) => !topicIds.find(({ value }) => value === `${id}`));
     const gendersForList = Object.values(Gender).filter((name) => !genders.find(({ value }) => value === `${name}`));
     const counsellingRelationsForList = Object.values(CounsellingRelation).filter(
         (relation) => !counsellingRelations.find(({ value }) => value === `${relation}`),
@@ -63,14 +61,15 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
             )}
 
             {topics?.length > 0 && (
+                // ADR-003: a department is the unique (agency × topic) pairing, so an agency maps to
+                // at most one topic — single-select replaces the former multi-select.
                 <SelectFormField
                     label="topics.title"
                     name="topicIds"
                     labelInValue
-                    isMulti
                     allowClear
                     placeholder="plsSelect"
-                    options={convertToOptions(topicsForList, 'name', 'id')}
+                    options={convertToOptions(topics, 'name', 'id')}
                 />
             )}
 

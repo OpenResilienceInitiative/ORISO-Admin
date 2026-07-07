@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
+import { normalizeTopicIds } from '../../../api/agency/normalizeTopicIds';
 import routePathNames from '../../../appConfig';
 import { Page } from '../../../components/Page';
 import { CardDeck } from '../../../components/CardDeck';
@@ -128,7 +129,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         ...counsellingRelationsInitialValues,
         postCodeRangesActive: !hasOnlyDefaultRangeDefined(postCodes || []),
         online: agencyData?.id ? !agencyData?.offline : false,
-        topicIds: convertToOptions(agencyData?.topics, 'name', 'id', true),
+        topicIds: convertToOptions(agencyData?.topics, 'name', 'id', true)[0],
         tenantId: agencyTenantId,
     };
 
@@ -157,7 +158,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                               genders: mergedFormData.demographics.genders.map(({ value }) => value),
                           }
                         : mergedFormData.demographics,
-                topicIds: mergedFormData.topicIds?.map(({ value }) => value),
+                topicIds: normalizeTopicIds(mergedFormData.topicIds),
                 offline: !mergedFormData.online,
                 counsellingRelations: mergedFormData.counsellingRelations?.map(
                     (relation) => relation.value || relation,
