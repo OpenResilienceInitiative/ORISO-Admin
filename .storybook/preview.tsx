@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider } from 'antd';
 import de_DE from 'antd/es/locale/de_DE';
+import { buildAdminAntdTheme } from '../src/theme/antdM3Theme';
 
 // Global Admin styling: antd v5 reset + app less/overrides. Mirrors src/App.tsx.
 import 'antd/dist/reset.css';
@@ -26,10 +27,7 @@ const preview: Preview = {
     decorators: [
         (Story) => (
             <QueryClientProvider client={queryClient}>
-                <ConfigProvider
-                    locale={de_DE}
-                    theme={{ token: { colorPrimary: '#273270', colorLink: '#273270', borderRadius: 4 } }}
-                >
+                <ConfigProvider locale={de_DE} theme={buildAdminAntdTheme()}>
                     <MemoryRouter>
                         <Story />
                     </MemoryRouter>
