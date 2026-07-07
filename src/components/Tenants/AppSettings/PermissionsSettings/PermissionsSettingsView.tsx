@@ -4,6 +4,7 @@ import { CardEditable } from '../../../CardEditable';
 import { EditButton } from '../../../EditButton';
 import { ReactComponent as ArrowRightIcon } from '../../../../resources/img/svg/permissions/arrow_right.svg';
 import { CHAT_TYPE_CARDS } from './chatTypeCards';
+import { CaseHandoverCard } from './CaseHandoverCard';
 import { CheckToggle } from './CheckToggle';
 import { isSubToggleDisabled } from './permissionsSettingsUtils';
 import type { ChatTypeCardKey, ToggleAfterChangeHandler } from './types';
@@ -37,7 +38,8 @@ export const PermissionsSettingsView = ({
     const cardsToRender = excludeCardKeys?.length
         ? CHAT_TYPE_CARDS.filter((card) => !excludeCardKeys.includes(card.key))
         : CHAT_TYPE_CARDS;
-    const { gridRef, scrollState, scrollByCard } = useCarouselScroll(cardsToRender.length, isLoading);
+    // +1: the case-handover card rendered ahead of the chat-type cards.
+    const { gridRef, scrollState, scrollByCard } = useCarouselScroll(cardsToRender.length + 1, isLoading);
 
     return (
         <CardEditable
@@ -69,6 +71,7 @@ export const PermissionsSettingsView = ({
                         <ArrowRightIcon className={styles.carouselArrowIcon} aria-hidden />
                     </button>
                     <div className={styles.cardGrid} ref={gridRef}>
+                        <CaseHandoverCard />
                         {cardsToRender.map((card) => (
                             <Form.Item
                                 key={card.key}
