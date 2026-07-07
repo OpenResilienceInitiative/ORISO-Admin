@@ -14,6 +14,18 @@ pick() {
     return 1
 }
 
+json_escape() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+emit_config_value() {
+    key="$1"
+    value="$2"
+    if [ -n "$value" ]; then
+        printf '  "%s": "%s",\n' "$key" "$(json_escape "$value")"
+    fi
+}
+
 API_URL=$(pick VITE_API_URL REACT_APP_API_URL || true)
 APP_URL=$(pick VITE_APP_URL REACT_APP_APP_URL || true)
 MATRIX_URL=$(pick VITE_MATRIX_URL REACT_APP_MATRIX_URL || true)
@@ -22,6 +34,7 @@ AGENCY_SERVICE_ORIGIN=$(pick VITE_AGENCY_SERVICE_ORIGIN REACT_APP_AGENCY_SERVICE
 TENANT_SERVICE_ORIGIN=$(pick VITE_TENANT_SERVICE_ORIGIN REACT_APP_TENANT_SERVICE_ORIGIN || true)
 CONSULTING_TYPE_SERVICE_ORIGIN=$(pick VITE_CONSULTING_TYPE_SERVICE_ORIGIN REACT_APP_CONSULTING_TYPE_SERVICE_ORIGIN || true)
 KEYCLOAK_ORIGIN=$(pick VITE_KEYCLOAK_ORIGIN REACT_APP_KEYCLOAK_ORIGIN || true)
+KEYCLOAK_URL=$(pick VITE_KEYCLOAK_URL REACT_APP_KEYCLOAK_URL || true)
 KEYCLOAK_REALM=$(pick VITE_KEYCLOAK_REALM REACT_APP_KEYCLOAK_REALM || true)
 KEYCLOAK_CLIENT_ID=$(pick VITE_KEYCLOAK_CLIENT_ID REACT_APP_KEYCLOAK_CLIENT_ID || true)
 USE_API_URL=$(pick VITE_USE_API_URL REACT_APP_USE_API_URL || true)
@@ -35,22 +48,23 @@ mkdir -p "$(dirname "$TARGET")"
 
 {
     printf '%s\n' 'window.__APP_CONFIG__ = {'
-    [ -n "$API_URL" ] && printf '  "API_URL": "%s",\n' "$API_URL"
-    [ -n "$APP_URL" ] && printf '  "APP_URL": "%s",\n' "$APP_URL"
-    [ -n "$MATRIX_URL" ] && printf '  "MATRIX_URL": "%s",\n' "$MATRIX_URL"
-    [ -n "$USER_SERVICE_ORIGIN" ] && printf '  "USER_SERVICE_ORIGIN": "%s",\n' "$USER_SERVICE_ORIGIN"
-    [ -n "$AGENCY_SERVICE_ORIGIN" ] && printf '  "AGENCY_SERVICE_ORIGIN": "%s",\n' "$AGENCY_SERVICE_ORIGIN"
-    [ -n "$TENANT_SERVICE_ORIGIN" ] && printf '  "TENANT_SERVICE_ORIGIN": "%s",\n' "$TENANT_SERVICE_ORIGIN"
-    [ -n "$CONSULTING_TYPE_SERVICE_ORIGIN" ] && printf '  "CONSULTING_TYPE_SERVICE_ORIGIN": "%s",\n' "$CONSULTING_TYPE_SERVICE_ORIGIN"
-    [ -n "$KEYCLOAK_ORIGIN" ] && printf '  "KEYCLOAK_ORIGIN": "%s",\n' "$KEYCLOAK_ORIGIN"
-    [ -n "$KEYCLOAK_REALM" ] && printf '  "KEYCLOAK_REALM": "%s",\n' "$KEYCLOAK_REALM"
-    [ -n "$KEYCLOAK_CLIENT_ID" ] && printf '  "KEYCLOAK_CLIENT_ID": "%s",\n' "$KEYCLOAK_CLIENT_ID"
-    [ -n "$USE_API_URL" ] && printf '  "USE_API_URL": "%s",\n' "$USE_API_URL"
-    [ -n "$USE_HTTPS" ] && printf '  "USE_HTTPS": "%s",\n' "$USE_HTTPS"
-    [ -n "$COOKIE_DOMAIN" ] && printf '  "COOKIE_DOMAIN": "%s",\n' "$COOKIE_DOMAIN"
-    [ -n "$COOKIE_SECURE" ] && printf '  "COOKIE_SECURE": "%s",\n' "$COOKIE_SECURE"
-    [ -n "$CSRF_WHITELIST_HEADER" ] && printf '  "CSRF_WHITELIST_HEADER": "%s",\n' "$CSRF_WHITELIST_HEADER"
-    [ -n "$COOKIES_ALLOWEDLIST" ] && printf '  "COOKIES_ALLOWEDLIST": "%s",\n' "$COOKIES_ALLOWEDLIST"
+    emit_config_value "API_URL" "$API_URL"
+    emit_config_value "APP_URL" "$APP_URL"
+    emit_config_value "MATRIX_URL" "$MATRIX_URL"
+    emit_config_value "USER_SERVICE_ORIGIN" "$USER_SERVICE_ORIGIN"
+    emit_config_value "AGENCY_SERVICE_ORIGIN" "$AGENCY_SERVICE_ORIGIN"
+    emit_config_value "TENANT_SERVICE_ORIGIN" "$TENANT_SERVICE_ORIGIN"
+    emit_config_value "CONSULTING_TYPE_SERVICE_ORIGIN" "$CONSULTING_TYPE_SERVICE_ORIGIN"
+    emit_config_value "KEYCLOAK_ORIGIN" "$KEYCLOAK_ORIGIN"
+    emit_config_value "KEYCLOAK_URL" "$KEYCLOAK_URL"
+    emit_config_value "KEYCLOAK_REALM" "$KEYCLOAK_REALM"
+    emit_config_value "KEYCLOAK_CLIENT_ID" "$KEYCLOAK_CLIENT_ID"
+    emit_config_value "USE_API_URL" "$USE_API_URL"
+    emit_config_value "USE_HTTPS" "$USE_HTTPS"
+    emit_config_value "COOKIE_DOMAIN" "$COOKIE_DOMAIN"
+    emit_config_value "COOKIE_SECURE" "$COOKIE_SECURE"
+    emit_config_value "CSRF_WHITELIST_HEADER" "$CSRF_WHITELIST_HEADER"
+    emit_config_value "COOKIES_ALLOWEDLIST" "$COOKIES_ALLOWEDLIST"
     printf '%s\n' '};'
 } > "$TARGET"
 
