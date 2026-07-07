@@ -367,12 +367,20 @@ export const M3RichTextEditor = ({
         ],
         content: value,
         editable: !readOnly,
+        // The ProseMirror contenteditable exposes role="textbox" (browser-only) but
+        // no accessible name (axe: aria-input-field-name, WCAG 4.1.2) — pin the role
+        // and label it with the card title.
+        editorProps: { attributes: { 'aria-label': title, role: 'textbox' } },
         onUpdate: ({ editor: e }) => onChange?.(e.isEmpty ? '' : e.getHTML()),
     });
 
     useEffect(() => {
         editor?.setEditable(!readOnly);
     }, [editor, readOnly]);
+
+    useEffect(() => {
+        editor?.setOptions({ editorProps: { attributes: { 'aria-label': title, role: 'textbox' } } });
+    }, [editor, title]);
 
     useEffect(() => {
         if (!editor) return;
