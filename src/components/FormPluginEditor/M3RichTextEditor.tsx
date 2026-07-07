@@ -40,10 +40,13 @@ import {
     Edit,
     Fingerprint,
 } from '@mui/icons-material';
+import { useTranslation } from 'react-i18next';
 import styles from './M3RichTextEditor.module.scss';
 
 export type M3RichTextEditorProps = {
     title?: string;
+    /** Header icon component; defaults to the Impressum fingerprint. */
+    icon?: React.ElementType;
     value?: string;
     onChange?: (html: string) => void;
     placeholder?: string;
@@ -51,6 +54,22 @@ export type M3RichTextEditorProps = {
     language?: string;
     onLanguageChange?: (lng: string) => void;
     versionLabel?: string;
+    /** Disables the publish action while a publish request is in flight. */
+    publishing?: boolean;
+    /** View-only mode: editor content is not editable, toolbar and actions are hidden. */
+    readOnly?: boolean;
+    /** Replaces the built-in language split button (e.g. the legal MT-aware language select). */
+    languageSlot?: React.ReactNode;
+    /** Rendered between the toolbar and the editor (e.g. per-field translate button). */
+    aboveEditorSlot?: React.ReactNode;
+    /**
+     * Replaces the built-in toolbar + editor entirely (e.g. Form-bound TiptapEditors that
+     * bring their own toolbar, placeholder plugin and anchor navigation). With an editorSlot
+     * the onPublish/onSaveDraft callbacks receive an empty string — the consumer owns the content.
+     */
+    editorSlot?: React.ReactNode;
+    /** Rendered below the action footer (e.g. version history, modals). */
+    belowSlot?: React.ReactNode;
     onPublish?: (html: string) => void;
     onSaveDraft?: (html: string) => void;
 };
@@ -78,6 +97,11 @@ const ToolButton = ({ onClick, active, disabled, title, children }: ToolButtonPr
     </button>
 );
 
+const activeHeadingKey = (editor: Editor) => {
+    const level = [1, 2, 3].find((headingLevel) => editor.isActive('heading', { level: headingLevel }));
+    return level ? `h${level}` : 'p';
+};
+
 const Toolbar = ({ editor }: { editor: Editor }) => {
     const promptLink = () => {
         if (editor.isActive('link')) {
@@ -93,8 +117,6 @@ const Toolbar = ({ editor }: { editor: Editor }) => {
         const url = window.prompt('Image URL');
         if (url) editor.chain().focus().setImage({ src: url }).run();
     };
-
-    const activeHeadingLevel = [1, 2, 3].find((level) => editor.isActive('heading', { level }));
 
     return (
         <div className={styles.toolbar} data-testid="m3-toolbar">
@@ -120,7 +142,7 @@ const Toolbar = ({ editor }: { editor: Editor }) => {
                     trigger={['click']}
                     menu={{
                         selectable: true,
-                        selectedKeys: [activeHeadingLevel ? `h${activeHeadingLevel}` : 'p'],
+                        selectedKeys: [activeHeadingKey(editor)],
                         items: [
                             { key: 'p', label: 'Normaler Text' },
                             { key: 'h1', label: 'Überschrift 1' },
@@ -311,6 +333,7 @@ const Toolbar = ({ editor }: { editor: Editor }) => {
  */
 export const M3RichTextEditor = ({
     title = 'Impressum',
+    icon: IconComponent = Fingerprint,
     value = '',
     onChange,
     placeholder = 'Text eingeben …',
@@ -318,9 +341,16 @@ export const M3RichTextEditor = ({
     language = 'de',
     onLanguageChange,
     versionLabel = 'Latest Version',
+    publishing,
+    readOnly,
+    languageSlot,
+    aboveEditorSlot,
+    editorSlot,
+    belowSlot,
     onPublish,
     onSaveDraft,
 }: M3RichTextEditorProps) => {
+    const { t } = useTranslation();
     const [maximized, setMaximized] = useState(false);
 
     const editor = useEditor({
@@ -336,8 +366,13 @@ export const M3RichTextEditor = ({
             Placeholder.configure({ placeholder }),
         ],
         content: value,
+        editable: !readOnly,
         onUpdate: ({ editor: e }) => onChange?.(e.isEmpty ? '' : e.getHTML()),
     });
+
+    useEffect(() => {
+        editor?.setEditable(!readOnly);
+    }, [editor, readOnly]);
 
     useEffect(() => {
         if (!editor) return;
@@ -351,64 +386,69 @@ export const M3RichTextEditor = ({
     if (!editor) return null;
 
     const currentLang = languages.find((l) => l.value === language) ?? languages[0];
-    const html = () => (editor.isEmpty ? '' : editor.getHTML());
+    const html = () => (editorSlot || editor.isEmpty ? '' : editor.getHTML());
 
     return (
         <div className={`${styles.module} ${maximized ? styles.maximized : ''}`} data-testid="m3-editor">
             <div className={styles.header}>
-                <Fingerprint className={styles.headerIcon} />
+                <IconComponent className={styles.headerIcon} />
                 <h2 className={styles.title}>{title}</h2>
             </div>
 
-            {languages.length > 1 && (
-                <div className={styles.languageRow}>
-                    <div className={styles.splitButton}>
-                        <button type="button" className={styles.leading} title="Language">
-                            <Language style={{ fontSize: 22 }} />
-                            <span>{currentLang?.label}</span>
-                        </button>
-                        <Dropdown
-                            trigger={['click']}
-                            menu={{
-                                items: languages.map((l) => ({ key: l.value, label: l.label })),
-                                onClick: ({ key }) => onLanguageChange?.(key),
-                            }}
-                        >
-                            <button type="button" className={styles.trailing} title="Choose language">
-                                <ArrowDropDown />
+            {languageSlot ??
+                (languages.length > 1 && (
+                    <div className={styles.languageRow}>
+                        <div className={styles.splitButton}>
+                            <button type="button" className={styles.leading} title="Language">
+                                <Language style={{ fontSize: 22 }} />
+                                <span>{currentLang?.label}</span>
                             </button>
-                        </Dropdown>
+                            <Dropdown
+                                trigger={['click']}
+                                menu={{
+                                    items: languages.map((l) => ({ key: l.value, label: l.label })),
+                                    onClick: ({ key }) => onLanguageChange?.(key),
+                                }}
+                            >
+                                <button type="button" className={styles.trailing} title="Choose language">
+                                    <ArrowDropDown />
+                                </button>
+                            </Dropdown>
+                        </div>
+                    </div>
+                ))}
+
+            <hr className={styles.divider} />
+
+            {!editorSlot && !readOnly && <Toolbar editor={editor} />}
+
+            {aboveEditorSlot}
+
+            {editorSlot ?? (
+                <div className={styles.editorWrap}>
+                    <div className={styles.editor}>
+                        <EditorContent editor={editor} />
                     </div>
                 </div>
             )}
 
-            <hr className={styles.divider} />
-
-            <Toolbar editor={editor} />
-
-            <div className={styles.editorWrap}>
-                <div className={styles.editor}>
-                    <EditorContent editor={editor} />
-                </div>
-            </div>
-
             <div className={styles.subActions}>
                 <button type="button" className={styles.outlineBtn} onClick={() => setMaximized((m) => !m)}>
                     {maximized ? <FullscreenExit /> : <Fullscreen />}
-                    <span>{maximized ? 'Fenster verkleinern' : 'Fenster maximieren'}</span>
+                    <span>{maximized ? t('legal.m3Editor.minimize') : t('legal.m3Editor.maximize')}</span>
                 </button>
                 <Dropdown
                     trigger={['click']}
                     menu={{
                         items: [
-                            { key: 'latest', label: 'Aktuelle Version (Entwurf)' },
-                            { key: 'published', label: 'Veröffentlichte Version' },
+                            { key: 'latest', label: t('legal.m3Editor.versionLatest') },
+                            { key: 'published', label: t('legal.m3Editor.versionPublished') },
                             { type: 'divider' },
-                            { key: 'history', label: 'Versionsverlauf (Backend folgt)', disabled: true },
+                            { key: 'history', label: t('legal.m3Editor.versionHistoryPending'), disabled: true },
                         ],
                     }}
                 >
-                    <button type="button" className={styles.outlineBtn} title="Versionsverlauf">
+                    <button type="button" className={styles.outlineBtn} title={t('legal.m3Editor.versionHistory')}>
                         <History />
                         <span>{versionLabel}</span>
                         <ArrowDropDown />
@@ -416,26 +456,37 @@ export const M3RichTextEditor = ({
                 </Dropdown>
             </div>
 
-            <hr className={styles.divider} />
+            {!readOnly && (onPublish || onSaveDraft) && (
+                <>
+                    <hr className={styles.divider} />
 
-            <div className={styles.actions}>
-                <button
-                    type="button"
-                    className={`${styles.textBtn} ${styles.publish}`}
-                    onClick={() => onPublish?.(html())}
-                >
-                    <Share />
-                    <span>Veröffentlichen</span>
-                </button>
-                <button
-                    type="button"
-                    className={`${styles.textBtn} ${styles.draft}`}
-                    onClick={() => onSaveDraft?.(html())}
-                >
-                    <Edit />
-                    <span>Entwurf bearbeiten</span>
-                </button>
-            </div>
+                    <div className={styles.actions}>
+                        {onPublish && (
+                            <button
+                                type="button"
+                                className={`${styles.textBtn} ${styles.publish}`}
+                                disabled={publishing}
+                                onClick={() => onPublish(html())}
+                            >
+                                <Share />
+                                <span>{t('legal.m3Editor.publish')}</span>
+                            </button>
+                        )}
+                        {onSaveDraft && (
+                            <button
+                                type="button"
+                                className={`${styles.textBtn} ${styles.draft}`}
+                                onClick={() => onSaveDraft(html())}
+                            >
+                                <Edit />
+                                <span>{t('legal.m3Editor.saveDraft')}</span>
+                            </button>
+                        )}
+                    </div>
+                </>
+            )}
+
+            {belowSlot}
         </div>
     );
 };

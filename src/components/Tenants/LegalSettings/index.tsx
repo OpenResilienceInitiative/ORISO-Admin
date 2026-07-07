@@ -1,4 +1,5 @@
 import { useTranslation, Trans } from 'react-i18next';
+import { PrivacyTip } from '@mui/icons-material';
 import { CardDeck } from '../../CardDeck';
 import { CardEditable } from '../../CardEditable';
 import { FormSwitchField } from '../../FormSwitchField';
@@ -29,6 +30,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
         <LegalText
             tenantId={finalTenantId}
             fieldName={['content', 'privacy']}
+            icon={PrivacyTip}
             titleKey="privacy.title"
             subTitle={
                 <Trans

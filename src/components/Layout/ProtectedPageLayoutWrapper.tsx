@@ -105,11 +105,14 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
         can(PermissionAction.Read, Resource.Tenant) || can(PermissionAction.Read, Resource.LegalText);
     const canSeeCounsellorLogs = canSeeSupervisorLogs(isSuperAdmin, hasRole, can);
     const canSeeCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, hasRole, can);
+    const canSeeInactiveAuditLogs = isSuperAdmin && can(PermissionAction.Update, Resource.Tenant);
+    const canSeeActivityLogs = canSeeCaseHandoverLogs || canSeeInactiveAuditLogs;
     const navLanguage = i18n.resolvedLanguage || i18n.language;
     const navLabel = (key: string, fallbackKey: string) => t(key, t(fallbackKey));
     const navLabels = {
         account: navLabel('sidebar.account', 'profile.title'),
         agency: navLabel('sidebar.agency', 'agency'),
+        activityLogs: navLabel('sidebar.activityLogs', 'logs.title'),
         inactiveAudit: navLabel('sidebar.inactiveAudit', 'inactiveAudit.title'),
         caseHandoverLogs: navLabel('sidebar.caseHandoverLogs', 'caseHandoverLogs.title'),
         links: navLabel('sidebar.links', 'links.navTitle'),
@@ -132,7 +135,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     return (
         <>
             <Layout className="protectedLayout">
-                <Sider width={85}>
+                <Sider width={96}>
                     <div className="logo" />
                     <nav className="mainMenu">
                         <ul className="upperSidebar">
@@ -246,31 +249,45 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                                 </li>
                             )}
 
-                            {canSeeCaseHandoverLogs && (
-                                <li key="case-handover-logs" className="menuItem">
-                                    <NavLink
-                                        to={routePathNames.caseHandoverLogs}
-                                        aria-label={navLabels.caseHandoverLogs}
-                                        title={navLabels.caseHandoverLogs}
-                                        className={({ isActive }) => (isActive ? 'active' : '')}
-                                    >
-                                        <NavIcon path={routePathNames.caseHandoverLogs} />
-                                        <span lang={navLanguage}>{navLabels.caseHandoverLogs}</span>
-                                    </NavLink>
-                                </li>
-                            )}
+                            {canSeeActivityLogs && (
+                                <li
+                                    key="activity-logs"
+                                    className="menuSection"
+                                    role="group"
+                                    aria-label={navLabels.activityLogs}
+                                >
+                                    <span className="menuSectionLabel" lang={navLanguage}>
+                                        {navLabels.activityLogs}
+                                    </span>
+                                    <ul className="menuSectionItems">
+                                        {canSeeCaseHandoverLogs && (
+                                            <li key="case-handover-logs" className="menuItem">
+                                                <NavLink
+                                                    to={routePathNames.caseHandoverLogs}
+                                                    aria-label={navLabels.caseHandoverLogs}
+                                                    title={navLabels.caseHandoverLogs}
+                                                    className={({ isActive }) => (isActive ? 'active' : '')}
+                                                >
+                                                    <NavIcon path={routePathNames.caseHandoverLogs} />
+                                                    <span lang={navLanguage}>{navLabels.caseHandoverLogs}</span>
+                                                </NavLink>
+                                            </li>
+                                        )}
 
-                            {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
-                                <li key="inactive-audit-logs" className="menuItem">
-                                    <NavLink
-                                        to={routePathNames.inactiveAccountAuditLogs}
-                                        aria-label={navLabels.inactiveAudit}
-                                        title={navLabels.inactiveAudit}
-                                        className={({ isActive }) => (isActive ? 'active' : '')}
-                                    >
-                                        <NavIcon path={routePathNames.inactiveAccountAuditLogs} />
-                                        <span lang={navLanguage}>{navLabels.inactiveAudit}</span>
-                                    </NavLink>
+                                        {canSeeInactiveAuditLogs && (
+                                            <li key="inactive-audit-logs" className="menuItem">
+                                                <NavLink
+                                                    to={routePathNames.inactiveAccountAuditLogs}
+                                                    aria-label={navLabels.inactiveAudit}
+                                                    title={navLabels.inactiveAudit}
+                                                    className={({ isActive }) => (isActive ? 'active' : '')}
+                                                >
+                                                    <NavIcon path={routePathNames.inactiveAccountAuditLogs} />
+                                                    <span lang={navLanguage}>{navLabels.inactiveAudit}</span>
+                                                </NavLink>
+                                            </li>
+                                        )}
+                                    </ul>
                                 </li>
                             )}
                         </ul>

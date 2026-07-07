@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { SideScrollerFooter } from '../SideScrollerFooter';
 import styles from './styles.module.scss';
 
@@ -21,7 +21,9 @@ interface CardDeckItemProps {
 const SCROLL_EPSILON = 8;
 
 const CardDeckItem = ({ children, className }: CardDeckItemProps) => (
-    <div className={classNames(styles.item, className)}>{children}</div>
+    <li className={classNames(styles.item, className)} data-admin-card-deck-item>
+        {children}
+    </li>
 );
 
 const CardDeckRoot = ({
@@ -33,6 +35,7 @@ const CardDeckRoot = ({
     nextLabel,
     previousLabel,
 }: CardDeckProps) => {
+    const deckId = useId();
     const deckRef = useRef<HTMLDivElement>(null);
     const cards = useMemo(() => React.Children.toArray(children).filter(Boolean), [children]);
     const [scrollState, setScrollState] = useState({
@@ -71,7 +74,7 @@ const CardDeckRoot = ({
 
             const computedStyle = window.getComputedStyle(deck);
             const gap = Number.parseFloat(computedStyle.columnGap || computedStyle.gap) || 24;
-            const firstCard = deck.firstElementChild as HTMLElement | null;
+            const firstCard = deck.querySelector('[data-admin-card-deck-item]') as HTMLElement | null;
             const cardStep = firstCard ? firstCard.offsetWidth + gap : deck.clientWidth * 0.86;
 
             deck.scrollBy({
@@ -82,6 +85,17 @@ const CardDeckRoot = ({
         },
         [updateScrollState],
     );
+
+    useEffect(() => {
+        const deck = deckRef.current;
+
+        if (!deck) {
+            return;
+        }
+
+        deck.scrollTo({ left: 0 });
+        updateScrollState();
+    }, [cards.length, updateScrollState]);
 
     useEffect(() => {
         const deck = deckRef.current;
@@ -100,7 +114,9 @@ const CardDeckRoot = ({
             typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateScrollState) : undefined;
 
         resizeObserver?.observe(deck);
-        Array.from(deck.children).forEach((child) => resizeObserver?.observe(child));
+        Array.from(deck.querySelectorAll('[data-admin-card-deck-item]')).forEach((child) =>
+            resizeObserver?.observe(child),
+        );
         deck.addEventListener('scroll', updateScrollState, { passive: true });
         window.addEventListener('resize', updateScrollState);
 
@@ -114,15 +130,25 @@ const CardDeckRoot = ({
     }, [cards.length, updateScrollState]);
 
     return (
-        <div className={classNames(styles.root, className)} data-admin-card-deck>
-            <div className={classNames(styles.deck, deckClassName)} ref={deckRef} data-admin-card-deck-scroll>
-                {cards}
+        <section className={classNames(styles.root, className)} aria-label={ariaLabel} data-admin-card-deck>
+            <div
+                id={deckId}
+                className={classNames(styles.deck, deckClassName)}
+                ref={deckRef}
+                aria-label={ariaLabel}
+                data-admin-card-deck-scroll
+                role="group"
+            >
+                <ul className={styles.list} aria-label={ariaLabel}>
+                    {cards}
+                </ul>
             </div>
             {cards.length > 1 && (
                 <SideScrollerFooter
                     className={classNames(styles.footer, footerClassName)}
+                    controlsId={deckId}
                     data-admin-card-deck-footer
-                    ariaLabel={ariaLabel}
+                    ariaLabel={`${ariaLabel} Navigation`}
                     previousLabel={previousLabel}
                     nextLabel={nextLabel}
                     canScrollBackward={scrollState.canScrollBackward}
@@ -131,7 +157,7 @@ const CardDeckRoot = ({
                     onScrollForward={() => scrollCards(1)}
                 />
             )}
-        </div>
+        </section>
     );
 };
 

@@ -2,6 +2,7 @@ import { Col, Row } from 'antd';
 import { CommunicationSettings } from '../../../components/Tenants/AppSettings/CommunicationSettings';
 import { OtherFunctionsSettings } from '../../../components/Tenants/AppSettings/OtherFunctionsSettings';
 import { SmtpSettings } from '../../../components/Tenants/AppSettings/SmtpSettings';
+import { TopicsSettings } from '../../../components/Tenants/AppSettings/TopicsSettings';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { UserRole } from '../../../enums/UserRole';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
@@ -32,6 +33,7 @@ export const AppSettingsPage = () => {
                         <CommunicationSettings tenantId={`${resolvedTenantId || ''}`} />
                     )}
                     <OtherFunctionsSettings tenantId={`${resolvedTenantId || ''}`} hideGroupChatToggle />
+                    <TopicsSettings />
                 </Col>
             )}
         </Row>

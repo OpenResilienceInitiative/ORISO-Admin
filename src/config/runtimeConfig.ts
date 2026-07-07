@@ -85,6 +85,13 @@ if (useApiUrl && apiHost) {
 }
 
 const serviceOrigin = (key: string): string => toAbsoluteUrl(readConfigValue(key), useHttps) || apiBaseUrl;
+const hostnamesWithoutCookieDomain = (readConfigValue('HOSTNAMES_WITHOUT_COOKIE_DOMAIN') ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+const cookieDomain = hostnamesWithoutCookieDomain.includes(window.location.hostname)
+    ? ''
+    : readConfigValue('COOKIE_DOMAIN') ?? '';
 
 export const runtimeConfig = {
     useHttps,
@@ -103,7 +110,7 @@ export const runtimeConfig = {
         readConfigValue('CSRF_WHITELIST_HEADER') ??
         readEnvString('VITE_CSRF_WHITELIST_HEADER_FOR_LOCAL_DEVELOPMENT') ??
         '',
-    cookieDomain: readConfigValue('COOKIE_DOMAIN') ?? '',
+    cookieDomain,
     cookieSecure: readBooleanConfig('COOKIE_SECURE', true),
     cookiesAllowedList: (readConfigValue('COOKIES_ALLOWEDLIST') ?? '')
         .split(',')

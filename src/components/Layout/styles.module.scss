@@ -1,17 +1,17 @@
 .content {
     height: 100vh;
     overflow: auto;
-    background: var(--m3-surface-container, #f0edee);
+    background: var(--admin-workspace-background, #e4e2e2);
 
     :global(.ant-layout-content) {
-        background: var(--m3-surface-container, #f0edee);
+        background: var(--admin-workspace-background, #e4e2e2);
     }
 }
 
 .mainContent {
-    background: var(--m3-surface-container, #f0edee);
+    background: var(--admin-workspace-background, #e4e2e2);
 
     :global(.ant-layout) {
-        background: var(--m3-surface-container, #f0edee);
+        background: var(--admin-workspace-background, #e4e2e2);
     }
 }

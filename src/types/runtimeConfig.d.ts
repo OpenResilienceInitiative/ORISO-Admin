@@ -14,6 +14,7 @@ export interface AppRuntimeConfig {
     USE_HTTPS?: string;
     COOKIE_DOMAIN?: string;
     COOKIE_SECURE?: string;
+    HOSTNAMES_WITHOUT_COOKIE_DOMAIN?: string;
     CSRF_WHITELIST_HEADER?: string;
     COOKIES_ALLOWEDLIST?: string;
 }
