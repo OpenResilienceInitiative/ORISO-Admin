@@ -15,6 +15,15 @@ import {
 import cardStyles from '../styles.module.scss';
 import styles from './styles.module.scss';
 
+/*
+ * This card previews not-yet-available controls as disabled with a "coming soon"
+ * tooltip. Native `disabled` elements are removed from the tab order and emit no
+ * hover/focus events, so each is wrapped in a focusable span/div (tabIndex) so the
+ * tooltip stays reachable by keyboard and pointer. jsx-a11y flags tabIndex on
+ * these non-interactive wrappers, which is exactly the intended pattern here.
+ */
+/* eslint-disable jsx-a11y/no-noninteractive-tabindex */
+
 export type CaseHandoverCardViewProps = {
     policies: CaseHandoverReasonPolicy[];
     isLoading: boolean;
@@ -54,9 +63,13 @@ export const CaseHandoverCardView = ({
     const { t, i18n } = useTranslation();
     const displayReasons = useMemo(() => buildDisplayReasons(policies), [policies]);
     const [activeReasonCode, setActiveReasonCode] = useState<string | null>(null);
-    const [activeLanguage, setActiveLanguage] = useState<NotificationLanguage>(() =>
-        (NOTIFICATION_LANGUAGES as string[]).includes(i18n.language) ? (i18n.language as NotificationLanguage) : 'de',
-    );
+    const [activeLanguage, setActiveLanguage] = useState<NotificationLanguage>(() => {
+        // i18n.language can be region-qualified (e.g. "en-US"); match on the base language.
+        const baseLanguage = i18n.language?.toLowerCase().split('-')[0];
+        return (NOTIFICATION_LANGUAGES as string[]).includes(baseLanguage)
+            ? (baseLanguage as NotificationLanguage)
+            : 'de';
+    });
 
     const activeReason: DisplayReason | null =
         displayReasons.find((reason) => reason.code === activeReasonCode) ?? displayReasons[0] ?? null;
@@ -102,7 +115,7 @@ export const CaseHandoverCardView = ({
                             {t('tenants.permissions.card.caseHandover.optOutMessage')}
                         </span>
                         <Tooltip title={comingSoon}>
-                            <span>
+                            <span tabIndex={0}>
                                 <M3Switch
                                     checked={false}
                                     disabled
@@ -143,7 +156,7 @@ export const CaseHandoverCardView = ({
                                     {t('tenants.permissions.card.caseHandover.consentClient')}
                                 </span>
                                 <Tooltip title={activeReason.isPlaceholder ? comingSoon : undefined}>
-                                    <span>
+                                    <span tabIndex={activeReason.isPlaceholder ? 0 : undefined}>
                                         <M3Switch
                                             checked={activePolicy?.clientConsentRequired ?? false}
                                             disabled={
@@ -167,7 +180,7 @@ export const CaseHandoverCardView = ({
                                     {t('tenants.permissions.card.caseHandover.consentAdvisor')}
                                 </span>
                                 <Tooltip title={comingSoon}>
-                                    <span>
+                                    <span tabIndex={0}>
                                         <M3Switch
                                             checked={isAdvisorConsentImplicit(activeReason.code)}
                                             disabled
@@ -209,7 +222,7 @@ export const CaseHandoverCardView = ({
                     </div>
 
                     <Tooltip title={comingSoon}>
-                        <div className={styles.notificationField} aria-disabled>
+                        <div className={styles.notificationField} aria-disabled tabIndex={0}>
                             <span className={styles.notificationFieldLabel}>
                                 {t('tenants.permissions.card.caseHandover.systemNotification')}
                             </span>
@@ -223,7 +236,7 @@ export const CaseHandoverCardView = ({
 
                     <div className={styles.footerActions}>
                         <Tooltip title={comingSoon}>
-                            <span>
+                            <span tabIndex={0}>
                                 <button type="button" className={styles.footerTextButton} disabled>
                                     <ConfigureIcon />
                                     {t('tenants.permissions.card.caseHandover.configure')}
@@ -231,7 +244,7 @@ export const CaseHandoverCardView = ({
                             </span>
                         </Tooltip>
                         <Tooltip title={comingSoon}>
-                            <span>
+                            <span tabIndex={0}>
                                 <button
                                     type="button"
                                     className={`${styles.footerTextButton} ${styles.footerTextButtonPrimary}`}
