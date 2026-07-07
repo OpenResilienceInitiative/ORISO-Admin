@@ -1,7 +1,7 @@
-import { Alert, Button, ConfigProvider, Space, Typography } from 'antd';
+import { Alert, Button, Typography } from 'antd';
+import { CloudSync } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
-import { Card } from '../../../../Card';
-import TiptapEditor from '../../../../FormPluginEditor/TiptapEditor';
+import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { LegalVersion, LegalVersionViewer } from '../LegalVersionViewer';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
@@ -83,73 +83,80 @@ export const DataProcessingAgreementCard = ({
     });
 
     return (
-        <Card titleKey="tenants.legal.dataProcessingAgreement.title" variant="dialog">
-            <p className={styles.description}>
-                {readOnly
-                    ? t('tenants.legal.dataProcessingAgreement.managedByTenant')
-                    : t('tenants.legal.dataProcessingAgreement.description')}
-            </p>
-
-            <LegalContentLanguageSelect
-                languages={languages}
-                value={activeLanguage}
-                onChange={setActiveLanguage}
-                sourceLanguage={sourceLanguage}
-                contentMap={contentMapWithEdits}
-            />
-
-            {readOnly ? (
-                <ConfigProvider componentDisabled>
-                    <TiptapEditor key={activeLanguage} value={currentContent} />
-                </ConfigProvider>
-            ) : (
-                <>
-                    {showFieldTranslate && (
-                        <div className={styles.translateField}>
-                            <Button
-                                size="small"
-                                loading={fieldTranslating}
-                                disabled={fieldTranslateDisabled}
-                                onClick={translateActiveField}
-                            >
-                                {t('legal.translation.field.button')}
-                            </Button>
-                            {fieldErrorKey && (
-                                <Alert type="error" showIcon message={t(fieldErrorKey)} className={styles.fieldError} />
-                            )}
-                        </div>
-                    )}
-
-                    <TiptapEditor key={activeLanguage} value={currentContent} onChange={handleEditorChange} />
-
-                    <Space className={styles.actions}>
-                        <Button type="primary" loading={publishing} onClick={requestPublish}>
-                            {t('tenants.legal.dataProcessingAgreement.publish')}
-                        </Button>
-                    </Space>
-
-                    <TranslateOnPublishModal
-                        open={modalOpen}
+        <div className={styles.card}>
+            <M3RichTextEditor
+                title={t('tenants.legal.dataProcessingAgreement.title')}
+                icon={CloudSync}
+                value={currentContent}
+                onChange={readOnly ? undefined : handleEditorChange}
+                readOnly={readOnly}
+                publishing={publishing}
+                versionLabel={t('legal.m3Editor.versionLabel')}
+                languageSlot={
+                    <LegalContentLanguageSelect
+                        languages={languages}
+                        value={activeLanguage}
+                        onChange={setActiveLanguage}
                         sourceLanguage={sourceLanguage}
-                        targetLanguages={targetLanguages}
-                        translating={translating}
-                        errorKey={modalErrorKey}
-                        onConfirm={translateAndPublish}
-                        onSkip={publishWithoutTranslation}
-                        onCancel={closeModal}
+                        contentMap={contentMapWithEdits}
                     />
-                </>
-            )}
-
-            {versions.length > 0 && (
-                <div className={styles.history}>
-                    <Typography.Text strong className={styles.historyTitle}>
-                        {t('tenants.legal.version.history')}
-                    </Typography.Text>
-                    <LegalVersionViewer versions={versions} />
-                </div>
-            )}
-        </Card>
+                }
+                aboveEditorSlot={
+                    <>
+                        <p className={styles.description}>
+                            {readOnly
+                                ? t('tenants.legal.dataProcessingAgreement.managedByTenant')
+                                : t('tenants.legal.dataProcessingAgreement.description')}
+                        </p>
+                        {!readOnly && showFieldTranslate && (
+                            <div className={styles.translateField}>
+                                <Button
+                                    size="small"
+                                    loading={fieldTranslating}
+                                    disabled={fieldTranslateDisabled}
+                                    onClick={translateActiveField}
+                                >
+                                    {t('legal.translation.field.button')}
+                                </Button>
+                                {fieldErrorKey && (
+                                    <Alert
+                                        type="error"
+                                        showIcon
+                                        message={t(fieldErrorKey)}
+                                        className={styles.fieldError}
+                                    />
+                                )}
+                            </div>
+                        )}
+                    </>
+                }
+                onPublish={readOnly ? undefined : () => requestPublish()}
+                belowSlot={
+                    <>
+                        {!readOnly && (
+                            <TranslateOnPublishModal
+                                open={modalOpen}
+                                sourceLanguage={sourceLanguage}
+                                targetLanguages={targetLanguages}
+                                translating={translating}
+                                errorKey={modalErrorKey}
+                                onConfirm={translateAndPublish}
+                                onSkip={publishWithoutTranslation}
+                                onCancel={closeModal}
+                            />
+                        )}
+                        {versions.length > 0 && (
+                            <div className={styles.history}>
+                                <Typography.Text strong className={styles.historyTitle}>
+                                    {t('tenants.legal.version.history')}
+                                </Typography.Text>
+                                <LegalVersionViewer versions={versions} />
+                            </div>
+                        )}
+                    </>
+                }
+            />
+        </div>
     );
 };
 
