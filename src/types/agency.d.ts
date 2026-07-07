@@ -32,6 +32,13 @@ export interface AgencyData {
     offline: boolean;
     online: boolean;
     postcode: string;
+    street?: string;
+    houseNumber?: string;
+    floorBuilding?: string;
+    country?: string;
+    phone?: string;
+    phoneSecondary?: string;
+    email?: string;
     teamAgency: boolean;
     consultingType: string;
     status: string | undefined;
