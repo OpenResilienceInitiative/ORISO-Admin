@@ -139,7 +139,7 @@ export const GeneralTenantSettings = () => {
         return (
             <ThemeProvider theme={orisoMuiTheme}>
                 <Row gutter={[24, 24]}>
-                    <Col span={12} md={6}>
+                    <Col span={24} md={12}>
                         <CardEditable
                             isLoading={isLoading}
                             editMode={false}
@@ -162,9 +162,7 @@ export const GeneralTenantSettings = () => {
                                         name="subdomain"
                                         label={t('tenants.add.form.subdomain.placeholder')}
                                         disabled
-                                        endAdornment={
-                                            <span className={styles.domainSuffix}>.{getDomain()}</span>
-                                        }
+                                        endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
                                     />
                                 </div>
                             )}
@@ -220,9 +218,7 @@ export const GeneralTenantSettings = () => {
                                         label={t('tenants.add.form.subdomain.placeholder')}
                                         required
                                         rules={[requiredRule, subdomainFormatRule]}
-                                        endAdornment={
-                                            <span className={styles.domainSuffix}>.{getDomain()}</span>
-                                        }
+                                        endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
                                     />
                                 </div>
                             )}

@@ -20,16 +20,43 @@ vi.mock('react-i18next', () => ({
     }),
 }));
 
-// TipTap pulls heavy editor deps; stub it to a plain node that echoes its value
-// and lets the test emit an edit when an onChange handler is wired.
-vi.mock('../../../../FormPluginEditor/TiptapEditor', () => ({
-    default: ({ value, onChange }: { value: string; onChange?: (html: string) => void }) => (
-        <div data-testid="editor" data-value={value}>
-            {onChange && (
+// TipTap pulls heavy editor deps; stub the M3 shell to a plain node that mirrors its
+// contract: echoes the value, renders the slots, lets the test emit an edit when an
+// onChange handler is wired, and exposes the publish action unless read-only.
+vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
+    M3RichTextEditor: ({
+        value,
+        onChange,
+        readOnly,
+        publishing,
+        onPublish,
+        languageSlot,
+        aboveEditorSlot,
+        belowSlot,
+    }: {
+        value: string;
+        onChange?: (html: string) => void;
+        readOnly?: boolean;
+        publishing?: boolean;
+        onPublish?: (html: string) => void;
+        languageSlot?: React.ReactNode;
+        aboveEditorSlot?: React.ReactNode;
+        belowSlot?: React.ReactNode;
+    }) => (
+        <div data-testid="editor" data-value={value} data-readonly={readOnly ? 'true' : 'false'}>
+            {languageSlot}
+            {aboveEditorSlot}
+            {!readOnly && onChange && (
                 <button type="button" onClick={() => onChange('<p>edited</p>')}>
                     edit
                 </button>
             )}
+            {!readOnly && onPublish && (
+                <button type="button" disabled={publishing} onClick={() => onPublish(value)}>
+                    legal.m3Editor.publish
+                </button>
+            )}
+            {belowSlot}
         </div>
     ),
 }));
@@ -50,7 +77,7 @@ beforeAll(() => {
     });
 });
 
-const publishButtonName = 'tenants.legal.dataProcessingAgreement.publish';
+const publishButtonName = 'legal.m3Editor.publish';
 
 describe('DataProcessingAgreementCard', () => {
     it('keeps the other languages when publishing after editing only one language', async () => {

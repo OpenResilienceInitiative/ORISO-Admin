@@ -132,7 +132,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     return (
         <>
             <Layout className="protectedLayout">
-                <Sider width={85}>
+                <Sider width={96}>
                     <div className="logo" />
                     <nav className="mainMenu">
                         <ul className="upperSidebar">

@@ -30,6 +30,8 @@ import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { useCounselorById } from '../../../hooks/useCounselorById';
 import { GrantConsultantIdentityModal } from '../../../components/GrantConsultantIdentityModal';
+import { CreateAgencyModal } from '../../../components/CreateAgencyModal';
+import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
@@ -232,6 +234,19 @@ export const UserEditOrAdd = () => {
     const onSave = useCallback((data) => mutate(data), []);
     const onCancel = useCallback(() => navigate(`/admin/users/${typeOfUsers}`), []);
     const isAbsentEnabled = useWatch('absent', form);
+    // Superadmins pick the tenant in the form; other admins carry it in their token.
+    const agencyTenantId = resolveAgencyTenantId(selectedTenant, userTenantId);
+
+    const onAgencyCreated = (agency) => {
+        const current = form.getFieldValue('agencies') || [];
+        form.setFieldValue('agencies', [
+            ...current,
+            {
+                value: String(agency.id),
+                label: [agency.postcode, agency.name, agency.city].filter(Boolean).join(' '),
+            },
+        ]);
+    };
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading || isLoadingTopics || isLoadingConsultantById} stickyHeader>
@@ -281,7 +296,7 @@ export const UserEditOrAdd = () => {
                 }}
             >
                 <Row gutter={[20, 10]}>
-                    <Col xs={12} lg={6}>
+                    <Col xs={24} lg={12}>
                         <Card titleKey="agency.edit.general.general_information">
                             <FormInputField
                                 name="firstname"
@@ -371,7 +386,7 @@ export const UserEditOrAdd = () => {
                                 )}
                         </Card>
                     </Col>
-                    <Col xs={12} lg={6}>
+                    <Col xs={24} lg={12}>
                         <Card titleKey="settings.title">
                             <SelectFormField
                                 name="tenantId"
@@ -391,6 +406,14 @@ export const UserEditOrAdd = () => {
                                 placeholder="plsSelect"
                                 options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
                             />
+
+                            <div className={styles.createAgency}>
+                                <CreateAgencyModal
+                                    tenantId={agencyTenantId}
+                                    disabled={isReadOnly}
+                                    onSuccess={onAgencyCreated}
+                                />
+                            </div>
 
                             {showTopicsField && (
                                 <SelectFormField
