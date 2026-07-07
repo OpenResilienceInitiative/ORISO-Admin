@@ -13,6 +13,9 @@ import { PostCodeRanges } from './PostCodeRanges';
 import styles from './styles.module.scss';
 import { convertToOptions } from '../../../../../utils/convertToOptions';
 import { isActiveRecord } from '../../../../../utils/deleteDate';
+import { CreateConsultantModal } from '../../../../../components/CreateConsultantModal';
+import { parseUserAuthInfo } from '../../../../../utils/parseUserAuthInfo';
+import { resolveAgencyTenantId } from '../../../../../api/agency/addAgencyData';
 
 interface RegistrationSettingsProps {
     asFields?: boolean;
@@ -23,6 +26,7 @@ export const RegistrationSettings = ({ asFields }: RegistrationSettingsProps) =>
     const { id } = useParams();
     const form = Form.useFormInstance();
     const postCodeRangesActive = Form.useWatch('postCodeRangesActive');
+    const selectedTenantId = Form.useWatch('tenantId');
     const selectedConsultants = Form.useWatch('consultantIds') || [];
     const hasSelectedConsultants = selectedConsultants.length > 0;
     const showConsultantAssignment = !asFields;
@@ -39,6 +43,19 @@ export const RegistrationSettings = ({ asFields }: RegistrationSettingsProps) =>
         return convertToOptions(activeConsultants, ['firstname', 'lastname', 'email'], 'id');
     }, [consultants?.data]);
     const needsConsultantAssignment = id === 'add' ? !hasSelectedConsultants : !hasConsultants;
+    // Superadmins pick the tenant in the form; tenant admins carry it in their token.
+    const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
+
+    const onConsultantCreated = (consultant) => {
+        const current = form.getFieldValue('consultantIds') || [];
+        form.setFieldValue('consultantIds', [
+            ...current,
+            {
+                value: String(consultant.id),
+                label: [consultant.firstname, consultant.lastname, consultant.email].filter(Boolean).join(' '),
+            },
+        ]);
+    };
 
     useEffect(() => {
         if (id === 'add' && !hasSelectedConsultants) {
@@ -60,16 +77,21 @@ export const RegistrationSettings = ({ asFields }: RegistrationSettingsProps) =>
                 />
             )}
             {showConsultantAssignment && (
-                <SelectFormField
-                    name="consultantIds"
-                    label="agency.form.registrationSettings.consultants.label"
-                    labelInValue
-                    isMulti
-                    allowClear
-                    loading={isLoadingConsultants}
-                    placeholder="agency.form.registrationSettings.consultants.placeholder"
-                    options={consultantOptions}
-                />
+                <>
+                    <SelectFormField
+                        name="consultantIds"
+                        label="agency.form.registrationSettings.consultants.label"
+                        labelInValue
+                        isMulti
+                        allowClear
+                        loading={isLoadingConsultants}
+                        placeholder="agency.form.registrationSettings.consultants.placeholder"
+                        options={consultantOptions}
+                    />
+                    <div className={styles.createConsultant}>
+                        <CreateConsultantModal tenantId={consultantTenantId} onSuccess={onConsultantCreated} />
+                    </div>
+                </>
             )}
             <FormSwitchField
                 inline

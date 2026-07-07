@@ -303,14 +303,14 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 onFinish={onSubmit}
             >
                 <Row gutter={[20, 10]}>
-                    <Col xs={12}>
+                    <Col xs={24}>
                         <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
                     </Col>
-                    <Col xs={12} lg={6}>
+                    <Col xs={24} lg={12}>
                         <AgencyGeneralInformation />
                         <RegistrationSettings />
                     </Col>
-                    <Col xs={12} lg={6}>
+                    <Col xs={24} lg={12}>
                         <AgencySettings isEditMode={isEditing} />
                     </Col>
                 </Row>
@@ -337,10 +337,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             onFinish={onSubmit}
         >
             <Row gutter={[20, 10]}>
-                <Col xs={12}>
+                <Col xs={24}>
                     <h3 className={styles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
                 </Col>
-                <Col xs={12} lg={6}>
+                <Col xs={24} lg={12}>
                     <AgencySettings isEditMode={isEditing} />
                 </Col>
             </Row>

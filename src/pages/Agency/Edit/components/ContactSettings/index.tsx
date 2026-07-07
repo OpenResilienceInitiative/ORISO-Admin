@@ -51,7 +51,7 @@ const ContactSettingsFields = ({ form, type }: { form?: FormInstance; type?: any
 
             {contactKey && (
                 <Row gutter={[20, 10]}>
-                    <Col xs={12}>
+                    <Col xs={24}>
                         <FormInputField
                             name={['dataProtection', contactKey, 'nameAndLegalForm']}
                             labelKey="agency.edit.settings.legal.contact.name"
@@ -59,7 +59,7 @@ const ContactSettingsFields = ({ form, type }: { form?: FormInstance; type?: any
                             required
                         />
                     </Col>
-                    <Col xs={7}>
+                    <Col xs={14}>
                         <FormInputField
                             name={['dataProtection', contactKey, 'postcode']}
                             labelKey="agency.edit.settings.legal.contact.postcode"
@@ -69,7 +69,7 @@ const ContactSettingsFields = ({ form, type }: { form?: FormInstance; type?: any
                             rules={[{ min: 5, required: true, message: t('agency.postcode.minimum') }]}
                         />
                     </Col>
-                    <Col xs={5}>
+                    <Col xs={10}>
                         <FormInputField
                             name={['dataProtection', contactKey, 'city']}
                             labelKey="agency.edit.settings.legal.contact.city"
@@ -78,7 +78,7 @@ const ContactSettingsFields = ({ form, type }: { form?: FormInstance; type?: any
                             maxLength={100}
                         />
                     </Col>
-                    <Col xs={7}>
+                    <Col xs={14}>
                         <FormInputField
                             name={['dataProtection', contactKey, 'phoneNumber']}
                             labelKey="agency.edit.settings.legal.contact.phone"
@@ -87,7 +87,7 @@ const ContactSettingsFields = ({ form, type }: { form?: FormInstance; type?: any
                             maxLength={100}
                         />
                     </Col>
-                    <Col xs={5}>
+                    <Col xs={10}>
                         <FormInputField
                             name={['dataProtection', contactKey, 'email']}
                             labelKey="agency.edit.settings.legal.contact.email"
