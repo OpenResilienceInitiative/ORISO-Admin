@@ -20,6 +20,13 @@ function buildAgencyDataRequestBody(
         description: formData.description ? formData.description : '',
         postcode: formData.postcode,
         city: formData.city,
+        street: formData.street,
+        houseNumber: formData.houseNumber,
+        floorBuilding: formData.floorBuilding,
+        country: formData.country,
+        phone: formData.phone,
+        phoneSecondary: formData.phoneSecondary,
+        email: formData.email,
         consultingType: consultingTypeResponseId,
         teamAgency: formData.teamAgency ? formData.teamAgency : false,
         // enforced by admin API, without business value for SAAS
