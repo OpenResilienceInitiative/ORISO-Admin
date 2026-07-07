@@ -44,6 +44,19 @@ interface AgencyPageEditProps {
     section?: AgencySettingsSection;
 }
 
+// ADR-003: the topic picker is single-select, so the form field holds a single labelInValue
+// Option (or undefined when cleared). Normalise that — or a legacy array — to the string[] of
+// length 0/1 the agency API expects.
+const toTopicIdArray = (value: unknown): string[] => {
+    const options = Array.isArray(value) ? value : value == null ? [] : [value];
+    return options
+        .map((option) =>
+            option && typeof option === 'object' && 'value' in option ? (option as { value: unknown }).value : option,
+        )
+        .filter((id): id is string | number => id != null)
+        .map((id) => String(id));
+};
+
 const getEntityId = (value: unknown) => {
     if (typeof value === 'number' || typeof value === 'string') {
         return String(value);
@@ -128,7 +141,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         ...counsellingRelationsInitialValues,
         postCodeRangesActive: !hasOnlyDefaultRangeDefined(postCodes || []),
         online: agencyData?.id ? !agencyData?.offline : false,
-        topicIds: convertToOptions(agencyData?.topics, 'name', 'id', true),
+        topicIds: convertToOptions(agencyData?.topics, 'name', 'id', true)[0],
         tenantId: agencyTenantId,
     };
 
@@ -157,7 +170,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                               genders: mergedFormData.demographics.genders.map(({ value }) => value),
                           }
                         : mergedFormData.demographics,
-                topicIds: mergedFormData.topicIds?.map(({ value }) => value),
+                topicIds: toTopicIdArray(mergedFormData.topicIds),
                 offline: !mergedFormData.online,
                 counsellingRelations: mergedFormData.counsellingRelations?.map(
                     (relation) => relation.value || relation,
