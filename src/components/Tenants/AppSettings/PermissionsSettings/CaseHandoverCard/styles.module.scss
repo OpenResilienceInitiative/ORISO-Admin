@@ -2,12 +2,20 @@
    reason tabs (M3 primary tabs), consent rows, language chips, notification
    sample field, footer text actions. */
 
+/* This card has more content below the description (reason tabs, consent rows,
+   notification preview) than the chat-type cards, so it doesn't need the shared
+   card's reserved description height. */
+
+.cardDescriptionCompact {
+    min-height: 0;
+}
+
 .reasonTabs {
     display: flex;
     align-items: stretch;
-    overflow-x: auto;
+    border-bottom: 1px solid rgb(28 27 31 / 14%);
     margin: 4px -8px 0;
-    border-bottom: 1px solid rgba(28, 27, 31, 0.14);
+    overflow-x: auto;
     scrollbar-width: none;
 
     &::-webkit-scrollbar {
@@ -16,46 +24,46 @@
 }
 
 .reasonTab {
-    appearance: none;
-    background: none;
+    padding: 12px 14px 9px;
     border: 0;
     border-bottom: 3px solid transparent;
-    padding: 12px 14px 9px;
+    appearance: none;
+    background: none;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    font-family: inherit;
     font-size: 14px;
     font-weight: 500;
     letter-spacing: 0.1px;
-    color: #444748;
-    cursor: pointer;
     white-space: nowrap;
-    font-family: inherit;
 
     &:hover {
-        color: #1b1b1c;
+        color: var(--m3-on-surface, #1b1b1c);
     }
 }
 
 .reasonTabActive {
-    color: var(--m3-primary, #a5000a);
     border-bottom-color: var(--m3-primary, #a5000a);
+    color: var(--m3-primary, #a5000a);
     font-weight: 600;
 }
 
 /* Placeholder reason (not backend-seeded yet): selectable to inspect, greyed out. */
 .reasonTabPlaceholder {
-    color: rgba(27, 27, 28, 0.38);
+    color: var(--input-disabled-color, rgb(27 27 28 / 38%));
 
     &.reasonTabActive {
-        color: rgba(27, 27, 28, 0.55);
-        border-bottom-color: rgba(27, 27, 28, 0.38);
+        border-bottom-color: var(--input-disabled-color, rgb(27 27 28 / 38%));
+        color: rgb(27 27 28 / 55%);
     }
 }
 
 .placeholderHint {
-    font-size: 12px;
-    line-height: 16px;
-    letter-spacing: 0.4px;
-    color: #444748;
     margin: 8px 0 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
 }
 
 .consentRows {
@@ -66,9 +74,9 @@
 
 .languageChips {
     display: flex;
+    padding: 4px 0 10px;
     gap: 8px;
     overflow-x: auto;
-    padding: 4px 0 10px;
     scrollbar-width: none;
 
     &::-webkit-scrollbar {
@@ -77,91 +85,91 @@
 }
 
 .languageChip {
-    appearance: none;
-    background: none;
-    border: 1px solid #c4c7c8;
-    border-radius: 8px;
     height: 32px;
     padding: 0 12px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    appearance: none;
+    background: none;
+    border-radius: 8px;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    font-family: inherit;
     font-size: 14px;
     font-weight: 500;
     letter-spacing: 0.1px;
-    color: #444748;
-    cursor: pointer;
     white-space: nowrap;
-    font-family: inherit;
 }
 
 .languageChipActive {
-    background: #646d78;
-    border-color: #646d78;
-    color: #e7effc;
+    border-color: var(--m3-secondary-container, #646d78);
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
 }
 
 .notificationField {
-    background: #f6f3f3;
-    border-bottom: 1px solid #444748;
-    border-radius: 4px 4px 0 0;
-    padding: 8px 16px 10px;
     min-height: 88px;
+    padding: 8px 16px 10px;
+    border-bottom: 1px solid var(--m3-on-surface-variant, #444748);
+    background: var(--m3-surface-container-low, #f6f3f3);
+    border-radius: 4px 4px 0 0;
 }
 
 .notificationFieldLabel {
     display: block;
-    font-size: 12px;
-    line-height: 16px;
-    letter-spacing: 0.4px;
-    color: #444748;
     margin-bottom: 2px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
 }
 
 .notificationFieldText {
-    font-size: 15px;
-    line-height: 22px;
-    letter-spacing: 0.3px;
-    color: #1b1b1c;
     margin: 0;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    line-height: 22px;
 }
 
 .enforceHint {
-    font-size: 13px;
-    line-height: 19px;
-    letter-spacing: 0.25px;
-    font-weight: 500;
-    color: var(--m3-on-primary-fixed, #410001);
-    text-align: center;
     margin: 14px 0 4px;
+    color: var(--m3-on-primary-fixed, #410001);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.25px;
+    line-height: 19px;
+    text-align: center;
 }
 
 .footerActions {
-    margin: auto -32px 0;
-    min-height: 96px;
-    padding: 0 24px 0 8px;
-    border-top: 1px solid rgba(28, 27, 31, 0.14);
     display: flex;
+    min-height: 96px;
     align-items: center;
     justify-content: flex-end;
+    padding: 0 24px 0 8px;
+    border-top: 1px solid rgb(28 27 31 / 14%);
+    margin: auto -32px 0;
     gap: 8px;
 }
 
 .footerTextButton {
-    appearance: none;
-    background: none;
-    border: 0;
-    border-radius: 100px;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
     padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.1px;
+    border: 0;
+    appearance: none;
+    background: none;
+    border-radius: 100px;
     color: #4c555f;
     cursor: pointer;
     font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    gap: 8px;
+    letter-spacing: 0.1px;
 
     &:disabled {
-        color: rgba(27, 27, 28, 0.38);
+        color: var(--input-disabled-color, rgb(27 27 28 / 38%));
         cursor: not-allowed;
     }
 

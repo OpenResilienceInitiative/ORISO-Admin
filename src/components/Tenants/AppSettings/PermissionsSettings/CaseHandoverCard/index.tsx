@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert } from 'antd';
+import { useTranslation } from 'react-i18next';
 import {
     useCaseHandoverReasonPoliciesData,
     useCaseHandoverReasonPoliciesMutation,
@@ -15,6 +17,7 @@ import { CaseHandoverCardView } from './CaseHandoverCardView';
  *  overrides are a backend follow-up, so non-privileged admins see the card
  *  read-only (disable, don't hide). */
 export const CaseHandoverCard = () => {
+    const { t } = useTranslation();
     const { can } = useUserPermissions();
     const { isSuperAdmin } = useUserRoles();
     const canEdit = canEditCaseHandoverReasonPolicies(isSuperAdmin, can);
@@ -30,19 +33,26 @@ export const CaseHandoverCard = () => {
         }
     }, [data]);
 
+    // Snapshot to roll back to if the mutation fails, so a false success never sticks.
+    const previousPoliciesRef = useRef<CaseHandoverReasonPolicy[]>(policies);
+
     const moduleEnabled = useMemo(() => isHandoverModuleEnabled(policies), [policies]);
 
     const persist = useCallback(
         (nextPolicies: CaseHandoverReasonPolicy[]) => {
+            previousPoliciesRef.current = policies;
             setPolicies(nextPolicies);
             updateReasonPolicies.mutate(
                 nextPolicies.map((policy) => ({
                     ...policy,
                     policyAuthority: policy.policyAuthority === '' ? null : policy.policyAuthority,
                 })),
+                {
+                    onError: () => setPolicies(previousPoliciesRef.current),
+                },
             );
         },
-        [updateReasonPolicies],
+        [policies, updateReasonPolicies],
     );
 
     const handleModuleEnabledChange = useCallback(
@@ -57,7 +67,7 @@ export const CaseHandoverCard = () => {
     );
 
     if (isError) {
-        return null;
+        return <Alert type="error" message={t('error.loading')} showIcon data-testid="case-handover-card-error" />;
     }
 
     return (

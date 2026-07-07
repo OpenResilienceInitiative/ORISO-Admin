@@ -25,12 +25,13 @@ const mocks = vi.hoisted(() => ({
             policyAuthority: 'platform-admin-default-case-handover-policy',
         },
     ],
+    dataState: { isError: false },
 }));
 
 const t = (key: string) => key;
 
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({ t }),
+    useTranslation: () => ({ t, i18n: { language: 'de' } }),
 }));
 
 // vitest has no svgr plugin — stub the icon's ReactComponent export.
@@ -42,7 +43,7 @@ vi.mock('../../../../../hooks/useCaseHandoverReasonPolicies', () => ({
     useCaseHandoverReasonPoliciesData: () => ({
         data: mocks.policies,
         isLoading: false,
-        isError: false,
+        isError: mocks.dataState.isError,
     }),
     useCaseHandoverReasonPoliciesMutation: () => ({
         isPending: false,
@@ -65,6 +66,7 @@ vi.mock('../../../../../hooks/useUserRoles.hook', () => ({
 describe('CaseHandoverCard', () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.dataState.isError = false;
     });
 
     it('master toggle writes enabled on every reason and normalizes empty policyAuthority to null', async () => {
@@ -81,7 +83,7 @@ describe('CaseHandoverCard', () => {
                     policyAuthority: null,
                 }),
                 expect.objectContaining({ code: 'COUNSELLOR_IS_ILL', enabled: false }),
-            ]);
+            ], expect.anything());
         });
     });
 
@@ -106,7 +108,7 @@ describe('CaseHandoverCard', () => {
                     code: 'COUNSELLOR_IS_ILL',
                     clientConsentRequired: false,
                 }),
-            ]);
+            ], expect.anything());
         });
     });
 
@@ -131,5 +133,32 @@ describe('CaseHandoverCard', () => {
         expect(
             screen.getByRole('switch', { name: 'tenants.permissions.card.caseHandover.optOutMessage' }),
         ).toBeDisabled();
+    });
+
+    it('rolls back the optimistic toggle when the save fails', async () => {
+        mocks.mutate.mockImplementation((_payload, options) => {
+            options?.onError?.(new Error('save failed'));
+        });
+        const user = userEvent.setup();
+        render(<CaseHandoverCard />);
+
+        const masterSwitch = screen.getByRole('switch', { name: 'tenants.permissions.card.activated' });
+        expect(masterSwitch).toBeChecked();
+
+        await user.click(masterSwitch);
+
+        await waitFor(() => {
+            expect(mocks.mutate).toHaveBeenCalled();
+        });
+        // Failed save must not leave the UI showing a false success.
+        expect(masterSwitch).toBeChecked();
+    });
+
+    it('shows an admin-visible error instead of disappearing when the reason policies fail to load', () => {
+        mocks.dataState.isError = true;
+        render(<CaseHandoverCard />);
+
+        expect(screen.getByTestId('case-handover-card-error')).toBeInTheDocument();
+        expect(screen.queryByTestId('case-handover-card')).not.toBeInTheDocument();
     });
 });

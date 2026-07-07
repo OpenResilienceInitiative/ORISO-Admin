@@ -1028,7 +1028,7 @@
     "tenants.permissions.calls.description": "When disabled, the call buttons (audio/video as well as group calls) are hidden in the chat.",
     "tenants.permissions.calls.title": "Allow calls",
     "tenants.permissions.card.advanced": "Advanced",
-    "tenants.permissions.card.caseHandover.title": "Case takeover",
+    "tenants.permissions.card.caseHandover.title": "Case handover",
     "tenants.permissions.card.caseHandover.description": "Manage permissions, notifications, and consent rules here.",
     "tenants.permissions.card.caseHandover.optOutMessage": "Opt-out message to the advice seeker",
     "tenants.permissions.card.caseHandover.consentClient": "Consent from advice seeker",

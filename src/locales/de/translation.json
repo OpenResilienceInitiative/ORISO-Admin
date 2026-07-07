@@ -667,7 +667,7 @@
     "tenants.permissions.card.configurableFeatures": "konfigurierbare Zusatzfunktionen",
     "tenants.permissions.card.forceSelection": "Auswahl erzwingen",
     "tenants.permissions.card.advanced": "Erweitert",
-    "tenants.permissions.card.caseHandover.title": "Fallübernahme",
+    "tenants.permissions.card.caseHandover.title": "Fallübergabe",
     "tenants.permissions.card.caseHandover.description": "Verwalten Sie hier die Berechtigungen, Benachrichtigungen und Zustimmungsregeln.",
     "tenants.permissions.card.caseHandover.optOutMessage": "Opt-out Nachricht an Ratsuchenden",
     "tenants.permissions.card.caseHandover.consentClient": "Zustimmung Ratsuchende*r",

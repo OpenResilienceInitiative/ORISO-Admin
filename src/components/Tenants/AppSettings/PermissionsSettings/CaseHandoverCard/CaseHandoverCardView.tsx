@@ -51,10 +51,12 @@ export const CaseHandoverCardView = ({
     onModuleEnabledChange,
     onClientConsentChange,
 }: CaseHandoverCardViewProps) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const displayReasons = useMemo(() => buildDisplayReasons(policies), [policies]);
     const [activeReasonCode, setActiveReasonCode] = useState<string | null>(null);
-    const [activeLanguage, setActiveLanguage] = useState<NotificationLanguage>('de');
+    const [activeLanguage, setActiveLanguage] = useState<NotificationLanguage>(() =>
+        (NOTIFICATION_LANGUAGES as string[]).includes(i18n.language) ? (i18n.language as NotificationLanguage) : 'de',
+    );
 
     const activeReason: DisplayReason | null =
         displayReasons.find((reason) => reason.code === activeReasonCode) ?? displayReasons[0] ?? null;
@@ -91,7 +93,7 @@ export const CaseHandoverCardView = ({
                         />
                     </div>
 
-                    <p className={cardStyles.cardDescription} style={{ minHeight: 0 }}>
+                    <p className={`${cardStyles.cardDescription} ${styles.cardDescriptionCompact}`}>
                         {t('tenants.permissions.card.caseHandover.description')}
                     </p>
 
@@ -221,20 +223,24 @@ export const CaseHandoverCardView = ({
 
                     <div className={styles.footerActions}>
                         <Tooltip title={comingSoon}>
-                            <button type="button" className={styles.footerTextButton} disabled>
-                                <ConfigureIcon />
-                                {t('tenants.permissions.card.caseHandover.configure')}
-                            </button>
+                            <span>
+                                <button type="button" className={styles.footerTextButton} disabled>
+                                    <ConfigureIcon />
+                                    {t('tenants.permissions.card.caseHandover.configure')}
+                                </button>
+                            </span>
                         </Tooltip>
                         <Tooltip title={comingSoon}>
-                            <button
-                                type="button"
-                                className={`${styles.footerTextButton} ${styles.footerTextButtonPrimary}`}
-                                disabled
-                            >
-                                <EnforceIcon />
-                                {t('tenants.permissions.card.caseHandover.enforce')}
-                            </button>
+                            <span>
+                                <button
+                                    type="button"
+                                    className={`${styles.footerTextButton} ${styles.footerTextButtonPrimary}`}
+                                    disabled
+                                >
+                                    <EnforceIcon />
+                                    {t('tenants.permissions.card.caseHandover.enforce')}
+                                </button>
+                            </span>
                         </Tooltip>
                     </div>
                 </>
