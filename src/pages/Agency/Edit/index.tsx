@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
+import { normalizeTopicIds } from '../../../api/agency/normalizeTopicIds';
 import routePathNames from '../../../appConfig';
 import { Page } from '../../../components/Page';
 import { CardDeck } from '../../../components/CardDeck';
@@ -43,19 +44,6 @@ type AgencySettingsSection = 'general' | 'legal' | 'functionalities';
 interface AgencyPageEditProps {
     section?: AgencySettingsSection;
 }
-
-// ADR-003: the topic picker is single-select, so the form field holds a single labelInValue
-// Option (or undefined when cleared). Normalise that — or a legacy array — to the string[] of
-// length 0/1 the agency API expects.
-const toTopicIdArray = (value: unknown): string[] => {
-    const options = Array.isArray(value) ? value : value == null ? [] : [value];
-    return options
-        .map((option) =>
-            option && typeof option === 'object' && 'value' in option ? (option as { value: unknown }).value : option,
-        )
-        .filter((id): id is string | number => id != null)
-        .map((id) => String(id));
-};
 
 const getEntityId = (value: unknown) => {
     if (typeof value === 'number' || typeof value === 'string') {
@@ -170,7 +158,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                               genders: mergedFormData.demographics.genders.map(({ value }) => value),
                           }
                         : mergedFormData.demographics,
-                topicIds: toTopicIdArray(mergedFormData.topicIds),
+                topicIds: normalizeTopicIds(mergedFormData.topicIds),
                 offline: !mergedFormData.online,
                 counsellingRelations: mergedFormData.counsellingRelations?.map(
                     (relation) => relation.value || relation,

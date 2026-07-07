@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
     navigate: vi.fn(),
     searchTenantData: vi.fn(),
+    useTenantTopics: vi.fn(() => ({ data: [], isLoading: false })),
 }));
 
 const translations: Record<string, string> = {
@@ -132,7 +133,7 @@ vi.mock('../../../hooks/useAgencyHasConsultants', () => ({
 }));
 
 vi.mock('../../../hooks/useTenantTopics', () => ({
-    useTenantTopics: () => ({ data: [], isLoading: false }),
+    useTenantTopics: mocks.useTenantTopics,
 }));
 
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
@@ -200,5 +201,62 @@ describe('AgencyPageEdit create flow', () => {
             expect(screen.getByText('Bitte füllen Sie das markierte Feld aus.')).toBeInTheDocument();
         });
         expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+});
+
+describe('AgencyPageEdit — ADR-003 single-select topic picker', () => {
+    beforeEach(() => {
+        mocks.mutate.mockReset();
+        mocks.navigate.mockReset();
+        mocks.searchTenantData.mockReset();
+        mocks.searchTenantData.mockResolvedValue({ data: [{ id: 7, name: 'Caritas Augsburg' }] });
+        mocks.useTenantTopics.mockReturnValue({
+            data: [
+                { id: 3, name: 'Schulden' },
+                { id: 5, name: 'Sucht' },
+            ],
+            isLoading: false,
+        });
+    });
+
+    afterEach(() => {
+        mocks.useTenantTopics.mockReturnValue({ data: [], isLoading: false });
+    });
+
+    it('renders the topic picker as single-select (no isMulti), not the former multi-select', async () => {
+        renderWithClient(<AgencyPageEdit />);
+
+        // The picker only renders once topics have loaded, keyed by its label.
+        const picker = (await screen.findByText('topics.title')).closest('.ant-form-item') as HTMLElement;
+        const selectRoot = picker.querySelector('.ant-select');
+
+        expect(selectRoot).not.toBeNull();
+        expect(selectRoot).toHaveClass('ant-select-single');
+        expect(selectRoot).not.toHaveClass('ant-select-multiple');
+    });
+
+    it('submits exactly one topic id, not an array, when one topic is chosen', async () => {
+        const user = userEvent.setup();
+        renderWithClient(<AgencyPageEdit />);
+
+        const tenantPicker = (await screen.findByText('Trägerzuordnung')).closest('.ant-form-item') as HTMLElement;
+        await user.click(tenantPicker.querySelector('.ant-select-selector') as HTMLElement);
+        await user.click(await screen.findByTitle('Caritas Augsburg'));
+
+        const picker = (await screen.findByText('topics.title')).closest('.ant-form-item') as HTMLElement;
+        await user.click(picker.querySelector('.ant-select-selector') as HTMLElement);
+        await user.click(await screen.findByTitle('Schulden'));
+
+        fireEvent.change(screen.getByPlaceholderText('Name'), { target: { value: 'Neue Beratungsstelle' } });
+        fireEvent.change(screen.getByPlaceholderText('PLZ'), { target: { value: '86161' } });
+        fireEvent.change(screen.getByPlaceholderText('Stadt'), { target: { value: 'Augsburg' } });
+
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalled());
+        const [submittedData] = mocks.mutate.mock.calls[0];
+        // A pre-ADR-003 multi-select would submit an array that keeps growing/appending on
+        // repeated edits; single-select must always submit exactly the one chosen id.
+        expect(submittedData.topicIds).toEqual(['3']);
     });
 });

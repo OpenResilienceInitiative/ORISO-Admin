@@ -5,6 +5,7 @@ import { AgencyData } from '../../types/agency';
 import updateAgencyType from './updateAgencyType';
 import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant';
 import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
+import { normalizeTopicIds } from './normalizeTopicIds';
 
 /**
  * update agency
@@ -24,13 +25,8 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         formInput.consultingType !== null ? parseInt(formInput.consultingType, 10) : await getConsultingType4Tenant();
 
     // ADR-003: topicIds may arrive as a single-select Option, a legacy Option[]/string[], or the
-    // backend `topics` shape — normalise all of them to an array before extracting the ids.
-    const rawTopics = formInput?.topicIds ?? formInput?.topics;
-    const topicsArray = Array.isArray(rawTopics) ? rawTopics : rawTopics == null ? [] : [rawTopics];
-
-    const topicIds = topicsArray
-        .map((topic) => (typeof topic === 'string' ? topic : topic?.value ?? topic?.id))
-        .filter((id) => id != null && !Number.isNaN(Number(id)));
+    // backend `topics` shape — normalise all of them to the string[] the API expects.
+    const topicIds = normalizeTopicIds(formInput?.topicIds ?? formInput?.topics);
 
     const agencyDataRequestBody = withLegacyDioceseId({
         name: formInput.name,
