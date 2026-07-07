@@ -21,6 +21,7 @@ import { apiServerSettings } from './api/settings/apiServerSettings';
 import { Initialization } from './components/Layout/Initialization';
 import { AccessDenied } from './pages/ErrorPages/AccessDenied';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from './utils/language';
+import { buildAdminAntdTheme } from './theme/antdM3Theme';
 
 interface LangMap {
     [key: string]: Locale;
@@ -73,10 +74,7 @@ const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) =>
     }, []);
 
     return (
-        <ConfigProvider
-            locale={myLanguages[language]}
-            theme={{ token: { colorPrimary: '#273270', colorLink: '#273270', borderRadius: 4 } }}
-        >
+        <ConfigProvider locale={myLanguages[language]} theme={buildAdminAntdTheme()}>
             {children}
         </ConfigProvider>
     );
