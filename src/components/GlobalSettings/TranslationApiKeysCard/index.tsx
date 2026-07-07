@@ -47,11 +47,13 @@ export const TranslationApiKeysCard = ({
 
     return (
         <Card
+            className={styles.card}
             variant="dialog"
             headerIcon={<TranslateOutlinedIcon />}
             titleKey="legal.translation.settings.title"
             subTitleKey="legal.translation.settings.description"
             isLoading={isLoading}
+            autoHeight
         >
             <Form form={form} layout="vertical" disabled={disabled}>
                 {TRANSLATION_PROVIDERS.map((provider) => (

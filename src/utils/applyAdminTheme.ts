@@ -3,10 +3,14 @@ import { readSeeds, ThemingSeedFields } from './themeSeeds';
 
 export const DEFAULT_ADMIN_SEED = '#A5000A';
 const ADMIN_THEME_TOKEN_PREFIX = '--m3-';
+const ADMIN_SURFACE_TOKEN_PREFIX = '--admin-';
+
+const isAdminRuntimeToken = (name: string) =>
+    name.startsWith(ADMIN_THEME_TOKEN_PREFIX) || name.startsWith(ADMIN_SURFACE_TOKEN_PREFIX);
 
 export const clearAdminInvertedThemeTokens = (root: HTMLElement = document.documentElement): void => {
     Array.from(root.style)
-        .filter((name) => name.startsWith(ADMIN_THEME_TOKEN_PREFIX))
+        .filter(isAdminRuntimeToken)
         .forEach((name) => root.style.removeProperty(name));
 };
 
@@ -55,7 +59,7 @@ export const applyAdminInvertedTheme = (
         );
 
         Object.entries(tokens)
-            .filter(([name]) => name.startsWith(ADMIN_THEME_TOKEN_PREFIX))
+            .filter(([name]) => isAdminRuntimeToken(name))
             .forEach(([name, value]) => {
                 root.style.setProperty(name, value);
             });

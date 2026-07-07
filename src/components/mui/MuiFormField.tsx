@@ -77,6 +77,80 @@ const MuiControl = ({
         <TextField
             variant="outlined"
             fullWidth
+            sx={{
+                width: '100%',
+                minWidth: 0,
+                maxWidth: '100%',
+                boxSizing: 'border-box',
+                fontFamily: 'var(--m3-body-font-family)',
+                '& .MuiInputBase-root': {
+                    width: '100%',
+                    minWidth: 0,
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    backgroundColor: 'var(--input-bg)',
+                    color: 'var(--admin-form-field-text)',
+                    fontFamily: 'var(--m3-body-font-family)',
+                    fontSize: 16,
+                    lineHeight: '24px',
+                    letterSpacing: '0.5px',
+                },
+                '& .MuiInputBase-input': {
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                    overflow: 'hidden',
+                    color: 'inherit',
+                    textOverflow: 'ellipsis',
+                },
+                '& .MuiInputBase-inputMultiline': {
+                    overflow: 'auto',
+                    textOverflow: 'clip',
+                    whiteSpace: 'pre-wrap',
+                    overflowWrap: 'anywhere',
+                },
+                '& .MuiInputLabel-root': {
+                    maxWidth: 'calc(100% - 24px)',
+                    color: 'var(--label-color)',
+                    fontFamily: 'var(--m3-body-font-family)',
+                },
+                '& .MuiInputLabel-root.Mui-focused': {
+                    color: 'var(--admin-form-field-text)',
+                },
+                '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--input-border-color)',
+                },
+                '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--input-active-border-color)',
+                },
+                '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--input-active-border-color)',
+                    borderWidth: 2,
+                },
+                '& .MuiOutlinedInput-root.Mui-disabled': {
+                    backgroundColor: 'var(--input-disabled-bg)',
+                    color: 'var(--input-disabled-color)',
+                },
+                '& .MuiOutlinedInput-root.Mui-disabled .MuiInputBase-input': {
+                    color: 'var(--input-disabled-color)',
+                    WebkitTextFillColor: 'var(--input-disabled-color)',
+                    opacity: 1,
+                },
+                '& .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'var(--input-disabled-border-color)',
+                },
+                '& .MuiInputLabel-root.Mui-disabled': {
+                    color: 'var(--input-disabled-color)',
+                },
+                '& .MuiFormHelperText-root': {
+                    marginInline: '16px',
+                    color: 'var(--admin-form-muted-text)',
+                    fontFamily: 'var(--m3-body-font-family)',
+                    overflowWrap: 'anywhere',
+                },
+                '& .MuiFormHelperText-root.Mui-error': {
+                    color: 'var(--form-error)',
+                },
+            }}
             label={label}
             placeholder={placeholder}
             type={type}

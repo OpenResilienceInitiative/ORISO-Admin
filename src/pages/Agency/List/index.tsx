@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Grid, Tag } from 'antd';
-import { DownOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import { ColumnProps } from 'antd/lib/table';
 import classNames from 'classnames';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,9 @@ import styles from './styles.module.scss';
 import SearchInput from '../../../components/SearchInput/SearchInput';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
+import { ReactComponent as RowExpandIcon } from '../../../resources/img/svg/table-actions/row_expand_200.svg';
+import { ReactComponent as RowExpandHoverIcon } from '../../../resources/img/svg/table-actions/row_expand_400.svg';
+import { ReactComponent as RowExpandSelectedIcon } from '../../../resources/img/svg/table-actions/row_expand_filled.svg';
 
 export const AgencyList = () => {
     const screens = Grid.useBreakpoint();
@@ -265,7 +268,17 @@ export const AgencyList = () => {
                                     toggleTopicRow(record);
                                 }}
                             >
-                                {topicsExpanded ? <UpOutlined aria-hidden /> : <DownOutlined aria-hidden />}
+                                <span className={styles.topicToggleIconStack} aria-hidden="true">
+                                    <RowExpandIcon
+                                        className={classNames(styles.topicToggleIcon, styles.topicToggleIconDefault)}
+                                    />
+                                    <RowExpandHoverIcon
+                                        className={classNames(styles.topicToggleIcon, styles.topicToggleIconHover)}
+                                    />
+                                    <RowExpandSelectedIcon
+                                        className={classNames(styles.topicToggleIcon, styles.topicToggleIconSelected)}
+                                    />
+                                </span>
                             </button>
                         )}
                         <EditButtons

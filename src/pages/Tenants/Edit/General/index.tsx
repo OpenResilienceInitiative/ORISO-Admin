@@ -7,6 +7,7 @@ import { deleteTenantData } from '../../../../api/tenant/deleteTenantData';
 import { getDomain } from '../../../../utils/getDomain';
 import { CardEditable } from '../../../../components/CardEditable';
 import { Card } from '../../../../components/Card';
+import { CardDeck } from '../../../../components/CardDeck';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useAddOrUpdateTenant } from '../../../../hooks/useAddOrUpdateTenant.hook';
@@ -138,15 +139,24 @@ export const GeneralTenantSettings = () => {
     if (isEditing) {
         return (
             <ThemeProvider theme={orisoMuiTheme}>
-                <Row gutter={[24, 24]}>
-                    <Col span={12} md={6}>
+                <CardDeck
+                    ariaLabel={t('tenants.add.mainTenantTitle')}
+                    className={styles.tenantCardDeck}
+                    deckClassName={styles.tenantCardDeckScroll}
+                    previousLabel={t('agency.cardDeck.previous')}
+                    nextLabel={t('agency.cardDeck.next')}
+                >
+                    <CardDeck.Item className={styles.tenantCardDeckItem}>
                         <CardEditable
                             isLoading={isLoading}
                             editMode={false}
                             titleKey="tenants.add.mainTenantTitle"
+                            variant="dialog"
+                            editButtonPlacement="footer"
                             initialValues={data ? (data as unknown as Record<string, unknown>) : {}}
                             formProp={form}
                             onSave={handleSave}
+                            className={styles.tenantInfoCard}
                         >
                             <div className={styles.fieldGroup}>
                                 <MuiFormField
@@ -162,9 +172,7 @@ export const GeneralTenantSettings = () => {
                                         name="subdomain"
                                         label={t('tenants.add.form.subdomain.placeholder')}
                                         disabled
-                                        endAdornment={
-                                            <span className={styles.domainSuffix}>.{getDomain()}</span>
-                                        }
+                                        endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
                                     />
                                 </div>
                             )}
@@ -192,8 +200,8 @@ export const GeneralTenantSettings = () => {
                                 />
                             </div>
                         </CardEditable>
-                    </Col>
-                </Row>
+                    </CardDeck.Item>
+                </CardDeck>
             </ThemeProvider>
         );
     }
@@ -202,9 +210,15 @@ export const GeneralTenantSettings = () => {
     return (
         <ThemeProvider theme={orisoMuiTheme}>
             <Form form={form} onFinish={handleSave} layout="vertical">
-                <Row gutter={[24, 24]}>
+                <Row gutter={[24, 24]} className={styles.createCardsRow}>
                     <Col xs={24} lg={12}>
-                        <Card titleKey="tenants.add.mainTenantTitle" fullHeight>
+                        <Card
+                            titleKey="tenants.add.mainTenantTitle"
+                            fullHeight
+                            variant="dialog"
+                            autoHeight
+                            className={styles.createCard}
+                        >
                             <div className={styles.fieldGroup}>
                                 <MuiFormField
                                     name="name"
@@ -220,9 +234,7 @@ export const GeneralTenantSettings = () => {
                                         label={t('tenants.add.form.subdomain.placeholder')}
                                         required
                                         rules={[requiredRule, subdomainFormatRule]}
-                                        endAdornment={
-                                            <span className={styles.domainSuffix}>.{getDomain()}</span>
-                                        }
+                                        endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
                                     />
                                 </div>
                             )}
@@ -260,7 +272,13 @@ export const GeneralTenantSettings = () => {
                         </Card>
                     </Col>
                     <Col xs={24} lg={12}>
-                        <Card titleKey="tenants.add.adminCardTitle" fullHeight>
+                        <Card
+                            titleKey="tenants.add.adminCardTitle"
+                            fullHeight
+                            variant="dialog"
+                            autoHeight
+                            className={styles.createCard}
+                        >
                             <div className={styles.fieldGroup}>
                                 <MuiFormField
                                     name="tenantAdminUsername"

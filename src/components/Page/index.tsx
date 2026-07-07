@@ -1,20 +1,21 @@
-import { ChevronLeft } from '@mui/icons-material';
+import {
+    AdminPanelSettingsOutlined,
+    AppsOutlined,
+    BalanceOutlined,
+    CategoryOutlined,
+    ChevronLeft,
+    EmailOutlined,
+    ManageAccountsOutlined,
+    SettingsApplicationsOutlined,
+    SettingsOutlined,
+} from '@mui/icons-material';
+import type { SvgIconComponent } from '@mui/icons-material';
 import { Spin } from 'antd';
 import classNames from 'classnames';
 import React, { cloneElement, forwardRef, Ref, useEffect, useMemo, useRef, type JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
-import { ReactComponent as FunctionalitiesIcon } from '../../resources/img/svg/permissions/functionalities.svg';
-import { ReactComponent as GlobalSettingsIcon } from '../../resources/img/svg/permissions/global_settings.svg';
-import { ReactComponent as MasterDataIcon } from '../../resources/img/svg/permissions/master_data.svg';
 import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissions/tab_star.svg';
-import { ReactComponent as AppearanceIcon } from '../../resources/img/svg/settings-tabs/appearance.svg';
-import { ReactComponent as AppearanceFilledIcon } from '../../resources/img/svg/settings-tabs/appearance_filled.svg';
-import { ReactComponent as EmailServerIcon } from '../../resources/img/svg/settings-tabs/email_server.svg';
-import { ReactComponent as FunctionalityAccessIcon } from '../../resources/img/svg/settings-tabs/feature_access.svg';
-import { ReactComponent as GlobalConfigIcon } from '../../resources/img/svg/settings-tabs/global_configs.svg';
-import { ReactComponent as LegalIcon } from '../../resources/img/svg/settings-tabs/legal.svg';
-import { ReactComponent as MasterDataFilledIcon } from '../../resources/img/svg/settings-tabs/master_data.svg';
 import styles from './styles.module.scss';
 
 interface PageProps {
@@ -57,39 +58,15 @@ export const Page = ({ children, stickyHeader = true, isLoading }: PageProps) =>
     );
 };
 
-const tabIcons: Record<
-    string,
-    {
-        outline: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-        filled?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-    }
-> = {
-    appearance: {
-        outline: AppearanceIcon,
-        filled: AppearanceFilledIcon,
-    },
-    email_server: {
-        outline: EmailServerIcon,
-    },
-    functionalities: {
-        outline: FunctionalitiesIcon,
-    },
-    functionality_access: {
-        outline: FunctionalityAccessIcon,
-    },
-    global_config: {
-        outline: GlobalConfigIcon,
-    },
-    global_settings: {
-        outline: GlobalSettingsIcon,
-    },
-    legal: {
-        outline: LegalIcon,
-    },
-    master_data: {
-        outline: MasterDataIcon,
-        filled: MasterDataFilledIcon,
-    },
+export const tabIcons: Record<string, SvgIconComponent> = {
+    appearance: CategoryOutlined,
+    email_server: EmailOutlined,
+    functionalities: AppsOutlined,
+    functionality_access: AdminPanelSettingsOutlined,
+    global_config: SettingsOutlined,
+    global_settings: SettingsApplicationsOutlined,
+    legal: BalanceOutlined,
+    master_data: ManageAccountsOutlined,
 };
 
 const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: string; icon?: JSX.Element }> }) => {
@@ -108,7 +85,7 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
             {tabs
                 ?.filter((tab) => tab && tab.to)
                 .map(({ icon, iconName, ...tab }) => {
-                    const IconSet = iconName ? tabIcons[iconName] : undefined;
+                    const Icon = iconName ? tabIcons[iconName] : undefined;
 
                     return (
                         <NavLink
@@ -116,14 +93,15 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
                             to={tab.to}
                             key={tab.titleKey}
                         >
-                            {({ isActive }) => {
-                                const TabIcon = isActive
-                                    ? IconSet?.filled || IconSet?.outline || TabStarIcon
-                                    : IconSet?.outline || TabStarIcon;
+                            {() => {
+                                const TabIcon = Icon || TabStarIcon;
 
                                 return (
                                     <>
-                                        <TabIcon className={styles.tabStar} width={20} height={20} />
+                                        <TabIcon
+                                            className={styles.tabStar}
+                                            data-admin-tab-icon={iconName || 'fallback'}
+                                        />
                                         <span className={styles.tabLabel}>{t(tab.titleKey)}</span>
                                         {icon && cloneElement(icon, { className: styles.tabIcon })}
                                     </>

@@ -36,13 +36,12 @@ export const M3Switch = ({ checked = false, disabled = false, label, className, 
                         width="52"
                         height="32"
                         rx="16"
-                        fill="var(--m3-on-surface, #1B1B1C)"
-                        fillOpacity="0.9"
+                        fill="var(--admin-control-selected, var(--m3-primary, #A5000A))"
                     />
-                    <rect x="28" y="12" width="24" height="24" rx="12" fill="var(--m3-surface, #FCF9F9)" />
+                    <rect x="28" y="12" width="24" height="24" rx="12" fill="var(--m3-on-primary, #FFFFFF)" />
                     <path
                         d="M38.3669 28.0001L34.5669 24.2001L35.5169 23.2501L38.3669 26.1001L44.4836 19.9834L45.4336 20.9334L38.3669 28.0001Z"
-                        fill="var(--m3-on-surface, #1B1B1C)"
+                        fill="var(--admin-control-selected, var(--m3-primary, #A5000A))"
                     />
                 </svg>
             ) : (
@@ -62,7 +61,7 @@ export const M3Switch = ({ checked = false, disabled = false, label, className, 
                         width="50"
                         height="30"
                         rx="15"
-                        stroke="var(--m3-on-surface, #1B1B1C)"
+                        stroke="var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748))"
                         strokeOpacity="0.4"
                         strokeWidth="2"
                     />
@@ -72,7 +71,7 @@ export const M3Switch = ({ checked = false, disabled = false, label, className, 
                         width="24"
                         height="24"
                         rx="12"
-                        fill="var(--m3-on-surface, #1B1B1C)"
+                        fill="var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748))"
                         fillOpacity="0.5"
                     />
                     <path

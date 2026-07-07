@@ -2,25 +2,37 @@
     display: flex;
     width: 100%;
     min-width: 0;
+    min-height: var(--card-deck-min-height, max(0px, calc(100dvh - 220px)));
     flex-direction: column;
 }
 
 .deck {
-    display: flex;
     width: 100%;
     min-width: 0;
-    align-items: stretch;
-    gap: var(--card-deck-gap, 24px);
+    flex: 1 1 auto;
     overflow-x: auto;
     overflow-y: hidden;
     padding: var(--card-deck-padding, 0 4px 8px);
     scroll-behavior: smooth;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
 
     &::-webkit-scrollbar {
         display: none;
     }
+}
+
+.list {
+    display: flex;
+    align-items: stretch;
+    gap: var(--card-deck-gap, 24px);
+    min-width: max-content;
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
 .item {
@@ -35,17 +47,35 @@
 }
 
 .footer {
-    margin-top: var(--card-deck-footer-margin-top, 40px);
+    position: sticky;
+    z-index: 20;
+    bottom: var(--card-deck-footer-bottom, 28px);
+    flex: 0 0 auto;
+    margin-top: auto;
     padding: var(--card-deck-footer-padding, 0 24px);
+    pointer-events: none;
+
+    :global(button) {
+        pointer-events: auto;
+    }
 }
 
-@media (max-width: 450px) {
+@media (max-width: 767px) {
+    .root {
+        min-height: 0;
+    }
+
     .deck {
-        flex-direction: column;
         gap: var(--card-deck-mobile-gap, 24px);
         overflow: visible;
         padding: var(--card-deck-mobile-padding, 0);
         scroll-snap-type: none;
+    }
+
+    .list {
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--card-deck-mobile-gap, 24px);
     }
 
     .item {

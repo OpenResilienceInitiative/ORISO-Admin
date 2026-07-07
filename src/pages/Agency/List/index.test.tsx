@@ -80,6 +80,20 @@ vi.mock('../../../components/EditableTable/StatusIcons', () => ({
     default: () => <div data-testid="status-icons" />,
 }));
 
+vi.mock('../../../resources/img/svg/table-actions/row_expand_200.svg', () => ({
+    ReactComponent: ({ className }: { className?: string }) => <svg className={className} data-testid="row-expand-200" />,
+}));
+
+vi.mock('../../../resources/img/svg/table-actions/row_expand_400.svg', () => ({
+    ReactComponent: ({ className }: { className?: string }) => <svg className={className} data-testid="row-expand-400" />,
+}));
+
+vi.mock('../../../resources/img/svg/table-actions/row_expand_filled.svg', () => ({
+    ReactComponent: ({ className }: { className?: string }) => (
+        <svg className={className} data-testid="row-expand-filled" />
+    ),
+}));
+
 vi.mock('../../../components/SearchInput/SearchInput', () => ({
     default: () => <div data-testid="search-input" />,
 }));

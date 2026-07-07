@@ -21,9 +21,18 @@
 }
 
 .item :global(.ant-form-item-label) {
+    display: inline-flex !important;
+    width: auto !important;
+    height: 16px !important;
+    align-items: center;
+    line-height: 16px !important;
+    overflow: visible !important;
     padding-bottom: 0;
+    white-space: nowrap;
 }
 
 .item :global(label) {
+    display: inline-flex;
     height: 16px;
+    align-items: center;
 }

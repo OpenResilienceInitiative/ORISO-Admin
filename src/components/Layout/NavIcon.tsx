@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { cloneElement, useState, type JSX } from 'react';
+import { cloneElement, useEffect, useState, type JSX } from 'react';
 import routePathNames from '../../appConfig';
 import { ReactComponent as DisplaySettingsActiveIcon } from '../../resources/img/svg/navbar/display_settings_active.svg';
 import { ReactComponent as DisplaySettingsHoverIcon } from '../../resources/img/svg/navbar/display_settings_hover.svg';
@@ -40,6 +40,33 @@ interface Props {
 
 type IconState = 'active' | 'hover' | 'inactive';
 
+const desktopSidebarQuery = '(min-width: 768px)';
+
+const getIsDesktopSidebar = () =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        ? window.matchMedia(desktopSidebarQuery).matches
+        : true;
+
+const useIsDesktopSidebar = () => {
+    const [isDesktopSidebar, setIsDesktopSidebar] = useState(getIsDesktopSidebar);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+            return undefined;
+        }
+
+        const mediaQueryList = window.matchMedia(desktopSidebarQuery);
+        const updateIsDesktopSidebar = () => setIsDesktopSidebar(mediaQueryList.matches);
+
+        updateIsDesktopSidebar();
+        mediaQueryList.addEventListener('change', updateIsDesktopSidebar);
+
+        return () => mediaQueryList.removeEventListener('change', updateIsDesktopSidebar);
+    }, []);
+
+    return isDesktopSidebar;
+};
+
 const decorateIcon = (icon: JSX.Element) =>
     cloneElement(icon, {
         'aria-hidden': true,
@@ -70,7 +97,8 @@ const isCurrentPathActive = (currentPath: string, path: string): boolean => {
 const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
     const currentPath = useLocation().pathname;
     const isActivePath = isCurrentPathActive(currentPath, path);
-    const iconState = getIconState(isActivePath, hover);
+    const isDesktopSidebar = useIsDesktopSidebar();
+    const iconState = getIconState(isActivePath && isDesktopSidebar, hover);
 
     switch (path) {
         case routePathNames.themeSettings:
