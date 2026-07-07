@@ -16,9 +16,7 @@ const AppConfigConsumer = () => {
         <>
             <output aria-label="api-cluster">{String(settings.useApiClusterSettings)}</output>
             <output aria-label="tenant-creation">{String(settings.featureTenantCreationEnabled)}</output>
-            <output aria-label="release-toggle">
-                {String(settings.releaseToggles?.featureTenantCreationEnabled)}
-            </output>
+            <output aria-label="release-toggle">{String(settings.releaseToggles?.featureTenantCreationEnabled)}</output>
             <button
                 type="button"
                 onClick={() =>

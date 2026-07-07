@@ -12,14 +12,7 @@ type CheckToggleInnerProps = {
     onAfterChange?: ToggleAfterChangeHandler;
 };
 
-const CheckToggleInner = ({
-    checked,
-    onChange,
-    disabled,
-    label,
-    fieldName,
-    onAfterChange,
-}: CheckToggleInnerProps) => {
+const CheckToggleInner = ({ checked, onChange, disabled, label, fieldName, onAfterChange }: CheckToggleInnerProps) => {
     const form = Form.useFormInstance();
 
     const handleToggle = () => {

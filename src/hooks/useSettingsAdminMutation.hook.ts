@@ -28,19 +28,17 @@ export const useSettingsAdminMutation = (options?: UseMutationOptions<Partial<un
         },
         ...options,
         onSuccess: (responseData, updatedData, onMutateResult, context) => {
-                setManualSettings({
-                    legalContentChangesBySingleTenantAdminsAllowed:
-                        settings.legalContentChangesBySingleTenantAdminsAllowed,
-                    mainTenantSubdomainForSingleDomainMultitenancy:
-                        settings.mainTenantSubdomainForSingleDomainMultitenancy,
-                    ...updatedData,
-                });
-                apiServerSettings().then(setServerSettings);
-                message.success({
-                    content: t('message.success.setting.update'),
-                    duration: 3,
-                });
-                options?.onSuccess?.(responseData, updatedData, onMutateResult, context);
-            },
+            setManualSettings({
+                legalContentChangesBySingleTenantAdminsAllowed: settings.legalContentChangesBySingleTenantAdminsAllowed,
+                mainTenantSubdomainForSingleDomainMultitenancy: settings.mainTenantSubdomainForSingleDomainMultitenancy,
+                ...updatedData,
+            });
+            apiServerSettings().then(setServerSettings);
+            message.success({
+                content: t('message.success.setting.update'),
+                duration: 3,
+            });
+            options?.onSuccess?.(responseData, updatedData, onMutateResult, context);
+        },
     });
 };

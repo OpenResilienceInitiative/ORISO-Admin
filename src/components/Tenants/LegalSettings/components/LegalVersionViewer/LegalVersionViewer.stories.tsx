@@ -32,9 +32,7 @@ const versions = [
     {
         id: '2026-01-15T14:30',
         label: '15. Jan 2026 – 14:30',
-        content:
-            '<h1>Auftragsverarbeitungsvertrag</h1>' +
-            '<p>Erste Fassung vom Januar 2026.</p>',
+        content: '<h1>Auftragsverarbeitungsvertrag</h1><p>Erste Fassung vom Januar 2026.</p>',
     },
 ];
 

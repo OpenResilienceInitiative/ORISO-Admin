@@ -1,7 +1,6 @@
+import type { JSX } from 'react';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { ReleaseToggle } from '../../enums/ReleaseToggle';
-
-import type { JSX } from "react";
 
 interface FeatureFlagProps {
     children: JSX.Element;

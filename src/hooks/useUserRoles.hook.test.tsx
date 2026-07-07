@@ -27,7 +27,9 @@ const UserRolesHarness = () => {
             <output aria-label="super-admin">{String(roles.isSuperAdmin)}</output>
             <output aria-label="tenant-scoped">{String(roles.isTenantScopedAdmin)}</output>
             <output aria-label="technical">{String(roles.isTechnicalAccount)}</output>
-            <output aria-label="has-admin-role">{String(roles.hasRole([UserRole.AgencyAdmin, UserRole.UserAdmin]))}</output>
+            <output aria-label="has-admin-role">
+                {String(roles.hasRole([UserRole.AgencyAdmin, UserRole.UserAdmin]))}
+            </output>
         </>
     );
 };

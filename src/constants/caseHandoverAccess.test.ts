@@ -43,7 +43,13 @@ describe('canReadCaseHandoverAdmin', () => {
 
         expect(canReadCaseHandoverAdmin(false, () => false, can)).toBe(true);
         expect(canReadCaseHandoverAdmin(false, (role) => role === UserRole.RestrictedAgencyAdmin, can)).toBe(false);
-        expect(canReadCaseHandoverAdmin(false, () => false, () => false)).toBe(false);
+        expect(
+            canReadCaseHandoverAdmin(
+                false,
+                () => false,
+                () => false,
+            ),
+        ).toBe(false);
     });
 });
 

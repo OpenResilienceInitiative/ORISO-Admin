@@ -17,8 +17,7 @@ export const PLATFORM_ADMINS_QUERY_KEY = 'PLATFORM_ADMINS';
 const PLATFORM_ADMINS_FETCH_SIZE = 100;
 const PLATFORM_TENANT_ID = '0';
 
-interface PlatformAdminsDataProps
-    extends Omit<UseQueryOptions<ResponseList<CounselorData>>, 'queryKey' | 'queryFn'> {
+interface PlatformAdminsDataProps extends Omit<UseQueryOptions<ResponseList<CounselorData>>, 'queryKey' | 'queryFn'> {
     search?: string;
     current?: number;
     sortBy?: string;
@@ -26,14 +25,9 @@ interface PlatformAdminsDataProps
     pageSize?: number;
 }
 
-export const usePlatformAdminsData = ({
-    search,
-    current,
-    sortBy,
-    order,
-    pageSize,
-    ...options
-}: PlatformAdminsDataProps = {} as PlatformAdminsDataProps) => {
+export const usePlatformAdminsData = (
+    { search, current, sortBy, order, pageSize, ...options }: PlatformAdminsDataProps = {} as PlatformAdminsDataProps,
+) => {
     return useQuery({
         queryKey: [PLATFORM_ADMINS_QUERY_KEY, search, current, sortBy, order, pageSize],
         queryFn: async () => {

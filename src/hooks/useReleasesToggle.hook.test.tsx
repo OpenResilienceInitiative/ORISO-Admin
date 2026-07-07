@@ -24,12 +24,8 @@ const ReleasesToggleHarness = () => {
 
     return (
         <>
-            <output aria-label="tenant-creation">
-                {String(isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING))}
-            </output>
-            <output aria-label="tenant-settings">
-                {String(isEnabled(ReleaseToggle.TENANT_ADMIN_SETTINGS_EDIT))}
-            </output>
+            <output aria-label="tenant-creation">{String(isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING))}</output>
+            <output aria-label="tenant-settings">{String(isEnabled(ReleaseToggle.TENANT_ADMIN_SETTINGS_EDIT))}</output>
             <output aria-label="missing-toggle">{String(isEnabled(ReleaseToggle.COUNSELLING_RELATIONS))}</output>
         </>
     );

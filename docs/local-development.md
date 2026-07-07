@@ -61,13 +61,13 @@ Open:
 
 ## Routing Behavior
 
-* `VITE_USER_SERVICE_ORIGIN=http://localhost:8082` sends `/service/users` and `/service/useradmin` calls to local UserService.
-* `VITE_TENANT_SERVICE_ORIGIN=http://localhost:8081` sends `/service/tenant`, `/service/tenant/public`, `/service/tenant/access`, and `/service/tenantadmin` calls to local TenantService.
-* `VITE_AGENCY_SERVICE_ORIGIN=http://localhost:8084` sends `/service/agencyadmin` and `/service/topicadmin` calls to local AgencyService.
-* `VITE_CONSULTING_TYPE_SERVICE_ORIGIN=http://localhost:8083` sends `/service/consultingtypes`, `/service/settings`, `/service/settingsadmin`, and `/service/topic` calls to local ConsultingTypeService.
-* If a service-specific origin is absent, that service falls back to `VITE_API_URL`.
-* `/service/statistics/registration` stays on `VITE_API_URL` because there is no confirmed service-specific ingress for that path.
-* Keep service-specific origins commented unless you are running those services locally.
+-   `VITE_USER_SERVICE_ORIGIN=http://localhost:8082` sends `/service/users` and `/service/useradmin` calls to local UserService.
+-   `VITE_TENANT_SERVICE_ORIGIN=http://localhost:8081` sends `/service/tenant`, `/service/tenant/public`, `/service/tenant/access`, and `/service/tenantadmin` calls to local TenantService.
+-   `VITE_AGENCY_SERVICE_ORIGIN=http://localhost:8084` sends `/service/agencyadmin` and `/service/topicadmin` calls to local AgencyService.
+-   `VITE_CONSULTING_TYPE_SERVICE_ORIGIN=http://localhost:8083` sends `/service/consultingtypes`, `/service/settings`, `/service/settingsadmin`, and `/service/topic` calls to local ConsultingTypeService.
+-   If a service-specific origin is absent, that service falls back to `VITE_API_URL`.
+-   `/service/statistics/registration` stays on `VITE_API_URL` because there is no confirmed service-specific ingress for that path.
+-   Keep service-specific origins commented unless you are running those services locally.
 
 ## Production compatibility
 

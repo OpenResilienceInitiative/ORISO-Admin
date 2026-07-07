@@ -41,7 +41,6 @@ const getColumnSortOrder = (
     return order === 'DESC' ? 'descend' : 'ascend';
 };
 
-
 type TableRow = CounselorData | TenantData;
 
 interface UseUserTableColumnsParams {
@@ -77,7 +76,7 @@ export const useUserTableColumns = ({
     figmaTableHeader = false,
     fixActionsColumn = true,
     sortBy,
-    order
+    order,
 }: UseUserTableColumnsParams) => {
     const { t } = useTranslation();
     const config = USER_TABLE_CONFIGS[sectionId];
@@ -130,10 +129,10 @@ export const useUserTableColumns = ({
                 className: 'counselorList__column',
                 ...(sortable && apiSortField
                     ? {
-                        sorter: true,
-                        sortOrder: getColumnSortOrder(key, sortBy, order),
-                        showSorterTooltip: false,
-                    }
+                          sorter: true,
+                          sortOrder: getColumnSortOrder(key, sortBy, order),
+                          showSorterTooltip: false,
+                      }
                     : {}),
             };
 
@@ -327,7 +326,7 @@ export const useUserTableColumns = ({
         showTenant,
         showSubdomain,
         sortBy,
-        order
+        order,
     ]);
 };
 

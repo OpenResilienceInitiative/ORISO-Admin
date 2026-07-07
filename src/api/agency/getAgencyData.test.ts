@@ -41,7 +41,13 @@ describe('getAgencyData', () => {
             _embedded: [{ id: 2, deleteDate: null, offline: true, teamAgency: true }],
         });
 
-        const result = await getAgencyData({ current: 2, pageSize: 25, search: 'Ber lin', sortBy: 'city', order: 'desc' });
+        const result = await getAgencyData({
+            current: 2,
+            pageSize: 25,
+            search: 'Ber lin',
+            sortBy: 'city',
+            order: 'desc',
+        });
 
         expect(fetchMock).toHaveBeenCalledWith(
             expect.objectContaining({

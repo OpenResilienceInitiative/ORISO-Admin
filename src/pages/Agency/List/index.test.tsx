@@ -81,11 +81,15 @@ vi.mock('../../../components/EditableTable/StatusIcons', () => ({
 }));
 
 vi.mock('../../../resources/img/svg/table-actions/row_expand_200.svg', () => ({
-    ReactComponent: ({ className }: { className?: string }) => <svg className={className} data-testid="row-expand-200" />,
+    ReactComponent: ({ className }: { className?: string }) => (
+        <svg className={className} data-testid="row-expand-200" />
+    ),
 }));
 
 vi.mock('../../../resources/img/svg/table-actions/row_expand_400.svg', () => ({
-    ReactComponent: ({ className }: { className?: string }) => <svg className={className} data-testid="row-expand-400" />,
+    ReactComponent: ({ className }: { className?: string }) => (
+        <svg className={className} data-testid="row-expand-400" />
+    ),
 }));
 
 vi.mock('../../../resources/img/svg/table-actions/row_expand_filled.svg', () => ({
@@ -209,8 +213,7 @@ describe('AgencyList topic rendering', () => {
     });
 
     it('expands long multi-topic chips when the expand button is clicked', () => {
-        const longTopicName =
-            'A very long topic name that should become fully readable after expanding the topic list';
+        const longTopicName = 'A very long topic name that should become fully readable after expanding the topic list';
         mocks.agencies = [
             buildAgency([
                 { id: 1, name: longTopicName },

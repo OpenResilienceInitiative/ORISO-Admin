@@ -44,9 +44,7 @@ describe('getPublicTenantData', () => {
             mainTenantSubdomainForSingleDomainMultitenancy: 'main',
         } as never);
 
-        expect(fetchMock).toHaveBeenCalledWith(
-            expect.objectContaining({ url: `${baseTenantPublicEndpoint}/main` }),
-        );
+        expect(fetchMock).toHaveBeenCalledWith(expect.objectContaining({ url: `${baseTenantPublicEndpoint}/main` }));
     });
 
     it('resolves to null without fetching when there is no slug', async () => {
