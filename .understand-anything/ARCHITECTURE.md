@@ -8,17 +8,17 @@ The application is a React/Vite single-page app served under `/admin`. It depend
 
 ## Current Stack
 
--   React 17 + TypeScript
--   Vite 4 build/dev server
--   React Router v6 routing
--   React Query for server-state fetching and mutations
--   Ant Design and MUI component libraries
--   i18next localization with German and English resources
--   Sass/SCSS/Less styling
--   TipTap and legacy rich-text editor dependencies
--   Cypress integration-test tooling
--   Docker/nginx container delivery
--   GitHub Actions CI for npm build and Docker image validation
+- React 17 + TypeScript
+- Vite 4 build/dev server
+- React Router v6 routing
+- React Query for server-state fetching and mutations
+- Ant Design and MUI component libraries
+- i18next localization with German and English resources
+- Sass/SCSS/Less styling
+- TipTap and legacy rich-text editor dependencies
+- Cypress integration-test tooling
+- Docker/nginx container delivery
+- GitHub Actions CI for npm build and Docker image validation
 
 ## Architecture Layers
 
@@ -26,10 +26,10 @@ The application is a React/Vite single-page app served under `/admin`. It depend
 
 Key files:
 
--   `src/index.tsx`
--   `src/App.tsx`
--   `src/router/ProtectedRoute.tsx`
--   `src/components/Layout/ProtectedPageLayoutWrapper.tsx`
+- `src/index.tsx`
+- `src/App.tsx`
+- `src/router/ProtectedRoute.tsx`
+- `src/components/Layout/ProtectedPageLayoutWrapper.tsx`
 
 `src/index.tsx` mounts the app and wires React Query, app config, app settings, Ant Design, and React Router providers. `src/App.tsx` is the protected feature-route shell. It chooses landing redirects and route availability using `useUserPermissions`, `useUserRoles`, tenant data, app settings, and release toggles.
 
@@ -39,11 +39,11 @@ Current route areas include tenants, tenant settings, global login/SMTP redirect
 
 Key files:
 
--   `src/config/runtimeConfig.ts`
--   `src/appConfig.ts`
--   `public/env.js`
--   `scripts/generate-runtime-env.js`
--   `scripts/docker-entrypoint.sh`
+- `src/config/runtimeConfig.ts`
+- `src/appConfig.ts`
+- `public/env.js`
+- `scripts/generate-runtime-env.js`
+- `scripts/docker-entrypoint.sh`
 
 Runtime config is no longer only a build-time concern. `runtimeConfig.ts` reads `window.__APP_CONFIG__` from `public/env.js` and falls back to `VITE_*` or `REACT_APP_*` values. It resolves API, Keycloak, app, Matrix, cookie, CSRF, and appointment-service settings.
 
@@ -53,14 +53,14 @@ Runtime config is no longer only a build-time concern. `runtimeConfig.ts` reads 
 
 Key files:
 
--   `src/hooks/useLoginMutation.hook.ts`
--   `src/api/auth/getAccessToken.ts`
--   `src/api/auth/auth.ts`
--   `src/api/auth/accessSessionCookie.ts`
--   `src/router/ProtectedRoute.tsx`
--   `src/hooks/useUserRoles.hook.ts`
--   `src/hooks/useUserPermission.ts`
--   `src/constants/userRolesToPermissions.ts`
+- `src/hooks/useLoginMutation.hook.ts`
+- `src/api/auth/getAccessToken.ts`
+- `src/api/auth/auth.ts`
+- `src/api/auth/accessSessionCookie.ts`
+- `src/router/ProtectedRoute.tsx`
+- `src/hooks/useUserRoles.hook.ts`
+- `src/hooks/useUserPermission.ts`
+- `src/constants/userRolesToPermissions.ts`
 
 Login flow:
 
@@ -82,16 +82,16 @@ Authorization flow:
 
 Key files:
 
--   `src/api/fetchData.ts`
--   `src/api/tenant/*`
--   `src/api/agency/*`
--   `src/api/counselor/*`
--   `src/api/admins/*`
--   `src/api/user/*`
--   `src/api/topic/*`
--   `src/api/settings/*`
--   `src/api/statistic/*`
--   `src/api/invitelinks/*`
+- `src/api/fetchData.ts`
+- `src/api/tenant/*`
+- `src/api/agency/*`
+- `src/api/counselor/*`
+- `src/api/admins/*`
+- `src/api/user/*`
+- `src/api/topic/*`
+- `src/api/settings/*`
+- `src/api/statistic/*`
+- `src/api/invitelinks/*`
 
 `fetchData` attaches Bearer auth from the `keycloak` cookie unless `skipAuth` is set, accepts caller-provided authorization, adds CSRF and language headers, supports optional Rocket.Chat headers, handles abort/timeout behavior, and normalizes common response failures.
 
@@ -105,12 +105,12 @@ Hooks in `src/hooks/**` own React Query cache keys, enabled flags, mutation beha
 
 Feature pages are under `src/pages/**`. The highest-blast-radius areas are:
 
--   `src/pages/users/management/*` for consultants, agency admins, tenant admins, platform admins, and tenants.
--   `src/pages/Tenants/*` and `src/pages/TenantSettings/*` for tenant-level and global configuration.
--   `src/pages/Agency/*` for agencies, agency legal text, registration, responsible contacts, and initial meeting/event-type settings.
--   `src/pages/Links/*` and `src/api/invitelinks/*` for external inbound topic invite links.
--   `src/pages/Statistic.tsx` plus `src/pages/Statistic/*` for the scoped statistics dashboard.
--   `src/pages/Logs/*` for supervisor and inactive-account audit logs.
+- `src/pages/users/management/*` for consultants, agency admins, tenant admins, platform admins, and tenants.
+- `src/pages/Tenants/*` and `src/pages/TenantSettings/*` for tenant-level and global configuration.
+- `src/pages/Agency/*` for agencies, agency legal text, registration, responsible contacts, and initial meeting/event-type settings.
+- `src/pages/Links/*` and `src/api/invitelinks/*` for external inbound topic invite links.
+- `src/pages/Statistic.tsx` plus `src/pages/Statistic/*` for the scoped statistics dashboard.
+- `src/pages/Logs/*` for supervisor and inactive-account audit logs.
 
 ### Shared UI Forms
 
@@ -120,13 +120,13 @@ Shared UI modules live in `src/components/**`, `src/styles/**`, and `src/resourc
 
 Key files:
 
--   `Dockerfile`
--   `nginx.conf`
--   `scripts/docker-entrypoint.sh`
--   `scripts/generate-runtime-env.js`
--   `.github/workflows/*.yml`
--   `.github/actions/*/action.yml`
--   `vite.config.ts`
+- `Dockerfile`
+- `nginx.conf`
+- `scripts/docker-entrypoint.sh`
+- `scripts/generate-runtime-env.js`
+- `.github/workflows/*.yml`
+- `.github/actions/*/action.yml`
+- `vite.config.ts`
 
 The npm build emits `build/`, the Docker image copies it into `/usr/share/nginx/html/admin`, and the container entrypoint writes runtime `env.js` before starting nginx. GitHub Actions use reusable composite actions for npm install/build and Docker image creation.
 

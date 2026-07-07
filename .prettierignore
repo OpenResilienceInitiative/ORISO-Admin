@@ -11,3 +11,4 @@ stylelint.config.js
 craco.config.js
 src/resources/animations
 build
+.understand-anything

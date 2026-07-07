@@ -18,13 +18,13 @@ Read these files in order:
 
 `ORISO-Admin` is a role-gated admin SPA. Most screens are CRUD or configuration workflows around these domain areas:
 
--   Tenants and tenant settings
--   Agencies and initial-meeting/event-type settings
--   Counselors, agency admins, tenant admins, platform admins, and tenant users
--   Topics and topic admins
--   Invite links and external inbound links
--   Global login, SMTP, runtime/server settings
--   Statistics and audit/log views
+- Tenants and tenant settings
+- Agencies and initial-meeting/event-type settings
+- Counselors, agency admins, tenant admins, platform admins, and tenant users
+- Topics and topic admins
+- Invite links and external inbound links
+- Global login, SMTP, runtime/server settings
+- Statistics and audit/log views
 
 The app is not a backend. Backend service URLs are centralized in `src/appConfig.ts`, with runtime host values resolved in `src/config/runtimeConfig.ts`.
 
@@ -42,25 +42,25 @@ The app is not a backend. Backend service URLs are centralized in `src/appConfig
 
 New developers should distinguish:
 
--   token presence and expiry checks in `ProtectedRoute`
--   token refresh and navigation behavior in `ProtectedPageLayoutWrapper`
--   JWT role extraction in `useUserRoles`
--   resource/action authorization in `useUserPermissions`
--   app settings and tenant feature flags in `useAppConfigContext`, `useTenantData`, and release-toggle hooks
+- token presence and expiry checks in `ProtectedRoute`
+- token refresh and navigation behavior in `ProtectedPageLayoutWrapper`
+- JWT role extraction in `useUserRoles`
+- resource/action authorization in `useUserPermissions`
+- app settings and tenant feature flags in `useAppConfigContext`, `useTenantData`, and release-toggle hooks
 
 ## API Structure
 
 The API directory is organized by backend domain:
 
--   `src/api/tenant/*`
--   `src/api/agency/*`
--   `src/api/counselor/*`
--   `src/api/admins/*`
--   `src/api/topic/*`
--   `src/api/user/*`
--   `src/api/settings/*`
--   `src/api/statistic/*`
--   `src/api/invitelinks/*`
+- `src/api/tenant/*`
+- `src/api/agency/*`
+- `src/api/counselor/*`
+- `src/api/admins/*`
+- `src/api/topic/*`
+- `src/api/user/*`
+- `src/api/settings/*`
+- `src/api/statistic/*`
+- `src/api/invitelinks/*`
 
 When adding a new endpoint, add or reuse an endpoint constant, add a small API helper, wrap it in a hook when it needs React Query behavior, and call that hook from a page/component.
 
@@ -70,13 +70,13 @@ When adding a new endpoint, add or reuse an endpoint constant, add a small API h
 
 Start with:
 
--   `src/pages/users/List/index.tsx`
--   `src/pages/users/management/UserManagementTable.tsx`
--   `src/pages/users/management/userTableConfigs.ts`
--   `src/pages/users/management/useUserTableColumns.tsx`
--   `src/hooks/usePlatformAdminsData.ts`
--   `src/hooks/useTenantUserAdminsData.ts`
--   `src/hooks/useConsultantsOrAdminsData.ts`
+- `src/pages/users/List/index.tsx`
+- `src/pages/users/management/UserManagementTable.tsx`
+- `src/pages/users/management/userTableConfigs.ts`
+- `src/pages/users/management/useUserTableColumns.tsx`
+- `src/hooks/usePlatformAdminsData.ts`
+- `src/hooks/useTenantUserAdminsData.ts`
+- `src/hooks/useConsultantsOrAdminsData.ts`
 
 The table now serves consultants, agency admins, tenant admins, platform admins, and tenant/organization rows. Treat changes here as high-blast-radius.
 
@@ -84,10 +84,10 @@ The table now serves consultants, agency admins, tenant admins, platform admins,
 
 Start with:
 
--   `src/pages/Links/index.tsx`
--   `src/pages/Links/ExternalInboundsTab.tsx`
--   `src/api/invitelinks/topicInviteLinks.ts`
--   `src/api/invitelinks/inviteLinkApiShared.ts`
+- `src/pages/Links/index.tsx`
+- `src/pages/Links/ExternalInboundsTab.tsx`
+- `src/api/invitelinks/topicInviteLinks.ts`
+- `src/api/invitelinks/inviteLinkApiShared.ts`
 
 Current enabled tab is external inbound links. Tenant and counselor tabs are present but disabled in the UI.
 
@@ -95,11 +95,11 @@ Current enabled tab is external inbound links. Tenant and counselor tabs are pre
 
 Start with:
 
--   `src/pages/Statistic.tsx`
--   `src/pages/Statistic/types.ts`
--   `src/pages/Statistic/statisticConstants.ts`
--   `src/pages/Statistic/statisticChartUtils.ts`
--   `src/pages/Statistic/statisticPreferences.ts`
+- `src/pages/Statistic.tsx`
+- `src/pages/Statistic/types.ts`
+- `src/pages/Statistic/statisticConstants.ts`
+- `src/pages/Statistic/statisticChartUtils.ts`
+- `src/pages/Statistic/statisticPreferences.ts`
 
 Statistics are UI-heavy and scope-aware across platform, tenant, and agency views.
 
@@ -107,11 +107,11 @@ Statistics are UI-heavy and scope-aware across platform, tenant, and agency view
 
 Start with:
 
--   `Dockerfile`
--   `scripts/docker-entrypoint.sh`
--   `scripts/generate-runtime-env.js`
--   `.github/workflows/ci-pull-request.yml`
--   `.github/actions/node-build/action.yml`
+- `Dockerfile`
+- `scripts/docker-entrypoint.sh`
+- `scripts/generate-runtime-env.js`
+- `.github/workflows/ci-pull-request.yml`
+- `.github/actions/node-build/action.yml`
 
 Runtime config is injected into `env.js` at container startup, so do not assume API/Keycloak values are fixed at npm build time.
 
