@@ -13,7 +13,7 @@
 .reasonTabs {
     display: flex;
     align-items: stretch;
-    border-bottom: 1px solid rgb(28 27 31 / 14%);
+    border-bottom: 1px solid color-mix(in srgb, var(--m3-on-surface) 14%, transparent);
     margin: 4px -8px 0;
     overflow-x: auto;
     scrollbar-width: none;
@@ -54,7 +54,7 @@
 
     &.reasonTabActive {
         border-bottom-color: var(--input-disabled-color, rgb(27 27 28 / 38%));
-        color: rgb(27 27 28 / 55%);
+        color: color-mix(in srgb, var(--m3-on-surface) 55%, transparent);
     }
 }
 
@@ -147,7 +147,7 @@
     align-items: center;
     justify-content: flex-end;
     padding: 0 24px 0 8px;
-    border-top: 1px solid rgb(28 27 31 / 14%);
+    border-top: 1px solid color-mix(in srgb, var(--m3-on-surface) 14%, transparent);
     margin: auto -32px 0;
     gap: 8px;
 }
