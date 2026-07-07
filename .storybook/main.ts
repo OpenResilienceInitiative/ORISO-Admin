@@ -6,7 +6,7 @@ import { mergeConfig } from 'vite';
 // at http://localhost:6006/mcp. antd v4 styling needs less { javascriptEnabled }.
 const config: StorybookConfig = {
     stories: ['../src/**/*.stories.@(ts|tsx)'],
-    addons: ['@storybook/addon-mcp', '@storybook/addon-designs'],
+    addons: ['@storybook/addon-mcp', '@storybook/addon-designs', '@storybook/addon-a11y'],
     framework: { name: '@storybook/react-vite', options: {} },
     core: { disableTelemetry: true },
     async viteFinal(cfg) {

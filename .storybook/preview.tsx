@@ -19,6 +19,14 @@ const queryClient = new QueryClient({
 
 const preview: Preview = {
     parameters: {
+        // WCAG 2.2 AA: run axe-core per story incl. the 2.2-specific rules and
+        // flag violations as errors (visible in the A11y panel + storybook test).
+        a11y: {
+            test: 'error',
+            config: {
+                runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] },
+            },
+        },
         controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
         options: {
             storySort: { order: ['Atoms', 'Molecules', 'Organisms', '*'] },
