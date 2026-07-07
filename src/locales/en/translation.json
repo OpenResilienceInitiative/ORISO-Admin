@@ -1069,6 +1069,7 @@
     "tenants.permissions.card.caseHandover.enforceHint": "Selected options prevent lower roles from hiding functions.",
     "tenants.permissions.card.caseHandover.configure": "Configure",
     "tenants.permissions.card.caseHandover.enforce": "Enforce activated selections",
+    "tenants.permissions.card.caseHandover.enforceOption": "Mark this option to enforce it for lower roles",
     "tenants.permissions.card.caseHandover.comingSoon": "Will become configurable in a later update.",
     "tenants.permissions.card.caseHandover.reasonsAria": "Handover reasons",
     "tenants.permissions.card.caseHandover.languagesAria": "System notification languages",

@@ -703,6 +703,7 @@
     "tenants.permissions.card.caseHandover.enforceHint": "Ausgewählte Optionen verhindern, dass niedrigere Rollen Funktionen ausblenden können.",
     "tenants.permissions.card.caseHandover.configure": "Konfigurieren",
     "tenants.permissions.card.caseHandover.enforce": "Aktivierte Auswahl erzwingen",
+    "tenants.permissions.card.caseHandover.enforceOption": "Diese Option für niedrigere Rollen erzwingen",
     "tenants.permissions.card.caseHandover.comingSoon": "Wird mit einem späteren Update konfigurierbar.",
     "tenants.permissions.card.caseHandover.reasonsAria": "Übergabegründe",
     "tenants.permissions.card.caseHandover.languagesAria": "Sprachen der Systembenachrichtigung",
