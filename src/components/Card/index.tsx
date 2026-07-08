@@ -67,7 +67,7 @@ export const Card = ({
                     </Title>
 
                     {tooltip && (
-                        <Tooltip className={styles.tooltip} trigger={<InfoIcon fill="var(--primary)" />}>
+                        <Tooltip className={styles.tooltip} trigger={<InfoIcon fill="var(--m3-primary)" />}>
                             {tooltip}
                         </Tooltip>
                     )}

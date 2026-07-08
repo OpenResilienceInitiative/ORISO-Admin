@@ -25,7 +25,7 @@
     padding: 0;
     overflow: hidden;
     border-radius: 28px;
-    background: #eae7e8;
+    background: var(--m3-surface-container-high);
     font-synthesis: none;
     font-family: var(--m3-body-font-family);
     -moz-osx-font-smoothing: auto;
@@ -71,7 +71,7 @@
     text-align: center;
 
     .title {
-        color: #1b1b1c;
+        color: var(--m3-on-surface);
         font-family: var(--m3-body-font-family);
         font-size: 24px;
         font-weight: 400;
@@ -86,7 +86,7 @@
     height: 40px;
     align-items: center;
     justify-content: center;
-    color: #444748;
+    color: var(--m3-on-surface-variant);
 
     :global {
         svg {
@@ -109,7 +109,7 @@
 .dialogCardSubTitle {
     margin: 16px 0 0;
     padding: 0 24px;
-    color: #444748;
+    color: var(--m3-on-surface-variant);
     font-family: var(--m3-body-font-family);
     font-size: 14px;
     letter-spacing: 0.25px;
