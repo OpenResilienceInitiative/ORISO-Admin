@@ -22,6 +22,9 @@ export interface AppRuntimeConfig {
 declare global {
     interface Window {
         __APP_CONFIG__?: AppRuntimeConfig;
+        _env_?: AppRuntimeConfig;
+        __ENV__?: AppRuntimeConfig;
+        env?: AppRuntimeConfig;
     }
 }
 

@@ -11,7 +11,7 @@ export const DEFAULT_ROLE = 'CONSULTANT_DEFAULT';
 export const putAgenciesForCounselor = (counselorId: string, agencyIds: string[]) => {
     const agencies = agencyIds.map((agencyId) => ({
         agencyId,
-        role: DEFAULT_ROLE,
+        roleSetKey: DEFAULT_ROLE,
     }));
 
     return fetchData({
