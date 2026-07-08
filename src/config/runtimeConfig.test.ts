@@ -26,6 +26,11 @@ afterEach(() => {
     vi.unstubAllEnvs();
     vi.resetModules();
     window.__APP_CONFIG__ = {};
+    Object.assign(window, {
+        _env_: {},
+        __ENV__: {},
+        env: {},
+    });
 });
 
 describe('runtimeConfig cookie domain', () => {
@@ -47,5 +52,27 @@ describe('runtimeConfig cookie domain', () => {
         });
 
         expect(runtimeConfig.cookieDomain).toBe('.oriso-dev.site');
+    });
+
+    it('reads legacy runtime env.js globals still used by PreDev deployments', async () => {
+        vi.resetModules();
+        runtimeEnvKeys.forEach((key) => {
+            vi.stubEnv(`VITE_${key}`, '');
+            vi.stubEnv(`REACT_APP_${key}`, '');
+        });
+        window.__APP_CONFIG__ = undefined;
+        Object.assign(window, {
+            _env_: {
+                API_URL: 'https://api.oriso-dev.site',
+                KEYCLOAK_URL: 'https://auth.oriso-dev.site',
+            },
+        });
+
+        const { keycloakAuthPath, runtimeConfig } = await import('./runtimeConfig');
+
+        expect(runtimeConfig.keycloakBaseUrl).toBe('https://auth.oriso-dev.site');
+        expect(keycloakAuthPath('/protocol/openid-connect/token')).toBe(
+            'https://auth.oriso-dev.site/realms/online-beratung/protocol/openid-connect/token',
+        );
     });
 });
