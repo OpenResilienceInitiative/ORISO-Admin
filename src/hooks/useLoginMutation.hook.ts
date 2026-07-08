@@ -23,6 +23,7 @@ interface ErrorLogin {
 }
 
 export const ADMIN_PORTAL_ACCESS_DENIED = 'adminPortalAccessDenied';
+export const TENANT_ACCESS_DENIED = 'tenantAccessDenied';
 
 export const useLoginMutation = (tenantId: string) => {
     const { settings, setServerSettings } = useAppConfigContext();
@@ -49,9 +50,16 @@ export const useLoginMutation = (tenantId: string) => {
                         // console.log('🔍 useLoginMutation: Tenant access check passed');
                         return data;
                     })
-                    .catch(() => {
-                        // console.log('🔍 useLoginMutation: Tenant access check failed:', error);
-                        return Promise.reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
+                    .catch((accessError) => {
+                        // Keep the failure differentiated: an unreachable/slow server is
+                        // not the same as "this account may not use this admin portal".
+                        if (
+                            accessError instanceof Error &&
+                            (accessError.message === FETCH_ERRORS.TIMEOUT || accessError.message === FETCH_ERRORS.ABORT)
+                        ) {
+                            return Promise.reject(new Error(FETCH_ERRORS.TIMEOUT));
+                        }
+                        return Promise.reject(new Error(TENANT_ACCESS_DENIED));
                     });
             });
         },
