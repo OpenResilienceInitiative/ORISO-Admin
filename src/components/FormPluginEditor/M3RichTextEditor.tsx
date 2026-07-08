@@ -9,8 +9,9 @@ import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Dropdown } from 'antd';
+import { Dropdown, Modal } from 'antd';
 import {
+    Close,
     Undo,
     Redo,
     Title,
@@ -396,8 +397,8 @@ export const M3RichTextEditor = ({
     const currentLang = languages.find((l) => l.value === language) ?? languages[0];
     const html = () => (editorSlot || editor.isEmpty ? '' : editor.getHTML());
 
-    return (
-        <div className={`${styles.module} ${maximized ? styles.maximized : ''}`} data-testid="m3-editor">
+    const card = (
+        <div className={`${styles.module} ${maximized ? styles.inDialog : ''}`} data-testid="m3-editor">
             <div className={styles.header}>
                 <IconComponent className={styles.headerIcon} />
                 <h2 className={styles.title}>{title}</h2>
@@ -497,6 +498,41 @@ export const M3RichTextEditor = ({
             {belowSlot}
         </div>
     );
+
+    // Fullscreen mode is a real modal dialog (Figma 1007-27636): white 80%
+    // scrim with backdrop blur, centered card, round close button beside the
+    // top right corner. antd Modal provides focus trap + Escape handling.
+    if (maximized) {
+        return (
+            <Modal
+                open
+                closable={false}
+                footer={null}
+                centered
+                width="min(1512px, calc(100vw - 96px))"
+                onCancel={() => setMaximized(false)}
+                styles={{
+                    mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
+                    content: { padding: 0, background: 'transparent', boxShadow: 'none' },
+                }}
+                aria-label={title}
+            >
+                <div className={styles.dialogLayout}>
+                    {card}
+                    <button
+                        type="button"
+                        className={styles.dialogClose}
+                        aria-label={t('legal.m3Editor.closeDialog')}
+                        onClick={() => setMaximized(false)}
+                    >
+                        <Close />
+                    </button>
+                </div>
+            </Modal>
+        );
+    }
+
+    return card;
 };
 
 export default M3RichTextEditor;

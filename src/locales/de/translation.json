@@ -588,6 +588,7 @@
     "tenants.legal.version.current": "(aktuell)",
     "legal.m3Editor.maximize": "Fenster maximieren",
     "legal.m3Editor.minimize": "Fenster verkleinern",
+    "legal.m3Editor.closeDialog": "Vollbild schließen",
     "legal.m3Editor.versionLabel": "Aktuelle Version",
     "legal.m3Editor.versionLatest": "Aktuelle Version (Entwurf)",
     "legal.m3Editor.versionPublished": "Veröffentlichte Version",

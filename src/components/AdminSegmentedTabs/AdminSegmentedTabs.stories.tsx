@@ -37,3 +37,18 @@ export const AppearanceActive: Story = {
         activeId: 'appearance',
     },
 };
+
+// The button row never wraps: on narrow containers it stays on one line and
+// scrolls horizontally (hidden scrollbar), per Figma 1-49824.
+export const NarrowOverflowScroll: Story = {
+    args: {
+        activeId: 'legal',
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 375 }}>
+                <Story />
+            </div>
+        ),
+    ],
+};

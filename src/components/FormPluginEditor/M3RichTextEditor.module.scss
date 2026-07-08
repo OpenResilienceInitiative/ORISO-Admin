@@ -25,12 +25,55 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     color: $m3-on-surface;
     font-family: 'Inter Variable', Inter, Arial, sans-serif;
 
-    &.maximized {
-        position: fixed;
-        inset: 24px;
-        z-index: 1100;
+    // Inside the fullscreen dialog (Figma 1007-27636) the card fills the
+    // viewport minus the scrim margins and the editor surface grows to fit.
+    &.inDialog {
+        height: calc(100vh - 128px);
         max-width: none;
-        height: auto;
+
+        .editorWrap {
+            display: flex;
+            min-height: 0;
+            flex: 1;
+            flex-direction: column;
+        }
+
+        .editor {
+            flex: 1;
+            overflow-y: auto;
+        }
+    }
+}
+
+// Fullscreen dialog layout: centered card + round close icon-button beside
+// the top right corner (Figma "Dialog": flex, gap 20px).
+.dialogLayout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.dialogClose {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: $m3-on-surface-variant;
+    border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
+
+    &:hover {
+        background: $m3-on-surface;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $m3-on-surface;
+        outline-offset: 2px;
     }
 }
 
@@ -108,17 +151,27 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     border: 0;
 }
 
-// Toolbar
+// Toolbar — a single row that scrolls horizontally instead of wrapping
+// (Figma 1-49824 / 1007-27636: the button row always stays on one line).
 .toolbar {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 4px;
     align-items: center;
     padding: 8px 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
 }
 
 .toolGroup {
     display: flex;
+    flex-shrink: 0;
     gap: 2px;
     align-items: center;
 }
@@ -126,6 +179,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 .vDivider {
     width: 1px;
     height: 24px;
+    flex-shrink: 0;
     margin: 0 4px;
     background: $m3-divider;
 }
