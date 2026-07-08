@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
     agencies: [] as any[],
     navigate: vi.fn(),
     refetch: vi.fn(),
+    // Query state overrides for the agencies list (default: loaded successfully).
+    isLoading: false,
+    isError: false,
 }));
 
 const translations: Record<string, string> = {
@@ -32,6 +35,7 @@ const translations: Record<string, string> = {
     status: 'Status',
     new: 'New',
     'tenants.list.empty': 'No data available',
+    'message.error.default': 'Something went wrong. Please try again.',
 };
 
 const t = (key: string) => translations[key] || key;
@@ -103,12 +107,14 @@ vi.mock('../../../components/SearchInput/SearchInput', () => ({
 }));
 
 vi.mock('../../../components/ResizableTable', () => ({
-    ResizeTable: ({ columns, dataSource }: any) => {
+    ResizeTable: ({ columns, dataSource, loading, locale }: any) => {
         const topicColumn = columns.find((column: any) => column.key === 'topics');
         const actionColumn = columns.find((column: any) => column.key === 'edit');
 
         return (
             <div>
+                {loading && <div data-testid="table-loading" />}
+                {dataSource.length === 0 && <div data-testid="table-empty">{locale?.emptyText}</div>}
                 {dataSource.map((record: any) => (
                     <div key={record.id}>
                         <div data-testid={`topics-${record.id}`}>{topicColumn.render(record.topics, record)}</div>
@@ -122,8 +128,9 @@ vi.mock('../../../components/ResizableTable', () => ({
 
 vi.mock('../../../hooks/useAgencysData', () => ({
     useAgenciesData: () => ({
-        data: { total: mocks.agencies.length, data: mocks.agencies },
-        isLoading: false,
+        data: mocks.isError ? undefined : { total: mocks.agencies.length, data: mocks.agencies },
+        isLoading: mocks.isLoading,
+        isError: mocks.isError,
         refetch: mocks.refetch,
     }),
 }));
@@ -183,6 +190,8 @@ const buildAgency = (topics: Array<{ id: number | null; name: string }>) =>
 describe('AgencyList topic rendering', () => {
     beforeEach(() => {
         mocks.agencies = [];
+        mocks.isLoading = false;
+        mocks.isError = false;
         mocks.navigate.mockReset();
         mocks.refetch.mockReset();
     });
@@ -239,5 +248,27 @@ describe('AgencyList topic rendering', () => {
         render(<AgencyList />);
 
         expect(screen.getByText('No topics assigned')).toBeInTheDocument();
+    });
+
+    // #240: a failed agencies load must degrade to an error message, never hang
+    // on the spinner. The query uses retry:false and fetchData's 30s timeout, so
+    // isLoading resolves to false and isError drives a visible message.
+    it('shows an error message and stops loading when the agencies query fails', () => {
+        mocks.isError = true;
+        mocks.isLoading = false;
+
+        render(<AgencyList />);
+
+        expect(screen.queryByTestId('table-loading')).not.toBeInTheDocument();
+        expect(screen.getByTestId('table-empty')).toHaveTextContent('Something went wrong. Please try again.');
+    });
+
+    it('shows the neutral empty text (not the error) when the load succeeds with no agencies', () => {
+        mocks.isError = false;
+        mocks.agencies = [];
+
+        render(<AgencyList />);
+
+        expect(screen.getByTestId('table-empty')).toHaveTextContent('No data available');
     });
 });
