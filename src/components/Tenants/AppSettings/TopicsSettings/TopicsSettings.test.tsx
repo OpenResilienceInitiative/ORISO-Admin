@@ -42,11 +42,10 @@ describe('TopicsSettings', () => {
         expect(screen.getByText('1. General social counselling')).toBeInTheDocument();
         expect(screen.getByText(/DE: Allgemeine Sozialberatung/)).toBeInTheDocument();
         expect(screen.getByText(/TR: Genel sosyal danışmanlık/)).toBeInTheDocument();
-        expect(screen.getAllByText(/^tenants\.appSettings\.topics\.topicId: \d+$/)).toHaveLength(
-            DEFAULT_TOPICS.length,
-        );
-        expect(screen.getAllByText('tenants.appSettings.topics.displayGroup: Standard Caritas topic catalogue'))
-            .toHaveLength(DEFAULT_TOPICS.length);
+        expect(screen.getAllByText(/^tenants\.appSettings\.topics\.topicId: \d+$/)).toHaveLength(DEFAULT_TOPICS.length);
+        expect(
+            screen.getAllByText('tenants.appSettings.topics.displayGroup: Standard Caritas topic catalogue'),
+        ).toHaveLength(DEFAULT_TOPICS.length);
         expect(screen.getAllByText(/^tenants\.appSettings\.topics\.sortOrder: \d+$/)).toHaveLength(
             DEFAULT_TOPICS.length,
         );
