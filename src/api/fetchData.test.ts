@@ -151,4 +151,70 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
 
         expect(location.href).toBe('/admin/access-denied');
     });
+
+    // AD-H07 / #143: every request must eventually fail instead of hanging forever.
+    it('aborts a hanging request after the 30s default timeout and rejects with TIMEOUT', async () => {
+        vi.useFakeTimers();
+        // A fetch that never settles on its own but honours the abort signal —
+        // exactly a stalled backend / dead connection.
+        const fetchMock = vi.fn(
+            (request: Request) =>
+                new Promise((_resolve, reject) => {
+                    request.signal.addEventListener('abort', () => {
+                        const abortError = new Error('aborted');
+                        abortError.name = 'AbortError';
+                        reject(abortError);
+                    });
+                }),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        const pending = fetchData({
+            url: 'https://api.test/service/settings',
+            method: FETCH_METHODS.GET,
+            skipAuth: true,
+        });
+        const assertion = expect(pending).rejects.toThrow(FETCH_ERRORS.TIMEOUT);
+
+        // Just before 30s the request is still in flight — the default has not
+        // fired early. It only aborts once the 30s window elapses.
+        let settled = false;
+        pending.catch(() => {
+            settled = true;
+        });
+        await vi.advanceTimersByTimeAsync(29_999);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        await assertion;
+
+        vi.useRealTimers();
+    });
+
+    it('honours an explicit shorter timeout', async () => {
+        vi.useFakeTimers();
+        const fetchMock = vi.fn(
+            (request: Request) =>
+                new Promise((_resolve, reject) => {
+                    request.signal.addEventListener('abort', () => {
+                        const abortError = new Error('aborted');
+                        abortError.name = 'AbortError';
+                        reject(abortError);
+                    });
+                }),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        const pending = fetchData({
+            url: 'https://api.test/service/settings',
+            method: FETCH_METHODS.GET,
+            skipAuth: true,
+            timeout: 5_000,
+        });
+        const assertion = expect(pending).rejects.toThrow(FETCH_ERRORS.TIMEOUT);
+
+        await vi.advanceTimersByTimeAsync(5_000);
+        await assertion;
+
+        vi.useRealTimers();
+    });
 });
