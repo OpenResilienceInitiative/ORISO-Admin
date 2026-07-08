@@ -8,7 +8,13 @@ import { M3RichTextEditor } from './M3RichTextEditor';
 const meta = {
     title: 'Organisms/M3 Rich Text Editor',
     component: M3RichTextEditor,
-    parameters: { layout: 'centered' },
+    parameters: {
+        layout: 'centered',
+        design: {
+            type: 'figma',
+            url: 'https://www.figma.com/design/QfsgojtHQzBjbzU3Im9Cet/Admin.ORISO?node-id=1-34903',
+        },
+    },
     // The red footer actions only render when handlers are wired — stub them so
     // the stories show the complete Figma design.
     args: {
@@ -65,6 +71,12 @@ export const GDPR: Story = {
 // with backdrop blur, centered card, round close button at the top right.
 export const FullscreenDialog: Story = {
     render: (args) => <ControlledEditor {...args} />,
+    parameters: {
+        design: {
+            type: 'figma',
+            url: 'https://www.figma.com/design/QfsgojtHQzBjbzU3Im9Cet/Admin.ORISO?node-id=1007-27636',
+        },
+    },
     args: {
         title: 'Auftragsdaten Verabeitungsvertrag',
         placeholder: 'Fügen Sie hier den Auftragsverarbeitungsvertrag ein.',

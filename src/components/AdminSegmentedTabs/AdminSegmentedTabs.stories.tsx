@@ -13,6 +13,10 @@ const meta = {
     component: AdminSegmentedTabs,
     parameters: {
         layout: 'padded',
+        design: {
+            type: 'figma',
+            url: 'https://www.figma.com/design/QfsgojtHQzBjbzU3Im9Cet/Admin.ORISO?node-id=1-49824',
+        },
     },
     args: {
         ariaLabel: 'Einstellungen',
