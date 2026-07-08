@@ -44,6 +44,7 @@
     "message.success.auth.resetPassword": "Passwort erfolgreich zurückgesetzt! Wenn diese E-Mail vorhanden ist, erhalten Sie einen Link zum zurücksetzen!",
     "message.warning.cancelRequest": "Der Vorgang wurde abgebrochen.",
     "message.error.default": "Es ist ein Fehler aufgetreten. Bitte versuchen Sie es später noch einmal.",
+    "message.error.topicsNotCoveredByAgencies": "Folgende Themen werden von keiner ausgewählten Beratungsstelle abgedeckt: {{topics}}. Bitte eine passende Beratungsstelle auswählen oder die Themen entfernen.",
     "message.error.unexpected": "Der Vorgang wurde abgebrochen.",
     "message.error.auth.login": "Login fehlgeschlagen. Bitte überprüfen Sie Benutzernamen/E-Mail und Passwort.",
     "message.error.auth.adminOnly": "Dieses Konto kann nicht auf die Verwaltung zugreifen. Bitte verwenden Sie ein Admin-Konto.",
