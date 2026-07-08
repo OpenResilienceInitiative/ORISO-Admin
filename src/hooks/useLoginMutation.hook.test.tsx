@@ -157,6 +157,25 @@ describe('useLoginMutation', () => {
         expect(mocks.setTokens).not.toHaveBeenCalled();
     });
 
+    it('reports an unreachable auth server before the tenant access check as TIMEOUT', async () => {
+        const user = userEvent.setup();
+        mocks.getAccessToken.mockRejectedValue(new Error('TIMEOUT'));
+        renderLoginMutation();
+
+        await user.click(screen.getByRole('button', { name: 'Login' }));
+
+        await waitFor(() => {
+            expect(mocks.onError).toHaveBeenCalledWith(
+                new Error('TIMEOUT'),
+                { username: 'admin@example.com', password: 'correct-password', otp: '123456' },
+                undefined,
+                expect.anything(),
+            );
+        });
+        expect(mocks.fetchData).not.toHaveBeenCalled();
+        expect(mocks.setTokens).not.toHaveBeenCalled();
+    });
+
     it('reports a denied tenant access check as TENANT_ACCESS_DENIED', async () => {
         const user = userEvent.setup();
         mocks.fetchData.mockRejectedValue(new Error('API call error: 401 Unauthorized'));

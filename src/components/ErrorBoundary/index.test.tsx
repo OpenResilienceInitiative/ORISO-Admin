@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from './index';
 
 vi.mock('i18next', () => ({
@@ -11,6 +12,23 @@ const Bomb = ({ shouldThrow }: { shouldThrow: boolean }) => {
         throw new Error('boom');
     }
     return <div>page content</div>;
+};
+
+const RoutedPageBoundaryHarness = () => {
+    const location = useLocation();
+
+    return (
+        <>
+            <nav>Admin navigation</nav>
+            <Link to="/admin/healthy">Healthy page</Link>
+            <ErrorBoundary scope="page" resetKeys={[location.pathname]}>
+                <Routes>
+                    <Route path="/admin/broken" element={<Bomb shouldThrow />} />
+                    <Route path="/admin/healthy" element={<Bomb shouldThrow={false} />} />
+                </Routes>
+            </ErrorBoundary>
+        </>
+    );
 };
 
 describe('ErrorBoundary', () => {
@@ -78,5 +96,22 @@ describe('ErrorBoundary', () => {
         );
 
         expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    it('keeps layout navigation mounted and resets the page fallback after route navigation', () => {
+        render(
+            <MemoryRouter initialEntries={['/admin/broken']}>
+                <RoutedPageBoundaryHarness />
+            </MemoryRouter>,
+        );
+
+        expect(screen.getByText('Admin navigation')).toBeInTheDocument();
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('link', { name: 'Healthy page' }));
+
+        expect(screen.getByText('Admin navigation')).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.getByText('page content')).toBeInTheDocument();
     });
 });
