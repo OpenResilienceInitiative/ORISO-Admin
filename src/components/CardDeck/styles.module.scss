@@ -37,8 +37,8 @@
 
 .item {
     display: flex;
+    min-width: min(var(--card-deck-item-min-width, 320px), var(--card-deck-item-max-width, calc(100vw - 176px)));
     flex: 0 0 min(var(--card-deck-item-width, 392px), var(--card-deck-item-max-width, calc(100vw - 176px)));
-    min-width: 0;
     scroll-snap-align: start;
 
     > * {
