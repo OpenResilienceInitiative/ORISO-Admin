@@ -246,6 +246,43 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 }
 
 // Editor surface
+// Anchor navigation — horizontal chip row above the editor surface. Same
+// single-line + hidden-scrollbar pattern as the toolbar; base layout comes
+// from the global .RichEditor-anchorNav rules, this only adds M3 chrome.
+.anchorNav {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    align-items: center;
+    padding: 0 16px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+
+    :global(.ant-tag) {
+        margin-inline-end: 0;
+        flex: 0 0 auto;
+        cursor: pointer;
+    }
+}
+
+.anchorBubbleHost {
+    display: contents;
+}
+
+.anchorBubble {
+    padding: 4px;
+    background: #fff;
+    border: 1px solid $m3-outline-variant;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
 .editorWrap {
     padding: 0 16px;
 }

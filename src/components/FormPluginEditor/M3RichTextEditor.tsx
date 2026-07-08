@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
@@ -9,7 +9,7 @@ import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Dropdown, Modal } from 'antd';
+import { Dropdown, Modal, Select } from 'antd';
 import {
     Close,
     Undo,
@@ -42,6 +42,9 @@ import {
     Fingerprint,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import { HeadingAnchors } from './headingAnchors';
+import AnchorChips from './AnchorChips';
+import { useHeadingAnchorNav } from './useHeadingAnchorNav';
 import styles from './M3RichTextEditor.module.scss';
 
 export type M3RichTextEditorProps = {
@@ -71,6 +74,14 @@ export type M3RichTextEditorProps = {
     editorSlot?: React.ReactNode;
     /** Rendered below the action footer (e.g. version history, modals). */
     belowSlot?: React.ReactNode;
+    /**
+     * Anchor navigation (standard, ON by default): headings get persistent
+     * `id`s, a horizontal chip row above the editor jumps to them, and
+     * selected text can be linked to an anchor via the bubble menu. Only
+     * applies to the built-in editor (an `editorSlot` owns its own anchors).
+     * Must not change during the editor's lifetime.
+     */
+    enableAnchors?: boolean;
     onPublish?: (html: string) => void;
     onSaveDraft?: (html: string) => void;
 };
@@ -348,11 +359,15 @@ export const M3RichTextEditor = ({
     aboveEditorSlot,
     editorSlot,
     belowSlot,
+    enableAnchors = true,
     onPublish,
     onSaveDraft,
 }: M3RichTextEditorProps) => {
     const { t } = useTranslation();
     const [maximized, setMaximized] = useState(false);
+    // Anchors only make sense for the built-in editor; an editorSlot brings
+    // its own TiptapEditor with its own anchor row.
+    const anchorsEnabled = enableAnchors && !editorSlot;
 
     const editor = useEditor({
         extensions: [
@@ -365,6 +380,7 @@ export const M3RichTextEditor = ({
             Superscript,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             Placeholder.configure({ placeholder }),
+            ...(anchorsEnabled ? [HeadingAnchors] : []),
         ],
         content: value,
         editable: !readOnly,
@@ -382,6 +398,10 @@ export const M3RichTextEditor = ({
     useEffect(() => {
         editor?.setOptions({ editorProps: { attributes: { 'aria-label': title, role: 'textbox' } } });
     }, [editor, title]);
+
+    // Shared anchor-navigation behavior — same hook as the form-bound TiptapEditor.
+    const { anchors, anchorsRef, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture } =
+        useHeadingAnchorNav(editor, { enabled: anchorsEnabled, editable: !readOnly });
 
     useEffect(() => {
         if (!editor) return;
@@ -433,11 +453,58 @@ export const M3RichTextEditor = ({
 
             {aboveEditorSlot}
 
+            {anchorsEnabled && (
+                <AnchorChips
+                    className={styles.anchorNav}
+                    anchors={anchors}
+                    activeId={activeAnchorId}
+                    editable={!readOnly}
+                    onSelect={scrollToAnchor}
+                    onRemove={removeAnchor}
+                    ariaLabel={t('editor.plugin.anchor.nav.label', 'Section anchors')}
+                />
+            )}
+
             {editorSlot ?? (
-                <div className={styles.editorWrap}>
+                <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
                     <div className={styles.editor}>
                         <EditorContent editor={editor} />
                     </div>
+                </div>
+            )}
+
+            {anchorsEnabled && !readOnly && (
+                // Stable host div: the BubbleMenu plugin detaches its element
+                // from the React tree (tippy re-parents it), so it must not be
+                // a direct sibling that React repositions or removes.
+                <div className={styles.anchorBubbleHost}>
+                    <BubbleMenu
+                        editor={editor}
+                        pluginKey="anchorLinkBubble"
+                        updateDelay={150}
+                        tippyOptions={{ placement: 'top', maxWidth: 'none' }}
+                        shouldShow={({ state }) => !state.selection.empty && anchorsRef.current.length > 0}
+                    >
+                        <div className={styles.anchorBubble}>
+                            <Select
+                                size="small"
+                                placeholder={t('editor.plugin.anchor.link.placeholder', 'Link to section')}
+                                value={null}
+                                popupMatchSelectWidth={false}
+                                style={{ minWidth: 180 }}
+                                options={anchors.map((anchor) => ({ value: anchor.id, label: anchor.text }))}
+                                getPopupContainer={(trigger) => trigger.parentElement || document.body}
+                                onSelect={(anchorId: string) =>
+                                    editor
+                                        .chain()
+                                        .focus()
+                                        .extendMarkRange('link')
+                                        .setLink({ href: `#${anchorId}` })
+                                        .run()
+                                }
+                            />
+                        </div>
+                    </BubbleMenu>
                 </div>
             )}
 

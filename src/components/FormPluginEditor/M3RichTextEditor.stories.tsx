@@ -67,6 +67,76 @@ export const GDPR: Story = {
     },
 };
 
+const anchoredContent =
+    '<h2>Geltungsbereich</h2><p>Dieser Vertrag regelt die Auftragsverarbeitung. ' +
+    'Siehe auch den Abschnitt <a href="#pflichten-des-auftragnehmers">Pflichten</a>.</p>' +
+    '<h2>Pflichten des Auftragnehmers</h2><p>Weisungsbindung, Vertraulichkeit, TOMs.</p>' +
+    '<h2>Unterauftragsverhältnisse</h2><p>Nur mit vorheriger Genehmigung.</p>';
+
+// Standard anchor navigation: headings get persistent ids, the horizontal
+// chip row above the editor jumps to them, selected text can be linked to an
+// anchor via the bubble menu.
+export const WithAnchorNavigation: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    args: {
+        title: 'Auftragsdaten Verabeitungsvertrag',
+        value: anchoredContent,
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => {
+            expect(canvas.getByRole('navigation')).toBeInTheDocument();
+            expect(canvas.getAllByText('Geltungsbereich').length).toBeGreaterThan(0);
+        });
+    },
+};
+
+// Narrow container: the anchor chip row stays on ONE line and scrolls
+// horizontally, same pattern as the toolbar and the segmented tabs.
+export const AnchorRowNarrowOverflow: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    args: {
+        title: 'Datenschutz',
+        value: anchoredContent,
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 375 }}>
+                <Story />
+            </div>
+        ),
+    ],
+};
+
+// Read-only: chips have no "x", clicking one marks it with a checkmark, and
+// in-text #anchor links scroll inside the card instead of navigating.
+export const ReadOnlyWithAnchors: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    args: {
+        title: 'Auftragsdaten Verabeitungsvertrag',
+        value: anchoredContent,
+        readOnly: true,
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+    },
+};
+
+// Opt-out state: no anchor row, headings stay untouched.
+export const AnchorsDisabled: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    args: {
+        title: 'Impressum',
+        value: anchoredContent,
+        enableAnchors: false,
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+    },
+};
+
 // Fullscreen mode as a real modal dialog (Figma 1007-27636): white 80% scrim
 // with backdrop blur, centered card, round close button at the top right.
 export const FullscreenDialog: Story = {

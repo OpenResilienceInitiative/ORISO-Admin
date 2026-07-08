@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -16,8 +16,9 @@ import {
 } from '@mui/icons-material';
 import { Button, ConfigProvider, Select } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { HeadingAnchors, HeadingAnchor, collectAnchors } from './headingAnchors';
+import { HeadingAnchors } from './headingAnchors';
 import AnchorChips from './AnchorChips';
+import { useHeadingAnchorNav } from './useHeadingAnchorNav';
 
 // TipTap replacement for the former draft-js editor. Same data contract:
 // `value` is an HTML string in, `onChange` emits an HTML string out. Template
@@ -43,9 +44,6 @@ export type TiptapEditorProps = {
 };
 
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
-
-const escapeCssId = (id: string) =>
-    typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(id) : id.replace(/["\\]/g, '\\$&');
 
 const ToolbarButton = ({
     active,
@@ -216,13 +214,6 @@ const TiptapEditor = ({
     const placeholderRef = useRef(placeholder);
     placeholderRef.current = placeholder;
 
-    const [anchors, setAnchors] = useState<HeadingAnchor[]>([]);
-    const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
-    // BubbleMenu's shouldShow is registered once, so it reads the current
-    // anchor list through this ref.
-    const anchorsRef = useRef(anchors);
-    anchorsRef.current = anchors;
-
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -263,73 +254,10 @@ const TiptapEditor = ({
         if (editor) editor.view.dispatch(editor.state.tr);
     }, [placeholder, editor]);
 
-    // Anchors: stamp ids onto legacy content when editable (persisted via the
-    // form's onChange on save) and keep the chip list in sync with the doc.
-    // The 'transaction' event also covers external setContent calls, which do
-    // not emit 'update'.
-    useEffect(() => {
-        if (!editor || !enableAnchors) return undefined;
-        if (editor.isEditable) editor.commands.ensureHeadingAnchors();
-        const refresh = () => setAnchors(collectAnchors(editor.state.doc));
-        refresh();
-        editor.on('transaction', refresh);
-        return () => {
-            editor.off('transaction', refresh);
-        };
-    }, [editor, enableAnchors, disabled]);
-
-    // Read-only scroll spy: mark the anchor whose heading is currently at the
-    // top of the (scrolled) editor content as active.
-    useEffect(() => {
-        if (!editor || !enableAnchors || !disabled) return undefined;
-        let frame = 0;
-        const onScroll = () => {
-            if (frame) return;
-            frame = window.requestAnimationFrame(() => {
-                frame = 0;
-                const root = editor.view.dom as HTMLElement;
-                const rootTop = root.getBoundingClientRect().top;
-                let current: string | null = null;
-                anchorsRef.current.forEach((anchor) => {
-                    const el = root.querySelector(`[id="${escapeCssId(anchor.id)}"]`);
-                    if (el && el.getBoundingClientRect().top - rootTop <= 32) current = anchor.id;
-                });
-                if (current) setActiveAnchorId(current);
-            });
-        };
-        document.addEventListener('scroll', onScroll, { capture: true, passive: true });
-        return () => {
-            document.removeEventListener('scroll', onScroll, true);
-            if (frame) window.cancelAnimationFrame(frame);
-        };
-    }, [editor, enableAnchors, disabled]);
-
-    const scrollToAnchor = (anchorId: string) => {
-        if (!editor) return;
-        const target = editor.view.dom.querySelector(`[id="${escapeCssId(anchorId)}"]`);
-        // Instant (non-smooth) scrolling: smooth programmatic scrolling is a
-        // silent no-op in several embedded/headless browsers.
-        target?.scrollIntoView({ block: 'start' });
-        setActiveAnchorId(anchorId);
-    };
-
-    const removeAnchor = (anchorId: string) => {
-        if (!editor) return;
-        editor.commands.removeHeadingAnchor(anchorId);
-        if (activeAnchorId === anchorId) setActiveAnchorId(null);
-    };
-
-    // In the read-only viewer, clicking an in-text `#anchor` link scrolls to
-    // the heading inside the editor instead of navigating the window.
-    const handleContentClickCapture = (event: React.MouseEvent) => {
-        if (!enableAnchors || !disabled) return;
-        const element = event.target as HTMLElement;
-        const link = element.closest?.('a[href^="#"]');
-        if (!link) return;
-        event.preventDefault();
-        event.stopPropagation();
-        scrollToAnchor((link.getAttribute('href') || '').slice(1));
-    };
+    // Shared anchor-navigation behavior (chips, scroll spy, jump/remove,
+    // read-only link-click capture) — same hook as the M3RichTextEditor.
+    const { anchors, anchorsRef, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture } =
+        useHeadingAnchorNav(editor, { enabled: enableAnchors, editable: !disabled });
 
     if (!editor) return null;
 
