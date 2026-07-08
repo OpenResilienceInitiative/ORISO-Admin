@@ -27,6 +27,7 @@ import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { searchTenantData } from '../../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
 import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
+import { findUncoveredTopics } from '../../../utils/topicAgencyCoverage';
 import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { useCounselorById } from '../../../hooks/useCounselorById';
 import { GrantConsultantIdentityModal } from '../../../components/GrantConsultantIdentityModal';
@@ -231,7 +232,36 @@ export const UserEditOrAdd = () => {
         },
     });
 
-    const onSave = useCallback((data) => mutate(data), []);
+    // Mirror the backend ADR-003 rule (ConsultantTopicAgencyCompatibilityValidator):
+    // every selected topic must be offered by at least one selected agency. Catching this
+    // here means we name the mismatch instead of relying on the assignment request, which
+    // the backend used to swallow silently.
+    const onSave = useCallback(
+        (data) => {
+            if (isConsultantForm) {
+                const uncoveredTopics = findUncoveredTopics(
+                    data.agencies ?? [],
+                    data.topicIds ?? [],
+                    filteredAgencies || [],
+                );
+                if (uncoveredTopics.length > 0) {
+                    form.setFields([
+                        {
+                            name: 'topicIds',
+                            errors: [
+                                t('message.error.topicsNotCoveredByAgencies', {
+                                    topics: uncoveredTopics.map(({ label }) => label).join(', '),
+                                }),
+                            ],
+                        },
+                    ]);
+                    return;
+                }
+            }
+            mutate(data);
+        },
+        [isConsultantForm, filteredAgencies, form, mutate, t],
+    );
     const onCancel = useCallback(() => navigate(`/admin/users/${typeOfUsers}`), []);
     const isAbsentEnabled = useWatch('absent', form);
     // Superadmins pick the tenant in the form; other admins carry it in their token.
