@@ -17,7 +17,9 @@ export const useUserRoles = (): {
 
     if (accessToken) {
         payload = parseJwt(accessToken);
-        tokenRoles = payload?.realm_access.roles || [];
+        // A token without realm_access (misconfigured account) must degrade to
+        // "no roles", not crash the render tree.
+        tokenRoles = payload?.realm_access?.roles ?? [];
     }
 
     let tenantId: number | null = null;
