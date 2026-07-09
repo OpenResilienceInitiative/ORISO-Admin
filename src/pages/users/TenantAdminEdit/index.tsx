@@ -95,7 +95,7 @@ export const TenantAdminEditOrAdd = () => {
                 initialValues={{ tenantId, ...data }}
             >
                 <Row gutter={[24, 24]}>
-                    <Col span={12} md={6}>
+                    <Col xs={24} lg={12}>
                         <Card titleKey="tenantAdmins.card.personalDataTitle">
                             <FormInputField
                                 name="firstname"
@@ -124,7 +124,7 @@ export const TenantAdminEditOrAdd = () => {
                         </Card>
                     </Col>
                     {!isEditing && (
-                        <Col span={12} md={6}>
+                        <Col xs={24} lg={12}>
                             <Card titleKey="tenantAdmins.card.credentialsTitle">
                                 <FormInputField
                                     name="username"
@@ -150,7 +150,7 @@ export const TenantAdminEditOrAdd = () => {
                         </Col>
                     )}
                     {!isPlatformAdmin && (
-                        <Col span={12} md={6}>
+                        <Col xs={24} lg={12}>
                             <Card titleKey="tenantAdmins.card.tenantTitle">
                                 <SelectFormField
                                     name="tenantId"

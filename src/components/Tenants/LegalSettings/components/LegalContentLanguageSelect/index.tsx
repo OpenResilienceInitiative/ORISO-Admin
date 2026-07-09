@@ -1,4 +1,6 @@
-import { Select, Space, Typography } from 'antd';
+import { Dropdown } from 'antd';
+import Language from '@mui/icons-material/Language';
+import ArrowDropDown from '@mui/icons-material/ArrowDropDown';
 import { useTranslation } from 'react-i18next';
 import { isMachineTranslated } from '../../utils/translationMeta';
 import styles from './styles.module.scss';
@@ -49,19 +51,25 @@ export const LegalContentLanguageSelect = ({
     };
 
     return (
-        <Space align="center" className={styles.selector}>
-            <Typography.Text>{t('languages')}</Typography.Text>
-            <Select
-                value={value}
-                onChange={onChange}
-                options={languages.map((language) => ({
-                    value: language,
-                    label: labelFor(language),
-                }))}
-                className={styles.select}
-                aria-label={t('languages')}
-            />
-        </Space>
+        <div className={styles.splitButton}>
+            <button type="button" className={styles.leading} title={t('languages')}>
+                <Language style={{ fontSize: 22 }} />
+                {/* Plain language name on the button (matches the other legal cards);
+                    the original / machine-translated status stays in the menu below. */}
+                <span>{t(`language.${value}`, value)}</span>
+            </button>
+            <Dropdown
+                trigger={['click']}
+                menu={{
+                    items: languages.map((language) => ({ key: language, label: labelFor(language) })),
+                    onClick: ({ key }) => onChange(key),
+                }}
+            >
+                <button type="button" className={styles.trailing} title={t('languages')} aria-label={t('languages')}>
+                    <ArrowDropDown />
+                </button>
+            </Dropdown>
+        </div>
     );
 };
 

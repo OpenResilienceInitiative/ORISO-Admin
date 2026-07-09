@@ -1,6 +1,7 @@
 import { Button, Form, message } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
+import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet } from 'react-router-dom';
@@ -61,6 +62,9 @@ export const GlobalLoginSettingsPage = () => {
                     initialValues={initialValues}
                     titleKey="tenants.globalSettings.anonymousChat.title"
                     onSave={mutate}
+                    variant="dialog"
+                    editButtonPlacement="footer"
+                    headerIcon={<LoginOutlinedIcon />}
                 >
                     <div className={styles.checkGroup}>
                         <FormSwitchField

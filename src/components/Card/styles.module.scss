@@ -2,6 +2,17 @@
     height: 100%;
 }
 
+/* Default card surface. Matches the M3 gray card used consistently across the
+   admin (dialog cards, functionality cards) so there are no more white cards:
+   gray surface + subtle border + rounded corners. */
+
+.card {
+    border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 22%, transparent);
+    background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
+    border-radius: 28px;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px 1px rgb(0 0 0 / 15%);
+}
+
 .contentClassName {
     display: flex;
     height: 100%;
@@ -18,20 +29,19 @@
     --input-label-bg: var(--admin-form-field-surface);
 
     display: flex;
-    height: var(--dialog-card-height, clamp(560px, 62dvh, 640px));
-    max-height: var(--dialog-card-max-height, calc(100dvh - 320px));
-    min-height: 0;
+    overflow: visible;
+    height: auto;
+    min-height: var(--dialog-card-min-height, 400px);
     flex-direction: column;
     padding: 0;
-    overflow: hidden;
-    border-radius: 28px;
     background: var(--m3-surface-container-high);
-    font-synthesis: none;
+    border-radius: 28px;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px 1px rgb(0 0 0 / 15%);
     font-family: var(--m3-body-font-family);
     -moz-osx-font-smoothing: auto;
     -webkit-font-smoothing: subpixel-antialiased;
-    box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px 1px rgb(0 0 0 / 15%);
-    text-rendering: optimizeLegibility;
+    font-synthesis: none;
+    text-rendering: optimizelegibility;
 }
 
 .dialogAutoHeight {
@@ -49,9 +59,9 @@
 }
 
 .dialogCardTitle {
-    justify-content: center;
-    margin-bottom: 0;
+    justify-content: flex-start;
     padding: 24px 24px 0;
+    margin-bottom: 0;
 }
 
 .titleContainer {
@@ -65,18 +75,18 @@
 
 .dialogTitleContainer {
     width: 100%;
+    flex-direction: row;
     align-items: center;
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
+    gap: 8px;
+    text-align: left;
 
     .title {
         color: var(--m3-on-surface);
         font-family: var(--m3-body-font-family);
-        font-size: 24px;
-        font-weight: 400;
-        line-height: 32px;
-        text-align: center;
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 28px;
+        text-align: left;
     }
 }
 
@@ -97,18 +107,18 @@
 }
 
 .cardSubTitle {
+    margin-top: 5px;
     margin-bottom: 20px;
     color: var(--label-color);
     font-size: 14px;
     font-weight: 400;
     line-height: 16px;
-    margin-top: 5px;
     white-space: pre-line;
 }
 
 .dialogCardSubTitle {
-    margin: 16px 0 0;
     padding: 0 24px;
+    margin: 16px 0 0;
     color: var(--m3-on-surface-variant);
     font-family: var(--m3-body-font-family);
     font-size: 14px;
@@ -125,9 +135,10 @@
 
 .dialogContainer {
     display: flex;
+    overflow: visible;
     min-height: 0;
     flex-direction: column;
-    overflow: hidden;
+    padding: 20px 24px 24px;
 
     :global {
         .ant-row:not(.ant-form-item-row) {

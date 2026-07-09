@@ -20,7 +20,7 @@ import { useUserRoles } from './hooks/useUserRoles.hook';
 import { UserRole } from './enums/UserRole';
 import { canReadCaseHandoverAdmin, canSeeSupervisorLogs } from './constants/caseHandoverAccess';
 import { useAppConfigContext } from './context/useAppConfig';
-import { useAdminInvertedTheme } from './hooks/useAdminInvertedTheme.hook';
+import { useAdminTheme } from './hooks/useAdminTheme.hook';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import {
     LazyAgencyList,
@@ -70,7 +70,7 @@ export const App = () => {
         isFetched: isPublicTenantFetched,
     } = usePublicTenantData();
     const { isLoading, data } = useTenantData();
-    useAdminInvertedTheme(publicTenantData?.theming, isPublicTenantFetched || !isPublicTenantLoading);
+    useAdminTheme(publicTenantData?.theming, isPublicTenantFetched || !isPublicTenantLoading);
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
     const location = useLocation();

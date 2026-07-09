@@ -23,8 +23,8 @@
         cursor: text;
         font-size: 16px;
         padding: 30px;
-        height: 400px;
-        overflow: auto;
+        min-height: 400px;
+        overflow: visible;
 
         .public-DraftEditorPlaceholder-root,
         .public-DraftEditor-content {
