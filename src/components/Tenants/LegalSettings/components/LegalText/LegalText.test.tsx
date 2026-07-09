@@ -61,6 +61,18 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
     ),
 }));
 
+vi.mock('../../../../FormPluginEditor/FormPluginEditor', async () => {
+    const { Form } = await import('antd');
+
+    return {
+        default: ({ name }: { name?: string | string[] }) => (
+            <Form.Item name={name} noStyle>
+                <input />
+            </Form.Item>
+        ),
+    };
+});
+
 beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
         writable: true,
@@ -75,6 +87,9 @@ beforeAll(() => {
             dispatchEvent: vi.fn(),
         })),
     });
+
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element) => originalGetComputedStyle(el));
 });
 
 describe('LegalText (M3 shell)', () => {
@@ -90,8 +105,8 @@ describe('LegalText (M3 shell)', () => {
             />,
         );
 
-        // The native M3 editor is bound to the form via hidden per-language fields
-        // (one registered input per active language), so publish collects them all.
+        // The editor slot keeps one registered input per active language, so
+        // publish collects them all.
         expect(document.querySelector('input#content_imprint_de')).toHaveValue('<p>Impressum DE</p>');
         expect(document.querySelector('input#content_imprint_en')).toHaveValue('<p>Imprint EN</p>');
 
