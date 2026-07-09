@@ -94,7 +94,7 @@ export const FormSwitchField = ({
     checkedKey = 'yes',
     unCheckedKey = 'no',
     switchLabel,
-    switchVariant = 'antd',
+    switchVariant = 'm3',
 }: FormSwitchFieldProps) => {
     const [t] = useTranslation();
     const message = errorMessage || t('form.errors.required');

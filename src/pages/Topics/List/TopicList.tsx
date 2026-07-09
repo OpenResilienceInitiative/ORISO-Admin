@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Modal, Space, Switch } from 'antd';
+import { Button, Modal, Space } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { ColumnProps } from 'antd/lib/table';
 import { InterestsOutlined } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { M3Switch } from '../../../components/M3Switch';
 import { TopicData } from '../../../types/topic';
 import { Status } from '../../../types/status';
 import { TopicDeletionModal } from './TopicDeletionModal';
@@ -184,7 +185,11 @@ export const TopicList = () => {
 
                 {canShowTopicSwitch && (
                     <>
-                        <Switch checked={isTopicsFeatureActive} onClick={onTopicsSwitch} />
+                        <M3Switch
+                            checked={isTopicsFeatureActive}
+                            label={t('topics.featureToggle')}
+                            onChange={() => onTopicsSwitch()}
+                        />
                         {t('topics.featureToggle')}
                     </>
                 )}
