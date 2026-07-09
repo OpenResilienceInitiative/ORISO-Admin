@@ -296,6 +296,8 @@ export const UserEditOrAdd = () => {
             rejectPendingPublicSlug: true,
         });
         form.submit();
+    };
+
     // Superadmins pick the tenant in the form; other admins carry it in their token.
     const agencyTenantId = resolveAgencyTenantId(selectedTenant, userTenantId);
 
@@ -592,4 +594,4 @@ export const UserEditOrAdd = () => {
             </Form>
         </Page>
     );
-}};
+};

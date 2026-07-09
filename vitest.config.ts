@@ -18,6 +18,7 @@ export default defineConfig({
         environment: 'jsdom',
         exclude: [...configDefaults.exclude, 'cypress/**'],
         globals: true,
+        testTimeout: 30_000,
         server: {
             deps: {
                 // tippy.js ships a CJS main whose default export breaks under

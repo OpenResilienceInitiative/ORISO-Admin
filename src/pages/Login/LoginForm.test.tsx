@@ -1,5 +1,5 @@
 import React from 'react';
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LoginForm from './LoginForm';
@@ -84,7 +84,7 @@ vi.mock('../../components/CustomIcons/Verified', () => ({
 }));
 
 const fillRequiredFields = async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
 
     await user.type(screen.getByPlaceholderText('Username/Email'), 'admin@example.com');
     await user.type(screen.getByPlaceholderText('Password'), 'correct-password');
@@ -93,22 +93,6 @@ const fillRequiredFields = async () => {
 };
 
 describe('LoginForm', () => {
-    beforeAll(() => {
-        Object.defineProperty(window, 'matchMedia', {
-            writable: true,
-            value: vi.fn().mockImplementation((query: string) => ({
-                addEventListener: vi.fn(),
-                addListener: vi.fn(),
-                dispatchEvent: vi.fn(),
-                matches: false,
-                media: query,
-                onchange: null,
-                removeEventListener: vi.fn(),
-                removeListener: vi.fn(),
-            })),
-        });
-    });
-
     beforeEach(() => {
         mocks.login.mockReset();
         mocks.messageError.mockReset();
@@ -121,7 +105,7 @@ describe('LoginForm', () => {
     });
 
     it('keeps sign in disabled until username and password are entered', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         render(<LoginForm />);
 
         const signInButton = screen.getByRole('button', { name: 'Sign in' });

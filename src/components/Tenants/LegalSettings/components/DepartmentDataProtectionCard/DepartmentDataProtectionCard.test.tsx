@@ -1,6 +1,6 @@
 import React from 'react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DepartmentDataProtectionCard } from './index';
 
@@ -32,48 +32,30 @@ vi.mock('../../../../FormPluginEditor/TiptapEditor', () => ({
     ),
 }));
 
-beforeAll(() => {
-    Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        value: vi.fn().mockImplementation((query: string) => ({
-            matches: false,
-            media: query,
-            onchange: null,
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            dispatchEvent: vi.fn(),
-        })),
-    });
-});
-
 const publishButtonName = 'tenants.legal.departmentDataProtection.publish';
 const draftButtonName = 'tenants.legal.departmentDataProtection.saveDraft';
 
 describe('DepartmentDataProtectionCard', () => {
     it('publishes the complete content map (publish=true)', async () => {
-        const user = userEvent.setup();
         const onSave = vi.fn();
         render(<DepartmentDataProtectionCard initialContentByLanguage={{ de: '<p>x</p>' }} onSave={onSave} />);
 
-        await user.click(screen.getByRole('button', { name: publishButtonName }));
+        fireEvent.click(screen.getByRole('button', { name: publishButtonName }));
 
         expect(onSave).toHaveBeenCalledWith({ de: '<p>x</p>' }, true);
     });
 
     it('stores a draft (publish=false)', async () => {
-        const user = userEvent.setup();
         const onSave = vi.fn();
         render(<DepartmentDataProtectionCard initialContentByLanguage={{ de: '<p>x</p>' }} onSave={onSave} />);
 
-        await user.click(screen.getByRole('button', { name: draftButtonName }));
+        fireEvent.click(screen.getByRole('button', { name: draftButtonName }));
 
         expect(onSave).toHaveBeenCalledWith({ de: '<p>x</p>' }, false);
     });
 
     it('keeps the other languages when saving after editing only one language', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         const onSave = vi.fn();
         render(
             <DepartmentDataProtectionCard
@@ -91,7 +73,7 @@ describe('DepartmentDataProtectionCard', () => {
     });
 
     it('passes unknown keys through untouched on save', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         const onSave = vi.fn();
         render(
             <DepartmentDataProtectionCard
@@ -109,7 +91,7 @@ describe('DepartmentDataProtectionCard', () => {
     });
 
     it('switches the edited language via the language select', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         render(
             <DepartmentDataProtectionCard
                 initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
@@ -121,7 +103,7 @@ describe('DepartmentDataProtectionCard', () => {
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
 
-        await user.click(screen.getByRole('combobox'));
+        fireEvent.mouseDown(screen.getByRole('combobox'));
         await user.click(await screen.findByTitle('en'));
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
@@ -154,7 +136,7 @@ describe('DepartmentDataProtectionCard — translate on publish', () => {
         });
 
     it('opens the translate modal on publish and saves the merged map incl. __meta', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         const onSave = vi.fn();
         const onTranslate = onTranslateMock();
         render(
@@ -183,7 +165,7 @@ describe('DepartmentDataProtectionCard — translate on publish', () => {
     });
 
     it('never opens the modal for a draft save (no translation)', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         const onSave = vi.fn();
         const onTranslate = onTranslateMock();
         render(
