@@ -283,6 +283,27 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
+// Look-back banner shown while viewing an earlier version (read-only).
+.versionBanner {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin: 0 16px 8px;
+    padding: 8px 12px;
+    background: $m3-state-active;
+    border-radius: 12px;
+    color: $m3-on-surface;
+    font-size: 14px;
+}
+
+.versionBannerActions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
 .editorWrap {
     padding: 0 16px;
 }

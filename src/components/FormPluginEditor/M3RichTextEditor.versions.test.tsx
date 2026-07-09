@@ -1,0 +1,141 @@
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { M3RichTextEditor } from './M3RichTextEditor';
+
+vi.mock('react-i18next', () => ({
+    useTranslation: () => ({ t: (_key: string, fallback?: string) => fallback ?? _key }),
+}));
+
+beforeAll(() => {
+    Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockImplementation((query: string) => ({
+            matches: false,
+            media: query,
+            onchange: null,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+        })),
+    });
+    Element.prototype.scrollIntoView = vi.fn();
+});
+
+const versions = [
+    { id: '2026-07-01T10:00', label: '1. Jul 2026 – 10:00', content: '<p>Fassung Juli</p>' },
+    { id: '2026-05-02T09:00', label: '2. Mai 2026 – 09:00', content: '<p>Fassung Mai</p>' },
+];
+
+const openVersionMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+    // The version control lives in the sub-actions row; its stable purpose is on the title attr.
+    const trigger = screen.getByTitle('legal.m3Editor.versionHistory');
+    await user.click(trigger);
+};
+
+describe('M3RichTextEditor — version select (#268)', () => {
+    it('lists the current draft plus every provided version in the version menu', async () => {
+        const user = userEvent.setup();
+        render(
+            <M3RichTextEditor title="Datenschutz" value="<p>Entwurf</p>" versions={versions} enableAnchors={false} />,
+        );
+
+        await openVersionMenu(user);
+
+        await waitFor(() => {
+            expect(screen.getByText('1. Jul 2026 – 10:00')).toBeInTheDocument();
+        });
+        expect(screen.getByText('2. Mai 2026 – 09:00')).toBeInTheDocument();
+        // A way back to the editable draft is always offered.
+        expect(screen.getByText(/legal\.m3Editor\.versionCurrentDraft/i)).toBeInTheDocument();
+    });
+
+    it('shows a selected older version read-only with a restore + back banner', async () => {
+        const user = userEvent.setup();
+        const { container } = render(
+            <M3RichTextEditor
+                title="Datenschutz"
+                value="<p>Entwurf</p>"
+                versions={versions}
+                onRestoreVersion={vi.fn()}
+                enableAnchors={false}
+            />,
+        );
+
+        await openVersionMenu(user);
+        await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
+
+        // The editor now renders the version content, read-only (contenteditable=false).
+        await waitFor(() => {
+            expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('false');
+        });
+        expect(screen.getByText(/legal\.m3Editor\.viewingVersion/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /legal\.m3Editor\.restoreVersion/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /legal\.m3Editor\.backToDraft/i })).toBeInTheDocument();
+    });
+
+    it('restores an old version as a new draft (copy) via onRestoreVersion', async () => {
+        const user = userEvent.setup();
+        const onRestore = vi.fn();
+        render(
+            <M3RichTextEditor
+                title="Datenschutz"
+                value="<p>Entwurf</p>"
+                versions={versions}
+                onRestoreVersion={onRestore}
+                enableAnchors={false}
+            />,
+        );
+
+        await openVersionMenu(user);
+        await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
+        await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.restoreVersion/i }));
+
+        expect(onRestore).toHaveBeenCalledWith('<p>Fassung Mai</p>');
+        // After restoring, the banner is gone (back to editing the draft).
+        await waitFor(() => {
+            expect(screen.queryByText(/legal\.m3Editor\.viewingVersion/i)).not.toBeInTheDocument();
+        });
+    });
+
+    it('returns to the editable draft when "back to draft" is clicked', async () => {
+        const user = userEvent.setup();
+        const { container } = render(
+            <M3RichTextEditor title="Datenschutz" value="<p>Entwurf</p>" versions={versions} enableAnchors={false} />,
+        );
+
+        await openVersionMenu(user);
+        await user.click(await screen.findByText('1. Jul 2026 – 10:00'));
+        await waitFor(() => expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('false'));
+
+        await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.backToDraft/i }));
+
+        await waitFor(() => expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('true'));
+        expect(screen.queryByText(/legal\.m3Editor\.viewingVersion/i)).not.toBeInTheDocument();
+    });
+
+    it('does not show restore/back controls when no versions are provided', async () => {
+        render(<M3RichTextEditor title="Impressum" value="<p>x</p>" enableAnchors={false} />);
+        expect(screen.queryByText(/legal\.m3Editor\.viewingVersion/i)).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /legal\.m3Editor\.restoreVersion/i })).not.toBeInTheDocument();
+    });
+
+    it('never offers restore in read-only mode even if versions are passed', async () => {
+        const user = userEvent.setup();
+        render(
+            <M3RichTextEditor
+                title="Datenschutz"
+                value="<p>x</p>"
+                versions={versions}
+                readOnly
+                enableAnchors={false}
+            />,
+        );
+        await openVersionMenu(user);
+        await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
+        // Viewing works, but there is no "restore as draft" in a read-only card.
+        expect(screen.queryByRole('button', { name: /legal\.m3Editor\.restoreVersion/i })).not.toBeInTheDocument();
+    });
+});

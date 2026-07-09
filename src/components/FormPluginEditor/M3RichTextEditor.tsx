@@ -47,11 +47,29 @@ import AnchorChips from './AnchorChips';
 import { useHeadingAnchorNav } from './useHeadingAnchorNav';
 import styles from './M3RichTextEditor.module.scss';
 
+/** A saved, published version the editor can look back at (read-only). */
+export type EditorVersion = {
+    /** Stable id (e.g. the activation timestamp). */
+    id: string;
+    /** Human label shown in the version menu (e.g. a formatted date). */
+    label: string;
+    /** The version's HTML content. */
+    content: string;
+};
+
 export type M3RichTextEditorProps = {
     title?: string;
     /** Header icon component; defaults to the Impressum fingerprint. */
     icon?: React.ElementType;
     value?: string;
+    /**
+     * Saved versions for the look-back select (newest first). Selecting one shows
+     * its content read-only with a restore/back banner; restoring is a copy into
+     * the draft (append-only history — the old version is never mutated).
+     */
+    versions?: EditorVersion[];
+    /** Called with a version's content when the admin restores it as a new draft (copy). */
+    onRestoreVersion?: (content: string) => void;
     onChange?: (html: string) => void;
     placeholder?: string;
     languages?: { value: string; label: string }[];
@@ -347,6 +365,8 @@ export const M3RichTextEditor = ({
     title = 'Impressum',
     icon: IconComponent = Fingerprint,
     value = '',
+    versions = [],
+    onRestoreVersion,
     onChange,
     placeholder = 'Text eingeben …',
     languages = [{ value: 'de', label: 'Deutsch' }],
@@ -365,6 +385,13 @@ export const M3RichTextEditor = ({
 }: M3RichTextEditorProps) => {
     const { t } = useTranslation();
     const [maximized, setMaximized] = useState(false);
+    // Which saved version is being viewed (null = the editable current draft).
+    const [viewingVersionId, setViewingVersionId] = useState<string | null>(null);
+    const viewingVersion = versions.find((v) => v.id === viewingVersionId) ?? null;
+    // What the editor surface shows: a looked-at version, else the live draft.
+    const displayedContent = viewingVersion ? viewingVersion.content : value;
+    // Editable only when not read-only AND not looking at an old version.
+    const editorEditable = !readOnly && !viewingVersion;
     // Anchors only make sense for the built-in editor; an editorSlot brings
     // its own TiptapEditor with its own anchor row.
     const anchorsEnabled = enableAnchors && !editorSlot;
@@ -392,8 +419,8 @@ export const M3RichTextEditor = ({
     });
 
     useEffect(() => {
-        editor?.setEditable(!readOnly);
-    }, [editor, readOnly]);
+        editor?.setEditable(editorEditable);
+    }, [editor, editorEditable]);
 
     useEffect(() => {
         editor?.setOptions({ editorProps: { attributes: { 'aria-label': title, role: 'textbox' } } });
@@ -401,16 +428,16 @@ export const M3RichTextEditor = ({
 
     // Shared anchor-navigation behavior — same hook as the form-bound TiptapEditor.
     const { anchors, anchorsRef, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture } =
-        useHeadingAnchorNav(editor, { enabled: anchorsEnabled, editable: !readOnly });
+        useHeadingAnchorNav(editor, { enabled: anchorsEnabled, editable: editorEditable });
 
     useEffect(() => {
         if (!editor) return;
-        const incoming = value || '';
+        const incoming = displayedContent || '';
         const current = editor.isEmpty ? '' : editor.getHTML();
         if (incoming !== current && !(isEmptyHtml(incoming) && editor.isEmpty)) {
             editor.commands.setContent(incoming, false);
         }
-    }, [value, editor]);
+    }, [displayedContent, editor]);
 
     if (!editor) return null;
 
@@ -449,7 +476,32 @@ export const M3RichTextEditor = ({
 
             <hr className={styles.divider} />
 
-            {!editorSlot && !readOnly && <Toolbar editor={editor} />}
+            {!editorSlot && editorEditable && <Toolbar editor={editor} />}
+
+            {viewingVersion && (
+                <div className={styles.versionBanner} role="status">
+                    <span>
+                        {t('legal.m3Editor.viewingVersion')}: {viewingVersion.label}
+                    </span>
+                    <div className={styles.versionBannerActions}>
+                        {!readOnly && onRestoreVersion && (
+                            <button
+                                type="button"
+                                className={styles.outlineBtn}
+                                onClick={() => {
+                                    onRestoreVersion(viewingVersion.content);
+                                    setViewingVersionId(null);
+                                }}
+                            >
+                                {t('legal.m3Editor.restoreVersion')}
+                            </button>
+                        )}
+                        <button type="button" className={styles.outlineBtn} onClick={() => setViewingVersionId(null)}>
+                            {t('legal.m3Editor.backToDraft')}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {aboveEditorSlot}
 
@@ -516,23 +568,31 @@ export const M3RichTextEditor = ({
                 <Dropdown
                     trigger={['click']}
                     menu={{
-                        items: [
-                            { key: 'latest', label: t('legal.m3Editor.versionLatest') },
-                            { key: 'published', label: t('legal.m3Editor.versionPublished') },
-                            { type: 'divider' },
-                            { key: 'history', label: t('legal.m3Editor.versionHistoryPending'), disabled: true },
-                        ],
+                        selectable: true,
+                        selectedKeys: [viewingVersionId ?? 'current'],
+                        items:
+                            versions.length > 0
+                                ? [
+                                      {
+                                          key: 'current',
+                                          label: t('legal.m3Editor.versionCurrentDraft'),
+                                      },
+                                      { type: 'divider' as const },
+                                      ...versions.map((v) => ({ key: v.id, label: v.label })),
+                                  ]
+                                : [{ key: 'latest', label: t('legal.m3Editor.versionLatest') }],
+                        onClick: ({ key }) => setViewingVersionId(key === 'current' ? null : key),
                     }}
                 >
                     <button type="button" className={styles.outlineBtn} title={t('legal.m3Editor.versionHistory')}>
                         <History />
-                        <span>{versionLabel}</span>
+                        <span>{viewingVersion ? viewingVersion.label : versionLabel}</span>
                         <ArrowDropDown />
                     </button>
                 </Dropdown>
             </div>
 
-            {!readOnly && (onPublish || onSaveDraft) && (
+            {editorEditable && (onPublish || onSaveDraft) && (
                 <>
                     <hr className={styles.divider} />
 
