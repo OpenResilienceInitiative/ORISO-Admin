@@ -2,7 +2,6 @@ import React from 'react';
 import { describe, expect, it, vi, beforeAll } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Form } from 'antd';
 import { LegalText } from './index';
 
 vi.mock('react-i18next', () => ({
@@ -62,15 +61,6 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
     ),
 }));
 
-// Form-bound editor stub: registers the field so form.submit() collects it.
-vi.mock('../../../../FormPluginEditor/FormPluginEditor', () => ({
-    default: ({ name }: { name: string[] }) => (
-        <Form.Item name={name}>
-            <textarea data-testid={`editor-${name.join('.')}`} />
-        </Form.Item>
-    ),
-}));
-
 beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
         writable: true,
@@ -100,8 +90,10 @@ describe('LegalText (M3 shell)', () => {
             />,
         );
 
-        expect(screen.getByTestId('editor-content.imprint.de')).toBeInTheDocument();
-        expect(screen.getByTestId('editor-content.imprint.en')).toBeInTheDocument();
+        // The native M3 editor is bound to the form via hidden per-language fields
+        // (one registered input per active language), so publish collects them all.
+        expect(document.querySelector('input#content_imprint_de')).toHaveValue('<p>Impressum DE</p>');
+        expect(document.querySelector('input#content_imprint_en')).toHaveValue('<p>Imprint EN</p>');
 
         await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
 
