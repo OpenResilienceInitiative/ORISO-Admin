@@ -39,7 +39,63 @@ export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationP
                         required
                     />
                 </Col>
-                <Col xs={12}>
+                <Col xs={16} sm={8}>
+                    <FormInputField
+                        name="street"
+                        labelKey="agency.edit.general.address.street"
+                        placeholderKey="agency.edit.general.address.street"
+                        maxLength={255}
+                    />
+                </Col>
+                <Col xs={8} sm={4}>
+                    <FormInputField
+                        name="houseNumber"
+                        labelKey="agency.edit.general.address.house_number"
+                        placeholderKey="agency.edit.general.address.house_number"
+                        maxLength={20}
+                    />
+                </Col>
+                <Col xs={12} sm={8}>
+                    <FormInputField
+                        name="floorBuilding"
+                        labelKey="agency.edit.general.address.floor_building"
+                        placeholderKey="agency.edit.general.address.floor_building"
+                        maxLength={100}
+                    />
+                </Col>
+                <Col xs={12} sm={8}>
+                    <FormInputField
+                        name="country"
+                        labelKey="agency.edit.general.address.country"
+                        placeholderKey="agency.edit.general.address.country"
+                        maxLength={100}
+                    />
+                </Col>
+                <Col xs={12} sm={8}>
+                    <FormInputField
+                        name="phone"
+                        labelKey="agency.edit.general.address.phone"
+                        placeholderKey="agency.edit.general.address.phone"
+                        maxLength={30}
+                    />
+                </Col>
+                <Col xs={12} sm={8}>
+                    <FormInputField
+                        name="phoneSecondary"
+                        labelKey="agency.edit.general.address.phone_secondary"
+                        placeholderKey="agency.edit.general.address.phone_secondary"
+                        maxLength={30}
+                    />
+                </Col>
+                <Col xs={24} sm={8}>
+                    <FormInputField
+                        name="email"
+                        labelKey="agency.edit.general.address.email"
+                        placeholderKey="agency.edit.general.address.email"
+                        maxLength={255}
+                    />
+                </Col>
+                <Col xs={24}>
                     <FormTextAreaField
                         name="description"
                         labelKey="agency.edit.general.general_information.description"

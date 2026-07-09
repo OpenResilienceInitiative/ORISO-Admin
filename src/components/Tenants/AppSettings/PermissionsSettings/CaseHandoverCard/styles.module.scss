@@ -1,0 +1,228 @@
+/* Case-handover specific pieces inside the shared chat-type card shell:
+   reason tabs (M3 primary tabs), consent rows, language chips, notification
+   sample field, footer text actions. */
+
+/* This card has more content below the description (reason tabs, consent rows,
+   notification preview) than the chat-type cards, so it doesn't need the shared
+   card's reserved description height. */
+
+/* M3 headline-small (Figma): 24/32, regular weight, centered. Overrides the
+   shared card title (22/700) for this card to match the design system. */
+
+.cardTitleM3 {
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 32px;
+}
+
+/* Figma "Additional Features Element": checkbox + label + trailing control,
+   16px gap, vertically centered. */
+
+.featureRow {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    padding: 4px 0;
+    gap: 16px;
+}
+
+.featureLabel {
+    min-width: 0;
+    flex: 1;
+    color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    line-height: 24px;
+}
+
+/* M3 body-medium helper line under the master row. */
+.helperText {
+    margin: 4px 0 12px;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 0.25px;
+    line-height: 20px;
+}
+
+.reasonTabs {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 14%, transparent);
+    margin: 4px -8px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.reasonTab {
+    padding: 12px 14px 9px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    appearance: none;
+    background: none;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    white-space: nowrap;
+
+    &:hover {
+        color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
+    }
+}
+
+.reasonTabActive {
+    border-bottom-color: var(--admin-control-selected, var(--m3-primary, #a5000a));
+    color: var(--admin-control-selected, var(--m3-primary, #a5000a));
+    font-weight: 600;
+}
+
+/* Placeholder reason (not backend-seeded yet): selectable to inspect, greyed out. */
+.reasonTabPlaceholder {
+    color: color-mix(in srgb, var(--admin-form-muted-text, #444748) 45%, transparent);
+
+    &.reasonTabActive {
+        border-bottom-color: color-mix(in srgb, var(--admin-form-muted-text, #444748) 45%, transparent);
+        color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 55%, transparent);
+    }
+}
+
+.placeholderHint {
+    margin: 8px 0 0;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}
+
+.consentRows {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 4px;
+}
+
+.languageChips {
+    display: flex;
+    padding: 4px 0 10px;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.languageChip {
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    appearance: none;
+    background: none;
+    border-radius: 8px;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    white-space: nowrap;
+}
+
+.languageChipActive {
+    border-color: var(--m3-secondary-container, #646d78);
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
+}
+
+.notificationField {
+    min-height: 128px;
+    box-sizing: border-box;
+    padding: 8px 16px 10px;
+    border: 1px solid var(--input-border-color, var(--m3-outline, #747878));
+    background: var(--input-bg, var(--m3-surface-container-low, #f6f3f3));
+    border-radius: 4px;
+    overflow-wrap: anywhere;
+}
+
+.notificationFieldLabel {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}
+
+.notificationFieldText {
+    margin: 0;
+    color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    line-height: 22px;
+    overflow-wrap: anywhere;
+}
+
+.enforceHint {
+    margin: 14px 0 4px;
+
+    /* Figma M3/sys/light/on-primary-fixed (#410001), body-medium-emphasized. */
+    color: var(--m3-on-primary-fixed, #410001);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.25px;
+    line-height: 20px;
+    text-align: center;
+}
+
+.footerActions {
+    display: flex;
+    min-height: 96px;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 24px 0 8px;
+    border-top: 1px solid color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 14%, transparent);
+    margin: auto -32px 0;
+    gap: 8px;
+}
+
+.footerTextButton {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 16px;
+    border: 0;
+    appearance: none;
+    background: none;
+    border-radius: 100px;
+    color: var(--m3-secondary, #4c555f);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    gap: 8px;
+    letter-spacing: 0.1px;
+
+    &:disabled {
+        color: color-mix(in srgb, var(--admin-form-muted-text, #444748) 45%, transparent);
+        cursor: not-allowed;
+    }
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* Figma renders both footer actions in secondary (#4C555F); the primary action
+   is distinguished by its leading icon, not colour. */
+
+.footerTextButtonPrimary {
+    color: var(--m3-secondary, #4c555f);
+}

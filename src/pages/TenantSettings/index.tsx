@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router';
+import { Outlet } from 'react-router-dom';
 import { useMemo } from 'react';
 import { Page } from '../../components/Page';
 import { getSettingsTabs } from '../../constants/settingsTabs';

@@ -46,10 +46,13 @@
         display: flex;
         width: 100vw;
 
-        @media screen and (prefers-reduced-motion: reduce) {
+        @media (prefers-reduced-motion: reduce) {
             &.stage--ready {
                 animation: none;
                 animation-delay: @loginOverlayDelayMobile;
+                // No animation: jump straight to the final state so the
+                // full-width stage does not cover the login form.
+                left: -100vw;
             }
         }
 
@@ -79,10 +82,13 @@
         display: flex;
 
         &--animated {
-            @media screen and (prefers-reduced-motion: reduce) {
+            @media (prefers-reduced-motion: reduce) {
                 &.stage--ready {
+                    // Animation disabled: settle to the 40vw left panel so the
+                    // login form in the right 60vw stays visible.
                     animation: none;
                     animation-delay: @loginOverlayDelayDesktop;
+                    width: 40vw;
                 }
             }
 

@@ -1,9 +1,10 @@
 import { Button, Col, Form, notification, Row } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
+import { normalizeTopicIds } from '../../../api/agency/normalizeTopicIds';
 import routePathNames from '../../../appConfig';
 import { Page } from '../../../components/Page';
 import { CardDeck } from '../../../components/CardDeck';
@@ -24,7 +25,8 @@ import { useAgencyLegalDataMissing } from '../../../hooks/useAgencyLegalDataMiss
 import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
 import { LegalTextSettings } from './components/LegalTextSettings';
-import { DataProcessingAgreement } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreement';
+import { DataProcessingAgreementContainer } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer';
+import { DepartmentDataProtectionContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentDataProtectionContainer';
 import styles from '../../../components/Page/styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { PermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings';
@@ -127,7 +129,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         ...counsellingRelationsInitialValues,
         postCodeRangesActive: !hasOnlyDefaultRangeDefined(postCodes || []),
         online: agencyData?.id ? !agencyData?.offline : false,
-        topicIds: convertToOptions(agencyData?.topics, 'name', 'id', true),
+        topicIds: convertToOptions(agencyData?.topics, 'name', 'id', true)[0],
         tenantId: agencyTenantId,
     };
 
@@ -156,7 +158,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                               genders: mergedFormData.demographics.genders.map(({ value }) => value),
                           }
                         : mergedFormData.demographics,
-                topicIds: mergedFormData.topicIds?.map(({ value }) => value),
+                topicIds: normalizeTopicIds(mergedFormData.topicIds),
                 offline: !mergedFormData.online,
                 counsellingRelations: mergedFormData.counsellingRelations?.map(
                     (relation) => relation.value || relation,
@@ -302,14 +304,14 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 onFinish={onSubmit}
             >
                 <Row gutter={[20, 10]}>
-                    <Col xs={12}>
+                    <Col xs={24}>
                         <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
                     </Col>
-                    <Col xs={12} lg={6}>
+                    <Col xs={24} lg={12}>
                         <AgencyGeneralInformation />
                         <RegistrationSettings />
                     </Col>
-                    <Col xs={12} lg={6}>
+                    <Col xs={24} lg={12}>
                         <AgencySettings isEditMode={isEditing} />
                     </Col>
                 </Row>
@@ -336,10 +338,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             onFinish={onSubmit}
         >
             <Row gutter={[20, 10]}>
-                <Col xs={12}>
+                <Col xs={24}>
                     <h3 className={styles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
                 </Col>
-                <Col xs={12} lg={6}>
+                <Col xs={24} lg={12}>
                     <AgencySettings isEditMode={isEditing} />
                 </Col>
             </Row>
@@ -380,8 +382,21 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     />
                 </CardDeck.Item>
                 <CardDeck.Item>
-                    <DataProcessingAgreement />
+                    {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
+                    <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />
                 </CardDeck.Item>
+                {agencyData?.id &&
+                    (agencyData.topics || [])
+                        .filter((topic) => topic.id != null)
+                        .map((topic) => (
+                            <CardDeck.Item key={`dpp-${topic.id}`}>
+                                <DepartmentDataProtectionContainer
+                                    agencyId={Number(agencyData.id)}
+                                    topicId={topic.id as number}
+                                    departmentName={topic.name}
+                                />
+                            </CardDeck.Item>
+                        ))}
             </CardDeck>
         </>
     );

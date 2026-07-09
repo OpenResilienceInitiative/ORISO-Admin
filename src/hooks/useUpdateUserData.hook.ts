@@ -1,4 +1,4 @@
-import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
+import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { userAdminDataEndpoint } from '../appConfig';
 import { CounselorData } from '../types/counselor';
@@ -8,8 +8,8 @@ export const useUpdateUserData = (
     options?: UseMutationOptions<CounselorData, Error, Partial<CounselorData>, Error | Response>,
 ) => {
     const queryClient = useQueryClient();
-    return useMutation(
-        (formData) => {
+    return useMutation({
+        mutationFn: (formData) => {
             const bodyData = JSON.stringify({
                 ...formData,
             });
@@ -21,12 +21,10 @@ export const useUpdateUserData = (
                 bodyData,
             });
         },
-        {
-            ...options,
-            onSuccess: (responseData, variables) => {
-                queryClient.invalidateQueries(USER_DATA_KEY);
-                options?.onSuccess?.(responseData, variables, null);
-            },
+        ...options,
+        onSuccess: (responseData, variables, onMutateResult, context) => {
+            queryClient.invalidateQueries({ queryKey: [USER_DATA_KEY] });
+            options?.onSuccess?.(responseData, variables, onMutateResult, context);
         },
-    );
+    });
 };

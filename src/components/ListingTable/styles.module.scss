@@ -1,10 +1,26 @@
 .listingTable {
+    --admin-table-radius: 16px;
+
     width: 100%;
     overflow: visible;
     padding-bottom: 24px;
 
     :global {
+        .ant-table {
+            background: var(--admin-table-surface, #f6f3f3);
+            overflow: hidden;
+            border-radius: var(--admin-table-radius);
+        }
+
+        .ant-table-container,
+        .ant-table-content {
+            background: var(--admin-table-surface, #f6f3f3);
+            overflow: hidden;
+            border-radius: inherit;
+        }
+
         .ant-table-body {
+            background: var(--admin-table-surface, #f6f3f3);
             overflow: auto !important;
             min-height: var(--admin-table-scroll-y, calc(100dvh - 280px));
             scrollbar-gutter: stable;
@@ -13,37 +29,60 @@
         .ant-table-pagination.ant-pagination {
             position: sticky;
             z-index: 850;
+            left: 0;
             right: 0;
             bottom: 24px;
             display: flex;
+            width: 100%;
+            box-sizing: border-box;
             align-items: center;
             justify-content: flex-end;
-            margin: 24px 0 0;
-            padding: 8px 0;
-            background: var(--m3-surface-container, #f0edee);
+            margin: 0;
+            padding: 16px 24px;
+            overflow: hidden;
+            border-radius: 0 0 var(--admin-table-radius) var(--admin-table-radius);
+            background: var(--admin-table-row-hover-surface, #f0edee);
         }
 
         .ant-table-thead > tr > th {
-            background: #f5f5f5 !important;
-            font-weight: 900;
-            color: rgba(0, 0, 0, 0.85);
+            background: var(--admin-table-header-surface, #e4e2e2) !important;
+            border-bottom: 1px solid var(--admin-table-border, #eae7e8);
+            color: var(--admin-table-header-text, #1b1b1c);
+            font-weight: 500;
             text-align: center;
 
             &::before {
-                background-color: rgba(0, 0, 0, 0.8) !important;
+                background-color: var(--admin-table-border, #eae7e8) !important;
             }
         }
 
         .ant-table-tbody > tr > td {
             text-align: center;
-            color: rgba(0, 0, 0, 0.8);
-            font-weight: 900;
-            background: #fafafa !important;
+            border-bottom: 1px solid var(--admin-table-border, #eae7e8);
+            background: var(--admin-table-surface, #f6f3f3) !important;
+            color: var(--admin-table-text, #444748);
+            font-weight: 400;
+        }
+
+        .ant-table-tbody > tr:hover > td {
+            background: var(--admin-table-row-hover-surface, #f0edee) !important;
+        }
+
+        .ant-table-cell-fix-left,
+        .ant-table-cell-fix-right {
+            background: inherit !important;
+        }
+
+        .ant-table-cell-fix-left-last::after,
+        .ant-table-cell-fix-right-first::after,
+        .ant-table-ping-left .ant-table-cell-fix-left-last::after,
+        .ant-table-ping-right .ant-table-cell-fix-right-first::after {
+            box-shadow: none !important;
         }
 
         .ant-table-column-title,
         .ant-table-thead > tr > th {
-            font-weight: 900;
+            font-weight: 500;
         }
     }
 }
@@ -127,51 +166,57 @@
     }
 }
 
+.actionGroup {
+    display: inline-flex;
+    gap: 8px;
+    white-space: nowrap;
+}
+
 .statusTag {
     margin: 0;
-    border-radius: 4px;
-    font-weight: 900;
+    border-radius: 30px;
+    font-weight: 500;
     text-transform: capitalize;
 }
 
 .statusTagActive {
-    background: #f6ffed;
-    border-color: #b7eb8f;
-    color: #389e0d;
+    background: var(--admin-status-success-container, #f6ffed);
+    border-color: var(--admin-status-success-border, #b7eb8f);
+    color: var(--admin-status-success, #0a882f);
 }
 
 .statusTagDefault {
-    background: #fafafa;
-    border-color: #d9d9d9;
-    color: rgba(0, 0, 0, 0.65);
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }
 
 .statusTagUsed {
-    background: #f5f5f5;
-    border-color: #595959;
-    color: #262626;
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }
 
 .statusTagExpired {
-    background: #fff2f0;
-    border-color: #ffccc7;
-    color: #cf1322;
+    background: var(--admin-status-error-container, #fff2f0);
+    border-color: var(--admin-status-error-border, #ffccc7);
+    color: var(--admin-status-error, #cc0000);
 }
 
 .anonymityTagFull {
-    background: #f6ffed;
-    border-color: #b7eb8f;
-    color: #389e0d;
+    background: var(--admin-status-success-container, #f6ffed);
+    border-color: var(--admin-status-success-border, #b7eb8f);
+    color: var(--admin-status-success, #0a882f);
 }
 
 .anonymityTagCustomize {
-    background: #fffbe6;
-    border-color: #ffe58f;
-    color: #d48806;
+    background: color-mix(in srgb, var(--admin-status-warning, #ff9f00) 14%, var(--m3-surface-container-low));
+    border-color: color-mix(in srgb, var(--admin-status-warning, #ff9f00) 42%, transparent);
+    color: color-mix(in srgb, var(--admin-status-warning, #ff9f00) 82%, #432000);
 }
 
 .anonymityTagNameEmail {
-    background: #fff2f0;
-    border-color: #ffccc7;
-    color: #cf1322;
+    background: var(--admin-status-error-container, #fff2f0);
+    border-color: var(--admin-status-error-border, #ffccc7);
+    color: var(--admin-status-error, #cc0000);
 }

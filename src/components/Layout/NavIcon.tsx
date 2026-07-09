@@ -1,5 +1,5 @@
-import { useLocation } from 'react-router';
-import { cloneElement, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { cloneElement, useEffect, useState, type JSX } from 'react';
 import routePathNames from '../../appConfig';
 import { ReactComponent as DisplaySettingsActiveIcon } from '../../resources/img/svg/navbar/display_settings_active.svg';
 import { ReactComponent as DisplaySettingsHoverIcon } from '../../resources/img/svg/navbar/display_settings_hover.svg';
@@ -40,6 +40,33 @@ interface Props {
 
 type IconState = 'active' | 'hover' | 'inactive';
 
+const desktopSidebarQuery = '(min-width: 768px)';
+
+const getIsDesktopSidebar = () =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        ? window.matchMedia(desktopSidebarQuery).matches
+        : true;
+
+const useIsDesktopSidebar = () => {
+    const [isDesktopSidebar, setIsDesktopSidebar] = useState(getIsDesktopSidebar);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+            return undefined;
+        }
+
+        const mediaQueryList = window.matchMedia(desktopSidebarQuery);
+        const updateIsDesktopSidebar = () => setIsDesktopSidebar(mediaQueryList.matches);
+
+        updateIsDesktopSidebar();
+        mediaQueryList.addEventListener('change', updateIsDesktopSidebar);
+
+        return () => mediaQueryList.removeEventListener('change', updateIsDesktopSidebar);
+    }, []);
+
+    return isDesktopSidebar;
+};
+
 const decorateIcon = (icon: JSX.Element) =>
     cloneElement(icon, {
         'aria-hidden': true,
@@ -59,9 +86,19 @@ const getIconState = (isActive: boolean, hover: boolean): IconState => {
     return 'inactive';
 };
 
+const isCurrentPathActive = (currentPath: string, path: string): boolean => {
+    if (path === routePathNames.logs) {
+        return currentPath === routePathNames.logs;
+    }
+
+    return currentPath === path || currentPath.startsWith(`${path}/`);
+};
+
 const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
     const currentPath = useLocation().pathname;
-    const iconState = getIconState(currentPath.includes(path), hover);
+    const isActivePath = isCurrentPathActive(currentPath, path);
+    const isDesktopSidebar = useIsDesktopSidebar();
+    const iconState = getIconState(isActivePath && isDesktopSidebar, hover);
 
     switch (path) {
         case routePathNames.themeSettings:
@@ -106,6 +143,7 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
                 inactive: <StatisticsInactiveIcon />,
             });
         case routePathNames.logs:
+        case routePathNames.caseHandoverLogs:
         case routePathNames.inactiveAccountAuditLogs:
             return selectIcon(iconState, {
                 active: <LogsActiveIcon />,

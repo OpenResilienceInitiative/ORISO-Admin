@@ -64,10 +64,7 @@ const getSourceColorRole = (value: unknown) => {
     return null;
 };
 
-const replaceSourceColors = (
-    value: unknown,
-    replacementColors: Record<'accent' | 'secondary', number[]>,
-): unknown => {
+const replaceSourceColors = (value: unknown, replacementColors: Record<'accent' | 'secondary', number[]>): unknown => {
     const colorRole = getSourceColorRole(value);
 
     if (colorRole) {

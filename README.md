@@ -1,11 +1,13 @@
 # ORISO Admin
 
 ## Overview
+
 Admin dashboard application for managing the Online Beratung platform.
 
 ## Quick Start
 
 ### Build Docker Image
+
 ```bash
 cd /home/caritas/Desktop/online-beratung/caritas-workspace/ORISO-Admin
 docker build -t caritas-admin:latest .
@@ -13,6 +15,7 @@ sudo k3s ctr images import <(docker save caritas-admin:latest)
 ```
 
 ### Run Locally (Development)
+
 ```bash
 cd /home/caritas/Desktop/online-beratung/caritas-workspace/ORISO-Admin
 npm install
@@ -20,6 +23,7 @@ npm run dev
 ```
 
 ### Environment Configuration
+
 Copy `.env.example` to `.env` and configure:
 
 ```bash
@@ -33,25 +37,29 @@ VITE_KEYCLOAK_CLIENT_ID=admin-app
 ```
 
 ## Kubernetes Deployment
+
 ```bash
 kubectl apply -f /home/caritas/Desktop/online-beratung/kubernetes-complete/03-frontend-admin.yaml
 ```
 
 ## Important Notes
-- Uses Docker image: `caritas-admin:latest`
-- Runs on port: `3000`
-- Requires admin-level Keycloak credentials
-- Environment variables are baked into the Docker image during build
+
+-   Uses Docker image: `caritas-admin:latest`
+-   Runs on port: `3000`
+-   Requires admin-level Keycloak credentials
+-   Environment variables are baked into the Docker image during build
 
 ## Dependencies
-- Node.js 18+
-- React 18
-- Vite 4
-- Keycloak JS adapter
+
+-   Node.js 18+
+-   React 18
+-   Vite 4
+-   Keycloak JS adapter
 
 ## Access
-- Admin panel accessible at: `http://91.99.219.182:3000`
-- Login with Keycloak admin credentials
+
+-   Admin panel accessible at: `http://91.99.219.182:3000`
+-   Login with Keycloak admin credentials
 
 ## Knowledge Graph
 
@@ -109,13 +117,13 @@ GRAPH_DIR="$PROJECT_DIR" pnpm exec vite --host 127.0.0.1
 
 Generated graph documentation lives under `.understand-anything/`:
 
-- `.understand-anything/README.md`
-- `.understand-anything/ARCHITECTURE.md`
-- `.understand-anything/ONBOARDING.md`
-- `.understand-anything/ORISO-ECOSYSTEM.md`
-- `.understand-anything/FINDINGS.md`
-- `.understand-anything/DEPENDENCY-AUDIT.md`
-- `.understand-anything/visuals/`
+-   `.understand-anything/README.md`
+-   `.understand-anything/ARCHITECTURE.md`
+-   `.understand-anything/ONBOARDING.md`
+-   `.understand-anything/ORISO-ECOSYSTEM.md`
+-   `.understand-anything/FINDINGS.md`
+-   `.understand-anything/DEPENDENCY-AUDIT.md`
+-   `.understand-anything/visuals/`
 
 Auto-update is enabled for this repository through `.understand-anything/config.json`. The equivalent setup command is:
 

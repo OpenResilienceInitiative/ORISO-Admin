@@ -11,9 +11,6 @@ export const resolveDisplayStatus = (record: CounselorData): DisplayStatus => {
     if (record.active === false || record.status === 'INACTIVE') {
         return 'DISABLED';
     }
-    if (record.status === 'CREATED' || record.status === 'IN_PROGRESS') {
-        return 'INVITED';
-    }
     if (record.status === 'ACTIVE' || record.active === true) {
         return 'ACTIVE';
     }

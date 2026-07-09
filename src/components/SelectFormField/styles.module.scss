@@ -79,7 +79,9 @@
     color: var(--input-disabled-color) !important;
 }
 
-.item { composes: item from '../FormFields/styles.module.scss'; }
+.item {
+    composes: item from '../FormFields/styles.module.scss';
+}
 
 .item :global(.ant-form-item-label) {
     padding-bottom: 0;

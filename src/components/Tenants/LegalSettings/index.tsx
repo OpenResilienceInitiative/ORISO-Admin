@@ -1,4 +1,5 @@
 import { useTranslation, Trans } from 'react-i18next';
+import { PrivacyTip } from '@mui/icons-material';
 import { CardDeck } from '../../CardDeck';
 import { CardEditable } from '../../CardEditable';
 import { FormSwitchField } from '../../FormSwitchField';
@@ -6,7 +7,7 @@ import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { LegalText } from './components/LegalText';
-import { DataProcessingAgreement } from './components/DataProcessingAgreement';
+import { DataProcessingAgreementContainer } from './components/DataProcessingAgreementContainer';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import styles from './styles.module.scss';
 import { FeatureFlag } from '../../../enums/FeatureFlag';
@@ -29,6 +30,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
         <LegalText
             tenantId={finalTenantId}
             fieldName={['content', 'privacy']}
+            icon={PrivacyTip}
             titleKey="privacy.title"
             subTitle={
                 <Trans
@@ -91,7 +93,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                 </CardDeck.Item>
             )}
             <CardDeck.Item>
-                <DataProcessingAgreement />
+                <DataProcessingAgreementContainer tenantId={finalTenantId} />
             </CardDeck.Item>
             <CardDeck.Item>
                 <LegalText

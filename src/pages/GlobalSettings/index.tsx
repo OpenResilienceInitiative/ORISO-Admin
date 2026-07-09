@@ -1,9 +1,9 @@
-import { Button, Col, Form, Row, message } from 'antd';
+import { Button, Form, message } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Outlet } from 'react-router';
+import { Navigate, Outlet } from 'react-router-dom';
 import { Page } from '../../components/Page';
 import { CardDeck } from '../../components/CardDeck';
 import { CardEditable } from '../../components/CardEditable';
@@ -18,6 +18,7 @@ import { useAppConfigContext } from '../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.hook';
 import { useUserData } from '../../hooks/useUserData.hook';
 import { sendGlobalSmtpTestEmail } from '../../api/settings/sendGlobalSmtpTestEmail';
+import { TranslationApiKeysCardContainer } from '../../components/GlobalSettings/TranslationApiKeysCardContainer';
 import styles from './styles.module.scss';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
 
@@ -52,9 +53,10 @@ export const GlobalLoginSettingsPage = () => {
     const initialValues = useMemo(() => ({ ...data }), [data]);
 
     return (
-        <Row gutter={[24, 24]}>
-            <Col span={12} sm={6}>
+        <div className={styles.globalConfigGrid}>
+            <section className={styles.globalConfigCardSlot}>
                 <CardEditable
+                    className={styles.loginFunctionCard}
                     isLoading={isLoading}
                     initialValues={initialValues}
                     titleKey="tenants.globalSettings.anonymousChat.title"
@@ -69,8 +71,11 @@ export const GlobalLoginSettingsPage = () => {
                         />
                     </div>
                 </CardEditable>
-            </Col>
-        </Row>
+            </section>
+            <section className={styles.translationCardSlot}>
+                <TranslationApiKeysCardContainer />
+            </section>
+        </div>
     );
 };
 
@@ -80,7 +85,7 @@ export const GlobalSmtpSettingsPage = () => {
     const [testForm] = Form.useForm();
     const { settings } = useAppConfigContext();
     const { data: userData } = useUserData();
-    const { mutate, isLoading } = useSettingsAdminMutation();
+    const { mutate, isPending } = useSettingsAdminMutation();
     const [isTestSending, setIsTestSending] = useState(false);
     const initialValues = useMemo(
         () => ({
@@ -159,7 +164,7 @@ export const GlobalSmtpSettingsPage = () => {
                     className={styles.smtpCard}
                     variant="dialog"
                     headerIcon={<EmailOutlinedIcon />}
-                    isLoading={isLoading}
+                    isLoading={isPending}
                     initialValues={initialValues}
                     titleKey="globalSettings.smtp.title"
                     subTitleKey="globalSettings.smtp.description"

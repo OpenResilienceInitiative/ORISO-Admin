@@ -1,17 +1,17 @@
 .content {
     height: 100vh;
     overflow: auto;
-    background: #f0edee;
+    background: var(--admin-workspace-background, #e4e2e2);
 
     :global(.ant-layout-content) {
-        background: #f0edee;
+        background: var(--admin-workspace-background, #e4e2e2);
     }
 }
 
 .mainContent {
-    background: #f0edee;
+    background: var(--admin-workspace-background, #e4e2e2);
 
     :global(.ant-layout) {
-        background: #f0edee;
+        background: var(--admin-workspace-background, #e4e2e2);
     }
 }

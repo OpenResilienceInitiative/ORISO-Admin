@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from 'react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     apiDeleteTwoFactorAuth,
     apiPostTwoFactorAuthEmailWithCode,
@@ -16,8 +16,8 @@ interface UserMutationData {
 export const useUserTwoFactorAuth = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<unknown, Error, UserMutationData>(
-        ({ twoFactorType, otp, secret }: UserMutationData) => {
+    return useMutation<unknown, Error, UserMutationData>({
+        mutationFn: ({ twoFactorType, otp, secret }: UserMutationData) => {
             switch (twoFactorType) {
                 case TwoFactorType.App:
                     return apiPutTwoFactorAuthApp({ secret, otp });
@@ -27,28 +27,27 @@ export const useUserTwoFactorAuth = () => {
                     return Promise.resolve();
             }
         },
-        {
-            onSuccess: (_, { twoFactorType }) => {
-                const cache = queryClient.getQueryData('user-data') as any;
-                if (cache) {
-                    cache.twoFactorAuth.isActive = true;
-                    cache.twoFactorAuth.type = twoFactorType;
-                    queryClient.getQueryData('user-data', cache);
-                }
-            },
+        onSuccess: (_, { twoFactorType }) => {
+            const cache = queryClient.getQueryData(['user-data']) as any;
+            if (cache) {
+                cache.twoFactorAuth.isActive = true;
+                cache.twoFactorAuth.type = twoFactorType;
+                queryClient.getQueryData(['user-data']);
+            }
         },
-    );
+    });
 };
 
 export const useUserTwoFactorDelete = () => {
     const queryClient = useQueryClient();
 
-    return useMutation(() => apiDeleteTwoFactorAuth(), {
+    return useMutation({
+        mutationFn: () => apiDeleteTwoFactorAuth(),
         onSuccess: () => {
-            const cache = queryClient.getQueryData('user-data') as any;
+            const cache = queryClient.getQueryData(['user-data']) as any;
             if (cache) {
                 cache.twoFactorAuth.isActive = false;
-                queryClient.getQueryData('user-data', cache);
+                queryClient.getQueryData(['user-data']);
             }
         },
     });
@@ -57,12 +56,13 @@ export const useUserTwoFactorDelete = () => {
 export const useUserTwoFactorSendEmailCode = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<unknown, Error, string>((email: string) => apiPutTwoFactorAuthEmail(email), {
+    return useMutation<unknown, Error, string>({
+        mutationFn: (email: string) => apiPutTwoFactorAuthEmail(email),
         onSuccess: (_, email) => {
-            const cache = queryClient.getQueryData('user-data') as any;
+            const cache = queryClient.getQueryData(['user-data']) as any;
             if (cache) {
                 cache.email = email;
-                queryClient.getQueryData('user-data', cache);
+                queryClient.getQueryData(['user-data']);
             }
         },
     });

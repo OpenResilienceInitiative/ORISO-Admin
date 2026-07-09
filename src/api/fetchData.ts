@@ -92,7 +92,8 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
 
         const csrfToken = generateCsrfToken();
 
-        const localDevelopmentHeader = isLocalDevelopment ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
+        const localDevelopmentHeader =
+            isLocalDevelopment && CSRF_WHITELIST_HEADER ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
 
         const controller = new AbortController();
         const timeoutMs = props.timeout ?? 30_000;
@@ -160,6 +161,7 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                         );
                     } else if (response.status === 403) {
                         window.location.href = '/admin/access-denied';
+                        reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
                     } else if (response.status === 401) {
                         // Don't force a logout here. fetchData()'s wrapper attempts a single
                         // token refresh + retry before falling back to logout, so a lapsed or
@@ -174,7 +176,7 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                             content: i18next.t([
                                 `message.error.${response.headers.get(FETCH_ERRORS.X_REASON)}`,
                                 'message.error.default',
-                            ]),
+                            ]) as string,
                             duration: 8,
                         });
 

@@ -1,9 +1,9 @@
 import { Alert, Button, message, Space, Col, Row, Form } from 'antd';
 import { useWatch } from 'antd/lib/form/Form';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQueryClient } from 'react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FETCH_ERRORS, X_REASON } from '../../../api/fetchData';
 import { Card } from '../../../components/Card';
 import { FormInputField } from '../../../components/FormInputField';
@@ -27,9 +27,12 @@ import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { searchTenantData } from '../../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
 import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
+import { findUncoveredTopics } from '../../../utils/topicAgencyCoverage';
 import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { useCounselorById } from '../../../hooks/useCounselorById';
 import { GrantConsultantIdentityModal } from '../../../components/GrantConsultantIdentityModal';
+import { CreateAgencyModal } from '../../../components/CreateAgencyModal';
+import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
@@ -232,7 +235,36 @@ export const UserEditOrAdd = () => {
         },
     });
 
-    const onSave = useCallback((data) => mutate(data), []);
+    // Mirror the backend ADR-003 rule (ConsultantTopicAgencyCompatibilityValidator):
+    // every selected topic must be offered by at least one selected agency. Catching this
+    // here means we name the mismatch instead of relying on the assignment request, which
+    // the backend used to swallow silently.
+    const onSave = useCallback(
+        (data) => {
+            if (isConsultantForm) {
+                const uncoveredTopics = findUncoveredTopics(
+                    data.agencies ?? [],
+                    data.topicIds ?? [],
+                    filteredAgencies || [],
+                );
+                if (uncoveredTopics.length > 0) {
+                    form.setFields([
+                        {
+                            name: 'topicIds',
+                            errors: [
+                                t('message.error.topicsNotCoveredByAgencies', {
+                                    topics: uncoveredTopics.map(({ label }) => label).join(', '),
+                                }),
+                            ],
+                        },
+                    ]);
+                    return;
+                }
+            }
+            mutate(data);
+        },
+        [isConsultantForm, filteredAgencies, form, mutate, t],
+    );
     const onCancel = useCallback(() => navigate(`/admin/users/${typeOfUsers}`), []);
     const isAbsentEnabled = useWatch('absent', form);
     const activePublicSlug = publicSlug || consultantById?.publicSlug;
@@ -264,6 +296,18 @@ export const UserEditOrAdd = () => {
             rejectPendingPublicSlug: true,
         });
         form.submit();
+    // Superadmins pick the tenant in the form; other admins carry it in their token.
+    const agencyTenantId = resolveAgencyTenantId(selectedTenant, userTenantId);
+
+    const onAgencyCreated = (agency) => {
+        const current = form.getFieldValue('agencies') || [];
+        form.setFieldValue('agencies', [
+            ...current,
+            {
+                value: String(agency.id),
+                label: [agency.postcode, agency.name, agency.city].filter(Boolean).join(' '),
+            },
+        ]);
     };
 
     return (
@@ -274,7 +318,7 @@ export const UserEditOrAdd = () => {
                         adminId={id}
                         tenantId={singleData?.tenantId}
                         onSuccess={() => {
-                            queryClient.invalidateQueries([typeOfUsers.toUpperCase()]);
+                            queryClient.invalidateQueries({ queryKey: [typeOfUsers.toUpperCase()] });
                             navigate(`/admin/users/${typeOfUsers}`);
                         }}
                     />
@@ -318,7 +362,7 @@ export const UserEditOrAdd = () => {
                 }}
             >
                 <Row gutter={[20, 10]}>
-                    <Col xs={12} lg={6}>
+                    <Col xs={24} lg={12}>
                         <Card titleKey="agency.edit.general.general_information">
                             <FormInputField
                                 name="firstname"
@@ -408,9 +452,38 @@ export const UserEditOrAdd = () => {
                                 )}
                         </Card>
                     </Col>
-                    <Col xs={12} lg={6}>
+                    <Col xs={24} lg={12}>
                         <Space direction="vertical" size={20} className={styles.columnStack}>
-                            <Card titleKey="settings.title">
+                        <Card titleKey="settings.title">
+                            <SelectFormField
+                                name="tenantId"
+                                placeholder="tenantAdmins.form.tenant"
+                                required
+                                disabled={isReadOnly || isEditing || !isSuperAdmin}
+                                className={styles.select}
+                                label="tenantAdmins.form.tenantAssignment"
+                                options={convertToOptions(tenantsData || [], 'name', 'id')}
+                            />
+
+                            <SelectFormField
+                                name="agencies"
+                                label="agency"
+                                labelInValue
+                                isMulti
+                                placeholder="plsSelect"
+                                options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
+                            />
+
+                            <div className={styles.createAgency}>
+                                <CreateAgencyModal
+                                    tenantId={agencyTenantId}
+                                    disabled={isReadOnly}
+                                    onSuccess={onAgencyCreated}
+                                />
+                            </div>
+
+                            {showTopicsField && (
+                                <>
                                 <SelectFormField
                                     name="tenantId"
                                     placeholder="tenantAdmins.form.tenant"
@@ -429,8 +502,6 @@ export const UserEditOrAdd = () => {
                                     placeholder="plsSelect"
                                     options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
                                 />
-
-                                {showTopicsField && (
                                     <SelectFormField
                                         label="topics.title"
                                         name="topicIds"
@@ -440,6 +511,7 @@ export const UserEditOrAdd = () => {
                                         placeholder="plsSelect"
                                         options={topicOptions}
                                     />
+                                </>
                                 )}
 
                                 {isConsultantForm && (
@@ -520,4 +592,4 @@ export const UserEditOrAdd = () => {
             </Form>
         </Page>
     );
-};
+}};

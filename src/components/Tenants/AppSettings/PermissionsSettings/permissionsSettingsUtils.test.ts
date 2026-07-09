@@ -68,8 +68,22 @@ describe('permissions settings utils', () => {
     });
 
     it('disables sub toggles when their master toggle is off', () => {
-        expect(isSubToggleDisabled({ key: 'group', masterField: ['settings', 'featureGroupChatV2Enabled'] } as any, [], false)).toBe(true);
-        expect(isSubToggleDisabled({ key: 'oneOnOne' } as any, ['settings', 'featureAudioCallsOneOnOneChatsEnabled'], false)).toBe(true);
-        expect(isSubToggleDisabled({ key: 'anonymous' } as any, ['settings', 'featureAnonymousChatEnabled'], false)).toBe(false);
+        expect(
+            isSubToggleDisabled(
+                { key: 'group', masterField: ['settings', 'featureGroupChatV2Enabled'] } as any,
+                [],
+                false,
+            ),
+        ).toBe(true);
+        expect(
+            isSubToggleDisabled(
+                { key: 'oneOnOne' } as any,
+                ['settings', 'featureAudioCallsOneOnOneChatsEnabled'],
+                false,
+            ),
+        ).toBe(true);
+        expect(
+            isSubToggleDisabled({ key: 'anonymous' } as any, ['settings', 'featureAnonymousChatEnabled'], false),
+        ).toBe(false);
     });
 });

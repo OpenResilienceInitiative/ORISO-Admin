@@ -1,11 +1,11 @@
 import React from 'react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider, setLogger } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { tenantAccessEndpoint } from '../appConfig';
 import { FETCH_METHODS } from '../api/fetchData';
-import { ADMIN_PORTAL_ACCESS_DENIED, useLoginMutation } from './useLoginMutation.hook';
+import { ADMIN_PORTAL_ACCESS_DENIED, TENANT_ACCESS_DENIED, useLoginMutation } from './useLoginMutation.hook';
 
 const mocks = vi.hoisted(() => ({
     apiServerSettings: vi.fn(),
@@ -93,14 +93,6 @@ const renderLoginMutation = () => {
 };
 
 describe('useLoginMutation', () => {
-    beforeAll(() => {
-        setLogger({
-            error: () => undefined,
-            log: console.log,
-            warn: console.warn,
-        });
-    });
-
     beforeEach(() => {
         mocks.apiServerSettings.mockReset();
         mocks.fetchData.mockReset();
@@ -128,6 +120,7 @@ describe('useLoginMutation', () => {
                 loginResponse,
                 { username: 'admin@example.com', password: 'correct-password', otp: '123456' },
                 undefined,
+                expect.anything(),
             );
         });
         expect(mocks.getAccessToken).toHaveBeenCalledWith({
@@ -157,9 +150,46 @@ describe('useLoginMutation', () => {
                 new Error(ADMIN_PORTAL_ACCESS_DENIED),
                 { username: 'admin@example.com', password: 'correct-password', otp: '123456' },
                 undefined,
+                expect.anything(),
             );
         });
         expect(mocks.fetchData).not.toHaveBeenCalled();
+        expect(mocks.setTokens).not.toHaveBeenCalled();
+    });
+
+    it('reports a denied tenant access check as TENANT_ACCESS_DENIED', async () => {
+        const user = userEvent.setup();
+        mocks.fetchData.mockRejectedValue(new Error('API call error: 401 Unauthorized'));
+        renderLoginMutation();
+
+        await user.click(screen.getByRole('button', { name: 'Login' }));
+
+        await waitFor(() => {
+            expect(mocks.onError).toHaveBeenCalledWith(
+                new Error(TENANT_ACCESS_DENIED),
+                expect.anything(),
+                undefined,
+                expect.anything(),
+            );
+        });
+        expect(mocks.setTokens).not.toHaveBeenCalled();
+    });
+
+    it('reports an unreachable server during the tenant access check as TIMEOUT, not access denied', async () => {
+        const user = userEvent.setup();
+        mocks.fetchData.mockRejectedValue(new Error('TIMEOUT'));
+        renderLoginMutation();
+
+        await user.click(screen.getByRole('button', { name: 'Login' }));
+
+        await waitFor(() => {
+            expect(mocks.onError).toHaveBeenCalledWith(
+                new Error('TIMEOUT'),
+                expect.anything(),
+                undefined,
+                expect.anything(),
+            );
+        });
         expect(mocks.setTokens).not.toHaveBeenCalled();
     });
 });

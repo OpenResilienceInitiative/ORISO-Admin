@@ -2,13 +2,13 @@ import React from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AgencyPageEdit } from './index';
 
 // Render AgencyPageEdit inside a QueryClientProvider so child components that use
 // react-query (e.g. RegistrationSettings → useConsultantsOrAdminsData) don't throw
 // "No QueryClient set". Retries are off so a missing queryFn never hangs the test.
-const renderWithClient = (ui: React.ReactElement) => {
+const renderWithClient = (ui: React.ReactElement<any>) => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 };
@@ -48,8 +48,8 @@ vi.mock('react-i18next', () => ({
     useTranslation: () => Object.assign([t], { t, i18n: { language: 'de' } }),
 }));
 
-vi.mock('react-router', async () => {
-    const actual = await vi.importActual<typeof import('react-router')>('react-router');
+vi.mock('react-router-dom', async () => {
+    const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
     return {
         ...actual,
         useNavigate: () => mocks.navigate,
@@ -99,8 +99,8 @@ vi.mock('../../../components/Tenants/AppSettings/PermissionsSettings', () => ({
     PermissionsSettings: () => <div />,
 }));
 
-vi.mock('../../../components/Tenants/LegalSettings/components/DataProcessingAgreement', () => ({
-    DataProcessingAgreement: () => <div />,
+vi.mock('../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer', () => ({
+    DataProcessingAgreementContainer: () => <div />,
 }));
 
 vi.mock('../../../context/FeatureContext', () => ({

@@ -1,10 +1,10 @@
 import 'react-app-polyfill/stable';
-import { useEffect, useState } from 'react';
-import { QueryClientProvider } from 'react-query';
-import { render } from 'react-dom';
+import { useEffect, useState, type JSX } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createRoot, type Root } from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ConfigProvider, message } from 'antd';
-import { Locale } from 'antd/lib/locale-provider';
+import { Locale } from 'antd/lib/locale';
 import de_DE from 'antd/es/locale/de_DE';
 import en_GB from 'antd/es/locale/en_GB';
 import { App } from './App';
@@ -20,7 +20,9 @@ import { useAppConfigContext, UseAppConfigProvider } from './context/useAppConfi
 import { apiServerSettings } from './api/settings/apiServerSettings';
 import { Initialization } from './components/Layout/Initialization';
 import { AccessDenied } from './pages/ErrorPages/AccessDenied';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from './utils/language';
+import { buildAdminAntdTheme } from './theme/antdM3Theme';
 
 interface LangMap {
     [key: string]: Locale;
@@ -30,6 +32,12 @@ const myLanguages: LangMap = {
     de: de_DE,
     en: en_GB,
 };
+
+declare global {
+    interface Window {
+        orisoAdminRoot?: Root;
+    }
+}
 
 /**
  * ant design message config
@@ -72,37 +80,49 @@ const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) =>
         };
     }, []);
 
-    return <ConfigProvider locale={myLanguages[language]}>{children}</ConfigProvider>;
+    return (
+        <ConfigProvider locale={myLanguages[language]} theme={buildAdminAntdTheme()}>
+            {children}
+        </ConfigProvider>
+    );
 };
 
-render(
-    <QueryClientProvider client={queryClient}>
-        <UseAppConfigProvider>
-            <AppSettingsWrapper>
-                <LanguageAwareConfigProvider>
-                    <Router>
-                        <Routes>
-                            <Route path={routePathNames.login} element={<Login />} />
-                            <Route path="/admin/404" element={<Error404 />} />
-                            <Route path="/admin/access-denied" element={<AccessDenied />} />
+const container = document.getElementById('root');
+if (!container) {
+    throw new Error('Application root element not found');
+}
 
-                            <Route path={routePathNames.imprint} element={<Imprint />} />
-                            <Route path={routePathNames.privacy} element={<Privacy />} />
+const root = window.orisoAdminRoot ?? createRoot(container);
+window.orisoAdminRoot = root;
+root.render(
+    <ErrorBoundary scope="app">
+        <QueryClientProvider client={queryClient}>
+            <UseAppConfigProvider>
+                <AppSettingsWrapper>
+                    <LanguageAwareConfigProvider>
+                        <Router>
+                            <Routes>
+                                <Route path={routePathNames.login} element={<Login />} />
+                                <Route path="/admin/404" element={<Error404 />} />
+                                <Route path="/admin/access-denied" element={<AccessDenied />} />
 
-                            {/* put protected routes at the end to act as a wildcard route fetcher */}
-                            <Route
-                                path="*"
-                                element={
-                                    <ProtectedRoute>
-                                        <App />
-                                    </ProtectedRoute>
-                                }
-                            />
-                        </Routes>
-                    </Router>
-                </LanguageAwareConfigProvider>
-            </AppSettingsWrapper>
-        </UseAppConfigProvider>
-    </QueryClientProvider>, // Contextprovider does not work at the moment as they have an error there
-    document.getElementById('root'),
+                                <Route path={routePathNames.imprint} element={<Imprint />} />
+                                <Route path={routePathNames.privacy} element={<Privacy />} />
+
+                                {/* put protected routes at the end to act as a wildcard route fetcher */}
+                                <Route
+                                    path="*"
+                                    element={
+                                        <ProtectedRoute>
+                                            <App />
+                                        </ProtectedRoute>
+                                    }
+                                />
+                            </Routes>
+                        </Router>
+                    </LanguageAwareConfigProvider>
+                </AppSettingsWrapper>
+            </UseAppConfigProvider>
+        </QueryClientProvider>
+    </ErrorBoundary>, // Contextprovider does not work at the moment as they have an error there
 );

@@ -8,6 +8,7 @@ interface SideScrollerFooterProps {
     canScrollBackward: boolean;
     canScrollForward: boolean;
     className?: string;
+    controlsId?: string;
     'data-admin-card-deck-footer'?: boolean;
     nextLabel: string;
     onScrollBackward: () => void;
@@ -20,13 +21,14 @@ export const SideScrollerFooter = ({
     canScrollBackward,
     canScrollForward,
     className,
+    controlsId,
     'data-admin-card-deck-footer': dataAdminCardDeckFooter,
     nextLabel,
     onScrollBackward,
     onScrollForward,
     previousLabel,
 }: SideScrollerFooterProps) => (
-    <div
+    <nav
         className={classNames(styles.footer, className)}
         aria-label={ariaLabel}
         data-admin-card-deck-footer={dataAdminCardDeckFooter || undefined}
@@ -35,6 +37,7 @@ export const SideScrollerFooter = ({
             className={classNames(styles.button, { [styles.active]: canScrollBackward })}
             type="button"
             aria-label={previousLabel}
+            aria-controls={controlsId}
             disabled={!canScrollBackward}
             onClick={onScrollBackward}
         >
@@ -44,10 +47,11 @@ export const SideScrollerFooter = ({
             className={classNames(styles.button, { [styles.active]: canScrollForward })}
             type="button"
             aria-label={nextLabel}
+            aria-controls={controlsId}
             disabled={!canScrollForward}
             onClick={onScrollForward}
         >
             <ArrowForwardIcon />
         </button>
-    </div>
+    </nav>
 );

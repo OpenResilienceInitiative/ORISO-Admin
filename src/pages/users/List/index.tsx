@@ -1,4 +1,4 @@
-import { useParams } from 'react-router';
+import { useParams } from 'react-router-dom';
 import { Page } from '../../../components/Page';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { UserManagementTable } from '../management/UserManagementTable';

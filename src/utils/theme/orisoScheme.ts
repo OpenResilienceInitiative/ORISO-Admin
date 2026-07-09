@@ -1,5 +1,7 @@
 import { getAccentDark, getAccentLight, TenantSeeds } from '../themeSeeds';
 
+export type OrisoSchemeName = 'light' | 'inverted';
+
 export interface OrisoPaletteResult {
     tokens: Record<string, string>;
     tooPale: boolean;
@@ -59,6 +61,27 @@ const DEFAULT_ACCENT_DIM = '#ffb4aa';
 const DEFAULT_ACCENT_ACTION = '#cc1e1c';
 const SYSTEM_ALERT = '#410001';
 const SYSTEM_ERROR = '#b1005e';
+const DARK_TEXT = '#141c25';
+const ADMIN_TABLE_TOKENS = {
+    '--admin-workspace-background': '#e4e2e2',
+    '--admin-search-surface': '#fcf9f9',
+    '--admin-search-text': '#444748',
+    '--admin-search-placeholder': '#444748',
+    '--admin-search-icon': '#444748',
+    '--admin-search-hover-surface': '#f0edee',
+    '--admin-table-surface': '#f6f3f3',
+    '--admin-table-header-surface': '#e4e2e2',
+    '--admin-table-row-hover-surface': '#f0edee',
+    '--admin-table-border': '#eae7e8',
+    '--admin-table-text': '#444748',
+    '--admin-table-header-text': '#1b1b1c',
+    '--admin-table-chip-surface': '#e4e2e2',
+    '--admin-table-chip-border': '#c4c7c8',
+    '--admin-table-chip-text': '#444748',
+    '--admin-form-field-surface': '#f6f3f3',
+    '--admin-form-card-surface': '#eae7e8',
+    '--admin-form-label-text': '#444748',
+};
 
 const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) => {
     if (!explicitAccentLight && accentDark === DEFAULT_ACCENT_DARK) {
@@ -80,7 +103,59 @@ const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) =
     };
 };
 
-export const computeOrisoPalette = (seeds: TenantSeeds): OrisoPaletteResult => {
+const readableOn = (background: string) => (luminance(background) > 0.62 ? DARK_TEXT : '#ffffff');
+
+const invertedTokens = (accentDark: string, accentLight: string, accentDim: string, onAccentLightVariant: string) => {
+    const primary = accentLight;
+    const primaryContainer = accentDark;
+    const action = mix(accentLight, '#ffffff', 0.1);
+
+    return {
+        ...ADMIN_TABLE_TOKENS,
+        '--m3-primary': primary,
+        '--m3-on-primary': readableOn(primary),
+        '--m3-primary-container': primaryContainer,
+        '--m3-on-primary-container': readableOn(primaryContainer),
+        '--m3-primary-fixed': accentLight,
+        '--m3-primary-fixed-dim': accentDim,
+        '--m3-on-primary-fixed-variant': onAccentLightVariant,
+        '--m3-secondary': '#cbd6e2',
+        '--m3-on-secondary': DARK_TEXT,
+        '--m3-secondary-container': '#39414b',
+        '--m3-on-secondary-container': '#e7effc',
+        '--m3-error': '#ffb1c8',
+        '--m3-on-error': '#41001f',
+        '--m3-error-container': '#8a0049',
+        '--m3-on-error-container': '#ffd9e5',
+        '--m3-warning': '#ffb4ab',
+        '--m3-on-warning': SYSTEM_ALERT,
+        '--m3-surface': '#303030',
+        '--m3-on-surface': '#f4eff0',
+        '--m3-surface-container-lowest': '#252324',
+        '--m3-surface-container-low': '#383637',
+        '--m3-surface-container': '#3d3b3c',
+        '--m3-surface-container-high': '#474545',
+        '--m3-surface-container-highest': '#514f50',
+        '--m3-on-surface-variant': '#d0c4c7',
+        '--m3-surface-variant': '#494647',
+        '--m3-outline': '#9a9295',
+        '--m3-outline-variant': '#4d484a',
+        '--m3-background': '#303030',
+        '--m3-on-background': '#f4eff0',
+        '--m3-inverse-surface': '#fcf9f9',
+        '--m3-inverse-on-surface': '#1a1c1e',
+        '--oriso-app-accent': primary,
+        '--oriso-app-accent-dark': accentDark,
+        '--oriso-app-accent-light': accentLight,
+        '--oriso-app-on-accent': readableOn(primary),
+        '--oriso-app-accent-container': primaryContainer,
+        '--oriso-app-chat-surface': '#ffffff',
+        '--oriso-app-action': action,
+        '--oriso-app-on-action': readableOn(action),
+    };
+};
+
+export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName = 'light'): OrisoPaletteResult => {
     const accentDark = normalizeHex(getAccentDark(seeds)) ?? DEFAULT_ACCENT_DARK;
     const explicitAccentLight = normalizeHex(getAccentLight(seeds));
     const { accentLight, accentDim, accentAction, onAccentLightVariant } = defaultAccentTokens(
@@ -90,10 +165,19 @@ export const computeOrisoPalette = (seeds: TenantSeeds): OrisoPaletteResult => {
     const onAccentDark = luminance(accentDark) > 0.62 ? '#141c25' : '#ffffff';
     const onAccentLight = luminance(accentLight) > 0.62 ? '#141c25' : '#ffffff';
     const onAccentAction = luminance(accentAction) > 0.62 ? '#141c25' : '#ffffff';
+    const tooPale = saturation(accentDark) < 0.12;
+
+    if (scheme === 'inverted') {
+        return {
+            tooPale,
+            tokens: invertedTokens(accentDark, accentLight, accentDim, onAccentLightVariant),
+        };
+    }
 
     return {
-        tooPale: saturation(accentDark) < 0.12,
+        tooPale,
         tokens: {
+            ...ADMIN_TABLE_TOKENS,
             '--m3-primary': accentDark,
             '--m3-on-primary': onAccentDark,
             '--m3-primary-container': accentLight,

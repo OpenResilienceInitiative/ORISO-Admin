@@ -10,8 +10,8 @@ const t = (key: string, fallback?: string) =>
         'searchInput.clear': 'Clear search',
         'searchInput.submit': 'Run search',
     }[key] ||
-        fallback ||
-        key);
+    fallback ||
+    key);
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t }),
@@ -19,7 +19,7 @@ vi.mock('react-i18next', () => ({
 
 describe('SearchInput', () => {
     beforeEach(() => {
-        vi.useFakeTimers();
+        vi.useFakeTimers({ shouldAdvanceTime: true });
     });
 
     afterEach(() => {
@@ -27,7 +27,7 @@ describe('SearchInput', () => {
     });
 
     it('runs a debounced search after the minimum length is reached', async () => {
-        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime, delay: null });
         const handleOnSearch = vi.fn();
 
         render(<SearchInput handleOnSearch={handleOnSearch} minSearchLength={3} />);
@@ -42,7 +42,7 @@ describe('SearchInput', () => {
     });
 
     it('runs an immediate search when Enter is pressed', async () => {
-        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime, delay: null });
         const handleOnSearch = vi.fn();
 
         render(<SearchInput handleOnSearch={handleOnSearch} searchOnChange={false} />);
@@ -53,7 +53,7 @@ describe('SearchInput', () => {
     });
 
     it('clears the value and notifies when the clear button is clicked', async () => {
-        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime, delay: null });
         const handleOnSearchClear = vi.fn();
         const onValueChange = vi.fn();
 

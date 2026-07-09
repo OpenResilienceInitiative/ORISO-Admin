@@ -1,3 +1,31 @@
+/* responsive breakpoints — previously provided by antd/dist/antd.less (v4).
+   antd v5 dropped its less stylesheet, so the app's own less must define them. */
+@screen-xs: 480px;
+@screen-sm: 576px;
+@screen-md: 768px;
+@screen-lg: 992px;
+@screen-xl: 1200px;
+@screen-xxl: 1600px;
+@screen-xs-min: @screen-xs;
+@screen-sm-min: @screen-sm;
+@screen-md-min: @screen-md;
+@screen-lg-min: @screen-lg;
+@screen-xl-min: @screen-xl;
+@screen-xxl-min: @screen-xxl;
+@screen-xs-max: (@screen-sm - 1);
+@screen-sm-max: (@screen-md - 1);
+@screen-md-max: (@screen-lg - 1);
+@screen-lg-max: (@screen-xl - 1);
+@screen-xl-max: (@screen-xxl - 1);
+
+/* antd v4 base tokens previously provided by antd/dist/antd.less, kept at their
+   v4 defaults so the app's own less keeps its previous appearance under v5. */
+@padding-sm: 12px;
+@border-color-base: #d9d9d9;
+@border-width-base: 1px;
+@info-color: #1890ff;
+@success-color: #52c41a;
+
 /* grid */
 @grid-columns: 12;
 

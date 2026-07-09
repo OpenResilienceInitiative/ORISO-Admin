@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { ReleaseToggle } from '../../enums/ReleaseToggle';
 

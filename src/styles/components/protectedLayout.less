@@ -64,6 +64,35 @@
                 }
             }
         }
+
+        .menuSection {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+            padding: 0 6px;
+            border-left: 1px solid rgba(231, 239, 252, 0.2);
+        }
+
+        .menuSectionLabel {
+            color: rgba(231, 239, 252, 0.7);
+            font-family: @body-font-family;
+            font-size: 9px;
+            font-weight: 700;
+            line-height: 10px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        ul.menuSectionItems {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            gap: 8px;
+            margin: 0;
+            padding: 0;
+            overflow: visible;
+        }
     }
 
     h4.formHeadline {
@@ -102,10 +131,10 @@
             position: sticky;
             top: 0;
             left: 0;
-            width: 85px;
-            min-width: 85px !important;
-            max-width: 85px !important;
-            flex: 0 0 85px !important;
+            width: 96px;
+            min-width: 96px !important;
+            max-width: 96px !important;
+            flex: 0 0 96px !important;
             height: 100vh;
             background-color: #141c25;
         }
@@ -144,6 +173,31 @@
                 padding: 8px 0 0;
             }
 
+            .menuSection {
+                width: 100%;
+                margin-top: 8px;
+                padding: 8px 0 0;
+                border-top: 1px solid rgba(231, 239, 252, 0.16);
+                border-left: 0;
+            }
+
+            .menuSectionLabel {
+                max-width: 76px;
+                margin-bottom: 4px;
+                color: rgba(231, 239, 252, 0.62);
+                font-size: 9px;
+                line-height: 11px;
+                overflow-wrap: anywhere;
+                white-space: normal;
+            }
+
+            ul.menuSectionItems {
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                width: 100%;
+            }
+
             .menuItem {
                 margin: 0;
                 width: 100%;
@@ -152,9 +206,7 @@
 
                 a,
                 button {
-                    width: 83px;
-                    min-width: 60px;
-                    max-width: 96px;
+                    width: 100%;
                     min-height: auto;
                     padding: 4px;
                     box-sizing: border-box;
@@ -203,7 +255,7 @@
                         overflow-wrap: anywhere;
                         word-break: normal;
                         display: inline-block;
-                        max-width: 75px;
+                        max-width: 100%;
                         letter-spacing: 0.2px;
                         white-space: pre-line;
                         transition: color 800ms ease;

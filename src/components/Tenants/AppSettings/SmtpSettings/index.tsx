@@ -179,7 +179,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
             titleKey="tenants.appSettings.smtp.title"
             onSave={(formData) => mutate(applyPlatformEmailRestrictions(formData))}
         >
-            <Card className={styles.sectionCard} size="small" bordered>
+            <Card className={styles.sectionCard} size="small" variant="outlined">
                 <div className={styles.checkGroup}>
                     <FormSwitchField
                         className={styles.smtpSwitch}

@@ -27,7 +27,9 @@ const UserRolesHarness = () => {
             <output aria-label="super-admin">{String(roles.isSuperAdmin)}</output>
             <output aria-label="tenant-scoped">{String(roles.isTenantScopedAdmin)}</output>
             <output aria-label="technical">{String(roles.isTechnicalAccount)}</output>
-            <output aria-label="has-admin-role">{String(roles.hasRole([UserRole.AgencyAdmin, UserRole.UserAdmin]))}</output>
+            <output aria-label="has-admin-role">
+                {String(roles.hasRole([UserRole.AgencyAdmin, UserRole.UserAdmin]))}
+            </output>
         </>
     );
 };
@@ -64,6 +66,29 @@ describe('useUserRoles', () => {
         expect(screen.getByLabelText('super-admin')).toHaveTextContent('true');
         expect(screen.getByLabelText('technical')).toHaveTextContent('true');
         expect(screen.getByLabelText('has-admin-role')).toHaveTextContent('true');
+    });
+
+    it('degrades to no roles when the token payload has no realm_access claim', () => {
+        mocks.getAccessTokenForRequests.mockReturnValue('token');
+        mocks.parseJwt.mockReturnValue({ tenantId: 5 });
+
+        render(<UserRolesHarness />);
+
+        expect(screen.getByLabelText('roles')).toHaveTextContent('');
+        expect(screen.getByLabelText('tenant-id')).toHaveTextContent('5');
+        expect(screen.getByLabelText('super-admin')).toHaveTextContent('false');
+        expect(screen.getByLabelText('has-admin-role')).toHaveTextContent('false');
+    });
+
+    it('degrades to no roles when the token cannot be parsed at all', () => {
+        mocks.getAccessTokenForRequests.mockReturnValue('corrupt-token');
+        mocks.parseJwt.mockReturnValue(null);
+
+        render(<UserRolesHarness />);
+
+        expect(screen.getByLabelText('roles')).toHaveTextContent('');
+        expect(screen.getByLabelText('tenant-id')).toHaveTextContent('null');
+        expect(screen.getByLabelText('super-admin')).toHaveTextContent('false');
     });
 
     it('detects tenant scoped admins from string tenant ids', () => {

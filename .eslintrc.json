@@ -15,7 +15,7 @@
     "parser": "@typescript-eslint/parser",
     /*"files": ["*.ts", "*.tsx"],*/
     "parserOptions": {
-        "project": "./tsconfig.json"
+        "project": "./tsconfig.eslint.json"
     },
     "plugins": ["import", "@typescript-eslint", "jsx-a11y", "prettier", "cypress"],
     "rules": {
@@ -42,13 +42,31 @@
             }
         ]
     },
+    "overrides": [
+        {
+            "files": [
+                "src/**/*.test.ts",
+                "src/**/*.test.tsx",
+                "src/**/*.stories.ts",
+                "src/**/*.stories.tsx",
+                "src/test/**/*.ts"
+            ],
+            "rules": {
+                "import/first": "off",
+                "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
+                "react/function-component-definition": "off",
+                "@typescript-eslint/no-non-null-assertion": "off",
+                "no-underscore-dangle": ["error", { "allow": ["__APP_CONFIG__"] }]
+            }
+        }
+    ],
     "settings": {
         "react": {
             "version": "detect"
         },
         "import/resolver": {
             "typescript": {
-                "project": "./tsconfig.json"
+                "project": "./tsconfig.eslint.json"
             },
             "node": {
                 "extensions": [".js", ".jsx", ".ts", ".tsx"],

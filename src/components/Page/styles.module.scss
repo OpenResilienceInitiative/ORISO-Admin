@@ -1,7 +1,7 @@
 .page {
     display: flex;
     min-height: 100%;
-    background: var(--m3-surface-container, #f0edee);
+    background: var(--admin-workspace-background, #e4e2e2);
 }
 
 .stickyHeaderPage {
@@ -12,7 +12,7 @@
     .back,
     .pageTitleContainer {
         position: sticky;
-        background: var(--m3-surface-container, #f0edee);
+        background: var(--admin-workspace-background, #e4e2e2);
         z-index: 900;
         margin: 0 -64px;
         top: 0;
@@ -186,6 +186,13 @@
     flex: 0 0 auto;
     gap: 16px;
     min-width: 0;
+    color: var(--admin-table-header-text, #1b1b1c);
+    text-decoration: none;
+
+    &:hover,
+    &:focus {
+        color: var(--admin-table-header-text, #1b1b1c);
+    }
 
     > svg {
         box-sizing: border-box;
@@ -200,6 +207,8 @@
 }
 
 .backHeadline {
+    color: var(--admin-table-header-text, #1b1b1c);
+    font-family: var(--m3-body-font-family);
     margin-bottom: 0;
     overflow: hidden;
     text-overflow: ellipsis;

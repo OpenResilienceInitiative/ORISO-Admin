@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-import { SketchPicker } from 'react-color';
+import { HexColorPicker } from 'react-colorful';
 import { Typography, Input } from 'antd';
 import useComponentVisible from '../../hooks/useComponentVisible';
 
@@ -43,11 +43,7 @@ const ColorSelector = ({ isLoading, label, tenantColor, setColorValue, field }: 
             </div>
             {isComponentVisible && (
                 <div className="pickerWrapper">
-                    <SketchPicker
-                        disableAlpha
-                        color={selectedColor || ''}
-                        onChange={(color: any) => handleOnChange(color.hex)}
-                    />
+                    <HexColorPicker color={selectedColor || ''} onChange={(color) => handleOnChange(color)} />
                 </div>
             )}
         </div>

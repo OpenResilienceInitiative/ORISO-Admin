@@ -1,4 +1,4 @@
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import getPublicTenantData from '../api/tenant/getPublicTenantData';
 import getTenantData from '../api/tenant/getTenantData';
 import { useAppConfigContext } from '../context/useAppConfig';
@@ -21,9 +21,9 @@ export const useTenantData = () => {
     // console.log('🔍 useTenantData: Starting tenant data fetch');
     // console.log('🔍 useTenantData: Settings:', settings);
 
-    return useQuery<TenantData>(
-        [TENANT_DATA_KEY, tokenTenantId ?? 'no-tenant-claim'],
-        async () => {
+    return useQuery<TenantData>({
+        queryKey: [TENANT_DATA_KEY, tokenTenantId ?? 'no-tenant-claim'],
+        queryFn: async () => {
             // console.log('🔍 useTenantData: Starting async function');
 
             try {
@@ -45,8 +45,6 @@ export const useTenantData = () => {
                 return fallback;
             }
         },
-        {
-            staleTime: 60_000,
-        },
-    );
+        staleTime: 60_000,
+    });
 };

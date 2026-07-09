@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useParams } from 'react-router';
+import { Outlet, useLocation, useParams } from 'react-router-dom';
 import { Page } from '../../../components/Page';
 import routePathNames from '../../../appConfig';
 import { useSingleTenantData } from '../../../hooks/useSingleTenantData';

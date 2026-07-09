@@ -72,7 +72,11 @@ describe('ProtectedRoute', () => {
     });
 
     it('shows the initialization state while the auth session bootstraps', () => {
-        mocks.bootstrapAuthSession.mockReturnValue(new Promise(() => undefined));
+        mocks.bootstrapAuthSession.mockReturnValue(
+            new Promise(() => {
+                /* never resolves: keep the bootstrap pending */
+            }),
+        );
 
         renderProtectedRoute();
 
@@ -115,6 +119,8 @@ describe('ProtectedRoute', () => {
         await waitFor(() => {
             expect(mocks.logout).toHaveBeenCalledWith(true, '/admin/login');
         });
-        expect(screen.getByText('Login page')).toBeInTheDocument();
+        // React 19 defers the redirect render slightly; assert it asynchronously
+        // (consistent with the sibling redirect tests above).
+        expect(await screen.findByText('Login page')).toBeInTheDocument();
     });
 });

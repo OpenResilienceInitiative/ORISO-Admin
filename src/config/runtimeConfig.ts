@@ -3,7 +3,7 @@ import type { AppRuntimeConfig } from '../types/runtimeConfig';
 
 // Runtime config is injected by public/env.js in production deployments.
 // eslint-disable-next-line no-underscore-dangle
-const runtime = (): AppRuntimeConfig => window.__APP_CONFIG__ ?? {};
+const runtime = (): AppRuntimeConfig => window.__APP_CONFIG__ ?? window._env_ ?? window.__ENV__ ?? window.env ?? {};
 
 const readEnvString = (key: string): string | undefined => {
     const value = import.meta.env[key as keyof ImportMetaEnv];
@@ -86,6 +86,13 @@ if (useApiUrl && apiHost) {
 }
 
 const serviceOrigin = (key: string): string => toAbsoluteUrl(readConfigValue(key), useHttps) || apiBaseUrl;
+const hostnamesWithoutCookieDomain = (readConfigValue('HOSTNAMES_WITHOUT_COOKIE_DOMAIN') ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+const cookieDomain = hostnamesWithoutCookieDomain.includes(window.location.hostname)
+    ? ''
+    : readConfigValue('COOKIE_DOMAIN') ?? '';
 
 export const runtimeConfig = {
     useHttps,
@@ -104,7 +111,7 @@ export const runtimeConfig = {
         readConfigValue('CSRF_WHITELIST_HEADER') ??
         readEnvString('VITE_CSRF_WHITELIST_HEADER_FOR_LOCAL_DEVELOPMENT') ??
         '',
-    cookieDomain: readConfigValue('COOKIE_DOMAIN') ?? '',
+    cookieDomain,
     cookieSecure: readBooleanConfig('COOKIE_SECURE', true),
     cookiesAllowedList: (readConfigValue('COOKIES_ALLOWEDLIST') ?? '')
         .split(',')

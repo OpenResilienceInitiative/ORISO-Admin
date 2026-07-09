@@ -53,7 +53,16 @@ const FeatureProvider = ({ children, tenantData, publicTenantData }: FeatureProv
 };
 
 function useFeatureContext() {
-    const [features, setFeatures] = useContext(FeatureContext);
+    const contextValue = useContext(FeatureContext);
+
+    if (!contextValue) {
+        // eslint-disable-next-line no-console
+        console.error('useFeatureContext used outside of FeatureProvider; all feature flags read as disabled.');
+    }
+
+    // Degrade to "all flags off" instead of crashing the tree when the
+    // provider is missing (e.g. on public pages).
+    const [features, setFeatures] = contextValue ?? [[] as IFeature[], () => undefined];
 
     const isEnabled = useCallback(
         (name: FeatureFlag) => {
@@ -65,11 +74,11 @@ function useFeatureContext() {
     );
 
     const toggleFeature = (key: FeatureFlag) => {
-        const feature = features.find((f) => f.name === key);
+        if (!features.some((f) => f.name === key)) {
+            return;
+        }
 
-        feature.active = !feature.active;
-
-        setFeatures([...features]);
+        setFeatures(features.map((f) => (f.name === key ? { ...f, active: !f.active } : f)));
     };
 
     return {

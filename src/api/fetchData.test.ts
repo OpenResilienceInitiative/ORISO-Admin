@@ -8,6 +8,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // can drive tryRefreshAccessToken / logout deterministically.
 const tryRefreshAccessToken = vi.fn();
 const getAccessTokenForRequests = vi.fn(() => 'access-token');
+const appConfigMock = vi.hoisted(() => ({
+    csrfWhitelistHeader: 'X-CSRF-Token',
+}));
 vi.mock('./auth/auth', () => ({
     getAccessTokenForRequests: () => getAccessTokenForRequests(),
     tryRefreshAccessToken: () => tryRefreshAccessToken(),
@@ -19,7 +22,12 @@ vi.mock('./auth/logout', () => ({ default: (...args: unknown[]) => logout(...arg
 vi.mock('./auth/accessSessionCookie', () => ({ getValueFromCookie: () => '' }));
 vi.mock('../utils/generateCsrfToken', () => ({ default: () => 'csrf-token' }));
 vi.mock('../utils/language', () => ({ DEFAULT_LANGUAGE: 'de', normalizeLanguage: (lang: string) => lang }));
-vi.mock('../appConfig', () => ({ default: { login: '/admin/login' }, CSRF_WHITELIST_HEADER: 'X-CSRF-Token' }));
+vi.mock('../appConfig', () => ({
+    default: { login: '/admin/login' },
+    get CSRF_WHITELIST_HEADER() {
+        return appConfigMock.csrfWhitelistHeader;
+    },
+}));
 vi.mock('antd', () => ({ message: { error: vi.fn() } }));
 vi.mock('i18next', () => ({ default: { resolvedLanguage: 'de', language: 'de', t: (key: unknown) => key } }));
 
@@ -46,6 +54,7 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         logout.mockReset();
         getAccessTokenForRequests.mockReset();
         getAccessTokenForRequests.mockReturnValue('access-token');
+        appConfigMock.csrfWhitelistHeader = 'X-CSRF-Token';
     });
 
     it('refreshes the token and retries once on 401, then succeeds without logging out', async () => {
@@ -101,5 +110,45 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
 
         expect(tryRefreshAccessToken).not.toHaveBeenCalled();
         expect(logout).not.toHaveBeenCalled();
+    });
+
+    it('omits the local CSRF whitelist header when no header name is configured', async () => {
+        appConfigMock.csrfWhitelistHeader = '';
+        const fetchMock = vi.fn().mockImplementation((request: Request) => {
+            expect(Object.fromEntries(request.headers.entries())).toEqual({
+                'accept-language': 'de',
+                'cache-control': 'no-cache',
+                'content-type': 'application/json',
+                'x-csrf-token': 'csrf-token',
+            });
+            expect(request.headers.get('x-csrf-token')).toBe('csrf-token');
+            return Promise.resolve(response(204));
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        await fetchData({
+            url: 'https://api.test/service/settings',
+            method: FETCH_METHODS.GET,
+            skipAuth: true,
+        });
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects on 403 so callers can leave loading states', async () => {
+        const location = { href: '' };
+        vi.stubGlobal('window', { location });
+        const fetchMock = vi.fn().mockResolvedValue(response(403));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/agencyadmin/agencies?q=*',
+                method: FETCH_METHODS.GET,
+                responseHandling: [],
+            }),
+        ).rejects.toThrow(FETCH_ERRORS.NOT_ALLOWED);
+
+        expect(location.href).toBe('/admin/access-denied');
     });
 });

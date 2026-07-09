@@ -52,10 +52,14 @@ export const globalSmtpTestEmailEndpoint = `${userServiceURL}/service/users/syst
 export const usersConsultantEndpoint = `${userServiceURL}/service/users/consultants`;
 export const usersConsultantsSearchEndpoint = `${userServiceURL}/service/users/consultants/search`;
 export const supervisorLogsEndpoint = `${userServiceURL}/service/users/supervisors/logs`;
+export const caseHandoverLogsEndpoint = `${userServiceURL}/service/users/case-handover/logs`;
+export const caseHandoverReasonPoliciesEndpoint = `${userServiceURL}/service/users/case-handover/reason-policies`;
 export const inactiveAccountAuditLogsEndpoint = `${userServiceURL}/service/users/inactive-accounts/audit-logs`;
 export const agencyAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/agencyadmins/search`;
 export const registrationDataEndpoint = `${mainURL}/service/statistics/registration`;
 export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/invitelinks`;
+export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;
+export const inviteEmailTemplatesEndpoint = `${userServiceURL}/service/useradmin/invite-email-templates`;
 export const XHRheader = { AcceptLanguage: 'de' };
 
 /*
@@ -78,6 +82,7 @@ const routePathNames = {
     statistic: '/admin/statistic',
     statisticPreview: '/admin/statistic-preview',
     logs: '/admin/logs',
+    caseHandoverLogs: '/admin/logs/case-handover',
     inactiveAccountAuditLogs: '/admin/logs/inactive-accounts',
     userProfile: '/admin/profil/',
     termsAndConditions: '/admin/agb',

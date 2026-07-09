@@ -5,21 +5,27 @@ import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
 import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import { assignAgencyToConsultants } from './assignAgencyToConsultants';
+import { normalizeTopicIds } from './normalizeTopicIds';
 
-function buildAgencyDataRequestBody(
+export function buildAgencyDataRequestBody(
     consultingTypeResponseId: string | number,
     formData: Record<string, any>,
     tenantId: number,
 ) {
-    const topics = formData?.topicIds || formData?.topics;
-    const topicIds = topics
-        ?.map((topic) => (typeof topic === 'string' ? topic : topic?.value || topic?.id))
-        .filter((id) => id != null && !Number.isNaN(Number(id)));
+    // ADR-003: single-select topic picker — normalise the Option/array/id shapes to string[].
+    const topicIds = normalizeTopicIds(formData?.topicIds ?? formData?.topics);
     const requestBody: any = withLegacyDioceseId({
         name: formData.name,
         description: formData.description ? formData.description : '',
         postcode: formData.postcode,
         city: formData.city,
+        street: formData.street,
+        houseNumber: formData.houseNumber,
+        floorBuilding: formData.floorBuilding,
+        country: formData.country,
+        phone: formData.phone,
+        phoneSecondary: formData.phoneSecondary,
+        email: formData.email,
         consultingType: consultingTypeResponseId,
         teamAgency: formData.teamAgency ? formData.teamAgency : false,
         // enforced by admin API, without business value for SAAS

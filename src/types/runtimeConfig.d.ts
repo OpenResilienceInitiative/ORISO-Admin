@@ -14,6 +14,7 @@ export interface AppRuntimeConfig {
     USE_HTTPS?: string;
     COOKIE_DOMAIN?: string;
     COOKIE_SECURE?: string;
+    HOSTNAMES_WITHOUT_COOKIE_DOMAIN?: string;
     CSRF_WHITELIST_HEADER?: string;
     COOKIES_ALLOWEDLIST?: string;
 }
@@ -21,6 +22,9 @@ export interface AppRuntimeConfig {
 declare global {
     interface Window {
         __APP_CONFIG__?: AppRuntimeConfig;
+        _env_?: AppRuntimeConfig;
+        __ENV__?: AppRuntimeConfig;
+        env?: AppRuntimeConfig;
     }
 }
 

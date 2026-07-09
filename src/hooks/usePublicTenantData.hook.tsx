@@ -1,4 +1,4 @@
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import getPublicTenantData from '../api/tenant/getPublicTenantData';
 import { useAppConfigContext } from '../context/useAppConfig';
 import { TenantData } from '../types/tenant';
@@ -13,18 +13,16 @@ export const usePublicTenantData = () => {
         ? settings.mainTenantSubdomainForSingleDomainMultitenancy
         : subdomain;
 
-    return useQuery<TenantData>(
-        [PUBLIC_TENANT_DATA_KEY, slug ?? 'no-slug'],
-        async () => {
+    return useQuery<TenantData>({
+        queryKey: [PUBLIC_TENANT_DATA_KEY, slug ?? 'no-slug'],
+        queryFn: async () => {
             try {
                 return await getPublicTenantData(settings);
             } catch {
                 return { settings: {}, licensing: {} } as TenantData;
             }
         },
-        {
-            enabled: !!slug,
-            staleTime: 60_000,
-        },
-    );
+        enabled: !!slug,
+        staleTime: 60_000,
+    });
 };

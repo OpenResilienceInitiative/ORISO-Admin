@@ -65,7 +65,7 @@ export const PostCodeRanges = () => {
                                 <Button
                                     size="small"
                                     className={styles.addButton}
-                                    type="ghost"
+                                    type="default"
                                     icon={<PlusOutlined />}
                                     onClick={() => add({ from: '', until: '' })}
                                 >

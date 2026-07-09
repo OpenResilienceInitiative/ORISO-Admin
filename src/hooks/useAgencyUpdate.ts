@@ -1,5 +1,5 @@
 import mergeWith from 'lodash.mergewith';
-import { useMutation, useQueryClient } from 'react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import addAgencyData from '../api/agency/addAgencyData';
 import { updateAgencyData } from '../api/agency/updateAgencyData';
 import { TypeOfUser } from '../enums/TypeOfUser';
@@ -9,8 +9,8 @@ import { useAgencyData } from './useAgencyData';
 export const useAgencyUpdate = (id: string) => {
     const queryClient = useQueryClient();
     const { data: agencyData } = useAgencyData({ id, enabled: id !== 'add' });
-    return useMutation(
-        (data: Partial<AgencyData>) => {
+    return useMutation({
+        mutationFn: (data: Partial<AgencyData>) => {
             if (id === 'add') {
                 return addAgencyData(data);
             }
@@ -21,17 +21,15 @@ export const useAgencyUpdate = (id: string) => {
                 }),
             );
         },
-        {
-            onSuccess: (_data, variables) => {
-                queryClient.invalidateQueries(['AGENCY', id]);
-                queryClient.invalidateQueries(['AGENCIES']);
-                queryClient.invalidateQueries(['AGENCY_POST_CODES', id]);
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['AGENCY', id] });
+            queryClient.invalidateQueries({ queryKey: ['AGENCIES'] });
+            queryClient.invalidateQueries({ queryKey: ['AGENCY_POST_CODES', id] });
 
-                if ((variables as Partial<AgencyData>)?.consultantIds?.length > 0) {
-                    queryClient.invalidateQueries(['HAS_CONSULTANTS']);
-                    queryClient.invalidateQueries([TypeOfUser.Consultants.toUpperCase()]);
-                }
-            },
+            if ((variables as Partial<AgencyData>)?.consultantIds?.length > 0) {
+                queryClient.invalidateQueries({ queryKey: ['HAS_CONSULTANTS'] });
+                queryClient.invalidateQueries({ queryKey: [TypeOfUser.Consultants.toUpperCase()] });
+            }
         },
-    );
+    });
 };

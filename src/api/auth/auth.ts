@@ -1,17 +1,8 @@
 import logout from './logout';
-import {
-    bootstrapAuthSessionViaBff,
-    refreshAuthTokensViaBff,
-    setAuthTokensViaBff,
-} from './authBffClient';
+import { bootstrapAuthSessionViaBff, refreshAuthTokensViaBff, setAuthTokensViaBff } from './authBffClient';
 import { getTokenExpiryFromLocalStorage, setTokenExpiryInLocalStorage } from './accessSessionLocalStorage';
 import routePathNames from '../../appConfig';
-import {
-    getSessionAccessToken,
-    getSessionRefreshToken,
-    hasSessionTokens,
-    setSessionTokens,
-} from './tokenSessionStore';
+import { getSessionAccessToken, getSessionRefreshToken, hasSessionTokens, setSessionTokens } from './tokenSessionStore';
 
 import parseJwt from '../../utils/parseJWT';
 
@@ -26,7 +17,7 @@ const resolveExpiresInSeconds = (token: string | undefined, expiresIn?: number):
 
     try {
         const payload = parseJwt(token);
-        if (typeof payload.exp === 'number') {
+        if (typeof payload?.exp === 'number') {
             return Math.max(payload.exp - Math.floor(Date.now() / 1000), 0);
         }
     } catch {

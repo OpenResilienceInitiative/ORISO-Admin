@@ -1,23 +1,38 @@
 name: Reusable Node Build steps
 
 inputs:
-  node_version:
-    required: true
-    type: string
+    node_version:
+        required: true
+        type: string
 
 runs:
-  using: 'composite'
-  steps:
-  - name: Set up Node.js
-    uses: actions/setup-node@v4
-    with:
-      node-version: ${{ inputs.node_version }}
-      cache: npm
+    using: 'composite'
+    steps:
+        - name: Set up Node.js
+          uses: actions/setup-node@v4
+          with:
+              node-version: ${{ inputs.node_version }}
+              cache: npm
 
-  - name: Install dependencies
-    shell: bash
-    run: npm ci
+        - name: Install dependencies
+          shell: bash
+          # --ignore-scripts blocks arbitrary dependency postinstall scripts from
+          # executing in CI (supply-chain hardening). Admin is a Vite app and does
+          # not rely on any dependency lifecycle script to build.
+          run: npm ci --ignore-scripts
 
-  - name: Build app
-    shell: bash
-    run: npm run build
+        - name: Lint (ESLint, zero warnings)
+          shell: bash
+          run: npx eslint . --max-warnings=0
+
+        - name: Check formatting (Prettier)
+          shell: bash
+          run: npx prettier . --check --ignore-unknown
+
+        - name: Run unit tests
+          shell: bash
+          run: npm test
+
+        - name: Build app
+          shell: bash
+          run: npm run build
