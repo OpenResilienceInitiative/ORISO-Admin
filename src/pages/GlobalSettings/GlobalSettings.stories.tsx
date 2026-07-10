@@ -71,3 +71,20 @@ export const Loading: Story = {
         },
     },
 };
+
+/**
+ * Backend failure (500). `useTenantData` catches the error and falls back to empty settings,
+ * so — unlike the table pages — the Settings form degrades to its empty state rather than a
+ * dedicated error UI. Kept for parity with the other sections' Error stories.
+ */
+export const Error: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(TENANT_PUBLIC, () => new HttpResponse(null, { status: 500 })),
+                http.get(TENANT_BY_ID, () => new HttpResponse(null, { status: 500 })),
+                http.get(TENANT_ADMIN, () => new HttpResponse(null, { status: 500 })),
+            ],
+        },
+    },
+};

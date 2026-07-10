@@ -82,12 +82,17 @@ const meta = {
     title: 'Molecules/AdminSidebar',
     component: AdminSidebar,
     parameters: { layout: 'fullscreen' },
+    // The real rail is `height: 100vh`; render it inside a fixed-height frame so the whole
+    // sidebar is shown in one piece instead of overflowing a short Storybook canvas.
     // Sider must live inside an antd Layout; `protectedLayout` pulls in the app sidebar styles.
     decorators: [
         (Story) => (
-            <Layout className="protectedLayout" style={{ minHeight: '100vh' }}>
-                <Story />
-            </Layout>
+            <div className="adminSidebarStoryFrame" style={{ display: 'flex', height: 760 }}>
+                <style>{`.adminSidebarStoryFrame .ant-layout-sider{height:100%!important;min-height:0!important}`}</style>
+                <Layout className="protectedLayout" style={{ height: '100%', minHeight: 0 }}>
+                    <Story />
+                </Layout>
+            </div>
         ),
     ],
     args: {
@@ -106,6 +111,18 @@ export const SuperAdmin: Story = {
     args: {
         items: [settingsItem, tenantsItem, agencyItem, usersItem, statisticsItem, linksItem, logsItem],
         activityLogs,
+    },
+};
+
+/**
+ * Tenant admin: a tenant-scoped admin sees settings, users, statistics and links — but not
+ * the super-admin-only tenants entry, and (lacking Agency read) no agencies entry. Shows the
+ * different visibility rules vs. the super-admin rail.
+ */
+export const TenantAdmin: Story = {
+    args: {
+        items: [settingsItem, usersItem, statisticsItem, linksItem],
+        currentPath: routePathNames.themeSettings,
     },
 };
 

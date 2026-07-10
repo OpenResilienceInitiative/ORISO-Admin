@@ -78,3 +78,14 @@ export const EmptyAgencies: Story = {
     },
     play: openModal,
 };
+
+/**
+ * Error: the agencies request fails (500). `getAgencyData` shows an error toast and the
+ * query yields no data, so the select degrades to an empty (no-options) state.
+ */
+export const Error: Story = {
+    parameters: {
+        msw: { handlers: [http.get(AGENCY_ENDPOINT, () => new HttpResponse(null, { status: 500 }))] },
+    },
+    play: openModal,
+};
