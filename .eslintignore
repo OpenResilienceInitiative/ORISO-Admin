@@ -11,3 +11,4 @@ src/vite-env.d.ts
 build
 vitest.config.ts
 vite.authBffPlugin.ts
+public/mockServiceWorker.js
