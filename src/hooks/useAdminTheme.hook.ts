@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
-import { applyAdminInvertedTheme, clearAdminInvertedThemeTokens } from '../utils/applyAdminTheme';
+import { applyAdminTheme, clearAdminInvertedThemeTokens } from '../utils/applyAdminTheme';
 import { ThemingSeedFields } from '../utils/themeSeeds';
 
-export const useAdminInvertedTheme = (theming: ThemingSeedFields | null | undefined, isReady = true) => {
+export const useAdminTheme = (theming: ThemingSeedFields | null | undefined, isReady = true) => {
     useEffect(() => {
         if (isReady) {
-            applyAdminInvertedTheme(theming);
+            applyAdminTheme(theming);
         }
 
         return () => {

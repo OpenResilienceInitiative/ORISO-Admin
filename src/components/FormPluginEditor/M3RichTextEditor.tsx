@@ -422,9 +422,11 @@ export const M3RichTextEditor = ({
 
             {!editorSlot && !readOnly && <Toolbar editor={editor} />}
 
-            {aboveEditorSlot}
+            {aboveEditorSlot && <div className={styles.contentInset}>{aboveEditorSlot}</div>}
 
-            {editorSlot ?? (
+            {editorSlot ? (
+                <div className={styles.contentInset}>{editorSlot}</div>
+            ) : (
                 <div className={styles.editorWrap}>
                     <div className={styles.editor}>
                         <EditorContent editor={editor} />

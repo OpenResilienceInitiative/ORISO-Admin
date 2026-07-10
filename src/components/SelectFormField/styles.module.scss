@@ -43,6 +43,25 @@
     letter-spacing: 0.5px;
 }
 
+/* Multi-select: grow with the selected tags instead of clipping/overflowing
+   them at a fixed height. Chips wrap onto new rows and the field height
+   follows its content. */
+.select:global(.ant-select-multiple) :global(.ant-select-selector) {
+    height: auto !important;
+    min-height: 56px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+}
+
+.select:global(.ant-select-multiple) :global(.ant-select-selection-search-input) {
+    height: auto !important;
+}
+
+.select:global(.ant-select-multiple) :global(.ant-select-selection-overflow) {
+    align-items: center;
+    row-gap: 6px;
+}
+
 .select :global(.ant-form-item-explain-error) {
     padding: 0 16px;
     font-family: var(--m3-body-font-family);
