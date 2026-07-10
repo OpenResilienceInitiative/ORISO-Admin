@@ -5,6 +5,7 @@
   "homepage": "http://tenant1.onlineberatung.local/admin",
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^9.1.1",
