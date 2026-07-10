@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
+import FormPluginEditor from '../../../../FormPluginEditor/FormPluginEditor';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
 import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
@@ -38,6 +39,7 @@ export const LegalText = ({
     placeHolderKey,
     icon,
     showConfirmationModal,
+    placeholders,
 }: LegalTextProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
@@ -49,9 +51,6 @@ export const LegalText = ({
     const [activeLanguage, setActiveLanguage] = useState('de');
     const [formDataContent, setFormData] = useState<Record<string, unknown>>();
     const [modalVisible, setModalVisible] = useState(false);
-    // Content of the language currently shown in the native M3 editor. Reads the
-    // form store so switching languages re-syncs the editor to that language's text.
-    const activeContent = Form.useWatch([...fieldName, activeLanguage], form);
 
     const languages = useMemo(
         () => tenantData?.settings?.activeLanguages || ['de'],
@@ -94,13 +93,6 @@ export const LegalText = ({
                 <M3RichTextEditor
                     title={t(titleKey)}
                     icon={icon}
-                    value={typeof activeContent === 'string' ? activeContent : ''}
-                    onChange={
-                        canEditLegalText
-                            ? (html) => form.setFieldValue([...fieldName, activeLanguage], html)
-                            : undefined
-                    }
-                    placeholder={t(placeHolderKey)}
                     readOnly={!canEditLegalText}
                     publishing={isPending}
                     versionLabel={t('legal.m3Editor.versionLabel')}
@@ -111,20 +103,29 @@ export const LegalText = ({
                     language={activeLanguage}
                     onLanguageChange={setActiveLanguage}
                     aboveEditorSlot={<p className={styles.description}>{subTitle}</p>}
+                    editorSlot={
+                        // Keep all language fields mounted so form state survives
+                        // switching; FormPluginEditor preserves placeholders and
+                        // heading anchors inside the M3 shell.
+                        <>
+                            {languages.map((language) => (
+                                <div key={language} style={{ display: language === activeLanguage ? 'block' : 'none' }}>
+                                    <FormPluginEditor
+                                        name={[...fieldName, language]}
+                                        placeholder={t(placeHolderKey)}
+                                        placeholders={placeholders}
+                                        itemProps={{}}
+                                    />
+                                </div>
+                            ))}
+                        </>
+                    }
                     onPublish={canEditLegalText ? () => form.submit() : undefined}
                     belowSlot={
                         showConfirmationModal &&
                         modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
                     }
                 />
-                {/* Registered (hidden) fields per language so `form.submit()` still
-                    collects every language's content — the native M3 editor above
-                    drives these via setFieldValue for the active language. */}
-                {languages.map((language) => (
-                    <Form.Item key={language} name={[...fieldName, language]} noStyle>
-                        <input type="hidden" />
-                    </Form.Item>
-                ))}
             </div>
         </Form>
     );

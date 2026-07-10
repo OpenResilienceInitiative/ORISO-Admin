@@ -52,12 +52,12 @@ export const LegalContentLanguageSelect = ({
 
     return (
         <div className={styles.splitButton}>
-            <button type="button" className={styles.leading} title={t('languages')}>
+            <div className={styles.leading} title={t('languages')}>
                 <Language style={{ fontSize: 22 }} />
                 {/* Plain language name on the button (matches the other legal cards);
                     the original / machine-translated status stays in the menu below. */}
                 <span>{t(`language.${value}`, value)}</span>
-            </button>
+            </div>
             <Dropdown
                 trigger={['click']}
                 menu={{

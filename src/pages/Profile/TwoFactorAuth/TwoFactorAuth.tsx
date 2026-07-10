@@ -49,12 +49,16 @@ const TwoFactorAuth = () => {
     const [twoFactorType, setTwoFactorType] = useState<TwoFactorType>(TwoFactorType.App);
 
     const handleSwitchChange = useCallback(() => {
+        if (!userData?.twoFactorAuth) {
+            return;
+        }
+
         if (!userData.twoFactorAuth.isActive) {
             setOverlayActive(true);
         } else {
             deleteTwoFactorAuth(null);
         }
-    }, [userData?.twoFactorAuth?.isActive, overlayActive]);
+    }, [deleteTwoFactorAuth, userData?.twoFactorAuth]);
 
     const twoFactorAuthStepsOverlayStart: OverlayItem[] = useMemo(
         () => [
@@ -418,6 +422,7 @@ const TwoFactorAuth = () => {
                 <M3Switch
                     onChange={() => handleSwitchChange()}
                     checked={userData?.twoFactorAuth.isActive || false}
+                    disabled={!userData?.twoFactorAuth}
                     label={
                         userData?.twoFactorAuth.isActive
                             ? t('twoFactorAuth.switch.active.label')
