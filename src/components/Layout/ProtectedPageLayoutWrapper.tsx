@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Layout } from 'antd';
-import { NavLink, useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import routePathNames from '../../appConfig';
@@ -15,7 +15,7 @@ import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { useTenantData } from '../../hooks/useTenantData.hook';
 import { UserRole } from '../../enums/UserRole';
 import { useFeatureContext } from '../../context/FeatureContext';
-import { NavIcon } from './NavIcon';
+import AdminSidebar, { AdminSidebarNavItem } from './AdminSidebar';
 import { FeatureFlag } from '../../enums/FeatureFlag';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { PermissionAction } from '../../enums/PermissionAction';
@@ -26,7 +26,7 @@ import { useUserPermissions } from '../../hooks/useUserPermission';
 import styles from './styles.module.scss';
 import { clearStuckOverlays } from '../../utils/clearStuckOverlays';
 
-const { Content, Sider } = Layout;
+const { Content } = Layout;
 
 const ProtectedPageLayoutWrapper = ({ children }: any) => {
     const { settings } = useAppConfigContext();
@@ -79,10 +79,6 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
         }
     }, [subdomain, tenantData.subdomain]);
 
-    const checkActive = (path: string) => {
-        return location.pathname.includes(path);
-    };
-
     const { isEnabled: isReleaseEnabled } = useReleasesToggle();
     const shouldShowThemeSettings =
         (settings.multitenancyWithSingleDomainEnabled && hasRole(UserRole.TenantAdmin)) ||
@@ -132,195 +128,121 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
         multitenancyWithSingleDomainEnabled: settings.multitenancyWithSingleDomainEnabled,
     });
 
+    // Resolve which nav items the current user may see. All the permission/role/feature
+    // logic stays here; the presentational <AdminSidebar> just renders what it is given.
+    const upperNavItems: AdminSidebarNavItem[] = [];
+    if (canSeeSettingsMenu) {
+        upperNavItems.push({
+            key: 'theme',
+            to: settingsPath,
+            label: navLabels.settings,
+            iconPath: routePathNames.themeSettings,
+            activeMatch: { paths: [routePathNames.themeSettings], mode: 'includes' },
+        });
+    }
+    if (isSuperAdmin && can(PermissionAction.Create, Resource.Tenant)) {
+        upperNavItems.push({
+            key: 'tenants',
+            to: routePathNames.tenants,
+            label: navLabels.tenants,
+            iconPath: routePathNames.tenants,
+            activeMatch: { paths: [routePathNames.tenants], mode: 'includes' },
+        });
+    }
+    if (
+        can(PermissionAction.Read, Resource.Agency) &&
+        (hasRole(UserRole.AgencyAdmin) || !hasRole(UserRole.RestrictedAgencyAdmin))
+    ) {
+        upperNavItems.push({
+            key: 'agency',
+            to: routePathNames.agency,
+            label: navLabels.agency,
+            iconPath: routePathNames.agency,
+            activeMatch: { paths: [routePathNames.agency], mode: 'includes' },
+        });
+    }
+    if (
+        can(PermissionAction.Read, Resource.Consultant) ||
+        can(PermissionAction.Read, Resource.AgencyAdminUser) ||
+        can(PermissionAction.Read, Resource.TenantAdminUser)
+    ) {
+        upperNavItems.push({
+            key: 'counselors',
+            to: usersPage(),
+            label: navLabels.users,
+            iconPath: '/admin/users',
+            activeMatch: { paths: ['/admin/users'], mode: 'includes' },
+        });
+    }
+    if (can(PermissionAction.Read, Resource.Statistic)) {
+        upperNavItems.push({
+            key: 'statistics',
+            to: routePathNames.statistic,
+            label: navLabels.statistics,
+            iconPath: routePathNames.statistic,
+        });
+    }
+    if (
+        can(PermissionAction.Read, Resource.Agency) ||
+        can(PermissionAction.Read, Resource.AgencyAdminUser) ||
+        hasRole(UserRole.RestrictedAgencyAdmin)
+    ) {
+        upperNavItems.push({
+            key: 'links',
+            to: routePathNames.links,
+            label: navLabels.links,
+            iconPath: routePathNames.links,
+            activeMatch: { paths: [`${routePathNames.links}/`], mode: 'startsWith' },
+        });
+    }
+    if (canSeeCounsellorLogs) {
+        upperNavItems.push({
+            key: 'logs',
+            to: routePathNames.logs,
+            label: navLabels.logs,
+            iconPath: routePathNames.logs,
+            end: true,
+        });
+    }
+
+    const activityLogItems: AdminSidebarNavItem[] = [];
+    if (canSeeCaseHandoverLogs) {
+        activityLogItems.push({
+            key: 'case-handover-logs',
+            to: routePathNames.caseHandoverLogs,
+            label: navLabels.caseHandoverLogs,
+            iconPath: routePathNames.caseHandoverLogs,
+        });
+    }
+    if (canSeeInactiveAuditLogs) {
+        activityLogItems.push({
+            key: 'inactive-audit-logs',
+            to: routePathNames.inactiveAccountAuditLogs,
+            label: navLabels.inactiveAudit,
+            iconPath: routePathNames.inactiveAccountAuditLogs,
+        });
+    }
+
+    const accountNavItem: AdminSidebarNavItem = {
+        key: 'account',
+        to: routePathNames.userProfile,
+        label: navLabels.account,
+        iconPath: routePathNames.userProfile,
+    };
+
     return (
         <>
             <Layout className="protectedLayout">
-                <Sider width={96}>
-                    <div className="logo" />
-                    <nav className="mainMenu">
-                        <ul className="upperSidebar">
-                            {canSeeSettingsMenu && (
-                                <li key="theme" className="menuItem">
-                                    <NavLink
-                                        to={settingsPath}
-                                        aria-label={navLabels.settings}
-                                        title={navLabels.settings}
-                                        className={({ isActive }) =>
-                                            isActive || checkActive(routePathNames.themeSettings) ? 'active' : ''
-                                        }
-                                    >
-                                        <NavIcon path={routePathNames.themeSettings} />
-                                        <span lang={navLanguage}>{navLabels.settings}</span>
-                                    </NavLink>
-                                </li>
-                            )}
-
-                            {isSuperAdmin && can(PermissionAction.Create, Resource.Tenant) && (
-                                <li key="tenants" className="menuItem">
-                                    <NavLink
-                                        to={routePathNames.tenants}
-                                        aria-label={navLabels.tenants}
-                                        title={navLabels.tenants}
-                                        className={classNames({ active: checkActive(routePathNames.tenants) })}
-                                    >
-                                        <NavIcon path={routePathNames.tenants} />
-                                        <span lang={navLanguage}>{navLabels.tenants}</span>
-                                    </NavLink>
-                                </li>
-                            )}
-
-                            {can(PermissionAction.Read, Resource.Agency) &&
-                                (hasRole(UserRole.AgencyAdmin) || !hasRole(UserRole.RestrictedAgencyAdmin)) && (
-                                    <li className="menuItem">
-                                        <NavLink
-                                            to={routePathNames.agency}
-                                            aria-label={navLabels.agency}
-                                            title={navLabels.agency}
-                                            className={classNames({ active: checkActive(routePathNames.agency) })}
-                                        >
-                                            <NavIcon path={routePathNames.agency} />
-                                            <span lang={navLanguage}>{navLabels.agency}</span>
-                                        </NavLink>
-                                    </li>
-                                )}
-
-                            {(can(PermissionAction.Read, Resource.Consultant) ||
-                                can(PermissionAction.Read, Resource.AgencyAdminUser) ||
-                                can(PermissionAction.Read, Resource.TenantAdminUser)) && (
-                                <li key="counselors" className="menuItem">
-                                    <NavLink
-                                        to={usersPage()}
-                                        aria-label={navLabels.users}
-                                        title={navLabels.users}
-                                        className={classNames({ active: checkActive('/admin/users') })}
-                                    >
-                                        <NavIcon path="/admin/users" />
-                                        <span lang={navLanguage}>{navLabels.users}</span>
-                                    </NavLink>
-                                </li>
-                            )}
-
-                            {can(PermissionAction.Read, Resource.Statistic) && (
-                                <li key="statistics" className="menuItem">
-                                    <NavLink
-                                        to={routePathNames.statistic}
-                                        aria-label={navLabels.statistics}
-                                        title={navLabels.statistics}
-                                        className={({ isActive }) => (isActive ? 'active' : '')}
-                                    >
-                                        <NavIcon path={routePathNames.statistic} />
-                                        <span lang={navLanguage}>{navLabels.statistics}</span>
-                                    </NavLink>
-                                </li>
-                            )}
-
-                            {(can(PermissionAction.Read, Resource.Agency) ||
-                                can(PermissionAction.Read, Resource.AgencyAdminUser) ||
-                                hasRole(UserRole.RestrictedAgencyAdmin)) && (
-                                <li key="links" className="menuItem">
-                                    <NavLink
-                                        to={routePathNames.links}
-                                        aria-label={navLabels.links}
-                                        title={navLabels.links}
-                                        className={({ isActive }) =>
-                                            isActive || location.pathname.startsWith(`${routePathNames.links}/`)
-                                                ? 'active'
-                                                : ''
-                                        }
-                                    >
-                                        <NavIcon path={routePathNames.links} />
-                                        <span lang={navLanguage}>{navLabels.links}</span>
-                                    </NavLink>
-                                </li>
-                            )}
-
-                            {canSeeCounsellorLogs && (
-                                <li key="logs" className="menuItem">
-                                    <NavLink
-                                        end
-                                        to={routePathNames.logs}
-                                        aria-label={navLabels.logs}
-                                        title={navLabels.logs}
-                                        className={({ isActive }) => (isActive ? 'active' : '')}
-                                    >
-                                        <NavIcon path={routePathNames.logs} />
-                                        <span lang={navLanguage}>{navLabels.logs}</span>
-                                    </NavLink>
-                                </li>
-                            )}
-
-                            {canSeeActivityLogs && (
-                                <li
-                                    key="activity-logs"
-                                    className="menuSection"
-                                    role="group"
-                                    aria-label={navLabels.activityLogs}
-                                >
-                                    <span className="menuSectionLabel" lang={navLanguage}>
-                                        {navLabels.activityLogs}
-                                    </span>
-                                    <ul className="menuSectionItems">
-                                        {canSeeCaseHandoverLogs && (
-                                            <li key="case-handover-logs" className="menuItem">
-                                                <NavLink
-                                                    to={routePathNames.caseHandoverLogs}
-                                                    aria-label={navLabels.caseHandoverLogs}
-                                                    title={navLabels.caseHandoverLogs}
-                                                    className={({ isActive }) => (isActive ? 'active' : '')}
-                                                >
-                                                    <NavIcon path={routePathNames.caseHandoverLogs} />
-                                                    <span lang={navLanguage}>{navLabels.caseHandoverLogs}</span>
-                                                </NavLink>
-                                            </li>
-                                        )}
-
-                                        {canSeeInactiveAuditLogs && (
-                                            <li key="inactive-audit-logs" className="menuItem">
-                                                <NavLink
-                                                    to={routePathNames.inactiveAccountAuditLogs}
-                                                    aria-label={navLabels.inactiveAudit}
-                                                    title={navLabels.inactiveAudit}
-                                                    className={({ isActive }) => (isActive ? 'active' : '')}
-                                                >
-                                                    <NavIcon path={routePathNames.inactiveAccountAuditLogs} />
-                                                    <span lang={navLanguage}>{navLabels.inactiveAudit}</span>
-                                                </NavLink>
-                                            </li>
-                                        )}
-                                    </ul>
-                                </li>
-                            )}
-                        </ul>
-
-                        <ul className="lowerSidebar">
-                            <li className="menuItem">
-                                <NavLink
-                                    to={routePathNames.userProfile}
-                                    aria-label={navLabels.account}
-                                    title={navLabels.account}
-                                    className={({ isActive }) => (isActive ? 'active' : '')}
-                                >
-                                    <NavIcon path={routePathNames.userProfile} />
-                                    <span lang={navLanguage}>{navLabels.account}</span>
-                                </NavLink>
-                            </li>
-
-                            <li className="menuItem">
-                                <button
-                                    onClick={handleLogout}
-                                    type="button"
-                                    aria-label={navLabels.logout}
-                                    title={navLabels.logout}
-                                >
-                                    <NavIcon path="logout" />
-                                    <span className="logout" lang={navLanguage}>
-                                        {navLabels.logout}
-                                    </span>
-                                </button>
-                            </li>
-                        </ul>
-                    </nav>
-                </Sider>
+                <AdminSidebar
+                    items={upperNavItems}
+                    activityLogs={
+                        canSeeActivityLogs ? { label: navLabels.activityLogs, items: activityLogItems } : undefined
+                    }
+                    account={accountNavItem}
+                    logout={{ label: navLabels.logout, onLogout: handleLogout }}
+                    lang={navLanguage}
+                    currentPath={location.pathname}
+                />
 
                 <Layout className={classNames(styles.mainContent)}>
                     <Content className={styles.content}>
