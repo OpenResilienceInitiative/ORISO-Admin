@@ -9,6 +9,8 @@ const config: StorybookConfig = {
     addons: ['@storybook/addon-mcp', '@storybook/addon-designs'],
     framework: { name: '@storybook/react-vite', options: {} },
     core: { disableTelemetry: true },
+    // Serve public/ so MSW's generated service worker (public/mockServiceWorker.js) is reachable.
+    staticDirs: ['../public'],
     async viteFinal(cfg) {
         // Drop app-only plugins that are noisy or meaningless inside Storybook
         // (eslint linting, runtime-env middleware, auth BFF dev proxy, bundle
