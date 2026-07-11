@@ -10,11 +10,12 @@ vi.mock('../api/statistic/getDashboardStatistics', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../api/statistic/getDashboardStatistics')>();
     return { ...actual, default: vi.fn() };
 });
-vi.mock('../api/agency/getAgencyData', () => ({ default: vi.fn().mockResolvedValue({ total: 0, data: [] }) }));
-vi.mock('../api/tenant/searchTenantData', () => ({
-    searchTenantData: vi.fn().mockResolvedValue({ total: 0, data: [] }),
-}));
-vi.mock('../api/topic/getTopicData', () => ({ default: vi.fn().mockResolvedValue({ total: 0, data: [] }) }));
+// The name lookups (agencies/tenants/topics) go through fetchData directly; mock it
+// so tests can simulate per-endpoint failures such as a 403 on /service/topicadmin.
+vi.mock('../api/fetchData', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../api/fetchData')>();
+    return { ...actual, fetchData: vi.fn() };
+});
 vi.mock('../hooks/useUserRoles.hook', () => ({
     useUserRoles: () => ({
         roles: [UserRole.TenantAdmin],
@@ -26,11 +27,13 @@ vi.mock('../hooks/useUserRoles.hook', () => ({
     }),
 }));
 
+import { fetchData } from '../api/fetchData';
 import getDashboardStatistics from '../api/statistic/getDashboardStatistics';
 import i18n from '../i18n';
 import { Statistic } from './Statistic';
 
 const dashboardMock = vi.mocked(getDashboardStatistics);
+const fetchDataMock = vi.mocked(fetchData);
 
 const periodCounts = (total: number) => ({
     today: 0,
@@ -78,6 +81,9 @@ const renderStatistic = () => {
 
 beforeEach(() => {
     dashboardMock.mockReset();
+    fetchDataMock.mockReset();
+    // default: all name lookups succeed with empty result sets
+    fetchDataMock.mockResolvedValue({ total: 0, _embedded: [] });
     window.localStorage.clear();
     // jsdom has no matchMedia; report prefers-reduced-motion so animated
     // counter values render their final numbers synchronously.
@@ -113,6 +119,29 @@ describe('Statistic page', () => {
         // legacy mock numbers must be gone
         expect(screen.queryByText('312')).toBeNull();
         expect(screen.queryByText('Caritas NRW')).toBeNull();
+    });
+
+    it('still renders dashboard data when a name lookup fails with 403', async () => {
+        dashboardMock.mockResolvedValue(response);
+        // simulate the Pre-Dev incident: /service/topicadmin denies access
+        fetchDataMock.mockImplementation(({ url }: { url: string }) => {
+            if (url.includes('topicadmin')) {
+                return Promise.reject(new Error('API call error: 403 Forbidden'));
+            }
+            return Promise.resolve({ total: 0, _embedded: [] });
+        });
+
+        renderStatistic();
+
+        // dashboard data still renders
+        await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        // and the lookup failure did not trigger the access-denied redirect
+        expect(window.location.href).not.toContain('access-denied');
+        // regression guard: lookups must bypass the shared responseHandling
+        // (any truthy responseHandling makes fetchData hard-redirect on 403)
+        const topicCall = fetchDataMock.mock.calls.find(([props]) => props.url.includes('topicadmin'));
+        expect(topicCall).toBeDefined();
+        expect(topicCall?.[0].responseHandling).toBeUndefined();
     });
 
     it('shows a warning banner when small-cell suppression is disabled', async () => {
