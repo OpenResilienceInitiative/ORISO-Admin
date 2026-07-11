@@ -38,6 +38,22 @@ import {
     storeCardMenuSelection,
     storeFilterTargetSelection,
 } from './Statistic/statisticPreferences';
+import {
+    buildCaseChartDateLabels,
+    caseChartDayCodes,
+    getTodayDayCode,
+    NO_DATA_LABEL,
+} from './Statistic/statisticDashboardData';
+import type {
+    ConversationValues,
+    FilterTarget,
+    FilterTargetMetricStats,
+    FilterTargetStatistics,
+    MetricValue,
+    StatisticData,
+    TopicStatistic,
+} from './Statistic/statisticDashboardData';
+import { useStatisticDashboardData } from './Statistic/useStatisticDashboardData.hook';
 import type {
     CardMenuKey,
     CardMenuOption,
@@ -129,6 +145,8 @@ const dashboardTextKeyByValue: Record<string, string> = {
     Interna: 'statistic.dashboard.text.internal',
     'Kennzahl in diesem Dashboard-Slot auswählen': 'statistic.dashboard.menu.selectDashboardMetric',
     'Keine Daten': 'statistic.dashboard.text.noData',
+    'Aktuell in Beratung': 'statistic.dashboard.text.currentlyInCounselling',
+    'Statistik unterdrückt': 'statistic.dashboard.filter.suppressed',
     'Keine Filter verfügbar': 'statistic.dashboard.filter.noFilters',
     'Letzter Monat': 'statistic.dashboard.text.lastMonth',
     Live: 'statistic.dashboard.text.live',
@@ -355,84 +373,6 @@ const scopeDefinitions: Record<ScopeKey, ScopeDefinition> = {
         label: 'Auf Beratungsstellenebene',
         icon: ScopeAgencyIcon,
     },
-};
-
-type FilterTargetType = 'Träger' | 'Beratungsstelle';
-
-interface FilterTarget {
-    id: string;
-    label: string;
-    type: FilterTargetType;
-    detail: string;
-}
-
-const filterTargetsByScope: Record<ScopeKey, FilterTarget[]> = {
-    platform: [
-        {
-            id: 'tenant-caritas-nrw',
-            label: 'Caritas NRW',
-            type: 'Träger',
-            detail: '35 Beratungsstellen',
-        },
-        {
-            id: 'tenant-diakonie-rwl',
-            label: 'Diakonie RWL',
-            type: 'Träger',
-            detail: '22 Beratungsstellen',
-        },
-        {
-            id: 'tenant-paritaet-nrw',
-            label: 'Der Paritätische NRW',
-            type: 'Träger',
-            detail: '14 Beratungsstellen',
-        },
-        {
-            id: 'agency-u25-duesseldorf',
-            label: 'U25 Düsseldorf',
-            type: 'Beratungsstelle',
-            detail: 'Caritas NRW',
-        },
-        {
-            id: 'agency-schuldnerberatung-koeln',
-            label: 'Schuldnerberatung Köln',
-            type: 'Beratungsstelle',
-            detail: 'Caritas NRW',
-        },
-        {
-            id: 'agency-jugendberatung-essen',
-            label: 'Jugendberatung Essen',
-            type: 'Beratungsstelle',
-            detail: 'Caritas NRW',
-        },
-    ],
-    tenant: [
-        {
-            id: 'agency-u25-duesseldorf',
-            label: 'U25 Düsseldorf',
-            type: 'Beratungsstelle',
-            detail: 'Caritas NRW',
-        },
-        {
-            id: 'agency-schuldnerberatung-koeln',
-            label: 'Schuldnerberatung Köln',
-            type: 'Beratungsstelle',
-            detail: 'Caritas NRW',
-        },
-        {
-            id: 'agency-jugendberatung-essen',
-            label: 'Jugendberatung Essen',
-            type: 'Beratungsstelle',
-            detail: 'Caritas NRW',
-        },
-    ],
-    agency: [
-        {
-            id: 'agency-u25-duesseldorf',
-            label: 'U25 Düsseldorf',
-            type: 'Beratungsstelle',
-            detail: 'eigene Beratungsstelle',
-        },
-    ],
 };
 
 const normalizeFilterSearch = (value: string, locale: string) => value.trim().toLocaleLowerCase(locale);
@@ -1079,431 +1019,30 @@ const withMetricMenuDescription = (option: CardMenuOption): CardMenuOption => ({
     description: option.description || metricMenuDescriptionByKey[option.key],
 });
 
-const demoMetricOverridesByScope: Record<ScopeKey, Partial<Record<CardMenuKey, Partial<CardMenuOption>>>> = {
-    platform: {
-        activeAgencies: { value: '3' },
-        activeConversations: { value: '4' },
-        all: { value: '9', detail: 'Vormonat gesamt 11' },
-        cases: { value: '8' },
-        conversationsTotal: { value: '7' },
-        counselors: { value: '6' },
-        groups: { value: '2' },
-        liveChat: { value: '3' },
-        messagesCounselors: { value: '5' },
-        messagesPerSession: { value: '2,6' },
-        messagesSeekers: { value: '13' },
-        oneToOne: { value: '4' },
-        textMessagesTotal: { value: '18' },
-        videoCallCount: { value: '1' },
-    },
-    tenant: {
-        activeAgencies: { value: '2' },
-        activeConversations: { value: '3' },
-        all: { value: '5', detail: 'Vormonat gesamt 6' },
-        cases: { value: '5' },
-        conversationsTotal: { value: '5' },
-        counselors: { value: '4' },
-        groups: { value: '1' },
-        liveChat: { value: '2' },
-        messagesCounselors: { value: '4' },
-        messagesPerSession: { value: '2,4' },
-        messagesSeekers: { value: '8' },
-        oneToOne: { value: '2' },
-        textMessagesTotal: { value: '12' },
-        videoCallCount: { value: '0' },
-    },
-    agency: {
-        activeCounselors: { value: '2' },
-        activeConversations: { value: '2' },
-        all: { value: '3', detail: 'Vormonat gesamt 4' },
-        cases: { value: '3' },
-        conversationsTotal: { value: '3' },
-        counselors: { value: '2' },
-        groups: { value: '1' },
-        liveChat: { value: '1' },
-        messagesCounselors: { value: '2' },
-        messagesPerSession: { value: '2,3' },
-        messagesSeekers: { value: '5' },
-        oneToOne: { value: '1' },
-        textMessagesTotal: { value: '7' },
-        videoCallCount: { value: '0' },
-    },
-};
-
-const caseChartDateLabelsByPeriod: Record<CasePeriodKey, string[]> = {
-    thisWeek: ['Mo, 9 Jul', 'Di, 10 Jul', 'Mi, 11 Jul', 'Do, 12 Jul', 'Fr, 13 Jul', 'Sa, 14 Jul', 'So, 15 Jul'],
-    lastWeek: ['Mo, 2 Jul', 'Di, 3 Jul', 'Mi, 4 Jul', 'Do, 5 Jul', 'Fr, 6 Jul', 'Sa, 7 Jul', 'So, 8 Jul'],
-    twoWeeksAgo: ['Mo, 25 Jun', 'Di, 26 Jun', 'Mi, 27 Jun', 'Do, 28 Jun', 'Fr, 29 Jun', 'Sa, 30 Jun', 'So, 1 Jul'],
-    threeWeeksAgo: ['Mo, 18 Jun', 'Di, 19 Jun', 'Mi, 20 Jun', 'Do, 21 Jun', 'Fr, 22 Jun', 'Sa, 23 Jun', 'So, 24 Jun'],
-    fourWeeksAgo: ['Mo, 11 Jun', 'Di, 12 Jun', 'Mi, 13 Jun', 'Do, 14 Jun', 'Fr, 15 Jun', 'Sa, 16 Jun', 'So, 17 Jun'],
-};
-
-const caseChartDays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-
-const createDemoCaseChart = (period: CasePeriodKey, values: number[]): CaseChartBar[] =>
-    caseChartDays.map((day, index) => ({
-        day,
-        dateLabel: caseChartDateLabelsByPeriod[period][index],
-        value: values[index],
-        isDefaultSelected: day === 'Do',
-    }));
-
-const demoCaseChartsByScope: Record<ScopeKey, Record<CasePeriodKey, CaseChartBar[]>> = {
-    platform: {
-        thisWeek: createDemoCaseChart('thisWeek', [1, 2, 1, 4, 3, 1, 0]),
-        lastWeek: createDemoCaseChart('lastWeek', [0, 1, 2, 3, 2, 1, 0]),
-        twoWeeksAgo: createDemoCaseChart('twoWeeksAgo', [1, 1, 1, 2, 2, 0, 0]),
-        threeWeeksAgo: createDemoCaseChart('threeWeeksAgo', [0, 1, 1, 2, 1, 0, 0]),
-        fourWeeksAgo: createDemoCaseChart('fourWeeksAgo', [0, 1, 0, 1, 1, 0, 0]),
-    },
-    tenant: {
-        thisWeek: createDemoCaseChart('thisWeek', [0, 1, 1, 3, 1, 0, 0]),
-        lastWeek: createDemoCaseChart('lastWeek', [0, 1, 0, 2, 1, 0, 0]),
-        twoWeeksAgo: createDemoCaseChart('twoWeeksAgo', [0, 0, 1, 2, 0, 0, 0]),
-        threeWeeksAgo: createDemoCaseChart('threeWeeksAgo', [0, 1, 0, 1, 1, 0, 0]),
-        fourWeeksAgo: createDemoCaseChart('fourWeeksAgo', [0, 0, 1, 1, 0, 0, 0]),
-    },
-    agency: {
-        thisWeek: createDemoCaseChart('thisWeek', [0, 1, 0, 2, 1, 0, 0]),
-        lastWeek: createDemoCaseChart('lastWeek', [0, 0, 1, 1, 1, 0, 0]),
-        twoWeeksAgo: createDemoCaseChart('twoWeeksAgo', [0, 1, 0, 1, 0, 0, 0]),
-        threeWeeksAgo: createDemoCaseChart('threeWeeksAgo', [0, 0, 0, 1, 1, 0, 0]),
-        fourWeeksAgo: createDemoCaseChart('fourWeeksAgo', [0, 0, 1, 0, 1, 0, 0]),
-    },
-};
-
-type ConversationValues = [number, number, number, number];
-
-interface TopicStatistic {
-    label: string;
-    share: number;
-}
-
-interface FilterTargetMetricStats {
-    activeAgencies: number;
-    activeConversations: number;
-    cases: number;
-    conversationsTotal: number;
-    counselors: number;
-    groups: number;
-    liveChat: number;
-    messagesCounselors: number;
-    messagesSeekers: number;
-    oneToOne: number;
-    phoneCalls: number;
-    textMessagesTotal: number;
-    videoCalls: number;
-    voiceMessages: number;
-    topTopic: TopicStatistic;
-    previousMonth: TopicStatistic;
-    twoMonthsAgo: TopicStatistic;
-    threeMonthsAgo: TopicStatistic;
-}
-
-interface FilterTargetStatistics {
-    caseCharts: Record<CasePeriodKey, number[]>;
-    conversation: Record<ConversationPeriodKey, ConversationValues>;
-    metrics: FilterTargetMetricStats;
-}
-
-const fallbackStatisticTargetIdsByScope: Record<ScopeKey, string[]> = {
-    platform: ['tenant-caritas-nrw', 'tenant-diakonie-rwl', 'tenant-paritaet-nrw'],
-    tenant: ['tenant-caritas-nrw'],
-    agency: ['agency-u25-duesseldorf'],
-};
-
-const filterTargetStatisticsById: Record<string, FilterTargetStatistics> = {
-    'tenant-caritas-nrw': {
-        metrics: {
-            activeAgencies: 35,
-            activeConversations: 4,
-            cases: 8,
-            conversationsTotal: 7,
-            counselors: 6,
-            groups: 2,
-            liveChat: 3,
-            messagesCounselors: 5,
-            messagesSeekers: 13,
-            oneToOne: 4,
-            phoneCalls: 1,
-            textMessagesTotal: 18,
-            videoCalls: 0,
-            voiceMessages: 2,
-            topTopic: { label: 'Schulden', share: 59 },
-            previousMonth: { label: 'Wohnen', share: 44 },
-            twoMonthsAgo: { label: 'Trennung', share: 31 },
-            threeMonthsAgo: { label: 'Sucht', share: 27 },
-        },
-        caseCharts: {
-            thisWeek: [1, 2, 1, 4, 3, 1, 0],
-            lastWeek: [0, 1, 2, 3, 2, 1, 0],
-            twoWeeksAgo: [1, 1, 1, 2, 2, 0, 0],
-            threeWeeksAgo: [0, 1, 1, 2, 1, 0, 0],
-            fourWeeksAgo: [0, 1, 0, 1, 1, 0, 0],
-        },
-        conversation: {
-            today: [1, 2, 0, 0],
-            yesterday: [1, 1, 1, 0],
-            thisWeek: [2, 5, 3, 0],
-            total: [7, 14, 11, 0],
-            thisYear: [4, 11, 8, 0],
-            lastYear: [5, 9, 6, 1],
-        },
-    },
-    'tenant-diakonie-rwl': {
-        metrics: {
-            activeAgencies: 22,
-            activeConversations: 3,
-            cases: 5,
-            conversationsTotal: 4,
-            counselors: 4,
-            groups: 1,
-            liveChat: 2,
-            messagesCounselors: 4,
-            messagesSeekers: 8,
-            oneToOne: 2,
-            phoneCalls: 1,
-            textMessagesTotal: 12,
-            videoCalls: 0,
-            voiceMessages: 1,
-            topTopic: { label: 'Familie', share: 42 },
-            previousMonth: { label: 'Schulden', share: 34 },
-            twoMonthsAgo: { label: 'Wohnen', share: 25 },
-            threeMonthsAgo: { label: 'Trennung', share: 21 },
-        },
-        caseCharts: {
-            thisWeek: [0, 1, 1, 2, 1, 0, 0],
-            lastWeek: [0, 1, 0, 2, 1, 0, 0],
-            twoWeeksAgo: [0, 0, 1, 1, 1, 0, 0],
-            threeWeeksAgo: [0, 1, 0, 1, 0, 0, 0],
-            fourWeeksAgo: [0, 0, 1, 1, 0, 0, 0],
-        },
-        conversation: {
-            today: [1, 1, 0, 0],
-            yesterday: [0, 1, 1, 0],
-            thisWeek: [2, 3, 1, 0],
-            total: [5, 8, 5, 0],
-            thisYear: [3, 6, 4, 0],
-            lastYear: [4, 6, 3, 1],
-        },
-    },
-    'tenant-paritaet-nrw': {
-        metrics: {
-            activeAgencies: 14,
-            activeConversations: 2,
-            cases: 4,
-            conversationsTotal: 3,
-            counselors: 3,
-            groups: 1,
-            liveChat: 1,
-            messagesCounselors: 3,
-            messagesSeekers: 6,
-            oneToOne: 2,
-            phoneCalls: 0,
-            textMessagesTotal: 9,
-            videoCalls: 0,
-            voiceMessages: 1,
-            topTopic: { label: 'Ausbildung', share: 38 },
-            previousMonth: { label: 'Familie', share: 28 },
-            twoMonthsAgo: { label: 'Schulden', share: 22 },
-            threeMonthsAgo: { label: 'Wohnen', share: 18 },
-        },
-        caseCharts: {
-            thisWeek: [1, 0, 1, 1, 0, 0, 0],
-            lastWeek: [0, 1, 0, 1, 1, 0, 0],
-            twoWeeksAgo: [0, 0, 1, 1, 0, 0, 0],
-            threeWeeksAgo: [0, 0, 0, 1, 1, 0, 0],
-            fourWeeksAgo: [0, 0, 1, 0, 0, 0, 0],
-        },
-        conversation: {
-            today: [0, 1, 0, 0],
-            yesterday: [1, 0, 0, 0],
-            thisWeek: [1, 2, 1, 0],
-            total: [3, 5, 3, 0],
-            thisYear: [2, 4, 2, 0],
-            lastYear: [3, 3, 2, 1],
-        },
-    },
-    'agency-u25-duesseldorf': {
-        metrics: {
-            activeAgencies: 1,
-            activeConversations: 2,
-            cases: 3,
-            conversationsTotal: 3,
-            counselors: 2,
-            groups: 1,
-            liveChat: 1,
-            messagesCounselors: 2,
-            messagesSeekers: 5,
-            oneToOne: 1,
-            phoneCalls: 1,
-            textMessagesTotal: 7,
-            videoCalls: 0,
-            voiceMessages: 1,
-            topTopic: { label: 'Trennung', share: 34 },
-            previousMonth: { label: 'Schulden', share: 28 },
-            twoMonthsAgo: { label: 'Familie', share: 24 },
-            threeMonthsAgo: { label: 'Wohnen', share: 19 },
-        },
-        caseCharts: {
-            thisWeek: [0, 1, 0, 2, 1, 0, 0],
-            lastWeek: [0, 0, 1, 1, 1, 0, 0],
-            twoWeeksAgo: [0, 1, 0, 1, 0, 0, 0],
-            threeWeeksAgo: [0, 0, 0, 1, 1, 0, 0],
-            fourWeeksAgo: [0, 0, 1, 0, 1, 0, 0],
-        },
-        conversation: {
-            today: [1, 1, 0, 0],
-            yesterday: [1, 0, 1, 0],
-            thisWeek: [2, 2, 1, 0],
-            total: [3, 4, 3, 0],
-            thisYear: [2, 3, 2, 0],
-            lastYear: [3, 2, 1, 0],
-        },
-    },
-    'agency-schuldnerberatung-koeln': {
-        metrics: {
-            activeAgencies: 1,
-            activeConversations: 1,
-            cases: 2,
-            conversationsTotal: 2,
-            counselors: 1,
-            groups: 0,
-            liveChat: 1,
-            messagesCounselors: 1,
-            messagesSeekers: 4,
-            oneToOne: 1,
-            phoneCalls: 0,
-            textMessagesTotal: 5,
-            videoCalls: 0,
-            voiceMessages: 0,
-            topTopic: { label: 'Schulden', share: 71 },
-            previousMonth: { label: 'Wohnen', share: 35 },
-            twoMonthsAgo: { label: 'Arbeit', share: 25 },
-            threeMonthsAgo: { label: 'Sucht', share: 18 },
-        },
-        caseCharts: {
-            thisWeek: [0, 0, 0, 1, 1, 0, 0],
-            lastWeek: [0, 0, 1, 1, 0, 0, 0],
-            twoWeeksAgo: [0, 0, 0, 1, 0, 0, 0],
-            threeWeeksAgo: [0, 0, 0, 1, 0, 0, 0],
-            fourWeeksAgo: [0, 0, 0, 0, 1, 0, 0],
-        },
-        conversation: {
-            today: [1, 0, 0, 0],
-            yesterday: [0, 1, 0, 0],
-            thisWeek: [1, 2, 0, 0],
-            total: [2, 3, 1, 0],
-            thisYear: [1, 2, 1, 0],
-            lastYear: [2, 2, 1, 0],
-        },
-    },
-    'agency-jugendberatung-essen': {
-        metrics: {
-            activeAgencies: 1,
-            activeConversations: 2,
-            cases: 3,
-            conversationsTotal: 2,
-            counselors: 2,
-            groups: 1,
-            liveChat: 2,
-            messagesCounselors: 2,
-            messagesSeekers: 3,
-            oneToOne: 1,
-            phoneCalls: 1,
-            textMessagesTotal: 5,
-            videoCalls: 0,
-            voiceMessages: 1,
-            topTopic: { label: 'Ausbildung', share: 48 },
-            previousMonth: { label: 'Familie', share: 31 },
-            twoMonthsAgo: { label: 'Trennung', share: 28 },
-            threeMonthsAgo: { label: 'Wohnen', share: 16 },
-        },
-        caseCharts: {
-            thisWeek: [1, 0, 0, 1, 1, 0, 0],
-            lastWeek: [0, 1, 0, 1, 0, 0, 0],
-            twoWeeksAgo: [0, 1, 0, 0, 1, 0, 0],
-            threeWeeksAgo: [0, 0, 1, 0, 0, 0, 0],
-            fourWeeksAgo: [0, 0, 0, 1, 0, 0, 0],
-        },
-        conversation: {
-            today: [0, 1, 0, 0],
-            yesterday: [1, 0, 0, 0],
-            thisWeek: [1, 2, 1, 0],
-            total: [2, 4, 2, 0],
-            thisYear: [1, 3, 1, 0],
-            lastYear: [2, 3, 1, 0],
-        },
-    },
-    'agency-familienberatung-dortmund': {
-        metrics: {
-            activeAgencies: 1,
-            activeConversations: 1,
-            cases: 2,
-            conversationsTotal: 1,
-            counselors: 1,
-            groups: 1,
-            liveChat: 1,
-            messagesCounselors: 1,
-            messagesSeekers: 2,
-            oneToOne: 0,
-            phoneCalls: 0,
-            textMessagesTotal: 3,
-            videoCalls: 0,
-            voiceMessages: 0,
-            topTopic: { label: 'Familie', share: 63 },
-            previousMonth: { label: 'Trennung', share: 29 },
-            twoMonthsAgo: { label: 'Wohnen', share: 21 },
-            threeMonthsAgo: { label: 'Schulden', share: 14 },
-        },
-        caseCharts: {
-            thisWeek: [0, 1, 0, 1, 0, 0, 0],
-            lastWeek: [0, 0, 0, 1, 1, 0, 0],
-            twoWeeksAgo: [0, 0, 1, 0, 0, 0, 0],
-            threeWeeksAgo: [0, 0, 0, 1, 0, 0, 0],
-            fourWeeksAgo: [0, 0, 0, 0, 0, 0, 0],
-        },
-        conversation: {
-            today: [0, 1, 0, 0],
-            yesterday: [0, 0, 1, 0],
-            thisWeek: [1, 1, 1, 0],
-            total: [1, 3, 2, 0],
-            thisYear: [1, 2, 1, 0],
-            lastYear: [1, 2, 2, 0],
-        },
-    },
-};
-
 const formatIntegerMetric = (value: number) => value.toLocaleString('de-DE');
 
-const formatDecimalMetric = (value: number) =>
-    value.toLocaleString('de-DE', {
-        maximumFractionDigits: 1,
-        minimumFractionDigits: 1,
-    });
-
-const formatShareMetric = (value: number, total: number) => `${total ? Math.round((value / total) * 100) : 0}%`;
-
 const getEmptyFilterTargetStatistics = (): FilterTargetStatistics => ({
+    suppressed: false,
+    enquiriesPreviousMonth: null,
     metrics: {
-        activeAgencies: 0,
-        activeConversations: 0,
-        cases: 0,
-        conversationsTotal: 0,
-        counselors: 0,
-        groups: 0,
-        liveChat: 0,
-        messagesCounselors: 0,
-        messagesSeekers: 0,
-        oneToOne: 0,
-        phoneCalls: 0,
-        textMessagesTotal: 0,
-        videoCalls: 0,
-        voiceMessages: 0,
-        topTopic: { label: 'Keine Daten', share: 0 },
-        previousMonth: { label: 'Keine Daten', share: 0 },
-        twoMonthsAgo: { label: 'Keine Daten', share: 0 },
-        threeMonthsAgo: { label: 'Keine Daten', share: 0 },
+        activeAgencies: null,
+        activeConversations: null,
+        cases: null,
+        conversationsTotal: null,
+        counselors: null,
+        groups: null,
+        liveChat: null,
+        messagesCounselors: null,
+        messagesSeekers: null,
+        oneToOne: null,
+        phoneCalls: null,
+        textMessagesTotal: null,
+        videoCalls: null,
+        voiceMessages: null,
+        topTopic: { label: NO_DATA_LABEL, share: 0 },
+        previousMonth: { label: NO_DATA_LABEL, share: 0 },
+        twoMonthsAgo: { label: NO_DATA_LABEL, share: 0 },
+        threeMonthsAgo: { label: NO_DATA_LABEL, share: 0 },
     },
     caseCharts: {
         thisWeek: [0, 0, 0, 0, 0, 0, 0],
@@ -1547,18 +1086,22 @@ const numericFilterMetricKeys: NumericFilterMetricKey[] = [
     'voiceMessages',
 ];
 
-const aggregateFilterTargetStatistics = (targetIds: string[]) =>
-    targetIds.reduce<FilterTargetStatistics>((aggregatedStats, targetId) => {
-        const targetStats = filterTargetStatisticsById[targetId];
+const addMetricValues = (first: MetricValue, second: MetricValue): MetricValue =>
+    first === null && second === null ? null : (first ?? 0) + (second ?? 0);
 
-        if (!targetStats) {
+const aggregateFilterTargetStatistics = (targetIds: string[], statisticsById: Record<string, FilterTargetStatistics>) =>
+    targetIds.reduce<FilterTargetStatistics>((aggregatedStats, targetId) => {
+        const targetStats = statisticsById[targetId];
+
+        // KDG small-cell suppression: suppressed targets contribute nothing
+        if (!targetStats || targetStats.suppressed) {
             return aggregatedStats;
         }
 
         const metrics = numericFilterMetricKeys.reduce<FilterTargetMetricStats>(
             (nextMetrics, metricKey) => ({
                 ...nextMetrics,
-                [metricKey]: aggregatedStats.metrics[metricKey] + targetStats.metrics[metricKey],
+                [metricKey]: addMetricValues(aggregatedStats.metrics[metricKey], targetStats.metrics[metricKey]),
             }),
             {
                 ...aggregatedStats.metrics,
@@ -1596,112 +1139,159 @@ const aggregateFilterTargetStatistics = (targetIds: string[]) =>
         );
 
         return {
+            suppressed: false,
+            enquiriesPreviousMonth: addMetricValues(
+                aggregatedStats.enquiriesPreviousMonth,
+                targetStats.enquiriesPreviousMonth,
+            ),
             caseCharts,
             conversation,
             metrics,
         };
     }, getEmptyFilterTargetStatistics());
 
-const getEffectiveStatisticTargetIds = (activeScope: ScopeKey, selectedTargetIds: string[]) => {
-    const selectableTargetIds = new Set(filterTargetsByScope[activeScope].map((target) => target.id));
+const getEffectiveStatisticTargetIds = (
+    activeScope: ScopeKey,
+    selectedTargetIds: string[],
+    statisticData: StatisticData,
+) => {
+    const selectableTargetIds = new Set(statisticData.targetsByScope[activeScope].map((target) => target.id));
     const selectedAvailableTargetIds = selectedTargetIds.filter(
-        (targetId) => selectableTargetIds.has(targetId) && Boolean(filterTargetStatisticsById[targetId]),
+        (targetId) => selectableTargetIds.has(targetId) && Boolean(statisticData.statisticsById[targetId]),
     );
 
     return selectedAvailableTargetIds.length
         ? selectedAvailableTargetIds
-        : fallbackStatisticTargetIdsByScope[activeScope];
+        : statisticData.fallbackIdsByScope[activeScope];
 };
 
+const formatMetricValue = (value: MetricValue) => (value === null ? NO_DATA_LABEL : formatIntegerMetric(value));
+
+const buildChangeTrend = (current: MetricValue, previous: MetricValue): TrendBadgeDefinition | undefined => {
+    if (current === null || previous === null || (previous === 0 && current === 0)) {
+        return undefined;
+    }
+
+    const change = previous === 0 ? 100 : Math.round(((current - previous) / previous) * 100);
+    const magnitude = Math.abs(change);
+
+    if (change < 0) {
+        return { value: `~ ${magnitude}%`, tone: 'red', direction: magnitude >= 15 ? 'down' : 'downRight' };
+    }
+
+    return { value: `~ ${magnitude}%`, tone: 'blue', direction: magnitude >= 15 ? 'up' : 'upRight' };
+};
+
+const buildTopicTrend = (topic: TopicStatistic): TrendBadgeDefinition | undefined =>
+    topic.share > 0 ? { value: `~ ${topic.share}%`, tone: 'dark' } : undefined;
+
+/**
+ * Maps aggregated real statistics onto the dashboard metric slots. Metrics without an
+ * application-layer data source are rendered as "Keine Daten"; trends are only shown
+ * where a real comparison value exists (requests vs. previous month, topic shares).
+ */
 const buildMetricOverridesFromFilterStats = (
     stats: FilterTargetStatistics,
 ): Partial<Record<CardMenuKey, Partial<CardMenuOption>>> => {
-    const totalRequests = stats.metrics.oneToOne + stats.metrics.liveChat + stats.metrics.groups;
-    const messageTotal = stats.metrics.messagesSeekers + stats.metrics.messagesCounselors;
-    const messagesPerSession = messageTotal / Math.max(stats.metrics.conversationsTotal, 1);
-    const previousRequestTotal = Math.max(totalRequests + 1, Math.round(totalRequests * 1.18));
-    const previousCasesTotal = Math.max(stats.metrics.cases + 1, Math.round(stats.metrics.cases * 1.12));
+    const requestTrend = buildChangeTrend(stats.metrics.oneToOne, stats.enquiriesPreviousMonth);
+    const requestDetail =
+        stats.enquiriesPreviousMonth !== null
+            ? `Vormonat gesamt ${formatIntegerMetric(stats.enquiriesPreviousMonth)}`
+            : undefined;
 
     return {
         activeAgencies: {
-            value: formatIntegerMetric(stats.metrics.activeAgencies),
+            value: formatMetricValue(stats.metrics.activeAgencies),
             detail: 'zugeordnete Beratungsstellen',
+            trend: undefined,
         },
         activeConversations: {
-            value: formatIntegerMetric(stats.metrics.activeConversations),
+            value: formatMetricValue(stats.metrics.activeConversations),
+            detail: 'heute aktiv',
+            trend: undefined,
+        },
+        activeCounselors: {
+            value: formatMetricValue(stats.metrics.counselors),
+            detail: undefined,
+            trend: undefined,
         },
         all: {
-            value: formatIntegerMetric(totalRequests),
-            detail: `Vormonat gesamt ${formatIntegerMetric(previousRequestTotal)}`,
+            value: formatMetricValue(stats.metrics.oneToOne),
+            detail: requestDetail,
+            trend: requestTrend,
         },
         cases: {
-            value: formatIntegerMetric(stats.metrics.cases),
-            detail: `Vorwoche gesamt ${formatIntegerMetric(previousCasesTotal)}`,
+            value: formatMetricValue(stats.metrics.cases),
+            detail: 'Aktuell in Beratung',
+            trend: undefined,
         },
+        consultations: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
         conversationsTotal: {
-            value: formatIntegerMetric(stats.metrics.conversationsTotal),
+            value: formatMetricValue(stats.metrics.conversationsTotal),
+            detail: 'gesamt',
+            trend: undefined,
         },
         counselors: {
-            value: formatIntegerMetric(stats.metrics.counselors),
+            value: formatMetricValue(stats.metrics.counselors),
+            detail: undefined,
+            trend: undefined,
         },
         groups: {
-            value: formatIntegerMetric(stats.metrics.groups),
+            value: formatMetricValue(stats.metrics.groups),
+            detail: 'gesamt',
+            trend: undefined,
         },
-        liveChat: {
-            value: formatIntegerMetric(stats.metrics.liveChat),
-        },
-        messagesCounselors: {
-            value: formatIntegerMetric(stats.metrics.messagesCounselors),
-        },
-        messagesPerSession: {
-            value: formatDecimalMetric(messagesPerSession),
-        },
-        messagesSeekers: {
-            value: formatIntegerMetric(stats.metrics.messagesSeekers),
-        },
+        liveChat: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        messagesCounselors: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        messagesPerSession: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        messagesSeekers: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
         oneToOne: {
-            value: formatIntegerMetric(stats.metrics.oneToOne),
+            value: formatMetricValue(stats.metrics.oneToOne),
+            detail: '1:1-Anfragen',
+            trend: requestTrend,
         },
-        phoneShare: {
-            value: formatShareMetric(stats.metrics.phoneCalls, stats.metrics.conversationsTotal),
-        },
+        phoneShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
         previousMonth: {
             value: stats.metrics.previousMonth.label,
-            trend: { value: `~ ${stats.metrics.previousMonth.share}%`, tone: 'dark' },
+            detail: 'Letzter Monat',
+            trend: buildTopicTrend(stats.metrics.previousMonth),
         },
-        textMessagesTotal: {
-            value: formatIntegerMetric(stats.metrics.textMessagesTotal),
-        },
+        textMessagesTotal: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
         threeMonthsAgo: {
             value: stats.metrics.threeMonthsAgo.label,
-            trend: { value: `~ ${stats.metrics.threeMonthsAgo.share}%`, tone: 'dark' },
+            detail: 'Vor 3 Monaten',
+            trend: buildTopicTrend(stats.metrics.threeMonthsAgo),
         },
         topTopic: {
             value: stats.metrics.topTopic.label,
-            detail: 'gefilterte Ansicht',
-            trend: { value: `~ ${stats.metrics.topTopic.share}%`, tone: 'dark' },
+            detail: 'Dieser Monat',
+            trend: buildTopicTrend(stats.metrics.topTopic),
         },
         twoMonthsAgo: {
             value: stats.metrics.twoMonthsAgo.label,
-            trend: { value: `~ ${stats.metrics.twoMonthsAgo.share}%`, tone: 'dark' },
+            detail: 'Vor 2 Monaten',
+            trend: buildTopicTrend(stats.metrics.twoMonthsAgo),
         },
-        videoCallCount: {
-            value: formatIntegerMetric(stats.metrics.videoCalls),
-        },
-        videoShare: {
-            value: formatShareMetric(stats.metrics.videoCalls, stats.metrics.conversationsTotal),
-        },
-        voiceShare: {
-            value: formatShareMetric(stats.metrics.voiceMessages, Math.max(messageTotal, 1)),
-        },
+        videoCallCount: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        videoShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        voiceShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
     };
 };
 
-const buildCaseChartsFromFilterStats = (stats: FilterTargetStatistics): Record<CasePeriodKey, CaseChartBar[]> =>
+const buildCaseChartsFromFilterStats = (
+    stats: FilterTargetStatistics,
+    dateLabelsByPeriod: Record<CasePeriodKey, string[]>,
+    todayDayCode: string,
+): Record<CasePeriodKey, CaseChartBar[]> =>
     casePeriodOptions.reduce(
         (charts, { key }) => ({
             ...charts,
-            [key]: createDemoCaseChart(key, stats.caseCharts[key]),
+            [key]: caseChartDayCodes.map((day, index) => ({
+                day,
+                dateLabel: dateLabelsByPeriod[key][index],
+                value: stats.caseCharts[key][index],
+                isDefaultSelected: day === todayDayCode,
+            })),
         }),
         {} as Record<CasePeriodKey, CaseChartBar[]>,
     );
@@ -1717,36 +1307,14 @@ const buildConversationByPeriodFromFilterStats = (
         {} as Record<ConversationPeriodKey, ConversationPeriodData>,
     );
 
-const demoConversationByScope: Record<ScopeKey, Record<ConversationPeriodKey, ConversationPeriodData>> = {
-    platform: {
-        today: createConversationData([1, 2, 0, 0]),
-        yesterday: createConversationData([1, 1, 1, 0]),
-        thisWeek: createConversationData([2, 5, 3, 0]),
-        total: createConversationData([7, 14, 11, 0]),
-        thisYear: createConversationData([4, 11, 8, 0]),
-        lastYear: createConversationData([5, 9, 6, 1]),
-    },
-    tenant: {
-        today: createConversationData([1, 1, 1, 0]),
-        yesterday: createConversationData([0, 2, 1, 0]),
-        thisWeek: createConversationData([3, 5, 2, 0]),
-        total: createConversationData([6, 10, 8, 1]),
-        thisYear: createConversationData([4, 8, 6, 0]),
-        lastYear: createConversationData([5, 7, 4, 1]),
-    },
-    agency: {
-        today: createConversationData([1, 1, 0, 0]),
-        yesterday: createConversationData([1, 0, 1, 0]),
-        thisWeek: createConversationData([2, 2, 1, 0]),
-        total: createConversationData([3, 4, 3, 0]),
-        thisYear: createConversationData([2, 3, 2, 0]),
-        lastYear: createConversationData([3, 2, 1, 0]),
-    },
+const noSourceMetricOverride: Partial<CardMenuOption> = {
+    value: NO_DATA_LABEL,
+    detail: undefined,
+    trend: undefined,
 };
 
-const applyDemoMetricOverride = <Metric extends StatisticCardDefinition | CardMenuOption>(
+const applyMetricOverride = <Metric extends StatisticCardDefinition | CardMenuOption>(
     metric: Metric,
-    activeScope: ScopeKey,
     metricOverrides: Partial<Record<CardMenuKey, Partial<CardMenuOption>>>,
     metricKey?: CardMenuKey,
 ): Metric => {
@@ -1754,26 +1322,22 @@ const applyDemoMetricOverride = <Metric extends StatisticCardDefinition | CardMe
         return metric;
     }
 
-    const override = {
-        ...demoMetricOverridesByScope[activeScope][metricKey],
-        ...metricOverrides[metricKey],
-    };
+    const override = metricOverrides[metricKey] ?? noSourceMetricOverride;
 
-    return Object.keys(override).length ? { ...metric, ...override } : metric;
+    return { ...metric, ...override };
 };
 
 const getDisplayMetricCard = (
     card: StatisticCardDefinition,
-    activeScope: ScopeKey,
     metricOverrides: Partial<Record<CardMenuKey, Partial<CardMenuOption>>>,
-) => applyDemoMetricOverride(card, activeScope, metricOverrides, defaultMetricKeyByCardKey[card.key]);
+) => applyMetricOverride(card, metricOverrides, defaultMetricKeyByCardKey[card.key]);
 
 const getPersonalizedMetricCard = (
     card: StatisticCardDefinition,
     activeScope: ScopeKey,
     metricOverrides: Partial<Record<CardMenuKey, Partial<CardMenuOption>>>,
 ): StatisticCardDefinition => {
-    const displayCard = getDisplayMetricCard(card, activeScope, metricOverrides);
+    const displayCard = getDisplayMetricCard(card, metricOverrides);
 
     return {
         ...displayCard,
@@ -1782,9 +1346,7 @@ const getPersonalizedMetricCard = (
         menuLabel: 'Meine Kennzahl',
         menuOptions: dashboardMetricOptionsByScope[activeScope]
             .filter((option) => !duplicatedCommunicationMetricKeys.has(option.key))
-            .map((option) =>
-                withMetricMenuDescription(applyDemoMetricOverride(option, activeScope, metricOverrides, option.key)),
-            ),
+            .map((option) => withMetricMenuDescription(applyMetricOverride(option, metricOverrides, option.key))),
     };
 };
 
@@ -1978,79 +1540,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                 size: 'small',
             },
         ],
-        caseCharts: {
-            thisWeek: [
-                { day: 'Mo', dateLabel: 'Mo, 9 Jul', value: 1900 },
-                { day: 'Di', dateLabel: 'Di, 10 Jul', value: 2250 },
-                { day: 'Mi', dateLabel: 'Mi, 11 Jul', value: 2250 },
-                { day: 'Do', dateLabel: 'Do, 12 Jul', value: 3150, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 13 Jul', value: 2250 },
-                { day: 'Sa', dateLabel: 'Sa, 14 Jul', value: 2250 },
-                { day: 'So', dateLabel: 'So, 15 Jul', value: 2250 },
-            ],
-            lastWeek: [
-                { day: 'Mo', dateLabel: 'Mo, 2 Jul', value: 1680 },
-                { day: 'Di', dateLabel: 'Di, 3 Jul', value: 2040 },
-                { day: 'Mi', dateLabel: 'Mi, 4 Jul', value: 2180 },
-                { day: 'Do', dateLabel: 'Do, 5 Jul', value: 2460, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 6 Jul', value: 2360 },
-                { day: 'Sa', dateLabel: 'Sa, 7 Jul', value: 1880 },
-                { day: 'So', dateLabel: 'So, 8 Jul', value: 1720 },
-            ],
-            twoWeeksAgo: [
-                { day: 'Mo', dateLabel: 'Mo, 25 Jun', value: 1420 },
-                { day: 'Di', dateLabel: 'Di, 26 Jun', value: 1780 },
-                { day: 'Mi', dateLabel: 'Mi, 27 Jun', value: 1960 },
-                { day: 'Do', dateLabel: 'Do, 28 Jun', value: 2210, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 29 Jun', value: 2060 },
-                { day: 'Sa', dateLabel: 'Sa, 30 Jun', value: 1640 },
-                { day: 'So', dateLabel: 'So, 1 Jul', value: 1510 },
-            ],
-            threeWeeksAgo: [
-                { day: 'Mo', dateLabel: 'Mo, 18 Jun', value: 1320 },
-                { day: 'Di', dateLabel: 'Di, 19 Jun', value: 1650 },
-                { day: 'Mi', dateLabel: 'Mi, 20 Jun', value: 1840 },
-                { day: 'Do', dateLabel: 'Do, 21 Jun', value: 2080, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 22 Jun', value: 1920 },
-                { day: 'Sa', dateLabel: 'Sa, 23 Jun', value: 1520 },
-                { day: 'So', dateLabel: 'So, 24 Jun', value: 1390 },
-            ],
-            fourWeeksAgo: [
-                { day: 'Mo', dateLabel: 'Mo, 11 Jun', value: 1210 },
-                { day: 'Di', dateLabel: 'Di, 12 Jun', value: 1540 },
-                { day: 'Mi', dateLabel: 'Mi, 13 Jun', value: 1710 },
-                { day: 'Do', dateLabel: 'Do, 14 Jun', value: 1940, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 15 Jun', value: 1810 },
-                { day: 'Sa', dateLabel: 'Sa, 16 Jun', value: 1430 },
-                { day: 'So', dateLabel: 'So, 17 Jun', value: 1280 },
-            ],
-        },
-        conversation: {
-            today: {
-                total: '555',
-                segments: createConversationSegments([278, 137, 58, 82]),
-            },
-            yesterday: {
-                total: '486',
-                segments: createConversationSegments([218, 129, 76, 63]),
-            },
-            thisWeek: {
-                total: '3.248',
-                segments: createConversationSegments([1498, 812, 346, 592]),
-            },
-            total: {
-                total: '42.680',
-                segments: createConversationSegments([19840, 10860, 4710, 7270]),
-            },
-            thisYear: {
-                total: '18.420',
-                segments: createConversationSegments([8420, 4690, 2130, 3180]),
-            },
-            lastYear: {
-                total: '31.860',
-                segments: createConversationSegments([14920, 8120, 3460, 5360]),
-            },
-        },
     },
     tenant: {
         topCards: [
@@ -2241,79 +1730,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                 size: 'small',
             },
         ],
-        caseCharts: {
-            thisWeek: [
-                { day: 'Mo', dateLabel: 'Mo, 9 Jul', value: 820 },
-                { day: 'Di', dateLabel: 'Di, 10 Jul', value: 1180 },
-                { day: 'Mi', dateLabel: 'Mi, 11 Jul', value: 960 },
-                { day: 'Do', dateLabel: 'Do, 12 Jul', value: 1520, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 13 Jul', value: 1220 },
-                { day: 'Sa', dateLabel: 'Sa, 14 Jul', value: 870 },
-                { day: 'So', dateLabel: 'So, 15 Jul', value: 760 },
-            ],
-            lastWeek: [
-                { day: 'Mo', dateLabel: 'Mo, 2 Jul', value: 690 },
-                { day: 'Di', dateLabel: 'Di, 3 Jul', value: 1040 },
-                { day: 'Mi', dateLabel: 'Mi, 4 Jul', value: 910 },
-                { day: 'Do', dateLabel: 'Do, 5 Jul', value: 1280, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 6 Jul', value: 1160 },
-                { day: 'Sa', dateLabel: 'Sa, 7 Jul', value: 820 },
-                { day: 'So', dateLabel: 'So, 8 Jul', value: 710 },
-            ],
-            twoWeeksAgo: [
-                { day: 'Mo', dateLabel: 'Mo, 25 Jun', value: 610 },
-                { day: 'Di', dateLabel: 'Di, 26 Jun', value: 880 },
-                { day: 'Mi', dateLabel: 'Mi, 27 Jun', value: 830 },
-                { day: 'Do', dateLabel: 'Do, 28 Jun', value: 1090, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 29 Jun', value: 970 },
-                { day: 'Sa', dateLabel: 'Sa, 30 Jun', value: 690 },
-                { day: 'So', dateLabel: 'So, 1 Jul', value: 640 },
-            ],
-            threeWeeksAgo: [
-                { day: 'Mo', dateLabel: 'Mo, 18 Jun', value: 560 },
-                { day: 'Di', dateLabel: 'Di, 19 Jun', value: 820 },
-                { day: 'Mi', dateLabel: 'Mi, 20 Jun', value: 760 },
-                { day: 'Do', dateLabel: 'Do, 21 Jun', value: 1010, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 22 Jun', value: 900 },
-                { day: 'Sa', dateLabel: 'Sa, 23 Jun', value: 650 },
-                { day: 'So', dateLabel: 'So, 24 Jun', value: 590 },
-            ],
-            fourWeeksAgo: [
-                { day: 'Mo', dateLabel: 'Mo, 11 Jun', value: 520 },
-                { day: 'Di', dateLabel: 'Di, 12 Jun', value: 760 },
-                { day: 'Mi', dateLabel: 'Mi, 13 Jun', value: 710 },
-                { day: 'Do', dateLabel: 'Do, 14 Jun', value: 940, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 15 Jun', value: 840 },
-                { day: 'Sa', dateLabel: 'Sa, 16 Jun', value: 610 },
-                { day: 'So', dateLabel: 'So, 17 Jun', value: 550 },
-            ],
-        },
-        conversation: {
-            today: {
-                total: '211',
-                segments: createConversationSegments([96, 58, 24, 33]),
-            },
-            yesterday: {
-                total: '184',
-                segments: createConversationSegments([78, 52, 28, 26]),
-            },
-            thisWeek: {
-                total: '1.238',
-                segments: createConversationSegments([548, 326, 151, 213]),
-            },
-            total: {
-                total: '14.890',
-                segments: createConversationSegments([6520, 3980, 1840, 2550]),
-            },
-            thisYear: {
-                total: '6.940',
-                segments: createConversationSegments([3010, 1840, 870, 1220]),
-            },
-            lastYear: {
-                total: '11.420',
-                segments: createConversationSegments([4980, 3020, 1410, 2010]),
-            },
-        },
     },
     agency: {
         topCards: [
@@ -2504,79 +1920,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                 size: 'small',
             },
         ],
-        caseCharts: {
-            thisWeek: [
-                { day: 'Mo', dateLabel: 'Mo, 9 Jul', value: 420 },
-                { day: 'Di', dateLabel: 'Di, 10 Jul', value: 520 },
-                { day: 'Mi', dateLabel: 'Mi, 11 Jul', value: 470 },
-                { day: 'Do', dateLabel: 'Do, 12 Jul', value: 690, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 13 Jul', value: 610 },
-                { day: 'Sa', dateLabel: 'Sa, 14 Jul', value: 430 },
-                { day: 'So', dateLabel: 'So, 15 Jul', value: 390 },
-            ],
-            lastWeek: [
-                { day: 'Mo', dateLabel: 'Mo, 2 Jul', value: 360 },
-                { day: 'Di', dateLabel: 'Di, 3 Jul', value: 480 },
-                { day: 'Mi', dateLabel: 'Mi, 4 Jul', value: 430 },
-                { day: 'Do', dateLabel: 'Do, 5 Jul', value: 590, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 6 Jul', value: 540 },
-                { day: 'Sa', dateLabel: 'Sa, 7 Jul', value: 380 },
-                { day: 'So', dateLabel: 'So, 8 Jul', value: 340 },
-            ],
-            twoWeeksAgo: [
-                { day: 'Mo', dateLabel: 'Mo, 25 Jun', value: 310 },
-                { day: 'Di', dateLabel: 'Di, 26 Jun', value: 410 },
-                { day: 'Mi', dateLabel: 'Mi, 27 Jun', value: 390 },
-                { day: 'Do', dateLabel: 'Do, 28 Jun', value: 520, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 29 Jun', value: 470 },
-                { day: 'Sa', dateLabel: 'Sa, 30 Jun', value: 330 },
-                { day: 'So', dateLabel: 'So, 1 Jul', value: 300 },
-            ],
-            threeWeeksAgo: [
-                { day: 'Mo', dateLabel: 'Mo, 18 Jun', value: 290 },
-                { day: 'Di', dateLabel: 'Di, 19 Jun', value: 380 },
-                { day: 'Mi', dateLabel: 'Mi, 20 Jun', value: 360 },
-                { day: 'Do', dateLabel: 'Do, 21 Jun', value: 480, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 22 Jun', value: 430 },
-                { day: 'Sa', dateLabel: 'Sa, 23 Jun', value: 310 },
-                { day: 'So', dateLabel: 'So, 24 Jun', value: 280 },
-            ],
-            fourWeeksAgo: [
-                { day: 'Mo', dateLabel: 'Mo, 11 Jun', value: 260 },
-                { day: 'Di', dateLabel: 'Di, 12 Jun', value: 350 },
-                { day: 'Mi', dateLabel: 'Mi, 13 Jun', value: 330 },
-                { day: 'Do', dateLabel: 'Do, 14 Jun', value: 440, isDefaultSelected: true },
-                { day: 'Fr', dateLabel: 'Fr, 15 Jun', value: 400 },
-                { day: 'Sa', dateLabel: 'Sa, 16 Jun', value: 290 },
-                { day: 'So', dateLabel: 'So, 17 Jun', value: 260 },
-            ],
-        },
-        conversation: {
-            today: {
-                total: '93',
-                segments: createConversationSegments([38, 25, 14, 16]),
-            },
-            yesterday: {
-                total: '86',
-                segments: createConversationSegments([34, 22, 17, 13]),
-            },
-            thisWeek: {
-                total: '548',
-                segments: createConversationSegments([236, 146, 73, 93]),
-            },
-            total: {
-                total: '6.480',
-                segments: createConversationSegments([2740, 1740, 860, 1140]),
-            },
-            thisYear: {
-                total: '2.840',
-                segments: createConversationSegments([1210, 760, 380, 490]),
-            },
-            lastYear: {
-                total: '4.920',
-                segments: createConversationSegments([2070, 1320, 650, 880]),
-            },
-        },
     },
 };
 
@@ -3220,23 +2563,34 @@ export const Statistic = () => {
     });
     const [selectedCaseDayByScope, setSelectedCaseDayByScope] =
         useState<Record<ScopeKey, string>>(defaultSelectedCaseDayByScope);
+    const { data: statisticData, isError: hasStatisticLoadError } = useStatisticDashboardData();
+    const caseChartDateLabelsByPeriod = useMemo(() => buildCaseChartDateLabels(new Date()), []);
+    const todayDayCode = useMemo(() => getTodayDayCode(new Date()), []);
     const dashboard = dashboardByScope[activeScope];
-    const availableFilterTargets = filterTargetsByScope[activeScope];
+    const availableFilterTargets = statisticData.targetsByScope[activeScope];
     const selectedFilterTargetIds = selectedFilterTargetIdsByScope[activeScope] || [];
     const filterSearch = filterSearchByScope[activeScope];
     const visibleFilterTargetIds = selectedFilterTargetIds.filter((targetId) =>
         availableFilterTargets.some((target) => target.id === targetId),
     );
     const effectiveStatisticTargetIds = useMemo(
-        () => getEffectiveStatisticTargetIds(activeScope, selectedFilterTargetIds),
-        [activeScope, selectedFilterTargetIds],
+        () => getEffectiveStatisticTargetIds(activeScope, selectedFilterTargetIds, statisticData),
+        [activeScope, selectedFilterTargetIds, statisticData],
     );
     const filteredStats = useMemo(
-        () => aggregateFilterTargetStatistics(effectiveStatisticTargetIds),
-        [effectiveStatisticTargetIds],
+        () => aggregateFilterTargetStatistics(effectiveStatisticTargetIds, statisticData.statisticsById),
+        [effectiveStatisticTargetIds, statisticData.statisticsById],
+    );
+    const suppressedSelectedTargetCount = useMemo(
+        () =>
+            effectiveStatisticTargetIds.filter((targetId) => statisticData.statisticsById[targetId]?.suppressed).length,
+        [effectiveStatisticTargetIds, statisticData.statisticsById],
     );
     const metricOverrides = useMemo(() => buildMetricOverridesFromFilterStats(filteredStats), [filteredStats]);
-    const filteredCaseCharts = useMemo(() => buildCaseChartsFromFilterStats(filteredStats), [filteredStats]);
+    const filteredCaseCharts = useMemo(
+        () => buildCaseChartsFromFilterStats(filteredStats, caseChartDateLabelsByPeriod, todayDayCode),
+        [caseChartDateLabelsByPeriod, filteredStats, todayDayCode],
+    );
     const filteredConversationByPeriod = useMemo(
         () => buildConversationByPeriodFromFilterStats(filteredStats),
         [filteredStats],
@@ -3244,10 +2598,8 @@ export const Statistic = () => {
     const selectedCasePeriod = selectedCasePeriodByScope[activeScope];
     const selectedConversationPeriod = selectedConversationPeriodByScope[activeScope];
     const selectedConversationSegment = selectedConversationSegmentByScope[activeScope];
-    const caseChart = filteredCaseCharts[selectedCasePeriod] || demoCaseChartsByScope[activeScope][selectedCasePeriod];
-    const conversationData =
-        filteredConversationByPeriod[selectedConversationPeriod] ||
-        demoConversationByScope[activeScope][selectedConversationPeriod];
+    const caseChart = filteredCaseCharts[selectedCasePeriod];
+    const conversationData = filteredConversationByPeriod[selectedConversationPeriod];
     const selectedConversationSegmentLabel = conversationData.segments.some(
         (segment) => segment.label === selectedConversationSegment,
     )
@@ -3413,6 +2765,33 @@ export const Statistic = () => {
                     )}
 
                     <div key={activeScope} className="statisticDashboard__animatedContent">
+                        {hasStatisticLoadError && (
+                            <p className="statisticDashboard__notice statisticDashboard__notice--error" role="alert">
+                                {translateDashboardKey(
+                                    translate,
+                                    'statistic.dashboard.loadError',
+                                    'Statistikdaten konnten nicht geladen werden.',
+                                )}
+                            </p>
+                        )}
+                        {statisticData.suppressionDisabled && (
+                            <p className="statisticDashboard__notice statisticDashboard__notice--warning" role="alert">
+                                {translateDashboardKey(
+                                    translate,
+                                    'statistic.dashboard.suppressionDisabledNotice',
+                                    'Kleinzellen-Schutz deaktiviert – nur für Testumgebungen',
+                                )}
+                            </p>
+                        )}
+                        {suppressedSelectedTargetCount > 0 && (
+                            <p className="statisticDashboard__notice statisticDashboard__notice--info">
+                                {translateDashboardKey(
+                                    translate,
+                                    'statistic.dashboard.suppressedNotice',
+                                    'Für Bereiche mit weniger als zwei Beratenden werden aus Datenschutzgründen keine Statistiken angezeigt.',
+                                )}
+                            </p>
+                        )}
                         <div className="statisticDashboard__summaryGrid">
                             {dashboard.topCards.map((card) => (
                                 <StatisticCard
@@ -3435,7 +2814,7 @@ export const Statistic = () => {
                                 <StatisticCard
                                     key={card.key}
                                     card={localizeStatisticCard(
-                                        getDisplayMetricCard(card, activeScope, metricOverrides),
+                                        getDisplayMetricCard(card, metricOverrides),
                                         translate,
                                         locale,
                                     )}

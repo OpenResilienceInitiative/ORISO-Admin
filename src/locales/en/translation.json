@@ -1158,5 +1158,10 @@
     "users.sections.myAccess": "My access",
     "users.sections.tenants": "Tenant admin",
     "searchInput.clear": "Clear search",
-    "searchInput.submit": "Run search"
+    "searchInput.submit": "Run search",
+    "statistic.dashboard.text.currentlyInCounselling": "Currently in counselling",
+    "statistic.dashboard.filter.suppressed": "Statistics suppressed",
+    "statistic.dashboard.suppressedNotice": "For privacy reasons, no statistics are shown for units with fewer than two counsellors.",
+    "statistic.dashboard.loadError": "Statistics data could not be loaded.",
+    "statistic.dashboard.suppressionDisabledNotice": "Small-cell protection disabled – test environments only"
 }
