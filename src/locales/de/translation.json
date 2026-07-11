@@ -1158,5 +1158,10 @@
     "tenant.settings.cardDeck.previous": "Vorherige Einstellungen anzeigen",
     "searchInput.clear": "Suche löschen",
     "searchInput.submit": "Suche ausführen",
-    "agency.postcode.minimum": "Die Postleitzahl muss aus 5 Ziffern bestehen."
+    "agency.postcode.minimum": "Die Postleitzahl muss aus 5 Ziffern bestehen.",
+    "statistic.dashboard.text.currentlyInCounselling": "Aktuell in Beratung",
+    "statistic.dashboard.filter.suppressed": "Statistik unterdrückt",
+    "statistic.dashboard.suppressedNotice": "Für Bereiche mit weniger als zwei Beratenden werden aus Datenschutzgründen keine Statistiken angezeigt.",
+    "statistic.dashboard.loadError": "Statistikdaten konnten nicht geladen werden.",
+    "statistic.dashboard.suppressionDisabledNotice": "Kleinzellen-Schutz deaktiviert – nur für Testumgebungen"
 }

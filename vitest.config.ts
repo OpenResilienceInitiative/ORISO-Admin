@@ -1,5 +1,6 @@
 import { configDefaults, defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import svgrPlugin from 'vite-plugin-svgr';
 import { fileURLToPath } from 'node:url';
 
 const reactJsxRuntime = fileURLToPath(new URL('./node_modules/react/jsx-runtime.js', import.meta.url));
@@ -7,7 +8,18 @@ const reactJsxDevRuntime = fileURLToPath(new URL('./node_modules/react/jsx-dev-r
 
 // https://vitest.dev/config/
 export default defineConfig({
-    plugins: [react()],
+    plugins: [
+        react(),
+        // Mirror the production svgr setup so components importing
+        // `{ ReactComponent }` from .svg files are renderable in tests.
+        svgrPlugin({
+            include: '**/*.svg',
+            svgrOptions: {
+                exportType: 'named',
+                namedExport: 'ReactComponent',
+            },
+        }),
+    ],
     resolve: {
         alias: {
             'react/jsx-dev-runtime': reactJsxDevRuntime,

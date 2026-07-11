@@ -102,8 +102,6 @@ export interface DonutRenderSegment {
 export interface ScopeDashboard {
     topCards: StatisticCardDefinition[];
     communicationCards: StatisticCardDefinition[];
-    caseCharts: Record<CasePeriodKey, CaseChartBar[]>;
-    conversation: Record<ConversationPeriodKey, ConversationPeriodData>;
 }
 
 export interface PeriodOption<OptionKey extends string> {
