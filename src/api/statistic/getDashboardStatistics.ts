@@ -51,6 +51,11 @@ export interface AdminDashboardTarget {
 export interface AdminDashboardStatisticsResponse {
     generatedAt: string;
     scope: 'PLATFORM' | 'TENANT' | 'AGENCY';
+    /**
+     * True only when the backend skipped KDG small-cell suppression — possible in
+     * non-production environments only (fail-closed on the prod profile).
+     */
+    suppressionDisabled?: boolean;
     targets: AdminDashboardTarget[];
 }
 

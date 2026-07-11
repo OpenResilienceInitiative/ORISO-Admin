@@ -115,6 +115,25 @@ describe('Statistic page', () => {
         expect(screen.queryByText('Caritas NRW')).toBeNull();
     });
 
+    it('shows a warning banner when small-cell suppression is disabled', async () => {
+        dashboardMock.mockResolvedValue({ ...response, suppressionDisabled: true });
+
+        renderStatistic();
+
+        await waitFor(() =>
+            expect(screen.getByText('Kleinzellen-Schutz deaktiviert – nur für Testumgebungen')).toBeInTheDocument(),
+        );
+    });
+
+    it('does not show the suppression warning banner by default', async () => {
+        dashboardMock.mockResolvedValue(response);
+
+        renderStatistic();
+
+        await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        expect(screen.queryByText('Kleinzellen-Schutz deaktiviert – nur für Testumgebungen')).toBeNull();
+    });
+
     it('shows an error notice when the statistics endpoint fails', async () => {
         dashboardMock.mockRejectedValue(new Error('boom'));
 

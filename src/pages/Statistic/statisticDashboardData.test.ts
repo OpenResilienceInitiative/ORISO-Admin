@@ -169,6 +169,15 @@ describe('statisticDashboardData', () => {
         expect(data.targetsByScope.platform[1].label).toBe('Träger 2');
     });
 
+    it('passes the suppressionDisabled flag through from the backend', () => {
+        const withFlag = { ...tenantScopeResponse([agencyTarget()]), suppressionDisabled: true };
+
+        expect(buildStatisticData(withFlag, emptyLookups, now).suppressionDisabled).toBe(true);
+        expect(buildStatisticData(tenantScopeResponse([agencyTarget()]), emptyLookups, now).suppressionDisabled).toBe(
+            false,
+        );
+    });
+
     it('computes week starts and day codes', () => {
         expect(getWeekStart(now).getDate()).toBe(6); // Monday, 6 July 2026
         expect(getTodayDayCode(now)).toBe('Sa');

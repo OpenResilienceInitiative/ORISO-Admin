@@ -2774,6 +2774,15 @@ export const Statistic = () => {
                                 )}
                             </p>
                         )}
+                        {statisticData.suppressionDisabled && (
+                            <p className="statisticDashboard__notice statisticDashboard__notice--warning" role="alert">
+                                {translateDashboardKey(
+                                    translate,
+                                    'statistic.dashboard.suppressionDisabledNotice',
+                                    'Kleinzellen-Schutz deaktiviert – nur für Testumgebungen',
+                                )}
+                            </p>
+                        )}
                         {suppressedSelectedTargetCount > 0 && (
                             <p className="statisticDashboard__notice statisticDashboard__notice--info">
                                 {translateDashboardKey(

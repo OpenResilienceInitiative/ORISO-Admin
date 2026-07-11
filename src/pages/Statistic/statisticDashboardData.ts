@@ -64,6 +64,8 @@ export interface StatisticData {
     targetsByScope: Record<ScopeKey, FilterTarget[]>;
     fallbackIdsByScope: Record<ScopeKey, string[]>;
     statisticsById: Record<string, FilterTargetStatistics>;
+    /** True when the backend skipped small-cell suppression (test environments only). */
+    suppressionDisabled: boolean;
 }
 
 export interface StatisticNameLookups {
@@ -308,6 +310,7 @@ export const emptyStatisticData = (): StatisticData => ({
     targetsByScope: { platform: [], tenant: [], agency: [] },
     fallbackIdsByScope: { platform: [], tenant: [], agency: [] },
     statisticsById: {},
+    suppressionDisabled: false,
 });
 
 export const buildStatisticData = (
@@ -345,6 +348,8 @@ export const buildStatisticData = (
         .map((target) => buildFilterTarget(target, lookups))
         .filter((target): target is FilterTarget => Boolean(target));
 
+    const suppressionDisabled = Boolean(response.suppressionDisabled);
+
     if (response.scope === 'PLATFORM') {
         return {
             targetsByScope: { platform: tenantTargets, tenant: tenantTargets, agency: [] },
@@ -354,6 +359,7 @@ export const buildStatisticData = (
                 agency: [],
             },
             statisticsById,
+            suppressionDisabled,
         };
     }
 
@@ -368,6 +374,7 @@ export const buildStatisticData = (
                 agency: agencyTargets.map((target) => target.id),
             },
             statisticsById,
+            suppressionDisabled,
         };
     }
 
@@ -379,5 +386,6 @@ export const buildStatisticData = (
             agency: agencyTargets.map((target) => target.id),
         },
         statisticsById,
+        suppressionDisabled,
     };
 };
