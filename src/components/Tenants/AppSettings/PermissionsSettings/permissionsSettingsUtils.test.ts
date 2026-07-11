@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+    applyEnforcedOnFields,
     applyForcedOffFields,
     applyVisibleTogglesAsValues,
     buildTenantAdminControlsPayload,
+    getEnforcedOnFields,
     getForcedOffFields,
     isSubToggleDisabled,
     syncMasterTogglesToTenantAdminControls,
@@ -14,6 +16,28 @@ describe('permissions settings utils', () => {
 
         expect(forcedOffFields.has('featureAnonymousChatEnabled')).toBe(true);
         expect(forcedOffFields.has('featureVideoCallsAnonymousChatsEnabled')).toBe(true);
+    });
+
+    it('resolves all feature fields enforced-on by upper-level enforcement flags', () => {
+        const enforcedOnFields = getEnforcedOnFields({ videoCalls: true } as never);
+
+        expect(enforcedOnFields.has('featureVideoCallsEnabled')).toBe(true);
+        expect(enforcedOnFields.has('featureVideoCallsAnonymousChatsEnabled')).toBe(true);
+        // Only enforced keys count; an unset key must not leak fields.
+        expect(enforcedOnFields.has('featureAudioCallsEnabled')).toBe(false);
+    });
+
+    it('ignores enforcement flags that are not truthy', () => {
+        expect(getEnforcedOnFields({ videoCalls: false } as never).size).toBe(0);
+        expect(getEnforcedOnFields(undefined).size).toBe(0);
+    });
+
+    it('applies enforced-on fields as true without mutating the original settings object', () => {
+        const original = { featureVideoCallsEnabled: false };
+        const result = applyEnforcedOnFields(original, new Set(['featureVideoCallsEnabled']));
+
+        expect(result).toEqual({ featureVideoCallsEnabled: true });
+        expect(original).toEqual({ featureVideoCallsEnabled: false });
     });
 
     it('applies forced-off fields without mutating the original settings object', () => {

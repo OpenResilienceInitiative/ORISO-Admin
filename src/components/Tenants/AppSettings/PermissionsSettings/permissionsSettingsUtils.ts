@@ -137,6 +137,39 @@ export const applyForcedOffFields = (
     return nextSettings;
 };
 
+/**
+ * Mirror of {@link getForcedOffFields} for the "enforce active state" direction: an upper role
+ * (platform → tenant → agency) can lock a feature *on* so lower roles cannot hide it. A truthy
+ * enforcement flag expands to every concrete feature field, which the lower level then renders
+ * as on-and-disabled.
+ */
+export const getEnforcedOnFields = (enforcedToggles?: PermissionToggleVisibility) => {
+    if (!enforcedToggles) return new Set<string>();
+
+    return Object.entries(enforcedToggles).reduce((fields, [toggleKey, enforced]) => {
+        if (enforced === true) {
+            const platformFields = PLATFORM_TOGGLE_FIELDS[toggleKey as keyof PermissionToggleVisibility];
+            if (platformFields) {
+                platformFields.forEach((field) => fields.add(field));
+            }
+        }
+        return fields;
+    }, new Set<string>());
+};
+
+export const applyEnforcedOnFields = (
+    settings: TenantSettings | Record<string, unknown> | undefined,
+    enforcedOnFields: Set<string>,
+) => {
+    if (enforcedOnFields.size === 0) return settings;
+
+    const nextSettings = { ...(settings ?? {}) } as Record<string, unknown>;
+    enforcedOnFields.forEach((field) => {
+        nextSettings[field] = true;
+    });
+    return nextSettings;
+};
+
 /** Maps allowedPermissionToggles to feature settings for super-admin display and persist. */
 export const applyVisibleTogglesAsValues = (visibleToggles?: PermissionToggleVisibility) => {
     const settings: Record<string, boolean> = { ...DEFAULT_PERMISSION_SETTINGS };

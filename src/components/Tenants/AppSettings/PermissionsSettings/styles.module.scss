@@ -126,6 +126,23 @@
     font-size: 15px;
     font-weight: 600;
     color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
+    flex: 1;
+    min-width: 0;
+}
+
+/* Enforce mode: leading checkbox that locks a feature on for lower roles. */
+.enforceCheckbox {
+    flex: 0 0 auto;
+    margin-left: -8px;
+}
+
+.enforceFooterNote {
+    margin: 0 0 20px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.33;
+    text-align: center;
+    color: var(--admin-control-selected, var(--m3-primary, #a5000a));
 }
 
 .masterRowPlaceholder {
