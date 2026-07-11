@@ -193,47 +193,58 @@ export const applyVisibleTogglesAsValues = (visibleToggles?: PermissionToggleVis
     return settings;
 };
 
+/**
+ * 1:1 map from a platform allowed/enforced toggle key to the single settings feature flag it
+ * mirrors. Encoding (settings → controls) and decoding stay inverse because each key owns exactly
+ * one field — no cross-gating by a card master and no group/granular overlap. See ADR-013 P2.
+ */
+export const TOGGLE_KEY_TO_FIELD: Record<keyof PermissionToggleVisibility, string> = {
+    anonymousChat: 'featureAnonymousChatEnabled',
+    groupChat: 'featureGroupChatV2Enabled',
+    calls: 'featureCallsEnabled',
+    supervision: 'featureSupervisionEnabled',
+    supervisionAnonymousChats: 'featureSupervisionAnonymousChatsEnabled',
+    supervisionOneOnOneChats: 'featureSupervisionOneOnOneChatsEnabled',
+    audioCalls: 'featureAudioCallsEnabled',
+    audioCallsAnonymousChats: 'featureAudioCallsAnonymousChatsEnabled',
+    audioCallsOneOnOneChats: 'featureAudioCallsOneOnOneChatsEnabled',
+    audioCallsGroupChats: 'featureAudioCallsGroupChatsEnabled',
+    audioCallsSupervisionChats: 'featureAudioCallsSupervisionChatsEnabled',
+    videoCalls: 'featureVideoCallsEnabled',
+    videoCallsAnonymousChats: 'featureVideoCallsAnonymousChatsEnabled',
+    videoCallsOneOnOneChats: 'featureVideoCallsOneOnOneChatsEnabled',
+    videoCallsGroupChats: 'featureVideoCallsGroupChatsEnabled',
+    videoCallsSupervisionChats: 'featureVideoCallsSupervisionChatsEnabled',
+    threads: 'featureThreadsEnabled',
+    threadsAnonymousChats: 'featureThreadsAnonymousChatsEnabled',
+    threadsOneOnOneChats: 'featureThreadsOneOnOneEnabled',
+    threadsGroupChats: 'featureThreadsGroupChatsEnabled',
+    threadsSupervisionChats: 'featureThreadsSupervisionChatsEnabled',
+    voiceMessages: 'featureVoiceMessagesEnabled',
+    voiceMessagesAnonymousChats: 'featureVoiceMessagesAnonymousChatsEnabled',
+    voiceMessagesOneOnOneChats: 'featureVoiceMessagesOneOnOneChatsEnabled',
+    voiceMessagesGroupChats: 'featureVoiceMessagesGroupChatsEnabled',
+    voiceMessagesSupervisionChats: 'featureVoiceMessagesSupervisionChatsEnabled',
+};
+
 export const syncMasterTogglesToTenantAdminControls = (formData: { settings?: Record<string, unknown> }) => {
     const settings: Record<string, unknown> = { ...(formData?.settings ?? {}) };
     const next = { ...formData, settings };
     const isEnabled = (key: string) => settings[key] !== false;
-    const anonymousEnabled = isEnabled('featureAnonymousChatEnabled');
-    const groupEnabled = isEnabled('featureGroupChatV2Enabled');
-    const oneOnOneEnabled = isEnabled('featureCallsEnabled');
-    const supervisionEnabled = isEnabled('featureSupervisionEnabled');
     const existingTenantAdminControls = (settings.tenantAdminControls as Record<string, unknown> | undefined) ?? {};
+
+    // Each toggle mirrors its own feature flag directly — no master-gating (which silently reset a
+    // sub-feature to false when its card master was off: the "toggle springt zurück" bug).
+    const allowedPermissionToggles = Object.fromEntries(
+        (Object.entries(TOGGLE_KEY_TO_FIELD) as [keyof PermissionToggleVisibility, string][]).map(([key, field]) => [
+            key,
+            isEnabled(field),
+        ]),
+    );
 
     settings.tenantAdminControls = {
         ...existingTenantAdminControls,
-        allowedPermissionToggles: {
-            anonymousChat: anonymousEnabled,
-            groupChat: groupEnabled,
-            calls: oneOnOneEnabled,
-            supervision: supervisionEnabled,
-            supervisionAnonymousChats: anonymousEnabled && isEnabled('featureSupervisionAnonymousChatsEnabled'),
-            supervisionOneOnOneChats: oneOnOneEnabled && isEnabled('featureSupervisionOneOnOneChatsEnabled'),
-            audioCalls: isEnabled('featureAudioCallsEnabled'),
-            audioCallsAnonymousChats: anonymousEnabled && isEnabled('featureAudioCallsAnonymousChatsEnabled'),
-            audioCallsOneOnOneChats: oneOnOneEnabled && isEnabled('featureAudioCallsOneOnOneChatsEnabled'),
-            audioCallsGroupChats: groupEnabled && isEnabled('featureAudioCallsGroupChatsEnabled'),
-            audioCallsSupervisionChats: isEnabled('featureAudioCallsSupervisionChatsEnabled'),
-            videoCalls: isEnabled('featureVideoCallsEnabled'),
-            videoCallsAnonymousChats: anonymousEnabled && isEnabled('featureVideoCallsAnonymousChatsEnabled'),
-            videoCallsOneOnOneChats: oneOnOneEnabled && isEnabled('featureVideoCallsOneOnOneChatsEnabled'),
-            videoCallsGroupChats: groupEnabled && isEnabled('featureVideoCallsGroupChatsEnabled'),
-            videoCallsSupervisionChats: supervisionEnabled && isEnabled('featureVideoCallsSupervisionChatsEnabled'),
-            threads: isEnabled('featureThreadsEnabled'),
-            threadsAnonymousChats: anonymousEnabled && isEnabled('featureThreadsAnonymousChatsEnabled'),
-            threadsOneOnOneChats: oneOnOneEnabled && isEnabled('featureThreadsOneOnOneEnabled'),
-            threadsGroupChats: groupEnabled && isEnabled('featureThreadsGroupChatsEnabled'),
-            threadsSupervisionChats: supervisionEnabled && isEnabled('featureThreadsSupervisionChatsEnabled'),
-            voiceMessages: isEnabled('featureVoiceMessagesEnabled'),
-            voiceMessagesAnonymousChats: anonymousEnabled && isEnabled('featureVoiceMessagesAnonymousChatsEnabled'),
-            voiceMessagesOneOnOneChats: oneOnOneEnabled && isEnabled('featureVoiceMessagesOneOnOneChatsEnabled'),
-            voiceMessagesGroupChats: groupEnabled && isEnabled('featureVoiceMessagesGroupChatsEnabled'),
-            voiceMessagesSupervisionChats:
-                supervisionEnabled && isEnabled('featureVoiceMessagesSupervisionChatsEnabled'),
-        },
+        allowedPermissionToggles,
     };
     return next;
 };

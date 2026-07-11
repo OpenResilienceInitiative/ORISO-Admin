@@ -55,7 +55,10 @@ describe('permissions settings utils', () => {
         expect(settings.featureGroupChatV2Enabled).toBe(true);
     });
 
-    it('syncs master feature values to tenant admin controls', () => {
+    it('maps each feature setting to its own toggle without gating sub-features by the card master', () => {
+        // Anonymous master off, but the admin explicitly left video-in-anonymous ON. The stored
+        // toggle must reflect that exact choice — NOT be rewritten to false by the master (that was
+        // the "toggle springt zurück" bug). The master's own key still reflects the master.
         const result = syncMasterTogglesToTenantAdminControls({
             settings: {
                 featureAnonymousChatEnabled: false,
@@ -70,9 +73,33 @@ describe('permissions settings utils', () => {
             allowedPermissionToggles: {
                 anonymousChat: false,
                 calls: true,
-                videoCallsAnonymousChats: false,
+                videoCallsAnonymousChats: true,
             },
         });
+    });
+
+    it('round-trips platform toggles losslessly even when a card master is off (no revert)', () => {
+        // Platform disallows the 1:1 modality (calls master off) but keeps audio/video 1:1 allowed.
+        // decode -> encode must return exactly what went in — this is the regression guard for the
+        // "toggle springt zurück" bug.
+        const allowed = {
+            calls: false,
+            audioCallsOneOnOneChats: true,
+            videoCallsOneOnOneChats: true,
+            supervisionOneOnOneChats: true,
+            anonymousChat: true,
+            audioCallsAnonymousChats: true,
+        } as never;
+
+        const settings = applyVisibleTogglesAsValues(allowed);
+        const encoded = syncMasterTogglesToTenantAdminControls({ settings }).settings?.tenantAdminControls as {
+            allowedPermissionToggles: Record<string, boolean>;
+        };
+
+        expect(encoded.allowedPermissionToggles.calls).toBe(false);
+        expect(encoded.allowedPermissionToggles.audioCallsOneOnOneChats).toBe(true);
+        expect(encoded.allowedPermissionToggles.videoCallsOneOnOneChats).toBe(true);
+        expect(encoded.allowedPermissionToggles.supervisionOneOnOneChats).toBe(true);
     });
 
     it('preserves existing toggles while building tenant admin controls payload', () => {
