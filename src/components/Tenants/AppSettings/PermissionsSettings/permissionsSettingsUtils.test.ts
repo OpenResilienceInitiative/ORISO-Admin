@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
     applyEnforcedOnFields,
     applyForcedOffFields,
+    applyPermissionConstraintsToSettings,
     applyVisibleTogglesAsValues,
     buildTenantAdminControlsPayload,
+    enforcedFieldsToToggles,
     getEnforcedOnFields,
     getForcedOffFields,
+    getRestrictedFields,
     isSubToggleDisabled,
     syncMasterTogglesToTenantAdminControls,
 } from './permissionsSettingsUtils';
@@ -100,6 +103,48 @@ describe('permissions settings utils', () => {
         expect(encoded.allowedPermissionToggles.audioCallsOneOnOneChats).toBe(true);
         expect(encoded.allowedPermissionToggles.videoCallsOneOnOneChats).toBe(true);
         expect(encoded.allowedPermissionToggles.supervisionOneOnOneChats).toBe(true);
+    });
+
+    it('restricts (disables) both forced-off and enforced-on fields for a lower role', () => {
+        const restricted = getRestrictedFields({ videoCalls: false } as never, { audioCalls: true } as never);
+
+        // forced-off video is locked (off), enforced-on audio is locked (on) — both non-editable.
+        expect(restricted.has('featureVideoCallsEnabled')).toBe(true);
+        expect(restricted.has('featureAudioCallsEnabled')).toBe(true);
+        // a feature neither forced-off nor enforced-on stays editable.
+        expect(restricted.has('featureThreadsEnabled')).toBe(false);
+    });
+
+    it('applies constraints: forced-off fields become false, enforced-on fields become true', () => {
+        const result = applyPermissionConstraintsToSettings(
+            { featureVideoCallsEnabled: true, featureAudioCallsEnabled: false },
+            { videoCalls: false } as never,
+            { audioCalls: true } as never,
+        ) as Record<string, boolean>;
+
+        expect(result.featureVideoCallsEnabled).toBe(false);
+        expect(result.featureAudioCallsEnabled).toBe(true);
+    });
+
+    it('converts enforced field keys back into toggle-keyed enforcement flags', () => {
+        const toggles = enforcedFieldsToToggles(
+            new Set(['featureVideoCallsOneOnOneChatsEnabled', 'featureAudioCallsEnabled']),
+        );
+
+        expect(toggles.videoCallsOneOnOneChats).toBe(true);
+        expect(toggles.audioCalls).toBe(true);
+        expect(toggles.threads).toBeUndefined();
+    });
+
+    it('includes enforced toggles in the tenant admin controls payload', () => {
+        const result = buildTenantAdminControlsPayload(
+            { settings: { featureVideoCallsOneOnOneChatsEnabled: true } },
+            undefined,
+            true,
+            { videoCallsOneOnOneChats: true } as never,
+        );
+
+        expect(result.enforcedPermissionToggles).toMatchObject({ videoCallsOneOnOneChats: true });
     });
 
     it('preserves existing toggles while building tenant admin controls payload', () => {

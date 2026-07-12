@@ -170,6 +170,29 @@ export const applyEnforcedOnFields = (
     return nextSettings;
 };
 
+/**
+ * Fields a lower role may not edit because an upper role has constrained them: the union of
+ * forced-off (locked off) and enforced-on (locked on) fields. Both render as disabled. See ADR-013.
+ */
+export const getRestrictedFields = (
+    allowedToggles?: PermissionToggleVisibility,
+    enforcedToggles?: PermissionToggleVisibility,
+): Set<string> => new Set<string>([...getForcedOffFields(allowedToggles), ...getEnforcedOnFields(enforcedToggles)]);
+
+/**
+ * Applies the effective upper-role constraints to a settings object: forced-off fields become
+ * `false`, enforced-on fields become `true`. Enforced-on wins if a field is (mis)set as both.
+ */
+export const applyPermissionConstraintsToSettings = (
+    settings: TenantSettings | Record<string, unknown> | undefined,
+    allowedToggles?: PermissionToggleVisibility,
+    enforcedToggles?: PermissionToggleVisibility,
+) =>
+    applyEnforcedOnFields(
+        applyForcedOffFields(settings, getForcedOffFields(allowedToggles)),
+        getEnforcedOnFields(enforcedToggles),
+    );
+
 /** Maps allowedPermissionToggles to feature settings for super-admin display and persist. */
 export const applyVisibleTogglesAsValues = (visibleToggles?: PermissionToggleVisibility) => {
     const settings: Record<string, boolean> = { ...DEFAULT_PERMISSION_SETTINGS };
@@ -249,10 +272,26 @@ export const syncMasterTogglesToTenantAdminControls = (formData: { settings?: Re
     return next;
 };
 
+const FIELD_TO_TOGGLE_KEY: Record<string, keyof PermissionToggleVisibility> = Object.fromEntries(
+    Object.entries(TOGGLE_KEY_TO_FIELD).map(([key, field]) => [field, key as keyof PermissionToggleVisibility]),
+);
+
+/**
+ * Reverse of {@link TOGGLE_KEY_TO_FIELD}: turns the set of enforced settings-field keys the enforce
+ * checkboxes produce into toggle-keyed enforcement flags (`{ videoCallsOneOnOneChats: true }`) for
+ * persistence as `enforcedPermissionToggles`.
+ */
+export const enforcedFieldsToToggles = (enforcedFields: Set<string>): PermissionToggleVisibility =>
+    Array.from(enforcedFields).reduce<PermissionToggleVisibility>((toggles, field) => {
+        const key = FIELD_TO_TOGGLE_KEY[field];
+        return key ? { ...toggles, [key]: true } : toggles;
+    }, {});
+
 export const buildTenantAdminControlsPayload = (
     formData: { settings?: Record<string, unknown> },
     existingToggles?: PermissionToggleVisibility,
     permissionsPageEnabled = true,
+    enforcedToggles?: PermissionToggleVisibility,
 ): TenantAdminControls => {
     const synced = syncMasterTogglesToTenantAdminControls(formData);
     const syncedControls = synced.settings?.tenantAdminControls as TenantAdminControls | undefined;
@@ -263,6 +302,7 @@ export const buildTenantAdminControlsPayload = (
             ...existingToggles,
             ...syncedControls?.allowedPermissionToggles,
         },
+        ...(enforcedToggles ? { enforcedPermissionToggles: enforcedToggles } : {}),
     };
 };
 
