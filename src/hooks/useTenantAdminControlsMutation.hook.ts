@@ -21,7 +21,10 @@ export const useTenantAdminControlsMutation = ({
         mutationFn: updateTenantAdminControls,
         ...options,
         onSuccess: (responseData, updatedData, onMutateResult, context) => {
-            queryClient.setQueryData([TENANT_ADMIN_CONTROLS_KEY], updatedData);
+            // Cache the server's normalized response (backend fills every toggle via nullAsTrue and
+            // preserves translation keys), not the partial request body — otherwise the cached
+            // controls drop the fields the UI did not send.
+            queryClient.setQueryData([TENANT_ADMIN_CONTROLS_KEY], responseData);
             if (successMessageKey !== false) {
                 notification.success({
                     message: t(successMessageKey),

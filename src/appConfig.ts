@@ -26,6 +26,9 @@ export const consultantsHasAgencyEndpoint = (agencyId: string) =>
     `${userServiceURL}/service/useradmin/agencies/${agencyId}/consultants`;
 export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consultingtypes`;
 export const counselorEndpoint = `${userServiceURL}/service/useradmin/consultants`;
+// Unauthenticated client error intake (OBS-P3, ORISO-Helm#62): logs into
+// SigNoz via UserService's existing structured logger.
+export const errorReportEndpoint = `${userServiceURL}/service/error-reports`;
 export const agencyAdminEndpoint = `${userServiceURL}/service/useradmin/agencyadmins`;
 export const grantConsultantIdentityEndpoint = (adminId: string) =>
     `${userServiceURL}/service/useradmin/admins/${adminId}/grant-consultant-identity`;
@@ -57,6 +60,7 @@ export const caseHandoverReasonPoliciesEndpoint = `${userServiceURL}/service/use
 export const inactiveAccountAuditLogsEndpoint = `${userServiceURL}/service/users/inactive-accounts/audit-logs`;
 export const agencyAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/agencyadmins/search`;
 export const registrationDataEndpoint = `${mainURL}/service/statistics/registration`;
+export const adminStatisticsDashboardEndpoint = `${userServiceURL}/service/useradmin/statistics/dashboard`;
 export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/invitelinks`;
 export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;
 export const inviteEmailTemplatesEndpoint = `${userServiceURL}/service/useradmin/invite-email-templates`;

@@ -422,6 +422,14 @@ export const M3RichTextEditor = ({
         editor?.setEditable(editorEditable);
     }, [editor, editorEditable]);
 
+    // If the viewed version disappears from `versions` (the list changed), drop
+    // back to the editable draft rather than leaving a stale id selected.
+    useEffect(() => {
+        if (viewingVersionId && !versions.some((v) => v.id === viewingVersionId)) {
+            setViewingVersionId(null);
+        }
+    }, [versions, viewingVersionId]);
+
     useEffect(() => {
         editor?.setOptions({ editorProps: { attributes: { 'aria-label': title, role: 'textbox' } } });
     }, [editor, title]);
@@ -503,21 +511,23 @@ export const M3RichTextEditor = ({
                 </div>
             )}
 
-            {aboveEditorSlot}
+            {aboveEditorSlot && <div className={styles.contentInset}>{aboveEditorSlot}</div>}
 
             {anchorsEnabled && (
                 <AnchorChips
                     className={styles.anchorNav}
                     anchors={anchors}
                     activeId={activeAnchorId}
-                    editable={!readOnly}
+                    editable={editorEditable}
                     onSelect={scrollToAnchor}
                     onRemove={removeAnchor}
                     ariaLabel={t('editor.plugin.anchor.nav.label', 'Section anchors')}
                 />
             )}
 
-            {editorSlot ?? (
+            {editorSlot ? (
+                <div className={styles.contentInset}>{editorSlot}</div>
+            ) : (
                 <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
                     <div className={styles.editor}>
                         <EditorContent editor={editor} />
@@ -525,7 +535,7 @@ export const M3RichTextEditor = ({
                 </div>
             )}
 
-            {anchorsEnabled && !readOnly && (
+            {anchorsEnabled && editorEditable && (
                 // Stable host div: the BubbleMenu plugin detaches its element
                 // from the React tree (tippy re-parents it), so it must not be
                 // a direct sibling that React repositions or removes.

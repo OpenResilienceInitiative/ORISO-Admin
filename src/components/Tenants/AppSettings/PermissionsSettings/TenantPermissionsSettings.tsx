@@ -2,7 +2,11 @@ import { useCallback, useMemo } from 'react';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import { buildTogglePayload } from './permissionsToggleLogic';
-import { applyForcedOffFields, DEFAULT_PERMISSION_SETTINGS, getForcedOffFields } from './permissionsSettingsUtils';
+import {
+    applyPermissionConstraintsToSettings,
+    DEFAULT_PERMISSION_SETTINGS,
+    getRestrictedFields,
+} from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 
@@ -14,17 +18,25 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
     });
 
     const allowedPermissionToggles = tenantData?.settings?.tenantAdminControls?.allowedPermissionToggles;
-    const restrictedFields = useMemo(() => getForcedOffFields(allowedPermissionToggles), [allowedPermissionToggles]);
+    const enforcedPermissionToggles = tenantData?.settings?.tenantAdminControls?.enforcedPermissionToggles;
+    const restrictedFields = useMemo(
+        () => getRestrictedFields(allowedPermissionToggles, enforcedPermissionToggles),
+        [allowedPermissionToggles, enforcedPermissionToggles],
+    );
 
     const initialValues = useMemo(
         () => ({
             ...tenantData,
             settings: {
                 ...DEFAULT_PERMISSION_SETTINGS,
-                ...applyForcedOffFields(tenantData?.settings ?? {}, restrictedFields),
+                ...applyPermissionConstraintsToSettings(
+                    tenantData?.settings ?? {},
+                    allowedPermissionToggles,
+                    enforcedPermissionToggles,
+                ),
             },
         }),
-        [tenantData, restrictedFields],
+        [tenantData, allowedPermissionToggles, enforcedPermissionToggles],
     );
 
     const formStateKey = useMemo(() => Array.from(restrictedFields).sort().join('|'), [restrictedFields]);
@@ -35,27 +47,32 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
 
             const toggleUpdate = buildTogglePayload(fieldPath, value) as { settings?: Record<string, boolean> };
             updateTenantSettings({
-                settings: applyForcedOffFields(
+                settings: applyPermissionConstraintsToSettings(
                     {
                         ...tenantData.settings,
                         ...(currentFormData?.settings ?? {}),
                         ...toggleUpdate.settings,
                     },
-                    restrictedFields,
+                    allowedPermissionToggles,
+                    enforcedPermissionToggles,
                 ),
             });
         },
-        [tenantData, updateTenantSettings, restrictedFields],
+        [tenantData, updateTenantSettings, allowedPermissionToggles, enforcedPermissionToggles],
     );
 
     const handleSave = useCallback(
         (formData: unknown) => {
             const savedFormData = formData as { settings?: Record<string, unknown> };
             updateTenantSettings({
-                settings: applyForcedOffFields(savedFormData.settings, restrictedFields),
+                settings: applyPermissionConstraintsToSettings(
+                    savedFormData.settings,
+                    allowedPermissionToggles,
+                    enforcedPermissionToggles,
+                ),
             });
         },
-        [updateTenantSettings, restrictedFields],
+        [updateTenantSettings, allowedPermissionToggles, enforcedPermissionToggles],
     );
 
     return (

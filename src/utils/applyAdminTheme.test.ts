@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_ADMIN_SEED, applyAdminInvertedTheme, clearAdminInvertedThemeTokens } from './applyAdminTheme';
+import {
+    DEFAULT_ADMIN_SEED,
+    applyAdminInvertedTheme,
+    applyAdminTheme,
+    clearAdminInvertedThemeTokens,
+} from './applyAdminTheme';
 import { computeOrisoPalette } from './theme/orisoScheme';
 
 const BENCHMARK_SEED = '#a5000a';
@@ -19,6 +24,42 @@ const wcagRatio = (hexA: string, hexB: string): number => {
     const b = luminance(hexB);
     return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 };
+
+describe('applyAdminTheme', () => {
+    it('overrides the --m3-* tokens with the light theme output', () => {
+        const root = document.createElement('div');
+        const applied = applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+        const { tokens } = computeOrisoPalette({ accentDark: BENCHMARK_SEED }, 'light');
+
+        expect(applied).toBe(true);
+        Object.entries(tokens)
+            .filter(([name]) => name.startsWith('--m3-'))
+            .forEach(([name, value]) => {
+                expect(root.style.getPropertyValue(name), name).toBe(value);
+            });
+    });
+
+    it('renders a light surface with a light on-primary switch thumb', () => {
+        const root = document.createElement('div');
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+
+        // Light surfaces (matches Storybook), not the inverted dark shell.
+        expect(root.style.getPropertyValue('--m3-surface')).toBe('#fcf9f9');
+        // M3Switch thumb (fill=var(--m3-on-primary)) stays white on the red track.
+        expect(root.style.getPropertyValue('--m3-on-primary')).toBe('#ffffff');
+    });
+
+    it('keeps the static palette on an invalid stored seed', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const root = document.createElement('div');
+        const applied = applyAdminTheme({ primaryColor: 'not-a-hex' }, root);
+
+        expect(applied).toBe(false);
+        expect(root.style.length).toBe(0);
+        expect(warn).toHaveBeenCalled();
+        warn.mockRestore();
+    });
+});
 
 describe('applyAdminInvertedTheme', () => {
     it('overrides the --m3-* tokens with the inverted theme output', () => {

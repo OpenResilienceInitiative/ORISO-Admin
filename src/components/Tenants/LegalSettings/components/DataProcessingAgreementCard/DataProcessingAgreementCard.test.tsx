@@ -75,6 +75,12 @@ beforeAll(() => {
             dispatchEvent: vi.fn(),
         })),
     });
+
+    // antd's dropdown portal (rc-util scroll locker) calls the two-arg
+    // getComputedStyle(el, pseudoEl) which jsdom does not implement. Drop the
+    // pseudo-element so the language menu can open in the test environment.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element) => originalGetComputedStyle(el));
 });
 
 const publishButtonName = 'legal.m3Editor.publish';
@@ -150,8 +156,8 @@ describe('DataProcessingAgreementCard', () => {
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
 
-        await user.click(screen.getByRole('combobox'));
-        await user.click(await screen.findByTitle('en'));
+        await user.click(screen.getByRole('button', { name: 'languages' }));
+        await user.click(await screen.findByText('en'));
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
     });
@@ -165,7 +171,7 @@ describe('DataProcessingAgreementCard', () => {
                 onPublish={() => undefined}
             />,
         );
-        expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'languages' })).not.toBeInTheDocument();
     });
 
     it('labels the source language as original and MT languages as machine translated', async () => {
@@ -184,12 +190,13 @@ describe('DataProcessingAgreementCard', () => {
             />,
         );
 
-        await user.click(screen.getByRole('combobox'));
+        // Open the language menu via the split-button's dropdown trigger.
+        await user.click(screen.getByRole('button', { name: 'languages' }));
 
-        // Mocked t(): "key:interpolated-language". The selected value and its dropdown
-        // option both carry the title, so match "at least one".
-        expect((await screen.findAllByTitle('legal.translation.label.original:de')).length).toBeGreaterThan(0);
-        expect(screen.getAllByTitle('legal.translation.label.machineTranslated:en').length).toBeGreaterThan(0);
+        // Mocked t(): "key:interpolated-language". The menu lists each language with
+        // its translation status (source = original, MT = machine translated).
+        expect(await screen.findByText('legal.translation.label.original:de')).toBeInTheDocument();
+        expect(screen.getByText('legal.translation.label.machineTranslated:en')).toBeInTheDocument();
     });
 
     it('renders read-only without a publish button or editable editor', () => {

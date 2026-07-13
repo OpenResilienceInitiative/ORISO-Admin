@@ -138,4 +138,31 @@ describe('M3RichTextEditor — version select (#268)', () => {
         // Viewing works, but there is no "restore as draft" in a read-only card.
         expect(screen.queryByRole('button', { name: /legal\.m3Editor\.restoreVersion/i })).not.toBeInTheDocument();
     });
+
+    it('hides anchor removal while viewing a version so the draft cannot be mutated', async () => {
+        const user = userEvent.setup();
+        const anchoredVersions = [
+            { id: 'v-mai', label: '2. Mai 2026 – 09:00', content: '<h2 id="alt">Alte Fassung</h2><p>Mai</p>' },
+        ];
+        const { container } = render(
+            <M3RichTextEditor
+                title="Datenschutz"
+                value="<h2>Aktueller Entwurf</h2><p>Juli</p>"
+                versions={anchoredVersions}
+                onRestoreVersion={vi.fn()}
+            />,
+        );
+
+        // Editable draft: the anchor chip row is removable (has a close "x").
+        await waitFor(() => expect(container.querySelectorAll('.ant-tag-close-icon').length).toBeGreaterThan(0));
+
+        await openVersionMenu(user);
+        await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
+
+        // While viewing the version (read-only) the chips still render but lose
+        // their remove "x", so there is no path to mutate/overwrite the draft.
+        await waitFor(() => expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('false'));
+        await waitFor(() => expect(container.querySelectorAll('[data-anchor-chip]').length).toBeGreaterThan(0));
+        expect(container.querySelectorAll('.ant-tag-close-icon')).toHaveLength(0);
+    });
 });

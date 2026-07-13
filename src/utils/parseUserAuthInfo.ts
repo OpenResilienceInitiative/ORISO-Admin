@@ -8,5 +8,5 @@ import parseJwt from './parseJWT';
  */
 export const parseUserAuthInfo = (): Partial<UserData> => {
     const accessToken = getAccessTokenForRequests();
-    return accessToken ? parseJwt(accessToken || '') : {};
+    return (accessToken ? parseJwt(accessToken) : null) ?? {};
 };

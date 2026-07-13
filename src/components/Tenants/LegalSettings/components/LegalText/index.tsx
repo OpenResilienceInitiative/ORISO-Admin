@@ -104,9 +104,9 @@ export const LegalText = ({
                     onLanguageChange={setActiveLanguage}
                     aboveEditorSlot={<p className={styles.description}>{subTitle}</p>}
                     editorSlot={
-                        // All languages stay mounted so form state survives switching;
-                        // only the active language is visible (same behaviour the
-                        // TranslatableFormField gave the old card).
+                        // Keep all language fields mounted so form state survives
+                        // switching; FormPluginEditor preserves placeholders and
+                        // heading anchors inside the M3 shell.
                         <>
                             {languages.map((language) => (
                                 <div key={language} style={{ display: language === activeLanguage ? 'block' : 'none' }}>
@@ -114,8 +114,6 @@ export const LegalText = ({
                                         name={[...fieldName, language]}
                                         placeholder={t(placeHolderKey)}
                                         placeholders={placeholders}
-                                        // Legal texts are optional — no required rule (machine
-                                        // translation as an opt-in helper is planned later).
                                         itemProps={{}}
                                     />
                                 </div>

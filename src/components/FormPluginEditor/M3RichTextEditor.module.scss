@@ -308,6 +308,13 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     padding: 0 16px;
 }
 
+// Horizontal inset for arbitrary editor content (aboveEditorSlot / editorSlot)
+// so it lines up with the toolbar and editor surface instead of sitting flush
+// against the card edges.
+.contentInset {
+    padding: 0 16px;
+}
+
 .editor {
     min-height: 280px;
     padding: 16px;

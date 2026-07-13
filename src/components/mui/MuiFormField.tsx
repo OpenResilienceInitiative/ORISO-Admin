@@ -97,7 +97,10 @@ const MuiControl = ({
                 },
                 '& .MuiInputBase-input': {
                     minWidth: 0,
-                    boxSizing: 'border-box',
+                    // MUI sizes the input with content-box (height 1.4375em +
+                    // padding). The admin's global `box-sizing: border-box` reset
+                    // otherwise collapses the field to ~33px, so restore it here.
+                    boxSizing: 'content-box',
                     overflow: 'hidden',
                     color: 'inherit',
                     textOverflow: 'ellipsis',
@@ -120,11 +123,15 @@ const MuiControl = ({
                     borderColor: 'var(--input-border-color)',
                 },
                 '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--input-active-border-color)',
+                    borderColor: 'var(--admin-form-field-text, #1b1b1b)',
                 },
+                // Focus: a clean solid black border (no browser outline / glow).
                 '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--input-active-border-color)',
+                    borderColor: 'var(--admin-form-field-text, #1b1b1b)',
                     borderWidth: 2,
+                },
+                '& .MuiOutlinedInput-root.Mui-focused': {
+                    outline: 'none',
                 },
                 '& .MuiOutlinedInput-root.Mui-disabled': {
                     backgroundColor: 'var(--input-disabled-bg)',

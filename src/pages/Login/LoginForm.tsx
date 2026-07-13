@@ -14,7 +14,7 @@ import { MuiFormField, MuiPasswordFormField } from '../../components/mui/MuiForm
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import routePathNames from '../../appConfig';
 import { FETCH_ERRORS } from '../../api/fetchData';
-import { ADMIN_PORTAL_ACCESS_DENIED, useLoginMutation } from '../../hooks/useLoginMutation.hook';
+import { ADMIN_PORTAL_ACCESS_DENIED, TENANT_ACCESS_DENIED, useLoginMutation } from '../../hooks/useLoginMutation.hook';
 import { TwoFactorType } from '../../enums/TwoFactorType';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 
@@ -41,9 +41,13 @@ const LoginForm = () => {
             onError: (error) => {
                 if (error.message === FETCH_ERRORS.BAD_REQUEST) {
                     setOtpDisabled(false);
-                    setTwoFactorType(error.options?.data.otpType || TwoFactorType.None);
+                    setTwoFactorType(error.options?.data?.otpType || TwoFactorType.None);
                 } else if (error.message === ADMIN_PORTAL_ACCESS_DENIED) {
                     message.error(t('message.error.auth.adminOnly'));
+                } else if (error.message === TENANT_ACCESS_DENIED) {
+                    message.error(t('message.error.auth.tenantAccessDenied'));
+                } else if (error.message === FETCH_ERRORS.TIMEOUT) {
+                    message.error(t('message.error.auth.network'));
                 } else {
                     message.error(t('message.error.auth.login'));
                 }

@@ -30,7 +30,14 @@ describe('parseJwt', () => {
         expect(parseJwt(makeToken(payload))).toEqual(payload);
     });
 
-    it('throws when there is no payload segment', () => {
-        expect(() => parseJwt('not-a-jwt')).toThrow();
+    it.each([
+        ['empty string', ''],
+        ['no payload segment', 'not-a-jwt'],
+        ['empty payload segment', 'header.'],
+        ['payload that is not valid base64', 'header.%%%.signature'],
+        ['payload that is not JSON', `header.${Buffer.from('plain text', 'utf8').toString('base64url')}.signature`],
+    ])('returns null instead of throwing for a malformed token (%s)', (_label, token) => {
+        expect(() => parseJwt(token)).not.toThrow();
+        expect(parseJwt(token)).toBeNull();
     });
 });
