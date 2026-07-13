@@ -24,7 +24,14 @@ const UseAppConfigProvider = ({
 };
 
 const useAppConfigContext = (): AppConfigContextInterface => {
-    const [settings, setNewSettings] = React.useContext(UseAppConfigContext);
+    // Degrade, don't throw: outside a provider (e.g. isolated Storybook/tests) fall back to the
+    // same cluster defaults the provider seeds with, plus no-op setters, instead of crashing on a
+    // null-context destructure.
+    const context = React.useContext(UseAppConfigContext);
+    const [settings, setNewSettings] = context ?? [
+        { useApiClusterSettings: clusterFeatureFlags.useApiClusterSettings } as AppConfigInterface,
+        (() => undefined) as React.Dispatch<React.SetStateAction<AppConfigInterface>>,
+    ];
 
     const setServerSettings = useCallback(
         (serverSettings: ServerAppConfigInterface) => {
