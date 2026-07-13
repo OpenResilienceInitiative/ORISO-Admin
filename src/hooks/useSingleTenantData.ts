@@ -12,6 +12,6 @@ export const useSingleTenantData = ({ id, ...options }: TenantsProps) => {
         queryKey: [TENANT_QUERY_KEY, Number(id)],
         queryFn: () => getSingleTenantData(id),
         ...options,
-        enabled: (id && id !== 'add') || options.enabled,
+        enabled: id != null && id !== '' && id !== 'add' && (options.enabled ?? true),
     });
 };
