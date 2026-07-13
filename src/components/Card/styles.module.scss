@@ -50,7 +50,9 @@
 
 .cardTitle {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: 8px;
     margin-bottom: 24px;
 
     &.hasSubtitle {
@@ -66,10 +68,12 @@
 
 .titleContainer {
     display: flex;
+    min-width: 0;
     gap: 8px;
 
     .title {
         margin-bottom: 0;
+        overflow-wrap: anywhere;
     }
 }
 
