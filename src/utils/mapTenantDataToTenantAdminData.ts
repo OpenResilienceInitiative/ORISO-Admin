@@ -54,7 +54,8 @@ export const mapTenantDataToTenantAdminData = (tenantData: TenantData): TenantAd
             privacy: toTranslatableContent(readContentField(tenantData, 'privacy')),
             termsAndConditions: toTranslatableContent(readContentField(tenantData, 'termsAndConditions')),
             claim: toTranslatableContent(readContentField(tenantData, 'claim')),
-            confirmTermsAndConditions: (content as { confirmTermsAndConditions?: boolean }).confirmTermsAndConditions ?? false,
+            confirmTermsAndConditions:
+                (content as { confirmTermsAndConditions?: boolean }).confirmTermsAndConditions ?? false,
             confirmPrivacy: (content as { confirmPrivacy?: boolean }).confirmPrivacy ?? false,
         },
         settings: tenantData.settings ?? {},

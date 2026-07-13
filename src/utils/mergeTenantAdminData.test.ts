@@ -56,7 +56,10 @@ describe('mergeTenantAdminData', () => {
                 ...baseTenantAdminData(),
                 content: {
                     ...baseTenantAdminData().content,
-                    impressum: { de: 'Impressum', translate: true } as unknown as TenantAdminData['content']['impressum'],
+                    impressum: {
+                        de: 'Impressum',
+                        translate: true,
+                    } as unknown as TenantAdminData['content']['impressum'],
                 },
             },
             {},

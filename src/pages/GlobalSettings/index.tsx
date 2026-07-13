@@ -48,10 +48,7 @@ export const GlobalSettingsPage = () => {
 export const GlobalLoginSettingsPage = () => {
     const { data, isLoading } = useTenantData();
     const tenantId = data?.id ? `${data.id}` : '';
-    const seedTenantAdminData = useMemo(
-        () => (data?.id ? mapTenantDataToTenantAdminData(data) : undefined),
-        [data],
-    );
+    const seedTenantAdminData = useMemo(() => (data?.id ? mapTenantDataToTenantAdminData(data) : undefined), [data]);
     const { mutate } = useTenantAdminDataMutation({
         id: tenantId,
         seedTenantAdminData,
