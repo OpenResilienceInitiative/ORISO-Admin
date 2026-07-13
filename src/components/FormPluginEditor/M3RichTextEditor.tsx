@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
@@ -9,8 +9,9 @@ import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Dropdown } from 'antd';
+import { Dropdown, Modal, Select } from 'antd';
 import {
+    Close,
     Undo,
     Redo,
     Title,
@@ -41,13 +42,34 @@ import {
     Fingerprint,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import { HeadingAnchors } from './headingAnchors';
+import AnchorChips from './AnchorChips';
+import { useHeadingAnchorNav } from './useHeadingAnchorNav';
 import styles from './M3RichTextEditor.module.scss';
+
+/** A saved, published version the editor can look back at (read-only). */
+export type EditorVersion = {
+    /** Stable id (e.g. the activation timestamp). */
+    id: string;
+    /** Human label shown in the version menu (e.g. a formatted date). */
+    label: string;
+    /** The version's HTML content. */
+    content: string;
+};
 
 export type M3RichTextEditorProps = {
     title?: string;
     /** Header icon component; defaults to the Impressum fingerprint. */
     icon?: React.ElementType;
     value?: string;
+    /**
+     * Saved versions for the look-back select (newest first). Selecting one shows
+     * its content read-only with a restore/back banner; restoring is a copy into
+     * the draft (append-only history — the old version is never mutated).
+     */
+    versions?: EditorVersion[];
+    /** Called with a version's content when the admin restores it as a new draft (copy). */
+    onRestoreVersion?: (content: string) => void;
     onChange?: (html: string) => void;
     placeholder?: string;
     languages?: { value: string; label: string }[];
@@ -70,6 +92,14 @@ export type M3RichTextEditorProps = {
     editorSlot?: React.ReactNode;
     /** Rendered below the action footer (e.g. version history, modals). */
     belowSlot?: React.ReactNode;
+    /**
+     * Anchor navigation (standard, ON by default): headings get persistent
+     * `id`s, a horizontal chip row above the editor jumps to them, and
+     * selected text can be linked to an anchor via the bubble menu. Only
+     * applies to the built-in editor (an `editorSlot` owns its own anchors).
+     * Must not change during the editor's lifetime.
+     */
+    enableAnchors?: boolean;
     onPublish?: (html: string) => void;
     onSaveDraft?: (html: string) => void;
 };
@@ -335,6 +365,8 @@ export const M3RichTextEditor = ({
     title = 'Impressum',
     icon: IconComponent = Fingerprint,
     value = '',
+    versions = [],
+    onRestoreVersion,
     onChange,
     placeholder = 'Text eingeben …',
     languages = [{ value: 'de', label: 'Deutsch' }],
@@ -347,11 +379,22 @@ export const M3RichTextEditor = ({
     aboveEditorSlot,
     editorSlot,
     belowSlot,
+    enableAnchors = true,
     onPublish,
     onSaveDraft,
 }: M3RichTextEditorProps) => {
     const { t } = useTranslation();
     const [maximized, setMaximized] = useState(false);
+    // Which saved version is being viewed (null = the editable current draft).
+    const [viewingVersionId, setViewingVersionId] = useState<string | null>(null);
+    const viewingVersion = versions.find((v) => v.id === viewingVersionId) ?? null;
+    // What the editor surface shows: a looked-at version, else the live draft.
+    const displayedContent = viewingVersion ? viewingVersion.content : value;
+    // Editable only when not read-only AND not looking at an old version.
+    const editorEditable = !readOnly && !viewingVersion;
+    // Anchors only make sense for the built-in editor; an editorSlot brings
+    // its own TiptapEditor with its own anchor row.
+    const anchorsEnabled = enableAnchors && !editorSlot;
 
     const editor = useEditor({
         extensions: [
@@ -364,32 +407,53 @@ export const M3RichTextEditor = ({
             Superscript,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             Placeholder.configure({ placeholder }),
+            ...(anchorsEnabled ? [HeadingAnchors] : []),
         ],
         content: value,
         editable: !readOnly,
+        // The ProseMirror contenteditable exposes role="textbox" (browser-only) but
+        // no accessible name (axe: aria-input-field-name, WCAG 4.1.2) — pin the role
+        // and label it with the card title.
+        editorProps: { attributes: { 'aria-label': title, role: 'textbox' } },
         onUpdate: ({ editor: e }) => onChange?.(e.isEmpty ? '' : e.getHTML()),
     });
 
     useEffect(() => {
-        editor?.setEditable(!readOnly);
-    }, [editor, readOnly]);
+        editor?.setEditable(editorEditable);
+    }, [editor, editorEditable]);
+
+    // If the viewed version disappears from `versions` (the list changed), drop
+    // back to the editable draft rather than leaving a stale id selected.
+    useEffect(() => {
+        if (viewingVersionId && !versions.some((v) => v.id === viewingVersionId)) {
+            setViewingVersionId(null);
+        }
+    }, [versions, viewingVersionId]);
+
+    useEffect(() => {
+        editor?.setOptions({ editorProps: { attributes: { 'aria-label': title, role: 'textbox' } } });
+    }, [editor, title]);
+
+    // Shared anchor-navigation behavior — same hook as the form-bound TiptapEditor.
+    const { anchors, anchorsRef, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture } =
+        useHeadingAnchorNav(editor, { enabled: anchorsEnabled, editable: editorEditable });
 
     useEffect(() => {
         if (!editor) return;
-        const incoming = value || '';
+        const incoming = displayedContent || '';
         const current = editor.isEmpty ? '' : editor.getHTML();
         if (incoming !== current && !(isEmptyHtml(incoming) && editor.isEmpty)) {
             editor.commands.setContent(incoming, false);
         }
-    }, [value, editor]);
+    }, [displayedContent, editor]);
 
     if (!editor) return null;
 
     const currentLang = languages.find((l) => l.value === language) ?? languages[0];
     const html = () => (editorSlot || editor.isEmpty ? '' : editor.getHTML());
 
-    return (
-        <div className={`${styles.module} ${maximized ? styles.maximized : ''}`} data-testid="m3-editor">
+    const card = (
+        <div className={`${styles.module} ${maximized ? styles.inDialog : ''}`} data-testid="m3-editor">
             <div className={styles.header}>
                 <IconComponent className={styles.headerIcon} />
                 <h2 className={styles.title}>{title}</h2>
@@ -420,17 +484,89 @@ export const M3RichTextEditor = ({
 
             <hr className={styles.divider} />
 
-            {!editorSlot && !readOnly && <Toolbar editor={editor} />}
+            {!editorSlot && editorEditable && <Toolbar editor={editor} />}
+
+            {viewingVersion && (
+                <div className={styles.versionBanner} role="status">
+                    <span>
+                        {t('legal.m3Editor.viewingVersion')}: {viewingVersion.label}
+                    </span>
+                    <div className={styles.versionBannerActions}>
+                        {!readOnly && onRestoreVersion && (
+                            <button
+                                type="button"
+                                className={styles.outlineBtn}
+                                onClick={() => {
+                                    onRestoreVersion(viewingVersion.content);
+                                    setViewingVersionId(null);
+                                }}
+                            >
+                                {t('legal.m3Editor.restoreVersion')}
+                            </button>
+                        )}
+                        <button type="button" className={styles.outlineBtn} onClick={() => setViewingVersionId(null)}>
+                            {t('legal.m3Editor.backToDraft')}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {aboveEditorSlot && <div className={styles.contentInset}>{aboveEditorSlot}</div>}
+
+            {anchorsEnabled && (
+                <AnchorChips
+                    className={styles.anchorNav}
+                    anchors={anchors}
+                    activeId={activeAnchorId}
+                    editable={editorEditable}
+                    onSelect={scrollToAnchor}
+                    onRemove={removeAnchor}
+                    ariaLabel={t('editor.plugin.anchor.nav.label', 'Section anchors')}
+                />
+            )}
 
             {editorSlot ? (
                 <div className={styles.contentInset}>{editorSlot}</div>
             ) : (
-                <div className={styles.editorWrap}>
+                <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
                     <div className={styles.editor}>
                         <EditorContent editor={editor} />
                     </div>
+                </div>
+            )}
+
+            {anchorsEnabled && editorEditable && (
+                // Stable host div: the BubbleMenu plugin detaches its element
+                // from the React tree (tippy re-parents it), so it must not be
+                // a direct sibling that React repositions or removes.
+                <div className={styles.anchorBubbleHost}>
+                    <BubbleMenu
+                        editor={editor}
+                        pluginKey="anchorLinkBubble"
+                        updateDelay={150}
+                        tippyOptions={{ placement: 'top', maxWidth: 'none' }}
+                        shouldShow={({ state }) => !state.selection.empty && anchorsRef.current.length > 0}
+                    >
+                        <div className={styles.anchorBubble}>
+                            <Select
+                                size="small"
+                                placeholder={t('editor.plugin.anchor.link.placeholder', 'Link to section')}
+                                value={null}
+                                popupMatchSelectWidth={false}
+                                style={{ minWidth: 180 }}
+                                options={anchors.map((anchor) => ({ value: anchor.id, label: anchor.text }))}
+                                getPopupContainer={(trigger) => trigger.parentElement || document.body}
+                                onSelect={(anchorId: string) =>
+                                    editor
+                                        .chain()
+                                        .focus()
+                                        .extendMarkRange('link')
+                                        .setLink({ href: `#${anchorId}` })
+                                        .run()
+                                }
+                            />
+                        </div>
+                    </BubbleMenu>
                 </div>
             )}
 
@@ -442,23 +578,31 @@ export const M3RichTextEditor = ({
                 <Dropdown
                     trigger={['click']}
                     menu={{
-                        items: [
-                            { key: 'latest', label: t('legal.m3Editor.versionLatest') },
-                            { key: 'published', label: t('legal.m3Editor.versionPublished') },
-                            { type: 'divider' },
-                            { key: 'history', label: t('legal.m3Editor.versionHistoryPending'), disabled: true },
-                        ],
+                        selectable: true,
+                        selectedKeys: [viewingVersionId ?? 'current'],
+                        items:
+                            versions.length > 0
+                                ? [
+                                      {
+                                          key: 'current',
+                                          label: t('legal.m3Editor.versionCurrentDraft'),
+                                      },
+                                      { type: 'divider' as const },
+                                      ...versions.map((v) => ({ key: v.id, label: v.label })),
+                                  ]
+                                : [{ key: 'latest', label: t('legal.m3Editor.versionLatest') }],
+                        onClick: ({ key }) => setViewingVersionId(key === 'current' ? null : key),
                     }}
                 >
                     <button type="button" className={styles.outlineBtn} title={t('legal.m3Editor.versionHistory')}>
                         <History />
-                        <span>{versionLabel}</span>
+                        <span>{viewingVersion ? viewingVersion.label : versionLabel}</span>
                         <ArrowDropDown />
                     </button>
                 </Dropdown>
             </div>
 
-            {!readOnly && (onPublish || onSaveDraft) && (
+            {editorEditable && (onPublish || onSaveDraft) && (
                 <>
                     <hr className={styles.divider} />
 
@@ -491,6 +635,41 @@ export const M3RichTextEditor = ({
             {belowSlot}
         </div>
     );
+
+    // Fullscreen mode is a real modal dialog (Figma 1007-27636): white 80%
+    // scrim with backdrop blur, centered card, round close button beside the
+    // top right corner. antd Modal provides focus trap + Escape handling.
+    if (maximized) {
+        return (
+            <Modal
+                open
+                closable={false}
+                footer={null}
+                centered
+                width="min(1512px, calc(100vw - 96px))"
+                onCancel={() => setMaximized(false)}
+                styles={{
+                    mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
+                    content: { padding: 0, background: 'transparent', boxShadow: 'none' },
+                }}
+                aria-label={title}
+            >
+                <div className={styles.dialogLayout}>
+                    {card}
+                    <button
+                        type="button"
+                        className={styles.dialogClose}
+                        aria-label={t('legal.m3Editor.closeDialog')}
+                        onClick={() => setMaximized(false)}
+                    >
+                        <Close />
+                    </button>
+                </div>
+            </Modal>
+        );
+    }
+
+    return card;
 };
 
 export default M3RichTextEditor;

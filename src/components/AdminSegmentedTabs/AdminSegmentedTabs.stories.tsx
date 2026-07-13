@@ -13,6 +13,10 @@ const meta = {
     component: AdminSegmentedTabs,
     parameters: {
         layout: 'padded',
+        design: {
+            type: 'figma',
+            url: 'https://www.figma.com/design/QfsgojtHQzBjbzU3Im9Cet/Admin.ORISO?node-id=1-49824',
+        },
     },
     args: {
         ariaLabel: 'Einstellungen',
@@ -36,4 +40,19 @@ export const AppearanceActive: Story = {
     args: {
         activeId: 'appearance',
     },
+};
+
+// The button row never wraps: on narrow containers it stays on one line and
+// scrolls horizontally (hidden scrollbar), per Figma 1-49824.
+export const NarrowOverflowScroll: Story = {
+    args: {
+        activeId: 'legal',
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 375 }}>
+                <Story />
+            </div>
+        ),
+    ],
 };

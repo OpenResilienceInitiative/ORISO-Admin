@@ -11,6 +11,8 @@ export type AnchorChipsProps = {
     onSelect: (anchorId: string) => void;
     onRemove?: (anchorId: string) => void;
     ariaLabel?: string;
+    /** Extra class for host-specific styling (e.g. the M3 editor's module class). */
+    className?: string;
 };
 
 // Horizontal, scrollable row of anchor chips rendered above the editor
@@ -22,11 +24,16 @@ const AnchorChips = ({
     onSelect,
     onRemove,
     ariaLabel,
+    className,
 }: AnchorChipsProps) => {
     if (!anchors.length) return null;
 
     return (
-        <div className="RichEditor-anchorNav" role="navigation" aria-label={ariaLabel}>
+        <div
+            className={className ? `RichEditor-anchorNav ${className}` : 'RichEditor-anchorNav'}
+            role="navigation"
+            aria-label={ariaLabel}
+        >
             {anchors.map((anchor) => {
                 const active = anchor.id === activeId;
                 return (
