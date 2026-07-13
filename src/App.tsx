@@ -13,6 +13,7 @@ import { useUserPermissions } from './hooks/useUserPermission';
 import { PermissionAction } from './enums/PermissionAction';
 import { Resource } from './enums/Resource';
 import { getDefaultSettingsPath } from './constants/settingsTabs';
+import { getSafeFaviconUrl } from './utils/getSafeFaviconUrl';
 import { ReleaseToggle } from './enums/ReleaseToggle';
 import { useReleasesToggle } from './hooks/useReleasesToggle.hook';
 import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
@@ -92,7 +93,7 @@ export const App = () => {
 
     // Apply tenant favicon when appearance config is available
     useEffect(() => {
-        const favicon = publicTenantData?.theming?.favicon;
+        const favicon = getSafeFaviconUrl(publicTenantData?.theming?.favicon);
         if (!favicon) return;
         const link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
         if (link) {
