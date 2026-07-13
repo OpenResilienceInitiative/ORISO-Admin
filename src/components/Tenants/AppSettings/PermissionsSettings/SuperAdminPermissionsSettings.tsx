@@ -1,29 +1,57 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
 import { useTenantAdminControlsMutation } from '../../../../hooks/useTenantAdminControlsMutation.hook';
 import { buildTogglePayload } from './permissionsToggleLogic';
-import { applyVisibleTogglesAsValues, buildTenantAdminControlsPayload } from './permissionsSettingsUtils';
+import {
+    applyVisibleTogglesAsValues,
+    buildTenantAdminControlsPayload,
+    enforcedFieldsToToggles,
+    getEnforcedOnFields,
+} from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
-import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
+import type { EnforceChangeHandler, PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 
 export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
     const { data: platformControls, isLoading } = useTenantAdminControls(true);
     const { mutate: updateTenantAdminControls } = useTenantAdminControlsMutation({ successMessageKey: false });
 
     const allowedPermissionToggles = platformControls?.allowedPermissionToggles;
+    const enforcedPermissionToggles = platformControls?.enforcedPermissionToggles;
     const restrictedFields = useMemo(() => new Set<string>(), []);
 
+    // Which features the platform has locked on for tenants. Seeded from the server, then edited
+    // locally via the enforce checkboxes.
+    const [enforcedFields, setEnforcedFields] = useState<Set<string>>(new Set());
+    useEffect(() => {
+        setEnforcedFields(getEnforcedOnFields(enforcedPermissionToggles));
+    }, [enforcedPermissionToggles]);
+
     const persistPlatformControls = useCallback(
-        (formData: { settings?: Record<string, unknown> }) => {
+        (formData: { settings?: Record<string, unknown> }, nextEnforcedFields: Set<string> = enforcedFields) => {
             updateTenantAdminControls(
                 buildTenantAdminControlsPayload(
                     formData,
                     allowedPermissionToggles,
                     platformControls?.permissionsPageEnabled ?? true,
+                    enforcedFieldsToToggles(nextEnforcedFields),
                 ),
             );
         },
-        [updateTenantAdminControls, allowedPermissionToggles, platformControls?.permissionsPageEnabled],
+        [updateTenantAdminControls, allowedPermissionToggles, platformControls?.permissionsPageEnabled, enforcedFields],
+    );
+
+    const handleEnforceChange = useCallback<EnforceChangeHandler>(
+        (fieldKey, enforced) => {
+            const next = new Set(enforcedFields);
+            if (enforced) {
+                next.add(fieldKey);
+            } else {
+                next.delete(fieldKey);
+            }
+            setEnforcedFields(next);
+            persistPlatformControls({ settings: applyVisibleTogglesAsValues(allowedPermissionToggles) }, next);
+        },
+        [enforcedFields, allowedPermissionToggles, persistPlatformControls],
     );
 
     const initialValues = useMemo(
@@ -65,6 +93,9 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
             restrictedFields={restrictedFields}
             onToggleUpdate={handleToggleUpdate}
             onSave={handleSave}
+            enforceMode
+            enforcedFields={enforcedFields}
+            onEnforceChange={handleEnforceChange}
         />
     );
 };

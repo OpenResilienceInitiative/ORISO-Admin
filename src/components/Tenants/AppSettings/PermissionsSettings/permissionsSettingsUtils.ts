@@ -137,6 +137,62 @@ export const applyForcedOffFields = (
     return nextSettings;
 };
 
+/**
+ * Mirror of {@link getForcedOffFields} for the "enforce active state" direction: an upper role
+ * (platform → tenant → agency) can lock a feature *on* so lower roles cannot hide it. A truthy
+ * enforcement flag expands to every concrete feature field, which the lower level then renders
+ * as on-and-disabled.
+ */
+export const getEnforcedOnFields = (enforcedToggles?: PermissionToggleVisibility) => {
+    if (!enforcedToggles) return new Set<string>();
+
+    return Object.entries(enforcedToggles).reduce((fields, [toggleKey, enforced]) => {
+        if (enforced === true) {
+            const platformFields = PLATFORM_TOGGLE_FIELDS[toggleKey as keyof PermissionToggleVisibility];
+            if (platformFields) {
+                platformFields.forEach((field) => fields.add(field));
+            }
+        }
+        return fields;
+    }, new Set<string>());
+};
+
+export const applyEnforcedOnFields = (
+    settings: TenantSettings | Record<string, unknown> | undefined,
+    enforcedOnFields: Set<string>,
+) => {
+    if (enforcedOnFields.size === 0) return settings;
+
+    const nextSettings = { ...(settings ?? {}) } as Record<string, unknown>;
+    enforcedOnFields.forEach((field) => {
+        nextSettings[field] = true;
+    });
+    return nextSettings;
+};
+
+/**
+ * Fields a lower role may not edit because an upper role has constrained them: the union of
+ * forced-off (locked off) and enforced-on (locked on) fields. Both render as disabled. See ADR-013.
+ */
+export const getRestrictedFields = (
+    allowedToggles?: PermissionToggleVisibility,
+    enforcedToggles?: PermissionToggleVisibility,
+): Set<string> => new Set<string>([...getForcedOffFields(allowedToggles), ...getEnforcedOnFields(enforcedToggles)]);
+
+/**
+ * Applies the effective upper-role constraints to a settings object: forced-off fields become
+ * `false`, enforced-on fields become `true`. Enforced-on wins if a field is (mis)set as both.
+ */
+export const applyPermissionConstraintsToSettings = (
+    settings: TenantSettings | Record<string, unknown> | undefined,
+    allowedToggles?: PermissionToggleVisibility,
+    enforcedToggles?: PermissionToggleVisibility,
+) =>
+    applyEnforcedOnFields(
+        applyForcedOffFields(settings, getForcedOffFields(allowedToggles)),
+        getEnforcedOnFields(enforcedToggles),
+    );
+
 /** Maps allowedPermissionToggles to feature settings for super-admin display and persist. */
 export const applyVisibleTogglesAsValues = (visibleToggles?: PermissionToggleVisibility) => {
     const settings: Record<string, boolean> = { ...DEFAULT_PERMISSION_SETTINGS };
@@ -160,55 +216,82 @@ export const applyVisibleTogglesAsValues = (visibleToggles?: PermissionToggleVis
     return settings;
 };
 
+/**
+ * 1:1 map from a platform allowed/enforced toggle key to the single settings feature flag it
+ * mirrors. Encoding (settings → controls) and decoding stay inverse because each key owns exactly
+ * one field — no cross-gating by a card master and no group/granular overlap. See ADR-013 P2.
+ */
+export const TOGGLE_KEY_TO_FIELD: Record<keyof PermissionToggleVisibility, string> = {
+    anonymousChat: 'featureAnonymousChatEnabled',
+    groupChat: 'featureGroupChatV2Enabled',
+    calls: 'featureCallsEnabled',
+    supervision: 'featureSupervisionEnabled',
+    supervisionAnonymousChats: 'featureSupervisionAnonymousChatsEnabled',
+    supervisionOneOnOneChats: 'featureSupervisionOneOnOneChatsEnabled',
+    audioCalls: 'featureAudioCallsEnabled',
+    audioCallsAnonymousChats: 'featureAudioCallsAnonymousChatsEnabled',
+    audioCallsOneOnOneChats: 'featureAudioCallsOneOnOneChatsEnabled',
+    audioCallsGroupChats: 'featureAudioCallsGroupChatsEnabled',
+    audioCallsSupervisionChats: 'featureAudioCallsSupervisionChatsEnabled',
+    videoCalls: 'featureVideoCallsEnabled',
+    videoCallsAnonymousChats: 'featureVideoCallsAnonymousChatsEnabled',
+    videoCallsOneOnOneChats: 'featureVideoCallsOneOnOneChatsEnabled',
+    videoCallsGroupChats: 'featureVideoCallsGroupChatsEnabled',
+    videoCallsSupervisionChats: 'featureVideoCallsSupervisionChatsEnabled',
+    threads: 'featureThreadsEnabled',
+    threadsAnonymousChats: 'featureThreadsAnonymousChatsEnabled',
+    threadsOneOnOneChats: 'featureThreadsOneOnOneEnabled',
+    threadsGroupChats: 'featureThreadsGroupChatsEnabled',
+    threadsSupervisionChats: 'featureThreadsSupervisionChatsEnabled',
+    voiceMessages: 'featureVoiceMessagesEnabled',
+    voiceMessagesAnonymousChats: 'featureVoiceMessagesAnonymousChatsEnabled',
+    voiceMessagesOneOnOneChats: 'featureVoiceMessagesOneOnOneChatsEnabled',
+    voiceMessagesGroupChats: 'featureVoiceMessagesGroupChatsEnabled',
+    voiceMessagesSupervisionChats: 'featureVoiceMessagesSupervisionChatsEnabled',
+};
+
 export const syncMasterTogglesToTenantAdminControls = (formData: { settings?: Record<string, unknown> }) => {
     const settings: Record<string, unknown> = { ...(formData?.settings ?? {}) };
     const next = { ...formData, settings };
     const isEnabled = (key: string) => settings[key] !== false;
-    const anonymousEnabled = isEnabled('featureAnonymousChatEnabled');
-    const groupEnabled = isEnabled('featureGroupChatV2Enabled');
-    const oneOnOneEnabled = isEnabled('featureCallsEnabled');
-    const supervisionEnabled = isEnabled('featureSupervisionEnabled');
     const existingTenantAdminControls = (settings.tenantAdminControls as Record<string, unknown> | undefined) ?? {};
+
+    // Each toggle mirrors its own feature flag directly — no master-gating (which silently reset a
+    // sub-feature to false when its card master was off: the "toggle springt zurück" bug).
+    const allowedPermissionToggles = Object.fromEntries(
+        (Object.entries(TOGGLE_KEY_TO_FIELD) as [keyof PermissionToggleVisibility, string][]).map(([key, field]) => [
+            key,
+            isEnabled(field),
+        ]),
+    );
 
     settings.tenantAdminControls = {
         ...existingTenantAdminControls,
-        allowedPermissionToggles: {
-            anonymousChat: anonymousEnabled,
-            groupChat: groupEnabled,
-            calls: oneOnOneEnabled,
-            supervision: supervisionEnabled,
-            supervisionAnonymousChats: anonymousEnabled && isEnabled('featureSupervisionAnonymousChatsEnabled'),
-            supervisionOneOnOneChats: oneOnOneEnabled && isEnabled('featureSupervisionOneOnOneChatsEnabled'),
-            audioCalls: isEnabled('featureAudioCallsEnabled'),
-            audioCallsAnonymousChats: anonymousEnabled && isEnabled('featureAudioCallsAnonymousChatsEnabled'),
-            audioCallsOneOnOneChats: oneOnOneEnabled && isEnabled('featureAudioCallsOneOnOneChatsEnabled'),
-            audioCallsGroupChats: groupEnabled && isEnabled('featureAudioCallsGroupChatsEnabled'),
-            audioCallsSupervisionChats: isEnabled('featureAudioCallsSupervisionChatsEnabled'),
-            videoCalls: isEnabled('featureVideoCallsEnabled'),
-            videoCallsAnonymousChats: anonymousEnabled && isEnabled('featureVideoCallsAnonymousChatsEnabled'),
-            videoCallsOneOnOneChats: oneOnOneEnabled && isEnabled('featureVideoCallsOneOnOneChatsEnabled'),
-            videoCallsGroupChats: groupEnabled && isEnabled('featureVideoCallsGroupChatsEnabled'),
-            videoCallsSupervisionChats: supervisionEnabled && isEnabled('featureVideoCallsSupervisionChatsEnabled'),
-            threads: isEnabled('featureThreadsEnabled'),
-            threadsAnonymousChats: anonymousEnabled && isEnabled('featureThreadsAnonymousChatsEnabled'),
-            threadsOneOnOneChats: oneOnOneEnabled && isEnabled('featureThreadsOneOnOneEnabled'),
-            threadsGroupChats: groupEnabled && isEnabled('featureThreadsGroupChatsEnabled'),
-            threadsSupervisionChats: supervisionEnabled && isEnabled('featureThreadsSupervisionChatsEnabled'),
-            voiceMessages: isEnabled('featureVoiceMessagesEnabled'),
-            voiceMessagesAnonymousChats: anonymousEnabled && isEnabled('featureVoiceMessagesAnonymousChatsEnabled'),
-            voiceMessagesOneOnOneChats: oneOnOneEnabled && isEnabled('featureVoiceMessagesOneOnOneChatsEnabled'),
-            voiceMessagesGroupChats: groupEnabled && isEnabled('featureVoiceMessagesGroupChatsEnabled'),
-            voiceMessagesSupervisionChats:
-                supervisionEnabled && isEnabled('featureVoiceMessagesSupervisionChatsEnabled'),
-        },
+        allowedPermissionToggles,
     };
     return next;
 };
+
+const FIELD_TO_TOGGLE_KEY: Record<string, keyof PermissionToggleVisibility> = Object.fromEntries(
+    Object.entries(TOGGLE_KEY_TO_FIELD).map(([key, field]) => [field, key as keyof PermissionToggleVisibility]),
+);
+
+/**
+ * Reverse of {@link TOGGLE_KEY_TO_FIELD}: turns the set of enforced settings-field keys the enforce
+ * checkboxes produce into toggle-keyed enforcement flags (`{ videoCallsOneOnOneChats: true }`) for
+ * persistence as `enforcedPermissionToggles`.
+ */
+export const enforcedFieldsToToggles = (enforcedFields: Set<string>): PermissionToggleVisibility =>
+    Array.from(enforcedFields).reduce<PermissionToggleVisibility>((toggles, field) => {
+        const key = FIELD_TO_TOGGLE_KEY[field];
+        return key ? { ...toggles, [key]: true } : toggles;
+    }, {});
 
 export const buildTenantAdminControlsPayload = (
     formData: { settings?: Record<string, unknown> },
     existingToggles?: PermissionToggleVisibility,
     permissionsPageEnabled = true,
+    enforcedToggles?: PermissionToggleVisibility,
 ): TenantAdminControls => {
     const synced = syncMasterTogglesToTenantAdminControls(formData);
     const syncedControls = synced.settings?.tenantAdminControls as TenantAdminControls | undefined;
@@ -219,6 +302,7 @@ export const buildTenantAdminControlsPayload = (
             ...existingToggles,
             ...syncedControls?.allowedPermissionToggles,
         },
+        ...(enforcedToggles ? { enforcedPermissionToggles: enforcedToggles } : {}),
     };
 };
 

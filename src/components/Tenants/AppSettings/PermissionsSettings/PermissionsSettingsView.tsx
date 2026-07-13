@@ -6,8 +6,9 @@ import { EditButton } from '../../../EditButton';
 import { CHAT_TYPE_CARDS } from './chatTypeCards';
 import { CaseHandoverCard } from './CaseHandoverCard';
 import { CheckToggle } from './CheckToggle';
+import { M3Checkbox } from '../../../M3Checkbox';
 import { isSubToggleDisabled } from './permissionsSettingsUtils';
-import type { ChatTypeCardKey, ToggleAfterChangeHandler } from './types';
+import type { ChatTypeCardKey, EnforceChangeHandler, ToggleAfterChangeHandler } from './types';
 import styles from './styles.module.scss';
 
 export type PermissionsSettingsViewProps = {
@@ -20,6 +21,15 @@ export type PermissionsSettingsViewProps = {
     restrictedFields: Set<string>;
     onToggleUpdate: ToggleAfterChangeHandler;
     onSave: (formData: unknown) => void;
+    /**
+     * "Enforce active states" mode (upper roles only). Each feature row gains a checkbox; a
+     * checked feature is locked on for every lower role (platform → tenant → agency) and can no
+     * longer be hidden by them. Maps to Figma node 105:11334.
+     */
+    enforceMode?: boolean;
+    /** Field keys (settings.<key>) currently enforced-on. */
+    enforcedFields?: Set<string>;
+    onEnforceChange?: EnforceChangeHandler;
 };
 
 export const PermissionsSettingsView = ({
@@ -32,6 +42,9 @@ export const PermissionsSettingsView = ({
     restrictedFields,
     onToggleUpdate,
     onSave,
+    enforceMode = false,
+    enforcedFields,
+    onEnforceChange,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
     const cardsToRender = excludeCardKeys?.length
@@ -71,9 +84,8 @@ export const PermissionsSettingsView = ({
                                     }}
                                 >
                                     {({ getFieldValue }) => {
-                                        const masterEnabled = card.masterField
-                                            ? getFieldValue(card.masterField) !== false
-                                            : true;
+                                        const { masterField } = card;
+                                        const masterEnabled = masterField ? getFieldValue(masterField) !== false : true;
                                         const CardIcon = card.Icon;
                                         return (
                                             <div className={styles.chatTypeCard}>
@@ -85,14 +97,24 @@ export const PermissionsSettingsView = ({
                                                 </div>
 
                                                 <div className={styles.masterRow}>
+                                                    {enforceMode && masterField && (
+                                                        <M3Checkbox
+                                                            className={styles.enforceCheckbox}
+                                                            label={t('tenants.permissions.enforce.checkboxLabel', {
+                                                                feature: t('tenants.permissions.card.activated'),
+                                                            })}
+                                                            checked={enforcedFields?.has(masterField[1]) ?? false}
+                                                            onChange={(next) => onEnforceChange?.(masterField[1], next)}
+                                                        />
+                                                    )}
                                                     <span className={styles.masterLabel}>
                                                         {t('tenants.permissions.card.activated')}
                                                     </span>
-                                                    {card.masterField ? (
+                                                    {masterField ? (
                                                         <CheckToggle
-                                                            name={card.masterField}
+                                                            name={masterField}
                                                             label={t('tenants.permissions.card.activated')}
-                                                            disabled={restrictedFields.has(card.masterField[1])}
+                                                            disabled={restrictedFields.has(masterField[1])}
                                                             onAfterChange={onToggleUpdate}
                                                         />
                                                     ) : (
@@ -121,6 +143,23 @@ export const PermissionsSettingsView = ({
                                                 <div className={styles.togglesList}>
                                                     {card.toggles.map((toggle) => (
                                                         <div key={toggle.field.join('.')} className={styles.toggleRow}>
+                                                            {enforceMode && (
+                                                                <M3Checkbox
+                                                                    className={styles.enforceCheckbox}
+                                                                    label={t(
+                                                                        'tenants.permissions.enforce.checkboxLabel',
+                                                                        {
+                                                                            feature: t(toggle.labelKey),
+                                                                        },
+                                                                    )}
+                                                                    checked={
+                                                                        enforcedFields?.has(toggle.field[1]) ?? false
+                                                                    }
+                                                                    onChange={(next) =>
+                                                                        onEnforceChange?.(toggle.field[1], next)
+                                                                    }
+                                                                />
+                                                            )}
                                                             <span className={styles.toggleLabel}>
                                                                 {t(toggle.labelKey)}
                                                             </span>
@@ -141,6 +180,12 @@ export const PermissionsSettingsView = ({
                                                         </div>
                                                     ))}
                                                 </div>
+
+                                                {enforceMode && (
+                                                    <p className={styles.enforceFooterNote}>
+                                                        {t('tenants.permissions.enforce.footerNote')}
+                                                    </p>
+                                                )}
 
                                                 <div className={styles.cardFooterActions}>
                                                     {!editing && (

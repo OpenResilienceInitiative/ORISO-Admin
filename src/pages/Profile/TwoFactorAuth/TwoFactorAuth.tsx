@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Typography, Switch } from 'antd';
+import { Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { M3Switch } from '../../../components/M3Switch';
 import { FETCH_ERRORS } from '../../../api/fetchData';
 import { OVERLAY_FUNCTIONS, OverlayItem, OverlayWrapper, Overlay } from '../../../components/overlay/Overlay';
 import { BUTTON_TYPES } from '../../../components/button/Button';
@@ -48,12 +49,16 @@ const TwoFactorAuth = () => {
     const [twoFactorType, setTwoFactorType] = useState<TwoFactorType>(TwoFactorType.App);
 
     const handleSwitchChange = useCallback(() => {
+        if (!userData?.twoFactorAuth) {
+            return;
+        }
+
         if (!userData.twoFactorAuth.isActive) {
             setOverlayActive(true);
         } else {
             deleteTwoFactorAuth(null);
         }
-    }, [userData?.twoFactorAuth?.isActive, overlayActive]);
+    }, [deleteTwoFactorAuth, userData?.twoFactorAuth]);
 
     const twoFactorAuthStepsOverlayStart: OverlayItem[] = useMemo(
         () => [
@@ -414,10 +419,15 @@ const TwoFactorAuth = () => {
     return (
         <>
             <div className="twoFactorAuth__switch mb-m">
-                <Switch
-                    size="default"
-                    onChange={handleSwitchChange}
+                <M3Switch
+                    onChange={() => handleSwitchChange()}
                     checked={userData?.twoFactorAuth.isActive || false}
+                    disabled={!userData?.twoFactorAuth}
+                    label={
+                        userData?.twoFactorAuth.isActive
+                            ? t('twoFactorAuth.switch.active.label')
+                            : t('twoFactorAuth.switch.deactive.label')
+                    }
                 />
                 <Paragraph className="text desc">
                     {userData?.twoFactorAuth.isActive

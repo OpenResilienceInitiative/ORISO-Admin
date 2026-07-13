@@ -38,8 +38,8 @@
 
 .permissionsCardDeck {
     --card-deck-min-height: max(0px, calc(100dvh - 255px));
-    --side-scroller-button-width: 196px;
-    --side-scroller-button-height: 104px;
+    --side-scroller-button-width: 128px;
+    --side-scroller-button-height: 96px;
 }
 
 .cardGrid {
@@ -61,16 +61,14 @@
     border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 30%, transparent);
     box-shadow: var(--m3-elevation-1, 0 1px 2px rgba(0, 0, 0, 0.3));
     border-radius: 28px;
-    padding: 32px 32px 0;
+    padding: 32px 32px 32px;
     display: flex;
     flex-direction: column;
-    min-height: min(846px, calc(100dvh - 255px));
-    max-height: max(560px, calc(100dvh - 255px));
-    overflow-x: hidden;
-    overflow-y: auto;
+    min-height: auto;
+    max-height: none;
+    overflow: visible;
     color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
     transition: border-color 180ms ease, box-shadow 180ms ease;
-    scrollbar-gutter: stable;
 
     &:hover {
         border-color: color-mix(in srgb, var(--m3-outline, #747878) 44%, transparent);
@@ -128,6 +126,23 @@
     font-size: 15px;
     font-weight: 600;
     color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
+    flex: 1;
+    min-width: 0;
+}
+
+/* Enforce mode: leading checkbox that locks a feature on for lower roles. */
+.enforceCheckbox {
+    flex: 0 0 auto;
+    margin-left: -8px;
+}
+
+.enforceFooterNote {
+    margin: 0 0 20px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.33;
+    text-align: center;
+    color: var(--admin-control-selected, var(--m3-primary, #a5000a));
 }
 
 .masterRowPlaceholder {

@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import i18next from 'i18next';
 import routePathNames from '../../appConfig';
+import { reportClientError } from '../../api/reportClientError';
 
 interface ErrorBoundaryProps {
     children: ReactNode;
@@ -50,6 +51,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         const { scope = 'app' } = this.props;
         // eslint-disable-next-line no-console
         console.error(`[ErrorBoundary:${scope}]`, error, errorInfo.componentStack);
+
+        reportClientError({
+            message: `[${scope}] ${error.message}`,
+            stack: error.stack || errorInfo.componentStack || undefined,
+        });
     }
 
     render() {

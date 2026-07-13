@@ -7,7 +7,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { FETCH_ERRORS, X_REASON } from '../../../api/fetchData';
 import { Card } from '../../../components/Card';
 import { FormInputField } from '../../../components/FormInputField';
-import { FormPasswordField } from '../../../components/FormPasswordField';
+import { FormInputPasswordField } from '../../../components/FormInputPasswordField';
 import { FormTextAreaField } from '../../../components/FormTextAreaField';
 import { Page } from '../../../components/Page';
 import { SelectFormField, Option } from '../../../components/SelectFormField';
@@ -375,7 +375,7 @@ export const UserEditOrAdd = () => {
                             {!isEditing &&
                                 (typeOfUsers === TypeOfUser.Consultants || typeOfUsers === TypeOfUser.AgencyAdmins) && (
                                     <>
-                                        <FormPasswordField
+                                        <FormInputPasswordField
                                             name="password"
                                             labelKey="counselor.password"
                                             placeholderKey="placeholder.password"
@@ -391,7 +391,7 @@ export const UserEditOrAdd = () => {
                                                 },
                                             ]}
                                         />
-                                        <FormPasswordField
+                                        <FormInputPasswordField
                                             name="passwordConfirmation"
                                             labelKey="counselor.passwordConfirmation"
                                             placeholderKey="placeholder.password"

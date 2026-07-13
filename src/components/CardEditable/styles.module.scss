@@ -24,11 +24,8 @@
     min-height: 0;
     min-width: 0;
     flex-direction: column;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    overflow: visible;
     padding: 20px 24px 0;
-    scrollbar-gutter: stable;
 
     :global {
         .ant-row:not(.ant-form-item-row) {

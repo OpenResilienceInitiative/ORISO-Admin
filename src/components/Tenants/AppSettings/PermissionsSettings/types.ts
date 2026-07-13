@@ -4,6 +4,9 @@ export type ToggleAfterChangeHandler = (
     currentFormData?: { settings?: Record<string, unknown> },
 ) => void;
 
+/** Fired when an upper role (de)selects a feature's "enforce active state" checkbox. */
+export type EnforceChangeHandler = (fieldKey: string, enforced: boolean) => void;
+
 export type ChatTypeCardKey = 'oneOnOne' | 'liveChat' | 'group' | 'groupInternal';
 
 export type PermissionsSettingsCommonArgs = {

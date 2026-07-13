@@ -1,4 +1,4 @@
-import { computeOrisoPalette } from './theme/orisoScheme';
+import { computeOrisoPalette, type OrisoSchemeName } from './theme/orisoScheme';
 import { readSeeds, ThemingSeedFields } from './themeSeeds';
 
 export const DEFAULT_ADMIN_SEED = '#A5000A';
@@ -40,8 +40,9 @@ const normalizeSeed = (
     return expanded.toLowerCase();
 };
 
-export const applyAdminInvertedTheme = (
+const applyAdminSchemeTheme = (
     theming: ThemingSeedFields | null | undefined,
+    scheme: OrisoSchemeName,
     root: HTMLElement = document.documentElement,
 ): boolean => {
     try {
@@ -55,7 +56,7 @@ export const applyAdminInvertedTheme = (
                 primary,
                 accent,
             },
-            'inverted',
+            scheme,
         );
 
         Object.entries(tokens)
@@ -72,3 +73,22 @@ export const applyAdminInvertedTheme = (
         return false;
     }
 };
+
+/**
+ * Apply the light admin surface palette (the default admin appearance). Writes
+ * the tenant-seeded `--m3-*`/`--admin-*` tokens so the runtime theme matches the
+ * light components shown in Storybook.
+ */
+export const applyAdminTheme = (
+    theming: ThemingSeedFields | null | undefined,
+    root: HTMLElement = document.documentElement,
+): boolean => applyAdminSchemeTheme(theming, 'light', root);
+
+/**
+ * Apply the dark/inverted admin surface palette. Retained for surfaces that opt
+ * into the inverted shell (e.g. theme-builder previews).
+ */
+export const applyAdminInvertedTheme = (
+    theming: ThemingSeedFields | null | undefined,
+    root: HTMLElement = document.documentElement,
+): boolean => applyAdminSchemeTheme(theming, 'inverted', root);

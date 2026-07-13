@@ -4,6 +4,8 @@ import { IFeature } from '../types/feature';
 import { TenantData } from '../types/tenant';
 
 const FeatureContext = createContext<[IFeature[], (features: IFeature[]) => void]>(null);
+const NO_FEATURES: IFeature[] = [];
+const ignoreFeatureUpdates = () => undefined;
 
 interface FeatureProviderProps {
     children: ReactNode;
@@ -55,14 +57,9 @@ const FeatureProvider = ({ children, tenantData, publicTenantData }: FeatureProv
 function useFeatureContext() {
     const contextValue = useContext(FeatureContext);
 
-    if (!contextValue) {
-        // eslint-disable-next-line no-console
-        console.error('useFeatureContext used outside of FeatureProvider; all feature flags read as disabled.');
-    }
-
     // Degrade to "all flags off" instead of crashing the tree when the
     // provider is missing (e.g. on public pages).
-    const [features, setFeatures] = contextValue ?? [[] as IFeature[], () => undefined];
+    const [features, setFeatures] = contextValue ?? [NO_FEATURES, ignoreFeatureUpdates];
 
     const isEnabled = useCallback(
         (name: FeatureFlag) => {

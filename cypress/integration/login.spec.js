@@ -5,29 +5,29 @@ describe('login page', () => {
 
     it('displays username and password fields', () => {
         cy.get('form').should('be.visible');
-        cy.get('#basic_username').should('be.visible');
-        cy.get('#basic_password').should('be.visible');
+        cy.get('input[autocomplete="username"]').should('be.visible');
+        cy.get('input[autocomplete="current-password"]').should('be.visible');
     });
 
     it('keeps submit disabled until username and password are filled', () => {
         cy.get('button[type="submit"]').should('be.disabled');
-        cy.get('#basic_username').type('test-user');
+        cy.get('input[autocomplete="username"]').type('test-user');
         cy.get('button[type="submit"]').should('be.disabled');
-        cy.get('#basic_password').type('test-password', { log: false });
+        cy.get('input[autocomplete="current-password"]').type('test-password', { log: false });
         cy.get('button[type="submit"]').should('not.be.disabled');
     });
 
     it('toggles password visibility from the login form', () => {
-        cy.get('#basic_password').type('test-password', { log: false });
-        cy.get('#basic_password').should('have.attr', 'type', 'password');
+        cy.get('input[autocomplete="current-password"]').type('test-password', { log: false });
+        cy.get('input[autocomplete="current-password"]').should('have.attr', 'type', 'password');
         cy.get('[data-testid="password-visibility-toggle"]').should('have.attr', 'aria-pressed', 'false');
 
         cy.get('[data-testid="password-visibility-toggle"]').click();
-        cy.get('#basic_password').should('have.attr', 'type', 'text');
+        cy.get('input[autocomplete="current-password"]').should('have.attr', 'type', 'text');
         cy.get('[data-testid="password-visibility-toggle"]').should('have.attr', 'aria-pressed', 'true');
 
         cy.get('[data-testid="password-visibility-toggle"]').click();
-        cy.get('#basic_password').should('have.attr', 'type', 'password');
+        cy.get('input[autocomplete="current-password"]').should('have.attr', 'type', 'password');
         cy.get('[data-testid="password-visibility-toggle"]').should('have.attr', 'aria-pressed', 'false');
     });
 });

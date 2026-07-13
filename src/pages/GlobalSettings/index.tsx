@@ -1,6 +1,7 @@
 import { Button, Form, message } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
+import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet } from 'react-router-dom';
@@ -14,6 +15,7 @@ import { FormInputPasswordField } from '../../components/FormInputPasswordField'
 import { FormColorSelectorField } from '../../components/FormColorSelectorField';
 import { useTenantData } from '../../hooks/useTenantData.hook';
 import { useTenantAdminDataMutation } from '../../hooks/useTenantAdminDataMutation.hook';
+import { mapTenantDataToTenantAdminData } from '../../utils/mapTenantDataToTenantAdminData';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.hook';
 import { useUserData } from '../../hooks/useUserData.hook';
@@ -46,8 +48,11 @@ export const GlobalSettingsPage = () => {
 export const GlobalLoginSettingsPage = () => {
     const { data, isLoading } = useTenantData();
     const tenantId = data?.id ? `${data.id}` : '';
+    const seedTenantAdminData = useMemo(() => (data?.id ? mapTenantDataToTenantAdminData(data) : undefined), [data]);
     const { mutate } = useTenantAdminDataMutation({
         id: tenantId,
+        seedTenantAdminData,
+        prefetchTenantAdminData: false,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
     const initialValues = useMemo(() => ({ ...data }), [data]);
@@ -61,6 +66,9 @@ export const GlobalLoginSettingsPage = () => {
                     initialValues={initialValues}
                     titleKey="tenants.globalSettings.anonymousChat.title"
                     onSave={mutate}
+                    variant="dialog"
+                    editButtonPlacement="footer"
+                    headerIcon={<LoginOutlinedIcon />}
                 >
                     <div className={styles.checkGroup}>
                         <FormSwitchField

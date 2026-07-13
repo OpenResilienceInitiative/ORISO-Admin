@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FeatureFlag } from '../enums/FeatureFlag';
 import { FeatureProvider, useFeatureContext } from './FeatureContext';
 
@@ -39,6 +39,10 @@ const FeatureConsumer = () => {
 };
 
 describe('FeatureContext', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     it('maps tenant and public tenant settings to feature flags', () => {
         render(
             <FeatureProvider tenantData={tenantData} publicTenantData={publicTenantData}>
@@ -63,5 +67,22 @@ describe('FeatureContext', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Toggle developer' }));
 
         expect(screen.getByLabelText('developer')).toHaveTextContent('true');
+    });
+
+    it('degrades to all flags off outside the provider without noisy error logging', () => {
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        render(<FeatureConsumer />);
+
+        expect(screen.getByLabelText('appointments')).toHaveTextContent('false');
+        expect(screen.getByLabelText('topics')).toHaveTextContent('false');
+        expect(screen.getByLabelText('registration-topics')).toHaveTextContent('false');
+        expect(screen.getByLabelText('group-chat')).toHaveTextContent('false');
+        expect(screen.getByLabelText('developer')).toHaveTextContent('false');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Toggle developer' }));
+
+        expect(screen.getByLabelText('developer')).toHaveTextContent('false');
+        expect(consoleError).not.toHaveBeenCalled();
     });
 });

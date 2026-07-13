@@ -6,9 +6,12 @@ import { mergeConfig } from 'vite';
 // at http://localhost:6006/mcp. antd v4 styling needs less { javascriptEnabled }.
 const config: StorybookConfig = {
     stories: ['../src/**/*.stories.@(ts|tsx)'],
-    addons: ['@storybook/addon-mcp', '@storybook/addon-designs'],
+    // addon-a11y runs axe (WCAG 2.2 AA) against each story in the a11y panel + test-runner.
+    addons: ['@storybook/addon-mcp', '@storybook/addon-designs', '@storybook/addon-a11y'],
     framework: { name: '@storybook/react-vite', options: {} },
     core: { disableTelemetry: true },
+    // Serve public/ so MSW's generated service worker (public/mockServiceWorker.js) is reachable.
+    staticDirs: ['../public'],
     async viteFinal(cfg) {
         // Drop app-only plugins that are noisy or meaningless inside Storybook
         // (eslint linting, runtime-env middleware, auth BFF dev proxy, bundle

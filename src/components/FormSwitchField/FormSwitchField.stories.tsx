@@ -22,12 +22,17 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Default antd Switch rendering. */
+/** Default M3-styled switch rendering (see also Atoms/M3Switch). */
+export const Default: Story = {
+    args: { switchLabel: 'Benachrichtigungen' },
+};
+
+/** Legacy antd Switch rendering. */
 export const AntdVariant: Story = {
     args: { switchVariant: 'antd' },
 };
 
-/** M3-styled switch rendering (see also Atoms/M3Switch). */
+/** Explicit M3-styled switch rendering. */
 export const M3Variant: Story = {
     args: { switchVariant: 'm3', switchLabel: 'Benachrichtigungen' },
 };
