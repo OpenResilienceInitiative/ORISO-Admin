@@ -7,8 +7,7 @@ import { FormColorSelectorField } from '../../../../FormColorSelectorField';
 import { SideScrollerFooter } from '../../../../SideScrollerFooter';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
 import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.hook';
-import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
-import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
+import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { isReadOnlySetting } from '../../../../../utils/serverSettingsMeta';
 import { computeOrisoPalette } from '../../../../../utils/theme/orisoScheme';
 import {
@@ -339,9 +338,8 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
     const { t } = useTranslation();
     const [editorOpen, setEditorOpen] = useState(false);
     const { settings } = useAppConfigContext();
-    const { data, isLoading } = useSingleTenantData({ id: tenantId });
+    const { data, isLoading, mutate } = useTenantAppearanceFormData(tenantId);
     const { data: inheritedData } = usePublicTenantData();
-    const { mutate } = useTenantAdminDataMutation({ id: tenantId });
 
     const locks = {
         accentDark:
