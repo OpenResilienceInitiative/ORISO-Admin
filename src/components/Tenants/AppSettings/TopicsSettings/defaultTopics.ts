@@ -14,10 +14,18 @@ export interface DefaultTopic {
     slug: string;
     internalIdentifier: string;
     status: 'ACTIVE' | 'INACTIVE';
+    displayGroup: string;
+    sortOrder: number;
+    standardBaseline: boolean;
+    editingDisabled: boolean;
     translations: { de: TopicTranslation; en: TopicTranslation; tr: TopicTranslation };
 }
 
-export const DEFAULT_TOPICS: DefaultTopic[] = [
+const STANDARD_CARITAS_DISPLAY_GROUP = 'Standard Caritas topic catalogue';
+
+type DefaultTopicSnapshot = Omit<DefaultTopic, 'displayGroup' | 'sortOrder' | 'standardBaseline' | 'editingDisabled'>;
+
+const DEFAULT_TOPIC_SNAPSHOT: DefaultTopicSnapshot[] = [
     {
         id: 1,
         slug: 'general-social-counselling',
@@ -341,3 +349,11 @@ export const DEFAULT_TOPICS: DefaultTopic[] = [
         },
     },
 ];
+
+export const DEFAULT_TOPICS: DefaultTopic[] = DEFAULT_TOPIC_SNAPSHOT.map((topic, index) => ({
+    ...topic,
+    displayGroup: STANDARD_CARITAS_DISPLAY_GROUP,
+    sortOrder: index + 1,
+    standardBaseline: true,
+    editingDisabled: true,
+}));
