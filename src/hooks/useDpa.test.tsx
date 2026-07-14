@@ -6,6 +6,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 vi.mock('../api/tenant/publishDpa', () => ({ publishDpa: vi.fn() }));
 vi.mock('../api/tenant/getDpaVersions', () => ({ getDpaVersions: vi.fn() }));
 
+const notificationSuccess = vi.fn();
+const notificationError = vi.fn();
+vi.mock('antd', () => ({
+    notification: {
+        success: (args: unknown) => notificationSuccess(args),
+        error: (args: unknown) => notificationError(args),
+    },
+}));
+vi.mock('react-i18next', () => ({
+    useTranslation: () => ({ t: (key: string) => key }),
+}));
+
 // eslint-disable-next-line import/first
 import { usePublishDpa } from './usePublishDpa.hook';
 // eslint-disable-next-line import/first
@@ -21,6 +33,8 @@ const versionsMock = vi.mocked(getDpaVersions);
 beforeEach(() => {
     publishMock.mockReset();
     versionsMock.mockReset();
+    notificationSuccess.mockReset();
+    notificationError.mockReset();
 });
 
 const renderWithClient = () => {
@@ -43,6 +57,32 @@ describe('usePublishDpa', () => {
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(publishMock).toHaveBeenCalledWith(42, { de: '<p>x</p>' });
         expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: [DPA_VERSIONS_KEY, 42] });
+    });
+
+    it('shows a success notification after publishing', async () => {
+        publishMock.mockResolvedValue({ dpaPublished: true, dpaSigned: false });
+        const { wrapper } = renderWithClient();
+
+        const { result } = renderHook(() => usePublishDpa(42), { wrapper });
+        result.current.mutate({ de: '<p>x</p>' });
+
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(notificationSuccess).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'tenants.legal.version.publishSuccess' }),
+        );
+    });
+
+    it('surfaces a publish failure as an error notification (does not stay silent)', async () => {
+        publishMock.mockRejectedValue(new Error('CATCH_ALL'));
+        const { wrapper } = renderWithClient();
+
+        const { result } = renderHook(() => usePublishDpa(42), { wrapper });
+        result.current.mutate({ de: '<p>x</p>' });
+
+        await waitFor(() => expect(result.current.isError).toBe(true));
+        expect(notificationError).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'tenants.legal.version.publishError' }),
+        );
     });
 });
 
