@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Alert, Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useDpaVersions } from '../../../../../hooks/useDpaVersions.hook';
 import { usePublishDpa } from '../../../../../hooks/usePublishDpa.hook';
@@ -30,7 +31,11 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     const id = Number(tenantId);
     const lang = i18n.language?.split('-')[0] || 'de';
 
-    const { data: versions = [] } = useDpaVersions(id, Number.isFinite(id) && id > 0);
+    const {
+        data: versions = [],
+        isError: versionsError,
+        refetch: refetchVersions,
+    } = useDpaVersions(id, Number.isFinite(id) && id > 0);
     const { mutate: publish, isPending } = usePublishDpa(id);
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
@@ -59,6 +64,24 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
             }),
         [versions, lang, t],
     );
+
+    // A failed version load must not masquerade as "no versions yet": editing a
+    // legal text on an unknown current state could silently overwrite it, so we
+    // withhold the editor and offer a retry instead.
+    if (versionsError) {
+        return (
+            <Alert
+                type="error"
+                showIcon
+                message={t('tenants.legal.version.loadError')}
+                action={
+                    <Button size="small" onClick={() => refetchVersions()}>
+                        {t('tenants.legal.version.retry')}
+                    </Button>
+                }
+            />
+        );
+    }
 
     return (
         <DataProcessingAgreementCard

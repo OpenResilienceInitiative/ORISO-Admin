@@ -1,4 +1,8 @@
 import 'react-app-polyfill/stable';
+// React 19 removed ReactDOM.render/unmountComponentAtNode, which antd v5's static
+// message/notification/Modal APIs rely on. Without this official patch those static
+// calls silently no-op (toasts/alerts never appear). Must run before any antd usage.
+import '@ant-design/v5-patch-for-react-19';
 import { useEffect, useState, type JSX } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createRoot, type Root } from 'react-dom/client';
@@ -20,6 +24,7 @@ import { useAppConfigContext, UseAppConfigProvider } from './context/useAppConfi
 import { apiServerSettings } from './api/settings/apiServerSettings';
 import { Initialization } from './components/Layout/Initialization';
 import { AccessDenied } from './pages/ErrorPages/AccessDenied';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from './utils/language';
 import { buildAdminAntdTheme } from './theme/antdM3Theme';
 
@@ -94,32 +99,34 @@ if (!container) {
 const root = window.orisoAdminRoot ?? createRoot(container);
 window.orisoAdminRoot = root;
 root.render(
-    <QueryClientProvider client={queryClient}>
-        <UseAppConfigProvider>
-            <AppSettingsWrapper>
-                <LanguageAwareConfigProvider>
-                    <Router>
-                        <Routes>
-                            <Route path={routePathNames.login} element={<Login />} />
-                            <Route path="/admin/404" element={<Error404 />} />
-                            <Route path="/admin/access-denied" element={<AccessDenied />} />
+    <ErrorBoundary scope="app">
+        <QueryClientProvider client={queryClient}>
+            <UseAppConfigProvider>
+                <AppSettingsWrapper>
+                    <LanguageAwareConfigProvider>
+                        <Router>
+                            <Routes>
+                                <Route path={routePathNames.login} element={<Login />} />
+                                <Route path="/admin/404" element={<Error404 />} />
+                                <Route path="/admin/access-denied" element={<AccessDenied />} />
 
-                            <Route path={routePathNames.imprint} element={<Imprint />} />
-                            <Route path={routePathNames.privacy} element={<Privacy />} />
+                                <Route path={routePathNames.imprint} element={<Imprint />} />
+                                <Route path={routePathNames.privacy} element={<Privacy />} />
 
-                            {/* put protected routes at the end to act as a wildcard route fetcher */}
-                            <Route
-                                path="*"
-                                element={
-                                    <ProtectedRoute>
-                                        <App />
-                                    </ProtectedRoute>
-                                }
-                            />
-                        </Routes>
-                    </Router>
-                </LanguageAwareConfigProvider>
-            </AppSettingsWrapper>
-        </UseAppConfigProvider>
-    </QueryClientProvider>, // Contextprovider does not work at the moment as they have an error there
+                                {/* put protected routes at the end to act as a wildcard route fetcher */}
+                                <Route
+                                    path="*"
+                                    element={
+                                        <ProtectedRoute>
+                                            <App />
+                                        </ProtectedRoute>
+                                    }
+                                />
+                            </Routes>
+                        </Router>
+                    </LanguageAwareConfigProvider>
+                </AppSettingsWrapper>
+            </UseAppConfigProvider>
+        </QueryClientProvider>
+    </ErrorBoundary>, // Contextprovider does not work at the moment as they have an error there
 );

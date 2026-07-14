@@ -17,7 +17,7 @@ const resolveExpiresInSeconds = (token: string | undefined, expiresIn?: number):
 
     try {
         const payload = parseJwt(token);
-        if (typeof payload.exp === 'number') {
+        if (typeof payload?.exp === 'number') {
             return Math.max(payload.exp - Math.floor(Date.now() / 1000), 0);
         }
     } catch {

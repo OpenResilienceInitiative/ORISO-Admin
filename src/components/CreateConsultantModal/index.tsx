@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { UnsavedChangesModal } from '../CardEditable/components/UnsavedChanges';
 import { FormInputField } from '../FormInputField';
-import { FormPasswordField } from '../FormPasswordField';
+import { FormInputPasswordField } from '../FormInputPasswordField';
 import { TypeOfUser } from '../../enums/TypeOfUser';
 import { useAddOrUpdateConsultantOrAdmin } from '../../hooks/useAddOrUpdateConsultantOrAgencyAdmin';
 import { CounselorData } from '../../types/counselor';
@@ -158,7 +158,7 @@ export const CreateConsultantModal = ({ tenantId, disabled, onSuccess }: CreateC
                             },
                         ]}
                     />
-                    <FormPasswordField
+                    <FormInputPasswordField
                         name="password"
                         labelKey="counselor.password"
                         placeholderKey="placeholder.password"
@@ -174,7 +174,7 @@ export const CreateConsultantModal = ({ tenantId, disabled, onSuccess }: CreateC
                             },
                         ]}
                     />
-                    <FormPasswordField
+                    <FormInputPasswordField
                         name="passwordConfirmation"
                         labelKey="counselor.passwordConfirmation"
                         placeholderKey="placeholder.password"

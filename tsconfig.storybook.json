@@ -11,7 +11,8 @@
         ".storybook/**/*.ts",
         ".storybook/**/*.tsx",
         "src/**/*.stories.ts",
-        "src/**/*.stories.tsx"
+        "src/**/*.stories.tsx",
+        "src/types/**/*.d.ts"
     ],
     "exclude": ["node_modules"]
 }

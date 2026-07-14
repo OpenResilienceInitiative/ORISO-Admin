@@ -46,6 +46,12 @@ beforeAll(() => {
             dispatchEvent: vi.fn(),
         })),
     });
+
+    // antd's dropdown portal (rc-util scroll locker) calls the two-arg
+    // getComputedStyle(el, pseudoEl) which jsdom does not implement. Drop the
+    // pseudo-element so the language menu can open in the test environment.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element) => originalGetComputedStyle(el));
 });
 
 const publishButtonName = 'tenants.legal.departmentDataProtection.publish';
@@ -121,8 +127,8 @@ describe('DepartmentDataProtectionCard', () => {
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
 
-        await user.click(screen.getByRole('combobox'));
-        await user.click(await screen.findByTitle('en'));
+        await user.click(screen.getByRole('button', { name: 'languages' }));
+        await user.click(await screen.findByText('en'));
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
     });

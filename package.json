@@ -5,6 +5,7 @@
   "homepage": "http://tenant1.onlineberatung.local/admin",
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^9.1.1",
@@ -125,6 +126,8 @@
     "eslint-plugin-react-hooks": "^4.3.0",
     "jsdom": "^23.2.0",
     "less": "^4.2.0",
+    "msw": "^2.15.0",
+    "msw-storybook-addon": "^2.0.7",
     "postcss": "^8.4.6",
     "postcss-less": "^6.0.0",
     "prettier": "^2.5.1",
@@ -149,5 +152,10 @@
   "overrides": {
     "@types/react": "$@types/react",
     "@types/react-dom": "$@types/react-dom"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

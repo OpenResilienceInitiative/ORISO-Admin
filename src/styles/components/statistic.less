@@ -28,8 +28,7 @@
     align-items: start;
     justify-content: start;
     margin-bottom: 16px;
-    padding: 10px 0 12px;
-    background: var(--m3-surface-container, #f0edee);
+    padding: 0px 0 12px;
     gap: 10px 12px;
     grid-template-columns: minmax(0, 499px);
 }
@@ -211,6 +210,29 @@
 .statisticDashboard__animatedContent {
     animation: statisticScopeIn 180ms ease-out both;
     transform-origin: top center;
+}
+
+.statisticDashboard__notice {
+    padding: 10px 14px;
+    margin: 0 0 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.statisticDashboard__notice--error {
+    background: #fdecea;
+    color: #8a1c12;
+}
+
+.statisticDashboard__notice--info {
+    background: #eef3f8;
+    color: #33475b;
+}
+
+.statisticDashboard__notice--warning {
+    background: #fdf3e3;
+    color: #7a4d05;
 }
 
 @keyframes statisticScopeIn {

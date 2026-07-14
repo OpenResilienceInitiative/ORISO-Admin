@@ -3,7 +3,7 @@ import type { AppRuntimeConfig } from '../types/runtimeConfig';
 
 // Runtime config is injected by public/env.js in production deployments.
 // eslint-disable-next-line no-underscore-dangle
-const runtime = (): AppRuntimeConfig => window.__APP_CONFIG__ ?? {};
+const runtime = (): AppRuntimeConfig => window.__APP_CONFIG__ ?? window._env_ ?? window.__ENV__ ?? window.env ?? {};
 
 const readEnvString = (key: string): string | undefined => {
     const value = import.meta.env[key as keyof ImportMetaEnv];

@@ -21,6 +21,8 @@
 
 .tenantInfoCard,
 .createCard {
+    width: 100%;
+    flex: 1 1 auto;
     min-width: 0;
 
     :global {
@@ -67,7 +69,7 @@
     width: 100%;
     min-width: 0;
     max-width: 100%;
-    margin-bottom: 36px;
+    margin-bottom: 16px;
 }
 
 .buttons {

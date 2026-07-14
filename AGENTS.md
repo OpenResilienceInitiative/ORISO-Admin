@@ -3,6 +3,7 @@
 ## Context First
 
 -   Treat `dev` as the normal integration branch for ORISO Admin feature PRs unless the task says otherwise.
+-   **Follow `GIT.md` for the full Git/GitHub workflow**: parent issue first (Why/What/Goal, assigned to the ORISO project board), PRs linked in the issue comments, branch pruning and board updates after merge.
 -   Before non-trivial changes, skim `.understand-anything/README.md`, `.understand-anything/ARCHITECTURE.md`, and `.understand-anything/knowledge-graph.json` for fast repo context.
 -   Keep admin behavior aligned with ORISO service contracts and role/permission boundaries.
 

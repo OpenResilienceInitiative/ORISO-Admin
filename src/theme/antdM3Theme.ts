@@ -70,5 +70,17 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
             // M3 sizing (+ WCAG 2.2 target size headroom).
             controlHeight: M3_CONTROL_HEIGHT,
         },
+        components: {
+            // antd's Layout component keeps its own dark-navy defaults
+            // (headerBg/footerBg) independent of the global token set above,
+            // so without this override SiteHeader/SiteFooter render near-black
+            // text on a dark background (see #276).
+            Layout: {
+                headerBg: t('--m3-surface-container-lowest', '#ffffff'),
+                headerColor: t('--m3-on-surface', '#1a1c1e'),
+                footerBg: t('--m3-surface-container-lowest', '#ffffff'),
+                siderBg: t('--m3-surface-container-low', '#f7f3f4'),
+            },
+        },
     };
 };
