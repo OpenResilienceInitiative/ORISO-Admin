@@ -2,14 +2,12 @@ import { useTranslation } from 'react-i18next';
 import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
 import { CardEditable } from '../../../../CardEditable';
 import { FormRadioGroupField } from '../../../../FormRadioGroupField';
-import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
-import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
+import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import styles from './styles.module.scss';
 
 export const TypeOfLanguage = ({ tenantId, readOnly = false }: { tenantId: string; readOnly?: boolean }) => {
     const { t } = useTranslation();
-    const { data, isLoading } = useSingleTenantData({ id: tenantId });
-    const { mutate } = useTenantAdminDataMutation({ id: tenantId });
+    const { data, isLoading, mutate } = useTenantAppearanceFormData(tenantId);
 
     return (
         <CardEditable

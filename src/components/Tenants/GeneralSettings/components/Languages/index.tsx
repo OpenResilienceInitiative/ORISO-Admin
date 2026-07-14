@@ -5,8 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../../../../../appConfig';
 import { CardEditable } from '../../../../CardEditable';
 import { Modal } from '../../../../Modal';
-import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
-import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
+import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import styles from './styles.module.scss';
 
 const ensureDefaultLanguage = (languages: string[]) => {
@@ -27,9 +26,7 @@ export const Languages = ({ tenantId, readOnly = false }: { tenantId: string; re
     const { t } = useTranslation();
     const [form] = Form.useForm();
     const [modal, setModal] = useState(false);
-    const { data, isLoading } = useSingleTenantData({ id: tenantId });
-
-    const { mutate } = useTenantAdminDataMutation({ id: tenantId });
+    const { data, isLoading, mutate } = useTenantAppearanceFormData(tenantId);
     const options = supportedLanguages.map((language) => ({ value: language, label: t(`language.${language}`) }));
     const activeLanguages = data?.settings?.activeLanguages?.length ? data.settings.activeLanguages : ['de'];
     const initialValues = {

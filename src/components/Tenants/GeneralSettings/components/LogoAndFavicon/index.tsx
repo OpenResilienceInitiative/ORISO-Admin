@@ -5,8 +5,7 @@ import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { CardEditable } from '../../../../CardEditable';
 import { FormFileUploaderField } from '../../../../FormFileUploaderField';
 import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.hook';
-import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
-import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
+import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
 import styles from './styles.module.scss';
 
@@ -15,9 +14,8 @@ const isReadOnlySetting = (meta: Record<string, { readOnly?: boolean }> | undefi
 
 export const LogoAndFavicon = ({ tenantId, readOnly = false }: { tenantId: string; readOnly?: boolean }) => {
     const { t } = useTranslation();
-    const { data, isLoading } = useSingleTenantData({ id: tenantId });
+    const { data, isLoading, mutate } = useTenantAppearanceFormData(tenantId);
     const { data: inheritedData } = usePublicTenantData();
-    const { mutate } = useTenantAdminDataMutation({ id: tenantId });
     const { settings } = useAppConfigContext();
     const logoReadOnly =
         readOnly ||

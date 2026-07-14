@@ -5,8 +5,9 @@ import { fetchData, FETCH_METHODS } from '../api/fetchData';
 import { tenantAdminEndpoint } from '../appConfig';
 import { TenantAdminData } from '../types/TenantAdminData';
 import { mergeTenantAdminData } from '../utils/mergeTenantAdminData';
-import { useSingleTenantData } from './useSingleTenantData';
+import { useSingleTenantData, TENANT_QUERY_KEY } from './useSingleTenantData';
 import { TENANT_ADMIN_DATA_KEY } from './useTenantAdminData.hook';
+import { TENANT_DATA_KEY } from './useTenantData.hook';
 
 interface TenantAdminDataOptions
     extends UseMutationOptions<Partial<TenantAdminData>, unknown, Partial<TenantAdminData>> {
@@ -47,7 +48,13 @@ export const useTenantAdminDataMutation = ({
         ...options,
         onSuccess: (responseData, updatedData, onMutateResult, context) => {
             const mergeBase = tenantAdminData ?? seedTenantAdminData;
-            queryClient.setQueryData([TENANT_ADMIN_DATA_KEY], mergeTenantAdminData(mergeBase, updatedData));
+            const merged = mergeTenantAdminData(mergeBase, updatedData);
+            queryClient.setQueryData([TENANT_ADMIN_DATA_KEY], merged);
+            if (id != null && id !== '' && id !== 'add') {
+                queryClient.setQueryData([TENANT_QUERY_KEY, Number(id)], merged);
+            }
+            // Appearance cards may seed from /service/tenant — refresh that cache after PUT.
+            queryClient.invalidateQueries({ queryKey: [TENANT_DATA_KEY] });
             notification.success({
                 message: t(successMessageKey),
                 duration: 3,
