@@ -114,7 +114,7 @@ vi.mock('../../../components/ResizableTable', () => ({
         return (
             <div>
                 {loading && <div data-testid="table-loading" />}
-                {dataSource.length === 0 && <div data-testid="table-empty">{locale?.emptyText}</div>}
+                {!loading && dataSource.length === 0 && <div data-testid="table-empty">{locale?.emptyText}</div>}
                 {dataSource.map((record: any) => (
                     <div key={record.id}>
                         <div data-testid={`topics-${record.id}`}>{topicColumn.render(record.topics, record)}</div>
