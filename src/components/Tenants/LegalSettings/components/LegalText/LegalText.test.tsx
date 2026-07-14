@@ -14,17 +14,16 @@ const mocks = vi.hoisted(() => ({
     canEdit: true,
 }));
 
-vi.mock('../../../../../hooks/useSingleTenantData', () => ({
-    useSingleTenantData: () => ({
-        data: { content: { imprint: { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>' } } },
+vi.mock('../../../../../hooks/useTenantAppearanceFormData', () => ({
+    useTenantAppearanceFormData: () => ({
+        data: {
+            content: { imprint: { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>' } },
+            settings: { activeLanguages: ['de', 'en'] },
+        },
         isLoading: false,
+        mutate: mocks.updateTenant,
+        isPending: false,
     }),
-}));
-vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({
-    useTenantAdminData: () => ({ data: { settings: { activeLanguages: ['de', 'en'] } } }),
-}));
-vi.mock('../../../../../hooks/useTenantAdminDataMutation.hook', () => ({
-    useTenantAdminDataMutation: () => ({ mutate: mocks.updateTenant, isPending: false }),
 }));
 vi.mock('../../../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({ can: () => mocks.canEdit }),
