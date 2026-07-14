@@ -141,6 +141,31 @@ describe('CaseHandoverCard', () => {
         ).toBeDisabled();
     });
 
+    it('renders the Figma enforce checkboxes disabled and unchecked without persisting anything', async () => {
+        const user = userEvent.setup();
+        render(<CaseHandoverCard />);
+
+        // One M3 checkbox per feature row (master "Activated" + opt-out message),
+        // both coming-soon previews: disabled, unchecked, keyboard-reachable tooltip wrapper.
+        const activatedCheckbox = screen.getByRole('checkbox', {
+            name: 'tenants.permissions.card.caseHandover.enforceOption: tenants.permissions.card.activated',
+        });
+        const optOutCheckbox = screen.getByRole('checkbox', {
+            name: 'tenants.permissions.card.caseHandover.enforceOption: tenants.permissions.card.caseHandover.optOutMessage',
+        });
+
+        [activatedCheckbox, optOutCheckbox].forEach((checkbox) => {
+            expect(checkbox).toBeDisabled();
+            expect(checkbox).toHaveAttribute('aria-checked', 'false');
+            // The tooltip wrapper keeps the disabled control reachable by keyboard.
+            expect(checkbox.parentElement).toHaveAttribute('tabindex', '0');
+        });
+
+        await user.click(activatedCheckbox);
+        await user.click(optOutCheckbox);
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
     it('rolls back the optimistic toggle when the save fails', async () => {
         mocks.mutate.mockImplementation((_payload, options) => {
             options?.onError?.(new Error('save failed'));
