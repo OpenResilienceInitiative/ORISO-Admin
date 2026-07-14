@@ -28,6 +28,7 @@ import { useTenantsData } from '../../../hooks/useTenantsData';
 import { ReactComponent as RowExpandIcon } from '../../../resources/img/svg/table-actions/row_expand_200.svg';
 import { ReactComponent as RowExpandHoverIcon } from '../../../resources/img/svg/table-actions/row_expand_400.svg';
 import { ReactComponent as RowExpandSelectedIcon } from '../../../resources/img/svg/table-actions/row_expand_filled.svg';
+import { getAgencyColumnSortOrder, getNextAgencyTableState } from './agencySort';
 
 export const AgencyList = () => {
     const screens = Grid.useBreakpoint();
@@ -80,12 +81,9 @@ export const AgencyList = () => {
             title: t('agency.list.id'),
             dataIndex: 'id',
             key: 'id',
-            sorter: (a: AgencyData, b: AgencyData) => {
-                // Frontend sorting by ID (numeric)
-                const idA = a.id ? parseInt(a.id.toString(), 10) : 0;
-                const idB = b.id ? parseInt(b.id.toString(), 10) : 0;
-                return idA - idB;
-            },
+            sorter: true,
+            sortOrder: getAgencyColumnSortOrder('id', tableState),
+            showSorterTooltip: false,
             width: 80,
             ellipsis: true,
             className: 'agencyList__column',
@@ -94,12 +92,9 @@ export const AgencyList = () => {
             title: t('agency.list.createdDate'),
             dataIndex: 'createDate',
             key: 'createDate',
-            sorter: (a: AgencyData, b: AgencyData) => {
-                // Frontend sorting by creation date
-                const dateA = a.createDate ? new Date(a.createDate).getTime() : 0;
-                const dateB = b.createDate ? new Date(b.createDate).getTime() : 0;
-                return dateA - dateB;
-            },
+            sorter: true,
+            sortOrder: getAgencyColumnSortOrder('createDate', tableState),
+            showSorterTooltip: false,
             width: 150,
             ellipsis: true,
             render: (createDate: string) => {
@@ -123,6 +118,8 @@ export const AgencyList = () => {
             dataIndex: 'name',
             key: 'name',
             sorter: true,
+            sortOrder: getAgencyColumnSortOrder('name', tableState),
+            showSorterTooltip: false,
             width: 100,
             ellipsis: true,
             className: 'agencyList__column',
@@ -140,6 +137,8 @@ export const AgencyList = () => {
             dataIndex: 'postcode',
             key: 'postcode',
             sorter: true,
+            sortOrder: getAgencyColumnSortOrder('postcode', tableState),
+            showSorterTooltip: false,
             width: 100,
             ellipsis: true,
             className: 'agencyList__column',
@@ -149,6 +148,8 @@ export const AgencyList = () => {
             dataIndex: 'city',
             key: 'city',
             sorter: true,
+            sortOrder: getAgencyColumnSortOrder('city', tableState),
+            showSorterTooltip: false,
             width: 100,
             ellipsis: true,
             className: 'agencyList__column',
@@ -221,7 +222,9 @@ export const AgencyList = () => {
             title: t('agency.online.title'),
             dataIndex: 'offline',
             key: 'offline',
-            sorter: (a, b) => (a.offline > b.offline ? 1 : -1),
+            sorter: true,
+            sortOrder: getAgencyColumnSortOrder('offline', tableState),
+            showSorterTooltip: false,
             width: 100,
             ellipsis: true,
             render: (offline: Boolean) => {
@@ -299,22 +302,8 @@ export const AgencyList = () => {
     ] as Array<ColumnProps<AgencyData>>;
 
     const tableChangeHandler = (pagination: any, filters: any, sorter: any) => {
-        const { current, pageSize } = pagination;
         setExpandedTopicRows([]);
-        // ID and createDate columns use frontend sorting, so skip backend sort for them
-        if (sorter.field && sorter.field.toLowerCase() !== 'id' && sorter.field.toLowerCase() !== 'createdate') {
-            const sortBy = sorter.field.toUpperCase();
-            const order = sorter.order === 'descend' ? 'DESC' : 'ASC';
-            setTableState({
-                ...tableState,
-                current,
-                pageSize,
-                sortBy,
-                order,
-            });
-        } else {
-            setTableState({ ...tableState, current, pageSize });
-        }
+        setTableState((currentState) => getNextAgencyTableState(currentState, pagination, sorter));
     };
 
     const pagination = {
