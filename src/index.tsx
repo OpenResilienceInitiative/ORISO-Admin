@@ -27,6 +27,11 @@ import { AccessDenied } from './pages/ErrorPages/AccessDenied';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from './utils/language';
 import { buildAdminAntdTheme } from './theme/antdM3Theme';
+import { initObservability } from './observability/initObservability';
+
+// OBS-P8 (ORISO-Helm#62): start Real User Monitoring (Core Web Vitals) export
+// to SigNoz as early as possible, before the app renders.
+initObservability();
 
 interface LangMap {
     [key: string]: Locale;
