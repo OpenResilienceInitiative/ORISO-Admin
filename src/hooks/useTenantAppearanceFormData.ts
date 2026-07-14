@@ -32,7 +32,7 @@ export const useTenantAppearanceFormData = (tenantId: string) => {
         enabled: shouldFetchTenantAdmin,
     });
 
-    const { mutate } = useTenantAdminDataMutation({
+    const { mutate, isPending } = useTenantAdminDataMutation({
         id: tenantId,
         seedTenantAdminData,
         prefetchTenantAdminData: !seedTenantAdminData,
@@ -42,5 +42,6 @@ export const useTenantAppearanceFormData = (tenantId: string) => {
         data: (tenantAdminData ?? seedTenantAdminData) as TenantAdminData | undefined,
         isLoading: seedTenantAdminData ? isTenantLoading : isAdminLoading,
         mutate,
+        isPending,
     };
 };
