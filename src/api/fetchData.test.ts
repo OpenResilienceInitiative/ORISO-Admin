@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Node env: fetch/Request/AbortController all come from the same realm, avoiding
 // the jsdom-vs-undici "signal is not an AbortSignal" mismatch. No DOM is needed here.
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // fetchData statically pulls in antd / i18next / appConfig / auth side effects.
 // Stub them so the unit stays focused on the self-healing 401 retry flow and we
@@ -55,6 +55,13 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         getAccessTokenForRequests.mockReset();
         getAccessTokenForRequests.mockReturnValue('access-token');
         appConfigMock.csrfWhitelistHeader = 'X-CSRF-Token';
+    });
+
+    // Guarantee cleanup even if an assertion throws mid-test, so fake timers and
+    // the stubbed fetch never leak into the next test.
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
     });
 
     it('refreshes the token and retries once on 401, then succeeds without logging out', async () => {
@@ -186,8 +193,6 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         expect(settled).toBe(false);
         await vi.advanceTimersByTimeAsync(1);
         await assertion;
-
-        vi.useRealTimers();
     });
 
     it('honours an explicit shorter timeout', async () => {
@@ -214,7 +219,5 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
 
         await vi.advanceTimersByTimeAsync(5_000);
         await assertion;
-
-        vi.useRealTimers();
     });
 });
