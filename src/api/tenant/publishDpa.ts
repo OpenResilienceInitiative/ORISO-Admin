@@ -9,5 +9,8 @@ export const publishDpa = (tenantId: number, contentByLanguage: Record<string, s
         method: FETCH_METHODS.PUT,
         skipAuth: false,
         bodyData: JSON.stringify(contentByLanguage),
-        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        // CATCH_ALL_SILENT: reject without fetchData's generic message.error toast —
+        // usePublishDpa surfaces a DPA-specific notification.error instead, so a
+        // failed publish shows one clear message rather than two stacked toasts.
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
     }) as Promise<DpaGateStatus>;
