@@ -31,6 +31,8 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         publishing,
         onPublish,
         languageSlot,
+        helpSlot,
+        snackbarSlot,
         aboveEditorSlot,
         belowSlot,
     }: {
@@ -40,11 +42,15 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         publishing?: boolean;
         onPublish?: (html: string) => void;
         languageSlot?: React.ReactNode;
+        helpSlot?: React.ReactNode;
+        snackbarSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
     }) => (
         <div data-testid="editor" data-value={value} data-readonly={readOnly ? 'true' : 'false'}>
             {languageSlot}
+            {helpSlot}
+            {snackbarSlot}
             {aboveEditorSlot}
             {!readOnly && onChange && (
                 <button type="button" onClick={() => onChange('<p>edited</p>')}>
@@ -212,7 +218,9 @@ describe('DataProcessingAgreementCard', () => {
 
         expect(screen.queryByRole('button', { name: publishButtonName })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument();
-        expect(screen.getByText('tenants.legal.dataProcessingAgreement.managedByTenant')).toBeInTheDocument();
+        // Without token roles the help texts resolve to the agency view of the published DPA.
+        expect(screen.getByText('legal.help.dpa.agency.published.text')).toBeInTheDocument();
+        expect(screen.getByText('legal.help.dpa.agency.published.hint')).toBeInTheDocument();
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
     });
 });

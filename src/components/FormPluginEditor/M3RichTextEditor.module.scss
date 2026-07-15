@@ -31,6 +31,13 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         height: calc(100vh - 128px);
         max-width: none;
 
+        .editorRegion {
+            display: flex;
+            min-height: 0;
+            flex: 1;
+            flex-direction: column;
+        }
+
         .editorWrap {
             display: flex;
             min-height: 0;
@@ -97,6 +104,46 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         text-align: center;
         color: $m3-on-surface;
     }
+}
+
+// "Editor Help Texts" (Figma 1227-17235): info icon + role/state description
+// under the header; the CTA tip below it in bold.
+.helpRow {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 0 48px 12px;
+
+    @media (max-width: 599px) {
+        padding: 0 16px 12px;
+    }
+}
+
+.helpIcon {
+    flex-shrink: 0;
+    font-size: 24px;
+    color: $m3-on-surface;
+}
+
+.helpTexts {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 2px;
+}
+
+.helpText,
+.helpHint {
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+    color: #3f4852;
+}
+
+.helpHint {
+    font-weight: 600;
 }
 
 .languageRow {
@@ -304,8 +351,91 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     flex-shrink: 0;
 }
 
+// Hosts the editor surface plus the optional blocker snackbar overlay.
+.editorRegion {
+    position: relative;
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+}
+
 .editorWrap {
     padding: 0 16px;
+}
+
+// M3 snackbar (Figma 1229-17864): inverse surface, anchored over the bottom of
+// the editor; on mobile it flows below the editor with a 12px lower radius.
+.hintSnackbar {
+    position: absolute;
+    z-index: 2;
+    bottom: 16px;
+    left: 50%;
+    display: flex;
+    width: min(560px, calc(100% - 64px));
+    align-items: center;
+    padding: 4px 4px 4px 16px;
+    background: #303031;
+    border-radius: 4px;
+    box-shadow: 0 4px 4px rgba(0, 0, 0, 0.15), 0 1px 1.5px rgba(0, 0, 0, 0.3);
+    color: #f3f0f0;
+    transform: translateX(-50%);
+
+    @media (max-width: 599px) {
+        position: static;
+        width: auto;
+        margin: 8px 16px 0;
+        border-radius: 4px 4px 12px 12px;
+        transform: none;
+    }
+}
+
+.hintSnackbarText {
+    flex: 1;
+    padding: 6px 4px 6px 0;
+    font-size: 14px;
+    letter-spacing: 0.25px;
+    line-height: 20px;
+}
+
+.hintSnackbarAction {
+    flex-shrink: 0;
+    padding: 10px 12px;
+    border: 0;
+    background: transparent;
+    border-radius: 100px;
+    color: #ffb4aa;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+
+    &:hover {
+        background: rgba(255, 180, 170, 0.12);
+    }
+}
+
+.hintSnackbarClose {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 100px;
+    color: #f3f0f0;
+    cursor: pointer;
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    &:hover {
+        background: rgba(243, 240, 240, 0.12);
+    }
 }
 
 // Horizontal inset for arbitrary editor content (aboveEditorSlot / editorSlot)
@@ -374,6 +504,79 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     svg {
         width: 18px;
         height: 18px;
+    }
+}
+
+// Hide maximize on mobile (Figma mobile annotation: "Hide Maximize").
+.maximizeBtn {
+    @media (max-width: 599px) {
+        display: none;
+    }
+}
+
+// M3 split button for the version history (Figma 1:34978): leading segment =
+// current version label, trailing segment = menu caret; one control, one menu.
+.versionSplit {
+    display: flex;
+    max-width: 100%;
+    min-width: 0;
+    gap: 2px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+
+    &:focus-visible {
+        outline: 2px solid $m3-primary;
+        outline-offset: 1px;
+    }
+}
+
+.versionLeading,
+.versionTrailing {
+    display: inline-flex;
+    height: 36px;
+    align-items: center;
+    border: 1px solid $m3-outline-variant;
+    color: $m3-on-surface-variant;
+    transition: background 0.15s ease;
+
+    .versionSplit:hover & {
+        background: $m3-state-hover;
+    }
+
+    svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+}
+
+.versionLeading {
+    min-width: 0;
+    gap: 4px;
+    padding: 0 10px 0 12px;
+    border-radius: 18px 4px 4px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+
+    > span {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+}
+
+.versionTrailing {
+    justify-content: center;
+    width: 40px;
+    flex-shrink: 0;
+    border-radius: 4px 18px 18px 4px;
+
+    svg {
+        width: 22px;
+        height: 22px;
     }
 }
 

@@ -1,4 +1,4 @@
-import { useTranslation, Trans } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { PrivacyTip } from '@mui/icons-material';
 import { CardDeck } from '../../CardDeck';
 import { CardEditable } from '../../CardEditable';
@@ -32,14 +32,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
             fieldName={['content', 'privacy']}
             icon={PrivacyTip}
             titleKey="privacy.title"
-            subTitle={
-                <Trans
-                    i18nKey="privacy.subTitle"
-                    components={{
-                        a: <span />,
-                    }}
-                />
-            }
+            legalType="privacy"
             placeHolderKey="settings.privacy.placeholder"
             showConfirmationModal={{
                 titleKey: 'privacy.confirmation.title',
@@ -100,7 +93,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                     tenantId={finalTenantId}
                     fieldName={['content', 'impressum']}
                     titleKey="imprint.title"
-                    subTitle={t<string>('imprint.subTitle')}
+                    legalType="imprint"
                     placeHolderKey="settings.imprint.placeholder"
                 />
             </CardDeck.Item>

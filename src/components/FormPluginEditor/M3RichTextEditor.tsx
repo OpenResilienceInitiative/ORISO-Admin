@@ -34,7 +34,7 @@ import {
     Image as ImageIcon,
     Fullscreen,
     FullscreenExit,
-    History,
+    Schedule,
     Language,
     ArrowDropDown,
     Share,
@@ -82,6 +82,16 @@ export type M3RichTextEditorProps = {
     readOnly?: boolean;
     /** Replaces the built-in language split button (e.g. the legal MT-aware language select). */
     languageSlot?: React.ReactNode;
+    /**
+     * "Editor Help Texts" block (info icon + role/state description) rendered
+     * directly under the header, before the language row (Figma 1227-17235).
+     */
+    helpSlot?: React.ReactNode;
+    /**
+     * Snackbar overlaying the bottom of the editor surface (functionality
+     * blocker CTA, Figma 1229-17864); flows below the editor on mobile.
+     */
+    snackbarSlot?: React.ReactNode;
     /** Rendered between the toolbar and the editor (e.g. per-field translate button). */
     aboveEditorSlot?: React.ReactNode;
     /**
@@ -376,6 +386,8 @@ export const M3RichTextEditor = ({
     publishing,
     readOnly,
     languageSlot,
+    helpSlot,
+    snackbarSlot,
     aboveEditorSlot,
     editorSlot,
     belowSlot,
@@ -459,6 +471,8 @@ export const M3RichTextEditor = ({
                 <h2 className={styles.title}>{title}</h2>
             </div>
 
+            {helpSlot}
+
             {languageSlot ??
                 (languages.length > 1 && (
                     <div className={styles.languageRow}>
@@ -525,15 +539,18 @@ export const M3RichTextEditor = ({
                 />
             )}
 
-            {editorSlot ? (
-                <div className={styles.contentInset}>{editorSlot}</div>
-            ) : (
-                <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
-                    <div className={styles.editor}>
-                        <EditorContent editor={editor} />
+            <div className={styles.editorRegion}>
+                {editorSlot ? (
+                    <div className={styles.contentInset}>{editorSlot}</div>
+                ) : (
+                    <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
+                        <div className={styles.editor}>
+                            <EditorContent editor={editor} />
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+                {snackbarSlot}
+            </div>
 
             {anchorsEnabled && editorEditable && (
                 // Stable host div: the BubbleMenu plugin detaches its element
@@ -571,10 +588,15 @@ export const M3RichTextEditor = ({
             )}
 
             <div className={styles.subActions}>
-                <button type="button" className={styles.outlineBtn} onClick={() => setMaximized((m) => !m)}>
+                <button
+                    type="button"
+                    className={`${styles.outlineBtn} ${styles.maximizeBtn}`}
+                    onClick={() => setMaximized((m) => !m)}
+                >
                     {maximized ? <FullscreenExit /> : <Fullscreen />}
                     <span>{maximized ? t('legal.m3Editor.minimize') : t('legal.m3Editor.maximize')}</span>
                 </button>
+                {/* M3 split button (Figma 1:34978): leading = current version label, trailing = history menu */}
                 <Dropdown
                     trigger={['click']}
                     menu={{
@@ -594,10 +616,18 @@ export const M3RichTextEditor = ({
                         onClick: ({ key }) => setViewingVersionId(key === 'current' ? null : key),
                     }}
                 >
-                    <button type="button" className={styles.outlineBtn} title={t('legal.m3Editor.versionHistory')}>
-                        <History />
-                        <span>{viewingVersion ? viewingVersion.label : versionLabel}</span>
-                        <ArrowDropDown />
+                    <button type="button" className={styles.versionSplit} title={t('legal.m3Editor.versionHistory')}>
+                        <span className={styles.versionLeading}>
+                            <Schedule />
+                            <span>
+                                {viewingVersion
+                                    ? viewingVersion.label
+                                    : [versionLabel, versions[0]?.label].filter(Boolean).join(' ')}
+                            </span>
+                        </span>
+                        <span className={styles.versionTrailing}>
+                            <ArrowDropDown />
+                        </span>
                     </button>
                 </Dropdown>
             </div>

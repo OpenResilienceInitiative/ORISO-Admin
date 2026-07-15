@@ -1,13 +1,36 @@
-import { Alert, Button, Typography } from 'antd';
+import { useState } from 'react';
+import { Alert, Button } from 'antd';
 import { CloudSync } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
-import { LegalVersion, LegalVersionViewer } from '../LegalVersionViewer';
+import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
+import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
+import { useLegalHelp } from '../../hooks/useLegalHelp';
+import { LegalVersion } from '../LegalVersionViewer';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
 import styles from './styles.module.scss';
+
+// "Nicht mehr anzeigen" on the DPA blocker snackbar persists across sessions.
+const DPA_BLOCKER_DISMISSED_KEY = 'oriso-admin.legal.dpa.blocker.dismissed';
+
+const isBlockerDismissed = () => {
+    try {
+        return window.localStorage.getItem(DPA_BLOCKER_DISMISSED_KEY) === 'true';
+    } catch {
+        return false;
+    }
+};
+
+const persistBlockerDismissed = () => {
+    try {
+        window.localStorage.setItem(DPA_BLOCKER_DISMISSED_KEY, 'true');
+    } catch {
+        // Private mode / storage disabled: the snackbar just reappears next session.
+    }
+};
 
 interface DataProcessingAgreementCardProps {
     /** The complete stored content map (language -> HTML), including keys we do not render. */
@@ -82,6 +105,13 @@ export const DataProcessingAgreementCard = ({
         onPublish,
     });
 
+    // Role/state dependent help texts (Figma 457-13255): description under the
+    // header; the bold CTA tip either inline or — for the platform-admin
+    // "no DPA published yet" blocker — as a dismissible snackbar (Figma 1229-17864).
+    const help = useLegalHelp('dpa', { empty: versions.length === 0, readOnly: !!readOnly });
+    const [blockerHidden, setBlockerHidden] = useState(isBlockerDismissed);
+    const showBlockerSnackbar = help.keyBase === 'legal.help.dpa.platform.empty' && !blockerHidden;
+
     return (
         <div className={styles.card}>
             <M3RichTextEditor
@@ -92,6 +122,8 @@ export const DataProcessingAgreementCard = ({
                 readOnly={readOnly}
                 publishing={publishing}
                 versionLabel={t('legal.m3Editor.versionLabel')}
+                versions={versions}
+                onRestoreVersion={readOnly ? undefined : handleEditorChange}
                 languageSlot={
                     <LegalContentLanguageSelect
                         languages={languages}
@@ -101,59 +133,51 @@ export const DataProcessingAgreementCard = ({
                         contentMap={contentMapWithEdits}
                     />
                 }
+                helpSlot={<EditorHelpText text={help.text} hint={showBlockerSnackbar ? undefined : help.hint} />}
+                snackbarSlot={
+                    showBlockerSnackbar && (
+                        <EditorHintSnackbar
+                            text={help.hint}
+                            onClose={() => setBlockerHidden(true)}
+                            onDismiss={() => {
+                                persistBlockerDismissed();
+                                setBlockerHidden(true);
+                            }}
+                        />
+                    )
+                }
                 aboveEditorSlot={
-                    <>
-                        <p className={styles.description}>
-                            {readOnly
-                                ? t('tenants.legal.dataProcessingAgreement.managedByTenant')
-                                : t('tenants.legal.dataProcessingAgreement.description')}
-                        </p>
-                        {!readOnly && showFieldTranslate && (
-                            <div className={styles.translateField}>
-                                <Button
-                                    size="small"
-                                    loading={fieldTranslating}
-                                    disabled={fieldTranslateDisabled}
-                                    onClick={translateActiveField}
-                                >
-                                    {t('legal.translation.field.button')}
-                                </Button>
-                                {fieldErrorKey && (
-                                    <Alert
-                                        type="error"
-                                        showIcon
-                                        message={t(fieldErrorKey)}
-                                        className={styles.fieldError}
-                                    />
-                                )}
-                            </div>
-                        )}
-                    </>
+                    !readOnly &&
+                    showFieldTranslate && (
+                        <div className={styles.translateField}>
+                            <Button
+                                size="small"
+                                loading={fieldTranslating}
+                                disabled={fieldTranslateDisabled}
+                                onClick={translateActiveField}
+                            >
+                                {t('legal.translation.field.button')}
+                            </Button>
+                            {fieldErrorKey && (
+                                <Alert type="error" showIcon message={t(fieldErrorKey)} className={styles.fieldError} />
+                            )}
+                        </div>
+                    )
                 }
                 onPublish={readOnly ? undefined : () => requestPublish()}
                 belowSlot={
-                    <>
-                        {!readOnly && (
-                            <TranslateOnPublishModal
-                                open={modalOpen}
-                                sourceLanguage={sourceLanguage}
-                                targetLanguages={targetLanguages}
-                                translating={translating}
-                                errorKey={modalErrorKey}
-                                onConfirm={translateAndPublish}
-                                onSkip={publishWithoutTranslation}
-                                onCancel={closeModal}
-                            />
-                        )}
-                        {versions.length > 0 && (
-                            <div className={styles.history}>
-                                <Typography.Text strong className={styles.historyTitle}>
-                                    {t('tenants.legal.version.history')}
-                                </Typography.Text>
-                                <LegalVersionViewer versions={versions} />
-                            </div>
-                        )}
-                    </>
+                    !readOnly && (
+                        <TranslateOnPublishModal
+                            open={modalOpen}
+                            sourceLanguage={sourceLanguage}
+                            targetLanguages={targetLanguages}
+                            translating={translating}
+                            errorKey={modalErrorKey}
+                            onConfirm={translateAndPublish}
+                            onSkip={publishWithoutTranslation}
+                            onCancel={closeModal}
+                        />
+                    )
                 }
             />
         </div>

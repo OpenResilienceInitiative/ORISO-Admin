@@ -4,7 +4,10 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
+import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import FormPluginEditor from '../../../../FormPluginEditor/FormPluginEditor';
+import { useLegalHelp } from '../../hooks/useLegalHelp';
+import { isEmptyLegalContent } from '../../utils/legalHelpTexts';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import styles from './styles.module.scss';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
@@ -15,7 +18,13 @@ interface LegalTextProps {
     tenantId: string | number;
     fieldName: string[];
     titleKey: string;
-    subTitle: string | React.ReactElement<any> | number | string;
+    /**
+     * Which legal text this card edits — selects the role/state dependent help
+     * texts (description + bold CTA tip, Figma 457-13255). When omitted, the
+     * static `subTitle` is shown instead.
+     */
+    legalType?: 'privacy' | 'imprint';
+    subTitle?: string | React.ReactElement<any> | number | string;
     placeHolderKey: string;
     /** Header icon for the M3 shell; defaults to the Impressum fingerprint. */
     icon?: React.ElementType;
@@ -33,6 +42,7 @@ export const LegalText = ({
     tenantId,
     fieldName,
     titleKey,
+    legalType,
     subTitle,
     placeHolderKey,
     icon,
@@ -49,6 +59,17 @@ export const LegalText = ({
     const [modalVisible, setModalVisible] = useState(false);
 
     const languages = useMemo(() => data?.settings?.activeLanguages || ['de'], [data?.settings?.activeLanguages]);
+
+    // Stored content for this legal text (language map or legacy string) — the
+    // help texts distinguish "nothing published yet" from "text exists".
+    const storedContent = useMemo(
+        () => fieldName.reduce<unknown>((acc, key) => (acc as Record<string, unknown>)?.[key], data),
+        [data, fieldName],
+    );
+    const help = useLegalHelp(legalType ?? 'privacy', {
+        empty: isEmptyLegalContent(storedContent),
+        readOnly: !canEditLegalText,
+    });
 
     const onConfirm = useCallback(() => {
         updateTenant(set(formDataContent, showConfirmationModal.field, false));
@@ -95,7 +116,10 @@ export const LegalText = ({
                     }))}
                     language={activeLanguage}
                     onLanguageChange={setActiveLanguage}
-                    aboveEditorSlot={<p className={styles.description}>{subTitle}</p>}
+                    helpSlot={legalType && <EditorHelpText text={help.text} hint={help.hint} />}
+                    aboveEditorSlot={
+                        !legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined
+                    }
                     editorSlot={
                         // Keep all language fields mounted so form state survives
                         // switching; FormPluginEditor preserves placeholders and
