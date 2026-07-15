@@ -124,6 +124,7 @@
 .label {
     flex: 0 0 auto;
     font-weight: 400;
+    text-transform: math-auto;
 }
 
 @media (max-width: 768px) {
