@@ -1,6 +1,7 @@
 import { Close } from '@mui/icons-material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { CSVLink } from 'react-csv';
 import { useTranslation } from 'react-i18next';
 import { AdminSegmentedTabs } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { Page } from '../components/Page';
@@ -8,6 +9,7 @@ import SearchInput from '../components/SearchInput/SearchInput';
 import { AnimatedValue, StatisticCard } from '../components/StatisticCard/StatisticCard';
 import { UserRole } from '../enums/UserRole';
 import { useUserRoles } from '../hooks/useUserRoles.hook';
+import { ReactComponent as DownloadIcon } from '../resources/img/svg/download.svg';
 import { ReactComponent as ActiveAgenciesIcon } from '../resources/img/svg/statistics-dashboard/active-agencies.svg';
 import { ReactComponent as CalendarIcon } from '../resources/img/svg/statistics-dashboard/calendar.svg';
 import { ReactComponent as ChevronDownIcon } from '../resources/img/svg/statistics-dashboard/chevron-down.svg';
@@ -2340,6 +2342,26 @@ export const Statistic = () => {
         [effectiveStatisticTargetIds, statisticData.statisticsById],
     );
     const metricOverrides = useMemo(() => buildMetricOverridesFromFilterStats(filteredStats), [filteredStats]);
+    // Exports exactly what's on screen: same card transform pipeline as the
+    // render below (getPersonalizedMetricCard/getDisplayMetricCard +
+    // localizeStatisticCard), flattened to title/value pairs.
+    const csvExportRows = useMemo(
+        () => [
+            ...dashboard.topCards.map((card) => {
+                const localized = localizeStatisticCard(
+                    getPersonalizedMetricCard(card, activeScope, metricOverrides),
+                    translate,
+                    locale,
+                );
+                return { title: localized.title, value: localized.value };
+            }),
+            ...dashboard.communicationCards.map((card) => {
+                const localized = localizeStatisticCard(getDisplayMetricCard(card, metricOverrides), translate, locale);
+                return { title: localized.title, value: localized.value };
+            }),
+        ],
+        [activeScope, dashboard, locale, metricOverrides, translate],
+    );
     const filteredCaseCharts = useMemo(
         () => buildCaseChartsFromFilterStats(filteredStats, caseChartDateLabelsByPeriod, todayDayCode),
         [caseChartDateLabelsByPeriod, filteredStats, todayDayCode],
@@ -2545,6 +2567,43 @@ export const Statistic = () => {
                                 )}
                             </p>
                         )}
+                        <div className="statisticDashboard__export">
+                            <CSVLink
+                                className="statisticDashboard__exportLink"
+                                data={csvExportRows}
+                                filename={`${translateDashboardKey(
+                                    translate,
+                                    'statistic.dashboard.csvExport.filename',
+                                    'Statistik',
+                                )} - ${activeScope} - ${new Date().toISOString().slice(0, 10)}.csv`}
+                                headers={[
+                                    {
+                                        key: 'title',
+                                        label: translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.csvExport.metricColumn',
+                                            'Kennzahl',
+                                        ),
+                                    },
+                                    {
+                                        key: 'value',
+                                        label: translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.csvExport.valueColumn',
+                                            'Wert',
+                                        ),
+                                    },
+                                ]}
+                                separator=";"
+                            >
+                                <DownloadIcon aria-hidden="true" focusable="false" />
+                                {translateDashboardKey(
+                                    translate,
+                                    'statistic.dashboard.csvExport.label',
+                                    'Statistik als CSV herunterladen',
+                                )}
+                            </CSVLink>
+                        </div>
                         <div className="statisticDashboard__summaryGrid">
                             {dashboard.topCards.map((card) => (
                                 <StatisticCard

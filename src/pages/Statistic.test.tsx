@@ -172,4 +172,27 @@ describe('Statistic page', () => {
             expect(screen.getByText('Statistikdaten konnten nicht geladen werden.')).toBeInTheDocument(),
         );
     });
+
+    it('offers a CSV export of exactly the metrics shown on screen', async () => {
+        dashboardMock.mockResolvedValue(response);
+        let csvBlobParts: string | undefined;
+        const OriginalBlob = global.Blob;
+        const blobSpy = vi.spyOn(global, 'Blob').mockImplementation(function mockBlob(this: unknown, parts, options) {
+            csvBlobParts = (parts as string[])?.join('');
+            return new OriginalBlob(parts, options);
+        } as unknown as typeof Blob);
+
+        renderStatistic();
+
+        await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        const exportLink = screen.getByText('Statistik als CSV herunterladen').closest('a');
+        expect(exportLink).not.toBeNull();
+        // The real backend value (12) must be in the exported CSV; the
+        // removed mock number (312) and the old fake tenant name must not.
+        expect(csvBlobParts).toContain('12');
+        expect(csvBlobParts).not.toContain('312');
+        expect(csvBlobParts).not.toContain('Caritas NRW');
+
+        blobSpy.mockRestore();
+    });
 });
