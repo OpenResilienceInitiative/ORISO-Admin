@@ -97,10 +97,12 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 
     .title {
+        max-width: 100%;
         margin: 0;
         font-size: 24px;
         font-weight: 400;
         line-height: 32px;
+        overflow-wrap: anywhere;
         text-align: center;
         color: $m3-on-surface;
     }
