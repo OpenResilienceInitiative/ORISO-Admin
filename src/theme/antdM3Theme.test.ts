@@ -79,7 +79,7 @@ describe('buildAdminAntdTheme', () => {
     });
 
     it('applies the M3 shape, typography and control sizing regardless of scheme', () => {
-        for (const scheme of ['light', 'inverted'] as const) {
+        (['light', 'inverted'] as const).forEach((scheme) => {
             const { token } = buildAdminAntdTheme({ scheme });
 
             expect(token?.borderRadius).toBe(8);
@@ -89,6 +89,6 @@ describe('buildAdminAntdTheme', () => {
             expect(token?.fontSize).toBe(14);
             // 40px control height = WCAG 2.2 target-size headroom.
             expect(token?.controlHeight).toBe(40);
-        }
+        });
     });
 });
