@@ -1,0 +1,331 @@
+// Table-listing filter bar + reusable filter fields (Figma "Admin.ORISO").
+//
+// The filter controls are rounded pills. Selects/multiselects are *split* pills —
+// an [icon + label] segment and a separate chevron segment with a small gap.
+// States: default (light-grey outline, grey content) → focus/open (elevation) →
+// selected (brand-red content + elevation, outline dropped).
+//
+// Colours come from the runtime `--m3-*` design tokens (see utils/applyAdminTheme),
+// with the light-scheme values baked in as fallbacks so the components render the
+// correct ORISO palette even where the CSS custom properties are not injected
+// (e.g. the Storybook preview, which themes antd via ConfigProvider only).
+
+$pill-height: 44px;
+$radius: 22px;
+$inner-radius: 8px;
+$font: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+// M3 elevation-1-ish soft shadow used for the focus/selected "lifted" look.
+$shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+
+/* Shared inner pieces ---------------------------------------------------- */
+
+.icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    color: currentcolor;
+    font-size: 18px;
+
+    > :global(.anticon) {
+        font-size: 18px;
+        line-height: 1;
+    }
+}
+
+.label {
+    font-weight: 500;
+}
+
+.placeholder {
+    font-weight: 400;
+}
+
+.chevron {
+    display: inline-flex;
+    font-size: 12px;
+    transition: transform 180ms ease;
+
+    > :global(.anticon) {
+        font-size: 12px;
+    }
+}
+
+.chevronOpen {
+    transform: rotate(180deg);
+}
+
+.count {
+    display: inline-flex;
+    min-width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: #a5000a;
+    background: var(--m3-primary, #a5000a);
+    color: #ffffff;
+    color: var(--m3-on-primary, #ffffff);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+/* Single rounded pill (text input, search zone) -------------------------- */
+
+.pill {
+    display: inline-flex;
+    height: $pill-height;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 0 16px;
+    border: 1px solid #c4c7c8;
+    border-color: var(--m3-outline-variant, #c4c7c8);
+    border-radius: $radius;
+    background: #ffffff;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    color: #444748;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: $font;
+    font-size: 14px;
+    line-height: 20px;
+    gap: 10px;
+    transition: box-shadow 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.pillFocused {
+    border-color: transparent;
+    box-shadow: $shadow;
+}
+
+.pillDisabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
+.inputField {
+    min-width: 200px;
+}
+
+.input {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 0;
+    background: transparent;
+    color: #1a1c1e;
+    color: var(--m3-on-surface, #1a1c1e);
+    font-family: $font;
+    font-size: 14px;
+    line-height: 20px;
+    outline: none;
+
+    &::placeholder {
+        color: #444748;
+        color: var(--m3-on-surface-variant, #444748);
+        opacity: 1;
+    }
+}
+
+/* Split pill (select / multiselect) -------------------------------------- */
+
+.split {
+    display: inline-flex;
+    height: $pill-height;
+    align-items: stretch;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-family: $font;
+    font-size: 14px;
+    // The little space between the label segment and the chevron segment.
+    gap: 4px;
+
+    &:focus-visible {
+        outline: 2px solid #a5000a;
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: 3px;
+        border-radius: $radius;
+    }
+}
+
+.splitMain,
+.splitCaret {
+    display: inline-flex;
+    height: $pill-height;
+    box-sizing: border-box;
+    align-items: center;
+    border: 1px solid #c4c7c8;
+    border-color: var(--m3-outline-variant, #c4c7c8);
+    background: #ffffff;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    color: #444748;
+    color: var(--m3-on-surface-variant, #444748);
+    transition: box-shadow 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.splitMain {
+    // Comfortable gap between the icon and the label — "kind of a pill".
+    padding: 0 18px;
+    border-radius: $radius $inner-radius $inner-radius $radius;
+    gap: 10px;
+}
+
+.splitCaret {
+    width: 40px;
+    justify-content: center;
+    border-radius: $inner-radius $radius $radius $inner-radius;
+}
+
+// Focus / open / hover — lift both segments (outline dropped, shadow added).
+.split:hover:not(.splitDisabled),
+.splitOpen {
+    .splitMain,
+    .splitCaret {
+        border-color: transparent;
+        box-shadow: $shadow;
+    }
+}
+
+// Selected — brand-red content on both segments, lifted, no outline. Placed last
+// so the red content colour wins over the focus/open rules above.
+.splitSelected {
+    .splitMain,
+    .splitCaret {
+        border-color: transparent;
+        box-shadow: $shadow;
+        color: #a5000a;
+        color: var(--m3-primary, #a5000a);
+    }
+}
+
+.splitDisabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
+/* Expanding search zone -------------------------------------------------- */
+
+.searchZone {
+    position: relative;
+    padding: 0 8px 0 14px;
+    gap: 4px;
+    overflow: hidden;
+}
+
+.searchToggle {
+    display: inline-flex;
+    height: 100%;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: currentcolor;
+    cursor: pointer;
+    gap: 8px;
+
+    &:focus-visible {
+        border-radius: 4px;
+        outline: 2px solid #a5000a;
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: 2px;
+    }
+}
+
+.searchCaret {
+    display: inline-flex;
+    font-size: 12px;
+    transition: transform 200ms ease;
+
+    > :global(.anticon) {
+        font-size: 12px;
+    }
+}
+
+.searchCaretOpen {
+    transform: rotate(90deg);
+}
+
+.searchIcon {
+    display: inline-flex;
+    font-size: 18px;
+
+    > :global(.anticon) {
+        font-size: 18px;
+    }
+}
+
+.searchReveal {
+    display: inline-flex;
+    max-width: 0;
+    align-items: center;
+    opacity: 0;
+    transition: max-width 220ms ease, opacity 160ms ease, margin-left 220ms ease;
+}
+
+.searchRevealOpen {
+    max-width: 260px;
+    margin-left: 2px;
+    opacity: 1;
+}
+
+.searchInput {
+    width: 220px;
+    max-width: 100%;
+}
+
+.searchClear {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: #444748;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+
+    &:hover {
+        background: #eae7e8;
+        background: var(--m3-surface-container-high, #eae7e8);
+    }
+
+    &:focus-visible {
+        outline: 2px solid #a5000a;
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: -2px;
+    }
+}
+
+/* Filter bar — a row of separate rounded pills --------------------------- */
+
+.bar {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Page composition (LinkPage demo) --------------------------------------- */
+
+.page {
+    display: flex;
+    max-width: 100%;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pageHeader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
