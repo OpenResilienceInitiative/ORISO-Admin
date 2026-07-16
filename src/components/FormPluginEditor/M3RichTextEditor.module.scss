@@ -25,6 +25,30 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     color: $m3-on-surface;
     font-family: 'Inter Variable', Inter, Arial, sans-serif;
 
+    // Desktop: fixed 800×740 card (Figma 1261-48667) — the decks scroll
+    // horizontally, so the card never shrinks; the text surface scrolls
+    // inside instead. Below 600px the card goes fluid (mobile view).
+    @media (min-width: 600px) {
+        &:not(.inDialog) {
+            width: 800px;
+            height: 740px;
+            flex-shrink: 0;
+
+            .editorRegion,
+            .editorWrap {
+                display: flex;
+                min-height: 0;
+                flex: 1;
+                flex-direction: column;
+            }
+
+            .editor {
+                flex: 1;
+                overflow-y: auto;
+            }
+        }
+    }
+
     // Inside the fullscreen dialog (Figma 1007-27636) the card fills the
     // viewport minus the scrim margins and the editor surface grows to fit.
     &.inDialog {
