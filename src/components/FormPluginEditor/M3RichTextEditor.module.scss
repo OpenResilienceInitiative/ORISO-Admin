@@ -675,6 +675,19 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         font-size: 13px;
     }
 
+    // Blockquote: left bar + inset in the secondary tone — without this the
+    // toggle worked but changed nothing visible.
+    :global(.ProseMirror blockquote) {
+        margin: 12px 0;
+        padding: 4px 16px;
+        border-left: 4px solid #c4c7c8;
+        color: #3f4852;
+
+        p {
+            margin: 0;
+        }
+    }
+
     // Checklists (TipTap task list): checkbox + content side by side.
     :global(.ProseMirror ul[data-type='taskList']) {
         padding-left: 0;

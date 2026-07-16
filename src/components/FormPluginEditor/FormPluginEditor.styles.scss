@@ -297,6 +297,18 @@
     }
 }
 
+// Blockquote: left bar + inset in the secondary tone (same look as the M3 editor).
+.ProseMirror blockquote {
+    margin: 12px 0;
+    padding: 4px 16px;
+    border-left: 4px solid #c4c7c8;
+    color: #3f4852;
+
+    p {
+        margin: 0;
+    }
+}
+
 // Checklists (TipTap task list).
 .ProseMirror ul[data-type='taskList'] {
     padding-left: 0;
