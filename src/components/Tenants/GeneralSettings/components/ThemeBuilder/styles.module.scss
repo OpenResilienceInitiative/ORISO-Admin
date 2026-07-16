@@ -141,8 +141,8 @@
     overflow-x: auto;
     overflow-y: hidden;
     padding: 44px clamp(28px, 5vw, 72px);
-    gap: clamp(32px, 5vw, 72px);
-    grid-template-columns: repeat(2, minmax(480px, 500px));
+    gap: clamp(24px, 4vw, 52px);
+    grid-template-columns: repeat(2, minmax(336px, 350px));
     scroll-padding: clamp(28px, 5vw, 72px);
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
@@ -187,7 +187,7 @@
 
 .phoneFrame {
     position: relative;
-    width: min(100%, 500px);
+    width: min(100%, 350px);
     aspect-ratio: 500 / 1056;
 }
 
@@ -255,6 +255,10 @@
     border: 0;
     aspect-ratio: auto;
     font-family: var(--m3-body-font-family);
+
+    /* The chat mockup's px sizes were designed for the former 500px-wide frame;
+       zoom keeps its proportions intact inside the smaller 350px frame. */
+    zoom: 0.7;
 }
 
 .colorField {
