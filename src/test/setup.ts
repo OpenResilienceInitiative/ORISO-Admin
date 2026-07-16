@@ -43,10 +43,14 @@ const isBrokenStorage = (candidate: unknown): boolean => {
     );
 };
 
+// Some suites run under `@vitest-environment node` (e.g. src/api/fetchData.test.ts),
+// where `window` does not exist — patch via `globalThis` and only mirror onto
+// `window` when a DOM environment provides one.
 (['localStorage', 'sessionStorage'] as const).forEach((name) => {
-    if (isBrokenStorage(window[name])) {
+    if (isBrokenStorage((globalThis as Record<string, unknown>)[name])) {
         const storage = createStorage();
-        [window, globalThis].forEach((target) => {
+        const targets: object[] = typeof window === 'undefined' ? [globalThis] : [globalThis, window];
+        targets.forEach((target) => {
             Object.defineProperty(target, name, {
                 configurable: true,
                 value: storage,
