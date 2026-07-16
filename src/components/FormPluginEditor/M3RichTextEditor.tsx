@@ -11,7 +11,7 @@ import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Dropdown, Modal, Select } from 'antd';
+import { Dropdown, Modal } from 'antd';
 import {
     Close,
     Undo,
@@ -36,15 +36,21 @@ import {
     FormatAlignRight,
     FormatAlignJustify,
     Image as ImageIcon,
+    Restore,
     Schedule,
     Language,
     ArrowDropDown,
-    Share,
-    Edit,
     Fingerprint,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
-import { MaximizeContentIcon, MinimizeContentIcon } from '../CustomIcons/EditorIcons';
+import {
+    CrossReferenceIcon,
+    KeyboardArrowDownIcon,
+    MaximizeContentIcon,
+    MinimizeContentIcon,
+    PublishedIcon,
+    UnpublishedIcon,
+} from '../CustomIcons/EditorIcons';
 import { HeadingAnchors } from './headingAnchors';
 import { HeadingMenu } from './HeadingMenu';
 import { SplitDropdown } from './SplitDropdown';
@@ -126,6 +132,12 @@ export type M3RichTextEditorProps = {
 };
 
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
+
+/** Version ids are ISO activation dates (DPA container) — null when they aren't parseable. */
+const parseVersionDate = (id: string): Date | null => {
+    const date = new Date(id);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
 
 // Marker palette for the highlight colour menu (soft M3-friendly pastels).
 const HIGHLIGHT_COLORS = [
@@ -472,8 +484,16 @@ export const M3RichTextEditor = ({
     onPublish,
     onSaveDraft,
 }: M3RichTextEditorProps) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [maximized, setMaximized] = useState(false);
+    // Whether the "link to section" chapter menu in the bubble is open (arrow flips up).
+    const [crossRefOpen, setCrossRefOpen] = useState(false);
+    // "19.07.26 | 12:34 Uhr" (Figma 1271-70892) — locale-aware, "Uhr" only in German.
+    const locale = i18n?.language || 'de';
+    const formatVersionDate = (date: Date) =>
+        `${date.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: '2-digit' })} | ` +
+        `${date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}` +
+        `${locale.startsWith('de') ? ' Uhr' : ''}`;
     // "Auto Chapters" (Figma 1280-73045): per heading level, whether new
     // headings automatically get a clickable anchor. Persisted per editor
     // (keyed by the card title) until re-enabled.
@@ -572,6 +592,7 @@ export const M3RichTextEditor = ({
     if (!editor) return null;
 
     const html = () => (editorSlot || editor.isEmpty ? '' : editor.getHTML());
+    const latestVersionDate = versions.length > 0 ? parseVersionDate(versions[0].id) : null;
     // Read mode (published view / version look-back): text without box, outline
     // or padding (Figma 1261-51137). Only the built-in editor is restyled — an
     // editorSlot owns its own surface.
@@ -684,23 +705,32 @@ export const M3RichTextEditor = ({
                         shouldShow={({ state }) => !state.selection.empty && anchorsRef.current.length > 0}
                     >
                         <div className={styles.anchorBubble}>
-                            <Select
-                                size="small"
-                                placeholder={t('editor.plugin.anchor.link.placeholder', 'Link to section')}
-                                value={null}
-                                popupMatchSelectWidth={false}
-                                style={{ minWidth: 180 }}
-                                options={anchors.map((anchor) => ({ value: anchor.id, label: anchor.text }))}
+                            <Dropdown
+                                trigger={['click']}
+                                placement="top"
+                                onOpenChange={setCrossRefOpen}
                                 getPopupContainer={(trigger) => trigger.parentElement || document.body}
-                                onSelect={(anchorId: string) =>
-                                    editor
-                                        .chain()
-                                        .focus()
-                                        .extendMarkRange('link')
-                                        .setLink({ href: `#${anchorId}` })
-                                        .run()
-                                }
-                            />
+                                menu={{
+                                    items: anchors.map((anchor) => ({ key: anchor.id, label: anchor.text })),
+                                    onClick: ({ key }) =>
+                                        editor
+                                            .chain()
+                                            .focus()
+                                            .extendMarkRange('link')
+                                            .setLink({ href: `#${key}` })
+                                            .run(),
+                                }}
+                            >
+                                <button type="button" className={styles.crossRefBtn}>
+                                    <CrossReferenceIcon />
+                                    <span>{t('editor.plugin.anchor.link.placeholder', 'Link to section')}</span>
+                                    <KeyboardArrowDownIcon
+                                        className={`${styles.crossRefArrow} ${
+                                            crossRefOpen ? styles.crossRefArrowOpen : ''
+                                        }`}
+                                    />
+                                </button>
+                            </Dropdown>
                         </div>
                     </BubbleMenu>
                 </div>
@@ -743,7 +773,52 @@ export const M3RichTextEditor = ({
                                           label: t('legal.m3Editor.versionCurrentDraft'),
                                       },
                                       { type: 'divider' as const },
-                                      ...versions.map((v) => ({ key: v.id, label: v.label })),
+                                      ...(latestVersionDate
+                                          ? [
+                                                {
+                                                    key: 'onlineSince',
+                                                    disabled: true,
+                                                    label: (
+                                                        <span className={styles.versionMenuHeader}>
+                                                            {t('legal.m3Editor.versionOnlineSince', {
+                                                                date: formatVersionDate(latestVersionDate),
+                                                            })}
+                                                        </span>
+                                                    ),
+                                                },
+                                            ]
+                                          : []),
+                                      ...versions.map((v, index) => {
+                                          const from = parseVersionDate(v.id);
+                                          const until = index > 0 ? parseVersionDate(versions[index - 1].id) : null;
+                                          let range = v.label;
+                                          if (from && until) {
+                                              range = t('legal.m3Editor.versionRangePublished', {
+                                                  from: formatVersionDate(from),
+                                                  until: formatVersionDate(until),
+                                              });
+                                          } else if (from) {
+                                              range = t('legal.m3Editor.versionRangeOnline', {
+                                                  from: formatVersionDate(from),
+                                              });
+                                          }
+                                          return {
+                                              key: v.id,
+                                              label: (
+                                                  <span className={styles.versionMenuItem}>
+                                                      <Restore />
+                                                      <span>
+                                                          <span className={styles.versionMenuName}>
+                                                              {t('legal.m3Editor.versionVariant', {
+                                                                  n: versions.length - index,
+                                                              })}
+                                                          </span>
+                                                          <span className={styles.versionMenuRange}>{range}</span>
+                                                      </span>
+                                                  </span>
+                                              ),
+                                          };
+                                      }),
                                   ]
                                 : [{ key: 'latest', label: t('legal.m3Editor.versionLatest') }],
                         onClick: ({ key }) => setViewingVersionId(key === 'current' ? null : key),
@@ -763,7 +838,7 @@ export const M3RichTextEditor = ({
                                 disabled={publishing}
                                 onClick={() => onPublish(html())}
                             >
-                                <Share />
+                                <PublishedIcon />
                                 <span>{t('legal.m3Editor.publish')}</span>
                             </button>
                         )}
@@ -773,7 +848,7 @@ export const M3RichTextEditor = ({
                                 className={`${styles.textBtn} ${styles.draft}`}
                                 onClick={() => onSaveDraft(html())}
                             >
-                                <Edit />
+                                <UnpublishedIcon />
                                 <span>{t('legal.m3Editor.saveDraft')}</span>
                             </button>
                         )}

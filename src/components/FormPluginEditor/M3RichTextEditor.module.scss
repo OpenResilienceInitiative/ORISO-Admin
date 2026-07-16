@@ -156,8 +156,8 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 
 .helpIcon {
     flex-shrink: 0;
-    font-size: 24px;
-    color: $m3-on-surface;
+    font-size: 16px;
+    color: #4c555f; // M3/sys/light/secondary
 }
 
 .helpTexts {
@@ -398,10 +398,88 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 
 .anchorBubble {
     padding: 4px;
-    background: #fff;
-    border: 1px solid $m3-outline-variant;
+    background: #f6f3f3;
+    border-radius: 12px;
+    box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08);
+}
+
+// "Mit Abschnitt verknüpfen" trigger: dark M3 secondary label, cross-reference
+// icon, arrow flips upwards while the chapter menu is open.
+.crossRefBtn {
+    display: inline-flex;
+    height: 36px;
+    align-items: center;
+    padding: 0 10px 0 12px;
+    border: 0;
+    gap: 8px;
+    background: transparent;
     border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    color: #4c555f; // M3/sys/light/secondary
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+
+    &:hover {
+        background: rgba(76, 85, 95, 0.08);
+    }
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+.crossRefArrow {
+    transition: transform 0.15s ease;
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.crossRefArrowOpen {
+    transform: rotate(180deg);
+}
+
+// Version history menu (Figma 1271-70892): live-since header + per-variant
+// published-from/until ranges.
+.versionMenuHeader {
+    padding: 4px 4px 8px;
+    color: $m3-on-surface;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.versionMenuItem {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 2px 0;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        color: $m3-on-surface-variant;
+    }
+}
+
+.versionMenuName {
+    display: block;
+    color: $m3-on-surface;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+}
+
+.versionMenuRange {
+    display: block;
+    color: rgba(68, 71, 72, 0.8);
+    font-size: 12px;
+    line-height: 16px;
+    white-space: normal;
 }
 
 // Look-back banner shown while viewing an earlier version (read-only).
@@ -882,7 +960,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 .headingMenu {
     min-width: 290px;
     padding: 8px 0;
-    background: #fff;
+    background: #f6f3f3;
     border-radius: 12px;
     box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
 }

@@ -4,7 +4,15 @@ import userEvent from '@testing-library/user-event';
 import { M3RichTextEditor } from './M3RichTextEditor';
 
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({ t: (_key: string, fallback?: string) => fallback ?? _key }),
+    useTranslation: () => ({
+        t: (_key: string, fallbackOrOptions?: unknown) => {
+            if (typeof fallbackOrOptions === 'string') return fallbackOrOptions;
+            if (fallbackOrOptions && typeof fallbackOrOptions === 'object') {
+                return `${_key}:${Object.values(fallbackOrOptions).join(':')}`;
+            }
+            return _key;
+        },
+    }),
 }));
 
 beforeAll(() => {
@@ -45,9 +53,9 @@ describe('M3RichTextEditor — version select (#268)', () => {
         await openVersionMenu(user);
 
         await waitFor(() => {
-            expect(screen.getByText('1. Jul 2026 – 10:00')).toBeInTheDocument();
+            expect(screen.getByText('legal.m3Editor.versionVariant:2')).toBeInTheDocument();
         });
-        expect(screen.getByText('2. Mai 2026 – 09:00')).toBeInTheDocument();
+        expect(screen.getByText('legal.m3Editor.versionVariant:1')).toBeInTheDocument();
         // A way back to the editable draft is always offered.
         expect(screen.getByText(/legal\.m3Editor\.versionCurrentDraft/i)).toBeInTheDocument();
     });
@@ -65,7 +73,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
+        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
 
         // The editor now renders the version content, read-only (contenteditable=false).
         await waitFor(() => {
@@ -90,7 +98,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
+        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
         await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.restoreVersion/i }));
 
         expect(onRestore).toHaveBeenCalledWith('<p>Fassung Mai</p>');
@@ -107,7 +115,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('1. Jul 2026 – 10:00'));
+        await user.click(await screen.findByText('legal.m3Editor.versionVariant:2'));
         await waitFor(() => expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('false'));
 
         await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.backToDraft/i }));
@@ -134,7 +142,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
             />,
         );
         await openVersionMenu(user);
-        await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
+        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
         // Viewing works, but there is no "restore as draft" in a read-only card.
         expect(screen.queryByRole('button', { name: /legal\.m3Editor\.restoreVersion/i })).not.toBeInTheDocument();
     });
@@ -159,7 +167,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
+        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
 
         // While viewing the version (read-only) the chips still render but lose
         // their remove "x", so there is no path to mutate/overwrite the draft.
