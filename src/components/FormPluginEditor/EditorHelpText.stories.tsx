@@ -74,8 +74,7 @@ const PanelDemo = ({ readOnly }: { readOnly?: boolean }) => {
             topicSlot={topicSplit}
             helpSlot={<EditorHelpText text={description} hint={hidden ? cta : undefined} />}
             snackbarSlot={
-                !hidden &&
-                !readOnly && (
+                !hidden && (
                     <EditorHintSnackbar text={cta} onClose={() => setHidden(true)} onDismiss={() => setHidden(true)} />
                 )
             }

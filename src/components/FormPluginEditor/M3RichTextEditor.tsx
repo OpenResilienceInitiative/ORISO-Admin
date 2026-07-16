@@ -671,7 +671,7 @@ export const M3RichTextEditor = ({
 
             {helpSlot}
 
-            <hr className={styles.divider} />
+            <hr className={`${styles.divider} ${styles.headerDivider}`} />
 
             {!editorSlot ? (
                 <Toolbar

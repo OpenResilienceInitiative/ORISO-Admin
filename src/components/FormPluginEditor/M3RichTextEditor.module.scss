@@ -55,11 +55,13 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         // text surface gets the 12px radius (write mode only; read mode has
         // no box at all).
         @media (max-width: 599px) {
-            height: calc(100vh - 32px);
-            border-radius: 12px;
+            height: 100dvh;
+            border-radius: 0;
+            box-shadow: none;
 
             .header,
-            .helpRow {
+            .helpRow,
+            .headerDivider {
                 display: none;
             }
 
@@ -74,9 +76,19 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 // inline, hence the override).
 .dialogModal {
     @media (max-width: 599px) {
-        max-width: none;
-        /* stylelint-disable-next-line declaration-no-important */
-        width: calc(100vw - 16px) !important;
+        top: 0;
+        padding: 0;
+        /* antd injects its own mobile .ant-modal max-width/margin at runtime
+           (cssinjs loads after this sheet) — hence the importants. */
+        /* stylelint-disable declaration-no-important */
+        max-width: 100vw !important;
+        margin: 0 !important;
+        width: 100vw !important;
+        /* stylelint-enable declaration-no-important */
+
+        :global(.ant-modal-content) {
+            padding: 0;
+        }
     }
 }
 
@@ -518,40 +530,43 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     padding: 0 16px;
 }
 
-// M3 snackbar (Figma 1229-17864): inverse surface, anchored over the bottom of
-// the editor; on mobile it flows below the editor with a 12px lower radius.
+// M3 snackbar (Figma 1229-17864): inverse surface, overlaying the text
+// surface — aligned 6px inside the white border (16px editorWrap inset + 6px).
 .hintSnackbar {
     position: absolute;
     z-index: 3;
-    bottom: 16px;
-    left: 50%;
+    right: 22px;
+    bottom: 6px;
+    left: 22px;
     display: flex;
-    width: min(560px, calc(100% - 64px));
     align-items: center;
     padding: 4px 4px 4px 16px;
     background: #303031;
     border-radius: 4px;
     box-shadow: 0 4px 4px rgba(0, 0, 0, 0.15), 0 1px 1.5px rgba(0, 0, 0, 0.3);
     color: #f3f0f0;
-    transform: translateX(-50%);
-
-    @media (max-width: 599px) {
-        position: static;
-        width: auto;
-        margin: 8px 16px 0;
-        border-radius: 4px 4px 12px 12px;
-        transform: none;
-    }
 }
 
 // With a chapter chip row at the bottom of the surface the snackbar floats
 // ABOVE the chips instead of covering them (Figma 1261-49085 / 1280-73048).
 .hasAnchors .hintSnackbar {
-    bottom: 64px;
+    bottom: 60px;
+}
 
-    @media (max-width: 599px) {
-        bottom: auto;
-    }
+// Read mode has no white surface: the snackbar flows below the text, all
+// corners 4px, and the dismiss label may wrap onto two lines.
+.readMode .hintSnackbar,
+.readMode .hasAnchors .hintSnackbar {
+    position: static;
+    margin: 8px 16px 0;
+    border-radius: 4px;
+}
+
+.readMode .hintSnackbarAction {
+    max-width: 130px;
+    line-height: 14px;
+    text-align: center;
+    white-space: normal;
 }
 
 .hintSnackbarText {
@@ -961,7 +976,8 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 // Text-format menu panel (Figma 1280-73045): custom dropdown with expandable
 // per-heading rows for the Auto-Chapters toggles.
 .headingMenu {
-    min-width: 290px;
+    min-width: min(290px, calc(100vw - 12px));
+    max-width: calc(100vw - 12px);
     padding: 8px 0;
     background: #f6f3f3;
     border-radius: 12px;

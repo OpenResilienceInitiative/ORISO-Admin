@@ -128,6 +128,7 @@ export const HeadingMenu = ({
         <Dropdown
             trigger={['click']}
             disabled={disabled}
+            placement="bottom"
             open={disabled ? false : open}
             onOpenChange={(next) => {
                 setOpen(next);
