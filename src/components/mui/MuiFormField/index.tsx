@@ -86,16 +86,16 @@ const MuiControl = ({
     const inputSlotProps =
         resolvedEndAdornment || startAdornment
             ? {
-                ...(resolvedEndAdornment ? { endAdornment: resolvedEndAdornment } : {}),
-                ...(startAdornment ? { startAdornment } : {}),
-            }
+                  ...(resolvedEndAdornment ? { endAdornment: resolvedEndAdornment } : {}),
+                  ...(startAdornment ? { startAdornment } : {}),
+              }
             : undefined;
     const slotProps =
         inputSlotProps || inputProps
             ? {
-                ...(inputSlotProps ? { input: inputSlotProps } : {}),
-                ...(inputProps ? { htmlInput: inputProps } : {}),
-            }
+                  ...(inputSlotProps ? { input: inputSlotProps } : {}),
+                  ...(inputProps ? { htmlInput: inputProps } : {}),
+              }
             : undefined;
 
     return (
@@ -111,11 +111,11 @@ const MuiControl = ({
                 fontFamily: 'var(--m3-body-font-family)',
                 ...(isDisabled
                     ? {
-                        opacity: 0.5,
-                        cursor: 'not-allowed',
-                        pointerEvents: 'auto',
-                        '&:hover': { cursor: 'not-allowed' },
-                    }
+                          opacity: 0.5,
+                          cursor: 'not-allowed',
+                          pointerEvents: 'auto',
+                          '&:hover': { cursor: 'not-allowed' },
+                      }
                     : null),
                 // Story / demo: force hover appearance without a real pointer.
                 '&.pseudo-hover .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline': {

@@ -12,9 +12,7 @@ export default meta;
 type Story = StoryObj;
 
 export const InputText: Story = {
-    render: () => (
-        <FiveStateMatrix config={{ variant: 'outlined', label: 'Label', value: 'Input text' }} />
-    ),
+    render: () => <FiveStateMatrix config={{ variant: 'outlined', label: 'Label', value: 'Input text' }} />,
     play: focusPlay,
 };
 
@@ -24,10 +22,6 @@ export const LabelText: Story = {
 };
 
 export const PlaceholderText: Story = {
-    render: () => (
-        <FiveStateMatrix
-            config={{ variant: 'outlined', label: 'Label', placeholder: 'Placeholder' }}
-        />
-    ),
+    render: () => <FiveStateMatrix config={{ variant: 'outlined', label: 'Label', placeholder: 'Placeholder' }} />,
     play: focusPlay,
 };

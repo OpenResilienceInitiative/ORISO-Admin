@@ -1,10 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import {
-    FiveStateMatrix,
-    clearEndAdornment,
-    focusPlay,
-    searchStartAdornment,
-} from './MuiFormField.matrix';
+import { FiveStateMatrix, clearEndAdornment, focusPlay, searchStartAdornment } from './MuiFormField.matrix';
 import { MuiFormField } from './index';
 
 const meta = {

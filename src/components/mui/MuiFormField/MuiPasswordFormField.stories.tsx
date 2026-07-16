@@ -2,14 +2,12 @@ import * as React from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Form } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, within } from 'storybook/test';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { MuiPasswordFormField } from './index';
 
-const withMuiForm = (
-    children: React.ReactNode,
-    options?: { initialValues?: Record<string, unknown> },
-) => (
+const withMuiForm = (children: React.ReactNode, options?: { initialValues?: Record<string, unknown> }) => (
     <ThemeProvider theme={orisoMuiTheme}>
         <Form layout="vertical" style={{ maxWidth: 360 }} initialValues={options?.initialValues}>
             {children}
@@ -35,13 +33,11 @@ export const Default: Story = {
 };
 
 export const WithValue: Story = {
-    render: (args) =>
-        withMuiForm(<MuiPasswordFormField {...args} />, { initialValues: { password: 'super-secret' } }),
+    render: (args) => withMuiForm(<MuiPasswordFormField {...args} />, { initialValues: { password: 'super-secret' } }),
 };
 
 export const ToggleVisibility: Story = {
-    render: (args) =>
-        withMuiForm(<MuiPasswordFormField {...args} />, { initialValues: { password: 'super-secret' } }),
+    render: (args) => withMuiForm(<MuiPasswordFormField {...args} />, { initialValues: { password: 'super-secret' } }),
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const input = canvas.getByLabelText('Password');
@@ -64,8 +60,7 @@ export const Disabled: Story = {
     args: {
         disabled: true,
     },
-    render: (args) =>
-        withMuiForm(<MuiPasswordFormField {...args} />, { initialValues: { password: 'super-secret' } }),
+    render: (args) => withMuiForm(<MuiPasswordFormField {...args} />, { initialValues: { password: 'super-secret' } }),
 };
 
 const ErrorDemo = () => {

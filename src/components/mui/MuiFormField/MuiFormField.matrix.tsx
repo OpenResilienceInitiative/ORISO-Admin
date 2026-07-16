@@ -5,6 +5,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import { ThemeProvider } from '@mui/material/styles';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { userEvent, within } from 'storybook/test';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { MuiFormField } from './index';

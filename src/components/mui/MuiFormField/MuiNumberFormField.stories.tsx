@@ -5,10 +5,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { MuiNumberFormField } from './index';
 
-const withMuiForm = (
-    children: React.ReactNode,
-    options?: { initialValues?: Record<string, unknown> },
-) => (
+const withMuiForm = (children: React.ReactNode, options?: { initialValues?: Record<string, unknown> }) => (
     <ThemeProvider theme={orisoMuiTheme}>
         <Form layout="vertical" style={{ maxWidth: 360 }} initialValues={options?.initialValues}>
             {children}
