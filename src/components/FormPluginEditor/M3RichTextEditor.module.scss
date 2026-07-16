@@ -554,6 +554,60 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         height: auto;
     }
 
+    // Inline code = small chip in the text flow; code block = dark panel.
+    // Without this both toggles looked identical in the editor.
+    :global(.ProseMirror code) {
+        padding: 1px 6px;
+        background: rgba(100, 109, 120, 0.15);
+        border-radius: 6px;
+        font-family: 'SF Mono', 'Cascadia Mono', Consolas, Menlo, monospace;
+        font-size: 0.85em;
+    }
+
+    :global(.ProseMirror pre) {
+        padding: 12px 16px;
+        background: #303031;
+        border-radius: 12px;
+        color: #f3f0f0;
+        overflow-x: auto;
+    }
+
+    :global(.ProseMirror pre code) {
+        padding: 0;
+        background: transparent;
+        color: inherit;
+        font-size: 13px;
+    }
+
+    // Checklists (TipTap task list): checkbox + content side by side.
+    :global(.ProseMirror ul[data-type='taskList']) {
+        padding-left: 0;
+        list-style: none;
+    }
+
+    :global(.ProseMirror ul[data-type='taskList'] li) {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    :global(.ProseMirror ul[data-type='taskList'] li > label) {
+        flex-shrink: 0;
+        margin-top: 3px;
+    }
+
+    :global(.ProseMirror ul[data-type='taskList'] li > div) {
+        flex: 1;
+        min-width: 0;
+    }
+
+    :global(.ProseMirror ul[data-type='taskList'] input[type='checkbox']) {
+        width: 18px;
+        height: 18px;
+        accent-color: $m3-publish;
+        cursor: pointer;
+    }
+
     // Heading scale (Figma 1280-73020): M3 display sizes on desktop, headline
     // sizes on mobile — body text follows body-large / body-medium.
     :global(.ProseMirror h1) {
@@ -812,6 +866,15 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     margin-left: 12px;
     color: rgba(68, 71, 72, 0.6);
     font-size: 12px;
+}
+
+// Colour swatch in the highlight menu.
+.colorSwatch {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 50%;
 }
 
 // Text-format menu panel (Figma 1280-73045): custom dropdown with expandable

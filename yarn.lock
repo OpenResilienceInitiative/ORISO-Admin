@@ -2147,6 +2147,16 @@
   resolved "https://registry.npmjs.org/@tiptap/extension-superscript/-/extension-superscript-2.27.2.tgz"
   integrity sha512-VTGJDuNqdesibSVW94Q71VaGVGr/bwBppdaNLn7k6beOegALfIH7ncArlkD/eihOlJ2qaWiT7FoWNLTb/Fdv1w==
 
+"@tiptap/extension-task-item@^2.27.2":
+  version "2.27.2"
+  resolved "https://registry.npmjs.org/@tiptap/extension-task-item/-/extension-task-item-2.27.2.tgz"
+  integrity sha512-ZBSqj/dygB/Rp5K9qOxRVwASTZCmKVoTq8C59KvMgD/aFjJxhq/w2dZaWkCUEXEep+NmvJqo0kfeAEMY5UDnGg==
+
+"@tiptap/extension-task-list@^2.27.2":
+  version "2.27.2"
+  resolved "https://registry.npmjs.org/@tiptap/extension-task-list/-/extension-task-list-2.27.2.tgz"
+  integrity sha512-5nupAewdzZ9F3599oAcaK0WkDH04wdACAVBPM4zG7InlIpkbho3txB7zWmm64OxfhCMIMGKiXY1q0bw9i0QBGQ==
+
 "@tiptap/extension-text-align@^2.27.2":
   version "2.27.2"
   resolved "https://registry.npmjs.org/@tiptap/extension-text-align/-/extension-text-align-2.27.2.tgz"

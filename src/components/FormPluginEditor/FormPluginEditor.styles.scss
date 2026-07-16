@@ -273,6 +273,59 @@
     height: auto;
 }
 
+// Inline code chip vs dark code-block panel (same look as the M3 editor).
+.ProseMirror code {
+    padding: 1px 6px;
+    background: rgba(100, 109, 120, 0.15);
+    border-radius: 6px;
+    font-family: 'SF Mono', 'Cascadia Mono', Consolas, Menlo, monospace;
+    font-size: 0.85em;
+}
+
+.ProseMirror pre {
+    padding: 12px 16px;
+    background: #303031;
+    border-radius: 12px;
+    color: #f3f0f0;
+    overflow-x: auto;
+
+    code {
+        padding: 0;
+        background: transparent;
+        color: inherit;
+        font-size: 13px;
+    }
+}
+
+// Checklists (TipTap task list).
+.ProseMirror ul[data-type='taskList'] {
+    padding-left: 0;
+    list-style: none;
+
+    li {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+
+        > label {
+            flex-shrink: 0;
+            margin-top: 3px;
+        }
+
+        > div {
+            flex: 1;
+            min-width: 0;
+        }
+    }
+
+    input[type='checkbox'] {
+        width: 18px;
+        height: 18px;
+        accent-color: #a5000a;
+        cursor: pointer;
+    }
+}
+
 .ProseMirror p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;

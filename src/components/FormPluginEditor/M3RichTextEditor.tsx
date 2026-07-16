@@ -5,6 +5,8 @@ import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Highlight from '@tiptap/extension-highlight';
+import TaskItem from '@tiptap/extension-task-item';
+import TaskList from '@tiptap/extension-task-list';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import TextAlign from '@tiptap/extension-text-align';
@@ -14,7 +16,10 @@ import {
     Close,
     Undo,
     Redo,
+    Checklist as ChecklistIcon,
+    FormatColorReset,
     FormatListBulleted,
+    FormatListNumbered,
     FormatQuote,
     DataObject,
     Code,
@@ -122,6 +127,15 @@ export type M3RichTextEditorProps = {
 
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
 
+// Marker palette for the highlight colour menu (soft M3-friendly pastels).
+const HIGHLIGHT_COLORS = [
+    { key: 'yellow', color: '#fff176', label: 'Gelb' },
+    { key: 'green', color: '#b9f6ca', label: 'Grün' },
+    { key: 'blue', color: '#b3e5fc', label: 'Blau' },
+    { key: 'pink', color: '#f8bbd0', label: 'Rosa' },
+    { key: 'orange', color: '#ffcc80', label: 'Orange' },
+];
+
 type ToolButtonProps = {
     onClick: () => void;
     active?: boolean;
@@ -225,18 +239,30 @@ const Toolbar = ({ editor, disabled, leading, anchorsEnabled, autoChapters, onTo
                                         key: 'bullet',
                                         label: <MenuRow glyph={<FormatListBulleted />} label="Aufzählung" />,
                                     },
-                                    { key: 'ordered', label: <MenuRow glyph="1." label="Nummerierte Liste" /> },
+                                    {
+                                        key: 'ordered',
+                                        label: <MenuRow glyph={<FormatListNumbered />} label="Nummerierte Liste" />,
+                                    },
+                                    {
+                                        key: 'task',
+                                        label: <MenuRow glyph={<ChecklistIcon />} label="Checkliste" />,
+                                    },
                                 ],
-                                onClick: ({ key }) =>
-                                    key === 'bullet'
-                                        ? editor.chain().focus().toggleBulletList().run()
-                                        : editor.chain().focus().toggleOrderedList().run(),
+                                onClick: ({ key }) => {
+                                    if (key === 'bullet') editor.chain().focus().toggleBulletList().run();
+                                    else if (key === 'ordered') editor.chain().focus().toggleOrderedList().run();
+                                    else editor.chain().focus().toggleTaskList().run();
+                                },
                             }}
                         >
                             <button
                                 type="button"
                                 className={`${styles.toolBtn} ${styles.menuBtn} ${
-                                    editor.isActive('bulletList') || editor.isActive('orderedList') ? styles.active : ''
+                                    editor.isActive('bulletList') ||
+                                    editor.isActive('orderedList') ||
+                                    editor.isActive('taskList')
+                                        ? styles.active
+                                        : ''
                                 }`}
                                 onMouseDown={(e) => e.preventDefault()}
                                 title="Listen"
@@ -297,13 +323,53 @@ const Toolbar = ({ editor, disabled, leading, anchorsEnabled, autoChapters, onTo
                         >
                             <FormatUnderlined />
                         </ToolButton>
-                        <ToolButton
-                            title="Highlight"
-                            active={editor.isActive('highlight')}
-                            onClick={() => editor.chain().focus().toggleHighlight().run()}
+                        <Dropdown
+                            trigger={['click']}
+                            disabled={disabled}
+                            menu={{
+                                items: [
+                                    ...HIGHLIGHT_COLORS.map(({ key, color, label }) => ({
+                                        key,
+                                        label: (
+                                            <MenuRow
+                                                glyph={
+                                                    <span
+                                                        className={styles.colorSwatch}
+                                                        style={{ backgroundColor: color }}
+                                                    />
+                                                }
+                                                label={label}
+                                            />
+                                        ),
+                                    })),
+                                    { type: 'divider' as const },
+                                    {
+                                        key: 'none',
+                                        label: <MenuRow glyph={<FormatColorReset />} label="Markierung entfernen" />,
+                                    },
+                                ],
+                                onClick: ({ key }) => {
+                                    if (key === 'none') {
+                                        editor.chain().focus().unsetHighlight().run();
+                                        return;
+                                    }
+                                    const chosen = HIGHLIGHT_COLORS.find((entry) => entry.key === key);
+                                    if (chosen) editor.chain().focus().setHighlight({ color: chosen.color }).run();
+                                },
+                            }}
                         >
-                            <BorderColor />
-                        </ToolButton>
+                            <button
+                                type="button"
+                                className={`${styles.toolBtn} ${styles.menuBtn} ${
+                                    editor.isActive('highlight') ? styles.active : ''
+                                }`}
+                                onMouseDown={(e) => e.preventDefault()}
+                                title="Textmarker"
+                            >
+                                <BorderColor />
+                                <ArrowDropDown className={styles.caret} />
+                            </button>
+                        </Dropdown>
                         <ToolButton title="Link" active={editor.isActive('link')} onClick={promptLink}>
                             <LinkIcon />
                         </ToolButton>
@@ -450,7 +516,9 @@ export const M3RichTextEditor = ({
             Underline,
             Link.configure({ openOnClick: false, autolink: false }),
             Image,
-            Highlight,
+            Highlight.configure({ multicolor: true }),
+            TaskList,
+            TaskItem.configure({ nested: true }),
             Subscript,
             Superscript,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
