@@ -4,7 +4,7 @@ import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AdminSegmentedTabs } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { Page } from '../components/Page';
-import SearchInput from '../components/SearchInput/SearchInput';
+import { FloatingSearch } from '../components/FloatingSearch';
 import { AnimatedValue, StatisticCard } from '../components/StatisticCard/StatisticCard';
 import { UserRole } from '../enums/UserRole';
 import { useUserRoles } from '../hooks/useUserRoles.hook';
@@ -2105,7 +2105,7 @@ const StatisticFilterBar = ({
                     }
                 }}
             >
-                <SearchInput
+                <FloatingSearch
                     className="statisticDashboard__filterSearch"
                     placeholder={translateDashboardKey(translate, 'statistic.dashboard.filter.placeholder', 'Suche')}
                     ariaLabel={translateDashboardKey(
@@ -2122,11 +2122,11 @@ const StatisticFilterBar = ({
                         setIsSuggestionMenuOpen(true);
                         onSearchChange(value);
                     }}
-                    handleOnSearch={() => {
+                    onSearch={() => {
                         addFirstVisibleSuggestion();
                         setIsSuggestionMenuOpen(false);
                     }}
-                    handleOnSearchClear={() => setIsSuggestionMenuOpen(true)}
+                    onClear={() => setIsSuggestionMenuOpen(true)}
                 />
 
                 {isSuggestionMenuOpen && hasSuggestions && (

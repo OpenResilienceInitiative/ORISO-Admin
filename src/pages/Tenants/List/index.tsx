@@ -9,7 +9,7 @@ import { EditButtons } from '../../../components/EditableTable/EditButtons';
 import { Modal } from '../../../components/Modal';
 import { Page } from '../../../components/Page';
 import { ResizeTable } from '../../../components/ResizableTable';
-import { SearchInput } from '../../../components/SearchInput/SearchInput';
+import { FloatingSearch } from '../../../components/FloatingSearch';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
@@ -194,11 +194,11 @@ export const TenantsList = () => {
             <Page.Title titleKey="tenants.title" subTitle={t<string>('tenants.subTitle', { count: data?.total || 0 })}>
                 <div className={styles.searchContainer}>
                     <div className={styles.searchWithButton}>
-                        <SearchInput
+                        <FloatingSearch
                             className={styles.searchField}
                             placeholder={t('tenants.searchPlaceholder')}
-                            handleOnSearch={(a) => handleSearch(a)}
-                            handleOnSearchClear={() => handleSearch('')}
+                            onSearch={(a) => handleSearch(a)}
+                            onClear={() => handleSearch('')}
                         />
 
                         {can(PermissionAction.Create, Resource.Tenant) &&

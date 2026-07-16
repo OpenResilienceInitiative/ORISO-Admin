@@ -84,7 +84,6 @@ const StatefulBar = ({
         >
             <FilterInput
                 label="Vorname"
-                placeholder="Vorname"
                 icon={<UserOutlined />}
                 value={state.firstName}
                 onValueChange={(firstName) => setState((prev) => ({ ...prev, firstName }))}
@@ -114,9 +113,18 @@ const StatefulBar = ({
     );
 };
 
-/** Default collapsed: search shows only the caret + magnifier; segments are bordered. */
-export const CollapsedDefault: Story = {
+/** Minimized (default): search shows only the caret + magnifier; segments are bordered. */
+export const Minimized: Story = {
     render: () => <StatefulBar />,
+};
+
+/** Overflow: in a narrow viewport the row scrolls horizontally — hover it to reveal the slim scrollbar. */
+export const Overflow: Story = {
+    render: () => (
+        <div style={{ maxWidth: 560 }}>
+            <StatefulBar defaultSearchExpanded />
+        </div>
+    ),
 };
 
 /** Expanded search: the field is revealed (and would auto-focus on user toggle). */

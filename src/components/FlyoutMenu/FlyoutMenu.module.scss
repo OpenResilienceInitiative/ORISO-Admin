@@ -1,0 +1,124 @@
+// Ported from ORISO-Frontend `flyoutMenu.styles.scss` (#310), translated to the
+// admin design tokens: same structure (trigger → positioned fading panel → block
+// items with hover), M3 Elevation-3 shadow and `--m3-*` colours with light-scheme
+// fallbacks (Storybook does not inject the CSS custom properties).
+
+$shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
+$font: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+.flyoutMenu {
+    position: relative;
+    display: inline-flex;
+}
+
+.trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 20px;
+    background: transparent;
+    color: #1b1b1c;
+    color: var(--m3-on-surface, #1b1b1c);
+    cursor: pointer;
+    font-size: 20px;
+    transition: color 160ms ease, background 160ms ease;
+
+    &:hover {
+        background: #eae7e8;
+        background: var(--m3-surface-container-high, #eae7e8);
+        color: #a5000a;
+        color: var(--m3-primary, #a5000a);
+    }
+
+    &:focus-visible {
+        outline: 2px solid #a5000a;
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: 2px;
+    }
+
+    :global(.anticon) {
+        font-size: 20px;
+        line-height: 1;
+    }
+}
+
+.content {
+    position: absolute;
+    z-index: 2;
+    top: 100%;
+    padding: 6px 0;
+    border: 1px solid #c4c7c8;
+    border-color: var(--m3-outline-variant, #c4c7c8);
+    border-radius: 16px;
+    background: #ffffff;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    box-shadow: $shadow;
+    opacity: 0;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    visibility: hidden;
+}
+
+.contentShown {
+    opacity: 1;
+    visibility: visible;
+}
+
+.item {
+    button,
+    a {
+        text-decoration: none;
+    }
+
+    > * {
+        display: block;
+        width: 100%;
+        padding: 14px 18px;
+        border: 0;
+        background: #ffffff;
+        background: var(--m3-surface-container-lowest, #ffffff);
+        color: #1b1b1c;
+        color: var(--m3-on-surface, #1b1b1c);
+        cursor: pointer;
+        font-family: $font;
+        font-size: 14px;
+        line-height: 20px;
+        text-align: left;
+        transition: background 160ms ease, color 160ms ease;
+        white-space: nowrap;
+
+        &:hover {
+            background: #eae7e8;
+            background: var(--m3-surface-container-high, #eae7e8);
+            color: #a5000a;
+            color: var(--m3-primary, #a5000a);
+        }
+    }
+}
+
+/* Anchor positions (mirroring the frontend variants) ---------------------- */
+
+.positionLeft,
+.positionLeftBottom {
+    .content {
+        transform: translateX(calc(-100% + 40px));
+    }
+}
+
+.positionLeftTop {
+    .content {
+        top: auto;
+        bottom: 100%;
+        transform: translateX(calc(-100% + 40px));
+    }
+}
+
+.positionRightTop {
+    .content {
+        top: auto;
+        bottom: 100%;
+    }
+}

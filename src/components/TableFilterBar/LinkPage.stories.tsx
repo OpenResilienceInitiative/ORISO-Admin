@@ -100,11 +100,16 @@ const LinkPage = ({ initial, searchExpanded }: { initial?: Partial<LinkPageState
         [state],
     );
 
+    const hasSelection =
+        Boolean(state.tenant) || Boolean(state.template) || state.status.length > 0 || state.query.length > 0;
+
     return (
         <div className={styles.page}>
             <div className={styles.pageHeader}>
                 <h2 style={{ margin: 0, fontSize: 20 }}>Einladungslinks</h2>
-                <Button type="primary" icon={<PlusOutlined />}>
+                {/* Disabled until a filter/selection is made; only then primary red
+                    (Figma annotations 1165:18210 / 1165:18216). */}
+                <Button type="primary" disabled={!hasSelection} icon={<PlusOutlined />}>
                     Neuer Link
                 </Button>
             </div>

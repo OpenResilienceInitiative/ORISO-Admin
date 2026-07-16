@@ -1,7 +1,7 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { CloseOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
+import { type ReactNode } from 'react';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
+import { FloatingSearch } from '../FloatingSearch';
 import styles from './styles.module.scss';
 
 export interface TableFilterBarProps {
@@ -21,10 +21,10 @@ export interface TableFilterBarProps {
 
 /**
  * The global table-listing filter bar (Figma nodes 1165-16538 / 16407 / 16926):
- * a single rounded, segmented bar. The first segment is a caret + search toggle
- * that expands an auto-focusing search field; the remaining segments are the
- * caller's filter fields. First segment rounds on the left, last on the right,
- * and inner borders collapse into shared dividers.
+ * a row of separate rounded pills, opening with a {@link FloatingSearch} (the
+ * arrow toggle spins 360° and expands an auto-focusing field, pushing siblings
+ * right) followed by the caller's filter fields. When wider than the viewport the
+ * row scrolls horizontally with a slim hover-revealed scrollbar.
  */
 export const TableFilterBar = ({
     ariaLabel,
@@ -37,80 +37,17 @@ export const TableFilterBar = ({
     className,
 }: TableFilterBarProps) => {
     const { t } = useTranslation();
-    const [expanded, setExpanded] = useState(defaultSearchExpanded);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const searchId = useId();
-
-    // Focus the field as soon as it opens (but not on the initial mount when it
-    // starts expanded, to avoid stealing focus on page load).
-    const didMount = useRef(false);
-    useEffect(() => {
-        if (!didMount.current) {
-            didMount.current = true;
-            return;
-        }
-
-        if (expanded) {
-            inputRef.current?.focus();
-        }
-    }, [expanded]);
-
     const placeholder = searchPlaceholder ?? t('search-placeholder', 'Suchen …');
 
     return (
         <div className={classNames(styles.bar, className)} role="search" aria-label={ariaLabel}>
-            <div className={classNames(styles.pill, styles.searchZone, { [styles.pillFocused]: expanded })}>
-                <button
-                    type="button"
-                    className={styles.searchToggle}
-                    aria-expanded={expanded}
-                    aria-controls={searchId}
-                    aria-label={t('tableFilter.toggleSearch', 'Suche ein-/ausklappen')}
-                    onClick={() => setExpanded((prev) => !prev)}
-                >
-                    <span
-                        className={classNames(styles.searchCaret, { [styles.searchCaretOpen]: expanded })}
-                        aria-hidden
-                    >
-                        <RightOutlined />
-                    </span>
-                    <span className={styles.searchIcon} aria-hidden>
-                        <SearchOutlined />
-                    </span>
-                </button>
-                <div className={classNames(styles.searchReveal, { [styles.searchRevealOpen]: expanded })}>
-                    <input
-                        ref={inputRef}
-                        id={searchId}
-                        className={classNames(styles.input, styles.searchInput)}
-                        type="text"
-                        hidden={!expanded}
-                        aria-label={searchAriaLabel ?? placeholder}
-                        placeholder={placeholder}
-                        value={searchValue}
-                        onChange={(event) => onSearchChange?.(event.target.value)}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Escape') {
-                                setExpanded(false);
-                            }
-                        }}
-                    />
-                    {searchValue.length > 0 && (
-                        <button
-                            type="button"
-                            className={styles.searchClear}
-                            hidden={!expanded}
-                            aria-label={t('searchInput.clear', 'Suche löschen')}
-                            onClick={() => {
-                                onSearchChange?.('');
-                                inputRef.current?.focus();
-                            }}
-                        >
-                            <CloseOutlined />
-                        </button>
-                    )}
-                </div>
-            </div>
+            <FloatingSearch
+                ariaLabel={searchAriaLabel ?? placeholder}
+                placeholder={placeholder}
+                value={searchValue}
+                onValueChange={onSearchChange}
+                defaultExpanded={defaultSearchExpanded}
+            />
             {children}
         </div>
     );

@@ -5,13 +5,14 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { FilterInput } from './FilterInput';
 
-// A standalone, composable bordered text filter. Shows a brand-coloured outline
-// while focused; used on its own or as a `TableFilterBar` segment.
+// A standalone, composable bordered text filter with an MUI-style floating label
+// (#310): the label sits as the placeholder and floats up on focus/fill. Lifts
+// (elevation) while focused; error state turns outline + label to the error colour.
 const meta = {
     title: 'Molecules/Filters/FilterInput',
     component: FilterInput,
     parameters: { layout: 'padded' },
-    args: { label: 'Vorname', placeholder: 'Vorname' },
+    args: { label: 'Vorname' },
 } satisfies Meta<typeof FilterInput>;
 
 export default meta;
@@ -22,13 +23,13 @@ const Controlled = (args: ComponentProps<typeof FilterInput>) => {
     return <FilterInput {...args} value={value} onValueChange={setValue} />;
 };
 
-/** Default: an empty bordered field showing its placeholder. */
+/** Default: empty — the label sits in the placeholder position. */
 export const Default: Story = {
     render: (args) => <Controlled {...args} />,
 };
 
-/** Filled with a value. */
-export const WithValue: Story = {
+/** Filled: with a value the label stays floated as a small caption. */
+export const Filled: Story = {
     render: (args) => <Controlled {...args} />,
     args: { value: 'Muster' },
 };
@@ -39,13 +40,23 @@ export const WithIcon: Story = {
     args: { icon: <UserOutlined /> },
 };
 
-/** Focus state: the outline turns brand red while the field has focus. */
-export const Focused: Story = {
+/** Error: outline + label + message take the error colour; announced via aria. */
+export const Error: Story = {
+    render: (args) => <Controlled {...args} />,
+    args: { value: 'M', error: 'Mindestens 3 Zeichen eingeben.' },
+};
+
+/** Focus floats the label up (brand colour) and lifts the pill; blur reverses it. */
+export const FloatingLabel: Story = {
     render: (args) => <Controlled {...args} />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const input = canvas.getByRole('textbox', { name: 'Vorname' });
+
         await userEvent.click(input);
         await expect(input).toHaveFocus();
+
+        await userEvent.type(input, 'Anna');
+        await expect(input).toHaveValue('Anna');
     },
 };

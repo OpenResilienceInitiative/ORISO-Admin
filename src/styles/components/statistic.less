@@ -40,9 +40,10 @@
     overflow: visible;
 }
 
+/* The floating search pill sizes itself (collapsed toggle → expanding field). */
 .statisticDashboard__filterSearch {
-    width: 100%;
-    max-width: 499px;
+    width: auto;
+    max-width: 100%;
 }
 
 .statisticDashboard__filterSuggestions {
@@ -1202,10 +1203,15 @@
         grid-template-columns: 1fr;
     }
 
-    .statisticDashboard__filterSearch,
     .statisticDashboard__filterSuggestions {
         max-width: 100%;
         width: 100%;
+    }
+
+    /* The floating search pill keeps sizing itself on mobile too. */
+    .statisticDashboard__filterSearch {
+        width: auto;
+        max-width: 100%;
     }
 
     .statisticDashboard__filterChips {

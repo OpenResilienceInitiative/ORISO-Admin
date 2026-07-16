@@ -1,0 +1,160 @@
+// Standalone floating search pill (extracted from TableFilterBar, #310): the
+// arrow toggle expands an auto-focusing search field; the arrow SVG
+// (resources/img/svg/arrow_menu_open_24px.svg) spins a full 360° on expand.
+//
+// Colours track the runtime `--m3-*` design tokens with the light-scheme values
+// baked in as fallbacks (the Storybook preview does not inject the CSS vars).
+
+$height: 56px;
+$radius: 28px;
+$font: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+// M3 Elevation Light/3 (exact Figma effect).
+$shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
+
+.search {
+    display: inline-flex;
+    height: $height;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 0 14px 0 14px;
+    border: 1px solid #ddd;
+    border-radius: $radius;
+    background: #ffffff;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    color: #444748;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: $font;
+    font-size: 16px;
+    gap: 4px;
+    line-height: 24px;
+    overflow: hidden;
+    box-shadow: 4px 4px 8px 0 rgba(0, 0, 0, 0.12) inset;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+// Expanded → lifted (elevation), outline dropped.
+.expanded {
+    border-color: transparent;
+    box-shadow: $shadow;
+}
+
+.disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
+.toggle {
+    display: inline-flex;
+    height: 100%;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: currentcolor;
+    cursor: pointer;
+    gap: 14px;
+    justify-content: space-between;
+
+    &:focus-visible {
+        border-radius: 4px;
+        outline: 2px solid #a5000a;
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: 2px;
+    }
+}
+
+// The arrow_menu_open_24px glyph; recoloured via currentColor so it follows the
+// pill's state colours. Spins one full turn (0 → 360°) while the field expands
+// and spins back on collapse.
+.arrow {
+    display: inline-flex;
+    transition: transform 420ms ease;
+
+    > svg {
+        display: block;
+        width: 24px;
+        height: 24px;
+
+        path {
+            fill: currentcolor;
+        }
+    }
+}
+
+.arrowOpen {
+    transform: rotate(180deg);
+}
+
+.magnifier {
+    display: inline-flex;
+    font-size: 20px;
+
+    > :global(.anticon) {
+        font-size: 20px;
+    }
+}
+
+.reveal {
+    display: inline-flex;
+    max-width: 0;
+    align-items: center;
+    opacity: 0;
+    transition: max-width 220ms ease, opacity 160ms ease, margin-left 220ms ease;
+}
+
+.revealOpen {
+    max-width: var(--floating-search-width, 260px);
+    margin-left: 2px;
+    opacity: 1;
+}
+
+.input {
+    width: calc(var(--floating-search-width, 260px) - 40px);
+    max-width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 0;
+    background: transparent;
+    color: #1b1b1c;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-family: $font;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    line-height: 24px;
+    outline: none;
+
+    &::placeholder {
+        color: #444748;
+        color: var(--m3-on-surface-variant, #444748);
+        opacity: 1;
+    }
+}
+
+.clear {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: #444748;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+
+    &:hover {
+        background: #eae7e8;
+        background: var(--m3-surface-container-high, #eae7e8);
+    }
+
+    &:focus-visible {
+        outline: 2px solid #a5000a;
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: -2px;
+    }
+}

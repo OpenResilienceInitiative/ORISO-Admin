@@ -45,6 +45,7 @@ export const FilterSelect = forwardRef<HTMLButtonElement, FilterSelectProps>(fun
             open={isOpen}
             onOpenChange={setOpen}
             disabled={disabled}
+            overlayClassName={styles.menuOverlay}
             menu={{
                 id: menuId,
                 items,
