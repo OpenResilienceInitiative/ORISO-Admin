@@ -36,6 +36,11 @@ const AppConfigConsumer = () => {
 };
 
 describe('useAppConfigContext', () => {
+    it('degrades gracefully when rendered without a provider (no crash)', () => {
+        expect(() => render(<AppConfigConsumer />)).not.toThrow();
+        expect(screen.getByLabelText('api-cluster')).toHaveTextContent('true');
+    });
+
     it('starts with cluster feature flag defaults', () => {
         render(
             <UseAppConfigProvider>

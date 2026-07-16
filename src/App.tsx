@@ -13,6 +13,7 @@ import { useUserPermissions } from './hooks/useUserPermission';
 import { PermissionAction } from './enums/PermissionAction';
 import { Resource } from './enums/Resource';
 import { getDefaultSettingsPath } from './constants/settingsTabs';
+import { getSafeFaviconUrl } from './utils/getSafeFaviconUrl';
 import { ReleaseToggle } from './enums/ReleaseToggle';
 import { useReleasesToggle } from './hooks/useReleasesToggle.hook';
 import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
@@ -20,7 +21,7 @@ import { useUserRoles } from './hooks/useUserRoles.hook';
 import { UserRole } from './enums/UserRole';
 import { canReadCaseHandoverAdmin, canSeeSupervisorLogs } from './constants/caseHandoverAccess';
 import { useAppConfigContext } from './context/useAppConfig';
-import { useAdminInvertedTheme } from './hooks/useAdminInvertedTheme.hook';
+import { useAdminTheme } from './hooks/useAdminTheme.hook';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import {
     LazyAgencyList,
@@ -56,6 +57,7 @@ import {
     LazyUserProfile,
     LazyUsersList,
 } from './pages/lazyPages';
+import { LogsTabsLayout } from './pages/Logs/LogsTabsLayout';
 
 const AgencyInitialMeetingRedirect = () => {
     const { id } = useParams();
@@ -70,7 +72,7 @@ export const App = () => {
         isFetched: isPublicTenantFetched,
     } = usePublicTenantData();
     const { isLoading, data } = useTenantData();
-    useAdminInvertedTheme(publicTenantData?.theming, isPublicTenantFetched || !isPublicTenantLoading);
+    useAdminTheme(publicTenantData?.theming, isPublicTenantFetched || !isPublicTenantLoading);
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
     const location = useLocation();
@@ -92,7 +94,7 @@ export const App = () => {
 
     // Apply tenant favicon when appearance config is available
     useEffect(() => {
-        const favicon = publicTenantData?.theming?.favicon;
+        const favicon = getSafeFaviconUrl(publicTenantData?.theming?.favicon);
         if (!favicon) return;
         const link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
         if (link) {
@@ -225,22 +227,28 @@ export const App = () => {
                                     )
                                 }
                             />
+                            {/* Unified "Logs": one page, tabs for Inactive (default) + Case handover. */}
                             <Route
-                                path={routePathNames.caseHandoverLogs}
                                 element={
-                                    showCaseHandoverLogs ? (
-                                        <LazyCaseHandoverLogsPage />
-                                    ) : (
-                                        <Navigate to="/admin/access-denied" replace />
-                                    )
+                                    <LogsTabsLayout
+                                        showInactive={isSuperAdmin}
+                                        showCaseHandover={showCaseHandoverLogs}
+                                    />
                                 }
-                            />
-                            {isSuperAdmin && (
-                                <Route
-                                    path={routePathNames.inactiveAccountAuditLogs}
-                                    element={<LazyInactiveAccountAuditLogsPage />}
-                                />
-                            )}
+                            >
+                                {isSuperAdmin && (
+                                    <Route
+                                        path={routePathNames.inactiveAccountAuditLogs}
+                                        element={<LazyInactiveAccountAuditLogsPage />}
+                                    />
+                                )}
+                                {showCaseHandoverLogs && (
+                                    <Route
+                                        path={routePathNames.caseHandoverLogs}
+                                        element={<LazyCaseHandoverLogsPage />}
+                                    />
+                                )}
+                            </Route>
                             <Route path={routePathNames.userProfile} element={<LazyUserProfile />} />
                             {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
                                 <>

@@ -2,7 +2,6 @@ import React from 'react';
 import { describe, expect, it, vi, beforeAll } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Form } from 'antd';
 import { LegalText } from './index';
 
 vi.mock('react-i18next', () => ({
@@ -15,17 +14,16 @@ const mocks = vi.hoisted(() => ({
     canEdit: true,
 }));
 
-vi.mock('../../../../../hooks/useSingleTenantData', () => ({
-    useSingleTenantData: () => ({
-        data: { content: { imprint: { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>' } } },
+vi.mock('../../../../../hooks/useTenantAppearanceFormData', () => ({
+    useTenantAppearanceFormData: () => ({
+        data: {
+            content: { imprint: { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>' } },
+            settings: { activeLanguages: ['de', 'en'] },
+        },
         isLoading: false,
+        mutate: mocks.updateTenant,
+        isPending: false,
     }),
-}));
-vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({
-    useTenantAdminData: () => ({ data: { settings: { activeLanguages: ['de', 'en'] } } }),
-}));
-vi.mock('../../../../../hooks/useTenantAdminDataMutation.hook', () => ({
-    useTenantAdminDataMutation: () => ({ mutate: mocks.updateTenant, isPending: false }),
 }));
 vi.mock('../../../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({ can: () => mocks.canEdit }),
@@ -62,14 +60,17 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
     ),
 }));
 
-// Form-bound editor stub: registers the field so form.submit() collects it.
-vi.mock('../../../../FormPluginEditor/FormPluginEditor', () => ({
-    default: ({ name }: { name: string[] }) => (
-        <Form.Item name={name}>
-            <textarea data-testid={`editor-${name.join('.')}`} />
-        </Form.Item>
-    ),
-}));
+vi.mock('../../../../FormPluginEditor/FormPluginEditor', async () => {
+    const { Form } = await import('antd');
+
+    return {
+        default: ({ name }: { name?: string | string[] }) => (
+            <Form.Item name={name} noStyle>
+                <input />
+            </Form.Item>
+        ),
+    };
+});
 
 beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
@@ -85,6 +86,9 @@ beforeAll(() => {
             dispatchEvent: vi.fn(),
         })),
     });
+
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element) => originalGetComputedStyle(el));
 });
 
 describe('LegalText (M3 shell)', () => {
@@ -100,8 +104,10 @@ describe('LegalText (M3 shell)', () => {
             />,
         );
 
-        expect(screen.getByTestId('editor-content.imprint.de')).toBeInTheDocument();
-        expect(screen.getByTestId('editor-content.imprint.en')).toBeInTheDocument();
+        // The editor slot keeps one registered input per active language, so
+        // publish collects them all.
+        expect(document.querySelector('input#content_imprint_de')).toHaveValue('<p>Impressum DE</p>');
+        expect(document.querySelector('input#content_imprint_en')).toHaveValue('<p>Imprint EN</p>');
 
         await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
 

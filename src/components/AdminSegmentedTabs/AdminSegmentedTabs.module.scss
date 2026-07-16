@@ -73,16 +73,18 @@
     }
 }
 
+/* Selected segment uses the tenant-themeable M3 primary (Figma 1-49824:
+   dark red on the default ORISO scheme), not a hardcoded navy. */
 .itemActive,
 .itemActive:first-child,
 .itemActive:last-child {
-    background: #141c25;
+    background: var(--m3-primary, #141c25);
     border-radius: 38px;
-    color: #ffffff;
+    color: var(--m3-on-primary, #ffffff);
 
     &:hover {
-        background: #141c25;
-        color: #ffffff;
+        background: var(--m3-primary, #141c25);
+        color: var(--m3-on-primary, #ffffff);
     }
 }
 
@@ -122,6 +124,7 @@
 .label {
     flex: 0 0 auto;
     font-weight: 400;
+    text-transform: math-auto;
 }
 
 @media (max-width: 768px) {

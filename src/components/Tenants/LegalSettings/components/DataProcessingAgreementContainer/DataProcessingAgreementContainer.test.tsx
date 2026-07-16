@@ -116,4 +116,26 @@ describe('DataProcessingAgreementContainer', () => {
         render(<DataProcessingAgreementContainer tenantId="" />);
         expect(useDpaVersions).toHaveBeenCalledWith(0, false);
     });
+
+    it('surfaces a load failure as an error alert with retry instead of an empty editor', async () => {
+        const refetch = vi.fn();
+        useDpaVersions.mockReturnValue({ data: undefined, isError: true, refetch });
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+
+        // The editor card is withheld — editing a legal text on an unknown
+        // current state could silently overwrite it.
+        expect(screen.queryByTestId('card')).not.toBeInTheDocument();
+        expect(screen.getByText('tenants.legal.version.loadError')).toBeInTheDocument();
+
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('button', { name: 'tenants.legal.version.retry' }));
+        expect(refetch).toHaveBeenCalled();
+    });
+
+    it('still renders the card when the versions load succeeds (no error alert)', () => {
+        useDpaVersions.mockReturnValue({ data: [], isError: false, refetch: vi.fn() });
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+        expect(screen.getByTestId('card')).toBeInTheDocument();
+        expect(screen.queryByText('tenants.legal.version.loadError')).not.toBeInTheDocument();
+    });
 });

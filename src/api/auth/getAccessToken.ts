@@ -55,11 +55,11 @@ const getKeycloakAccessToken = (loginProps: {
                         reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
                     }
                 } else {
-                    reject(new Error('keycloakLogin'));
+                    reject(new Error(FETCH_ERRORS.TIMEOUT));
                 }
             })
             .catch(() => {
-                reject(new Error('keycloakLogin'));
+                reject(new Error(FETCH_ERRORS.TIMEOUT));
             });
     });
 

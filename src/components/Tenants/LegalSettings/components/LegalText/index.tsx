@@ -5,9 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import FormPluginEditor from '../../../../FormPluginEditor/FormPluginEditor';
-import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
-import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
-import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
+import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import styles from './styles.module.scss';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
@@ -45,27 +43,22 @@ export const LegalText = ({
     const [form] = Form.useForm();
     const { can } = useUserPermissions();
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
-    const { data, isLoading } = useSingleTenantData({ id: tenantId });
-    const { data: tenantData } = useTenantAdminData();
-    const { mutate: updateTenant, isPending } = useTenantAdminDataMutation({ id: tenantId });
+    const { data, isLoading, mutate: updateTenant, isPending } = useTenantAppearanceFormData(`${tenantId}`);
     const [activeLanguage, setActiveLanguage] = useState('de');
     const [formDataContent, setFormData] = useState<Record<string, unknown>>();
     const [modalVisible, setModalVisible] = useState(false);
 
-    const languages = useMemo(
-        () => tenantData?.settings?.activeLanguages || ['de'],
-        [tenantData?.settings?.activeLanguages],
-    );
+    const languages = useMemo(() => data?.settings?.activeLanguages || ['de'], [data?.settings?.activeLanguages]);
 
     const onConfirm = useCallback(() => {
         updateTenant(set(formDataContent, showConfirmationModal.field, false));
         setModalVisible(false);
-    }, [formDataContent]);
+    }, [formDataContent, showConfirmationModal, updateTenant]);
 
     const onCancel = useCallback(() => {
         updateTenant(set(formDataContent, showConfirmationModal.field, true));
         setModalVisible(false);
-    }, [formDataContent]);
+    }, [formDataContent, showConfirmationModal, updateTenant]);
 
     const onFinish = useCallback(
         (formData: Record<string, unknown>) => {
@@ -104,9 +97,9 @@ export const LegalText = ({
                     onLanguageChange={setActiveLanguage}
                     aboveEditorSlot={<p className={styles.description}>{subTitle}</p>}
                     editorSlot={
-                        // All languages stay mounted so form state survives switching;
-                        // only the active language is visible (same behaviour the
-                        // TranslatableFormField gave the old card).
+                        // Keep all language fields mounted so form state survives
+                        // switching; FormPluginEditor preserves placeholders and
+                        // heading anchors inside the M3 shell.
                         <>
                             {languages.map((language) => (
                                 <div key={language} style={{ display: language === activeLanguage ? 'block' : 'none' }}>
@@ -114,8 +107,6 @@ export const LegalText = ({
                                         name={[...fieldName, language]}
                                         placeholder={t(placeHolderKey)}
                                         placeholders={placeholders}
-                                        // Legal texts are optional — no required rule (machine
-                                        // translation as an opt-in helper is planned later).
                                         itemProps={{}}
                                     />
                                 </div>

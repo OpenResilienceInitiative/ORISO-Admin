@@ -1,6 +1,6 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DepartmentDataProtectionCard } from './index';
 
@@ -32,30 +32,54 @@ vi.mock('../../../../FormPluginEditor/TiptapEditor', () => ({
     ),
 }));
 
+beforeAll(() => {
+    Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockImplementation((query: string) => ({
+            matches: false,
+            media: query,
+            onchange: null,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+        })),
+    });
+
+    // antd's dropdown portal (rc-util scroll locker) calls the two-arg
+    // getComputedStyle(el, pseudoEl) which jsdom does not implement. Drop the
+    // pseudo-element so the language menu can open in the test environment.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element) => originalGetComputedStyle(el));
+});
+
 const publishButtonName = 'tenants.legal.departmentDataProtection.publish';
 const draftButtonName = 'tenants.legal.departmentDataProtection.saveDraft';
 
 describe('DepartmentDataProtectionCard', () => {
     it('publishes the complete content map (publish=true)', async () => {
+        const user = userEvent.setup();
         const onSave = vi.fn();
         render(<DepartmentDataProtectionCard initialContentByLanguage={{ de: '<p>x</p>' }} onSave={onSave} />);
 
-        fireEvent.click(screen.getByRole('button', { name: publishButtonName }));
+        await user.click(screen.getByRole('button', { name: publishButtonName }));
 
         expect(onSave).toHaveBeenCalledWith({ de: '<p>x</p>' }, true);
     });
 
     it('stores a draft (publish=false)', async () => {
+        const user = userEvent.setup();
         const onSave = vi.fn();
         render(<DepartmentDataProtectionCard initialContentByLanguage={{ de: '<p>x</p>' }} onSave={onSave} />);
 
-        fireEvent.click(screen.getByRole('button', { name: draftButtonName }));
+        await user.click(screen.getByRole('button', { name: draftButtonName }));
 
         expect(onSave).toHaveBeenCalledWith({ de: '<p>x</p>' }, false);
     });
 
     it('keeps the other languages when saving after editing only one language', async () => {
-        const user = userEvent.setup({ delay: null });
+        const user = userEvent.setup();
         const onSave = vi.fn();
         render(
             <DepartmentDataProtectionCard
@@ -73,7 +97,7 @@ describe('DepartmentDataProtectionCard', () => {
     });
 
     it('passes unknown keys through untouched on save', async () => {
-        const user = userEvent.setup({ delay: null });
+        const user = userEvent.setup();
         const onSave = vi.fn();
         render(
             <DepartmentDataProtectionCard
@@ -91,7 +115,7 @@ describe('DepartmentDataProtectionCard', () => {
     });
 
     it('switches the edited language via the language select', async () => {
-        const user = userEvent.setup({ delay: null });
+        const user = userEvent.setup();
         render(
             <DepartmentDataProtectionCard
                 initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
@@ -103,8 +127,8 @@ describe('DepartmentDataProtectionCard', () => {
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
 
-        fireEvent.mouseDown(screen.getByRole('combobox'));
-        await user.click(await screen.findByTitle('en'));
+        await user.click(screen.getByRole('button', { name: 'languages' }));
+        await user.click(await screen.findByText('en'));
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
     });
@@ -136,7 +160,7 @@ describe('DepartmentDataProtectionCard — translate on publish', () => {
         });
 
     it('opens the translate modal on publish and saves the merged map incl. __meta', async () => {
-        const user = userEvent.setup({ delay: null });
+        const user = userEvent.setup();
         const onSave = vi.fn();
         const onTranslate = onTranslateMock();
         render(
@@ -165,7 +189,7 @@ describe('DepartmentDataProtectionCard — translate on publish', () => {
     });
 
     it('never opens the modal for a draft save (no translation)', async () => {
-        const user = userEvent.setup({ delay: null });
+        const user = userEvent.setup();
         const onSave = vi.fn();
         const onTranslate = onTranslateMock();
         render(
