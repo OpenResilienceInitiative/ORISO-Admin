@@ -10,9 +10,9 @@ import { Page } from '../../components/Page';
 import { CardDeck } from '../../components/CardDeck';
 import { CardEditable } from '../../components/CardEditable';
 import { Card } from '../../components/Card';
-import { FormSwitchField } from '../../components/FormSwitchField';
 import { FormColorSelectorField } from '../../components/FormColorSelectorField';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
+import { MuiSwitchField } from '../../components/mui/MuiSwitchField/index';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { useTenantData } from '../../hooks/useTenantData.hook';
 import { useTenantAdminDataMutation } from '../../hooks/useTenantAdminDataMutation.hook';
@@ -47,6 +47,7 @@ export const GlobalSettingsPage = () => {
 };
 
 export const GlobalLoginSettingsPage = () => {
+    const { t } = useTranslation();
     const { data, isLoading } = useTenantData();
     const tenantId = data?.id ? `${data.id}` : '';
     const seedTenantAdminData = useMemo(() => (data?.id ? mapTenantDataToTenantAdminData(data) : undefined), [data]);
@@ -61,25 +62,25 @@ export const GlobalLoginSettingsPage = () => {
     return (
         <div className={styles.globalConfigGrid}>
             <section className={styles.globalConfigCardSlot}>
-                <CardEditable
-                    className={styles.loginFunctionCard}
-                    isLoading={isLoading}
-                    initialValues={initialValues}
-                    titleKey="tenants.globalSettings.anonymousChat.title"
-                    onSave={mutate}
-                    variant="dialog"
-                    editButtonPlacement="footer"
-                    headerIcon={<LoginOutlinedIcon />}
-                >
-                    <div className={styles.checkGroup}>
-                        <FormSwitchField
-                            labelKey="tenants.permissions.anonymousChat.title"
-                            name={['settings', 'featureAnonymousChatEnabled']}
-                            inline
-                            disableLabels
-                        />
-                    </div>
-                </CardEditable>
+                <ThemeProvider theme={orisoMuiTheme}>
+                    <CardEditable
+                        className={styles.loginFunctionCard}
+                        isLoading={isLoading}
+                        initialValues={initialValues}
+                        titleKey="tenants.globalSettings.anonymousChat.title"
+                        onSave={mutate}
+                        variant="dialog"
+                        editButtonPlacement="footer"
+                        headerIcon={<LoginOutlinedIcon />}
+                    >
+                        <div className={styles.checkGroup}>
+                            <MuiSwitchField
+                                label={t('tenants.permissions.anonymousChat.title')}
+                                name={['settings', 'featureAnonymousChatEnabled']}
+                            />
+                        </div>
+                    </CardEditable>
+                </ThemeProvider>
             </section>
             <section className={styles.translationCardSlot}>
                 <TranslationApiKeysCardContainer />
@@ -182,30 +183,24 @@ export const GlobalSmtpSettingsPage = () => {
                         formProp={form}
                     >
                         <div className={styles.fieldGrid}>
-                            <FormSwitchField
+                            <MuiSwitchField
                                 className={styles.smtpSwitch}
                                 label={renderSwitchLabel(
                                     'globalSettings.smtp.systemEmailToggle.title',
                                     'globalSettings.smtp.systemEmailToggle.description',
                                 )}
                                 name={['globalFeatureSystemNotificationEmailsEnabled']}
-                                inline
-                                disableLabels
                                 switchLabel={t('globalSettings.smtp.systemEmailToggle.title')}
-                                switchVariant="m3"
                             />
 
-                            <FormSwitchField
+                            <MuiSwitchField
                                 className={styles.smtpSwitch}
                                 label={renderSwitchLabel(
                                     'globalSettings.smtp.smtpToggle.title',
                                     'globalSettings.smtp.smtpToggle.description',
                                 )}
                                 name={['globalSmtpEnabled']}
-                                inline
-                                disableLabels
                                 switchLabel={t('globalSettings.smtp.smtpToggle.title')}
-                                switchVariant="m3"
                             />
 
                             <MuiFormField label={t('globalSettings.smtp.host')} name={['globalSmtpHost']} />
@@ -217,22 +212,21 @@ export const GlobalSmtpSettingsPage = () => {
                                 autoComplete="current-password"
                             />
                             <MuiFormField label={t('globalSettings.smtp.from')} name={['globalSmtpFrom']} />
+                            {/* TODO(mui-migration): FormColorSelectorField still uses AntD + react-colorful
+                                (ColorSelector). No MUI color-picker adapter yet — migrate in a follow-up. */}
                             <FormColorSelectorField
                                 className={styles.colorField}
                                 labelKey="globalSettings.smtp.emailThemeColor"
                                 name={['globalSmtpEmailThemeColor']}
                             />
-                            <FormSwitchField
+                            <MuiSwitchField
                                 className={styles.smtpSwitch}
                                 label={renderSwitchLabel(
                                     'globalSettings.smtp.secure',
                                     'globalSettings.smtp.secure.description',
                                 )}
                                 name={['globalSmtpSecure']}
-                                inline
-                                disableLabels
                                 switchLabel={t('globalSettings.smtp.secure')}
-                                switchVariant="m3"
                             />
                         </div>
                     </CardEditable>

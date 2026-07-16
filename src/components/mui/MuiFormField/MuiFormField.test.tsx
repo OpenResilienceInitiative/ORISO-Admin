@@ -4,7 +4,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from './MuiFormField';
+import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from './index';
 
 const renderWithForm = (children: React.ReactNode) => render(<Form>{children}</Form>);
 
@@ -86,5 +86,6 @@ describe('MuiFormField', () => {
 
         expect(await screen.findByText('Email is required')).toBeVisible();
         expect(input).toHaveAttribute('aria-invalid', 'true');
+        expect(screen.getByTestId('mui-form-field-error-icon')).toBeVisible();
     });
 });
