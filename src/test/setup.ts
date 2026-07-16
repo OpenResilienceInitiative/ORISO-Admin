@@ -25,7 +25,7 @@ if (typeof window !== 'undefined') {
                 getPropertyValue: () => '',
                 width: '0px',
                 height: '0px',
-            } as CSSStyleDeclaration;
+            } as unknown as CSSStyleDeclaration;
         }
 
         return originalGetComputedStyle(element);

@@ -456,36 +456,7 @@ export const UserEditOrAdd = () => {
                     </Col>
                     <Col xs={24} lg={12}>
                         <Space direction="vertical" size={20} className={styles.columnStack}>
-                        <Card titleKey="settings.title">
-                            <SelectFormField
-                                name="tenantId"
-                                placeholder="tenantAdmins.form.tenant"
-                                required
-                                disabled={isReadOnly || isEditing || !isSuperAdmin}
-                                className={styles.select}
-                                label="tenantAdmins.form.tenantAssignment"
-                                options={convertToOptions(tenantsData || [], 'name', 'id')}
-                            />
-
-                            <SelectFormField
-                                name="agencies"
-                                label="agency"
-                                labelInValue
-                                isMulti
-                                placeholder="plsSelect"
-                                options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
-                            />
-
-                            <div className={styles.createAgency}>
-                                <CreateAgencyModal
-                                    tenantId={agencyTenantId}
-                                    disabled={isReadOnly}
-                                    onSuccess={onAgencyCreated}
-                                />
-                            </div>
-
-                            {showTopicsField && (
-                                <>
+                            <Card titleKey="settings.title">
                                 <SelectFormField
                                     name="tenantId"
                                     placeholder="tenantAdmins.form.tenant"
@@ -504,16 +475,49 @@ export const UserEditOrAdd = () => {
                                     placeholder="plsSelect"
                                     options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
                                 />
-                                    <SelectFormField
-                                        label="topics.title"
-                                        name="topicIds"
-                                        labelInValue
-                                        isMulti
-                                        allowClear
-                                        placeholder="plsSelect"
-                                        options={topicOptions}
+
+                                <div className={styles.createAgency}>
+                                    <CreateAgencyModal
+                                        tenantId={agencyTenantId}
+                                        disabled={isReadOnly}
+                                        onSuccess={onAgencyCreated}
                                     />
-                                </>
+                                </div>
+
+                                {showTopicsField && (
+                                    <>
+                                        <SelectFormField
+                                            name="tenantId"
+                                            placeholder="tenantAdmins.form.tenant"
+                                            required
+                                            disabled={isReadOnly || isEditing || !isSuperAdmin}
+                                            className={styles.select}
+                                            label="tenantAdmins.form.tenantAssignment"
+                                            options={convertToOptions(tenantsData || [], 'name', 'id')}
+                                        />
+
+                                        <SelectFormField
+                                            name="agencies"
+                                            label="agency"
+                                            labelInValue
+                                            isMulti
+                                            placeholder="plsSelect"
+                                            options={convertToOptions(
+                                                filteredAgencies,
+                                                ['postcode', 'name', 'city'],
+                                                'id',
+                                            )}
+                                        />
+                                        <SelectFormField
+                                            label="topics.title"
+                                            name="topicIds"
+                                            labelInValue
+                                            isMulti
+                                            allowClear
+                                            placeholder="plsSelect"
+                                            options={topicOptions}
+                                        />
+                                    </>
                                 )}
 
                                 {isConsultantForm && (
