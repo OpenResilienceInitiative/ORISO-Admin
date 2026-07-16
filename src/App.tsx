@@ -57,6 +57,7 @@ import {
     LazyUserProfile,
     LazyUsersList,
 } from './pages/lazyPages';
+import { LogsTabsLayout } from './pages/Logs/LogsTabsLayout';
 
 const AgencyInitialMeetingRedirect = () => {
     const { id } = useParams();
@@ -226,22 +227,28 @@ export const App = () => {
                                     )
                                 }
                             />
+                            {/* Unified "Logs": one page, tabs for Inactive (default) + Case handover. */}
                             <Route
-                                path={routePathNames.caseHandoverLogs}
                                 element={
-                                    showCaseHandoverLogs ? (
-                                        <LazyCaseHandoverLogsPage />
-                                    ) : (
-                                        <Navigate to="/admin/access-denied" replace />
-                                    )
+                                    <LogsTabsLayout
+                                        showInactive={isSuperAdmin}
+                                        showCaseHandover={showCaseHandoverLogs}
+                                    />
                                 }
-                            />
-                            {isSuperAdmin && (
-                                <Route
-                                    path={routePathNames.inactiveAccountAuditLogs}
-                                    element={<LazyInactiveAccountAuditLogsPage />}
-                                />
-                            )}
+                            >
+                                {isSuperAdmin && (
+                                    <Route
+                                        path={routePathNames.inactiveAccountAuditLogs}
+                                        element={<LazyInactiveAccountAuditLogsPage />}
+                                    />
+                                )}
+                                {showCaseHandoverLogs && (
+                                    <Route
+                                        path={routePathNames.caseHandoverLogs}
+                                        element={<LazyCaseHandoverLogsPage />}
+                                    />
+                                )}
+                            </Route>
                             <Route path={routePathNames.userProfile} element={<LazyUserProfile />} />
                             {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
                                 <>

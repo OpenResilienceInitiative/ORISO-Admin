@@ -3,7 +3,6 @@ import { ColumnType } from 'antd/lib/table';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListingTable } from '../../../components/ListingTable';
-import { Page } from '../../../components/Page';
 import { useInactiveAccountAuditLogsData } from '../../../hooks/useInactiveAccountAuditLogsData';
 import { InactiveAccountAuditLogEntry } from '../../../types/inactiveAccountAuditLogs';
 
@@ -94,9 +93,7 @@ export const InactiveAccountAuditLogsPage = () => {
     );
 
     return (
-        <Page>
-            <Page.Title titleKey="inactiveAudit.title" subTitle={String(t('inactiveAudit.subTitle'))} />
-
+        <>
             <Space style={{ marginBottom: 16 }} wrap>
                 <Select
                     allowClear
@@ -164,6 +161,6 @@ export const InactiveAccountAuditLogsPage = () => {
                     },
                 }}
             />
-        </Page>
+        </>
     );
 };
