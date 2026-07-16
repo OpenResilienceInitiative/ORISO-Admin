@@ -601,6 +601,36 @@
     }
 }
 
+// Calm empty presentation: a muted dash instead of a shouty "Keine Daten" value,
+// with a one-line hint explaining when data will appear (or why it is withheld).
+.statisticDashboard__cardValueRow--empty {
+    grid-template-columns: minmax(0, 1fr);
+
+    strong {
+        color: #9d9da4;
+    }
+}
+
+.statisticDashboard__cardEmptyHint {
+    overflow: hidden;
+    color: #9d9da4;
+    font-size: 14px;
+    line-height: 20px;
+    text-overflow: ellipsis;
+}
+
+.statisticDashboard__emptyHero {
+    margin-bottom: 12px;
+}
+
+// While the whole dashboard is empty the metric grids step back behind the
+// DashboardEmptyState hero. Cards stay visible (disable, don't hide) but quiet.
+.statisticDashboard__summaryGrid--quiet,
+.statisticDashboard__communicationGrid--quiet,
+.statisticDashboard__chartGrid--quiet {
+    opacity: 0.62;
+}
+
 .statisticDashboard__trend {
     display: inline-flex;
     min-height: 25px;

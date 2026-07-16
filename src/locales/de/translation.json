@@ -1183,5 +1183,11 @@
     "statistic.dashboard.csvExport.label": "Statistik als CSV herunterladen",
     "statistic.dashboard.csvExport.filename": "Statistik",
     "statistic.dashboard.csvExport.metricColumn": "Kennzahl",
-    "statistic.dashboard.csvExport.valueColumn": "Wert"
+    "statistic.dashboard.csvExport.valueColumn": "Wert",
+    "statistic.dashboard.empty.notTracked": "wird noch nicht erfasst",
+    "statistic.dashboard.empty.noDataYet": "noch keine Daten",
+    "statistic.dashboard.empty.topicPending": "zeigt sich ab dem ersten Gespräch",
+    "statistic.dashboard.empty.heroTitle": "Ihr Dashboard füllt sich mit der ersten Beratung",
+    "statistic.dashboard.empty.heroDescription": "Sobald Anfragen eingehen, sehen Sie hier Gespräche, Themen und Auslastung auf einen Blick.",
+    "statistic.dashboard.empty.heroAction": "Beratende verwalten"
 }

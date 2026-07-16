@@ -1183,5 +1183,11 @@
     "statistic.dashboard.csvExport.label": "Download statistics as CSV",
     "statistic.dashboard.csvExport.filename": "Statistics",
     "statistic.dashboard.csvExport.metricColumn": "Metric",
-    "statistic.dashboard.csvExport.valueColumn": "Value"
+    "statistic.dashboard.csvExport.valueColumn": "Value",
+    "statistic.dashboard.empty.notTracked": "not tracked yet",
+    "statistic.dashboard.empty.noDataYet": "no data yet",
+    "statistic.dashboard.empty.topicPending": "appears with the first conversation",
+    "statistic.dashboard.empty.heroTitle": "Your dashboard fills up with the first counselling session",
+    "statistic.dashboard.empty.heroDescription": "As soon as enquiries come in, you'll see conversations, topics and workload here at a glance.",
+    "statistic.dashboard.empty.heroAction": "Manage counsellors"
 }
