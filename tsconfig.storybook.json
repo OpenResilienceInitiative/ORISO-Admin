@@ -12,6 +12,7 @@
         ".storybook/**/*.tsx",
         "src/**/*.stories.ts",
         "src/**/*.stories.tsx",
+        "src/**/*.matrix.tsx",
         "src/types/**/*.d.ts"
     ],
     "exclude": ["node_modules"]
