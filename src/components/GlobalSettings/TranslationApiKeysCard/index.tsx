@@ -1,8 +1,10 @@
 import { Button, Form, Typography, message } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { ThemeProvider } from '@mui/material/styles';
 import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
 import { Card } from '../../Card';
-import { FormInputPasswordField } from '../../FormInputPasswordField';
+import { MuiPasswordFormField } from '../../mui/MuiFormField';
+import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { TRANSLATION_PROVIDERS, TranslationKeys, TranslationProvider } from '../../../types/translation';
 import styles from './styles.module.scss';
 
@@ -55,32 +57,35 @@ export const TranslationApiKeysCard = ({
             isLoading={isLoading}
             autoHeight
         >
-            <Form form={form} layout="vertical" disabled={disabled}>
-                {TRANSLATION_PROVIDERS.map((provider) => (
-                    <div key={provider} className={styles.provider}>
-                        <Typography.Text strong className={styles.providerName}>
-                            {t(`legal.translation.settings.provider.${provider}`)}
-                        </Typography.Text>
-                        <Typography.Text type="secondary" className={styles.currentKey}>
-                            {keys?.[provider]
-                                ? t('legal.translation.settings.currentKey', { key: keys[provider] })
-                                : t('legal.translation.settings.noKey')}
-                        </Typography.Text>
-                        <FormInputPasswordField
-                            labelKey="legal.translation.settings.newKey"
-                            name={provider}
-                            autoComplete="new-password"
-                        />
-                        <Button
-                            loading={savingProvider === provider}
-                            disabled={disabled}
-                            onClick={() => save(provider)}
-                        >
-                            {t('legal.translation.settings.save')}
-                        </Button>
-                    </div>
-                ))}
-            </Form>
+            <ThemeProvider theme={orisoMuiTheme}>
+                <Form form={form} layout="vertical" disabled={disabled}>
+                    {TRANSLATION_PROVIDERS.map((provider) => (
+                        <div key={provider} className={styles.provider}>
+                            <Typography.Text strong className={styles.providerName}>
+                                {t(`legal.translation.settings.provider.${provider}`)}
+                            </Typography.Text>
+                            <Typography.Text type="secondary" className={styles.currentKey}>
+                                {keys?.[provider]
+                                    ? t('legal.translation.settings.currentKey', { key: keys[provider] })
+                                    : t('legal.translation.settings.noKey')}
+                            </Typography.Text>
+                            <MuiPasswordFormField
+                                label={t('legal.translation.settings.newKey')}
+                                name={provider}
+                                autoComplete="new-password"
+                                disabled={disabled}
+                            />
+                            <Button
+                                loading={savingProvider === provider}
+                                disabled={disabled}
+                                onClick={() => save(provider)}
+                            >
+                                {t('legal.translation.settings.save')}
+                            </Button>
+                        </div>
+                    ))}
+                </Form>
+            </ThemeProvider>
         </Card>
     );
 };
