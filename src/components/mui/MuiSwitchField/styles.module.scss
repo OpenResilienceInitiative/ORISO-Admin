@@ -124,9 +124,7 @@
         border: 1px solid var(--input-border-color, var(--m3-outline, #747878));
         box-sizing: border-box;
         opacity: 1;
-        transition:
-            background-color 500ms,
-            border-color 500ms;
+        transition: background-color 500ms, border-color 500ms;
     }
 }
 
