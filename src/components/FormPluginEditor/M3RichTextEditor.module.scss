@@ -233,14 +233,24 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     border: 0;
 }
 
-// Toolbar — a single row that scrolls horizontally instead of wrapping
-// (Figma 1-49824 / 1007-27636: the button row always stays on one line).
+// Toolbar — the maximize/exit button stays pinned at the start (always
+// reachable, especially in mobile fullscreen); only .toolbarScroll scrolls.
 .toolbar {
     display: flex;
     flex-wrap: nowrap;
     gap: 4px;
     align-items: center;
     padding: 8px 16px;
+}
+
+// The scrolling part of the toolbar (everything after the pinned button).
+.toolbarScroll {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-wrap: nowrap;
+    gap: 4px;
+    align-items: center;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
@@ -268,12 +278,19 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     margin: 0;
 }
 
-// Fullscreen exit (Figma 1276-72139): the maximize toolbar button turns into
-// a red round button while the editor is in the fullscreen dialog. Doubled
-// class beats the .toolBtn base rule regardless of source order.
+// The pinned maximize/minimize button: perfectly round, never squished by the
+// flex row. Doubled class beats the .toolBtn base rule regardless of order.
+.toolBtn.maximizeToolBtn {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 50%;
+}
+
+// Fullscreen exit (Figma 1276-72139): the pinned button turns red while the
+// editor is in the fullscreen dialog — white icon via currentColor.
 .toolBtn.exitFullscreenBtn {
     background: $m3-publish;
-    border-radius: 100px;
     color: #fff;
 
     &:hover:not(:disabled) {
