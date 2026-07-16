@@ -607,6 +607,7 @@
     "legal.m3Editor.backToDraft": "Zurück zur aktuellen Fassung",
     "legal.m3Editor.publish": "Veröffentlichen",
     "legal.m3Editor.saveDraft": "Entwurf bearbeiten",
+    "legal.m3Editor.chooseLanguage": "Sprache wählen",
     "legal.help.snackbar.dismiss": "Nicht mehr anzeigen",
     "legal.help.snackbar.close": "Hinweis ausblenden",
     "legal.help.dpa.platform.empty.text": "Fügen Sie hier den Datenverarbeitungsvertrag ein und drücken Sie Veröffentlichen, um den Vertrag für Träger zu veröffentlichen. Nur Träger, die den Vertrag unterschrieben haben, können auf der Plattform Ratsuchende beraten.",

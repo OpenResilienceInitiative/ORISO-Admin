@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Alert, Button } from 'antd';
-import { CloudSync } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import { DpaIcon } from '../../../../CustomIcons/LegalIcons';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
 import { useLegalHelp } from '../../hooks/useLegalHelp';
+import { LegalHelpRole } from '../../utils/legalHelpTexts';
 import { LegalVersion } from '../LegalVersionViewer';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
@@ -58,6 +59,8 @@ interface DataProcessingAgreementCardProps {
      * so agency admins only get to look at the published text, not edit it.
      */
     readOnly?: boolean;
+    /** Bypass the JWT role lookup for the help texts (Storybook/demo contexts). */
+    helpRole?: LegalHelpRole;
 }
 
 /**
@@ -75,6 +78,7 @@ export const DataProcessingAgreementCard = ({
     publishing,
     onTranslate,
     readOnly,
+    helpRole,
 }: DataProcessingAgreementCardProps) => {
     const { t } = useTranslation();
     const {
@@ -106,17 +110,18 @@ export const DataProcessingAgreementCard = ({
     });
 
     // Role/state dependent help texts (Figma 457-13255): description under the
-    // header; the bold CTA tip either inline or — for the platform-admin
-    // "no DPA published yet" blocker — as a dismissible snackbar (Figma 1229-17864).
-    const help = useLegalHelp('dpa', { empty: versions.length === 0, readOnly: !!readOnly });
+    // header. The platform-admin "no DPA published yet" CTA lives ONLY in the
+    // dismissible snackbar (Figma 1229-17864) — once dismissed it is gone for good.
+    const help = useLegalHelp('dpa', { empty: versions.length === 0, readOnly: !!readOnly }, helpRole);
     const [blockerHidden, setBlockerHidden] = useState(isBlockerDismissed);
-    const showBlockerSnackbar = help.keyBase === 'legal.help.dpa.platform.empty' && !blockerHidden;
+    const isBlockerState = help.keyBase === 'legal.help.dpa.platform.empty';
+    const showBlockerSnackbar = isBlockerState && !blockerHidden;
 
     return (
         <div className={styles.card}>
             <M3RichTextEditor
                 title={t('tenants.legal.dataProcessingAgreement.title')}
-                icon={CloudSync}
+                icon={DpaIcon}
                 value={currentContent}
                 onChange={readOnly ? undefined : handleEditorChange}
                 readOnly={readOnly}
@@ -133,7 +138,7 @@ export const DataProcessingAgreementCard = ({
                         contentMap={contentMapWithEdits}
                     />
                 }
-                helpSlot={<EditorHelpText text={help.text} hint={showBlockerSnackbar ? undefined : help.hint} />}
+                helpSlot={<EditorHelpText text={help.text} hint={isBlockerState ? undefined : help.hint} />}
                 snackbarSlot={
                     showBlockerSnackbar && (
                         <EditorHintSnackbar

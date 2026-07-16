@@ -154,7 +154,9 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         // Editable draft: the anchor chip row is removable (has a close "x").
-        await waitFor(() => expect(container.querySelectorAll('.ant-tag-close-icon').length).toBeGreaterThan(0));
+        await waitFor(() =>
+            expect(container.querySelectorAll('.RichEditor-anchorChipRemove').length).toBeGreaterThan(0),
+        );
 
         await openVersionMenu(user);
         await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
@@ -163,6 +165,6 @@ describe('M3RichTextEditor — version select (#268)', () => {
         // their remove "x", so there is no path to mutate/overwrite the draft.
         await waitFor(() => expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('false'));
         await waitFor(() => expect(container.querySelectorAll('[data-anchor-chip]').length).toBeGreaterThan(0));
-        expect(container.querySelectorAll('.ant-tag-close-icon')).toHaveLength(0);
+        expect(container.querySelectorAll('.RichEditor-anchorChipRemove')).toHaveLength(0);
     });
 });

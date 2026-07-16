@@ -14,7 +14,6 @@ import {
     Close,
     Undo,
     Redo,
-    Title,
     FormatListBulleted,
     FormatQuote,
     DataObject,
@@ -43,6 +42,8 @@ import {
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { HeadingAnchors } from './headingAnchors';
+import { HeadingMenu } from './HeadingMenu';
+import { SplitDropdown } from './SplitDropdown';
 import AnchorChips from './AnchorChips';
 import { useHeadingAnchorNav } from './useHeadingAnchorNav';
 import styles from './M3RichTextEditor.module.scss';
@@ -92,6 +93,12 @@ export type M3RichTextEditorProps = {
      * blocker CTA, Figma 1229-17864); flows below the editor on mobile.
      */
     snackbarSlot?: React.ReactNode;
+    /**
+     * Second split button in the bottom function bar (between language and
+     * version) — e.g. a topic/department picker (Figma 1261-48667 allows up
+     * to three split button fields).
+     */
+    topicSlot?: React.ReactNode;
     /** Rendered between the toolbar and the editor (e.g. per-field translate button). */
     aboveEditorSlot?: React.ReactNode;
     /**
@@ -137,12 +144,29 @@ const ToolButton = ({ onClick, active, disabled, title, children }: ToolButtonPr
     </button>
 );
 
-const activeHeadingKey = (editor: Editor) => {
-    const level = [1, 2, 3].find((headingLevel) => editor.isActive('heading', { level: headingLevel }));
-    return level ? `h${level}` : 'p';
+// One menu row: leading glyph/icon, label, trailing keyboard shortcut.
+const MenuRow = ({ glyph, label, hint }: { glyph: React.ReactNode; label: React.ReactNode; hint?: string }) => (
+    <span className={styles.menuItemRow}>
+        <span className={styles.menuItemGlyph}>{glyph}</span>
+        <span className={styles.menuItemLabel}>{label}</span>
+        {hint && <span className={styles.menuItemHint}>{hint}</span>}
+    </span>
+);
+
+type ToolbarProps = {
+    editor: Editor;
+    /** Read mode / version look-back: formatting stays visible but inert (Figma 1261-51137). */
+    disabled?: boolean;
+    /** Leading control before the first divider — the maximize/exit-fullscreen button. */
+    leading?: React.ReactNode;
+    /** Whether the heading menu offers the Auto-Chapters toggles (only with anchors). */
+    anchorsEnabled?: boolean;
+    /** Per heading level: whether a new heading automatically gets an anchor. */
+    autoChapters?: Record<number, boolean>;
+    onToggleAutoChapters?: (level: number) => void;
 };
 
-const Toolbar = ({ editor }: { editor: Editor }) => {
+const Toolbar = ({ editor, disabled, leading, anchorsEnabled, autoChapters, onToggleAutoChapters }: ToolbarProps) => {
     const promptLink = () => {
         if (editor.isActive('link')) {
             editor.chain().focus().unsetLink().run();
@@ -160,207 +184,187 @@ const Toolbar = ({ editor }: { editor: Editor }) => {
 
     return (
         <div className={styles.toolbar} data-testid="m3-toolbar">
-            <div className={styles.toolGroup}>
-                <ToolButton
-                    title="Undo"
-                    onClick={() => editor.chain().focus().undo().run()}
-                    disabled={!editor.can().undo()}
-                >
-                    <Undo />
-                </ToolButton>
-                <ToolButton
-                    title="Redo"
-                    onClick={() => editor.chain().focus().redo().run()}
-                    disabled={!editor.can().redo()}
-                >
-                    <Redo />
-                </ToolButton>
-            </div>
-            <span className={styles.vDivider} />
-            <div className={styles.toolGroup}>
-                <Dropdown
-                    trigger={['click']}
-                    menu={{
-                        selectable: true,
-                        selectedKeys: [activeHeadingKey(editor)],
-                        items: [
-                            { key: 'p', label: 'Normaler Text' },
-                            { key: 'h1', label: 'Überschrift 1' },
-                            { key: 'h2', label: 'Überschrift 2' },
-                            { key: 'h3', label: 'Überschrift 3' },
-                        ],
-                        onClick: ({ key }) => {
-                            if (key === 'p') editor.chain().focus().setParagraph().run();
-                            else
-                                editor
-                                    .chain()
-                                    .focus()
-                                    .toggleHeading({ level: Number(key.slice(1)) as 1 | 2 | 3 })
-                                    .run();
-                        },
-                    }}
-                >
+            {leading}
+            {leading && <span className={styles.vDivider} />}
+            {/* A disabled fieldset natively disables every formatting control inside
+                (read mode / version look-back) without touching each button. */}
+            <fieldset className={styles.toolFieldset} disabled={disabled}>
+                <div className={styles.toolGroup}>
+                    <ToolButton
+                        title="Undo"
+                        onClick={() => editor.chain().focus().undo().run()}
+                        disabled={!editor.can().undo()}
+                    >
+                        <Undo />
+                    </ToolButton>
+                    <ToolButton
+                        title="Redo"
+                        onClick={() => editor.chain().focus().redo().run()}
+                        disabled={!editor.can().redo()}
+                    >
+                        <Redo />
+                    </ToolButton>
+                </div>
+                <span className={styles.vDivider} />
+                <div className={styles.toolGroup}>
+                    <HeadingMenu
+                        editor={editor}
+                        disabled={disabled}
+                        anchorsEnabled={anchorsEnabled}
+                        autoChapters={autoChapters ?? {}}
+                        onToggleAutoChapters={(level) => onToggleAutoChapters?.(level)}
+                    />
+                    <Dropdown
+                        trigger={['click']}
+                        disabled={disabled}
+                        menu={{
+                            items: [
+                                { key: 'bullet', label: <MenuRow glyph={<FormatListBulleted />} label="Aufzählung" /> },
+                                { key: 'ordered', label: <MenuRow glyph="1." label="Nummerierte Liste" /> },
+                            ],
+                            onClick: ({ key }) =>
+                                key === 'bullet'
+                                    ? editor.chain().focus().toggleBulletList().run()
+                                    : editor.chain().focus().toggleOrderedList().run(),
+                        }}
+                    >
+                        <button
+                            type="button"
+                            className={`${styles.toolBtn} ${styles.menuBtn} ${
+                                editor.isActive('bulletList') || editor.isActive('orderedList') ? styles.active : ''
+                            }`}
+                            onMouseDown={(e) => e.preventDefault()}
+                            title="Listen"
+                        >
+                            <FormatListBulleted />
+                            <ArrowDropDown className={styles.caret} />
+                        </button>
+                    </Dropdown>
+                    <ToolButton
+                        title="Blockquote"
+                        active={editor.isActive('blockquote')}
+                        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+                    >
+                        <FormatQuote />
+                    </ToolButton>
+                    <ToolButton
+                        title="Code block"
+                        active={editor.isActive('codeBlock')}
+                        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+                    >
+                        <DataObject />
+                    </ToolButton>
+                </div>
+                <span className={styles.vDivider} />
+                <div className={styles.toolGroup}>
+                    <ToolButton
+                        title="Bold"
+                        active={editor.isActive('bold')}
+                        onClick={() => editor.chain().focus().toggleBold().run()}
+                    >
+                        <FormatBold />
+                    </ToolButton>
+                    <ToolButton
+                        title="Italic"
+                        active={editor.isActive('italic')}
+                        onClick={() => editor.chain().focus().toggleItalic().run()}
+                    >
+                        <FormatItalic />
+                    </ToolButton>
+                    <ToolButton
+                        title="Strikethrough"
+                        active={editor.isActive('strike')}
+                        onClick={() => editor.chain().focus().toggleStrike().run()}
+                    >
+                        <StrikethroughS />
+                    </ToolButton>
+                    <ToolButton
+                        title="Inline code"
+                        active={editor.isActive('code')}
+                        onClick={() => editor.chain().focus().toggleCode().run()}
+                    >
+                        <Code />
+                    </ToolButton>
+                    <ToolButton
+                        title="Underline"
+                        active={editor.isActive('underline')}
+                        onClick={() => editor.chain().focus().toggleUnderline().run()}
+                    >
+                        <FormatUnderlined />
+                    </ToolButton>
+                    <ToolButton
+                        title="Highlight"
+                        active={editor.isActive('highlight')}
+                        onClick={() => editor.chain().focus().toggleHighlight().run()}
+                    >
+                        <BorderColor />
+                    </ToolButton>
+                    <ToolButton title="Link" active={editor.isActive('link')} onClick={promptLink}>
+                        <LinkIcon />
+                    </ToolButton>
+                </div>
+                <span className={styles.vDivider} />
+                <div className={styles.toolGroup}>
+                    <ToolButton
+                        title="Superscript"
+                        active={editor.isActive('superscript')}
+                        onClick={() => editor.chain().focus().toggleSuperscript().run()}
+                    >
+                        <SuperscriptIcon />
+                    </ToolButton>
+                    <ToolButton
+                        title="Subscript"
+                        active={editor.isActive('subscript')}
+                        onClick={() => editor.chain().focus().toggleSubscript().run()}
+                    >
+                        <SubscriptIcon />
+                    </ToolButton>
+                </div>
+                <span className={styles.vDivider} />
+                <div className={styles.toolGroup}>
+                    <ToolButton
+                        title="Align left"
+                        active={editor.isActive({ textAlign: 'left' })}
+                        onClick={() => editor.chain().focus().setTextAlign('left').run()}
+                    >
+                        <FormatAlignLeft />
+                    </ToolButton>
+                    <ToolButton
+                        title="Align center"
+                        active={editor.isActive({ textAlign: 'center' })}
+                        onClick={() => editor.chain().focus().setTextAlign('center').run()}
+                    >
+                        <FormatAlignCenter />
+                    </ToolButton>
+                    <ToolButton
+                        title="Align right"
+                        active={editor.isActive({ textAlign: 'right' })}
+                        onClick={() => editor.chain().focus().setTextAlign('right').run()}
+                    >
+                        <FormatAlignRight />
+                    </ToolButton>
+                    <ToolButton
+                        title="Justify"
+                        active={editor.isActive({ textAlign: 'justify' })}
+                        onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+                    >
+                        <FormatAlignJustify />
+                    </ToolButton>
+                </div>
+                <span className={styles.vDivider} />
+                <div className={styles.toolGroup}>
                     <button
                         type="button"
-                        className={`${styles.toolBtn} ${styles.menuBtn} ${
-                            editor.isActive('heading') ? styles.active : ''
-                        }`}
+                        className={`${styles.toolBtn} ${styles.withLabel}`}
                         onMouseDown={(e) => e.preventDefault()}
-                        title="Textformat"
+                        onClick={promptImage}
+                        title="Add image"
                     >
-                        <Title />
-                        <ArrowDropDown className={styles.caret} />
+                        <ImageIcon />
+                        <span>Add</span>
                     </button>
-                </Dropdown>
-                <Dropdown
-                    trigger={['click']}
-                    menu={{
-                        items: [
-                            { key: 'bullet', label: 'Aufzählung' },
-                            { key: 'ordered', label: 'Nummerierte Liste' },
-                        ],
-                        onClick: ({ key }) =>
-                            key === 'bullet'
-                                ? editor.chain().focus().toggleBulletList().run()
-                                : editor.chain().focus().toggleOrderedList().run(),
-                    }}
-                >
-                    <button
-                        type="button"
-                        className={`${styles.toolBtn} ${styles.menuBtn} ${
-                            editor.isActive('bulletList') || editor.isActive('orderedList') ? styles.active : ''
-                        }`}
-                        onMouseDown={(e) => e.preventDefault()}
-                        title="Listen"
-                    >
-                        <FormatListBulleted />
-                        <ArrowDropDown className={styles.caret} />
-                    </button>
-                </Dropdown>
-                <ToolButton
-                    title="Blockquote"
-                    active={editor.isActive('blockquote')}
-                    onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                >
-                    <FormatQuote />
-                </ToolButton>
-                <ToolButton
-                    title="Code block"
-                    active={editor.isActive('codeBlock')}
-                    onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-                >
-                    <DataObject />
-                </ToolButton>
-            </div>
-            <span className={styles.vDivider} />
-            <div className={styles.toolGroup}>
-                <ToolButton
-                    title="Bold"
-                    active={editor.isActive('bold')}
-                    onClick={() => editor.chain().focus().toggleBold().run()}
-                >
-                    <FormatBold />
-                </ToolButton>
-                <ToolButton
-                    title="Italic"
-                    active={editor.isActive('italic')}
-                    onClick={() => editor.chain().focus().toggleItalic().run()}
-                >
-                    <FormatItalic />
-                </ToolButton>
-                <ToolButton
-                    title="Strikethrough"
-                    active={editor.isActive('strike')}
-                    onClick={() => editor.chain().focus().toggleStrike().run()}
-                >
-                    <StrikethroughS />
-                </ToolButton>
-                <ToolButton
-                    title="Inline code"
-                    active={editor.isActive('code')}
-                    onClick={() => editor.chain().focus().toggleCode().run()}
-                >
-                    <Code />
-                </ToolButton>
-                <ToolButton
-                    title="Underline"
-                    active={editor.isActive('underline')}
-                    onClick={() => editor.chain().focus().toggleUnderline().run()}
-                >
-                    <FormatUnderlined />
-                </ToolButton>
-                <ToolButton
-                    title="Highlight"
-                    active={editor.isActive('highlight')}
-                    onClick={() => editor.chain().focus().toggleHighlight().run()}
-                >
-                    <BorderColor />
-                </ToolButton>
-                <ToolButton title="Link" active={editor.isActive('link')} onClick={promptLink}>
-                    <LinkIcon />
-                </ToolButton>
-            </div>
-            <span className={styles.vDivider} />
-            <div className={styles.toolGroup}>
-                <ToolButton
-                    title="Superscript"
-                    active={editor.isActive('superscript')}
-                    onClick={() => editor.chain().focus().toggleSuperscript().run()}
-                >
-                    <SuperscriptIcon />
-                </ToolButton>
-                <ToolButton
-                    title="Subscript"
-                    active={editor.isActive('subscript')}
-                    onClick={() => editor.chain().focus().toggleSubscript().run()}
-                >
-                    <SubscriptIcon />
-                </ToolButton>
-            </div>
-            <span className={styles.vDivider} />
-            <div className={styles.toolGroup}>
-                <ToolButton
-                    title="Align left"
-                    active={editor.isActive({ textAlign: 'left' })}
-                    onClick={() => editor.chain().focus().setTextAlign('left').run()}
-                >
-                    <FormatAlignLeft />
-                </ToolButton>
-                <ToolButton
-                    title="Align center"
-                    active={editor.isActive({ textAlign: 'center' })}
-                    onClick={() => editor.chain().focus().setTextAlign('center').run()}
-                >
-                    <FormatAlignCenter />
-                </ToolButton>
-                <ToolButton
-                    title="Align right"
-                    active={editor.isActive({ textAlign: 'right' })}
-                    onClick={() => editor.chain().focus().setTextAlign('right').run()}
-                >
-                    <FormatAlignRight />
-                </ToolButton>
-                <ToolButton
-                    title="Justify"
-                    active={editor.isActive({ textAlign: 'justify' })}
-                    onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-                >
-                    <FormatAlignJustify />
-                </ToolButton>
-            </div>
-            <span className={styles.vDivider} />
-            <div className={styles.toolGroup}>
-                <button
-                    type="button"
-                    className={`${styles.toolBtn} ${styles.withLabel}`}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={promptImage}
-                    title="Add image"
-                >
-                    <ImageIcon />
-                    <span>Add</span>
-                </button>
-            </div>
+                </div>
+            </fieldset>
         </div>
     );
 };
@@ -386,6 +390,7 @@ export const M3RichTextEditor = ({
     publishing,
     readOnly,
     languageSlot,
+    topicSlot,
     helpSlot,
     snackbarSlot,
     aboveEditorSlot,
@@ -397,6 +402,31 @@ export const M3RichTextEditor = ({
 }: M3RichTextEditorProps) => {
     const { t } = useTranslation();
     const [maximized, setMaximized] = useState(false);
+    // "Auto Chapters" (Figma 1280-73045): per heading level, whether new
+    // headings automatically get a clickable anchor. Persisted per editor
+    // (keyed by the card title) until re-enabled.
+    const autoChaptersStorageKey = `oriso-admin.editor.autoChapters.${title}`;
+    const [autoChapters, setAutoChapters] = useState<Record<number, boolean>>(() => {
+        const initial: Record<number, boolean> = { 1: true, 2: true, 3: true };
+        try {
+            [1, 2, 3].forEach((level) => {
+                initial[level] = window.localStorage.getItem(`${autoChaptersStorageKey}.h${level}`) !== 'false';
+            });
+        } catch {
+            // Storage unavailable: default to on.
+        }
+        return initial;
+    });
+    const toggleAutoChapters = (level: number) =>
+        setAutoChapters((current) => {
+            const next = { ...current, [level]: !(current[level] !== false) };
+            try {
+                window.localStorage.setItem(`${autoChaptersStorageKey}.h${level}`, String(next[level]));
+            } catch {
+                // Storage unavailable: the toggle still works for this session.
+            }
+            return next;
+        });
     // Which saved version is being viewed (null = the editable current draft).
     const [viewingVersionId, setViewingVersionId] = useState<string | null>(null);
     const viewingVersion = versions.find((v) => v.id === viewingVersionId) ?? null;
@@ -446,6 +476,12 @@ export const M3RichTextEditor = ({
         editor?.setOptions({ editorProps: { attributes: { 'aria-label': title, role: 'textbox' } } });
     }, [editor, title]);
 
+    useEffect(() => {
+        if (editor && anchorsEnabled) {
+            [1, 2, 3].forEach((level) => editor.commands.setAutoHeadingAnchors(autoChapters[level] !== false, level));
+        }
+    }, [editor, anchorsEnabled, autoChapters]);
+
     // Shared anchor-navigation behavior — same hook as the form-bound TiptapEditor.
     const { anchors, anchorsRef, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture } =
         useHeadingAnchorNav(editor, { enabled: anchorsEnabled, editable: editorEditable });
@@ -461,11 +497,31 @@ export const M3RichTextEditor = ({
 
     if (!editor) return null;
 
-    const currentLang = languages.find((l) => l.value === language) ?? languages[0];
     const html = () => (editorSlot || editor.isEmpty ? '' : editor.getHTML());
+    // Read mode (published view / version look-back): text without box, outline
+    // or padding (Figma 1261-51137). Only the built-in editor is restyled — an
+    // editorSlot owns its own surface.
+    const readMode = !editorEditable && !editorSlot;
+
+    // Maximize lives as the first toolbar control (Figma 1261-48667); in
+    // fullscreen it becomes the red round exit button (Figma 1276-72139).
+    const maximizeButton = (
+        <button
+            type="button"
+            className={`${styles.toolBtn} ${maximized ? styles.exitFullscreenBtn : ''}`}
+            onClick={() => setMaximized((m) => !m)}
+            title={maximized ? t('legal.m3Editor.minimize') : t('legal.m3Editor.maximize')}
+            aria-label={maximized ? t('legal.m3Editor.minimize') : t('legal.m3Editor.maximize')}
+        >
+            {maximized ? <FullscreenExit /> : <Fullscreen />}
+        </button>
+    );
 
     const card = (
-        <div className={`${styles.module} ${maximized ? styles.inDialog : ''}`} data-testid="m3-editor">
+        <div
+            className={`${styles.module} ${maximized ? styles.inDialog : ''} ${readMode ? styles.readMode : ''}`}
+            data-testid="m3-editor"
+        >
             <div className={styles.header}>
                 <IconComponent className={styles.headerIcon} />
                 <h2 className={styles.title}>{title}</h2>
@@ -473,32 +529,20 @@ export const M3RichTextEditor = ({
 
             {helpSlot}
 
-            {languageSlot ??
-                (languages.length > 1 && (
-                    <div className={styles.languageRow}>
-                        <div className={styles.splitButton}>
-                            <button type="button" className={styles.leading} title="Language">
-                                <Language style={{ fontSize: 22 }} />
-                                <span>{currentLang?.label}</span>
-                            </button>
-                            <Dropdown
-                                trigger={['click']}
-                                menu={{
-                                    items: languages.map((l) => ({ key: l.value, label: l.label })),
-                                    onClick: ({ key }) => onLanguageChange?.(key),
-                                }}
-                            >
-                                <button type="button" className={styles.trailing} title="Choose language">
-                                    <ArrowDropDown />
-                                </button>
-                            </Dropdown>
-                        </div>
-                    </div>
-                ))}
-
             <hr className={styles.divider} />
 
-            {!editorSlot && editorEditable && <Toolbar editor={editor} />}
+            {!editorSlot ? (
+                <Toolbar
+                    editor={editor}
+                    disabled={!editorEditable}
+                    leading={maximizeButton}
+                    anchorsEnabled={anchorsEnabled}
+                    autoChapters={autoChapters}
+                    onToggleAutoChapters={toggleAutoChapters}
+                />
+            ) : (
+                <div className={styles.toolbar}>{maximizeButton}</div>
+            )}
 
             {viewingVersion && (
                 <div className={styles.versionBanner} role="status">
@@ -527,25 +571,26 @@ export const M3RichTextEditor = ({
 
             {aboveEditorSlot && <div className={styles.contentInset}>{aboveEditorSlot}</div>}
 
-            {anchorsEnabled && (
-                <AnchorChips
-                    className={styles.anchorNav}
-                    anchors={anchors}
-                    activeId={activeAnchorId}
-                    editable={editorEditable}
-                    onSelect={scrollToAnchor}
-                    onRemove={removeAnchor}
-                    ariaLabel={t('editor.plugin.anchor.nav.label', 'Section anchors')}
-                />
-            )}
-
-            <div className={styles.editorRegion}>
+            <div className={`${styles.editorRegion} ${anchorsEnabled && anchors.length > 0 ? styles.hasAnchors : ''}`}>
                 {editorSlot ? (
                     <div className={styles.contentInset}>{editorSlot}</div>
                 ) : (
                     <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
                         <div className={styles.editor}>
                             <EditorContent editor={editor} />
+                            {/* Anchor chips live at the bottom of the text surface, with
+                                overflow nav arrows (Figma 1261-48667 / 1280-73048). */}
+                            {anchorsEnabled && (
+                                <AnchorChips
+                                    className={styles.anchorNav}
+                                    anchors={anchors}
+                                    activeId={activeAnchorId}
+                                    editable={editorEditable}
+                                    onSelect={scrollToAnchor}
+                                    onRemove={removeAnchor}
+                                    ariaLabel={t('editor.plugin.anchor.nav.label', 'Section anchors')}
+                                />
+                            )}
                         </div>
                     </div>
                 )}
@@ -587,18 +632,32 @@ export const M3RichTextEditor = ({
                 </div>
             )}
 
-            <div className={styles.subActions}>
-                <button
-                    type="button"
-                    className={`${styles.outlineBtn} ${styles.maximizeBtn}`}
-                    onClick={() => setMaximized((m) => !m)}
-                >
-                    {maximized ? <FullscreenExit /> : <Fullscreen />}
-                    <span>{maximized ? t('legal.m3Editor.minimize') : t('legal.m3Editor.maximize')}</span>
-                </button>
-                {/* M3 split button (Figma 1:34978): leading = current version label, trailing = history menu */}
-                <Dropdown
-                    trigger={['click']}
+            {/* Lower function bar (Figma 1261-48667): up to three split buttons —
+                language, topic/department (slot), version history. */}
+            <div className={styles.functionBar}>
+                {languageSlot ??
+                    (languages.length > 1 && (
+                        <SplitDropdown
+                            icon={<Language />}
+                            label={language.toUpperCase()}
+                            title={t('legal.m3Editor.chooseLanguage', 'Sprache wählen')}
+                            menu={{
+                                selectable: true,
+                                selectedKeys: [language],
+                                items: languages.map((l) => ({ key: l.value, label: l.label })),
+                                onClick: ({ key }) => onLanguageChange?.(key),
+                            }}
+                        />
+                    ))}
+                {topicSlot}
+                <SplitDropdown
+                    icon={<Schedule />}
+                    title={t('legal.m3Editor.versionHistory')}
+                    label={
+                        viewingVersion
+                            ? viewingVersion.label
+                            : [versionLabel, versions[0]?.label].filter(Boolean).join(' ')
+                    }
                     menu={{
                         selectable: true,
                         selectedKeys: [viewingVersionId ?? 'current'],
@@ -615,21 +674,7 @@ export const M3RichTextEditor = ({
                                 : [{ key: 'latest', label: t('legal.m3Editor.versionLatest') }],
                         onClick: ({ key }) => setViewingVersionId(key === 'current' ? null : key),
                     }}
-                >
-                    <button type="button" className={styles.versionSplit} title={t('legal.m3Editor.versionHistory')}>
-                        <span className={styles.versionLeading}>
-                            <Schedule />
-                            <span>
-                                {viewingVersion
-                                    ? viewingVersion.label
-                                    : [versionLabel, versions[0]?.label].filter(Boolean).join(' ')}
-                            </span>
-                        </span>
-                        <span className={styles.versionTrailing}>
-                            <ArrowDropDown />
-                        </span>
-                    </button>
-                </Dropdown>
+                />
             </div>
 
             {editorEditable && (onPublish || onSaveDraft) && (
@@ -677,6 +722,7 @@ export const M3RichTextEditor = ({
                 footer={null}
                 centered
                 width="min(1512px, calc(100vw - 96px))"
+                className={styles.dialogModal}
                 onCancel={() => setMaximized(false)}
                 styles={{
                     mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },

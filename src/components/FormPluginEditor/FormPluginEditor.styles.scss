@@ -144,7 +144,6 @@
         align-items: center;
         flex-wrap: nowrap;
         gap: 4px;
-        overflow-x: auto;
         padding: 8px 12px;
         border-bottom: 1px solid #0009;
 
@@ -153,6 +152,108 @@
             flex: 0 0 auto;
             cursor: pointer;
             user-select: none;
+        }
+    }
+
+    // The scrolling part of the chip row — the nav arrows sit outside it.
+    &-anchorNavRow {
+        display: flex;
+        flex: 1;
+        min-width: 0;
+        flex-wrap: nowrap;
+        gap: 4px;
+        align-items: center;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+
+    // Prev/next nav for an overflowing chip row (Chapter Navbar, Figma
+    // 1299-81676): a plain arrow per side, rendered only while that side can
+    // still scroll ("hide nav arrows if you cant scroll there").
+    &-anchorNavBtn {
+        display: inline-flex;
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        border-radius: 50%;
+        color: #444748;
+        cursor: pointer;
+
+        svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        &:hover {
+            background: rgba(68, 71, 72, 0.08);
+        }
+    }
+
+    // M3 input chip (Chapter Navbar, Figma 1299-81676): 32px, radius 8;
+    // selected = secondary-container fill + leading book icon.
+    &-anchorChip {
+        display: inline-flex;
+        overflow: hidden;
+        height: 32px;
+        flex: 0 0 auto;
+        align-items: center;
+        border: 1px solid #c4c7c8;
+        background: transparent;
+        border-radius: 8px;
+        color: #444748;
+
+        button {
+            display: inline-flex;
+            height: 100%;
+            align-items: center;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+        }
+
+        &Label {
+            gap: 8px;
+            padding: 0 8px 0 12px !important;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.1px;
+            white-space: nowrap;
+        }
+
+        &Icon {
+            width: 18px !important;
+            height: 18px !important;
+        }
+
+        &Remove {
+            padding: 0 8px 0 0 !important;
+
+            svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            &:hover svg {
+                opacity: 0.7;
+            }
+        }
+
+        &--active {
+            background: #646d78;
+            border-color: #646d78;
+            color: #e7effc;
         }
     }
 
@@ -167,6 +268,11 @@
 
 // TipTap (@tiptap/extension-placeholder) shows the placeholder on the empty
 // first paragraph via this attr; mirrors the former draft-js placeholder.
+.ProseMirror img {
+    max-width: 100%;
+    height: auto;
+}
+
 .ProseMirror p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;

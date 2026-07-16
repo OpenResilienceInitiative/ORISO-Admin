@@ -1040,6 +1040,7 @@
     "legal.m3Editor.backToDraft": "Back to the current version",
     "legal.m3Editor.publish": "Publish",
     "legal.m3Editor.saveDraft": "Edit draft",
+    "legal.m3Editor.chooseLanguage": "Choose language",
     "legal.help.snackbar.dismiss": "Don't show again",
     "legal.help.snackbar.close": "Hide hint",
     "legal.help.dpa.platform.empty.text": "Insert the data processing agreement here and press publish to make the contract available to tenants. Only tenants who have signed the contract can counsel clients on the platform.",

@@ -17,16 +17,23 @@ export interface LegalHelp {
  * Resolves the role- and state-dependent editor help texts (description + bold
  * CTA hint) for a legal text card. Platform admin = super admin, tenant =
  * tenant-scoped admins, everything else (agency admins) = agency.
+ * `roleOverride` bypasses the JWT lookup (Storybook/demo contexts have no token).
  */
-export const useLegalHelp = (type: LegalHelpType, context: LegalHelpContext): LegalHelp => {
+export const useLegalHelp = (
+    type: LegalHelpType,
+    context: LegalHelpContext,
+    roleOverride?: LegalHelpRole,
+): LegalHelp => {
     const { t } = useTranslation();
     const { isSuperAdmin, isTenantScopedAdmin, hasRole } = useUserRoles();
 
-    let role: LegalHelpRole = 'agency';
-    if (isSuperAdmin) {
-        role = 'platform';
-    } else if (isTenantScopedAdmin || hasRole(UserRole.SingleTenantAdmin)) {
-        role = 'tenant';
+    let role: LegalHelpRole = roleOverride ?? 'agency';
+    if (!roleOverride) {
+        if (isSuperAdmin) {
+            role = 'platform';
+        } else if (isTenantScopedAdmin || hasRole(UserRole.SingleTenantAdmin)) {
+            role = 'tenant';
+        }
     }
 
     const keyBase = resolveLegalHelpKey(type, role, context);

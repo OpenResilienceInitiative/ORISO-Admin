@@ -49,6 +49,34 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
             flex: 1;
             overflow-y: auto;
         }
+
+        // Mobile fullscreen (Figma 1276-72139): the toolbar (with the red exit
+        // button) sits at the very top — header + help text are hidden, the
+        // text surface gets the 12px radius (write mode only; read mode has
+        // no box at all).
+        @media (max-width: 599px) {
+            height: calc(100vh - 32px);
+            border-radius: 12px;
+
+            .header,
+            .helpRow {
+                display: none;
+            }
+
+            .editor {
+                border-radius: 12px;
+            }
+        }
+    }
+}
+
+// The fullscreen dialog fills the viewport on mobile (antd sets the width
+// inline, hence the override).
+.dialogModal {
+    @media (max-width: 599px) {
+        max-width: none;
+        /* stylelint-disable-next-line declaration-no-important */
+        width: calc(100vw - 16px) !important;
     }
 }
 
@@ -81,6 +109,11 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     &:focus-visible {
         outline: 2px solid $m3-on-surface;
         outline-offset: 2px;
+    }
+
+    // Mobile fullscreen: the red toolbar exit button is the only close control.
+    @media (max-width: 599px) {
+        display: none;
     }
 }
 
@@ -225,6 +258,29 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     align-items: center;
 }
 
+// Read mode / version look-back: the fieldset natively disables every
+// formatting control inside; display: contents keeps the flex layout intact.
+.toolFieldset {
+    display: contents;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    margin: 0;
+}
+
+// Fullscreen exit (Figma 1276-72139): the maximize toolbar button turns into
+// a red round button while the editor is in the fullscreen dialog. Doubled
+// class beats the .toolBtn base rule regardless of source order.
+.toolBtn.exitFullscreenBtn {
+    background: $m3-publish;
+    border-radius: 100px;
+    color: #fff;
+
+    &:hover:not(:disabled) {
+        background: #8c0009;
+    }
+}
+
 .vDivider {
     width: 1px;
     height: 24px;
@@ -295,29 +351,28 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 }
 
 // Editor surface
-// Anchor navigation — horizontal chip row above the editor surface. Same
-// single-line + hidden-scrollbar pattern as the toolbar; base layout comes
-// from the global .RichEditor-anchorNav rules, this only adds M3 chrome.
-.anchorNav {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 4px;
-    align-items: center;
-    padding: 0 16px 8px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-        display: none;
-    }
+// Anchor navigation — chip row at the bottom of the text surface with
+// overflow nav arrows (Figma 1261-48667 / 1280-73048). Scrolling happens in
+// the global .RichEditor-anchorNavRow; this only adds the M3 chrome.
+// Nested under .editor so the M3 chrome wins over the global
+// .RichEditor-anchorNav base rules regardless of bundle order.
+.editor .anchorNav {
+    position: sticky;
+    bottom: 0;
+    padding: 8px 0 0;
+    background: #fff;
+    border-bottom: 0;
 
     :global(.ant-tag) {
         margin-inline-end: 0;
         flex: 0 0 auto;
         cursor: pointer;
     }
+}
+
+// Read mode: the chips sit directly on the card surface.
+.readMode .anchorNav {
+    background: $m3-surface;
 }
 
 .anchorBubbleHost {
@@ -369,7 +424,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 // the editor; on mobile it flows below the editor with a 12px lower radius.
 .hintSnackbar {
     position: absolute;
-    z-index: 2;
+    z-index: 3;
     bottom: 16px;
     left: 50%;
     display: flex;
@@ -388,6 +443,16 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         margin: 8px 16px 0;
         border-radius: 4px 4px 12px 12px;
         transform: none;
+    }
+}
+
+// With a chapter chip row at the bottom of the surface the snackbar floats
+// ABOVE the chips instead of covering them (Figma 1261-49085 / 1280-73048).
+.hasAnchors .hintSnackbar {
+    bottom: 64px;
+
+    @media (max-width: 599px) {
+        bottom: auto;
     }
 }
 
@@ -466,6 +531,63 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         outline: none;
     }
 
+    // Inserted images must never blow out the text surface.
+    :global(.ProseMirror img) {
+        max-width: 100%;
+        height: auto;
+    }
+
+    // Heading scale (Figma 1280-73020): M3 display sizes on desktop, headline
+    // sizes on mobile — body text follows body-large / body-medium.
+    :global(.ProseMirror h1) {
+        font-size: 57px;
+        font-weight: 400;
+        letter-spacing: -0.25px;
+        line-height: 64px;
+    }
+
+    :global(.ProseMirror h2) {
+        font-size: 45px;
+        font-weight: 400;
+        line-height: 52px;
+    }
+
+    :global(.ProseMirror h3) {
+        font-size: 36px;
+        font-weight: 400;
+        line-height: 44px;
+    }
+
+    :global(.ProseMirror p) {
+        font-size: 16px;
+        letter-spacing: 0.5px;
+        line-height: 24px;
+    }
+
+    @media (max-width: 599px) {
+        :global(.ProseMirror h1) {
+            font-size: 32px;
+            letter-spacing: 0;
+            line-height: 40px;
+        }
+
+        :global(.ProseMirror h2) {
+            font-size: 28px;
+            line-height: 36px;
+        }
+
+        :global(.ProseMirror h3) {
+            font-size: 24px;
+            line-height: 32px;
+        }
+
+        :global(.ProseMirror p) {
+            font-size: 14px;
+            letter-spacing: 0.25px;
+            line-height: 20px;
+        }
+    }
+
     :global(.ProseMirror p.is-editor-empty:first-child::before) {
         content: attr(data-placeholder);
         float: left;
@@ -509,15 +631,35 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 }
 
-// Hide maximize on mobile (Figma mobile annotation: "Hide Maximize").
-.maximizeBtn {
-    @media (max-width: 599px) {
+// Lower function bar (Figma 1261-48667): up to three split buttons in ONE
+// horizontal row — overflow scrolls sideways instead of stacking.
+.functionBar {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 12px 16px 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
         display: none;
+    }
+
+    > * {
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 599px) {
+        gap: 8px;
     }
 }
 
-// M3 split button for the version history (Figma 1:34978): leading segment =
-// current version label, trailing segment = menu caret; one control, one menu.
+// M3 split button (Figma 1252-37231): leading segment = icon + label,
+// trailing segment = menu caret; one control, one menu.
 .versionSplit {
     display: flex;
     max-width: 100%;
@@ -563,6 +705,11 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     font-weight: 500;
     letter-spacing: 0.1px;
 
+    // antd Icon wrappers size via font-size (1em) — match the MUI icons.
+    :global(.anticon) {
+        font-size: 18px;
+    }
+
     > span {
         overflow: hidden;
         white-space: nowrap;
@@ -580,6 +727,180 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         width: 22px;
         height: 22px;
     }
+}
+
+// Menu open → elevated state: white segments, shadow, primary-red label
+// (Figma 1280-73042 "Elevated state when menu is opened").
+.splitOpen {
+    .versionLeading,
+    .versionTrailing {
+        background: #fff;
+        border-color: transparent;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+        color: $m3-publish;
+    }
+}
+
+// Read mode (Figma 1261-51137): text without box, outline or padding.
+.readMode {
+    .editor {
+        padding: 8px 0;
+        background: transparent;
+        border-color: transparent;
+
+        &:focus-within {
+            border-color: transparent;
+            box-shadow: none;
+        }
+    }
+}
+
+// Heading-menu rows (Figma 1280-73045): glyph/icon + label + keyboard shortcut.
+.menuItemRow {
+    display: flex;
+    min-width: 230px;
+    gap: 12px;
+    align-items: center;
+}
+
+.menuItemGlyph {
+    display: inline-flex;
+    width: 26px;
+    flex-shrink: 0;
+    justify-content: center;
+    color: $m3-on-surface-variant;
+    font-size: 13px;
+    font-weight: 600;
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+.menuItemLabel {
+    flex: 1;
+
+    small {
+        display: block;
+        max-width: 210px;
+        color: rgba(68, 71, 72, 0.72);
+        font-size: 11px;
+        line-height: 14px;
+        white-space: normal;
+    }
+}
+
+.menuItemHint {
+    margin-left: 12px;
+    color: rgba(68, 71, 72, 0.6);
+    font-size: 12px;
+}
+
+// Text-format menu panel (Figma 1280-73045): custom dropdown with expandable
+// per-heading rows for the Auto-Chapters toggles.
+.headingMenu {
+    min-width: 290px;
+    padding: 8px 0;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+}
+
+.headingMenuRow {
+    display: flex;
+    align-items: center;
+
+    &:hover {
+        background: $m3-state-hover;
+    }
+}
+
+.headingMenuRowActive {
+    background: rgba(165, 0, 10, 0.08);
+    color: $m3-publish;
+
+    .menuItemGlyph {
+        color: $m3-publish;
+    }
+}
+
+.headingMenuItem {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px 10px 16px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 14px;
+    text-align: left;
+}
+
+.headingMenuExpand {
+    display: inline-flex;
+    width: 40px;
+    align-self: stretch;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    color: $m3-on-surface-variant;
+    cursor: pointer;
+
+    svg {
+        width: 20px;
+        height: 20px;
+        transition: transform 0.15s ease;
+    }
+
+    &:hover {
+        background: $m3-state-hover;
+    }
+}
+
+.headingMenuExpandOpen svg {
+    transform: rotate(180deg);
+}
+
+.headingMenuAuto {
+    display: flex;
+    width: 100%;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 8px 16px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    text-align: left;
+
+    &:hover {
+        background: $m3-state-hover;
+    }
+}
+
+.headingMenuDivider {
+    height: 1px;
+    border: 0;
+    margin: 4px 0 0;
+    background: $m3-divider;
+}
+
+// Auto-Chapters toggle row: red while active (Figma 1280-73045).
+.autoChaptersOn {
+    color: $m3-publish !important;
+
+    .menuItemGlyph {
+        color: $m3-publish;
+    }
+}
+
+.autoChaptersOff {
+    color: $m3-on-surface-variant;
 }
 
 .actions {

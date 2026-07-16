@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { PrivacyTip } from '@mui/icons-material';
+import { GdprIcon, ImprintIcon } from '../../CustomIcons/LegalIcons';
 import { CardDeck } from '../../CardDeck';
 import { CardEditable } from '../../CardEditable';
 import { FormSwitchField } from '../../FormSwitchField';
@@ -30,7 +30,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
         <LegalText
             tenantId={finalTenantId}
             fieldName={['content', 'privacy']}
-            icon={PrivacyTip}
+            icon={GdprIcon}
             titleKey="privacy.title"
             legalType="privacy"
             placeHolderKey="settings.privacy.placeholder"
@@ -94,6 +94,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                     fieldName={['content', 'impressum']}
                     titleKey="imprint.title"
                     legalType="imprint"
+                    icon={ImprintIcon}
                     placeHolderKey="settings.imprint.placeholder"
                 />
             </CardDeck.Item>

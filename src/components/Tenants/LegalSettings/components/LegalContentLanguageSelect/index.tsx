@@ -1,9 +1,7 @@
-import { Dropdown } from 'antd';
 import Language from '@mui/icons-material/Language';
-import ArrowDropDown from '@mui/icons-material/ArrowDropDown';
 import { useTranslation } from 'react-i18next';
+import { SplitDropdown } from '../../../../FormPluginEditor/SplitDropdown';
 import { isMachineTranslated } from '../../utils/translationMeta';
-import styles from './styles.module.scss';
 
 interface LegalContentLanguageSelectProps {
     /** The languages offered for editing/viewing. Hidden when there is only one. */
@@ -51,25 +49,19 @@ export const LegalContentLanguageSelect = ({
     };
 
     return (
-        <div className={styles.splitButton}>
-            <div className={styles.leading} title={t('languages')}>
-                <Language style={{ fontSize: 22 }} />
-                {/* Plain language name on the button (matches the other legal cards);
-                    the original / machine-translated status stays in the menu below. */}
-                <span>{t(`language.${value}`, value)}</span>
-            </div>
-            <Dropdown
-                trigger={['click']}
-                menu={{
-                    items: languages.map((language) => ({ key: language, label: labelFor(language) })),
-                    onClick: ({ key }) => onChange(key),
-                }}
-            >
-                <button type="button" className={styles.trailing} title={t('languages')} aria-label={t('languages')}>
-                    <ArrowDropDown />
-                </button>
-            </Dropdown>
-        </div>
+        // Compact split button in the lower function bar ("DE", Figma 1261-48667);
+        // the original / machine-translated status stays in the menu below.
+        <SplitDropdown
+            icon={<Language />}
+            label={value.toUpperCase()}
+            title={t('languages')}
+            menu={{
+                selectable: true,
+                selectedKeys: [value],
+                items: languages.map((language) => ({ key: language, label: labelFor(language) })),
+                onClick: ({ key }) => onChange(key),
+            }}
+        />
     );
 };
 

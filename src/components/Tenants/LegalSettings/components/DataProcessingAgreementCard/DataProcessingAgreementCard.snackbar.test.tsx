@@ -43,23 +43,23 @@ describe('DataProcessingAgreementCard blocker snackbar (platform admin, no publi
         expect(screen.getAllByText('legal.help.dpa.platform.empty.hint')).toHaveLength(1);
     });
 
-    it('"nicht mehr anzeigen" hides the snackbar, persists, and falls back to the inline bold hint', async () => {
+    it('"nicht mehr anzeigen" removes the CTA text completely and persists', async () => {
         const user = userEvent.setup();
         render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} />);
 
         await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' }));
 
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
-        expect(screen.getByText('legal.help.dpa.platform.empty.hint')).toBeInTheDocument();
+        expect(screen.queryByText('legal.help.dpa.platform.empty.hint')).not.toBeInTheDocument();
         expect(window.localStorage.getItem('oriso-admin.legal.dpa.blocker.dismissed')).toBe('true');
     });
 
-    it('stays hidden on the next render once dismissed', () => {
+    it('stays completely hidden on the next render once dismissed', () => {
         window.localStorage.setItem('oriso-admin.legal.dpa.blocker.dismissed', 'true');
         render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} />);
 
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
-        expect(screen.getByText('legal.help.dpa.platform.empty.hint')).toBeInTheDocument();
+        expect(screen.queryByText('legal.help.dpa.platform.empty.hint')).not.toBeInTheDocument();
     });
 
     it('does not show the blocker once a version is published', () => {
