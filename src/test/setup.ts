@@ -43,15 +43,15 @@ const isBrokenStorage = (candidate: unknown): boolean => {
     );
 };
 
-for (const name of ['localStorage', 'sessionStorage'] as const) {
+(['localStorage', 'sessionStorage'] as const).forEach((name) => {
     if (isBrokenStorage(window[name])) {
         const storage = createStorage();
-        for (const target of [window, globalThis]) {
+        [window, globalThis].forEach((target) => {
             Object.defineProperty(target, name, {
                 configurable: true,
                 value: storage,
                 writable: true,
             });
-        }
+        });
     }
-}
+});
