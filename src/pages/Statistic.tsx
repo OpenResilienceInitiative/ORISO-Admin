@@ -2541,7 +2541,7 @@ export const Statistic = () => {
                                 {translateDashboardKey(
                                     translate,
                                     'statistic.dashboard.suppressedNotice',
-                                    'Für Bereiche mit weniger als zwei Beratenden werden aus Datenschutzgründen keine Statistiken angezeigt.',
+                                    'Für Bereiche mit weniger als fünf Beratenden werden aus Datenschutzgründen keine Statistiken angezeigt.',
                                 )}
                             </p>
                         )}
