@@ -366,20 +366,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
                 </CardDeck.Item>
                 <CardDeck.Item>
-                    <LegalTextSettings
-                        agencyData={agencyData}
-                        field="impressum"
-                        initialValues={initialValues}
-                        onSave={onSaveCard}
-                    />
+                    <LegalTextSettings agencyData={agencyData} field="impressum" onSave={onSaveCard} />
                 </CardDeck.Item>
                 <CardDeck.Item>
-                    <LegalTextSettings
-                        agencyData={agencyData}
-                        field="privacy"
-                        initialValues={initialValues}
-                        onSave={onSaveCard}
-                    />
+                    <LegalTextSettings agencyData={agencyData} field="privacy" onSave={onSaveCard} />
                 </CardDeck.Item>
                 <CardDeck.Item>
                     {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}

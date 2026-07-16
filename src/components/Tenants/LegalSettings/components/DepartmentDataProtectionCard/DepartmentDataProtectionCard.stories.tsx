@@ -58,7 +58,7 @@ export const Empty: Story = {
 };
 
 // Narrow viewport: the card must stay usable at its 375px minimum width —
-// same convention as the FormPluginEditor narrow story.
+// same convention as the M3RichTextEditor narrow story.
 export const Narrow: Story = {
     args: Multilingual.args,
     decorators: [

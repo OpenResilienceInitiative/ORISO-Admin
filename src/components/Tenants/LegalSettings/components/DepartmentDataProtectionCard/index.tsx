@@ -1,7 +1,7 @@
-import { Alert, Button, Space, Tag } from 'antd';
+import { Alert, Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { Card } from '../../../../Card';
-import TiptapEditor from '../../../../FormPluginEditor/TiptapEditor';
+import { GdprIcon } from '../../../../CustomIcons/LegalIcons';
+import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
@@ -38,9 +38,10 @@ interface DepartmentDataProtectionCardProps {
 
 /**
  * Editor card for a department's (Fachbereich = agency × topic) own data privacy policy
- * (Datenschutzerklärung). Mirrors the tenant DPA card but is per-Fachbereich: it has no version
- * history and offers both a draft-save and a publish action, with the current status shown as a tag.
- * Publishing offers to machine-translate the source text into the other active languages.
+ * (Datenschutzerklärung) in the M3 editor shell. Mirrors the tenant DPA card but is
+ * per-Fachbereich: it has no version history and offers both a draft-save and a publish
+ * action, with the current status shown as a tag. Publishing offers to machine-translate
+ * the source text into the other active languages.
  */
 export const DepartmentDataProtectionCard = ({
     departmentName,
@@ -84,64 +85,69 @@ export const DepartmentDataProtectionCard = ({
     });
 
     return (
-        <Card titleKey="tenants.legal.departmentDataProtection.title" variant="dialog" className={styles.card}>
-            <div className={styles.header}>
-                {departmentName && <span className={styles.department}>{departmentName}</span>}
-                <Tag color={published ? 'green' : 'default'}>
-                    {published
-                        ? t('tenants.legal.departmentDataProtection.status.published')
-                        : t('tenants.legal.departmentDataProtection.status.draft')}
-                </Tag>
-            </div>
-
-            <p className={styles.description}>{t('tenants.legal.departmentDataProtection.description')}</p>
-
-            <LegalContentLanguageSelect
-                languages={languages}
-                value={activeLanguage}
-                onChange={setActiveLanguage}
-                sourceLanguage={sourceLanguage}
-                contentMap={contentMapWithEdits}
+        <div className={styles.card}>
+            <M3RichTextEditor
+                title={t('tenants.legal.departmentDataProtection.title')}
+                icon={GdprIcon}
+                value={currentContent}
+                onChange={handleEditorChange}
+                publishing={saving}
+                versionLabel={t('legal.m3Editor.versionLabel')}
+                languageSlot={
+                    <LegalContentLanguageSelect
+                        languages={languages}
+                        value={activeLanguage}
+                        onChange={setActiveLanguage}
+                        sourceLanguage={sourceLanguage}
+                        contentMap={contentMapWithEdits}
+                    />
+                }
+                helpSlot={
+                    <>
+                        <div className={styles.header}>
+                            {departmentName && <span className={styles.department}>{departmentName}</span>}
+                            <Tag color={published ? 'green' : 'default'}>
+                                {published
+                                    ? t('tenants.legal.departmentDataProtection.status.published')
+                                    : t('tenants.legal.departmentDataProtection.status.draft')}
+                            </Tag>
+                        </div>
+                        <p className={styles.description}>{t('tenants.legal.departmentDataProtection.description')}</p>
+                    </>
+                }
+                aboveEditorSlot={
+                    showFieldTranslate && (
+                        <div className={styles.translateField}>
+                            <Button
+                                size="small"
+                                loading={fieldTranslating}
+                                disabled={fieldTranslateDisabled}
+                                onClick={translateActiveField}
+                            >
+                                {t('legal.translation.field.button')}
+                            </Button>
+                            {fieldErrorKey && (
+                                <Alert type="error" showIcon message={t(fieldErrorKey)} className={styles.fieldError} />
+                            )}
+                        </div>
+                    )
+                }
+                onPublish={() => requestPublish()}
+                onSaveDraft={() => onSave(buildPublishMap(), false)}
+                belowSlot={
+                    <TranslateOnPublishModal
+                        open={modalOpen}
+                        sourceLanguage={sourceLanguage}
+                        targetLanguages={targetLanguages}
+                        translating={translating}
+                        errorKey={modalErrorKey}
+                        onConfirm={translateAndPublish}
+                        onSkip={publishWithoutTranslation}
+                        onCancel={closeModal}
+                    />
+                }
             />
-
-            {showFieldTranslate && (
-                <div className={styles.translateField}>
-                    <Button
-                        size="small"
-                        loading={fieldTranslating}
-                        disabled={fieldTranslateDisabled}
-                        onClick={translateActiveField}
-                    >
-                        {t('legal.translation.field.button')}
-                    </Button>
-                    {fieldErrorKey && (
-                        <Alert type="error" showIcon message={t(fieldErrorKey)} className={styles.fieldError} />
-                    )}
-                </div>
-            )}
-
-            <TiptapEditor key={activeLanguage} value={currentContent} onChange={handleEditorChange} />
-
-            <Space className={styles.actions}>
-                <Button loading={saving} onClick={() => onSave(buildPublishMap(), false)}>
-                    {t('tenants.legal.departmentDataProtection.saveDraft')}
-                </Button>
-                <Button type="primary" loading={saving} onClick={requestPublish}>
-                    {t('tenants.legal.departmentDataProtection.publish')}
-                </Button>
-            </Space>
-
-            <TranslateOnPublishModal
-                open={modalOpen}
-                sourceLanguage={sourceLanguage}
-                targetLanguages={targetLanguages}
-                translating={translating}
-                errorKey={modalErrorKey}
-                onConfirm={translateAndPublish}
-                onSkip={publishWithoutTranslation}
-                onCancel={closeModal}
-            />
-        </Card>
+        </div>
     );
 };
 

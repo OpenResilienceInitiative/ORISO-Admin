@@ -41,6 +41,7 @@ import {
     Language,
     ArrowDropDown,
     Fingerprint,
+    TextFields,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import {
@@ -83,6 +84,12 @@ export type M3RichTextEditorProps = {
     onRestoreVersion?: (content: string) => void;
     onChange?: (html: string) => void;
     placeholder?: string;
+    /**
+     * Template placeholders (key -> i18n label key). When present, the toolbar gets a
+     * dropdown that inserts the literal `${key}` text at the cursor — the same storage
+     * format the legacy legal-text editor used, so old content round-trips identically.
+     */
+    placeholders?: { [key: string]: string };
     languages?: { value: string; label: string }[];
     language?: string;
     onLanguageChange?: (lng: string) => void;
@@ -189,9 +196,20 @@ type ToolbarProps = {
     /** Per heading level: whether a new heading automatically gets an anchor. */
     autoChapters?: Record<number, boolean>;
     onToggleAutoChapters?: (level: number) => void;
+    /** Template placeholders (key -> i18n label key) inserted as literal `${key}` text. */
+    placeholders?: { [key: string]: string };
 };
 
-const Toolbar = ({ editor, disabled, leading, anchorsEnabled, autoChapters, onToggleAutoChapters }: ToolbarProps) => {
+const Toolbar = ({
+    editor,
+    disabled,
+    leading,
+    anchorsEnabled,
+    autoChapters,
+    onToggleAutoChapters,
+    placeholders,
+}: ToolbarProps) => {
+    const { t } = useTranslation();
     const promptLink = () => {
         if (editor.isActive('link')) {
             editor.chain().focus().unsetLink().run();
@@ -447,6 +465,34 @@ const Toolbar = ({ editor, disabled, leading, anchorsEnabled, autoChapters, onTo
                             <span>Add</span>
                         </button>
                     </div>
+                    {placeholders && Object.keys(placeholders).length > 0 && (
+                        <>
+                            <span className={styles.vDivider} />
+                            <div className={styles.toolGroup}>
+                                <Dropdown
+                                    trigger={['click']}
+                                    disabled={disabled}
+                                    menu={{
+                                        items: Object.entries(placeholders).map(([key, label]) => ({
+                                            key,
+                                            label: <MenuRow glyph={<TextFields />} label={t(label)} />,
+                                        })),
+                                        onClick: ({ key }) => editor.chain().focus().insertContent(`\${${key}}`).run(),
+                                    }}
+                                >
+                                    <button
+                                        type="button"
+                                        className={`${styles.toolBtn} ${styles.menuBtn}`}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        title={t('editor.plugin.placeholder.select.placeholder', 'Placeholder')}
+                                    >
+                                        <TextFields />
+                                        <ArrowDropDown className={styles.caret} />
+                                    </button>
+                                </Dropdown>
+                            </div>
+                        </>
+                    )}
                 </fieldset>
             </div>
         </div>
@@ -467,6 +513,7 @@ export const M3RichTextEditor = ({
     onRestoreVersion,
     onChange,
     placeholder = 'Text eingeben …',
+    placeholders,
     languages = [{ value: 'de', label: 'Deutsch' }],
     language = 'de',
     onLanguageChange,
@@ -634,6 +681,7 @@ export const M3RichTextEditor = ({
                     anchorsEnabled={anchorsEnabled}
                     autoChapters={autoChapters}
                     onToggleAutoChapters={toggleAutoChapters}
+                    placeholders={placeholders}
                 />
             ) : (
                 <div className={styles.toolbar}>{maximizeButton}</div>

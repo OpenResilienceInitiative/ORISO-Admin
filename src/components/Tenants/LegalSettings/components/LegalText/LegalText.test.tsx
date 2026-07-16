@@ -17,7 +17,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../../../../hooks/useTenantAppearanceFormData', () => ({
     useTenantAppearanceFormData: () => ({
         data: {
-            content: { imprint: { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>' } },
+            content: {
+                imprint: { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>', fr: '<p>Imprint FR</p>' },
+            },
             settings: { activeLanguages: ['de', 'en'] },
         },
         isLoading: false,
@@ -29,27 +31,34 @@ vi.mock('../../../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({ can: () => mocks.canEdit }),
 }));
 
-// The M3 shell mock mirrors the real contract: slots render, publish submits.
+// The M3 editor mock mirrors the real contract: echoes the value, renders the
+// slots, emits an edit via onChange and exposes the publish action.
 vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
     M3RichTextEditor: ({
+        value,
+        onChange,
         readOnly,
         onPublish,
-        languageSlot,
+        helpSlot,
         aboveEditorSlot,
-        editorSlot,
         belowSlot,
     }: {
+        value?: string;
+        onChange?: (html: string) => void;
         readOnly?: boolean;
         onPublish?: () => void;
-        languageSlot?: React.ReactNode;
+        helpSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
-        editorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
     }) => (
-        <div data-testid="m3-shell" data-readonly={readOnly ? 'true' : 'false'}>
-            {languageSlot}
+        <div data-testid="m3-editor" data-value={value} data-readonly={readOnly ? 'true' : 'false'}>
+            {helpSlot}
             {aboveEditorSlot}
-            {editorSlot}
+            {!readOnly && onChange && (
+                <button type="button" onClick={() => onChange('<p>edited</p>')}>
+                    edit
+                </button>
+            )}
             {!readOnly && onPublish && (
                 <button type="button" onClick={() => onPublish()}>
                     legal.m3Editor.publish
@@ -59,18 +68,6 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         </div>
     ),
 }));
-
-vi.mock('../../../../FormPluginEditor/FormPluginEditor', async () => {
-    const { Form } = await import('antd');
-
-    return {
-        default: ({ name }: { name?: string | string[] }) => (
-            <Form.Item name={name} noStyle>
-                <input />
-            </Form.Item>
-        ),
-    };
-});
 
 beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
@@ -91,9 +88,10 @@ beforeAll(() => {
     vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element) => originalGetComputedStyle(el));
 });
 
-describe('LegalText (M3 shell)', () => {
-    it('submits the form values through the tenant mutation on publish', async () => {
+describe('LegalText (M3 editor)', () => {
+    it('publishes the complete language map — untouched and unknown languages survive an edit', async () => {
         const user = userEvent.setup();
+        mocks.updateTenant.mockClear();
         render(
             <LegalText
                 tenantId="1"
@@ -104,16 +102,19 @@ describe('LegalText (M3 shell)', () => {
             />,
         );
 
-        // The editor slot keeps one registered input per active language, so
-        // publish collects them all.
-        expect(document.querySelector('input#content_imprint_de')).toHaveValue('<p>Impressum DE</p>');
-        expect(document.querySelector('input#content_imprint_en')).toHaveValue('<p>Imprint EN</p>');
+        // The editor shows the active (default: de) language content.
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>');
 
+        // Edit only German, then publish.
+        await user.click(screen.getByRole('button', { name: 'edit' }));
         await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
 
-        await vi.waitFor(() => expect(mocks.updateTenant).toHaveBeenCalledTimes(1));
-        expect(mocks.updateTenant.mock.calls[0][0]).toMatchObject({
-            content: { imprint: { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>' } },
+        expect(mocks.updateTenant).toHaveBeenCalledTimes(1);
+        // en (untouched active language) and fr (stored but not even offered) are kept.
+        expect(mocks.updateTenant.mock.calls[0][0]).toEqual({
+            content: {
+                imprint: { de: '<p>edited</p>', en: '<p>Imprint EN</p>', fr: '<p>Imprint FR</p>' },
+            },
         });
     });
 
@@ -147,7 +148,10 @@ describe('LegalText (M3 shell)', () => {
 
         await vi.waitFor(() => expect(mocks.updateTenant).toHaveBeenCalledTimes(1));
         expect(mocks.updateTenant.mock.calls[0][0]).toMatchObject({
-            content: { confirmPrivacy: false },
+            content: {
+                confirmPrivacy: false,
+                imprint: { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>' },
+            },
         });
     });
 
@@ -163,7 +167,7 @@ describe('LegalText (M3 shell)', () => {
             />,
         );
 
-        expect(screen.getByTestId('m3-shell').dataset.readonly).toBe('true');
+        expect(screen.getByTestId('m3-editor').dataset.readonly).toBe('true');
         expect(screen.queryByRole('button', { name: 'legal.m3Editor.publish' })).toBeNull();
         mocks.canEdit = true;
     });

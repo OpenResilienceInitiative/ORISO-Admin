@@ -1,11 +1,10 @@
 import set from 'lodash.set';
-import { Form, Spin } from 'antd';
+import { Spin } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
-import FormPluginEditor from '../../../../FormPluginEditor/FormPluginEditor';
 import { useLegalHelp } from '../../hooks/useLegalHelp';
 import { isEmptyLegalContent } from '../../utils/legalHelpTexts';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
@@ -34,9 +33,11 @@ interface LegalTextProps {
 
 /**
  * Imprint / privacy card in the M3 editor shell (Figma Admin.ORISO 1-53274).
- * The editing engine stays the Form-bound TiptapEditor (per active language, with
- * the placeholder plugin and anchor navigation) mounted via the shell's editorSlot,
- * and saving keeps the tenant-admin mutation incl. the optional confirmation modal.
+ * The M3RichTextEditor is the editing engine (per active language, incl. the
+ * placeholder dropdown and anchor navigation); local edits are kept per language
+ * and publishing sends the COMPLETE language map through the tenant-admin
+ * mutation — untouched languages and unknown stored keys are never dropped.
+ * The optional confirmation modal (privacy) stays in front of the save.
  */
 export const LegalText = ({
     tenantId,
@@ -50,12 +51,12 @@ export const LegalText = ({
     placeholders,
 }: LegalTextProps) => {
     const { t } = useTranslation();
-    const [form] = Form.useForm();
     const { can } = useUserPermissions();
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const { data, isLoading, mutate: updateTenant, isPending } = useTenantAppearanceFormData(`${tenantId}`);
     const [activeLanguage, setActiveLanguage] = useState('de');
-    const [formDataContent, setFormData] = useState<Record<string, unknown>>();
+    const [edits, setEdits] = useState<Record<string, string>>({});
+    const [pendingFormData, setPendingFormData] = useState<Record<string, unknown>>();
     const [modalVisible, setModalVisible] = useState(false);
 
     const languages = useMemo(() => data?.settings?.activeLanguages || ['de'], [data?.settings?.activeLanguages]);
@@ -66,32 +67,43 @@ export const LegalText = ({
         () => fieldName.reduce<unknown>((acc, key) => (acc as Record<string, unknown>)?.[key], data),
         [data, fieldName],
     );
+
+    // The complete language map: stored languages (unknown keys included) with the
+    // local edits on top. Legacy plain-string content has no language split and
+    // starts the editors empty — exactly like the old Form-bound editors did.
+    const contentByLanguage = useMemo<Record<string, string>>(
+        () => ({
+            ...(storedContent && typeof storedContent === 'object' ? (storedContent as Record<string, string>) : {}),
+            ...edits,
+        }),
+        [storedContent, edits],
+    );
+
     const help = useLegalHelp(legalType ?? 'privacy', {
         empty: isEmptyLegalContent(storedContent),
         readOnly: !canEditLegalText,
     });
 
     const onConfirm = useCallback(() => {
-        updateTenant(set(formDataContent, showConfirmationModal.field, false));
+        updateTenant(set(pendingFormData, showConfirmationModal.field, false));
         setModalVisible(false);
-    }, [formDataContent, showConfirmationModal, updateTenant]);
+    }, [pendingFormData, showConfirmationModal, updateTenant]);
 
     const onCancel = useCallback(() => {
-        updateTenant(set(formDataContent, showConfirmationModal.field, true));
+        updateTenant(set(pendingFormData, showConfirmationModal.field, true));
         setModalVisible(false);
-    }, [formDataContent, showConfirmationModal, updateTenant]);
+    }, [pendingFormData, showConfirmationModal, updateTenant]);
 
-    const onFinish = useCallback(
-        (formData: Record<string, unknown>) => {
-            if (showConfirmationModal) {
-                setFormData(formData);
-                setModalVisible(true);
-            } else {
-                updateTenant(formData);
-            }
-        },
-        [showConfirmationModal, updateTenant],
-    );
+    const onPublish = useCallback(() => {
+        // The COMPLETE map goes out — languages the admin did not touch survive.
+        const formData = set({}, fieldName, { ...contentByLanguage });
+        if (showConfirmationModal) {
+            setPendingFormData(formData);
+            setModalVisible(true);
+        } else {
+            updateTenant(formData);
+        }
+    }, [contentByLanguage, fieldName, showConfirmationModal, updateTenant]);
 
     if (isLoading) {
         return (
@@ -102,48 +114,35 @@ export const LegalText = ({
     }
 
     return (
-        <Form form={form} initialValues={{ ...data }} onFinish={onFinish} disabled={!canEditLegalText}>
-            <div className={styles.card}>
-                <M3RichTextEditor
-                    title={t(titleKey)}
-                    icon={icon}
-                    readOnly={!canEditLegalText}
-                    publishing={isPending}
-                    versionLabel={t('legal.m3Editor.versionLabel')}
-                    languages={languages.map((language) => ({
-                        value: language,
-                        label: t(`language.${language}`),
-                    }))}
-                    language={activeLanguage}
-                    onLanguageChange={setActiveLanguage}
-                    helpSlot={legalType && <EditorHelpText text={help.text} hint={help.hint} />}
-                    aboveEditorSlot={
-                        !legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined
-                    }
-                    editorSlot={
-                        // Keep all language fields mounted so form state survives
-                        // switching; FormPluginEditor preserves placeholders and
-                        // heading anchors inside the M3 shell.
-                        <>
-                            {languages.map((language) => (
-                                <div key={language} style={{ display: language === activeLanguage ? 'block' : 'none' }}>
-                                    <FormPluginEditor
-                                        name={[...fieldName, language]}
-                                        placeholder={t(placeHolderKey)}
-                                        placeholders={placeholders}
-                                        itemProps={{}}
-                                    />
-                                </div>
-                            ))}
-                        </>
-                    }
-                    onPublish={canEditLegalText ? () => form.submit() : undefined}
-                    belowSlot={
-                        showConfirmationModal &&
-                        modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
-                    }
-                />
-            </div>
-        </Form>
+        <div className={styles.card}>
+            <M3RichTextEditor
+                title={t(titleKey)}
+                icon={icon}
+                readOnly={!canEditLegalText}
+                publishing={isPending}
+                versionLabel={t('legal.m3Editor.versionLabel')}
+                languages={languages.map((language) => ({
+                    value: language,
+                    label: t(`language.${language}`),
+                }))}
+                language={activeLanguage}
+                onLanguageChange={setActiveLanguage}
+                helpSlot={legalType && <EditorHelpText text={help.text} hint={help.hint} />}
+                aboveEditorSlot={!legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined}
+                placeholder={t(placeHolderKey)}
+                placeholders={placeholders}
+                value={contentByLanguage[activeLanguage] ?? ''}
+                onChange={
+                    canEditLegalText
+                        ? (html) => setEdits((current) => ({ ...current, [activeLanguage]: html }))
+                        : undefined
+                }
+                onPublish={canEditLegalText ? onPublish : undefined}
+                belowSlot={
+                    showConfirmationModal &&
+                    modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
+                }
+            />
+        </div>
     );
 };

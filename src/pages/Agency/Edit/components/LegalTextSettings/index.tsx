@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { CardEditable } from '../../../../../components/CardEditable';
-import FormPluginEditor from '../../../../../components/FormPluginEditor/FormPluginEditor';
-import { TranslatableFormField } from '../../../../../components/TranslatableFormField';
+import { M3RichTextEditor } from '../../../../../components/FormPluginEditor/M3RichTextEditor';
+import { EditorHelpText } from '../../../../../components/FormPluginEditor/EditorHelpText';
+import { GdprIcon, ImprintIcon } from '../../../../../components/CustomIcons/LegalIcons';
 import { FeatureFlag } from '../../../../../enums/FeatureFlag';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
@@ -10,13 +11,13 @@ import { useFeatureContext } from '../../../../../context/FeatureContext';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 import { AgencyData } from '../../../../../types/agency';
+import styles from './styles.module.scss';
 
 type AgencyLegalTextField = 'impressum' | 'privacy';
 
 interface LegalTextSettingsProps {
     agencyData?: AgencyData;
     field: AgencyLegalTextField;
-    initialValues?: Record<string, unknown>;
     onSave: <T>(formData: T, options?: { onError?: () => void }) => void;
 }
 
@@ -28,7 +29,14 @@ const mergeTranslatedContent = (
     ...(agencyContent || {}),
 });
 
-export const LegalTextSettings = ({ agencyData, field, initialValues, onSave }: LegalTextSettingsProps) => {
+/**
+ * Agency-level imprint / privacy card in the M3 editor shell. The content starts
+ * from the tenant's (Träger) texts with the agency's own overrides on top; local
+ * edits are kept per language and publishing sends the COMPLETE merged language
+ * map in the same `{ content: { [field]: { lang: html } } }` structure the old
+ * CardEditable form submitted.
+ */
+export const LegalTextSettings = ({ agencyData, field, onSave }: LegalTextSettingsProps) => {
     const { t } = useTranslation();
     const { can } = useUserPermissions();
     const { isEnabled } = useFeatureContext();
@@ -38,47 +46,68 @@ export const LegalTextSettings = ({ agencyData, field, initialValues, onSave }: 
     });
     const isPrivacy = field === 'privacy';
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
+    const [activeLanguage, setActiveLanguage] = useState('de');
+    const [edits, setEdits] = useState<Record<string, string>>({});
 
-    const inheritedInitialValues = useMemo(
-        () => ({
-            ...(initialValues || {}),
-            content: {
-                ...((tenantData?.content as Record<string, unknown>) || {}),
-                ...((agencyData?.content as Record<string, unknown>) || {}),
-                [field]: mergeTranslatedContent(tenantData?.content?.[field], agencyData?.content?.[field]),
-            },
-        }),
-        [agencyData, field, initialValues, tenantData],
+    const languages = useMemo(
+        () => tenantData?.settings?.activeLanguages || ['de'],
+        [tenantData?.settings?.activeLanguages],
     );
 
+    // Inherited tenant texts with the agency's overrides on top, plus the local edits.
+    const contentByLanguage = useMemo<Record<string, string>>(
+        () => ({
+            ...mergeTranslatedContent(tenantData?.content?.[field], agencyData?.content?.[field]),
+            ...edits,
+        }),
+        [agencyData, edits, field, tenantData],
+    );
+
+    const onPublish = () => {
+        // Same structure the old CardEditable submitted — the complete merged map,
+        // so languages the admin did not touch are never dropped.
+        onSave({ content: { [field]: { ...contentByLanguage } } });
+    };
+
+    if (isLoading) {
+        return (
+            <div className={styles.card}>
+                <Spin />
+            </div>
+        );
+    }
+
     return (
-        <CardEditable
-            key={`agency-legal-text-${field}-${agencyData?.id || 'new'}-${tenantData?.id || 'tenant'}`}
-            allowUnsavedChanges
-            allowEdit={canEditLegalText}
-            initialValues={inheritedInitialValues}
-            isLoading={isLoading}
-            titleKey={`agency.edit.settings.legal.${field}.title`}
-            subTitle={t<string>(`agency.edit.settings.legal.${field}.subtitle`)}
-            variant="dialog"
-            editButtonPlacement="footer"
-            onSave={onSave}
-        >
-            <TranslatableFormField name={['content', field]}>
-                <FormPluginEditor
-                    placeholder={t(`agency.edit.settings.legal.${field}.placeholder`)}
-                    placeholders={
-                        isPrivacy && isEnabled(FeatureFlag.CentralDataProtectionTemplate)
-                            ? {
-                                  responsible: 'editor.plugin.placeholder.option.responsible.label',
-                                  dataProtectionOfficer: 'editor.plugin.placeholder.option.dataProtectionOfficer.label',
-                              }
-                            : undefined
-                    }
-                    // Legal texts are optional (no required rule).
-                    itemProps={{}}
-                />
-            </TranslatableFormField>
-        </CardEditable>
+        <div className={styles.card}>
+            <M3RichTextEditor
+                title={t(`agency.edit.settings.legal.${field}.title`)}
+                icon={isPrivacy ? GdprIcon : ImprintIcon}
+                readOnly={!canEditLegalText}
+                versionLabel={t('legal.m3Editor.versionLabel')}
+                languages={languages.map((language) => ({
+                    value: language,
+                    label: t(`language.${language}`),
+                }))}
+                language={activeLanguage}
+                onLanguageChange={setActiveLanguage}
+                helpSlot={<EditorHelpText text={t(`agency.edit.settings.legal.${field}.subtitle`)} />}
+                placeholder={t(`agency.edit.settings.legal.${field}.placeholder`)}
+                placeholders={
+                    isPrivacy && isEnabled(FeatureFlag.CentralDataProtectionTemplate)
+                        ? {
+                              responsible: 'editor.plugin.placeholder.option.responsible.label',
+                              dataProtectionOfficer: 'editor.plugin.placeholder.option.dataProtectionOfficer.label',
+                          }
+                        : undefined
+                }
+                value={contentByLanguage[activeLanguage] ?? ''}
+                onChange={
+                    canEditLegalText
+                        ? (html) => setEdits((current) => ({ ...current, [activeLanguage]: html }))
+                        : undefined
+                }
+                onPublish={canEditLegalText ? onPublish : undefined}
+            />
+        </div>
     );
 };
