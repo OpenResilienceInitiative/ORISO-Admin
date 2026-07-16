@@ -186,6 +186,7 @@
 }
 
 .phoneFrame {
+    container-type: inline-size;
     position: relative;
     width: min(100%, 350px);
     aspect-ratio: 500 / 1056;
@@ -257,8 +258,29 @@
     font-family: var(--m3-body-font-family);
 
     /* The chat mockup's px sizes were designed for the former 500px-wide frame;
-       zoom keeps its proportions intact inside the smaller 350px frame. */
+       zoom keeps its proportions intact inside the smaller frame. The steps
+       track the frame width (zoom ≈ width / 500) because the responsive rules
+       let .phoneFrame shrink to 230px; each band uses its lower edge so the
+       mockup never lays out wider than the visible screen. */
     zoom: 0.7;
+}
+
+@container (max-width: 349px) {
+    .phonePreviewCanvas {
+        zoom: 0.6;
+    }
+}
+
+@container (max-width: 299px) {
+    .phonePreviewCanvas {
+        zoom: 0.52;
+    }
+}
+
+@container (max-width: 259px) {
+    .phonePreviewCanvas {
+        zoom: 0.46;
+    }
 }
 
 .colorField {
