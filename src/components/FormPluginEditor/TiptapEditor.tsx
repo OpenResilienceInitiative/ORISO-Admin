@@ -37,7 +37,7 @@ export type TiptapEditorProps = {
      * attributes, a horizontal chip row above the content jumps to them, and
      * selected text can be linked to any anchor (BubbleMenu). ON by default
      * because every current usage of this editor is a legal text (edit cards
-     * via FormPluginEditor + the read-only LegalVersionViewer); pass `false`
+     * via FormPluginEditor + read-only version look-backs); pass `false`
      * to opt out. Must not change during the editor's lifetime.
      */
     enableAnchors?: boolean;

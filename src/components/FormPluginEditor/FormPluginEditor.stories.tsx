@@ -130,7 +130,7 @@ export const WithAnchorsMobile: Story = {
     parameters: { formInitialValues: { legalText: longLegalHtml } },
 };
 
-// Read-only viewer (like LegalVersionViewer): no toolbar, chips without "x",
+// Read-only viewer (like the M3 editor's version look-back): no toolbar, chips without "x",
 // the active anchor (clicked or scrolled to) shows a checkmark.
 export const WithAnchorsReadOnly: Story = {
     args: {
