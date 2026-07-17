@@ -249,7 +249,7 @@
     height: 100%;
 }
 
-.phonePreviewCanvas {
+.preview.phonePreviewCanvas {
     width: 100%;
     height: 100%;
     min-height: 0;
@@ -266,19 +266,19 @@
 }
 
 @container (max-width: 349px) {
-    .phonePreviewCanvas {
+    .preview.phonePreviewCanvas {
         zoom: 0.6;
     }
 }
 
 @container (max-width: 299px) {
-    .phonePreviewCanvas {
+    .preview.phonePreviewCanvas {
         zoom: 0.52;
     }
 }
 
 @container (max-width: 259px) {
-    .phonePreviewCanvas {
+    .preview.phonePreviewCanvas {
         zoom: 0.46;
     }
 }
