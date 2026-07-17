@@ -4,7 +4,7 @@ import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AdminSegmentedTabs } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { Page } from '../components/Page';
-import SearchInput from '../components/SearchInput/SearchInput';
+import { GlobalSearchBar } from '../components/GlobalSearch';
 import Spinner from '../components/Spinner/Spinner';
 import { AnimatedValue, StatisticCard } from '../components/StatisticCard/StatisticCard';
 import { UserRole } from '../enums/UserRole';
@@ -1792,28 +1792,32 @@ const StatisticFilterBar = ({
                     }
                 }}
             >
-                <SearchInput
+                <GlobalSearchBar
+                    defaultExpanded
+                    expandedWidth={499}
                     className="statisticDashboard__filterSearch"
-                    placeholder={translateDashboardKey(translate, 'statistic.dashboard.filter.placeholder', 'Suche')}
                     ariaLabel={translateDashboardKey(
                         translate,
                         'statistic.dashboard.filter.searchAria',
                         'Beratungsstellen oder Träger suchen',
                     )}
                     value={searchValue}
-                    searchOnChange={false}
-                    onClick={() => setIsSuggestionMenuOpen(true)}
-                    onFocus={() => setIsSuggestionMenuOpen(true)}
-                    onKeyDown={handleSearchKeyDown}
-                    onValueChange={(value) => {
+                    onInputClick={() => setIsSuggestionMenuOpen(true)}
+                    onInputFocus={() => setIsSuggestionMenuOpen(true)}
+                    onInputKeyDown={handleSearchKeyDown}
+                    onSearchChange={(value) => {
                         setIsSuggestionMenuOpen(true);
                         onSearchChange(value);
                     }}
-                    handleOnSearch={() => {
+                    onSearch={() => {
                         addFirstVisibleSuggestion();
                         setIsSuggestionMenuOpen(false);
                     }}
-                    handleOnSearchClear={() => setIsSuggestionMenuOpen(true)}
+                    searchPlaceholder={translateDashboardKey(
+                        translate,
+                        'statistic.dashboard.filter.placeholder',
+                        'Suche',
+                    )}
                 />
 
                 {isSuggestionMenuOpen && hasSuggestions && (
