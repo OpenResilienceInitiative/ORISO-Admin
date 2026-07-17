@@ -1064,7 +1064,6 @@
     "tenants.legal.dataProcessingAgreement.publish": "Publish",
     "tenants.legal.dataProcessingAgreement.managedByTenant": "The data processing agreement is managed at tenant level. This is a read-only view of the currently published version — changes are made by the tenant admin in the tenant settings.",
     "tenants.legal.dataProcessingAgreement.title": "Data processing agreement",
-    "tenants.legal.version.label": "Version",
     "tenants.legal.version.current": "(current)",
     "legal.m3Editor.maximize": "Maximize window",
     "legal.m3Editor.minimize": "Minimize window",

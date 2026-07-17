@@ -80,7 +80,7 @@ describe('DataProcessingAgreementContainer', () => {
         expect(card).toHaveAttribute('data-default-language', 'de');
     });
 
-    it('marks the newest version as current and shows the active-language text per version', () => {
+    it('marks the newest version as current and passes each version content through untouched', () => {
         useDpaVersions.mockReturnValue({
             data: [
                 { activationDate: '2026-07-01T10:00:00', content: '{"de":"<p>neu</p>","en":"<p>new</p>"}' },
@@ -92,7 +92,9 @@ describe('DataProcessingAgreementContainer', () => {
         const labels = (card.getAttribute('data-labels') ?? '').split('|');
         expect(labels[0]).toContain('tenants.legal.version.current');
         expect(labels[1]).not.toContain('tenants.legal.version.current');
-        expect(card).toHaveAttribute('data-contents', '<p>neu</p>|<p>alt</p>');
+        // The card picks the ACTIVE language per version itself (the container does not
+        // know it), so it must receive the complete stored map of every version.
+        expect(card).toHaveAttribute('data-contents', '{"de":"<p>neu</p>","en":"<p>new</p>"}|{"de":"<p>alt</p>"}');
     });
 
     it('publishes the complete merged map the card emits — other languages are kept', async () => {

@@ -12,21 +12,34 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// Each version carries its COMPLETE stored map — the card picks the active language
+// (the May version was never translated, so English falls back to its German text).
 const versions = [
     {
         id: '2026-07-13T10:22',
         label: '13. Jul 2026 – 10:22 (aktuell)',
-        content:
-            '<h1>Auftragsverarbeitungsvertrag</h1>' +
-            '<p>Aktuelle Fassung. Weisungsbindung, Vertraulichkeit, TOMs, Löschung/Rückgabe.</p>',
+        content: JSON.stringify({
+            de:
+                '<h1>Auftragsverarbeitungsvertrag</h1>' +
+                '<p>Aktuelle Fassung. Weisungsbindung, Vertraulichkeit, TOMs, Löschung/Rückgabe.</p>',
+            en:
+                '<h1>Data processing agreement</h1>' +
+                '<p>Current version. Instruction binding, confidentiality, TOMs, deletion/return.</p>',
+        }),
     },
     {
         id: '2026-05-02T09:00',
         label: '2. Mai 2026 – 09:00',
-        content: '<h1>Auftragsverarbeitungsvertrag</h1><p>Ältere Fassung vom Mai 2026.</p>',
+        content: JSON.stringify({
+            de: '<h1>Auftragsverarbeitungsvertrag</h1><p>Ältere Fassung vom Mai 2026.</p>',
+        }),
     },
 ];
 
+/**
+ * Saved versions are browsable via the editor's version select (top right): picking one
+ * shows it read-only with a banner; "restore" copies its text into the current draft.
+ */
 export const WithHistory: Story = {
     args: {
         initialContentByLanguage: {

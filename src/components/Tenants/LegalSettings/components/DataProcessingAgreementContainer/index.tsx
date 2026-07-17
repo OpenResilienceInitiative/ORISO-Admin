@@ -6,13 +6,8 @@ import { usePublishDpa } from '../../../../../hooks/usePublishDpa.hook';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
 import { DpaVersion } from '../../../../../types/dpa';
-import { LegalVersion } from '../LegalVersionViewer';
-import { DataProcessingAgreementCard } from '../DataProcessingAgreementCard';
-import {
-    getEditableLanguages,
-    parseLegalContentMap,
-    pickLegalContentLanguage,
-} from '../../utils/legalContentLanguages';
+import { DataProcessingAgreementCard, LegalVersion } from '../DataProcessingAgreementCard';
+import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
 
 interface DataProcessingAgreementContainerProps {
     tenantId: string | number;
@@ -59,7 +54,8 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 return {
                     id: version.activationDate,
                     label: index === 0 ? `${dateLabel} ${t('tenants.legal.version.current')}` : dateLabel,
-                    content: pickLegalContentLanguage(version.content, lang),
+                    // Complete stored map — the card picks the admin's active language.
+                    content: version.content,
                 };
             }),
         [versions, lang, t],

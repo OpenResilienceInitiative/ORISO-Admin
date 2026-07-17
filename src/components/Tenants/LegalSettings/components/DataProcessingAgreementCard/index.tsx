@@ -1,16 +1,16 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { DpaIcon } from '../../../../CustomIcons/LegalIcons';
-import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
+import { EditorVersion, M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
 import { useLegalHelp } from '../../hooks/useLegalHelp';
 import { LegalHelpRole } from '../../utils/legalHelpTexts';
-import { LegalVersion } from '../LegalVersionViewer';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
+import { pickLegalContentLanguage } from '../../utils/legalContentLanguages';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
 import styles from './styles.module.scss';
 
@@ -32,6 +32,18 @@ const persistBlockerDismissed = () => {
         // Private mode / storage disabled: the snackbar just reappears next session.
     }
 };
+export interface LegalVersion {
+    /** Stable id for the version — e.g. the activation timestamp in ISO form. */
+    id: string;
+    /** Human-readable label shown in the editor's version select — e.g. "13. Jul 2026 – 10:22". */
+    label: string;
+    /**
+     * The version's COMPLETE stored content (language -> HTML map, or legacy plain HTML).
+     * The card picks the active language per version — never the container, which does
+     * not know which language the admin is currently editing.
+     */
+    content: string;
+}
 
 interface DataProcessingAgreementCardProps {
     /** The complete stored content map (language -> HTML), including keys we do not render. */
@@ -40,7 +52,7 @@ interface DataProcessingAgreementCardProps {
     languages?: string[];
     /** The language shown first (usually the admin's UI language). */
     defaultLanguage?: string;
-    /** Previously published versions, newest first — shown read-only in the look-back viewer. */
+    /** Previously published versions, newest first — browsable via the editor's version select. */
     versions: LegalVersion[];
     /**
      * Called with the COMPLETE merged content map when the admin publishes: loaded content
@@ -65,8 +77,9 @@ interface DataProcessingAgreementCardProps {
 
 /**
  * The Auftragsverarbeitungsvertrag (DPA) card: edit the text per language in the TipTap
- * editor and publish the complete language map, with a read-only "look back" at earlier
- * published versions underneath (pick a version from the select → its text is shown read-only).
+ * editor and publish the complete language map. Earlier published versions are browsable
+ * read-only via the editor's version select; "restore" copies a version's text into the
+ * active language's draft (restore = copy — the version chain stays append-only).
  * Publishing offers to machine-translate the source text into the other active languages.
  */
 export const DataProcessingAgreementCard = ({
@@ -117,6 +130,19 @@ export const DataProcessingAgreementCard = ({
     const isBlockerState = help.keyBase === 'legal.help.dpa.platform.empty';
     const showBlockerSnackbar = isBlockerState && !blockerHidden;
 
+    // The editor's version select browses the versions in the ACTIVE language; a version
+    // that was never stored in that language falls back to its first stored language
+    // rather than showing an empty page.
+    const editorVersions: EditorVersion[] = useMemo(
+        () =>
+            versions.map((version) => ({
+                id: version.id,
+                label: version.label,
+                content: pickLegalContentLanguage(version.content, activeLanguage),
+            })),
+        [versions, activeLanguage],
+    );
+
     return (
         <div className={styles.card}>
             <M3RichTextEditor
@@ -127,7 +153,9 @@ export const DataProcessingAgreementCard = ({
                 readOnly={readOnly}
                 publishing={publishing}
                 versionLabel={t('legal.m3Editor.versionLabel')}
-                versions={versions}
+                versions={editorVersions}
+                // Restore = copy: the version's text becomes the active language's draft;
+                // the published version chain stays append-only and untouched.
                 onRestoreVersion={readOnly ? undefined : handleEditorChange}
                 languageSlot={
                     <LegalContentLanguageSelect
