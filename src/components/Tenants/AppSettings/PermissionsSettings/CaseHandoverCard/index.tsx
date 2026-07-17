@@ -9,7 +9,13 @@ import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { canEditCaseHandoverReasonPolicies } from '../../../../../constants/caseHandoverAccess';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
-import { applyClientConsent, applyModuleEnabled, isHandoverModuleEnabled } from './caseHandoverCardUtils';
+import {
+    applyClientConsent,
+    applyModuleEnabled,
+    applyNotificationTemplate,
+    isHandoverModuleEnabled,
+    NotificationLanguage,
+} from './caseHandoverCardUtils';
 import { CaseHandoverCardView } from './CaseHandoverCardView';
 
 /** Container: wires the platform case-handover reason policies (UserService)
@@ -66,6 +72,12 @@ export const CaseHandoverCard = () => {
         [persist, policies],
     );
 
+    const handleNotificationTemplateChange = useCallback(
+        (code: string, language: NotificationLanguage, text: string) =>
+            persist(applyNotificationTemplate(policies, code, language, text)),
+        [persist, policies],
+    );
+
     if (isError) {
         return <Alert type="error" message={t('error.loading')} showIcon data-testid="case-handover-card-error" />;
     }
@@ -78,6 +90,7 @@ export const CaseHandoverCard = () => {
             moduleEnabled={moduleEnabled}
             onModuleEnabledChange={handleModuleEnabledChange}
             onClientConsentChange={handleClientConsentChange}
+            onNotificationTemplateChange={handleNotificationTemplateChange}
         />
     );
 };
