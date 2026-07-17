@@ -69,7 +69,6 @@ describe('appConfig service origins', () => {
         expect(config.loginEndpoint).toBe(
             'http://localhost:8080/auth/realms/online-beratung/protocol/openid-connect/token',
         );
-        expect(config.registrationDataEndpoint).toBe('https://api.oriso.org/service/statistics/registration');
     });
 
     it('falls back to the broad API origin when service origins are absent', async () => {

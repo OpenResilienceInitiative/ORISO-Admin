@@ -44,13 +44,23 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
     const { tokens } = computeOrisoPalette(seeds ?? {}, scheme);
     const t = (name: string, fallback: string) => tokens[name] ?? fallback;
 
+    // Field anatomy tokens (#313) — the same `--admin-field-*` values that
+    // applyAdminTheme writes to :root, so raw antd fields and the SCSS-module
+    // fields share one source of truth.
+    const primary = t('--m3-primary', '#a5000a');
+    const fieldSurface = t('--admin-field-surface', '#fcf9f9');
+    const fieldOutline = t('--admin-field-outline', '#c4c7c8');
+    const fieldSurfaceHover = t('--admin-field-surface-hover', '#f6f3f3');
+    const fieldSelectedSurface = t('--admin-field-selected-surface', '#ffdad5');
+    const fieldSelectedText = t('--admin-field-selected-text', '#930008');
+
     return {
         algorithm: scheme === 'inverted' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         token: {
             // Brand + semantic colours, straight from the M3 scheme.
-            colorPrimary: t('--m3-primary', '#a5000a'),
-            colorLink: t('--m3-primary', '#a5000a'),
-            colorInfo: t('--m3-primary', '#a5000a'),
+            colorPrimary: primary,
+            colorLink: primary,
+            colorInfo: primary,
             colorError: t('--m3-error', '#b1005e'),
             colorWarning: t('--m3-warning', '#410001'),
             // Surfaces + text.
@@ -58,8 +68,12 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
             colorBgBase: t('--m3-surface', '#fcf9f9'),
             colorBgContainer: t('--m3-surface-container-low', '#f7f3f4'),
             colorBgElevated: t('--m3-surface-container', '#f0edee'),
-            colorBorder: t('--m3-outline-variant', '#c4c7c8'),
+            colorBorder: fieldOutline,
             colorBorderSecondary: t('--m3-outline-variant', '#c4c7c8'),
+            // Tonal selection (#313): selected dropdown/menu items are lit with
+            // the light primary-container tonal instead of a grey wash.
+            controlItemBgActive: fieldSelectedSurface,
+            controlItemBgHover: fieldSurfaceHover,
             // M3 shape scale.
             borderRadius: M3_RADIUS,
             borderRadiusLG: M3_RADIUS_LG,
@@ -80,6 +94,31 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
                 headerColor: t('--m3-on-surface', '#1a1c1e'),
                 footerBg: t('--m3-surface-container-lowest', '#ffffff'),
                 siderBg: t('--m3-surface-container-low', '#f7f3f4'),
+            },
+            // Field anatomy (#313): field surfaces sit one step lighter than the
+            // workspace background, focus is a primary-coloured outline, and
+            // selected options get the light tonal treatment.
+            Input: {
+                colorBgContainer: fieldSurface,
+                hoverBg: fieldSurfaceHover,
+                activeBg: fieldSurface,
+                hoverBorderColor: primary,
+                activeBorderColor: primary,
+            },
+            InputNumber: {
+                colorBgContainer: fieldSurface,
+                hoverBg: fieldSurfaceHover,
+                activeBg: fieldSurface,
+                hoverBorderColor: primary,
+                activeBorderColor: primary,
+            },
+            Select: {
+                selectorBg: fieldSurface,
+                hoverBorderColor: primary,
+                activeBorderColor: primary,
+                optionActiveBg: fieldSurfaceHover,
+                optionSelectedBg: fieldSelectedSurface,
+                optionSelectedColor: fieldSelectedText,
             },
         },
     };

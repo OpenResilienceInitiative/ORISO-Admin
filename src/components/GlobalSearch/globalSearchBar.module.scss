@@ -1,0 +1,146 @@
+/*
+ * Global search row (Figma 1165:17005). Minimized search pill expands towards
+ * the right with a width animation, pushing the sibling controls along. The
+ * row scrolls horizontally (real, hoverable scrollbar) once it outgrows the
+ * viewport instead of clipping.
+ */
+
+.scroller {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    // Intentionally no `scrollbar-width`: setting it makes Chromium ignore the
+    // `::-webkit-scrollbar` styling below and fall back to the auto-hiding
+    // overlay scrollbar; the spec asks for a real, hoverable scrollbar.
+    &::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border-radius: 4px;
+        background: var(--m3-outline-variant, #c4c7c8);
+
+        &:hover {
+            background: var(--m3-outline, #747878);
+        }
+    }
+}
+
+.row {
+    display: flex;
+    width: max-content;
+    min-width: 100%;
+    align-items: center;
+    padding: 4px 0 8px;
+    gap: 8px;
+}
+
+.search {
+    display: flex;
+    overflow: hidden;
+    width: 104px;
+    height: 56px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 4px;
+    background: var(--admin-search-surface, var(--m3-surface, #fcf9f9));
+    border-radius: 28px;
+    transition: width 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.iconButton {
+    display: inline-flex;
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 100px;
+    color: var(--admin-search-icon, var(--m3-on-surface-variant, #444748));
+    cursor: pointer;
+    transition: background-color 160ms ease, color 160ms ease;
+
+    &:hover,
+    &:focus {
+        background: var(--admin-search-hover-surface, var(--m3-surface-container, #f0edee));
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: -4px;
+    }
+
+    :global(.anticon) {
+        font-size: 20px;
+        line-height: 1;
+    }
+}
+
+.caret {
+    display: inline-flex;
+    transition: transform 240ms cubic-bezier(0.2, 0, 0, 1);
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+.caretFlipped {
+    transform: scaleX(-1);
+}
+
+.input {
+    min-width: 0;
+    flex: 1 1 auto;
+    animation: global-search-input-in 240ms cubic-bezier(0.2, 0, 0, 1);
+
+    &:global(.ant-input) {
+        padding: 0 8px;
+        background: transparent;
+        color: var(--admin-search-text, var(--m3-on-surface-variant, #444748));
+        font-size: 16px;
+        letter-spacing: 0.5px;
+        line-height: 24px;
+
+        &::placeholder {
+            color: var(--admin-search-placeholder, var(--m3-on-surface-variant, #444748));
+            opacity: 1;
+        }
+
+        &:focus {
+            box-shadow: none;
+        }
+    }
+}
+
+@keyframes global-search-input-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .search,
+    .caret {
+        transition: none;
+    }
+
+    .input {
+        animation: none;
+    }
+}

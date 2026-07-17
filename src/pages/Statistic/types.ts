@@ -104,6 +104,23 @@ export interface ScopeDashboard {
     communicationCards: StatisticCardDefinition[];
 }
 
+/**
+ * Structural-only shape for the static card/menu blueprints (key, label, icon).
+ * value/detail/trend are always supplied at render time by applyMetricOverride,
+ * so the blueprints deliberately cannot declare them - that keeps a wiring gap
+ * (a card key without an override mapping) a type error instead of a silent
+ * fake-number regression.
+ */
+export type CardMenuOptionBlueprint = Omit<CardMenuOption, 'value' | 'detail' | 'trend'>;
+export type StatisticCardBlueprint = Omit<StatisticCardDefinition, 'value' | 'detail' | 'trend' | 'menuOptions'> & {
+    menuOptions?: CardMenuOptionBlueprint[];
+};
+
+export interface ScopeDashboardBlueprint {
+    topCards: StatisticCardBlueprint[];
+    communicationCards: StatisticCardBlueprint[];
+}
+
 export interface PeriodOption<OptionKey extends string> {
     key: OptionKey;
     label: string;

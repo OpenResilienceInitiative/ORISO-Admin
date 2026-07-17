@@ -1,0 +1,190 @@
+/*
+ * M3NumberField — pill-shaped grouped number control from the "Redesign Number
+ * Field" Figma section (QfsgojtHQzBjbzU3Im9Cet, node 1168:18909). Three segments
+ * with a 2px gap: main (radius 28/4), chevron-down (radius 4), chevron-up
+ * (radius 4/28). All colours come from the M3/OrisoScheme CSS variables.
+ */
+
+.field {
+    display: inline-flex;
+    height: 56px;
+    gap: 2px;
+    font-family: var(--m3-body-font-family, 'Inter Variable', Inter, Arial, sans-serif);
+}
+
+.main,
+.stepper {
+    position: relative;
+    display: inline-flex;
+    box-sizing: border-box;
+    align-items: center;
+    border: 0;
+    background: transparent;
+    color: inherit;
+
+    /* M3 state layer: subtle wash of the segment's content colour on hover. */
+    &::after {
+        position: absolute;
+        border-radius: inherit;
+        background: transparent;
+        content: '';
+        inset: 0;
+        pointer-events: none;
+        transition: background-color 150ms ease;
+    }
+}
+
+.main {
+    min-width: 0;
+    flex: 1;
+    padding: 0 24px;
+    border-radius: 28px 4px 4px 28px;
+    cursor: text;
+    gap: 8px;
+
+    &:focus-within {
+        /* Lift the focused segment above its siblings so the ring is never clipped. */
+        z-index: 1;
+        outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
+        outline-offset: 2px;
+    }
+}
+
+.stepper {
+    width: 56px;
+    flex-shrink: 0;
+    justify-content: center;
+    padding: 0;
+    border-radius: 4px;
+    appearance: none;
+    cursor: pointer;
+
+    &:focus-visible {
+        /* Lift the focused segment above its siblings so the ring is never clipped. */
+        z-index: 1;
+        outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
+        outline-offset: 2px;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.38;
+    }
+}
+
+.stepperUp {
+    border-radius: 4px 28px 28px 4px;
+}
+
+.chevronIcon {
+    width: 20px;
+    height: 20px;
+}
+
+.field:not(.fieldDisabled) .main:hover::after,
+.field:not(.fieldDisabled) .stepper:not(:disabled):hover::after {
+    background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.icon {
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.textStack {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.miniLabel {
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    line-height: 14px;
+    opacity: 0.75;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.input {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    outline: none;
+
+    &::placeholder {
+        color: currentColor;
+        opacity: 1;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+    }
+}
+
+.fieldDisabled {
+    opacity: 0.38;
+
+    .main {
+        cursor: not-allowed;
+    }
+}
+
+/* Variant: outlined — transparent pill, outline-variant border, on-surface-variant content. */
+.outlined {
+    color: var(--m3-on-surface-variant, #444748);
+
+    .main,
+    .stepper {
+        border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    }
+}
+
+/* Variant: tonal ("Elevated" in Figma) — surface-container-low fill, primary content, M3 elevation. */
+.tonal {
+    color: var(--m3-primary, #a5000a);
+
+    .main,
+    .stepper {
+        background: var(--m3-surface-container-low, #f6f3f3);
+        box-shadow: 0 1px 3px 0 color-mix(in srgb, var(--m3-shadow, #000000) 30%, transparent),
+            0 4px 8px 3px color-mix(in srgb, var(--m3-shadow, #000000) 15%, transparent);
+    }
+}
+
+/* Variant: filled — secondary-container fill, on-secondary-container content. */
+.filled {
+    color: var(--m3-on-secondary-container, #e7effc);
+
+    .main,
+    .stepper {
+        background: var(--m3-secondary-container, #646d78);
+    }
+}
+
+/* Variant: primary — primary fill, on-primary content. */
+.primary {
+    color: var(--m3-on-primary, #ffffff);
+
+    .main,
+    .stepper {
+        background: var(--m3-primary, #a5000a);
+    }
+}
