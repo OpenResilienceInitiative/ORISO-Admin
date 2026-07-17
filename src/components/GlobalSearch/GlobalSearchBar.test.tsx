@@ -53,6 +53,35 @@ describe('GlobalSearchBar', () => {
         expect(screen.getByRole('textbox')).toBeInTheDocument();
     });
 
+    it('forwards input interaction hooks and respects prevented keyboard events', async () => {
+        const user = userEvent.setup();
+        const onInputClick = vi.fn();
+        const onInputFocus = vi.fn();
+        const onInputKeyDown = vi.fn((event) => event.preventDefault());
+        const onSearch = vi.fn();
+        render(
+            <GlobalSearchBar
+                ariaLabel="Beratungsstellen suchen"
+                defaultExpanded
+                onInputClick={onInputClick}
+                onInputFocus={onInputFocus}
+                onInputKeyDown={onInputKeyDown}
+                onSearch={onSearch}
+            />,
+        );
+
+        const input = screen.getByRole('textbox', { name: 'Beratungsstellen suchen' });
+        await user.click(input);
+        await user.keyboard('{Enter}');
+
+        expect(onInputClick).toHaveBeenCalled();
+        expect(onInputFocus).toHaveBeenCalled();
+        expect(onInputKeyDown).toHaveBeenCalled();
+        expect(onSearch).not.toHaveBeenCalled();
+        expect(input).toHaveAttribute('autocomplete', 'search');
+        expect(input).toHaveAttribute('name', 'search');
+    });
+
     it('renders the row inside the horizontal-scroll container with its children', () => {
         const { container } = render(
             <GlobalSearchBar>

@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import styles from './globalSearchBar.module.scss';
 
 export interface GlobalSearchBarProps {
+    /** Accessible input label when it needs to differ from the visible placeholder. */
+    ariaLabel?: string;
     /** Sibling row controls (fields, split buttons, actions) rendered after the search control. */
     children?: ReactNode;
     className?: string;
@@ -15,6 +17,10 @@ export interface GlobalSearchBarProps {
     expandedWidth?: number;
     /** Called after each expand/collapse toggle. */
     onExpandedChange?: (expanded: boolean) => void;
+    /** Optional hooks for pages that coordinate menus or keyboard interactions with the input. */
+    onInputClick?: () => void;
+    onInputFocus?: () => void;
+    onInputKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
     /** Called with the query when the user submits (Enter, or magnifier while filled). */
     onSearch?: (query: string) => void;
     /** Called on every query change. */
@@ -45,11 +51,15 @@ const ExpandCaretIcon = () => (
  * hoverable scrollbar instead of clipping.
  */
 export const GlobalSearchBar = ({
+    ariaLabel,
     children,
     className,
     defaultExpanded = false,
     expandedWidth = 360,
     onExpandedChange,
+    onInputClick,
+    onInputFocus,
+    onInputKeyDown,
     onSearch,
     onSearchChange,
     searchPlaceholder,
@@ -83,6 +93,12 @@ export const GlobalSearchBar = ({
     };
 
     const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        onInputKeyDown?.(event);
+
+        if (event.defaultPrevented) {
+            return;
+        }
+
         if (event.key === 'Enter') {
             onSearch?.(searchValue);
         }
@@ -121,9 +137,13 @@ export const GlobalSearchBar = ({
                     </button>
                     {expanded && (
                         <Input
-                            aria-label={searchPlaceholder ?? t('globalSearch.placeholder', 'Suchen')}
+                            aria-label={ariaLabel ?? searchPlaceholder ?? t('globalSearch.placeholder', 'Suchen')}
+                            autoComplete="search"
                             className={styles.input}
+                            name="search"
                             onChange={handleSearchChange}
+                            onClick={onInputClick}
+                            onFocus={onInputFocus}
                             onKeyDown={handleSearchKeyDown}
                             placeholder={searchPlaceholder ?? t('globalSearch.placeholder', 'Suchen')}
                             ref={inputRef}
