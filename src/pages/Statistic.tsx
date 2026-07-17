@@ -1063,6 +1063,7 @@ const TOPIC_PENDING_HINT = 'zeigt sich ab dem ersten Gespräch';
 // CardMenuKey is forced to get a real mapping here before it can render anything.
 const buildMetricOverridesFromFilterStats = (
     stats: FilterTargetStatistics,
+    allTargetsSuppressed = false,
 ): Record<CardMenuKey, Partial<CardMenuOption>> => {
     const requestTrend = buildChangeTrend(stats.metrics.oneToOne, stats.enquiriesPreviousMonth);
     const requestDetail =
@@ -1196,7 +1197,7 @@ const buildConversationByPeriodFromFilterStats = (
         {} as Record<ConversationPeriodKey, ConversationPeriodData>,
     );
 
-const noSourceMetricOverride: Required<Pick<CardMenuOption, 'value' | 'detail' | 'trend'>> = {
+const noSourceMetricOverride: Required<Pick<CardMenuOption, 'value' | 'detail' | 'trend' | 'emptyHint'>> = {
     value: NO_DATA_LABEL,
     detail: undefined,
     trend: undefined,
@@ -2074,6 +2075,7 @@ export const Statistic = () => {
         isError: hasStatisticLoadError,
         isLoading: isStatisticLoading,
     } = useStatisticDashboardData();
+    const navigate = useNavigate();
     const caseChartDateLabelsByPeriod = useMemo(() => buildCaseChartDateLabels(new Date()), []);
     const todayDayCode = useMemo(() => getTodayDayCode(new Date()), []);
     const dashboard = dashboardByScope[activeScope];
@@ -2096,7 +2098,14 @@ export const Statistic = () => {
             effectiveStatisticTargetIds.filter((targetId) => statisticData.statisticsById[targetId]?.suppressed).length,
         [effectiveStatisticTargetIds, statisticData.statisticsById],
     );
-    const metricOverrides = useMemo(() => buildMetricOverridesFromFilterStats(filteredStats), [filteredStats]);
+    const allTargetsSuppressed =
+        effectiveStatisticTargetIds.length > 0 && suppressedSelectedTargetCount === effectiveStatisticTargetIds.length;
+    const metricOverrides = useMemo(
+        () => buildMetricOverridesFromFilterStats(filteredStats, allTargetsSuppressed),
+        [allTargetsSuppressed, filteredStats],
+    );
+    const isDashboardEmpty = useMemo(() => isFilterStatsEmpty(filteredStats), [filteredStats]);
+    const showEmptyHero = isDashboardEmpty && !isStatisticLoading && !hasStatisticLoadError && !allTargetsSuppressed;
     const csvExportRows = useMemo(
         () => [
             ...dashboard.topCards.map((card) => {
@@ -2338,6 +2347,30 @@ export const Statistic = () => {
                                         )}
                                     </p>
                                 )}
+                                {showEmptyHero && (
+                                    <DashboardEmptyState
+                                        className="statisticDashboard__emptyHero"
+                                        icon={<ConversationsIcon />}
+                                        title={translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.empty.heroTitle',
+                                            'Ihr Dashboard füllt sich mit der ersten Beratung',
+                                        )}
+                                        description={translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.empty.heroDescription',
+                                            'Sobald Anfragen eingehen, sehen Sie hier Gespräche, Themen und Auslastung auf einen Blick.',
+                                        )}
+                                        action={{
+                                            label: translateDashboardKey(
+                                                translate,
+                                                'statistic.dashboard.empty.heroAction',
+                                                'Beratende verwalten',
+                                            ),
+                                            onClick: () => navigate(routePathNames.consultants),
+                                        }}
+                                    />
+                                )}
                                 <div className="statisticDashboard__export">
                                     <CSVLink
                                         className="statisticDashboard__exportLink"
@@ -2375,7 +2408,11 @@ export const Statistic = () => {
                                         )}
                                     </CSVLink>
                                 </div>
-                                <div className="statisticDashboard__summaryGrid">
+                                <div
+                                    className={`statisticDashboard__summaryGrid${
+                                        showEmptyHero ? ' statisticDashboard__summaryGrid--quiet' : ''
+                                    }`}
+                                >
                                     {dashboard.topCards.map((card) => (
                                         <StatisticCard
                                             key={card.key}
@@ -2392,7 +2429,11 @@ export const Statistic = () => {
                                     ))}
                                 </div>
 
-                                <div className="statisticDashboard__communicationGrid">
+                                <div
+                                    className={`statisticDashboard__communicationGrid${
+                                        showEmptyHero ? ' statisticDashboard__communicationGrid--quiet' : ''
+                                    }`}
+                                >
                                     {dashboard.communicationCards.map((card) => (
                                         <StatisticCard
                                             key={card.key}
@@ -2407,7 +2448,11 @@ export const Statistic = () => {
                                     ))}
                                 </div>
 
-                                <div className="statisticDashboard__chartGrid">
+                                <div
+                                    className={`statisticDashboard__chartGrid${
+                                        showEmptyHero ? ' statisticDashboard__chartGrid--quiet' : ''
+                                    }`}
+                                >
                                     <section className="statisticDashboard__chartCard statisticDashboard__caseChartCard">
                                         <div className="statisticDashboard__chartHeader">
                                             <h2>{translateDashboardText(translate, 'Beratungsfälle', locale)}</h2>
