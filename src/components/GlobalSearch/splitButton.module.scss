@@ -1,0 +1,105 @@
+.splitButton {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 2px;
+}
+
+.segment {
+    position: relative;
+    display: inline-flex;
+    height: 56px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    appearance: none;
+    background: transparent;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.splitButton:not(.disabled) .segment:hover {
+    background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+}
+
+.segment:focus-visible {
+    /* Lift the focused segment above its siblings so the ring is never clipped. */
+    z-index: 1;
+    outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
+    outline-offset: 2px;
+}
+
+.main {
+    gap: 8px;
+    padding: 16px 24px;
+    border-radius: 28px 4px 4px 28px;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    white-space: nowrap;
+}
+
+/* Menu selections become the main label; long user-defined names truncate. */
+.label {
+    overflow: hidden;
+    max-width: 240px;
+    text-overflow: ellipsis;
+}
+
+.chevron {
+    width: 56px;
+    border-radius: 4px 28px 28px 4px;
+}
+
+.chevronIcon {
+    width: 20px;
+    height: 20px;
+    transition: transform 200ms ease;
+}
+
+.open .chevronIcon {
+    transform: rotate(180deg);
+}
+
+.icon {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+/* Tonal: light fill, primary-coloured content (template picker). */
+.tonal .segment {
+    border-color: transparent;
+    background: var(--m3-surface-container-low, #f6f3f3);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--m3-shadow, #000) 20%, transparent);
+    color: var(--m3-primary, #a5000a);
+}
+
+.tonal:not(.disabled) .segment:hover {
+    background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, var(--m3-surface-container-low, #f6f3f3));
+}
+
+/* Primary: filled brand surface (send action once the form is valid). */
+.primary .segment {
+    border-color: transparent;
+    background: var(--m3-primary, #a5000a);
+    color: var(--m3-on-primary, #ffffff);
+}
+
+.primary:not(.disabled) .segment:hover {
+    background: color-mix(in srgb, var(--m3-on-primary, #fff) 8%, var(--m3-primary, #a5000a));
+}
+
+.disabled .segment {
+    cursor: not-allowed;
+    opacity: 0.38;
+}
