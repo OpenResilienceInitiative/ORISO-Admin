@@ -3,48 +3,41 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { M3RichTextEditor } from './M3RichTextEditor';
 
-// Rendering the TipTap editor + antd modal is the heaviest jsdom setup in the
-// suite; on loaded CI runners it can exceed vitest's default 5s per-test budget,
-// so the dialog tests get an explicit timeout.
-const DIALOG_TEST_TIMEOUT = 15_000;
-
 describe('M3RichTextEditor fullscreen dialog', () => {
-    it(
-        'opens a modal dialog on maximize and closes it via the close button',
-        async () => {
-            const user = userEvent.setup();
-            render(<M3RichTextEditor title="Datenschutz" />);
+    // This is the first test in the file, so it pays the one-off cost of
+    // lazily evaluating TipTap/antd Modal module graphs on first render
+    // (~1s locally; see the sibling "closes with Escape" test at ~0.4s for
+    // the warm-cache baseline). That cold-start cost occasionally pushed
+    // this test past vitest's 5s default under loaded/shared CI runners
+    // even though nothing here is actually hanging - give it real headroom.
+    it('opens a modal dialog on maximize and closes it via the close button', async () => {
+        const user = userEvent.setup();
+        render(<M3RichTextEditor title="Datenschutz" />);
 
-            await user.click(await screen.findByRole('button', { name: /legal\.m3Editor\.maximize/ }));
+        await user.click(await screen.findByRole('button', { name: /legal\.m3Editor\.maximize/ }));
 
-            expect(await screen.findByRole('dialog')).toBeInTheDocument();
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
 
-            await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.closeDialog/ }));
-            await waitFor(() => {
-                expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-            });
-        },
-        DIALOG_TEST_TIMEOUT,
-    );
+        await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.closeDialog/ }));
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+    }, 15_000);
 
-    it(
-        'closes the dialog with Escape',
-        async () => {
-            const user = userEvent.setup();
-            render(<M3RichTextEditor title="Datenschutz" />);
+    it('closes the dialog with Escape', async () => {
+        const user = userEvent.setup();
+        render(<M3RichTextEditor title="Datenschutz" />);
 
-            await user.click(await screen.findByRole('button', { name: /legal\.m3Editor\.maximize/ }));
-            const dialog = await screen.findByRole('dialog');
+        await user.click(await screen.findByRole('button', { name: /legal\.m3Editor\.maximize/ }));
+        const dialog = await screen.findByRole('dialog');
 
-            // jsdom leaves focus on <body>; antd listens on the modal wrap, so
-            // dispatch Escape on the dialog itself.
-            fireEvent.keyDown(dialog, { key: 'Escape', keyCode: 27 });
-            await waitFor(() => {
-                expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-            });
-        },
-        DIALOG_TEST_TIMEOUT,
-    );
+        // jsdom leaves focus on <body>; antd listens on the modal wrap, so
+        // dispatch Escape on the dialog itself.
+        fireEvent.keyDown(dialog, { key: 'Escape', keyCode: 27 });
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+    });
 });
 
 describe('M3RichTextEditor accessibility', () => {
