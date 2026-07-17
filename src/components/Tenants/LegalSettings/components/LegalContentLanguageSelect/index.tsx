@@ -54,7 +54,7 @@ export const LegalContentLanguageSelect = ({
         <SplitDropdown
             icon={<Language />}
             label={value.toUpperCase()}
-            title={t('languages')}
+            title={`${t('languages')}: ${labelFor(value)}`}
             menu={{
                 selectable: true,
                 selectedKeys: [value],

@@ -162,7 +162,7 @@ describe('DepartmentDataProtectionCard', () => {
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
 
-        await user.click(screen.getByRole('button', { name: 'languages' }));
+        await user.click(screen.getByRole('button', { name: /^languages:/ }));
         await user.click(await screen.findByText('en'));
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');

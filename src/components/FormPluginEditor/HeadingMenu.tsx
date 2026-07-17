@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Dropdown } from 'antd';
 import { ArrowDropDown, AutoStories, ExpandMore, Title } from '@mui/icons-material';
+import { useTranslation } from 'react-i18next';
 import type { Editor } from '@tiptap/react';
 import styles from './M3RichTextEditor.module.scss';
 
@@ -32,8 +33,10 @@ export const HeadingMenu = ({
     autoChapters,
     onToggleAutoChapters,
 }: HeadingMenuProps) => {
+    const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [expandedLevel, setExpandedLevel] = useState<number | null>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
 
     const activeLevel = [1, 2, 3].find((level) => editor.isActive('heading', { level })) ?? 0;
 
@@ -43,16 +46,33 @@ export const HeadingMenu = ({
         setOpen(false);
     };
 
+    // Escape closes the panel and returns focus to the trigger; the rows are
+    // native buttons, so Tab already reaches them (no roving-tabindex needed).
+    const onPanelKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            setOpen(false);
+            setExpandedLevel(null);
+            triggerRef.current?.focus();
+        }
+    };
+
     const panel = (
         // rc-dropdown closes on ANY overlay click — swallow the bubble so the
         // expand/toggle rows keep the menu open; rows that should close call
         // setOpen(false) themselves, outside clicks still close via document.
-        // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-        <div className={styles.headingMenu} role="menu" tabIndex={-1} onClick={(event) => event.stopPropagation()}>
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+        <div
+            className={styles.headingMenu}
+            role="menu"
+            tabIndex={-1}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={onPanelKeyDown}
+        >
             <div className={`${styles.headingMenuRow} ${activeLevel === 0 ? styles.headingMenuRowActive : ''}`}>
                 <button type="button" className={styles.headingMenuItem} role="menuitem" onClick={() => apply(0)}>
                     <span className={styles.menuItemGlyph}>Tt</span>
-                    <span className={styles.menuItemLabel}>Normaler Text</span>
+                    <span className={styles.menuItemLabel}>{t('editor.headingMenu.normalText', 'Normal text')}</span>
                 </button>
             </div>
             {([1, 2, 3] as const).map((level) => {
@@ -72,7 +92,9 @@ export const HeadingMenu = ({
                                 onClick={() => apply(level)}
                             >
                                 <span className={styles.menuItemGlyph}>{`H${level}`}</span>
-                                <span className={styles.menuItemLabel}>{`Überschrift ${level}`}</span>
+                                <span className={styles.menuItemLabel}>
+                                    {t('editor.headingMenu.heading', { level, defaultValue: 'Heading {{level}}' })}
+                                </span>
                                 <span className={styles.menuItemHint}>{headingShortcut(level)}</span>
                             </button>
                             {anchorsEnabled && (
@@ -85,7 +107,10 @@ export const HeadingMenu = ({
                                         expanded ? styles.headingMenuExpandOpen : ''
                                     }`}
                                     aria-expanded={expanded}
-                                    aria-label={`Auto-Kapitel für Überschrift ${level}`}
+                                    aria-label={t('editor.headingMenu.autoChapterToggle', {
+                                        level,
+                                        defaultValue: 'Auto chapters for heading {{level}}',
+                                    })}
                                     onClick={() => setExpandedLevel(expanded ? null : level)}
                                 >
                                     <ExpandMore />
@@ -106,11 +131,21 @@ export const HeadingMenu = ({
                                         <AutoStories />
                                     </span>
                                     <span className={styles.menuItemLabel}>
-                                        {auto ? 'Auto-Kapitel: an' : 'Auto-Kapitel: aus'}
+                                        {auto
+                                            ? t('editor.headingMenu.autoChapterOn', 'Auto chapters: on')
+                                            : t('editor.headingMenu.autoChapterOff', 'Auto chapters: off')}
                                         <small>
                                             {auto
-                                                ? `Neue Überschriften ${level} erhalten einen klickbaren Anker.`
-                                                : `Neue Überschriften ${level} erhalten keinen klickbaren Anker.`}
+                                                ? t('editor.headingMenu.autoChapterDescriptionOn', {
+                                                      level,
+                                                      defaultValue:
+                                                          'New heading {{level}} entries get a clickable anchor.',
+                                                  })
+                                                : t('editor.headingMenu.autoChapterDescriptionOff', {
+                                                      level,
+                                                      defaultValue:
+                                                          'New heading {{level}} entries get no clickable anchor.',
+                                                  })}
                                         </small>
                                     </span>
                                 </button>
@@ -140,10 +175,11 @@ export const HeadingMenu = ({
             dropdownRender={() => panel}
         >
             <button
+                ref={triggerRef}
                 type="button"
                 className={`${styles.toolBtn} ${styles.menuBtn} ${activeLevel !== 0 ? styles.active : ''}`}
                 onMouseDown={(e) => e.preventDefault()}
-                title="Textformat"
+                title={t('editor.headingMenu.textFormat', 'Text format')}
                 disabled={disabled}
             >
                 <Title />

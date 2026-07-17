@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowBack, ArrowForward, AutoStories, Close } from '@mui/icons-material';
+import { useTranslation } from 'react-i18next';
 import type { HeadingAnchor } from './headingAnchors';
 // Base styles for the chip row + nav buttons (global .RichEditor-anchorNav* rules).
 import './FormPluginEditor.styles.scss';
@@ -32,8 +33,12 @@ const AnchorChips = ({
     ariaLabel,
     className,
 }: AnchorChipsProps) => {
+    const { t } = useTranslation();
     const rowRef = useRef<HTMLDivElement>(null);
     const [nav, setNav] = useState({ overflow: false, atStart: true, atEnd: true });
+    // Renamed headings change the row width without changing the anchor count, so
+    // the overflow calc must re-run on any id/label change, not only on length.
+    const anchorsKey = anchors.map((anchor) => `${anchor.id}:${anchor.text}`).join('|');
 
     const updateNav = useCallback(() => {
         const row = rowRef.current;
@@ -59,7 +64,7 @@ const AnchorChips = ({
             row.removeEventListener('scroll', updateNav);
             observer?.disconnect();
         };
-    }, [anchors.length, updateNav]);
+    }, [anchorsKey, updateNav]);
 
     if (!anchors.length) return null;
 
@@ -76,7 +81,7 @@ const AnchorChips = ({
                 <button
                     type="button"
                     className="RichEditor-anchorNavBtn"
-                    aria-label="previous anchors"
+                    aria-label={t('editor.anchor.previous', 'Previous anchors')}
                     onClick={() => scrollByStep(-1)}
                 >
                     <ArrowBack />
@@ -104,7 +109,10 @@ const AnchorChips = ({
                                 <button
                                     type="button"
                                     className="RichEditor-anchorChipRemove"
-                                    aria-label={`${anchor.text} entfernen`}
+                                    aria-label={t('editor.anchor.remove', {
+                                        text: anchor.text,
+                                        defaultValue: '{{text}} remove',
+                                    })}
                                     onClick={() => onRemove?.(anchor.id)}
                                 >
                                     <Close />
@@ -118,7 +126,7 @@ const AnchorChips = ({
                 <button
                     type="button"
                     className="RichEditor-anchorNavBtn"
-                    aria-label="next anchors"
+                    aria-label={t('editor.anchor.next', 'Next anchors')}
                     onClick={() => scrollByStep(1)}
                 >
                     <ArrowForward />

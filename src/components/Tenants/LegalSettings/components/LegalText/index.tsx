@@ -1,6 +1,6 @@
 import set from 'lodash.set';
 import { Spin } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
@@ -61,6 +61,14 @@ export const LegalText = ({
 
     const languages = useMemo(() => data?.settings?.activeLanguages || ['de'], [data?.settings?.activeLanguages]);
 
+    // The initial 'de' can be unavailable once the tenant's languages arrive (e.g.
+    // an English-only tenant); fall back to the first configured language then.
+    useEffect(() => {
+        if (!languages.includes(activeLanguage)) {
+            setActiveLanguage(languages[0]);
+        }
+    }, [languages, activeLanguage]);
+
     // Stored content for this legal text (language map or legacy string) — the
     // help texts distinguish "nothing published yet" from "text exists".
     const storedContent = useMemo(
@@ -69,15 +77,18 @@ export const LegalText = ({
     );
 
     // The complete language map: stored languages (unknown keys included) with the
-    // local edits on top. Legacy plain-string content has no language split and
-    // starts the editors empty — exactly like the old Form-bound editors did.
-    const contentByLanguage = useMemo<Record<string, string>>(
-        () => ({
-            ...(storedContent && typeof storedContent === 'object' ? (storedContent as Record<string, string>) : {}),
-            ...edits,
-        }),
-        [storedContent, edits],
-    );
+    // local edits on top. Legacy plain-string content has no language split — keep
+    // it under the first configured language so it is shown and preserved on publish
+    // (otherwise an untouched card would overwrite the stored string with {}).
+    const contentByLanguage = useMemo<Record<string, string>>(() => {
+        let base: Record<string, string> = {};
+        if (storedContent && typeof storedContent === 'object') {
+            base = storedContent as Record<string, string>;
+        } else if (typeof storedContent === 'string' && storedContent !== '') {
+            base = { [languages[0]]: storedContent };
+        }
+        return { ...base, ...edits };
+    }, [storedContent, edits, languages]);
 
     const help = useLegalHelp(legalType ?? 'privacy', {
         empty: isEmptyLegalContent(storedContent),
