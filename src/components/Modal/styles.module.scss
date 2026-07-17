@@ -1,0 +1,47 @@
+/* Shared M3 dialog shell. Applied to every delete/confirm dialog that renders
+   through the shared Modal component: rounded 28px surface, centered title and
+   flat M3 text buttons in the footer (brand blue by default, brand red for the
+   destructive/primary confirm action). */
+.modal {
+    :global {
+        .ant-modal-content {
+            border-radius: 28px;
+        }
+
+        .ant-modal-title {
+            text-align: center;
+        }
+
+        .ant-modal-footer {
+            .ant-btn {
+                height: 40px;
+                padding: 0 12px;
+                border: none;
+                background: transparent;
+                box-shadow: none;
+                border-radius: 100px;
+                color: #273270;
+                font-size: 14px;
+                font-weight: 500;
+                letter-spacing: 0.1px;
+                text-transform: none;
+
+                &:not(:disabled):hover,
+                &:not(:disabled):focus {
+                    background: rgba(68, 71, 72, 0.08);
+                    color: #273270;
+                }
+            }
+
+            .ant-btn-primary,
+            .ant-btn-dangerous {
+                color: #a5000a;
+
+                &:not(:disabled):hover,
+                &:not(:disabled):focus {
+                    color: #a5000a;
+                }
+            }
+        }
+    }
+}

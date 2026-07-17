@@ -326,16 +326,21 @@ export const UserEditOrAdd = () => {
                     />
                 )}
                 {isReadOnly && (
-                    <Button type="primary" onClick={() => setReadOnly(false)}>
+                    <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
                         {t('edit')}
                     </Button>
                 )}
                 {!isReadOnly && (
                     <>
-                        <Button type="default" onClick={onCancel}>
+                        <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
                             {t('btn.cancel')}
                         </Button>
-                        <Button type="primary" onClick={() => form.submit()} disabled={submitted}>
+                        <Button
+                            type="text"
+                            className="admin-m3-text-button"
+                            onClick={() => form.submit()}
+                            disabled={submitted}
+                        >
                             {t('save')}
                         </Button>
                     </>

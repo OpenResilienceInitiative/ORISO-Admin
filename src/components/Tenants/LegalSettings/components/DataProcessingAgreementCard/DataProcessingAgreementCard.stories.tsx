@@ -5,7 +5,8 @@ const meta = {
     title: 'Organisms/Legal/DataProcessingAgreementCard',
     component: DataProcessingAgreementCard,
     parameters: { layout: 'padded' },
-    args: { onPublish: () => undefined },
+    // Storybook has no JWT, so the role for the help texts is pinned explicitly.
+    args: { onPublish: () => undefined, helpRole: 'platform' },
 } satisfies Meta<typeof DataProcessingAgreementCard>;
 
 export default meta;

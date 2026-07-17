@@ -1,12 +1,15 @@
-import { CheckOutlined } from '@ant-design/icons';
-import { Tag } from 'antd';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowBack, ArrowForward, AutoStories, Close } from '@mui/icons-material';
+import { useTranslation } from 'react-i18next';
 import type { HeadingAnchor } from './headingAnchors';
+// Base styles for the chip row + nav buttons (global .RichEditor-anchorNav* rules).
+import './FormPluginEditor.styles.scss';
 
 export type AnchorChipsProps = {
     anchors: HeadingAnchor[];
-    /** The anchor that was last clicked or scrolled to (read-only mode shows a checkmark on it). */
+    /** The anchor that was last clicked or scrolled to — shown as the selected chip. */
     activeId?: string | null;
-    /** Edit mode: chips get an "x" to remove the anchor. Read-only: no "x", active chip shows a checkmark. */
+    /** Edit mode: chips get an "x" that removes the anchor (regardless of auto-chapters). */
     editable?: boolean;
     onSelect: (anchorId: string) => void;
     onRemove?: (anchorId: string) => void;
@@ -15,8 +18,12 @@ export type AnchorChipsProps = {
     className?: string;
 };
 
-// Horizontal, scrollable row of anchor chips rendered above the editor
-// content — on narrow screens it works as a swipeable tag row.
+// How far one arrow click scrolls the chip row (roughly one chip).
+const SCROLL_STEP = 240;
+
+// "Chapter Navbar" (Figma 1299-81676): M3 input chips in one scrollable row.
+// The selected chip is filled (secondary-container) with a leading book icon;
+// nav arrows appear per side only while that side can still scroll.
 const AnchorChips = ({
     anchors,
     activeId = null,
@@ -26,7 +33,43 @@ const AnchorChips = ({
     ariaLabel,
     className,
 }: AnchorChipsProps) => {
+    const { t } = useTranslation();
+    const rowRef = useRef<HTMLDivElement>(null);
+    const [nav, setNav] = useState({ overflow: false, atStart: true, atEnd: true });
+    // Renamed headings change the row width without changing the anchor count, so
+    // the overflow calc must re-run on any id/label change, not only on length.
+    const anchorsKey = anchors.map((anchor) => `${anchor.id}:${anchor.text}`).join('|');
+
+    const updateNav = useCallback(() => {
+        const row = rowRef.current;
+        if (!row) return;
+        const overflow = row.scrollWidth > row.clientWidth + 1;
+        setNav({
+            overflow,
+            atStart: row.scrollLeft <= 1,
+            atEnd: row.scrollLeft + row.clientWidth >= row.scrollWidth - 1,
+        });
+    }, []);
+
+    useEffect(() => {
+        const row = rowRef.current;
+        if (!row) return undefined;
+        updateNav();
+        row.addEventListener('scroll', updateNav, { passive: true });
+        // ResizeObserver is missing in some test environments — then the nav
+        // simply doesn't track live resizes instead of crashing.
+        const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateNav);
+        observer?.observe(row);
+        return () => {
+            row.removeEventListener('scroll', updateNav);
+            observer?.disconnect();
+        };
+    }, [anchorsKey, updateNav]);
+
     if (!anchors.length) return null;
+
+    const scrollByStep = (direction: -1 | 1) =>
+        rowRef.current?.scrollBy({ left: direction * SCROLL_STEP, behavior: 'smooth' });
 
     return (
         <div
@@ -34,37 +77,61 @@ const AnchorChips = ({
             role="navigation"
             aria-label={ariaLabel}
         >
-            {anchors.map((anchor) => {
-                const active = anchor.id === activeId;
-                return (
-                    <Tag
-                        key={anchor.id}
-                        data-anchor-chip={anchor.id}
-                        color={active ? 'blue' : undefined}
-                        icon={!editable && active ? <CheckOutlined /> : undefined}
-                        closable={editable}
-                        onClose={(event) => {
-                            // We remove the anchor from the document; the chip
-                            // disappears via state, not via antd's own hiding.
-                            event.preventDefault();
-                            event.stopPropagation();
-                            onRemove?.(anchor.id);
-                        }}
-                        onClick={() => onSelect(anchor.id)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                onSelect(anchor.id);
-                            }
-                        }}
-                        aria-pressed={active}
-                    >
-                        {anchor.text}
-                    </Tag>
-                );
-            })}
+            {nav.overflow && !nav.atStart && (
+                <button
+                    type="button"
+                    className="RichEditor-anchorNavBtn"
+                    aria-label={t('editor.anchor.previous', 'Previous anchors')}
+                    onClick={() => scrollByStep(-1)}
+                >
+                    <ArrowBack />
+                </button>
+            )}
+            <div className="RichEditor-anchorNavRow" ref={rowRef}>
+                {anchors.map((anchor) => {
+                    const active = anchor.id === activeId;
+                    return (
+                        <span
+                            key={anchor.id}
+                            data-anchor-chip={anchor.id}
+                            className={`RichEditor-anchorChip${active ? ' RichEditor-anchorChip--active' : ''}`}
+                        >
+                            <button
+                                type="button"
+                                className="RichEditor-anchorChipLabel"
+                                onClick={() => onSelect(anchor.id)}
+                                aria-pressed={active}
+                            >
+                                {active && <AutoStories className="RichEditor-anchorChipIcon" />}
+                                <span>{anchor.text}</span>
+                            </button>
+                            {editable && onRemove && (
+                                <button
+                                    type="button"
+                                    className="RichEditor-anchorChipRemove"
+                                    aria-label={t('editor.anchor.remove', {
+                                        text: anchor.text,
+                                        defaultValue: '{{text}} remove',
+                                    })}
+                                    onClick={() => onRemove(anchor.id)}
+                                >
+                                    <Close />
+                                </button>
+                            )}
+                        </span>
+                    );
+                })}
+            </div>
+            {nav.overflow && !nav.atEnd && (
+                <button
+                    type="button"
+                    className="RichEditor-anchorNavBtn"
+                    aria-label={t('editor.anchor.next', 'Next anchors')}
+                    onClick={() => scrollByStep(1)}
+                >
+                    <ArrowForward />
+                </button>
+            )}
         </div>
     );
 };

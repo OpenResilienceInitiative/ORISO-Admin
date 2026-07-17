@@ -32,6 +32,8 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         publishing,
         onPublish,
         languageSlot,
+        helpSlot,
+        snackbarSlot,
         aboveEditorSlot,
         belowSlot,
         versions,
@@ -43,13 +45,17 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         publishing?: boolean;
         onPublish?: (html: string) => void;
         languageSlot?: React.ReactNode;
+        helpSlot?: React.ReactNode;
+        snackbarSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
-        versions?: { id: string; label: string; content: string }[];
+        versions?: { id: string; label: string; content: string; restorable?: boolean }[];
         onRestoreVersion?: (content: string) => void;
     }) => (
         <div data-testid="editor" data-value={value} data-readonly={readOnly ? 'true' : 'false'}>
             {languageSlot}
+            {helpSlot}
+            {snackbarSlot}
             {aboveEditorSlot}
             {!readOnly && onChange && (
                 <button type="button" onClick={() => onChange('<p>edited</p>')}>
@@ -64,7 +70,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
             {(versions ?? []).map((version) => (
                 <div key={version.id} data-testid={`version-${version.id}`} data-content={version.content}>
                     {version.label}
-                    {onRestoreVersion && (
+                    {onRestoreVersion && version.restorable !== false && (
                         <button type="button" onClick={() => onRestoreVersion(version.content)}>
                             restore {version.id}
                         </button>
@@ -171,7 +177,7 @@ describe('DataProcessingAgreementCard', () => {
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
 
-        await user.click(screen.getByRole('button', { name: 'languages' }));
+        await user.click(screen.getByRole('button', { name: /^languages:/ }));
         await user.click(await screen.findByText('en'));
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
@@ -186,7 +192,7 @@ describe('DataProcessingAgreementCard', () => {
                 onPublish={() => undefined}
             />,
         );
-        expect(screen.queryByRole('button', { name: 'languages' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^languages:/ })).not.toBeInTheDocument();
     });
 
     it('labels the source language as original and MT languages as machine translated', async () => {
@@ -206,7 +212,7 @@ describe('DataProcessingAgreementCard', () => {
         );
 
         // Open the language menu via the split-button's dropdown trigger.
-        await user.click(screen.getByRole('button', { name: 'languages' }));
+        await user.click(screen.getByRole('button', { name: /^languages:/ }));
 
         // Mocked t(): "key:interpolated-language". The menu lists each language with
         // its translation status (source = original, MT = machine translated).
@@ -227,7 +233,9 @@ describe('DataProcessingAgreementCard', () => {
 
         expect(screen.queryByRole('button', { name: publishButtonName })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument();
-        expect(screen.getByText('tenants.legal.dataProcessingAgreement.managedByTenant')).toBeInTheDocument();
+        // Without token roles the help texts resolve to the agency view of the published DPA.
+        expect(screen.getByText('legal.help.dpa.agency.published.text')).toBeInTheDocument();
+        expect(screen.getByText('legal.help.dpa.agency.published.hint')).toBeInTheDocument();
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
     });
 });
@@ -268,7 +276,7 @@ describe('DataProcessingAgreementCard — version select wiring (#268)', () => {
 
         expect(screen.getByTestId('version-v2')).toHaveAttribute('data-content', '<p>DE v2</p>');
 
-        await user.click(screen.getByRole('button', { name: 'languages' }));
+        await user.click(screen.getByRole('button', { name: /^languages:/ }));
         await user.click(await screen.findByText('en'));
 
         expect(screen.getByTestId('version-v2')).toHaveAttribute('data-content', '<p>EN v2</p>');
@@ -295,6 +303,20 @@ describe('DataProcessingAgreementCard — version select wiring (#268)', () => {
         expect(onPublish).toHaveBeenCalledWith({ de: '<p>DE</p>', en: '<p>EN v2</p>' });
     });
 
+    it('does not restore fallback German content into an English draft', () => {
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="en"
+                versions={storedVersions}
+                onPublish={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByTestId('version-v1')).toHaveAttribute('data-content', '<p>DE v1</p>');
+        expect(screen.queryByRole('button', { name: 'restore v1' })).not.toBeInTheDocument();
+    });
     it('offers no restore in read-only mode (agency page: look, do not edit)', () => {
         render(
             <DataProcessingAgreementCard

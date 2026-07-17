@@ -65,8 +65,9 @@ type AnchorAssignment = { pos: number; attrs: Record<string, unknown> };
 // Headings that need a (new) anchor id: headings without one (legacy content,
 // freshly typed headings) and headings whose id is duplicated in the document
 // (split / copy-paste). Headings marked `anchorRemoved` are skipped — that is
-// what makes the "x" removal stick.
-const collectAnchorAssignments = (doc: ProseMirrorNode): AnchorAssignment[] => {
+// what makes the "x" removal stick. Levels with "Auto Chapters" off get no NEW
+// anchors (existing ones stay untouched).
+const collectAnchorAssignments = (doc: ProseMirrorNode, disabledLevels?: Set<number>): AnchorAssignment[] => {
     const used = new Set<string>();
     doc.descendants((node) => {
         if (node.type.name === 'heading' && node.attrs.anchorId) {
@@ -81,6 +82,7 @@ const collectAnchorAssignments = (doc: ProseMirrorNode): AnchorAssignment[] => {
         if (node.type.name !== 'heading') return undefined;
         const { anchorId, anchorRemoved } = node.attrs;
         if (anchorRemoved) return undefined;
+        if (!anchorId && disabledLevels?.has(Number(node.attrs.level))) return undefined;
         if (anchorId && !seen.has(String(anchorId))) {
             seen.add(String(anchorId));
             return undefined;
@@ -113,12 +115,28 @@ declare module '@tiptap/core' {
             ensureHeadingAnchors: () => ReturnType;
             /** Permanently remove a heading's anchor: strips the id and marks the heading as removed. */
             removeHeadingAnchor: (anchorId: string) => ReturnType;
+            /**
+             * "Auto Chapters" toggle: when off, adding a heading does NOT create a
+             * clickable anchor (existing anchors stay untouched). With `level` the
+             * toggle applies to that heading level only (Figma 1280-73045 —
+             * per-Schrifttyp), without it to all levels.
+             */
+            setAutoHeadingAnchors: (enabled: boolean, level?: number) => ReturnType;
         };
     }
 }
 
-export const HeadingAnchors = Extension.create({
+export type HeadingAnchorsStorage = {
+    /** Heading levels whose "Auto Chapters" is off (default: none). */
+    disabledLevels: Set<number>;
+};
+
+export const HeadingAnchors = Extension.create<Record<string, never>, HeadingAnchorsStorage>({
     name: 'headingAnchors',
+
+    addStorage() {
+        return { disabledLevels: new Set<number>() };
+    },
 
     addGlobalAttributes() {
         return [
@@ -148,7 +166,7 @@ export const HeadingAnchors = Extension.create({
                 () =>
                 ({ tr, state, dispatch, editor }) => {
                     if (!editor.isEditable) return true;
-                    const assignments = collectAnchorAssignments(state.doc);
+                    const assignments = collectAnchorAssignments(state.doc, this.storage.disabledLevels);
                     if (!assignments.length) return true;
                     if (dispatch) {
                         assignments.forEach(({ pos, attrs }) => tr.setNodeMarkup(pos, undefined, attrs));
@@ -174,11 +192,19 @@ export const HeadingAnchors = Extension.create({
                     });
                     return found;
                 },
+            setAutoHeadingAnchors: (enabled: boolean, level?: number) => () => {
+                const levels = level ? [level] : [1, 2, 3, 4, 5, 6];
+                levels.forEach((headingLevel) => {
+                    if (enabled) this.storage.disabledLevels.delete(headingLevel);
+                    else this.storage.disabledLevels.add(headingLevel);
+                });
+                return true;
+            },
         };
     },
 
     addProseMirrorPlugins() {
-        const { editor } = this;
+        const { editor, storage } = this;
         return [
             new Plugin({
                 key: new PluginKey('headingAnchors'),
@@ -186,7 +212,8 @@ export const HeadingAnchors = Extension.create({
                     if (!transactions.some((transaction) => transaction.docChanged)) return null;
                     // The read-only viewer must never mutate the stored HTML.
                     if (!editor.isEditable) return null;
-                    const assignments = collectAnchorAssignments(newState.doc);
+                    // Levels with "Auto Chapters" off get no new anchors.
+                    const assignments = collectAnchorAssignments(newState.doc, storage.disabledLevels);
                     if (!assignments.length) return null;
                     const { tr } = newState;
                     assignments.forEach(({ pos, attrs }) => tr.setNodeMarkup(pos, undefined, attrs));
