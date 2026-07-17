@@ -1,4 +1,4 @@
-import { Button, message, Col, Row, Form } from 'antd';
+import { Alert, Button, message, Space, Col, Row, Form } from 'antd';
 import { useWatch } from 'antd/lib/form/Form';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -72,6 +72,9 @@ export const UserEditOrAdd = () => {
     const selectedTenant = Form.useWatch('tenantId', form);
     const selectedAgencies = Form.useWatch('agencies', form) || [];
     const selectedTopicIds = Form.useWatch('topicIds', form) || [];
+    const publicSlug = Form.useWatch('publicSlug', form);
+    const pendingPublicSlug = Form.useWatch('pendingPublicSlug', form);
+    const publicSlugStatus = Form.useWatch('publicSlugStatus', form);
     const prevAgencyIdsRef = useRef<string[] | null>(null);
     const topicsForList = topics?.filter((topic) => !selectedTopicIds.find(({ value }) => value === `${topic.id}`));
     const topicOptions = [
@@ -264,6 +267,37 @@ export const UserEditOrAdd = () => {
     );
     const onCancel = useCallback(() => navigate(`/admin/users/${typeOfUsers}`), []);
     const isAbsentEnabled = useWatch('absent', form);
+    const activePublicSlug = publicSlug || consultantById?.publicSlug;
+    const pendingSlug = pendingPublicSlug || consultantById?.pendingPublicSlug;
+    const slugStatus = publicSlugStatus || consultantById?.publicSlugStatus;
+    let publicSlugAlertType: 'info' | 'success' | 'warning' = 'info';
+    let publicSlugAlertDescription = t('counselor.publicSlug.status.empty');
+
+    if (pendingSlug) {
+        publicSlugAlertType = 'warning';
+        publicSlugAlertDescription = t('counselor.publicSlug.status.pending', { slug: pendingSlug });
+    } else if (slugStatus === 'REJECTED') {
+        publicSlugAlertDescription = t('counselor.publicSlug.status.rejected');
+    } else if (activePublicSlug) {
+        publicSlugAlertType = 'success';
+        publicSlugAlertDescription = t('counselor.publicSlug.status.active', { slug: activePublicSlug });
+    }
+
+    const approvePendingPublicSlug = () => {
+        form.setFieldsValue({
+            publicSlug: pendingSlug,
+            rejectPendingPublicSlug: false,
+        });
+        form.submit();
+    };
+
+    const rejectPendingPublicSlug = () => {
+        form.setFieldsValue({
+            rejectPendingPublicSlug: true,
+        });
+        form.submit();
+    };
+
     // Superadmins pick the tenant in the form; other admins carry it in their token.
     const agencyTenantId = resolveAgencyTenantId(selectedTenant, userTenantId);
 
@@ -325,6 +359,10 @@ export const UserEditOrAdd = () => {
                         username: decodeUsername(singleData?.username || ''),
                         agencies: convertToOptions(singleData?.agencies || [], ['postcode', 'name', 'city'], 'id'),
                         topicIds: convertToOptions(consultantById?.topics || [], 'name', 'id'),
+                        publicSlug: consultantById?.publicSlug || singleData?.publicSlug || '',
+                        pendingPublicSlug: consultantById?.pendingPublicSlug || singleData?.pendingPublicSlug || '',
+                        publicSlugStatus: consultantById?.publicSlugStatus || singleData?.publicSlugStatus || '',
+                        rejectPendingPublicSlug: false,
                         tenantId:
                             singleData?.tenantId?.toString() || (userTenantId > 0 && userTenantId.toString()) || '',
                     }}
@@ -427,71 +465,123 @@ export const UserEditOrAdd = () => {
                             </Card>
                         </Col>
                         <Col xs={24} lg={12}>
-                            <Card titleKey="settings.title">
-                                <SelectFormField
-                                    name="tenantId"
-                                    placeholder="tenantAdmins.form.tenant"
-                                    required
-                                    disabled={isReadOnly || isEditing || !isSuperAdmin}
-                                    className={styles.select}
-                                    label="tenantAdmins.form.tenantAssignment"
-                                    options={convertToOptions(tenantsData || [], 'name', 'id')}
-                                />
-
-                                <SelectFormField
-                                    name="agencies"
-                                    label="agency"
-                                    labelInValue
-                                    isMulti
-                                    placeholder="plsSelect"
-                                    options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
-                                />
-
-                                <div className={styles.createAgency}>
-                                    <CreateAgencyModal
-                                        tenantId={agencyTenantId}
-                                        disabled={isReadOnly}
-                                        onSuccess={onAgencyCreated}
-                                    />
-                                </div>
-
-                                {showTopicsField && (
+                            <Space direction="vertical" size={20} className={styles.columnStack}>
+                                <Card titleKey="settings.title">
                                     <SelectFormField
-                                        label="topics.title"
-                                        name="topicIds"
+                                        name="tenantId"
+                                        placeholder="tenantAdmins.form.tenant"
+                                        required
+                                        disabled={isReadOnly || isEditing || !isSuperAdmin}
+                                        className={styles.select}
+                                        label="tenantAdmins.form.tenantAssignment"
+                                        options={convertToOptions(tenantsData || [], 'name', 'id')}
+                                    />
+
+                                    <SelectFormField
+                                        name="agencies"
+                                        label="agency"
                                         labelInValue
                                         isMulti
-                                        allowClear
                                         placeholder="plsSelect"
-                                        options={topicOptions}
+                                        options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
                                     />
-                                )}
 
-                                {typeOfUsers === 'consultants' && (
-                                    <>
-                                        <div className={styles.switchGroup}>
-                                            <MuiSwitchField
-                                                label={t('counselor.formalLanguage.title')}
-                                                name="formalLanguage"
-                                            />
-                                            {/* Temporarily hidden: {isEditing && <MuiSwitchField label={t('counselor.absent')} name="absent" />} */}
-                                            {/* Temporarily hidden: {isEnabled(FeatureFlag.GroupChatV2) && (
+                                    <div className={styles.createAgency}>
+                                        <CreateAgencyModal
+                                            tenantId={agencyTenantId}
+                                            disabled={isReadOnly}
+                                            onSuccess={onAgencyCreated}
+                                        />
+                                    </div>
+
+                                    {showTopicsField && (
+                                        <SelectFormField
+                                            label="topics.title"
+                                            name="topicIds"
+                                            labelInValue
+                                            isMulti
+                                            allowClear
+                                            placeholder="plsSelect"
+                                            options={topicOptions}
+                                        />
+                                    )}
+
+                                    {isConsultantForm && (
+                                        <>
+                                            <div className={styles.switchGroup}>
+                                                <MuiSwitchField
+                                                    label={t('counselor.formalLanguage.title')}
+                                                    name="formalLanguage"
+                                                />
+                                                {/* Temporarily hidden: {isEditing && <MuiSwitchField label={t('counselor.absent')} name="absent" />} */}
+                                                {/* Temporarily hidden: {isEnabled(FeatureFlag.GroupChatV2) && (
                                                 <MuiSwitchField
                                                     label={t('counselor.isGroupChatConsultant')}
                                                     name="isGroupchatConsultant"
                                                 />
                                             )} */}
-                                            <MuiSwitchField label={t('counselor.isSupervisor')} name="isSupervisor" />
-                                        </div>
-                                        {isAbsentEnabled && (
-                                            <MuiMultilineFormField
-                                                label={t('counselor.absenceMessage')}
-                                                name="absenceMessage"
+                                                <MuiSwitchField
+                                                    label={t('counselor.isSupervisor')}
+                                                    name="isSupervisor"
+                                                />
+                                            </div>
+                                            {isAbsentEnabled && (
+                                                <MuiMultilineFormField
+                                                    label={t('counselor.absenceMessage')}
+                                                    name="absenceMessage"
+                                                />
+                                            )}
+                                        </>
+                                    )}
+                                </Card>
+
+                                {isConsultantForm && (
+                                    <Card titleKey="counselor.publicSlug.status.title">
+                                        <MuiFormField
+                                            name="publicSlug"
+                                            label={t('counselor.publicSlug')}
+                                            placeholder={t('placeholder.publicSlug')}
+                                            rules={[
+                                                {
+                                                    pattern: /^[a-z]+(-[a-z]+)*$/,
+                                                    message: t('message.error.publicSlug.format'),
+                                                },
+                                            ]}
+                                        />
+                                        <Form.Item name="pendingPublicSlug" hidden>
+                                            <input />
+                                        </Form.Item>
+                                        <Form.Item name="publicSlugStatus" hidden>
+                                            <input />
+                                        </Form.Item>
+                                        <Form.Item name="rejectPendingPublicSlug" hidden>
+                                            <input />
+                                        </Form.Item>
+                                        {isEditing && (
+                                            <Alert
+                                                type={publicSlugAlertType}
+                                                showIcon
+                                                message={t('counselor.publicSlug.status.title')}
+                                                description={publicSlugAlertDescription}
                                             />
                                         )}
-                                    </>
+                                        {pendingSlug && (
+                                            <Space>
+                                                <Button
+                                                    type="primary"
+                                                    disabled={isReadOnly}
+                                                    onClick={approvePendingPublicSlug}
+                                                >
+                                                    {t('counselor.publicSlug.approve')}
+                                                </Button>
+                                                <Button disabled={isReadOnly} onClick={rejectPendingPublicSlug}>
+                                                    {t('counselor.publicSlug.reject')}
+                                                </Button>
+                                            </Space>
+                                        )}
+                                    </Card>
                                 )}
-                            </Card>
+                            </Space>
                         </Col>
                     </Row>
                 </Form>

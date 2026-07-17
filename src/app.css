@@ -33,17 +33,17 @@
     /* FormFields */
     --input-padding: 16px;
     --input-border-radius: 4px;
-    --input-border-color: var(--m3-outline);
+    --input-border-color: var(--admin-field-outline, #c4c7c8);
     --admin-form-field-text: #1b1b1c;
     --admin-form-muted-text: #444748;
     --admin-form-disabled-text: #444748;
-    --input-active-border-color: var(--admin-form-field-text);
-    --input-disabled-border-color: color-mix(in srgb, var(--m3-outline) 56%, transparent);
-    --input-bg: var(--admin-form-field-surface, #f6f3f3);
+    --input-active-border-color: var(--m3-primary, #a5000a);
+    --input-disabled-border-color: color-mix(in srgb, var(--admin-field-outline, #c4c7c8) 56%, transparent);
+    --input-bg: var(--admin-form-field-surface, #fcf9f9);
     --input-disabled-bg: var(--input-bg);
     --input-disabled-color: var(--admin-form-disabled-text);
     --input-placeholder-color: color-mix(in srgb, var(--admin-form-muted-text) 64%, transparent);
-    --input-label-bg: var(--admin-form-field-surface, #f6f3f3);
+    --input-label-bg: var(--admin-form-field-surface, #fcf9f9);
     --label-color: var(--admin-form-label-text, var(--admin-form-muted-text));
     --form-item-label-font-size: var(--fontSize-s);
     --form-item-label-height: auto;
@@ -125,12 +125,21 @@
     --admin-table-surface: #f6f3f3;
     --admin-table-header-surface: #e4e2e2;
     --admin-table-row-hover-surface: #f0edee;
+    --admin-table-footer-surface: #e4e2e2;
     --admin-table-border: #eae7e8;
     --admin-table-text: #444748;
     --admin-table-header-text: #1b1b1c;
     --admin-table-chip-surface: #e4e2e2;
     --admin-table-chip-border: #c4c7c8;
     --admin-table-chip-text: #444748;
+    /* Field anatomy (#313) — static fallbacks; must match the runtime values
+       computeOrisoPalette writes for the default seed #A5000A exactly. */
+    --admin-form-field-surface: #fcf9f9;
+    --admin-field-surface: #fcf9f9;
+    --admin-field-outline: #c4c7c8;
+    --admin-field-surface-hover: #f6f3f3;
+    --admin-field-selected-surface: #ffdad5;
+    --admin-field-selected-text: #930008;
     --admin-status-success: var(--tag-success, #0a882f);
     --admin-status-success-container: color-mix(
         in srgb,

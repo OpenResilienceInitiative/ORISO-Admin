@@ -77,8 +77,10 @@ vi.mock('../../../components/ResizableTable', () => ({
     },
 }));
 
-vi.mock('../../../components/SearchInput/SearchInput', () => ({
-    SearchInput: () => <div data-testid="search-input" />,
+vi.mock('../../../components/GlobalSearch', () => ({
+    GlobalSearchBar: ({ children }: { children?: React.ReactNode }) => (
+        <div data-testid="global-search">{children}</div>
+    ),
 }));
 
 vi.mock('../../../components/EditableTable/EditButtons', () => ({

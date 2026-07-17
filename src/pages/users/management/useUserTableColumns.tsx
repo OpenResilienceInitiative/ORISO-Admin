@@ -4,8 +4,9 @@ import { ColumnProps } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import CustomChevronDownIcon from '../../../components/CustomIcons/ChevronDown';
-import CustomChevronUpIcon from '../../../components/CustomIcons/ChevronUp';
+import { ReactComponent as RowExpandIcon } from '../../../resources/img/svg/table-actions/row_expand_200.svg';
+import { ReactComponent as RowExpandHoverIcon } from '../../../resources/img/svg/table-actions/row_expand_400.svg';
+import { ReactComponent as RowExpandSelectedIcon } from '../../../resources/img/svg/table-actions/row_expand_filled.svg';
 import EditButtons from '../../../components/EditableTable/EditButtons';
 import StatusIcons from '../../../components/EditableTable/StatusIcons';
 import { CopyToClipboard } from '../../../components/CopyToClipboard';
@@ -110,9 +111,13 @@ export const useUserTableColumns = ({
 
             return visibleAgencies.filter(Boolean).map((agencyItem) => (
                 <div key={agencyItem.id} className="counselorList__agencies">
-                    <span>{agencyItem.postcode}</span>
-                    <span>{agencyItem.name}</span>
-                    <span>[{agencyItem.city}]</span>
+                    <span className="counselorList__agencyChip counselorList__agencyChip--postcode">
+                        {agencyItem.postcode}
+                    </span>
+                    <span className="counselorList__agencyChip counselorList__agencyChip--name" title={agencyItem.name}>
+                        {agencyItem.name}
+                    </span>
+                    <span className="counselorList__agencyChip counselorList__agencyChip--city">{agencyItem.city}</span>
                 </div>
             ));
         };
@@ -280,12 +285,18 @@ export const useUserTableColumns = ({
                                     {canExpand && (
                                         <button
                                             type="button"
-                                            className="counselorList__toggle counselorList__toggle--inline"
+                                            className={`counselorList__toggle counselorList__toggle--inline${
+                                                isOpen ? ' counselorList__toggle--expanded' : ''
+                                            }`}
                                             aria-expanded={isOpen}
                                             aria-label={isOpen ? t('users.table.collapse') : t('users.table.expand')}
                                             onClick={() => onToggleRow(user.id)}
                                         >
-                                            {isOpen ? <CustomChevronUpIcon /> : <CustomChevronDownIcon />}
+                                            <span className="counselorList__toggleIconStack" aria-hidden="true">
+                                                <RowExpandIcon className="counselorList__toggleIcon counselorList__toggleIcon--default" />
+                                                <RowExpandHoverIcon className="counselorList__toggleIcon counselorList__toggleIcon--hover" />
+                                                <RowExpandSelectedIcon className="counselorList__toggleIcon counselorList__toggleIcon--selected" />
+                                            </span>
                                         </button>
                                     )}
                                     {canEditOrDelete && (

@@ -10,18 +10,19 @@ import { computeOrisoPalette } from './theme/orisoScheme';
 
 const BENCHMARK_SEED = '#a5000a';
 
-const wcagRatio = (hexA: string, hexB: string): number => {
+const relativeLuminance = (hex: string): number => {
     const channel = (value: number) => {
         const c = value / 255;
         return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
     };
-    const luminance = (hex: string) => {
-        const n = parseInt(hex.slice(1), 16);
-        // eslint-disable-next-line no-bitwise
-        return 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255);
-    };
-    const a = luminance(hexA);
-    const b = luminance(hexB);
+    const n = parseInt(hex.slice(1), 16);
+    // eslint-disable-next-line no-bitwise
+    return 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255);
+};
+
+const wcagRatio = (hexA: string, hexB: string): number => {
+    const a = relativeLuminance(hexA);
+    const b = relativeLuminance(hexB);
     return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 };
 
@@ -58,6 +59,54 @@ describe('applyAdminTheme', () => {
         expect(root.style.length).toBe(0);
         expect(warn).toHaveBeenCalled();
         warn.mockRestore();
+    });
+
+    it('writes the field anatomy tokens for the default seed (#313)', () => {
+        const root = document.createElement('div');
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+
+        expect(root.style.getPropertyValue('--admin-field-surface')).toBe('#fcf9f9');
+        expect(root.style.getPropertyValue('--admin-field-outline')).toBe('#c4c7c8');
+        expect(root.style.getPropertyValue('--admin-field-surface-hover')).toBe('#f6f3f3');
+        expect(root.style.getPropertyValue('--admin-field-selected-surface')).toBe('#ffdad5');
+        expect(root.style.getPropertyValue('--admin-field-selected-text')).toBe('#930008');
+        // Legacy alias consumed by --input-bg/--input-label-bg must not drift.
+        expect(root.style.getPropertyValue('--admin-form-field-surface')).toBe(
+            root.style.getPropertyValue('--admin-field-surface'),
+        );
+    });
+
+    it('renders field surfaces one step lighter than the workspace background', () => {
+        const root = document.createElement('div');
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+
+        const workspace = root.style.getPropertyValue('--admin-workspace-background');
+        const field = root.style.getPropertyValue('--admin-field-surface');
+        const hover = root.style.getPropertyValue('--admin-field-surface-hover');
+
+        expect(relativeLuminance(field)).toBeGreaterThan(relativeLuminance(workspace));
+        expect(relativeLuminance(hover)).toBeGreaterThan(relativeLuminance(workspace));
+    });
+
+    it('derives the tonal selection tokens from the tenant seed', () => {
+        const root = document.createElement('div');
+        applyAdminTheme({ primaryColor: '#336699' }, root);
+        const { tokens } = computeOrisoPalette({ accentDark: '#336699' }, 'light');
+
+        expect(root.style.getPropertyValue('--admin-field-selected-surface')).toBe(tokens['--m3-primary-container']);
+        expect(root.style.getPropertyValue('--admin-field-selected-text')).toBe(
+            tokens['--m3-on-primary-fixed-variant'],
+        );
+    });
+
+    it('keeps the selected text readable on the tonal selection surface', () => {
+        const root = document.createElement('div');
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+
+        const surface = root.style.getPropertyValue('--admin-field-selected-surface');
+        const text = root.style.getPropertyValue('--admin-field-selected-text');
+
+        expect(wcagRatio(text, surface)).toBeGreaterThanOrEqual(4.5);
     });
 });
 
@@ -107,7 +156,7 @@ describe('applyAdminInvertedTheme', () => {
         expect(root.style.getPropertyValue('--admin-table-surface')).toBe('#f6f3f3');
         expect(root.style.getPropertyValue('--admin-table-header-surface')).toBe('#e4e2e2');
         expect(root.style.getPropertyValue('--admin-table-text')).toBe('#444748');
-        expect(root.style.getPropertyValue('--admin-form-field-surface')).toBe('#f6f3f3');
+        expect(root.style.getPropertyValue('--admin-form-field-surface')).toBe('#fcf9f9');
         expect(root.style.getPropertyValue('--admin-form-card-surface')).toBe('#eae7e8');
         expect(root.style.getPropertyValue('--admin-form-label-text')).toBe('#444748');
     });
@@ -146,6 +195,8 @@ describe('applyAdminInvertedTheme', () => {
         expect(root.style.getPropertyValue('--admin-search-surface')).toBe('');
         expect(root.style.getPropertyValue('--admin-table-surface')).toBe('');
         expect(root.style.getPropertyValue('--admin-form-field-surface')).toBe('');
+        expect(root.style.getPropertyValue('--admin-field-surface')).toBe('');
+        expect(root.style.getPropertyValue('--admin-field-selected-surface')).toBe('');
     });
 
     it('clears previously applied admin tokens when a later seed is invalid', () => {
