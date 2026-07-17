@@ -43,6 +43,14 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
             }
 
             .editor {
+                display: flex;
+                flex: 1;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            .editorContentScroll {
+                min-height: 0;
                 flex: 1;
                 overflow-y: auto;
             }
@@ -70,6 +78,14 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         }
 
         .editor {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .editorContentScroll {
+            min-height: 0;
             flex: 1;
             overflow-y: auto;
         }
@@ -408,13 +424,12 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 
 // Editor surface
 // Anchor navigation — chip row at the bottom of the text surface with
-// overflow nav arrows (Figma 1261-48667 / 1280-73048). Scrolling happens in
-// the global .RichEditor-anchorNavRow; this only adds the M3 chrome.
+// overflow nav arrows (Figma 1261-48667 / 1280-73048). It stays outside the
+// scrolling text viewport so it never covers document content.
 // Nested under .editor so the M3 chrome wins over the global
 // .RichEditor-anchorNav base rules regardless of bundle order.
 .editor .anchorNav {
-    position: sticky;
-    bottom: 0;
+    flex-shrink: 0;
     padding: 8px 0 0;
     background: #fff;
     border-bottom: 0;
@@ -542,7 +557,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     flex-shrink: 0;
 }
 
-// Hosts the editor surface plus the optional blocker snackbar overlay.
+// Hosts the editor surface plus the optional functionality hint.
 .editorRegion {
     position: relative;
     display: flex;
@@ -554,16 +569,12 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     padding: 0 16px;
 }
 
-// M3 snackbar (Figma 1229-17864): inverse surface, overlaying the text
-// surface — aligned 6px inside the white border (16px editorWrap inset + 6px).
+// M3 inverse snackbar (Figma 1229-17864). Keep it in normal document flow:
+// an administrative blocker must never cover the legal text it explains.
 .hintSnackbar {
-    position: absolute;
-    z-index: 3;
-    right: 22px;
-    bottom: 6px;
-    left: 22px;
     display: flex;
     align-items: center;
+    margin: 8px 16px 0;
     padding: 4px 4px 4px 16px;
     background: #303031;
     border-radius: 4px;
@@ -571,21 +582,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     color: #f3f0f0;
 }
 
-// With a chapter chip row at the bottom of the surface the snackbar floats
-// ABOVE the chips instead of covering them (Figma 1261-49085 / 1280-73048).
-.hasAnchors .hintSnackbar {
-    bottom: 60px;
-}
-
-// Read mode has no white surface: the snackbar flows below the text, all
-// corners 4px, and the dismiss label may wrap onto two lines.
-.readMode .hintSnackbar,
-.readMode .hasAnchors .hintSnackbar {
-    position: static;
-    margin: 8px 16px 0;
-    border-radius: 4px;
-}
-
+// In read mode the dismiss label may wrap onto two lines.
 .readMode .hintSnackbarAction {
     max-width: 130px;
     line-height: 14px;
@@ -859,6 +856,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 
     @media (max-width: 599px) {
         gap: 8px;
+        justify-content: flex-start;
     }
 }
 

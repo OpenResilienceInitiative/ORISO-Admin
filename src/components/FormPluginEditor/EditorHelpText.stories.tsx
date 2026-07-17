@@ -95,7 +95,7 @@ const PanelDemo = ({ readOnly }: { readOnly?: boolean }) => {
  * The Data Agreements panel in write mode (Figma 1261-48667): maximize in the
  * toolbar, anchor chips inside the text surface with overflow nav arrows,
  * three split buttons in the lower function bar (language / topic / version),
- * blocker CTA as dismissible snackbar.
+ * blocker CTA as a dismissible, non-obscuring snackbar below the editor.
  */
 export const PanelWriteMode = {
     render: () => <PanelDemo />,

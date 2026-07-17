@@ -276,7 +276,7 @@ describe('DataProcessingAgreementCard — version select wiring (#268)', () => {
 
         expect(screen.getByTestId('version-v2')).toHaveAttribute('data-content', '<p>DE v2</p>');
 
-        await user.click(screen.getByRole('button', { name: 'languages' }));
+        await user.click(screen.getByRole('button', { name: /^languages:/ }));
         await user.click(await screen.findByText('en'));
 
         expect(screen.getByTestId('version-v2')).toHaveAttribute('data-content', '<p>EN v2</p>');

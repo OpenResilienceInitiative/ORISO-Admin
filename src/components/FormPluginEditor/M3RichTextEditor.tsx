@@ -106,8 +106,8 @@ export type M3RichTextEditorProps = {
      */
     helpSlot?: React.ReactNode;
     /**
-     * Snackbar overlaying the bottom of the editor surface (functionality
-     * blocker CTA, Figma 1229-17864); flows below the editor on mobile.
+     * Dismissible functionality hint rendered below the editor surface. It is
+     * deliberately kept in the document flow so it never obscures legal text.
      */
     snackbarSlot?: React.ReactNode;
     /**
@@ -745,7 +745,9 @@ export const M3RichTextEditor = ({
                 ) : (
                     <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
                         <div className={styles.editor}>
-                            <EditorContent editor={editor} />
+                            <div className={styles.editorContentScroll}>
+                                <EditorContent editor={editor} />
+                            </div>
                             {/* Anchor chips live at the bottom of the text surface, with
                                 overflow nav arrows (Figma 1261-48667 / 1280-73048). */}
                             {anchorsEnabled && (
