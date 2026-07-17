@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TranslateOnPublishModal } from './index';
@@ -18,22 +18,6 @@ vi.mock('react-i18next', () => ({
     }),
 }));
 
-beforeAll(() => {
-    Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        value: vi.fn().mockImplementation((query: string) => ({
-            matches: false,
-            media: query,
-            onchange: null,
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            dispatchEvent: vi.fn(),
-        })),
-    });
-});
-
 const baseProps = {
     open: true,
     sourceLanguage: 'de',
@@ -45,7 +29,7 @@ const baseProps = {
 
 describe('TranslateOnPublishModal', () => {
     it('preselects all target languages and confirms with them', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         const onConfirm = vi.fn();
         render(<TranslateOnPublishModal {...baseProps} onConfirm={onConfirm} />);
 
@@ -57,7 +41,7 @@ describe('TranslateOnPublishModal', () => {
     });
 
     it('confirms only with the still-selected languages after deselecting one', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         const onConfirm = vi.fn();
         render(<TranslateOnPublishModal {...baseProps} onConfirm={onConfirm} />);
 
@@ -68,7 +52,7 @@ describe('TranslateOnPublishModal', () => {
     });
 
     it('publishes without translation via the skip button', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         const onSkip = vi.fn();
         render(<TranslateOnPublishModal {...baseProps} onSkip={onSkip} />);
 
