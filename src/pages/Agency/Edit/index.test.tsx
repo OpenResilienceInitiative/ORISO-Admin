@@ -181,9 +181,9 @@ describe('AgencyPageEdit create flow', () => {
     it('does not submit a new agency without a selected tenant', async () => {
         renderWithClient(<AgencyPageEdit />);
 
-        fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Neue Beratungsstelle' } });
-        fireEvent.change(screen.getByLabelText('PLZ *'), { target: { value: '86161' } });
-        fireEvent.change(screen.getByLabelText('Stadt *'), { target: { value: 'Augsburg' } });
+        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neue Beratungsstelle' } });
+        fireEvent.change(screen.getByLabelText('PLZ'), { target: { value: '86161' } });
+        fireEvent.change(screen.getByLabelText('Stadt'), { target: { value: 'Augsburg' } });
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
         expect(await screen.findByText('Bitte füllen Sie das markierte Feld aus.')).toBeInTheDocument();
