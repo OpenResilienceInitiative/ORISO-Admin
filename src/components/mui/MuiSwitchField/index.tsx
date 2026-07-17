@@ -6,8 +6,29 @@ import DisabledContext from 'antd/es/config-provider/DisabledContext';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
 import Switch from '@mui/material/Switch';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 import classNames from 'classnames';
 import styles from './styles.module.scss';
+
+/**
+ * MUI `icon`/`checkedIcon` replace the default thumb, so each icon is wrapped
+ * in a white circle that reproduces the thumb geometry. Glyphs are colored
+ * (never white) so they stay visible on the white thumb.
+ */
+const uncheckedThumb = (
+    <span className={styles.thumb}>
+        <CloseIcon sx={{ fontSize: 16, color: 'var(--input-border-color, var(--m3-outline, #747878))' }} />
+    </span>
+);
+
+const checkedThumb = (
+    <span className={styles.thumb}>
+        <CheckIcon
+            sx={{ fontSize: 16, color: 'var(--admin-control-selected, var(--m3-primary, #a5000a))' }}
+        />
+    </span>
+);
 
 type FieldName = string | Array<string | number>;
 
@@ -62,6 +83,8 @@ const MuiSwitchControl = ({
                         className={classNames(styles.switch, { [styles.switchDisabled]: isDisabled })}
                         focusVisibleClassName=".Mui-focusVisible"
                         disableRipple
+                        icon={uncheckedThumb}
+                        checkedIcon={checkedThumb}
                         checked={!!checked}
                         onChange={handleChange}
                         disabled={isDisabled}
