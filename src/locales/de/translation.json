@@ -1235,5 +1235,9 @@
     "statistic.dashboard.loadError": "Statistikdaten konnten nicht geladen werden.",
     "statistic.dashboard.suppressionDisabledNotice": "Kleinzellen-Schutz deaktiviert – nur für Testumgebungen",
     "statistic.dashboard.loading": "Statistik wird geladen …",
+    "statistic.dashboard.csvExport.label": "Statistik als CSV herunterladen",
+    "statistic.dashboard.csvExport.filename": "Statistik",
+    "statistic.dashboard.csvExport.metricColumn": "Kennzahl",
+    "statistic.dashboard.csvExport.valueColumn": "Wert",
     "pillSelect.toggleOptions": "Optionen für {{label}} anzeigen"
 }
