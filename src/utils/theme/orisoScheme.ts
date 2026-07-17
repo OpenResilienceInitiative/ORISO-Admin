@@ -79,10 +79,27 @@ const ADMIN_TABLE_TOKENS = {
     '--admin-table-chip-surface': '#e4e2e2',
     '--admin-table-chip-border': '#c4c7c8',
     '--admin-table-chip-text': '#444748',
-    '--admin-form-field-surface': '#f6f3f3',
+    '--admin-form-field-surface': '#fcf9f9',
     '--admin-form-card-surface': '#eae7e8',
     '--admin-form-label-text': '#444748',
 };
+
+/**
+ * Field anatomy tokens (#313): form-field surfaces sit one step LIGHTER than
+ * `--admin-workspace-background` (#e4e2e2, surface-container-highest tier) so
+ * inputs read as raised instead of muddy, with a subtle outline-variant border.
+ * Selection is an "illuminated" light primary-container tonal derived from the
+ * tenant seed. `--admin-form-field-surface` above is the legacy alias consumed
+ * by `--input-bg`/`--input-label-bg` and must never drift from
+ * `--admin-field-surface`.
+ */
+const adminFieldTokens = (accentLight: string, onAccentLightVariant: string) => ({
+    '--admin-field-surface': '#fcf9f9',
+    '--admin-field-outline': '#c4c7c8',
+    '--admin-field-surface-hover': '#f6f3f3',
+    '--admin-field-selected-surface': accentLight,
+    '--admin-field-selected-text': onAccentLightVariant,
+});
 
 const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) => {
     if (!explicitAccentLight && accentDark === DEFAULT_ACCENT_DARK) {
@@ -113,6 +130,7 @@ const invertedTokens = (accentDark: string, accentLight: string, accentDim: stri
 
     return {
         ...ADMIN_TABLE_TOKENS,
+        ...adminFieldTokens(accentLight, onAccentLightVariant),
         '--m3-primary': primary,
         '--m3-on-primary': readableOn(primary),
         '--m3-primary-container': primaryContainer,
@@ -179,6 +197,7 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
         tooPale,
         tokens: {
             ...ADMIN_TABLE_TOKENS,
+            ...adminFieldTokens(accentLight, onAccentLightVariant),
             '--m3-primary': accentDark,
             '--m3-on-primary': onAccentDark,
             '--m3-primary-container': accentLight,

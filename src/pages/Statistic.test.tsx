@@ -172,4 +172,40 @@ describe('Statistic page', () => {
             expect(screen.getByText('Statistikdaten konnten nicht geladen werden.')).toBeInTheDocument(),
         );
     });
+
+    it('shows a loading state instead of "Keine Daten"/0 while the dashboard request is in flight', async () => {
+        let resolveDashboard: (value: AdminDashboardStatisticsResponse) => void = () => undefined;
+        dashboardMock.mockReturnValue(
+            new Promise((resolve) => {
+                resolveDashboard = resolve;
+            }),
+        );
+
+        renderStatistic();
+
+        expect(screen.getByRole('status')).toBeInTheDocument();
+        expect(screen.getByText('Statistik wird geladen …')).toBeInTheDocument();
+        // Nothing from the eventual dashboard shape should be visible yet.
+        expect(screen.queryByText('Keine Daten')).toBeNull();
+        expect(screen.queryByText('0')).toBeNull();
+
+        resolveDashboard(response);
+
+        await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        expect(screen.queryByRole('status')).toBeNull();
+    });
+
+    // Regression guard for the audit's H01 finding: the card/menu blueprints
+    // (dashboardByScope, dashboardMetricOptionsByScope) no longer carry
+    // hardcoded value/detail/trend defaults, so a wiring gap for a
+    // card/menu key can only ever render "Keine Daten" - never a stray
+    // "undefined" leaking out of a missing override mapping.
+    it('never renders a literal "undefined" for any card or menu value', async () => {
+        dashboardMock.mockResolvedValue(response);
+
+        renderStatistic();
+
+        await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        expect(screen.queryByText('undefined', { exact: false })).toBeNull();
+    });
 });
