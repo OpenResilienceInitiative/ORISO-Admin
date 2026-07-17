@@ -34,22 +34,11 @@ const contractHtml =
 
 const versions = [{ id: '2026-07-13T10:22', label: '13. Jul 2026 – 10:22', content: '<p>Fassung Juli</p>' }];
 
-const topicSplit = (
-    <SplitDropdown
-        icon={<TopicIcon />}
-        label="Alle Themen / Fachbereiche"
-        title="Fachbereich wählen"
-        menu={{
-            selectable: true,
-            selectedKeys: ['all'],
-            items: [
-                { key: 'all', label: 'Alle Themen / Fachbereiche' },
-                { key: 'kids', label: 'Kinder und Jugendliche' },
-                { key: 'debt', label: 'Schuldnerberatung' },
-            ],
-        }}
-    />
-);
+const topicItems = [
+    { key: 'all', label: 'Alle Themen / Fachbereiche' },
+    { key: 'kids', label: 'Kinder und Jugendliche' },
+    { key: 'debt', label: 'Schuldnerberatung' },
+];
 
 /** Info icon + description, with the CTA tip below in bold (Figma 457-13255). */
 export const DescriptionWithBoldHint: Story = {
@@ -58,6 +47,23 @@ export const DescriptionWithBoldHint: Story = {
 
 const PanelDemo = ({ readOnly }: { readOnly?: boolean }) => {
     const [hidden, setHidden] = useState(false);
+    // Back both split controls with local state so the language and topic
+    // selection can be exercised interactively in Storybook.
+    const [language, setLanguage] = useState('de');
+    const [topic, setTopic] = useState('all');
+    const topicSplit = (
+        <SplitDropdown
+            icon={<TopicIcon />}
+            label={topicItems.find((item) => item.key === topic)?.label ?? topicItems[0].label}
+            title="Fachbereich wählen"
+            menu={{
+                selectable: true,
+                selectedKeys: [topic],
+                items: topicItems,
+                onClick: ({ key }) => setTopic(key),
+            }}
+        />
+    );
     return (
         <M3RichTextEditor
             title="Auftragsdatenverarbeitungsvertrag"
@@ -70,7 +76,8 @@ const PanelDemo = ({ readOnly }: { readOnly?: boolean }) => {
                 { value: 'de', label: 'Deutsch' },
                 { value: 'en', label: 'Englisch' },
             ]}
-            language="de"
+            language={language}
+            onLanguageChange={setLanguage}
             topicSlot={topicSplit}
             helpSlot={<EditorHelpText text={description} hint={hidden ? cta : undefined} />}
             snackbarSlot={

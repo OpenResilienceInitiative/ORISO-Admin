@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import Icon from '@ant-design/icons';
 import { ReactComponent as MaximizeContent } from '../../resources/img/svg/maximize-content.svg';
 import { ReactComponent as MinimizeContent } from '../../resources/img/svg/minimize-content.svg';
@@ -12,11 +13,12 @@ import { ReactComponent as KeyboardArrowDown } from '../../resources/img/svg/key
  * ORISO editor icons (Icons Master File): all fills use currentColor so the
  * buttons control the colour (e.g. white on the red fullscreen-exit button).
  */
-export const MaximizeContentIcon = (props: any) => <Icon component={MaximizeContent} {...props} />;
-export const MinimizeContentIcon = (props: any) => <Icon component={MinimizeContent} {...props} />;
+type EditorIconProps = ComponentProps<typeof Icon>;
+export const MaximizeContentIcon = (props: EditorIconProps) => <Icon component={MaximizeContent} {...props} />;
+export const MinimizeContentIcon = (props: EditorIconProps) => <Icon component={MinimizeContent} {...props} />;
 /** Publish / draft state pair for the editor footer actions. */
-export const PublishedIcon = (props: any) => <Icon component={Published} {...props} />;
-export const UnpublishedIcon = (props: any) => <Icon component={Unpublished} {...props} />;
+export const PublishedIcon = (props: EditorIconProps) => <Icon component={Published} {...props} />;
+export const UnpublishedIcon = (props: EditorIconProps) => <Icon component={Unpublished} {...props} />;
 /** "Insert cross reference" (Noun Project) — the anchor-link bubble trigger. */
-export const CrossReferenceIcon = (props: any) => <Icon component={CrossReference} {...props} />;
-export const KeyboardArrowDownIcon = (props: any) => <Icon component={KeyboardArrowDown} {...props} />;
+export const CrossReferenceIcon = (props: EditorIconProps) => <Icon component={CrossReference} {...props} />;
+export const KeyboardArrowDownIcon = (props: EditorIconProps) => <Icon component={KeyboardArrowDown} {...props} />;

@@ -20,7 +20,14 @@ export interface LegalHelpContext {
  */
 /** True when a stored legal content value (language map, HTML string, or nothing) has no visible text. */
 export const isEmptyLegalContent = (value: unknown): boolean => {
-    const isEmptyHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim() === '';
+    // Strip tags, then decode/normalize whitespace entities (&nbsp;, &#160;, &#xA0;)
+    // and non-breaking / zero-width whitespace so "<p>&nbsp;</p>" counts as empty.
+    const isEmptyHtml = (html: string) =>
+        html
+            .replace(/<[^>]*>/g, '')
+            .replace(/&(?:nbsp|#160|#xa0);/gi, ' ')
+            .replace(/[\u00A0\u200B]/g, '')
+            .trim() === '';
     if (value == null) return true;
     if (typeof value === 'string') return isEmptyHtml(value);
     if (typeof value === 'object') {

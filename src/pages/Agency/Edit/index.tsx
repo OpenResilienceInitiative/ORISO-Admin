@@ -73,7 +73,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
     const { isSuperAdmin } = useUserRoles();
     const [form] = Form.useForm();
-    const { mutate } = useAgencyUpdate(id);
+    const { mutate, isPending: isSaving } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
     const agencySettingsTabs = [
@@ -370,10 +370,15 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
                 </CardDeck.Item>
                 <CardDeck.Item>
-                    <LegalTextSettings agencyData={agencyData} field="impressum" onSave={onSaveCard} />
+                    <LegalTextSettings
+                        agencyData={agencyData}
+                        field="impressum"
+                        onSave={onSaveCard}
+                        saving={isSaving}
+                    />
                 </CardDeck.Item>
                 <CardDeck.Item>
-                    <LegalTextSettings agencyData={agencyData} field="privacy" onSave={onSaveCard} />
+                    <LegalTextSettings agencyData={agencyData} field="privacy" onSave={onSaveCard} saving={isSaving} />
                 </CardDeck.Item>
                 <CardDeck.Item>
                     {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}

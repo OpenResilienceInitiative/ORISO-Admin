@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { M3RichTextEditor } from '../../../../../components/FormPluginEditor/M3RichTextEditor';
@@ -19,6 +19,8 @@ interface LegalTextSettingsProps {
     agencyData?: AgencyData;
     field: AgencyLegalTextField;
     onSave: <T>(formData: T, options?: { onError?: () => void }) => void;
+    /** Pending state of the agency update mutation — disables publishing while in flight. */
+    saving?: boolean;
 }
 
 const mergeTranslatedContent = (
@@ -36,7 +38,7 @@ const mergeTranslatedContent = (
  * map in the same `{ content: { [field]: { lang: html } } }` structure the old
  * CardEditable form submitted.
  */
-export const LegalTextSettings = ({ agencyData, field, onSave }: LegalTextSettingsProps) => {
+export const LegalTextSettings = ({ agencyData, field, onSave, saving }: LegalTextSettingsProps) => {
     const { t } = useTranslation();
     const { can } = useUserPermissions();
     const { isEnabled } = useFeatureContext();
@@ -53,6 +55,14 @@ export const LegalTextSettings = ({ agencyData, field, onSave }: LegalTextSettin
         () => tenantData?.settings?.activeLanguages || ['de'],
         [tenantData?.settings?.activeLanguages],
     );
+
+    // The initial 'de' can be unavailable once the tenant's languages arrive; fall
+    // back to the first configured language so the editor never sits on an empty one.
+    useEffect(() => {
+        if (!languages.includes(activeLanguage)) {
+            setActiveLanguage(languages[0]);
+        }
+    }, [languages, activeLanguage]);
 
     // Inherited tenant texts with the agency's overrides on top, plus the local edits.
     const contentByLanguage = useMemo<Record<string, string>>(
@@ -83,6 +93,7 @@ export const LegalTextSettings = ({ agencyData, field, onSave }: LegalTextSettin
                 title={t(`agency.edit.settings.legal.${field}.title`)}
                 icon={isPrivacy ? GdprIcon : ImprintIcon}
                 readOnly={!canEditLegalText}
+                publishing={saving}
                 versionLabel={t('legal.m3Editor.versionLabel')}
                 languages={languages.map((language) => ({
                     value: language,

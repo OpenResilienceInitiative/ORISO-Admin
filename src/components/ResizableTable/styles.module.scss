@@ -79,6 +79,7 @@
             padding: 16px 24px;
             overflow: hidden;
             border-radius: 0 0 var(--admin-table-radius) var(--admin-table-radius);
+
             // Same surface as the table body — no separate grey footer block.
             // (Stays opaque: rows scroll underneath the sticky pagination.)
             background: var(--admin-table-surface, #f6f3f3);

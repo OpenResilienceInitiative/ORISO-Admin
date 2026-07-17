@@ -54,6 +54,18 @@ describe('DataProcessingAgreementCard blocker snackbar (platform admin, no publi
         expect(window.localStorage.getItem('oriso-admin.legal.dpa.blocker.dismissed')).toBe('true');
     });
 
+    it('"X" hides the snackbar for the session but does not persist the dismissal', async () => {
+        const user = userEvent.setup();
+        render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} />);
+
+        await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.close' }));
+
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(screen.queryByText('legal.help.dpa.platform.empty.hint')).not.toBeInTheDocument();
+        // Unlike "nicht mehr anzeigen", the X does not write the dismissal key.
+        expect(window.localStorage.getItem('oriso-admin.legal.dpa.blocker.dismissed')).toBeNull();
+    });
+
     it('stays completely hidden on the next render once dismissed', () => {
         window.localStorage.setItem('oriso-admin.legal.dpa.blocker.dismissed', 'true');
         render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} />);

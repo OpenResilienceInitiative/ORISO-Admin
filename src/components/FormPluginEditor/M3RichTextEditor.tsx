@@ -147,12 +147,13 @@ const parseVersionDate = (id: string): Date | null => {
 };
 
 // Marker palette for the highlight colour menu (soft M3-friendly pastels).
+// Labels are resolved via i18n at render time (editor.highlight.<key>).
 const HIGHLIGHT_COLORS = [
-    { key: 'yellow', color: '#fff176', label: 'Gelb' },
-    { key: 'green', color: '#b9f6ca', label: 'Grün' },
-    { key: 'blue', color: '#b3e5fc', label: 'Blau' },
-    { key: 'pink', color: '#f8bbd0', label: 'Rosa' },
-    { key: 'orange', color: '#ffcc80', label: 'Orange' },
+    { key: 'yellow', color: '#fff176', fallback: 'Yellow' },
+    { key: 'green', color: '#b9f6ca', fallback: 'Green' },
+    { key: 'blue', color: '#b3e5fc', fallback: 'Blue' },
+    { key: 'pink', color: '#f8bbd0', fallback: 'Pink' },
+    { key: 'orange', color: '#ffcc80', fallback: 'Orange' },
 ];
 
 type ToolButtonProps = {
@@ -237,14 +238,14 @@ const Toolbar = ({
                 <fieldset className={styles.toolFieldset} disabled={disabled}>
                     <div className={styles.toolGroup}>
                         <ToolButton
-                            title="Undo"
+                            title={t('editor.toolbar.undo', 'Undo')}
                             onClick={() => editor.chain().focus().undo().run()}
                             disabled={!editor.can().undo()}
                         >
                             <Undo />
                         </ToolButton>
                         <ToolButton
-                            title="Redo"
+                            title={t('editor.toolbar.redo', 'Redo')}
                             onClick={() => editor.chain().focus().redo().run()}
                             disabled={!editor.can().redo()}
                         >
@@ -267,15 +268,30 @@ const Toolbar = ({
                                 items: [
                                     {
                                         key: 'bullet',
-                                        label: <MenuRow glyph={<FormatListBulleted />} label="Aufzählung" />,
+                                        label: (
+                                            <MenuRow
+                                                glyph={<FormatListBulleted />}
+                                                label={t('editor.listMenu.bullet', 'Bullet list')}
+                                            />
+                                        ),
                                     },
                                     {
                                         key: 'ordered',
-                                        label: <MenuRow glyph={<FormatListNumbered />} label="Nummerierte Liste" />,
+                                        label: (
+                                            <MenuRow
+                                                glyph={<FormatListNumbered />}
+                                                label={t('editor.listMenu.ordered', 'Numbered list')}
+                                            />
+                                        ),
                                     },
                                     {
                                         key: 'task',
-                                        label: <MenuRow glyph={<ChecklistIcon />} label="Checkliste" />,
+                                        label: (
+                                            <MenuRow
+                                                glyph={<ChecklistIcon />}
+                                                label={t('editor.listMenu.checklist', 'Checklist')}
+                                            />
+                                        ),
                                     },
                                 ],
                                 onClick: ({ key }) => {
@@ -295,21 +311,21 @@ const Toolbar = ({
                                         : ''
                                 }`}
                                 onMouseDown={(e) => e.preventDefault()}
-                                title="Listen"
+                                title={t('editor.toolbar.lists', 'Lists')}
                             >
                                 <FormatListBulleted />
                                 <ArrowDropDown className={styles.caret} />
                             </button>
                         </Dropdown>
                         <ToolButton
-                            title="Blockquote"
+                            title={t('editor.toolbar.blockquote', 'Blockquote')}
                             active={editor.isActive('blockquote')}
                             onClick={() => editor.chain().focus().toggleBlockquote().run()}
                         >
                             <FormatQuote />
                         </ToolButton>
                         <ToolButton
-                            title="Code block"
+                            title={t('editor.toolbar.codeBlock', 'Code block')}
                             active={editor.isActive('codeBlock')}
                             onClick={() => editor.chain().focus().toggleCodeBlock().run()}
                         >
@@ -319,35 +335,35 @@ const Toolbar = ({
                     <span className={styles.vDivider} />
                     <div className={styles.toolGroup}>
                         <ToolButton
-                            title="Bold"
+                            title={t('editor.toolbar.bold', 'Bold')}
                             active={editor.isActive('bold')}
                             onClick={() => editor.chain().focus().toggleBold().run()}
                         >
                             <FormatBold />
                         </ToolButton>
                         <ToolButton
-                            title="Italic"
+                            title={t('editor.toolbar.italic', 'Italic')}
                             active={editor.isActive('italic')}
                             onClick={() => editor.chain().focus().toggleItalic().run()}
                         >
                             <FormatItalic />
                         </ToolButton>
                         <ToolButton
-                            title="Strikethrough"
+                            title={t('editor.toolbar.strikethrough', 'Strikethrough')}
                             active={editor.isActive('strike')}
                             onClick={() => editor.chain().focus().toggleStrike().run()}
                         >
                             <StrikethroughS />
                         </ToolButton>
                         <ToolButton
-                            title="Inline code"
+                            title={t('editor.toolbar.inlineCode', 'Inline code')}
                             active={editor.isActive('code')}
                             onClick={() => editor.chain().focus().toggleCode().run()}
                         >
                             <Code />
                         </ToolButton>
                         <ToolButton
-                            title="Underline"
+                            title={t('editor.toolbar.underline', 'Underline')}
                             active={editor.isActive('underline')}
                             onClick={() => editor.chain().focus().toggleUnderline().run()}
                         >
@@ -358,7 +374,7 @@ const Toolbar = ({
                             disabled={disabled}
                             menu={{
                                 items: [
-                                    ...HIGHLIGHT_COLORS.map(({ key, color, label }) => ({
+                                    ...HIGHLIGHT_COLORS.map(({ key, color, fallback }) => ({
                                         key,
                                         label: (
                                             <MenuRow
@@ -368,14 +384,19 @@ const Toolbar = ({
                                                         style={{ backgroundColor: color }}
                                                     />
                                                 }
-                                                label={label}
+                                                label={t(`editor.highlight.${key}`, fallback)}
                                             />
                                         ),
                                     })),
                                     { type: 'divider' as const },
                                     {
                                         key: 'none',
-                                        label: <MenuRow glyph={<FormatColorReset />} label="Markierung entfernen" />,
+                                        label: (
+                                            <MenuRow
+                                                glyph={<FormatColorReset />}
+                                                label={t('editor.highlight.remove', 'Remove highlight')}
+                                            />
+                                        ),
                                     },
                                 ],
                                 onClick: ({ key }) => {
@@ -394,27 +415,31 @@ const Toolbar = ({
                                     editor.isActive('highlight') ? styles.active : ''
                                 }`}
                                 onMouseDown={(e) => e.preventDefault()}
-                                title="Textmarker"
+                                title={t('editor.toolbar.highlight', 'Highlighter')}
                             >
                                 <BorderColor />
                                 <ArrowDropDown className={styles.caret} />
                             </button>
                         </Dropdown>
-                        <ToolButton title="Link" active={editor.isActive('link')} onClick={promptLink}>
+                        <ToolButton
+                            title={t('editor.toolbar.link', 'Link')}
+                            active={editor.isActive('link')}
+                            onClick={promptLink}
+                        >
                             <LinkIcon />
                         </ToolButton>
                     </div>
                     <span className={styles.vDivider} />
                     <div className={styles.toolGroup}>
                         <ToolButton
-                            title="Superscript"
+                            title={t('editor.toolbar.superscript', 'Superscript')}
                             active={editor.isActive('superscript')}
                             onClick={() => editor.chain().focus().toggleSuperscript().run()}
                         >
                             <SuperscriptIcon />
                         </ToolButton>
                         <ToolButton
-                            title="Subscript"
+                            title={t('editor.toolbar.subscript', 'Subscript')}
                             active={editor.isActive('subscript')}
                             onClick={() => editor.chain().focus().toggleSubscript().run()}
                         >
@@ -424,28 +449,28 @@ const Toolbar = ({
                     <span className={styles.vDivider} />
                     <div className={styles.toolGroup}>
                         <ToolButton
-                            title="Align left"
+                            title={t('editor.toolbar.alignLeft', 'Align left')}
                             active={editor.isActive({ textAlign: 'left' })}
                             onClick={() => editor.chain().focus().setTextAlign('left').run()}
                         >
                             <FormatAlignLeft />
                         </ToolButton>
                         <ToolButton
-                            title="Align center"
+                            title={t('editor.toolbar.alignCenter', 'Align center')}
                             active={editor.isActive({ textAlign: 'center' })}
                             onClick={() => editor.chain().focus().setTextAlign('center').run()}
                         >
                             <FormatAlignCenter />
                         </ToolButton>
                         <ToolButton
-                            title="Align right"
+                            title={t('editor.toolbar.alignRight', 'Align right')}
                             active={editor.isActive({ textAlign: 'right' })}
                             onClick={() => editor.chain().focus().setTextAlign('right').run()}
                         >
                             <FormatAlignRight />
                         </ToolButton>
                         <ToolButton
-                            title="Justify"
+                            title={t('editor.toolbar.justify', 'Justify')}
                             active={editor.isActive({ textAlign: 'justify' })}
                             onClick={() => editor.chain().focus().setTextAlign('justify').run()}
                         >
@@ -459,10 +484,10 @@ const Toolbar = ({
                             className={`${styles.toolBtn} ${styles.withLabel}`}
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={promptImage}
-                            title="Add image"
+                            title={t('editor.toolbar.addImage', 'Add image')}
                         >
                             <ImageIcon />
-                            <span>Add</span>
+                            <span>{t('editor.toolbar.add', 'Add')}</span>
                         </button>
                     </div>
                     {placeholders && Object.keys(placeholders).length > 0 && (

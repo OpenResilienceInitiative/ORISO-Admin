@@ -207,10 +207,10 @@
         height: 32px;
         flex: 0 0 auto;
         align-items: center;
-        border: 1px solid #c4c7c8;
+        border: 1px solid var(--m3-outline-variant, #c4c7c8);
         background: transparent;
         border-radius: 8px;
-        color: #444748;
+        color: var(--m3-on-surface-variant, #444748);
 
         button {
             display: inline-flex;
@@ -251,9 +251,9 @@
         }
 
         &--active {
-            background: #646d78;
-            border-color: #646d78;
-            color: #e7effc;
+            background: var(--m3-secondary-container, #646d78);
+            border-color: var(--m3-secondary-container, #646d78);
+            color: var(--m3-on-secondary-container, #e7effc);
         }
     }
 
@@ -301,7 +301,7 @@
 .ProseMirror blockquote {
     margin: 12px 0;
     padding: 4px 16px;
-    border-left: 4px solid #c4c7c8;
+    border-left: 4px solid var(--m3-outline-variant, #c4c7c8);
     color: #3f4852;
 
     p {
@@ -333,7 +333,7 @@
     input[type='checkbox'] {
         width: 18px;
         height: 18px;
-        accent-color: #a5000a;
+        accent-color: var(--m3-primary, #a5000a);
         cursor: pointer;
     }
 }

@@ -4,6 +4,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LegalTextSettings } from './index';
 import { AgencyData } from '../../../../../types/agency';
+import { PermissionAction } from '../../../../../enums/PermissionAction';
+import { Resource } from '../../../../../enums/Resource';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
@@ -11,6 +13,7 @@ vi.mock('react-i18next', () => ({
 
 const mocks = vi.hoisted(() => ({
     canEdit: true,
+    can: vi.fn((): boolean => mocks.canEdit),
 }));
 
 vi.mock('../../../../../hooks/useSingleTenantData', () => ({
@@ -24,7 +27,7 @@ vi.mock('../../../../../hooks/useSingleTenantData', () => ({
     }),
 }));
 vi.mock('../../../../../hooks/useUserPermission', () => ({
-    useUserPermissions: () => ({ can: () => mocks.canEdit }),
+    useUserPermissions: () => ({ can: mocks.can }),
 }));
 vi.mock('../../../../../context/FeatureContext', () => ({
     useFeatureContext: () => ({ isEnabled: () => false }),
@@ -110,6 +113,8 @@ describe('LegalTextSettings (M3 editor)', () => {
 
         expect(screen.getByTestId('m3-editor').dataset.readonly).toBe('true');
         expect(screen.queryByRole('button', { name: 'legal.m3Editor.publish' })).toBeNull();
+        // The read-only state must come from the exact legal-text permission contract.
+        expect(mocks.can).toHaveBeenCalledWith(PermissionAction.Update, Resource.LegalText);
         mocks.canEdit = true;
     });
 });
