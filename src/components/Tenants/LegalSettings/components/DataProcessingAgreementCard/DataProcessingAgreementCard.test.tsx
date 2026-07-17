@@ -22,7 +22,8 @@ vi.mock('react-i18next', () => ({
 
 // TipTap pulls heavy editor deps; stub the M3 shell to a plain node that mirrors its
 // contract: echoes the value, renders the slots, lets the test emit an edit when an
-// onChange handler is wired, and exposes the publish action unless read-only.
+// onChange handler is wired, exposes the publish action unless read-only, and mirrors
+// the version select (one node per version; restore hands the version's content back).
 vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
     M3RichTextEditor: ({
         value,
@@ -35,6 +36,8 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         snackbarSlot,
         aboveEditorSlot,
         belowSlot,
+        versions,
+        onRestoreVersion,
     }: {
         value: string;
         onChange?: (html: string) => void;
@@ -46,6 +49,8 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         snackbarSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
+        versions?: { id: string; label: string; content: string; restorable?: boolean }[];
+        onRestoreVersion?: (content: string) => void;
     }) => (
         <div data-testid="editor" data-value={value} data-readonly={readOnly ? 'true' : 'false'}>
             {languageSlot}
@@ -62,6 +67,16 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
                     legal.m3Editor.publish
                 </button>
             )}
+            {(versions ?? []).map((version) => (
+                <div key={version.id} data-testid={`version-${version.id}`} data-content={version.content}>
+                    {version.label}
+                    {onRestoreVersion && version.restorable !== false && (
+                        <button type="button" onClick={() => onRestoreVersion(version.content)}>
+                            restore {version.id}
+                        </button>
+                    )}
+                </div>
+            ))}
             {belowSlot}
         </div>
     ),
@@ -222,6 +237,114 @@ describe('DataProcessingAgreementCard', () => {
         expect(screen.getByText('legal.help.dpa.agency.published.text')).toBeInTheDocument();
         expect(screen.getByText('legal.help.dpa.agency.published.hint')).toBeInTheDocument();
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
+    });
+});
+
+describe('DataProcessingAgreementCard — version select wiring (#268)', () => {
+    const storedVersions = [
+        { id: 'v2', label: '1. Jul 2026', content: '{"de":"<p>DE v2</p>","en":"<p>EN v2</p>"}' },
+        { id: 'v1', label: '1. Mai 2026', content: '{"de":"<p>DE v1</p>"}' },
+    ];
+
+    it('feeds the versions to the editor select in the active language', () => {
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="en"
+                versions={storedVersions}
+                onPublish={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('version-v2')).toHaveAttribute('data-content', '<p>EN v2</p>');
+        // v1 was never translated: fall back to its first stored language, never an empty page.
+        expect(screen.getByTestId('version-v1')).toHaveAttribute('data-content', '<p>DE v1</p>');
+    });
+
+    it('re-picks the version texts when the admin switches the language', async () => {
+        const user = userEvent.setup();
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="de"
+                versions={storedVersions}
+                onPublish={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('version-v2')).toHaveAttribute('data-content', '<p>DE v2</p>');
+
+        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(await screen.findByText('en'));
+
+        expect(screen.getByTestId('version-v2')).toHaveAttribute('data-content', '<p>EN v2</p>');
+    });
+
+    it('restore copies the version text into the current draft and publishes it (restore = copy)', async () => {
+        const user = userEvent.setup();
+        const onPublish = vi.fn();
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="en"
+                versions={storedVersions}
+                onPublish={onPublish}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'restore v2' }));
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN v2</p>');
+
+        await user.click(screen.getByRole('button', { name: publishButtonName }));
+        // Only the active language's draft was replaced — the other languages stay untouched.
+        expect(onPublish).toHaveBeenCalledWith({ de: '<p>DE</p>', en: '<p>EN v2</p>' });
+    });
+
+    it('does not restore fallback German content into an English draft', () => {
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="en"
+                versions={storedVersions}
+                onPublish={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByTestId('version-v1')).toHaveAttribute('data-content', '<p>DE v1</p>');
+        expect(screen.queryByRole('button', { name: 'restore v1' })).not.toBeInTheDocument();
+    });
+
+    it('offers no restore in read-only mode (agency page: look, do not edit)', () => {
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                languages={['de']}
+                versions={storedVersions}
+                onPublish={() => undefined}
+                readOnly
+            />,
+        );
+
+        // The versions are still browsable, but nothing offers a restore.
+        expect(screen.getByTestId('version-v2')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /restore/ })).not.toBeInTheDocument();
+    });
+
+    it('no longer renders the separate look-back viewer below the editor', () => {
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                languages={['de']}
+                versions={storedVersions}
+                onPublish={() => undefined}
+            />,
+        );
+
+        expect(screen.queryByText('tenants.legal.version.history')).not.toBeInTheDocument();
     });
 });
 

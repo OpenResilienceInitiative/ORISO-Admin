@@ -34,9 +34,8 @@ const mergeTranslatedContent = (
 /**
  * Agency-level imprint / privacy card in the M3 editor shell. The content starts
  * from the tenant's (Träger) texts with the agency's own overrides on top; local
- * edits are kept per language and publishing sends the COMPLETE merged language
- * map in the same `{ content: { [field]: { lang: html } } }` structure the old
- * CardEditable form submitted.
+ * edits are kept per language. Inherited tenant values are rendered but never
+ * persisted as agency overrides, so future tenant updates still flow through.
  */
 export const LegalTextSettings = ({ agencyData, field, onSave, saving }: LegalTextSettingsProps) => {
     const { t } = useTranslation();
@@ -50,11 +49,18 @@ export const LegalTextSettings = ({ agencyData, field, onSave, saving }: LegalTe
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const [activeLanguage, setActiveLanguage] = useState('de');
     const [edits, setEdits] = useState<Record<string, string>>({});
+    const editorIdentity = `${agencyData?.id ?? ''}:${field}`;
+    const agencyOverrides = useMemo(() => agencyData?.content?.[field] || {}, [agencyData, field]);
 
-    const languages = useMemo(
-        () => tenantData?.settings?.activeLanguages || ['de'],
-        [tenantData?.settings?.activeLanguages],
-    );
+    const languages = useMemo(() => {
+        const configured = tenantData?.settings?.activeLanguages;
+        return configured?.length ? configured : ['de'];
+    }, [tenantData?.settings?.activeLanguages]);
+
+    useEffect(() => {
+        setEdits({});
+        setActiveLanguage('de');
+    }, [editorIdentity]);
 
     // The initial 'de' can be unavailable once the tenant's languages arrive; fall
     // back to the first configured language so the editor never sits on an empty one.
@@ -67,16 +73,16 @@ export const LegalTextSettings = ({ agencyData, field, onSave, saving }: LegalTe
     // Inherited tenant texts with the agency's overrides on top, plus the local edits.
     const contentByLanguage = useMemo<Record<string, string>>(
         () => ({
-            ...mergeTranslatedContent(tenantData?.content?.[field], agencyData?.content?.[field]),
+            ...mergeTranslatedContent(tenantData?.content?.[field], agencyOverrides),
             ...edits,
         }),
-        [agencyData, edits, field, tenantData],
+        [agencyOverrides, edits, field, tenantData],
     );
 
     const onPublish = () => {
-        // Same structure the old CardEditable submitted — the complete merged map,
-        // so languages the admin did not touch are never dropped.
-        onSave({ content: { [field]: { ...contentByLanguage } } });
+        // Preserve untouched agency overrides, but do not materialize inherited
+        // tenant values as local copies.
+        onSave({ content: { [field]: { ...agencyOverrides, ...edits } } });
     };
 
     if (isLoading) {

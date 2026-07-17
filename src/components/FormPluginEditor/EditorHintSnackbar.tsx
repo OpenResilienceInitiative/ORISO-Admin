@@ -13,14 +13,16 @@ export type EditorHintSnackbarProps = {
 /**
  * M3 snackbar for a functionality-blocker CTA (Figma Admin.ORISO 1229-17864),
  * e.g. "you must publish a DPA before creating tenants". Overlays the bottom of
- * the editor surface; on narrow viewports it flows below the editor instead
- * (mobile annotation: tooltip moves below, 12px lower corner radius).
+ * the editor surface. It stays in normal document flow so neither editor text
+ * nor controls are obscured, including on narrow viewports.
  */
 export const EditorHintSnackbar = ({ text, onClose, onDismiss }: EditorHintSnackbarProps) => {
     const { t } = useTranslation();
     return (
-        <div className={styles.hintSnackbar} role="status">
-            <span className={styles.hintSnackbarText}>{text}</span>
+        <div className={styles.hintSnackbar}>
+            <span className={styles.hintSnackbarText} role="status">
+                {text}
+            </span>
             <button type="button" className={styles.hintSnackbarAction} onClick={onDismiss}>
                 {t('legal.help.snackbar.dismiss')}
             </button>

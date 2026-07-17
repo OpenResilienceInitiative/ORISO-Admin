@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { M3RichTextEditor } from './M3RichTextEditor';
+import { M3RichTextEditor, parseVersionDate } from './M3RichTextEditor';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
@@ -44,6 +44,13 @@ const openVersionMenu = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('M3RichTextEditor — version select (#268)', () => {
+    it('parses date-only ids as the same local calendar date', () => {
+        const parsed = parseVersionDate('2026-07-01');
+        expect(parsed).not.toBeNull();
+        expect([parsed?.getFullYear(), parsed?.getMonth(), parsed?.getDate()]).toEqual([2026, 6, 1]);
+        expect(parseVersionDate('2026-02-31')).toBeNull();
+        expect(parseVersionDate('not-a-date')).toBeNull();
+    });
     it('lists the current draft plus every provided version in the version menu', async () => {
         const user = userEvent.setup();
         render(

@@ -16,10 +16,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const description =
-    'Fügen Sie hier den Datenverarbeitungsvertrag ein und drücken Sie Veröffentlichen, um den Vertrag für ' +
+    'Fügen Sie hier den Auftragsverarbeitungsvertrag (AVV) ein und drücken Sie Veröffentlichen, um den Vertrag für ' +
     'Träger zu veröffentlichen. Nur Träger, die den Vertrag unterschrieben haben, können auf der Plattform ' +
     'Ratsuchende beraten.';
-const cta = 'Um Träger anzulegen, müssen Sie erst eine Datenauftragsverarbeitung publizieren.';
+const cta = 'Um Träger anzulegen, müssen Sie erst einen Auftragsverarbeitungsvertrag (AVV) veröffentlichen.';
 
 // Several headings so the anchor chip row overflows → prev/next nav appears.
 const contractHtml =
@@ -95,7 +95,7 @@ const PanelDemo = ({ readOnly }: { readOnly?: boolean }) => {
  * The Data Agreements panel in write mode (Figma 1261-48667): maximize in the
  * toolbar, anchor chips inside the text surface with overflow nav arrows,
  * three split buttons in the lower function bar (language / topic / version),
- * blocker CTA as dismissible snackbar.
+ * blocker CTA as a dismissible, non-obscuring snackbar below the editor.
  */
 export const PanelWriteMode = {
     render: () => <PanelDemo />,

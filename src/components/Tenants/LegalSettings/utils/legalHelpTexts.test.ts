@@ -7,6 +7,8 @@ describe('isEmptyLegalContent', () => {
         [null, true],
         ['', true],
         ['<p></p>', true],
+        ['<p> </p>', true],
+        ['<p>\n\t</p>', true],
         ['<p>Impressum</p>', false],
         // HTML whitespace entities / non-breaking / zero-width whitespace count as empty.
         ['<p>&nbsp;</p>', true],
@@ -19,6 +21,7 @@ describe('isEmptyLegalContent', () => {
         [{}, true],
         [{ de: '<p></p>', en: '' }, true],
         [{ de: '<p>&nbsp;</p>', en: '<p><br></p>' }, true],
+        [{ __meta: 'generated', de__meta: 'generated' }, true],
         [{ de: '<p>Text</p>' }, false],
     ])('%j → %s', (value, expected) => {
         expect(isEmptyLegalContent(value)).toBe(expected);

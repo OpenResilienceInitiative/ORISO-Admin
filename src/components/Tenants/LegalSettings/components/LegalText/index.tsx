@@ -59,7 +59,18 @@ export const LegalText = ({
     const [pendingFormData, setPendingFormData] = useState<Record<string, unknown>>();
     const [modalVisible, setModalVisible] = useState(false);
 
-    const languages = useMemo(() => data?.settings?.activeLanguages || ['de'], [data?.settings?.activeLanguages]);
+    const languages = useMemo(() => {
+        const configured = data?.settings?.activeLanguages;
+        return configured && configured.length > 0 ? configured : ['de'];
+    }, [data?.settings?.activeLanguages]);
+
+    const editorIdentity = `${tenantId}:${fieldName.join('.')}`;
+    useEffect(() => {
+        setEdits({});
+        setPendingFormData(undefined);
+        setModalVisible(false);
+        setActiveLanguage('de');
+    }, [editorIdentity]);
 
     // The initial 'de' can be unavailable once the tenant's languages arrive (e.g.
     // an English-only tenant); fall back to the first configured language then.

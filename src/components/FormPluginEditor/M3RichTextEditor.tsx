@@ -50,7 +50,7 @@ import {
     MaximizeContentIcon,
     MinimizeContentIcon,
     PublishedIcon,
-    UnpublishedIcon,
+    EditIcon,
 } from '../CustomIcons/EditorIcons';
 import { HeadingAnchors } from './headingAnchors';
 import { HeadingMenu } from './HeadingMenu';
@@ -67,6 +67,8 @@ export type EditorVersion = {
     label: string;
     /** The version's HTML content. */
     content: string;
+    /** False when content is a preview fallback from another language. */
+    restorable?: boolean;
 };
 
 export type M3RichTextEditorProps = {
@@ -106,8 +108,8 @@ export type M3RichTextEditorProps = {
      */
     helpSlot?: React.ReactNode;
     /**
-     * Snackbar overlaying the bottom of the editor surface (functionality
-     * blocker CTA, Figma 1229-17864); flows below the editor on mobile.
+     * Dismissible functionality hint rendered below the editor surface. It is
+     * deliberately kept in the document flow so it never obscures legal text.
      */
     snackbarSlot?: React.ReactNode;
     /**
@@ -141,7 +143,15 @@ export type M3RichTextEditorProps = {
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
 
 /** Version ids are ISO activation dates (DPA container) — null when they aren't parseable. */
-const parseVersionDate = (id: string): Date | null => {
+export const parseVersionDate = (id: string): Date | null => {
+    const dateOnly = id.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnly) {
+        const year = Number(dateOnly[1]);
+        const month = Number(dateOnly[2]);
+        const day = Number(dateOnly[3]);
+        const date = new Date(year, month - 1, day);
+        return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+    }
     const date = new Date(id);
     return Number.isNaN(date.getTime()) ? null : date;
 };
@@ -567,28 +577,12 @@ export const M3RichTextEditor = ({
         `${date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}` +
         `${locale.startsWith('de') ? ' Uhr' : ''}`;
     // "Auto Chapters" (Figma 1280-73045): per heading level, whether new
-    // headings automatically get a clickable anchor. Persisted per editor
-    // (keyed by the card title) until re-enabled.
-    const autoChaptersStorageKey = `oriso-admin.editor.autoChapters.${title}`;
-    const [autoChapters, setAutoChapters] = useState<Record<number, boolean>>(() => {
-        const initial: Record<number, boolean> = { 1: true, 2: true, 3: true };
-        try {
-            [1, 2, 3].forEach((level) => {
-                initial[level] = window.localStorage.getItem(`${autoChaptersStorageKey}.h${level}`) !== 'false';
-            });
-        } catch {
-            // Storage unavailable: default to on.
-        }
-        return initial;
-    });
+    // headings automatically get a clickable anchor for this editor session.
+    // Titles are translated and therefore not safe persistence identifiers.
+    const [autoChapters, setAutoChapters] = useState<Record<number, boolean>>({ 1: true, 2: true, 3: true });
     const toggleAutoChapters = (level: number) =>
         setAutoChapters((current) => {
             const next = { ...current, [level]: !(current[level] !== false) };
-            try {
-                window.localStorage.setItem(`${autoChaptersStorageKey}.h${level}`, String(next[level]));
-            } catch {
-                // Storage unavailable: the toggle still works for this session.
-            }
             return next;
         });
     // Which saved version is being viewed (null = the editable current draft).
@@ -718,7 +712,7 @@ export const M3RichTextEditor = ({
                         {t('legal.m3Editor.viewingVersion')}: {viewingVersion.label}
                     </span>
                     <div className={styles.versionBannerActions}>
-                        {!readOnly && onRestoreVersion && (
+                        {!readOnly && onRestoreVersion && viewingVersion.restorable !== false && (
                             <button
                                 type="button"
                                 className={styles.outlineBtn}
@@ -745,7 +739,12 @@ export const M3RichTextEditor = ({
                 ) : (
                     <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
                         <div className={styles.editor}>
-                            <EditorContent editor={editor} />
+                            <div className={styles.editorContentScroll}>
+                                <EditorContent editor={editor} />
+                            </div>
+                            {/* Blocker snackbar floats OVER the text area (Figma 1229-17864),
+                                anchored above the chapter chips. */}
+                            {snackbarSlot}
                             {/* Anchor chips live at the bottom of the text surface, with
                                 overflow nav arrows (Figma 1261-48667 / 1280-73048). */}
                             {anchorsEnabled && (
@@ -762,7 +761,6 @@ export const M3RichTextEditor = ({
                         </div>
                     </div>
                 )}
-                {snackbarSlot}
             </div>
 
             {anchorsEnabled && editorEditable && (
@@ -921,7 +919,7 @@ export const M3RichTextEditor = ({
                                 className={`${styles.textBtn} ${styles.draft}`}
                                 onClick={() => onSaveDraft(html())}
                             >
-                                <UnpublishedIcon />
+                                <EditIcon />
                                 <span>{t('legal.m3Editor.saveDraft')}</span>
                             </button>
                         )}

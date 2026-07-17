@@ -4,16 +4,20 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DataProcessingAgreementContainer } from './index';
 
-const { useDpaVersions, publishMutate, useTranslation, useTenantAdminData } = vi.hoisted(() => ({
+const { useDpaVersions, publishMutate, useTranslation, useTenantAdminData, useUserData } = vi.hoisted(() => ({
     useDpaVersions: vi.fn(),
     publishMutate: vi.fn(),
     useTranslation: vi.fn(),
     useTenantAdminData: vi.fn(),
+    useUserData: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({ useTranslation }));
 vi.mock('../../../../../hooks/useDpaVersions.hook', () => ({ useDpaVersions }));
 vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminData }));
+vi.mock('../../../../../hooks/useUserData.hook', () => ({
+    useUserData,
+}));
 vi.mock('../../../../../hooks/usePublishDpa.hook', () => ({
     usePublishDpa: () => ({ mutate: publishMutate, isPending: false }),
 }));
@@ -30,21 +34,30 @@ vi.mock('../DataProcessingAgreementCard', () => ({
         versions,
         readOnly,
         onPublish,
-    }: any) => (
-        <div
-            data-testid="card"
-            data-content={JSON.stringify(initialContentByLanguage)}
-            data-languages={(languages ?? []).join(',')}
-            data-default-language={defaultLanguage}
-            data-labels={(versions ?? []).map((v: any) => v.label).join('|')}
-            data-contents={(versions ?? []).map((v: any) => v.content).join('|')}
-            data-read-only={readOnly ? 'true' : 'false'}
-        >
-            <button type="button" onClick={() => onPublish({ ...initialContentByLanguage, en: '<p>edited</p>' })}>
-                publish
-            </button>
-        </div>
-    ),
+        dismissalScope,
+    }: any) => {
+        const [draft, setDraft] = React.useState('');
+        return (
+            <div
+                data-testid="card"
+                data-content={JSON.stringify(initialContentByLanguage)}
+                data-languages={(languages ?? []).join(',')}
+                data-default-language={defaultLanguage}
+                data-labels={(versions ?? []).map((v: any) => v.label).join('|')}
+                data-contents={(versions ?? []).map((v: any) => v.content).join('|')}
+                data-read-only={readOnly ? 'true' : 'false'}
+                data-dismissal-scope={dismissalScope}
+            >
+                <span data-testid="draft">{draft}</span>
+                <button type="button" onClick={() => setDraft('unsaved draft')}>
+                    edit draft
+                </button>
+                <button type="button" onClick={() => onPublish({ ...initialContentByLanguage, en: '<p>edited</p>' })}>
+                    publish
+                </button>
+            </div>
+        );
+    },
 }));
 
 beforeEach(() => {
@@ -56,6 +69,7 @@ beforeEach(() => {
         i18n: { language: 'de-DE' },
     });
     useTenantAdminData.mockReturnValue({ data: { settings: { activeLanguages: ['de', 'en'] } } });
+    useUserData.mockReturnValue({ data: { id: 'admin-1' } });
 });
 
 describe('DataProcessingAgreementContainer', () => {
@@ -80,7 +94,7 @@ describe('DataProcessingAgreementContainer', () => {
         expect(card).toHaveAttribute('data-default-language', 'de');
     });
 
-    it('marks the newest version as current and shows the active-language text per version', () => {
+    it('marks the newest version as current and passes each version content through untouched', () => {
         useDpaVersions.mockReturnValue({
             data: [
                 { activationDate: '2026-07-01T10:00:00', content: '{"de":"<p>neu</p>","en":"<p>new</p>"}' },
@@ -92,7 +106,9 @@ describe('DataProcessingAgreementContainer', () => {
         const labels = (card.getAttribute('data-labels') ?? '').split('|');
         expect(labels[0]).toContain('tenants.legal.version.current');
         expect(labels[1]).not.toContain('tenants.legal.version.current');
-        expect(card).toHaveAttribute('data-contents', '<p>neu</p>|<p>alt</p>');
+        // The card picks the ACTIVE language per version itself (the container does not
+        // know it), so it must receive the complete stored map of every version.
+        expect(card).toHaveAttribute('data-contents', '{"de":"<p>neu</p>","en":"<p>new</p>"}|{"de":"<p>alt</p>"}');
     });
 
     it('publishes the complete merged map the card emits — other languages are kept', async () => {
@@ -137,5 +153,21 @@ describe('DataProcessingAgreementContainer', () => {
         render(<DataProcessingAgreementContainer tenantId={1} />);
         expect(screen.getByTestId('card')).toBeInTheDocument();
         expect(screen.queryByText('tenants.legal.version.loadError')).not.toBeInTheDocument();
+    });
+
+    it('keeps an unsaved draft when the opaque user identity resolves asynchronously', async () => {
+        const user = userEvent.setup();
+        useUserData.mockReturnValue({ data: undefined });
+        const { rerender } = render(<DataProcessingAgreementContainer tenantId={1} />);
+
+        await user.click(screen.getByRole('button', { name: 'edit draft' }));
+        expect(screen.getByTestId('draft')).toHaveTextContent('unsaved draft');
+        expect(screen.getByTestId('card')).not.toHaveAttribute('data-dismissal-scope');
+
+        useUserData.mockReturnValue({ data: { id: 'resolved-admin' } });
+        rerender(<DataProcessingAgreementContainer tenantId={1} />);
+
+        expect(screen.getByTestId('draft')).toHaveTextContent('unsaved draft');
+        expect(screen.getByTestId('card')).toHaveAttribute('data-dismissal-scope', '1:resolved-admin');
     });
 });

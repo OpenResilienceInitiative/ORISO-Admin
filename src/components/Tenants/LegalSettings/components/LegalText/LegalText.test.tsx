@@ -214,4 +214,49 @@ describe('LegalText (M3 editor)', () => {
             content: { imprint: { de: '<p>Legacy Impressum</p>' } },
         });
     });
+
+    it('falls back to German when activeLanguages is configured as an empty list', () => {
+        mocks.activeLanguages = [];
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                subTitle="imprint.subTitle"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>');
+    });
+
+    it('drops unsaved edits when the tenant identity changes', async () => {
+        const user = userEvent.setup();
+        const { rerender } = render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                subTitle="imprint.subTitle"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
+
+        rerender(
+            <LegalText
+                tenantId="2"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                subTitle="imprint.subTitle"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        await vi.waitFor(() =>
+            expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>'),
+        );
+    });
 });

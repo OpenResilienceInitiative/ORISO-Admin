@@ -8,7 +8,8 @@ import styles from './M3RichTextEditor.module.scss';
 // TipTap's built-in heading shortcuts (StarterKit): Mod-Alt-1..3 — shown
 // platform-aware (Figma 1280-73045).
 const isMacLike = typeof navigator !== 'undefined' && /mac|iphone|ipad/i.test(navigator.platform);
-const headingShortcut = (level: number) => (isMacLike ? `⌘⌥${level}` : `Strg+Alt+${level}`);
+const headingShortcut = (level: number, controlLabel: string) =>
+    isMacLike ? `⌘⌥${level}` : `${controlLabel}+Alt+${level}`;
 
 export type HeadingMenuProps = {
     editor: Editor;
@@ -37,13 +38,20 @@ export const HeadingMenu = ({
     const [open, setOpen] = useState(false);
     const [expandedLevel, setExpandedLevel] = useState<number | null>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
 
     const activeLevel = [1, 2, 3].find((level) => editor.isActive('heading', { level })) ?? 0;
+
+    const closeMenu = () => {
+        setOpen(false);
+        setExpandedLevel(null);
+        requestAnimationFrame(() => triggerRef.current?.focus());
+    };
 
     const apply = (level: 0 | 1 | 2 | 3) => {
         if (level === 0) editor.chain().focus().setParagraph().run();
         else editor.chain().focus().toggleHeading({ level }).run();
-        setOpen(false);
+        closeMenu();
     };
 
     // Escape closes the panel and returns focus to the trigger; the rows are
@@ -51,9 +59,7 @@ export const HeadingMenu = ({
     const onPanelKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
         if (event.key === 'Escape') {
             event.stopPropagation();
-            setOpen(false);
-            setExpandedLevel(null);
-            triggerRef.current?.focus();
+            closeMenu();
         }
     };
 
@@ -61,16 +67,18 @@ export const HeadingMenu = ({
         // rc-dropdown closes on ANY overlay click — swallow the bubble so the
         // expand/toggle rows keep the menu open; rows that should close call
         // setOpen(false) themselves, outside clicks still close via document.
-        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
         <div
+            ref={panelRef}
             className={styles.headingMenu}
-            role="menu"
+            role="dialog"
+            aria-label={t('editor.headingMenu.textFormat', 'Text format')}
             tabIndex={-1}
             onClick={(event) => event.stopPropagation()}
             onKeyDown={onPanelKeyDown}
         >
             <div className={`${styles.headingMenuRow} ${activeLevel === 0 ? styles.headingMenuRowActive : ''}`}>
-                <button type="button" className={styles.headingMenuItem} role="menuitem" onClick={() => apply(0)}>
+                <button type="button" className={styles.headingMenuItem} onClick={() => apply(0)}>
                     <span className={styles.menuItemGlyph}>Tt</span>
                     <span className={styles.menuItemLabel}>{t('editor.headingMenu.normalText', 'Normal text')}</span>
                 </button>
@@ -85,17 +93,14 @@ export const HeadingMenu = ({
                                 activeLevel === level ? styles.headingMenuRowActive : ''
                             }`}
                         >
-                            <button
-                                type="button"
-                                className={styles.headingMenuItem}
-                                role="menuitem"
-                                onClick={() => apply(level)}
-                            >
+                            <button type="button" className={styles.headingMenuItem} onClick={() => apply(level)}>
                                 <span className={styles.menuItemGlyph}>{`H${level}`}</span>
                                 <span className={styles.menuItemLabel}>
                                     {t('editor.headingMenu.heading', { level, defaultValue: 'Heading {{level}}' })}
                                 </span>
-                                <span className={styles.menuItemHint}>{headingShortcut(level)}</span>
+                                <span className={styles.menuItemHint}>
+                                    {headingShortcut(level, t('editor.keyboard.control', 'Ctrl'))}
+                                </span>
                             </button>
                             {anchorsEnabled && (
                                 <button
@@ -167,7 +172,12 @@ export const HeadingMenu = ({
             open={disabled ? false : open}
             onOpenChange={(next) => {
                 setOpen(next);
-                if (!next) setExpandedLevel(null);
+                if (next) {
+                    requestAnimationFrame(() => panelRef.current?.querySelector<HTMLButtonElement>('button')?.focus());
+                } else {
+                    setExpandedLevel(null);
+                    requestAnimationFrame(() => triggerRef.current?.focus());
+                }
             }}
             // antd's dropdownRender contract is "function returning the overlay
             // element" — `panel` is a pre-built element, not a nested component.
@@ -181,6 +191,8 @@ export const HeadingMenu = ({
                 onMouseDown={(e) => e.preventDefault()}
                 title={t('editor.headingMenu.textFormat', 'Text format')}
                 disabled={disabled}
+                aria-haspopup="dialog"
+                aria-expanded={open}
             >
                 <Title />
                 <ArrowDropDown className={styles.caret} />

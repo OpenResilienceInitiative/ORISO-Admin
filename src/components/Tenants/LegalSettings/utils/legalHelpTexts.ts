@@ -31,7 +31,9 @@ export const isEmptyLegalContent = (value: unknown): boolean => {
     if (value == null) return true;
     if (typeof value === 'string') return isEmptyHtml(value);
     if (typeof value === 'object') {
-        const entries = Object.values(value as Record<string, unknown>);
+        const entries = Object.entries(value as Record<string, unknown>)
+            .filter(([key]) => !key.startsWith('__') && !key.includes('__meta'))
+            .map(([, entry]) => entry);
         return entries.every((entry) => typeof entry !== 'string' || isEmptyHtml(entry));
     }
     return true;
