@@ -6,6 +6,7 @@ import updateAgencyType from './updateAgencyType';
 import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant';
 import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
 import { normalizeTopicIds } from './normalizeTopicIds';
+import { stripAgencyAdminControls } from './stripAgencyAdminControls';
 
 /**
  * update agency
@@ -50,6 +51,9 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         dataProtection: formInput.dataProtection,
         content: formInput.content,
         agencyLogo: formInput.agencyLogo,
+        // Omitting `settings` keeps the stored value backend-side; the injected platform
+        // controls must never be echoed back (super-admin-only update path).
+        ...(formInput.settings ? { settings: stripAgencyAdminControls(formInput.settings) } : {}),
     });
 
     return fetchData({

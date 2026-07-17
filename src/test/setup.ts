@@ -60,6 +60,11 @@ if (typeof window !== 'undefined') {
         }
     });
 
+    // jsdom does not implement scrolling; CardDeck calls scrollTo on its deck element.
+    if (!Element.prototype.scrollTo) {
+        Element.prototype.scrollTo = vi.fn() as unknown as Element['scrollTo'];
+    }
+
     // antd/rc-util call getComputedStyle with a pseudo-element to measure scrollbars.
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
     window.getComputedStyle = ((element: Element, pseudoElt?: string | null) => {
