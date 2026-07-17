@@ -8,7 +8,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import { PlusOutlined } from '@ant-design/icons';
 import { Modal } from '../../../components/Modal';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
-import { FloatingSearch } from '../../../components/FloatingSearch';
+import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { ResizeTable } from '../../../components/ResizableTable';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
@@ -318,11 +318,18 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         <div className={classNames('counselorList', styles.wrapper)}>
             <div className={styles.searchContainer}>
                 <div className={styles.searchWithButton}>
-                    <FloatingSearch
+                    <GlobalSearchBar
                         className={styles.searchField}
-                        placeholder={t(config.searchPlaceholderKey)}
+                        searchPlaceholder={t(config.searchPlaceholderKey)}
                         onSearch={setSearchDebounced}
-                        onClear={() => setSearch('')}
+                        onSearchChange={(value) => {
+                            if (value === '') {
+                                setSearch('');
+                                return;
+                            }
+
+                            setSearchDebounced(value);
+                        }}
                     />
                     {canCreate && <div className={styles.toolbarActions}>{createButton}</div>}
                 </div>

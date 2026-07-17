@@ -77,8 +77,8 @@ vi.mock('../../../components/ResizableTable', () => ({
     },
 }));
 
-vi.mock('../../../components/FloatingSearch', () => ({
-    FloatingSearch: () => <div data-testid="search-input" />,
+vi.mock('../../../components/GlobalSearch', () => ({
+    GlobalSearchBar: () => <div data-testid="search-input" />,
 }));
 
 vi.mock('../../../components/EditableTable/EditButtons', () => ({

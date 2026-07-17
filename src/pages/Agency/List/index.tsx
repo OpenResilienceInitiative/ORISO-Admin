@@ -22,7 +22,7 @@ import { Page } from '../../../components/Page';
 import { useAgenciesData } from '../../../hooks/useAgencysData';
 import { ResizeTable } from '../../../components/ResizableTable';
 import styles from './styles.module.scss';
-import { FloatingSearch } from '../../../components/FloatingSearch';
+import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { ReactComponent as RowExpandIcon } from '../../../resources/img/svg/table-actions/row_expand_200.svg';
@@ -320,11 +320,11 @@ export const AgencyList = () => {
                 subTitleKey={`agency.title.text${can(PermissionAction.Create, Resource.Agency) ? '' : '.self'}`}
             >
                 <div className={styles.searchNewContainer}>
-                    <FloatingSearch
+                    <GlobalSearchBar
                         className={styles.searchField}
-                        placeholder={t('agency.list.searchPlaceholder')}
+                        searchPlaceholder={t('agency.list.searchPlaceholder')}
                         onSearch={setSearchDebounced}
-                        onClear={() => setSearchDebounced('')}
+                        onSearchChange={setSearchDebounced}
                     />
                     {can(PermissionAction.Create, Resource.Agency) && (
                         <div className={styles.toolbarActions}>

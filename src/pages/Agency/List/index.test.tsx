@@ -102,8 +102,8 @@ vi.mock('../../../resources/img/svg/table-actions/row_expand_filled.svg', () => 
     ),
 }));
 
-vi.mock('../../../components/FloatingSearch', () => ({
-    FloatingSearch: () => <div data-testid="search-input" />,
+vi.mock('../../../components/GlobalSearch', () => ({
+    GlobalSearchBar: () => <div data-testid="search-input" />,
 }));
 
 vi.mock('../../../components/ResizableTable', () => ({

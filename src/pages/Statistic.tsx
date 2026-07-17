@@ -4,7 +4,7 @@ import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AdminSegmentedTabs } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { Page } from '../components/Page';
-import { FloatingSearch } from '../components/FloatingSearch';
+import { GlobalSearchBar } from '../components/GlobalSearch';
 import { AnimatedValue, StatisticCard } from '../components/StatisticCard/StatisticCard';
 import { UserRole } from '../enums/UserRole';
 import { useUserRoles } from '../hooks/useUserRoles.hook';
@@ -2105,20 +2105,24 @@ const StatisticFilterBar = ({
                     }
                 }}
             >
-                <FloatingSearch
+                <GlobalSearchBar
                     className="statisticDashboard__filterSearch"
-                    placeholder={translateDashboardKey(translate, 'statistic.dashboard.filter.placeholder', 'Suche')}
+                    defaultExpanded
+                    searchPlaceholder={translateDashboardKey(
+                        translate,
+                        'statistic.dashboard.filter.placeholder',
+                        'Suche',
+                    )}
                     ariaLabel={translateDashboardKey(
                         translate,
                         'statistic.dashboard.filter.searchAria',
                         'Beratungsstellen oder Träger suchen',
                     )}
                     value={searchValue}
-                    searchOnChange={false}
-                    onClick={() => setIsSuggestionMenuOpen(true)}
-                    onFocus={() => setIsSuggestionMenuOpen(true)}
-                    onKeyDown={handleSearchKeyDown}
-                    onValueChange={(value) => {
+                    onInputClick={() => setIsSuggestionMenuOpen(true)}
+                    onInputFocus={() => setIsSuggestionMenuOpen(true)}
+                    onInputKeyDown={handleSearchKeyDown}
+                    onSearchChange={(value) => {
                         setIsSuggestionMenuOpen(true);
                         onSearchChange(value);
                     }}
@@ -2126,7 +2130,6 @@ const StatisticFilterBar = ({
                         addFirstVisibleSuggestion();
                         setIsSuggestionMenuOpen(false);
                     }}
-                    onClear={() => setIsSuggestionMenuOpen(true)}
                 />
 
                 {isSuggestionMenuOpen && hasSuggestions && (
