@@ -41,7 +41,7 @@
             padding: 16px 24px;
             overflow: hidden;
             border-radius: 0 0 var(--admin-table-radius) var(--admin-table-radius);
-            background: var(--admin-table-row-hover-surface, #f0edee);
+            background: var(--admin-table-footer-surface, #e4e2e2);
         }
 
         .ant-table-thead > tr > th {
