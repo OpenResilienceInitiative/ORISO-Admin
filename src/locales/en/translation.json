@@ -1235,5 +1235,9 @@
     "statistic.dashboard.loadError": "Statistics data could not be loaded.",
     "statistic.dashboard.suppressionDisabledNotice": "Small-cell protection disabled – test environments only",
     "statistic.dashboard.loading": "Loading statistics …",
+    "statistic.dashboard.csvExport.label": "Download statistics as CSV",
+    "statistic.dashboard.csvExport.filename": "Statistics",
+    "statistic.dashboard.csvExport.metricColumn": "Metric",
+    "statistic.dashboard.csvExport.valueColumn": "Value",
     "pillSelect.toggleOptions": "Show options for {{label}}"
 }

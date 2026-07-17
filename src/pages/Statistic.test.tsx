@@ -208,4 +208,24 @@ describe('Statistic page', () => {
         await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
         expect(screen.queryByText('undefined', { exact: false })).toBeNull();
     });
+
+    it('offers a CSV export of exactly the metrics shown on screen', async () => {
+        dashboardMock.mockResolvedValue(response);
+        let csvBlobParts: string | undefined;
+        const OriginalBlob = global.Blob;
+        const blobSpy = vi.spyOn(global, 'Blob').mockImplementation(function mockBlob(this: unknown, parts, options) {
+            csvBlobParts = (parts as string[])?.join('');
+            return new OriginalBlob(parts, options);
+        } as unknown as typeof Blob);
+
+        renderStatistic();
+
+        await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        expect(screen.getByText('Statistik als CSV herunterladen').closest('a')).not.toBeNull();
+        expect(csvBlobParts).toContain('12');
+        expect(csvBlobParts).not.toContain('312');
+        expect(csvBlobParts).not.toContain('Caritas NRW');
+
+        blobSpy.mockRestore();
+    });
 });
