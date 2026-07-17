@@ -67,17 +67,18 @@ export const HeadingMenu = ({
         // rc-dropdown closes on ANY overlay click — swallow the bubble so the
         // expand/toggle rows keep the menu open; rows that should close call
         // setOpen(false) themselves, outside clicks still close via document.
-        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
         <div
             ref={panelRef}
             className={styles.headingMenu}
-            role="menu"
+            role="dialog"
+            aria-label={t('editor.headingMenu.textFormat', 'Text format')}
             tabIndex={-1}
             onClick={(event) => event.stopPropagation()}
             onKeyDown={onPanelKeyDown}
         >
             <div className={`${styles.headingMenuRow} ${activeLevel === 0 ? styles.headingMenuRowActive : ''}`}>
-                <button type="button" className={styles.headingMenuItem} role="menuitem" onClick={() => apply(0)}>
+                <button type="button" className={styles.headingMenuItem} onClick={() => apply(0)}>
                     <span className={styles.menuItemGlyph}>Tt</span>
                     <span className={styles.menuItemLabel}>{t('editor.headingMenu.normalText', 'Normal text')}</span>
                 </button>
@@ -92,12 +93,7 @@ export const HeadingMenu = ({
                                 activeLevel === level ? styles.headingMenuRowActive : ''
                             }`}
                         >
-                            <button
-                                type="button"
-                                className={styles.headingMenuItem}
-                                role="menuitem"
-                                onClick={() => apply(level)}
-                            >
+                            <button type="button" className={styles.headingMenuItem} onClick={() => apply(level)}>
                                 <span className={styles.menuItemGlyph}>{`H${level}`}</span>
                                 <span className={styles.menuItemLabel}>
                                     {t('editor.headingMenu.heading', { level, defaultValue: 'Heading {{level}}' })}
@@ -195,7 +191,7 @@ export const HeadingMenu = ({
                 onMouseDown={(e) => e.preventDefault()}
                 title={t('editor.headingMenu.textFormat', 'Text format')}
                 disabled={disabled}
-                aria-haspopup="menu"
+                aria-haspopup="dialog"
                 aria-expanded={open}
             >
                 <Title />

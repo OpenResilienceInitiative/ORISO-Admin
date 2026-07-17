@@ -49,12 +49,18 @@ export const LegalTextSettings = ({ agencyData, field, onSave, saving }: LegalTe
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const [activeLanguage, setActiveLanguage] = useState('de');
     const [edits, setEdits] = useState<Record<string, string>>({});
+    const editorIdentity = `${agencyData?.id ?? ''}:${field}`;
     const agencyOverrides = useMemo(() => agencyData?.content?.[field] || {}, [agencyData, field]);
 
-    const languages = useMemo(
-        () => tenantData?.settings?.activeLanguages || ['de'],
-        [tenantData?.settings?.activeLanguages],
-    );
+    const languages = useMemo(() => {
+        const configured = tenantData?.settings?.activeLanguages;
+        return configured?.length ? configured : ['de'];
+    }, [tenantData?.settings?.activeLanguages]);
+
+    useEffect(() => {
+        setEdits({});
+        setActiveLanguage('de');
+    }, [editorIdentity]);
 
     // The initial 'de' can be unavailable once the tenant's languages arrive; fall
     // back to the first configured language so the editor never sits on an empty one.

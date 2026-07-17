@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { DpaIcon } from '../../../../CustomIcons/LegalIcons';
@@ -109,7 +109,7 @@ export const DataProcessingAgreementCard = ({
     onTranslate,
     readOnly,
     helpRole,
-    dismissalScope = 'unscoped',
+    dismissalScope,
 }: DataProcessingAgreementCardProps) => {
     const { t } = useTranslation();
     const {
@@ -144,7 +144,12 @@ export const DataProcessingAgreementCard = ({
     // header. The platform-admin "no DPA published yet" CTA lives ONLY in the
     // dismissible snackbar (Figma 1229-17864) — once dismissed it is gone for good.
     const help = useLegalHelp('dpa', { empty: versions.length === 0, readOnly: !!readOnly }, helpRole);
-    const [blockerHidden, setBlockerHidden] = useState(() => isBlockerDismissed(dismissalScope));
+    const [blockerHidden, setBlockerHidden] = useState(() =>
+        dismissalScope ? isBlockerDismissed(dismissalScope) : false,
+    );
+    useEffect(() => {
+        setBlockerHidden(dismissalScope ? isBlockerDismissed(dismissalScope) : false);
+    }, [dismissalScope]);
     const isBlockerState = help.keyBase === 'legal.help.dpa.platform.empty';
     const showBlockerSnackbar = isBlockerState && !blockerHidden;
 
@@ -194,11 +199,11 @@ export const DataProcessingAgreementCard = ({
                         <EditorHintSnackbar
                             text={help.hint}
                             onClose={() => {
-                                persistBlockerClosedForSession(dismissalScope);
+                                if (dismissalScope) persistBlockerClosedForSession(dismissalScope);
                                 setBlockerHidden(true);
                             }}
                             onDismiss={() => {
-                                persistBlockerDismissed(dismissalScope);
+                                if (dismissalScope) persistBlockerDismissed(dismissalScope);
                                 setBlockerHidden(true);
                             }}
                         />

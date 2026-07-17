@@ -36,7 +36,7 @@ describe('DataProcessingAgreementCard blocker snackbar (platform admin, no publi
     });
 
     it('shows the CTA as a snackbar instead of the inline bold hint', () => {
-        render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} />);
+        render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant:user" />);
 
         expect(screen.getByText('legal.help.dpa.platform.empty.text')).toBeInTheDocument();
         expect(screen.getByRole('status')).toHaveTextContent('legal.help.dpa.platform.empty.hint');
@@ -46,35 +46,37 @@ describe('DataProcessingAgreementCard blocker snackbar (platform admin, no publi
 
     it('"nicht mehr anzeigen" removes the CTA text completely and persists', async () => {
         const user = userEvent.setup();
-        render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} />);
+        render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant:user" />);
 
         await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' }));
 
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
         expect(screen.queryByText('legal.help.dpa.platform.empty.hint')).not.toBeInTheDocument();
-        expect(window.localStorage.getItem('oriso-admin.legal.dpa.blocker.dismissed.unscoped')).toBe('true');
+        expect(window.localStorage.getItem('oriso-admin.legal.dpa.blocker.dismissed.tenant:user')).toBe('true');
     });
 
     it('"X" hides the snackbar for the browser session but leaves localStorage untouched', async () => {
         const user = userEvent.setup();
-        const first = render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} />);
+        const first = render(
+            <DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant:user" />,
+        );
 
         await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.close' }));
 
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
         expect(screen.queryByText('legal.help.dpa.platform.empty.hint')).not.toBeInTheDocument();
         // Unlike "nicht mehr anzeigen", the X does not write the dismissal key.
-        expect(window.localStorage.getItem('oriso-admin.legal.dpa.blocker.dismissed.unscoped')).toBeNull();
-        expect(window.sessionStorage.getItem('oriso-admin.legal.dpa.blocker.closed.unscoped')).toBe('true');
+        expect(window.localStorage.getItem('oriso-admin.legal.dpa.blocker.dismissed.tenant:user')).toBeNull();
+        expect(window.sessionStorage.getItem('oriso-admin.legal.dpa.blocker.closed.tenant:user')).toBe('true');
 
         first.unmount();
-        render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} />);
+        render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant:user" />);
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
     it('stays completely hidden on the next render once dismissed', () => {
-        window.localStorage.setItem('oriso-admin.legal.dpa.blocker.dismissed.unscoped', 'true');
-        render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} />);
+        window.localStorage.setItem('oriso-admin.legal.dpa.blocker.dismissed.tenant:user', 'true');
+        render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant:user" />);
 
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
         expect(screen.queryByText('legal.help.dpa.platform.empty.hint')).not.toBeInTheDocument();

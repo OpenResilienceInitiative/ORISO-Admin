@@ -14,6 +14,7 @@ vi.mock('react-i18next', () => ({
 const mocks = vi.hoisted(() => ({
     canEdit: true,
     can: vi.fn((): boolean => mocks.canEdit),
+    activeLanguages: ['de', 'en'] as string[],
 }));
 
 vi.mock('../../../../../hooks/useSingleTenantData', () => ({
@@ -21,7 +22,7 @@ vi.mock('../../../../../hooks/useSingleTenantData', () => ({
         data: {
             id: 1,
             content: { privacy: { de: '<p>Tenant DE</p>', en: '<p>Tenant EN</p>' } },
-            settings: { activeLanguages: ['de', 'en'] },
+            settings: { activeLanguages: mocks.activeLanguages },
         },
         isLoading: false,
     }),
@@ -127,5 +128,31 @@ describe('LegalTextSettings (M3 editor)', () => {
         // The read-only state must come from the exact legal-text permission contract.
         expect(mocks.can).toHaveBeenCalledWith(PermissionAction.Update, Resource.LegalText);
         mocks.canEdit = true;
+    });
+
+    it('falls back to German when the tenant has an explicitly empty language list', () => {
+        mocks.activeLanguages = [];
+        render(<LegalTextSettings agencyData={agencyData} field="privacy" onSave={vi.fn()} />);
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Agency DE</p>');
+        mocks.activeLanguages = ['de', 'en'];
+    });
+
+    it('drops unsaved edits when switching to another agency', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        const { rerender } = render(<LegalTextSettings agencyData={agencyData} field="privacy" onSave={onSave} />);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
+
+        const otherAgency = {
+            ...agencyData,
+            id: 6,
+            content: { privacy: { de: '<p>Other agency</p>' } },
+        } as unknown as AgencyData;
+        rerender(<LegalTextSettings agencyData={otherAgency} field="privacy" onSave={onSave} />);
+
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Other agency</p>');
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
+        expect(onSave).toHaveBeenLastCalledWith({ content: { privacy: { de: '<p>Other agency</p>' } } });
     });
 });

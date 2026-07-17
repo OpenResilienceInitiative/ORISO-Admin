@@ -145,7 +145,14 @@ const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
 /** Version ids are ISO activation dates (DPA container) — null when they aren't parseable. */
 export const parseVersionDate = (id: string): Date | null => {
     const dateOnly = id.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    const date = dateOnly ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])) : new Date(id);
+    if (dateOnly) {
+        const year = Number(dateOnly[1]);
+        const month = Number(dateOnly[2]);
+        const day = Number(dateOnly[3]);
+        const date = new Date(year, month - 1, day);
+        return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+    }
+    const date = new Date(id);
     return Number.isNaN(date.getTime()) ? null : date;
 };
 

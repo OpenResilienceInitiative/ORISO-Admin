@@ -48,6 +48,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         const parsed = parseVersionDate('2026-07-01');
         expect(parsed).not.toBeNull();
         expect([parsed?.getFullYear(), parsed?.getMonth(), parsed?.getDate()]).toEqual([2026, 6, 1]);
+        expect(parseVersionDate('2026-02-31')).toBeNull();
         expect(parseVersionDate('not-a-date')).toBeNull();
     });
     it('lists the current draft plus every provided version in the version menu', async () => {
