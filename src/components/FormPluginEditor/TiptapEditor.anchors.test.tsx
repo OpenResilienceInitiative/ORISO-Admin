@@ -37,14 +37,14 @@ describe('TiptapEditor — anchor navigation (edit mode)', () => {
     it('renders a chip per anchored heading, each with an "x" close button', async () => {
         const { container } = render(<TiptapEditor value={content} />);
         await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
-        expect(container.querySelectorAll('.RichEditor-anchorNav .ant-tag-close-icon')).toHaveLength(2);
+        expect(container.querySelectorAll('.RichEditor-anchorNav .RichEditor-anchorChipRemove')).toHaveLength(2);
     });
 
     it('scrolls the heading into view when a chip is clicked', async () => {
         scrollIntoViewMock.mockClear();
         const { container } = render(<TiptapEditor value={content} />);
         await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
-        fireEvent.click(container.querySelector('[data-anchor-chip="details"]')!);
+        fireEvent.click(container.querySelector('[data-anchor-chip="details"] .RichEditor-anchorChipLabel')!);
         expect(scrollIntoViewMock).toHaveBeenCalled();
     });
 
@@ -53,7 +53,7 @@ describe('TiptapEditor — anchor navigation (edit mode)', () => {
         const { container } = render(<TiptapEditor value={content} onChange={onChange} />);
         await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
 
-        fireEvent.click(container.querySelector('[data-anchor-chip="intro"] .ant-tag-close-icon')!);
+        fireEvent.click(container.querySelector('[data-anchor-chip="intro"] .RichEditor-anchorChipRemove')!);
 
         await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(1));
         expect(container.querySelector('[data-anchor-chip="details"]')).toBeTruthy();
@@ -91,14 +91,14 @@ describe('TiptapEditor — anchor navigation (read-only viewer)', () => {
     it('shows chips without "x" and marks the clicked chip with a checkmark', async () => {
         const { container } = renderReadOnly(content);
         await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
-        expect(container.querySelectorAll('.ant-tag-close-icon')).toHaveLength(0);
+        expect(container.querySelectorAll('.RichEditor-anchorChipRemove')).toHaveLength(0);
 
-        fireEvent.click(container.querySelector('[data-anchor-chip="details"]')!);
+        fireEvent.click(container.querySelector('[data-anchor-chip="details"] .RichEditor-anchorChipLabel')!);
 
         await waitFor(() =>
-            expect(container.querySelector('[data-anchor-chip="details"] .anticon-check')).toBeTruthy(),
+            expect(container.querySelector('[data-anchor-chip="details"].RichEditor-anchorChip--active')).toBeTruthy(),
         );
-        expect(container.querySelector('[data-anchor-chip="intro"] .anticon-check')).toBeNull();
+        expect(container.querySelector('[data-anchor-chip="intro"].RichEditor-anchorChip--active')).toBeNull();
     });
 
     it('does not invent anchors for headings without ids (content stays untouched)', async () => {
@@ -117,7 +117,7 @@ describe('TiptapEditor — anchor navigation (read-only viewer)', () => {
         expect(scrollIntoViewMock).toHaveBeenCalled();
         // The clicked target becomes the active chip (checkmark).
         await waitFor(() =>
-            expect(container.querySelector('[data-anchor-chip="details"] .anticon-check')).toBeTruthy(),
+            expect(container.querySelector('[data-anchor-chip="details"].RichEditor-anchorChip--active')).toBeTruthy(),
         );
     });
 });

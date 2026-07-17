@@ -2,6 +2,7 @@ import { Modal as AntModal } from 'antd';
 import { useTranslation } from 'react-i18next';
 import Title from 'antd/lib/typography/Title';
 import { ReactNode } from 'react';
+import styles from './styles.module.scss';
 
 export interface ModalProps {
     titleKey?: string;
@@ -14,6 +15,7 @@ export interface ModalProps {
     onConfirm?: () => void;
     onClose?: () => void;
     footer?: ReactNode;
+    width?: number | string;
 }
 
 export const Modal = ({
@@ -27,11 +29,17 @@ export const Modal = ({
     contentKey,
     contentKeyOptions,
     footer,
+    width,
 }: ModalProps) => {
     const { t } = useTranslation();
 
     return (
         <AntModal
+            className={styles.modal}
+            styles={{
+                mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
+                content: { borderRadius: 28 },
+            }}
             title={<Title level={2}>{titleKey ? t(titleKey, titleKeyOptions) : null}</Title>}
             open
             destroyOnClose
@@ -43,6 +51,7 @@ export const Modal = ({
             cancelText={cancelLabelKey && t(cancelLabelKey)}
             okText={okLabelKey && t(okLabelKey)}
             footer={footer}
+            width={width}
             afterClose={() => {
                 document.querySelectorAll('.ant-modal-root:empty').forEach((root) => root.remove());
             }}

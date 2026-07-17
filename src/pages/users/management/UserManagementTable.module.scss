@@ -170,6 +170,94 @@
     .counselorList__row--expanded .counselorList__agencies + .counselorList__agencies {
         margin-top: 8px;
     }
+
+    .counselorList__agencies {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+    }
+
+    .counselorList__agencyChip {
+        display: inline-flex;
+        flex: 0 1 auto;
+        max-width: 100%;
+        min-height: 26px;
+        overflow: hidden;
+        align-items: center;
+        justify-content: center;
+        padding: 2px 10px;
+        border: 1px solid var(--admin-table-chip-border, #c4c7c8);
+        background: var(--admin-table-chip-surface, #e4e2e2);
+        border-radius: 8px;
+        color: var(--admin-table-chip-text, #444748);
+        font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 18px;
+        text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .counselorList__agencyChip--name {
+        border-color: transparent;
+        background: var(--m3-secondary-container, #646d78);
+        color: var(--m3-on-secondary-container, #e7effc);
+    }
+
+    .counselorList__agencyChip--city {
+        border-color: transparent;
+        background: var(--m3-primary-container, #ffdad5);
+        color: var(--m3-on-tertiary-container, #410005);
+    }
+
+    .counselorList__toggleIconStack {
+        position: relative;
+        display: inline-flex;
+        width: 24px;
+        height: 24px;
+        align-items: center;
+        justify-content: center;
+        transition: transform 180ms ease;
+    }
+
+    .counselorList__toggleIcon {
+        position: absolute;
+        inset: 0;
+        width: 24px;
+        height: 24px;
+        opacity: 0;
+        transition: opacity 120ms ease;
+    }
+
+    .counselorList__toggleIcon--default {
+        opacity: 1;
+    }
+
+    .counselorList__toggle:hover .counselorList__toggleIcon--default,
+    .counselorList__toggle:focus .counselorList__toggleIcon--default {
+        opacity: 0;
+    }
+
+    .counselorList__toggle:hover .counselorList__toggleIcon--hover,
+    .counselorList__toggle:focus .counselorList__toggleIcon--hover {
+        opacity: 1;
+    }
+
+    .counselorList__toggle--expanded .counselorList__toggleIconStack {
+        transform: rotate(180deg);
+    }
+
+    .counselorList__toggle--expanded .counselorList__toggleIcon--default,
+    .counselorList__toggle--expanded .counselorList__toggleIcon--hover,
+    .counselorList__toggle--expanded:hover .counselorList__toggleIcon--hover {
+        opacity: 0;
+    }
+
+    .counselorList__toggle--expanded .counselorList__toggleIcon--selected {
+        opacity: 1;
+    }
 }
 
 .tableContainerFigma {

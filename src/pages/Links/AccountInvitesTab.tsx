@@ -14,8 +14,10 @@ import {
     resendAccountInvite,
     revokeAccountInvite,
 } from '../../api/accountInvites/accountInvites';
+import { searchTenantData } from '../../api/tenant/searchTenantData';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
+import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 
 interface AccountInvitesTabProps {
     targetRole: AccountInviteTargetRole;
@@ -71,8 +73,118 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
+    const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
 
     const currentTenantId = parseUserAuthInfo().tenantId || undefined;
+
+    // Auto-suggested, non-colliding Träger-ID (Träger-Invites/TENANT_ADMIN only): the
+    // smallest positive integer not already used by an existing tenant or by another
+    // still-active (DRAFT/EMAIL_SENT) TENANT_ADMIN invite. Both sources load
+    // asynchronously, so a `*Loaded` flag distinguishes "not loaded yet" from
+    // "loaded and genuinely empty" — otherwise the suggestion would briefly compute
+    // as 1 before the real taken-id data arrives.
+    const isTenantInvite = targetRole === 'TENANT_ADMIN';
+    const [existingTenantIds, setExistingTenantIds] = useState<Set<number>>(new Set());
+    const [existingTenantIdsLoaded, setExistingTenantIdsLoaded] = useState(false);
+    const [activeInviteTenantIds, setActiveInviteTenantIds] = useState<Set<number>>(new Set());
+    const [activeInviteTenantIdsLoaded, setActiveInviteTenantIdsLoaded] = useState(false);
+
+    useEffect(() => {
+        if (!isTenantInvite) return undefined;
+        let cancelled = false;
+        const loadAllTenantIds = async () => {
+            const perPage = 200;
+            const ids: number[] = [];
+            let page = 1;
+            let total = Number.POSITIVE_INFINITY;
+            while (ids.length < total) {
+                // Pagination is intentionally sequential so each response determines whether another page exists.
+                // eslint-disable-next-line no-await-in-loop
+                const response = await searchTenantData({ page, perPage });
+                const pageIds = (response.data ?? [])
+                    .map((tenant) => tenant.id)
+                    .filter((id): id is number => id != null);
+                ids.push(...pageIds);
+                total = response.total ?? ids.length;
+                if (response.data.length === 0) break;
+                page += 1;
+            }
+            if (!cancelled) {
+                setExistingTenantIds(new Set(ids));
+                setExistingTenantIdsLoaded(true);
+            }
+        };
+        setExistingTenantIdsLoaded(false);
+        loadAllTenantIds().catch(() => {
+            if (!cancelled) setExistingTenantIdsLoaded(false);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [isTenantInvite]);
+
+    useEffect(() => {
+        if (!isTenantInvite) return undefined;
+        // A dedicated, large, unpaginated fetch: the visible `invites` table is
+        // paginated (20/page) and would miss active invites sitting on other pages.
+        let cancelled = false;
+        const loadAllActiveInviteTenantIds = async () => {
+            const responses: AccountInviteDTO[] = [];
+            let page = 0;
+            let totalPages = 1;
+            while (page < totalPages) {
+                // Pagination is intentionally sequential because totalPages comes from the preceding response.
+                // eslint-disable-next-line no-await-in-loop
+                const response = await listAccountInvites({ targetRole: 'TENANT_ADMIN', page, size: 200 });
+                responses.push(...(response.content ?? []));
+                totalPages = response.totalPages ?? 0;
+                page += 1;
+            }
+            if (!cancelled) {
+                const ids = responses
+                    .filter((invite) => invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT')
+                    .map((invite) => invite.tenantId)
+                    .filter((id): id is number => id != null);
+                setActiveInviteTenantIds(new Set(ids));
+                setActiveInviteTenantIdsLoaded(true);
+            }
+        };
+        setActiveInviteTenantIdsLoaded(false);
+        loadAllActiveInviteTenantIds().catch(() => {
+            if (!cancelled) setActiveInviteTenantIdsLoaded(false);
+        });
+        // Recomputed whenever the visible (paginated) invite list reloads — e.g. right
+        // after this component creates a new invite — so the just-taken id is reflected
+        // without waiting for an unrelated trigger.
+        return () => {
+            cancelled = true;
+        };
+    }, [isTenantInvite, invites]);
+
+    const takenTenantIds = useMemo(
+        () => new Set<number>([...existingTenantIds, ...activeInviteTenantIds]),
+        [existingTenantIds, activeInviteTenantIds],
+    );
+
+    const suggestedTenantId = useMemo(() => {
+        if (!isTenantInvite || !existingTenantIdsLoaded || !activeInviteTenantIdsLoaded) {
+            return undefined;
+        }
+        let candidate = 1;
+        while (takenTenantIds.has(candidate)) {
+            candidate += 1;
+        }
+        return candidate;
+    }, [isTenantInvite, existingTenantIdsLoaded, activeInviteTenantIdsLoaded, takenTenantIds]);
+
+    useEffect(() => {
+        if (suggestedTenantId == null) return;
+        // Never clobber a value the admin already typed (or a value from a prior
+        // suggestion); only fill in while the field is genuinely empty.
+        if (form.getFieldValue('tenantId') == null) {
+            form.setFieldValue('tenantId', suggestedTenantId);
+        }
+    }, [form, suggestedTenantId]);
 
     const templateOptions = useMemo(
         () =>
@@ -106,11 +218,34 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [targetRole, t],
     );
 
-    useEffect(() => {
+    const loadTemplates = useCallback(() => {
         listInviteEmailTemplates(templateKind)
             .then(setTemplates)
             .catch(() => message.error(t('links.accountInvites.templatesLoadFailed', 'Could not load templates')));
     }, [templateKind, t]);
+
+    useEffect(() => {
+        loadTemplates();
+    }, [loadTemplates]);
+
+    // After a template is created/edited in the dialog, refresh the select — and if it
+    // is a newly created, active template of this tab's kind, preselect it right away.
+    // The saved template is merged into local state immediately so the select can show
+    // its name even before the refetch lands (or if that refetch fails).
+    const onTemplateChanged = useCallback(
+        (template: InviteEmailTemplateDTO) => {
+            if (template.kind === templateKind) {
+                setTemplates((current) => [...current.filter((existing) => existing.id !== template.id), template]);
+                if (template.active) {
+                    form.setFieldValue('templateId', template.id);
+                } else if (form.getFieldValue('templateId') === template.id) {
+                    form.setFieldValue('templateId', undefined);
+                }
+            }
+            loadTemplates();
+        },
+        [form, loadTemplates, templateKind],
+    );
 
     useEffect(() => {
         loadInvites(1, 20);
@@ -162,13 +297,20 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 message.success(t('links.accountInvites.created', 'Invite sent'));
                 form.resetFields(['recipientEmail', 'firstName', 'lastName', 'agencyId']);
                 await loadInvites(1, pagination.pageSize);
-            } catch {
-                message.error(t('links.error.createFailed', 'Could not create link'));
+            } catch (error) {
+                // The backend also rejects a colliding tenantId with 409 (see
+                // createAccountInvite's CONFLICT_WITH_RESPONSE handling); surface that
+                // specific message instead of the generic fallback when we can tell.
+                if (isTenantInvite && error instanceof Response && error.status === 409) {
+                    message.error(t('links.accountInvites.tenantIdTaken', 'This tenant ID is already taken.'));
+                } else {
+                    message.error(t('links.error.createFailed', 'Could not create link'));
+                }
             } finally {
                 setSubmitting(false);
             }
         },
-        [form, loadInvites, pagination.pageSize, rememberGeneratedLink, targetRole, t],
+        [form, isTenantInvite, loadInvites, pagination.pageSize, rememberGeneratedLink, targetRole, t],
     );
 
     const onResend = useCallback(
@@ -295,11 +437,37 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 form={form}
                 className={listingTableStyles.createForm}
                 layout="inline"
-                initialValues={{ expiresInDays: 30, tenantId: currentTenantId }}
+                initialValues={{ expiresInDays: 30, tenantId: isTenantInvite ? undefined : currentTenantId }}
                 onFinish={onCreate}
             >
                 <div className={listingTableStyles.formFields}>
-                    <Form.Item name="tenantId" label={t('links.accountInvites.tenantId', 'Tenant ID')}>
+                    <Form.Item
+                        name="tenantId"
+                        label={t('links.accountInvites.tenantId', 'Tenant ID')}
+                        rules={
+                            isTenantInvite
+                                ? [
+                                      {
+                                          required: true,
+                                          message: t('links.accountInvites.tenantIdRequired', 'Tenant ID is required.'),
+                                      },
+                                      {
+                                          validator: (_, value) =>
+                                              value != null && takenTenantIds.has(Number(value))
+                                                  ? Promise.reject(
+                                                        new Error(
+                                                            t(
+                                                                'links.accountInvites.tenantIdTaken',
+                                                                'This tenant ID is already taken.',
+                                                            ),
+                                                        ),
+                                                    )
+                                                  : Promise.resolve(),
+                                      },
+                                  ]
+                                : []
+                        }
+                    >
                         <InputNumber min={1} />
                     </Form.Item>
                     <Form.Item
@@ -331,6 +499,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                             options={templateOptions}
                         />
                     </Form.Item>
+                    <Form.Item>
+                        <Button onClick={() => setTemplatesDialogOpen(true)}>
+                            {t('links.templates.manage', 'Manage templates')}
+                        </Button>
+                    </Form.Item>
                     <Form.Item name="expiresInDays" label={t('links.form.expiresInDays', 'Expires in days')}>
                         <InputNumber min={1} max={365} />
                     </Form.Item>
@@ -360,6 +533,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 }}
                 onChange={onTableChange}
             />
+            {templatesDialogOpen && (
+                <EmailTemplatesDialog
+                    templateKind={templateKind}
+                    onClose={() => setTemplatesDialogOpen(false)}
+                    onChanged={onTemplateChanged}
+                />
+            )}
         </>
     );
 };

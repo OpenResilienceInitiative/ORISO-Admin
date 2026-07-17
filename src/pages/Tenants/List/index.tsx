@@ -4,12 +4,13 @@ import { ColumnProps, TablePaginationConfig } from 'antd/lib/table';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
+import { useDebouncedCallback } from 'use-debounce';
 import routePathNames from '../../../appConfig';
 import { EditButtons } from '../../../components/EditableTable/EditButtons';
 import { Modal } from '../../../components/Modal';
 import { Page } from '../../../components/Page';
 import { ResizeTable } from '../../../components/ResizableTable';
-import { SearchInput } from '../../../components/SearchInput/SearchInput';
+import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
@@ -60,6 +61,7 @@ export const TenantsList = () => {
         setSearch(value);
         setTableState((data) => ({ ...data, current: 1 }));
     }, []);
+    const handleSearchDebounced = useDebouncedCallback(handleSearch, 1000);
     const { data, isLoading } = useTenantsData({
         page: tableState.current,
         perPage: tableState.pageSize,
@@ -193,14 +195,13 @@ export const TenantsList = () => {
         <Page>
             <Page.Title titleKey="tenants.title" subTitle={t<string>('tenants.subTitle', { count: data?.total || 0 })}>
                 <div className={styles.searchContainer}>
-                    <div className={styles.searchWithButton}>
-                        <SearchInput
-                            className={styles.searchField}
-                            placeholder={t('tenants.searchPlaceholder')}
-                            handleOnSearch={(a) => handleSearch(a)}
-                            handleOnSearchClear={() => handleSearch('')}
-                        />
-
+                    <GlobalSearchBar
+                        className={styles.searchWithButton}
+                        expandedWidth={499}
+                        onSearch={handleSearch}
+                        onSearchChange={handleSearchDebounced}
+                        searchPlaceholder={t('tenants.searchPlaceholder')}
+                    >
                         {can(PermissionAction.Create, Resource.Tenant) &&
                             (isSuperAdmin || isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING)) && (
                                 <div className={styles.toolbarActions}>
@@ -220,7 +221,7 @@ export const TenantsList = () => {
                                     </Button>
                                 </div>
                             )}
-                    </div>
+                    </GlobalSearchBar>
                 </div>
             </Page.Title>
             <div className={styles.tableContainer}>

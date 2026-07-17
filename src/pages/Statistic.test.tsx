@@ -178,6 +178,42 @@ describe('Statistic page', () => {
         );
     });
 
+    it('shows a loading state instead of "Keine Daten"/0 while the dashboard request is in flight', async () => {
+        let resolveDashboard: (value: AdminDashboardStatisticsResponse) => void = () => undefined;
+        dashboardMock.mockReturnValue(
+            new Promise((resolve) => {
+                resolveDashboard = resolve;
+            }),
+        );
+
+        renderStatistic();
+
+        expect(screen.getByRole('status')).toBeInTheDocument();
+        expect(screen.getByText('Statistik wird geladen …')).toBeInTheDocument();
+        // Nothing from the eventual dashboard shape should be visible yet.
+        expect(screen.queryByText('Keine Daten')).toBeNull();
+        expect(screen.queryByText('0')).toBeNull();
+
+        resolveDashboard(response);
+
+        await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        expect(screen.queryByRole('status')).toBeNull();
+    });
+
+    // Regression guard for the audit's H01 finding: the card/menu blueprints
+    // (dashboardByScope, dashboardMetricOptionsByScope) no longer carry
+    // hardcoded value/detail/trend defaults, so a wiring gap for a
+    // card/menu key can only ever render "Keine Daten" - never a stray
+    // "undefined" leaking out of a missing override mapping.
+    it('never renders a literal "undefined" for any card or menu value', async () => {
+        dashboardMock.mockResolvedValue(response);
+
+        renderStatistic();
+
+        await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        expect(screen.queryByText('undefined', { exact: false })).toBeNull();
+    });
+
     it('offers a CSV export of exactly the metrics shown on screen', async () => {
         dashboardMock.mockResolvedValue(response);
         let csvBlobParts: string | undefined;
@@ -190,10 +226,7 @@ describe('Statistic page', () => {
         renderStatistic();
 
         await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
-        const exportLink = screen.getByText('Statistik als CSV herunterladen').closest('a');
-        expect(exportLink).not.toBeNull();
-        // The real backend value (12) must be in the exported CSV; the
-        // removed mock number (312) and the old fake tenant name must not.
+        expect(screen.getByText('Statistik als CSV herunterladen').closest('a')).not.toBeNull();
         expect(csvBlobParts).toContain('12');
         expect(csvBlobParts).not.toContain('312');
         expect(csvBlobParts).not.toContain('Caritas NRW');

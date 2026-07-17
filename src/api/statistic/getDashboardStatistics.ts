@@ -37,7 +37,7 @@ export interface AdminDashboardTarget {
     agencyId: number | null;
     counselorCount: number;
     /**
-     * KDG small-cell suppression: true when the target covers fewer than two counsellor
+     * KDG small-cell suppression: true when the target covers fewer than five counsellor
      * accounts. All counselling metrics are omitted by the backend in that case.
      */
     suppressed: boolean;

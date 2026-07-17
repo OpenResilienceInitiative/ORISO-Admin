@@ -69,16 +69,16 @@ export const TenantAdminEditOrAdd = () => {
         <Page isLoading={isLoadingConsultants || isLoading}>
             <Page.BackWithActions path={listPath} title={title}>
                 {isReadOnly && (
-                    <Button type="primary" onClick={() => setReadOnly(false)}>
+                    <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
                         {t('edit')}
                     </Button>
                 )}
                 {!isReadOnly && (
                     <>
-                        <Button type="default" onClick={onCancel}>
+                        <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
                             {t('btn.cancel')}
                         </Button>
-                        <Button type="primary" onClick={() => form.submit()}>
+                        <Button type="text" className="admin-m3-text-button" onClick={() => form.submit()}>
                             {t('save')}
                         </Button>
                     </>

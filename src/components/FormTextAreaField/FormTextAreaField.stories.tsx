@@ -1,6 +1,29 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Form } from 'antd';
+import { ConfigProvider, Form } from 'antd';
+import { ReactNode, useEffect } from 'react';
 import { FormTextAreaField } from './index';
+
+/** Triggers validation on mount so the error state of the M3 anatomy is visible. */
+const ValidateOnMount = ({ children }: { children: ReactNode }) => {
+    const form = Form.useFormInstance();
+
+    useEffect(() => {
+        form.validateFields().catch(() => undefined);
+    }, [form]);
+
+    return children;
+};
+
+/** Pre-fills the field so the floated-label (filled) state is visible. */
+const FillOnMount = ({ values, children }: { values: Record<string, unknown>; children: ReactNode }) => {
+    const form = Form.useFormInstance();
+
+    useEffect(() => {
+        form.setFieldsValue(values);
+    }, [form, values]);
+
+    return children;
+};
 
 const meta = {
     title: 'Atoms/FormTextAreaField',
@@ -27,4 +50,38 @@ export const Default: Story = {};
 
 export const Required: Story = {
     args: { required: true },
+    decorators: [
+        (Story) => (
+            <ValidateOnMount>
+                <Story />
+            </ValidateOnMount>
+        ),
+    ],
+};
+
+export const Disabled: Story = {
+    // FormTextAreaField has no own disabled prop — in the app it is disabled
+    // via the surrounding Form/ConfigProvider (disable, never hide).
+    decorators: [
+        (Story) => (
+            <ConfigProvider componentDisabled>
+                <Story />
+            </ConfigProvider>
+        ),
+    ],
+};
+
+export const Filled: Story = {
+    decorators: [
+        (Story) => (
+            <FillOnMount
+                values={{
+                    description:
+                        'Die Beratungsstelle unterstützt Ratsuchende bei Fragen rund um Erziehung, Familie und Alltag — vertraulich und kostenfrei.',
+                }}
+            >
+                <Story />
+            </FillOnMount>
+        ),
+    ],
 };

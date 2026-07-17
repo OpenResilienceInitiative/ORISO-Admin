@@ -6,6 +6,12 @@
             "runtimeExecutable": "npm",
             "runtimeArgs": ["run", "storybook", "--", "-p", "6099", "--no-open", "--ci"],
             "port": 6099
+        },
+        {
+            "name": "storybook-static",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": ["http-server", "storybook-static", "-p", "6007", "-c-1"],
+            "port": 6007
         }
     ]
 }
