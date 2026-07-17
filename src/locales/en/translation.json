@@ -1222,6 +1222,7 @@
     "tenants.permissions.card.caseHandover.consentClient": "Consent from advice seeker",
     "tenants.permissions.card.caseHandover.consentAdvisor": "Consent from advisor",
     "tenants.permissions.card.caseHandover.systemNotification": "System notification",
+    "tenants.permissions.card.caseHandover.templateHint": "This text is shown to the client when the case is handed over. {{newAdvisor}} is replaced with the new counsellor's name. Changes are saved when you leave the field.",
     "tenants.permissions.card.caseHandover.enforceHint": "Selected options prevent lower roles from hiding functions.",
     "tenants.permissions.card.caseHandover.configure": "Configure",
     "tenants.permissions.card.caseHandover.enforce": "Enforce activated selections",

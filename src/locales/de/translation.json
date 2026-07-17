@@ -855,6 +855,7 @@
     "tenants.permissions.card.caseHandover.consentClient": "Zustimmung Ratsuchende*r",
     "tenants.permissions.card.caseHandover.consentAdvisor": "Zustimmung Berater*in",
     "tenants.permissions.card.caseHandover.systemNotification": "Systembenachrichtigung",
+    "tenants.permissions.card.caseHandover.templateHint": "Dieser Text wird der Klient:in bei einer Fallübergabe angezeigt. {{newAdvisor}} wird durch den Namen der neuen Berater:in ersetzt. Änderungen werden beim Verlassen des Feldes gespeichert.",
     "tenants.permissions.card.caseHandover.enforceHint": "Ausgewählte Optionen verhindern, dass niedrigere Rollen Funktionen ausblenden können.",
     "tenants.permissions.card.caseHandover.configure": "Konfigurieren",
     "tenants.permissions.card.caseHandover.enforce": "Aktivierte Auswahl erzwingen",

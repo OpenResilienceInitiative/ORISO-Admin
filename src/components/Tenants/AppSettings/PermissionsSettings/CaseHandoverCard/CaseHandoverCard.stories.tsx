@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
+import { expect, fn, userEvent, within } from 'storybook/test';
 import { CaseHandoverCardView } from './CaseHandoverCardView';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
 
@@ -38,6 +40,10 @@ const policies: CaseHandoverReasonPolicy[] = [
         enabled: true,
         displayOrder: 40,
         policyAuthority: 'platform-admin-default-case-handover-policy',
+        clientNotificationTemplates: {
+            de: 'Deine bisherige Berater:in ist leider erkrankt. Damit du nicht warten musst, hat {{newAdvisor}} deinen Fall übernommen.',
+            en: "Your previous counsellor is unfortunately ill. So you don't have to wait, {{newAdvisor}} has taken over your case.",
+        },
     },
     {
         code: 'COUNSELLOR_LEFT',
@@ -63,6 +69,7 @@ const meta = {
     args: {
         onModuleEnabledChange: () => undefined,
         onClientConsentChange: () => undefined,
+        onNotificationTemplateChange: () => undefined,
     },
     decorators: [
         (Story) => (
@@ -77,9 +84,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** Platform admin editing the case-handover ("Fallübernahme") policy: master
- *  toggle + per-reason client-consent toggles are live; advisor consent,
- *  opt-out message, notification templates and footer actions are visible but
- *  disabled until their backend lands (disable, don't hide). */
+ *  toggle, per-reason client-consent toggles and the per-language notification
+ *  templates are live; advisor consent, opt-out message and footer actions
+ *  remain disabled until their backend lands (disable, don't hide). */
 export const Editable: Story = {
     args: {
         policies,
@@ -107,6 +114,28 @@ export const ModuleDisabled: Story = {
         isLoading: false,
         canEdit: true,
         moduleEnabled: false,
+    },
+};
+
+/** Per-reason, per-language template editing: stored backend value wins over the
+ *  sample copy; edits commit on blur via onNotificationTemplateChange. */
+export const TemplateEditing: Story = {
+    args: {
+        policies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        onNotificationTemplateChange: fn(),
+    },
+    play: async ({ canvasElement, args }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('tab', { name: /krank|ill/i }));
+        const input = canvas.getByTestId('case-handover-template-input') as HTMLTextAreaElement;
+        await expect(input.value).toContain('{{newAdvisor}}');
+        await userEvent.clear(input);
+        await userEvent.type(input, 'Neuer Text für die Übergabe.');
+        await userEvent.tab();
+        await expect(args.onNotificationTemplateChange).toHaveBeenCalled();
     },
 };
 
