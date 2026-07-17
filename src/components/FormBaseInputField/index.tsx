@@ -1,9 +1,8 @@
 import { Form, InputProps } from 'antd';
 import { Rule } from 'antd/lib/form';
-import DisabledContext from 'antd/es/config-provider/DisabledContext';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { useContext } from 'react';
+import { FloatingLabelInput } from '../FloatingLabelInput';
 import styles from './styles.module.scss';
 
 export interface FormBaseInputFieldProps extends Omit<InputProps, 'name'> {
@@ -19,6 +18,14 @@ export interface FormBaseInputFieldProps extends Omit<InputProps, 'name'> {
     dependencies?: string[];
 }
 
+/**
+ * antd Form.Item wrapper around the shared M3 FloatingLabelInput: the label
+ * rests inside the field and floats into the outline gap (no separate
+ * Form.Item label anymore). Validation state flows from the Form.Item into
+ * the control via `Form.Item.useStatus()`; error messages render below the
+ * field as M3 supporting text. `component` decides the underlying antd input
+ * (Input, Input.Password, Input.TextArea).
+ */
 export const FormBaseInputField = ({
     className,
     name,
@@ -30,22 +37,22 @@ export const FormBaseInputField = ({
     dependencies,
     ...inputProps
 }: FormBaseInputFieldProps) => {
-    const contextDisabled = useContext(DisabledContext);
     const { t } = useTranslation();
-    const Children = component;
+    const label = t(labelKey);
 
     return (
         <Form.Item
-            className={classNames(className, styles.item, {
-                [styles.disabled]: contextDisabled,
-                [styles.withAddon]: !!inputProps.addonAfter,
-            })}
-            label={t(labelKey)}
+            className={classNames(className, styles.item)}
             name={name}
             rules={[{ required, message: t('form.errors.required') }, ...(rules || [])]}
             dependencies={dependencies}
         >
-            <Children {...inputProps} className={styles.input} placeholder={placeholderKey && t(placeholderKey)} />
+            <FloatingLabelInput
+                {...inputProps}
+                component={component}
+                label={required ? `${label} *` : label}
+                placeholder={placeholderKey && t(placeholderKey)}
+            />
         </Form.Item>
     );
 };

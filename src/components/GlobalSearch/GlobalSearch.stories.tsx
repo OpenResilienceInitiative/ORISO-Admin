@@ -4,7 +4,7 @@ import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_2
 import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
 import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
-import { FloatingLabelInput } from './FloatingLabelInput';
+import { FloatingLabelInput } from '../FloatingLabelInput';
 import { GlobalSearchBar } from './GlobalSearchBar';
 import { GlobalSearchMenu } from './GlobalSearchMenu';
 import { SplitButton } from './SplitButton';
