@@ -1183,6 +1183,8 @@
     "users.sections.counsellors": "Counselors",
     "users.sections.myAccess": "My access",
     "users.sections.tenants": "Tenant admin",
+    "m3NumberField.decrease": "Decrease value",
+    "m3NumberField.increase": "Increase value",
     "searchInput.clear": "Clear search",
     "searchInput.submit": "Run search",
     "globalSearch.expand": "Expand search",
