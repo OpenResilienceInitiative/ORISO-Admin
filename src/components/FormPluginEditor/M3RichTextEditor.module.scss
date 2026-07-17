@@ -580,6 +580,27 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     border-radius: 4px;
     box-shadow: 0 4px 4px rgba(0, 0, 0, 0.15), 0 1px 1.5px rgba(0, 0, 0, 0.3);
     color: #f3f0f0;
+
+    @media (max-width: 599px) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 40px;
+        padding-left: 16px;
+
+        .hintSnackbarText {
+            grid-column: 1 / -1;
+        }
+
+        .hintSnackbarAction {
+            justify-self: start;
+            padding-left: 0;
+            white-space: normal;
+            text-align: left;
+        }
+
+        .hintSnackbarClose {
+            grid-column: 2;
+        }
+    }
 }
 
 // In read mode the dismiss label may wrap onto two lines.
