@@ -87,6 +87,15 @@ export interface InviteEmailTemplateDTO {
     updateDate: string | null;
 }
 
+export interface TemplateRequestDTO {
+    kind: InviteEmailTemplateKind;
+    name: string;
+    language?: string | null;
+    subject: string;
+    body: string;
+    active: boolean;
+}
+
 export const accountInviteAcceptBaseUrl = `${appURL.replace(/\/$/, '')}/account-invite`;
 export { accountInvitesEndpoint };
 
@@ -113,7 +122,10 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
         url: accountInvitesEndpoint,
         method: FETCH_METHODS.POST,
         skipAuth: false,
-        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        // CONFLICT_WITH_RESPONSE lets a 409 (e.g. a colliding tenantId) reject with the
+        // raw Response instead of a swallowed generic toast, so callers can surface a
+        // specific message (see AccountInvitesTab's onCreate).
+        responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.CONFLICT_WITH_RESPONSE],
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
             agencyId: body.agencyId,
@@ -157,10 +169,35 @@ export const revokeAccountInvite = async (inviteId: number): Promise<AccountInvi
     return response.json();
 };
 
-export const listInviteEmailTemplates = async (kind: InviteEmailTemplateKind): Promise<InviteEmailTemplateDTO[]> =>
+export const listInviteEmailTemplates = async (kind?: InviteEmailTemplateKind): Promise<InviteEmailTemplateDTO[]> =>
     fetchData({
-        url: `${inviteEmailTemplatesEndpoint}?kind=${encodeURIComponent(kind)}`,
+        url: kind ? `${inviteEmailTemplatesEndpoint}?kind=${encodeURIComponent(kind)}` : inviteEmailTemplatesEndpoint,
         method: FETCH_METHODS.GET,
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
     });
+
+export const createInviteEmailTemplate = async (body: TemplateRequestDTO): Promise<InviteEmailTemplateDTO> => {
+    const response = await fetchData({
+        url: inviteEmailTemplatesEndpoint,
+        method: FETCH_METHODS.POST,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        bodyData: JSON.stringify(body),
+    });
+    return response.json();
+};
+
+export const updateInviteEmailTemplate = async (
+    id: number,
+    body: TemplateRequestDTO,
+): Promise<InviteEmailTemplateDTO> => {
+    const response = await fetchData({
+        url: `${inviteEmailTemplatesEndpoint}/${id}`,
+        method: FETCH_METHODS.PUT,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        bodyData: JSON.stringify(body),
+    });
+    return response.json();
+};

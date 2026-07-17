@@ -10,7 +10,7 @@ export interface FloatingLabelInputProps extends Omit<InputProps, 'placeholder' 
     error?: boolean;
     /** Supporting text below the field; shown in the error colour while `error` is set. */
     supportingText?: string;
-    inputRef?: React.Ref<InputRef>;
+    ref?: React.Ref<InputRef>;
 }
 
 /**
@@ -30,7 +30,7 @@ export const FloatingLabelInput = ({
     value,
     defaultValue,
     disabled,
-    inputRef,
+    ref,
     onBlur,
     onChange,
     onFocus,
@@ -82,7 +82,7 @@ export const FloatingLabelInput = ({
                     // eslint-disable-next-line react/jsx-props-no-spreading
                     {...inputProps}
                     id={inputId}
-                    ref={inputRef}
+                    ref={ref}
                     className={styles.input}
                     variant="borderless"
                     value={currentValue}
