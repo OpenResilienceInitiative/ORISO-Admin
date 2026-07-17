@@ -1195,5 +1195,6 @@
     "statistic.dashboard.filter.suppressed": "Statistik unterdrückt",
     "statistic.dashboard.suppressedNotice": "Für Bereiche mit weniger als zwei Beratenden werden aus Datenschutzgründen keine Statistiken angezeigt.",
     "statistic.dashboard.loadError": "Statistikdaten konnten nicht geladen werden.",
-    "statistic.dashboard.suppressionDisabledNotice": "Kleinzellen-Schutz deaktiviert – nur für Testumgebungen"
+    "statistic.dashboard.suppressionDisabledNotice": "Kleinzellen-Schutz deaktiviert – nur für Testumgebungen",
+    "statistic.dashboard.loading": "Statistik wird geladen …"
 }
