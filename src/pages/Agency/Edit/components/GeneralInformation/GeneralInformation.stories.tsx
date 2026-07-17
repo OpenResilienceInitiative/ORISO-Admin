@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Form } from 'antd';
+import { ThemeProvider } from '@mui/material/styles';
+import { orisoMuiTheme } from '../../../../../theme/orisoMuiTheme';
 import { AgencyGeneralInformation } from './index';
 
 /**
@@ -13,9 +15,11 @@ const meta: Meta<typeof AgencyGeneralInformation> = {
     component: AgencyGeneralInformation,
     decorators: [
         (Story) => (
-            <Form layout="vertical" style={{ maxWidth: 960, padding: 24 }}>
-                <Story />
-            </Form>
+            <ThemeProvider theme={orisoMuiTheme}>
+                <Form layout="vertical" style={{ maxWidth: 960, padding: 24 }}>
+                    <Story />
+                </Form>
+            </ThemeProvider>
         ),
     ],
 };

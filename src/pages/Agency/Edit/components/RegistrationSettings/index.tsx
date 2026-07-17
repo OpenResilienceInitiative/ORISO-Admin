@@ -5,7 +5,7 @@ import { useEffect, useMemo } from 'react';
 import { Card } from '../../../../../components/Card';
 import { FormRadioGroupField } from '../../../../../components/FormRadioGroupField';
 import { SelectFormField } from '../../../../../components/SelectFormField';
-import { FormSwitchField } from '../../../../../components/FormSwitchField';
+import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
 import { TypeOfUser } from '../../../../../enums/TypeOfUser';
 import { useAgencyHasConsultants } from '../../../../../hooks/useAgencyHasConsultants';
 import { useConsultantsOrAdminsData } from '../../../../../hooks/useConsultantsOrAdminsData';
@@ -93,12 +93,9 @@ export const RegistrationSettings = ({ asFields }: RegistrationSettingsProps) =>
                     </div>
                 </>
             )}
-            <FormSwitchField
-                inline
-                className={styles.switch}
-                labelKey="agency.form.registrationSettings.onlineDescription"
+            <MuiSwitchField
+                label={t('agency.form.registrationSettings.onlineDescription')}
                 name="online"
-                disableLabels
                 disabled={needsConsultantAssignment}
             />
             <Divider />

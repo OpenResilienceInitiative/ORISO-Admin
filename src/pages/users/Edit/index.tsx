@@ -1,14 +1,15 @@
-import { Button, message, Space, Col, Row, Form } from 'antd';
+import { Button, message, Col, Row, Form } from 'antd';
 import { useWatch } from 'antd/lib/form/Form';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
 import { FETCH_ERRORS, X_REASON } from '../../../api/fetchData';
 import { Card } from '../../../components/Card';
-import { FormInputField } from '../../../components/FormInputField';
-import { FormInputPasswordField } from '../../../components/FormInputPasswordField';
-import { FormTextAreaField } from '../../../components/FormTextAreaField';
+import { MuiFormField, MuiMultilineFormField, MuiPasswordFormField } from '../../../components/mui/MuiFormField';
+import { MuiSwitchField } from '../../../components/mui/MuiSwitchField';
+import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { Page } from '../../../components/Page';
 import { SelectFormField, Option } from '../../../components/SelectFormField';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -20,7 +21,6 @@ import { useConsultantsOrAdminsData } from '../../../hooks/useConsultantsOrAdmin
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { convertToOptions } from '../../../utils/convertToOptions';
 import { decodeUsername } from '../../../utils/encryptionHelpers';
-import { FormSwitchField } from '../../../components/FormSwitchField';
 import styles from './styles.module.scss';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
@@ -267,6 +267,8 @@ export const UserEditOrAdd = () => {
     // Superadmins pick the tenant in the form; other admins carry it in their token.
     const agencyTenantId = resolveAgencyTenantId(selectedTenant, userTenantId);
 
+    const requiredRule = { required: true, message: t('form.errors.required') };
+
     const onAgencyCreated = (agency) => {
         const current = form.getFieldValue('agencies') || [];
         form.setFieldValue('agencies', [
@@ -308,180 +310,192 @@ export const UserEditOrAdd = () => {
                 )}
             </Page.BackWithActions>
 
-            <Form
-                disabled={isReadOnly}
-                labelAlign="left"
-                labelWrap
-                layout="vertical"
-                form={form}
-                onFinish={onSave}
-                initialValues={{
-                    ...(singleData || {
-                        formalLanguage: true,
-                    }),
-                    username: decodeUsername(singleData?.username || ''),
-                    agencies: convertToOptions(singleData?.agencies || [], ['postcode', 'name', 'city'], 'id'),
-                    topicIds: convertToOptions(consultantById?.topics || [], 'name', 'id'),
-                    tenantId: singleData?.tenantId?.toString() || (userTenantId > 0 && userTenantId.toString()) || '',
-                }}
-            >
-                <Row gutter={[20, 10]}>
-                    <Col xs={24} lg={12}>
-                        <Card titleKey="agency.edit.general.general_information">
-                            <FormInputField
-                                name="firstname"
-                                labelKey="firstname"
-                                placeholderKey="placeholder.firstname"
-                                required
-                            />
-
-                            <FormInputField
-                                name="lastname"
-                                labelKey="lastname"
-                                placeholderKey="placeholder.lastname"
-                                required
-                            />
-
-                            <FormInputField
-                                name="email"
-                                labelKey="email"
-                                placeholderKey="placeholder.email"
-                                rules={[
-                                    {
-                                        required: true,
-                                        type: 'email',
-                                        message: t('message.error.email.incorrect'),
-                                    },
-                                ]}
-                            />
-
-                            <FormInputField
-                                name="username"
-                                labelKey="counselor.username"
-                                placeholderKey="placeholder.username"
-                                disabled={isEditing}
-                                rules={[
-                                    {
-                                        required: true,
-                                        message: t('message.error.username.required'),
-                                    },
-                                    {
-                                        pattern: /^[a-z0-9_-]+$/,
-                                        message: t('message.error.username.format'),
-                                    },
-                                ]}
-                            />
-
-                            {!isEditing &&
-                                (typeOfUsers === TypeOfUser.Consultants || typeOfUsers === TypeOfUser.AgencyAdmins) && (
-                                    <>
-                                        <FormInputPasswordField
-                                            name="password"
-                                            labelKey="counselor.password"
-                                            placeholderKey="placeholder.password"
-                                            required
-                                            rules={[
-                                                {
-                                                    min: 8,
-                                                    message: t('message.error.password.minLength'),
-                                                },
-                                                {
-                                                    pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-                                                    message: t('message.error.password.policy'),
-                                                },
-                                            ]}
-                                        />
-                                        <FormInputPasswordField
-                                            name="passwordConfirmation"
-                                            labelKey="counselor.passwordConfirmation"
-                                            placeholderKey="placeholder.password"
-                                            required
-                                            dependencies={['password']}
-                                            rules={[
-                                                ({ getFieldValue }) => ({
-                                                    validator(_, value) {
-                                                        if (!value || getFieldValue('password') === value) {
-                                                            return Promise.resolve();
-                                                        }
-                                                        return Promise.reject(
-                                                            new Error(
-                                                                t('profile.passwordChange.error.passwordsNotMatch'),
-                                                            ),
-                                                        );
-                                                    },
-                                                }),
-                                            ]}
-                                        />
-                                    </>
-                                )}
-                        </Card>
-                    </Col>
-                    <Col xs={24} lg={12}>
-                        <Card titleKey="settings.title">
-                            <SelectFormField
-                                name="tenantId"
-                                placeholder="tenantAdmins.form.tenant"
-                                required
-                                disabled={isReadOnly || isEditing || !isSuperAdmin}
-                                className={styles.select}
-                                label="tenantAdmins.form.tenantAssignment"
-                                options={convertToOptions(tenantsData || [], 'name', 'id')}
-                            />
-
-                            <SelectFormField
-                                name="agencies"
-                                label="agency"
-                                labelInValue
-                                isMulti
-                                placeholder="plsSelect"
-                                options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
-                            />
-
-                            <div className={styles.createAgency}>
-                                <CreateAgencyModal
-                                    tenantId={agencyTenantId}
-                                    disabled={isReadOnly}
-                                    onSuccess={onAgencyCreated}
+            <ThemeProvider theme={orisoMuiTheme}>
+                <Form
+                    disabled={isReadOnly}
+                    labelAlign="left"
+                    labelWrap
+                    layout="vertical"
+                    form={form}
+                    onFinish={onSave}
+                    initialValues={{
+                        ...(singleData || {
+                            formalLanguage: true,
+                        }),
+                        username: decodeUsername(singleData?.username || ''),
+                        agencies: convertToOptions(singleData?.agencies || [], ['postcode', 'name', 'city'], 'id'),
+                        topicIds: convertToOptions(consultantById?.topics || [], 'name', 'id'),
+                        tenantId:
+                            singleData?.tenantId?.toString() || (userTenantId > 0 && userTenantId.toString()) || '',
+                    }}
+                >
+                    <Row gutter={[20, 10]}>
+                        <Col xs={24} lg={12}>
+                            <Card titleKey="agency.edit.general.general_information">
+                                <MuiFormField
+                                    name="firstname"
+                                    label={t('firstname')}
+                                    placeholder={t('placeholder.firstname')}
+                                    required
+                                    rules={[requiredRule]}
                                 />
-                            </div>
 
-                            {showTopicsField && (
+                                <MuiFormField
+                                    name="lastname"
+                                    label={t('lastname')}
+                                    placeholder={t('placeholder.lastname')}
+                                    required
+                                    rules={[requiredRule]}
+                                />
+
+                                <MuiFormField
+                                    name="email"
+                                    label={t('email')}
+                                    placeholder={t('placeholder.email')}
+                                    rules={[
+                                        {
+                                            required: true,
+                                            type: 'email',
+                                            message: t('message.error.email.incorrect'),
+                                        },
+                                    ]}
+                                />
+
+                                <MuiFormField
+                                    name="username"
+                                    label={t('counselor.username')}
+                                    placeholder={t('placeholder.username')}
+                                    disabled={isEditing}
+                                    rules={[
+                                        {
+                                            required: true,
+                                            message: t('message.error.username.required'),
+                                        },
+                                        {
+                                            pattern: /^[a-z0-9_-]+$/,
+                                            message: t('message.error.username.format'),
+                                        },
+                                    ]}
+                                />
+
+                                {!isEditing &&
+                                    (typeOfUsers === TypeOfUser.Consultants ||
+                                        typeOfUsers === TypeOfUser.AgencyAdmins) && (
+                                        <>
+                                            <MuiPasswordFormField
+                                                name="password"
+                                                label={t('counselor.password')}
+                                                placeholder={t('placeholder.password')}
+                                                required
+                                                rules={[
+                                                    requiredRule,
+                                                    {
+                                                        min: 8,
+                                                        message: t('message.error.password.minLength'),
+                                                    },
+                                                    {
+                                                        pattern:
+                                                            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
+                                                        message: t('message.error.password.policy'),
+                                                    },
+                                                ]}
+                                            />
+                                            <MuiPasswordFormField
+                                                name="passwordConfirmation"
+                                                label={t('counselor.passwordConfirmation')}
+                                                placeholder={t('placeholder.password')}
+                                                required
+                                                dependencies={['password']}
+                                                rules={[
+                                                    requiredRule,
+                                                    ({ getFieldValue }) => ({
+                                                        validator(_, value) {
+                                                            if (!value || getFieldValue('password') === value) {
+                                                                return Promise.resolve();
+                                                            }
+                                                            return Promise.reject(
+                                                                new Error(
+                                                                    t('profile.passwordChange.error.passwordsNotMatch'),
+                                                                ),
+                                                            );
+                                                        },
+                                                    }),
+                                                ]}
+                                            />
+                                        </>
+                                    )}
+                            </Card>
+                        </Col>
+                        <Col xs={24} lg={12}>
+                            <Card titleKey="settings.title">
                                 <SelectFormField
-                                    label="topics.title"
-                                    name="topicIds"
+                                    name="tenantId"
+                                    placeholder="tenantAdmins.form.tenant"
+                                    required
+                                    disabled={isReadOnly || isEditing || !isSuperAdmin}
+                                    className={styles.select}
+                                    label="tenantAdmins.form.tenantAssignment"
+                                    options={convertToOptions(tenantsData || [], 'name', 'id')}
+                                />
+
+                                <SelectFormField
+                                    name="agencies"
+                                    label="agency"
                                     labelInValue
                                     isMulti
-                                    allowClear
                                     placeholder="plsSelect"
-                                    options={topicOptions}
+                                    options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
                                 />
-                            )}
 
-                            {typeOfUsers === 'consultants' && (
-                                <>
-                                    <Space align="center">
-                                        <FormSwitchField
-                                            labelKey="counselor.formalLanguage.title"
-                                            name="formalLanguage"
-                                        />
-                                        {/* Temporarily hidden: {isEditing && <FormSwitchField labelKey="counselor.absent" name="absent" />} */}
-                                        {/* Temporarily hidden: {isEnabled(FeatureFlag.GroupChatV2) && (
-                                            <FormSwitchField
-                                                labelKey="counselor.isGroupChatConsultant"
-                                                name="isGroupchatConsultant"
+                                <div className={styles.createAgency}>
+                                    <CreateAgencyModal
+                                        tenantId={agencyTenantId}
+                                        disabled={isReadOnly}
+                                        onSuccess={onAgencyCreated}
+                                    />
+                                </div>
+
+                                {showTopicsField && (
+                                    <SelectFormField
+                                        label="topics.title"
+                                        name="topicIds"
+                                        labelInValue
+                                        isMulti
+                                        allowClear
+                                        placeholder="plsSelect"
+                                        options={topicOptions}
+                                    />
+                                )}
+
+                                {typeOfUsers === 'consultants' && (
+                                    <>
+                                        <div className={styles.switchGroup}>
+                                            <MuiSwitchField
+                                                label={t('counselor.formalLanguage.title')}
+                                                name="formalLanguage"
                                             />
-                                        )} */}
-                                        <FormSwitchField labelKey="counselor.isSupervisor" name="isSupervisor" />
-                                    </Space>
-                                    {isAbsentEnabled && (
-                                        <FormTextAreaField labelKey="counselor.absenceMessage" name="absenceMessage" />
-                                    )}
-                                </>
-                            )}
-                        </Card>
-                    </Col>
-                </Row>
-            </Form>
+                                            {/* Temporarily hidden: {isEditing && <MuiSwitchField label={t('counselor.absent')} name="absent" />} */}
+                                            {/* Temporarily hidden: {isEnabled(FeatureFlag.GroupChatV2) && (
+                                                <MuiSwitchField
+                                                    label={t('counselor.isGroupChatConsultant')}
+                                                    name="isGroupchatConsultant"
+                                                />
+                                            )} */}
+                                            <MuiSwitchField label={t('counselor.isSupervisor')} name="isSupervisor" />
+                                        </div>
+                                        {isAbsentEnabled && (
+                                            <MuiMultilineFormField
+                                                label={t('counselor.absenceMessage')}
+                                                name="absenceMessage"
+                                            />
+                                        )}
+                                    </>
+                                )}
+                            </Card>
+                        </Col>
+                    </Row>
+                </Form>
+            </ThemeProvider>
         </Page>
     );
 };

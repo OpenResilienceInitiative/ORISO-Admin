@@ -3,6 +3,8 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
+import { ThemeProvider } from '@mui/material/styles';
+import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
 import { normalizeTopicIds } from '../../../api/agency/normalizeTopicIds';
 import routePathNames from '../../../appConfig';
@@ -244,7 +246,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const renderGeneralSettings = () => {
         if (isEditing) {
             return (
-                <>
+                <ThemeProvider theme={orisoMuiTheme}>
                     <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
                     <CardDeck
                         ariaLabel={t(`agency.edit.settings.general.title`)}
@@ -288,34 +290,36 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                             </CardEditable>
                         </CardDeck.Item>
                     </CardDeck>
-                </>
+                </ThemeProvider>
             );
         }
 
         return (
-            <Form
-                initialValues={initialValues}
-                labelAlign="left"
-                labelWrap
-                layout="vertical"
-                form={form}
-                size="large"
-                disabled={isReadOnly}
-                onFinish={onSubmit}
-            >
-                <Row gutter={[20, 10]}>
-                    <Col xs={24}>
-                        <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
-                    </Col>
-                    <Col xs={24} lg={12}>
-                        <AgencyGeneralInformation />
-                        <RegistrationSettings />
-                    </Col>
-                    <Col xs={24} lg={12}>
-                        <AgencySettings isEditMode={isEditing} />
-                    </Col>
-                </Row>
-            </Form>
+            <ThemeProvider theme={orisoMuiTheme}>
+                <Form
+                    initialValues={initialValues}
+                    labelAlign="left"
+                    labelWrap
+                    layout="vertical"
+                    form={form}
+                    size="large"
+                    disabled={isReadOnly}
+                    onFinish={onSubmit}
+                >
+                    <Row gutter={[20, 10]}>
+                        <Col xs={24}>
+                            <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
+                        </Col>
+                        <Col xs={24} lg={12}>
+                            <AgencyGeneralInformation />
+                            <RegistrationSettings />
+                        </Col>
+                        <Col xs={24} lg={12}>
+                            <AgencySettings isEditMode={isEditing} />
+                        </Col>
+                    </Row>
+                </Form>
+            </ThemeProvider>
         );
     };
 
