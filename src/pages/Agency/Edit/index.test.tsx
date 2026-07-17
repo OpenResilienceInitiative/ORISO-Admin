@@ -1,7 +1,6 @@
 import React from 'react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AgencyPageEdit } from './index';
 
@@ -154,23 +153,15 @@ vi.mock('../../../api/tenant/searchTenantData', () => ({
     searchTenantData: mocks.searchTenantData,
 }));
 
-describe('AgencyPageEdit create flow', () => {
-    beforeAll(() => {
-        Object.defineProperty(window, 'matchMedia', {
-            writable: true,
-            value: vi.fn().mockImplementation((query: string) => ({
-                addEventListener: vi.fn(),
-                addListener: vi.fn(),
-                dispatchEvent: vi.fn(),
-                matches: false,
-                media: query,
-                onchange: null,
-                removeEventListener: vi.fn(),
-                removeListener: vi.fn(),
-            })),
-        });
-    });
+vi.mock('../../../components/CreateConsultantModal', () => ({
+    CreateConsultantModal: () => <div data-testid="create-consultant-modal" />,
+}));
 
+vi.mock('../../../utils/parseUserAuthInfo', () => ({
+    parseUserAuthInfo: () => ({ tenantId: 0 }),
+}));
+
+describe('AgencyPageEdit create flow', () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
         mocks.navigate.mockReset();
@@ -188,17 +179,14 @@ describe('AgencyPageEdit create flow', () => {
     });
 
     it('does not submit a new agency without a selected tenant', async () => {
-        const user = userEvent.setup();
         renderWithClient(<AgencyPageEdit />);
 
         fireEvent.change(screen.getByPlaceholderText('Name'), { target: { value: 'Neue Beratungsstelle' } });
         fireEvent.change(screen.getByPlaceholderText('PLZ'), { target: { value: '86161' } });
         fireEvent.change(screen.getByPlaceholderText('Stadt'), { target: { value: 'Augsburg' } });
-        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
-        await waitFor(() => {
-            expect(screen.getByText('Bitte füllen Sie das markierte Feld aus.')).toBeInTheDocument();
-        });
+        expect(await screen.findByText('Bitte füllen Sie das markierte Feld aus.')).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 });

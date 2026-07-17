@@ -1,43 +1,63 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../fetchData', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('../fetchData')>();
-    return { ...actual, fetchData: vi.fn() };
-});
+const mocks = vi.hoisted(() => ({
+    fetchData: vi.fn(),
+}));
 
+vi.mock('../../appConfig', () => ({
+    tenantAdminEndpoint: 'https://api.oriso.org/service/tenantadmin',
+}));
+
+vi.mock('../fetchData', () => ({
+    FETCH_ERRORS: { CATCH_ALL: 'CATCH_ALL' },
+    FETCH_METHODS: { GET: 'GET' },
+    fetchData: mocks.fetchData,
+}));
+
+import { FETCH_ERRORS, FETCH_METHODS } from '../fetchData';
 import { searchTenantData } from './searchTenantData';
-import { fetchData, FETCH_METHODS } from '../fetchData';
-import { tenantAdminEndpoint } from '../../appConfig';
-
-const fetchMock = vi.mocked(fetchData);
-
-beforeEach(() => fetchMock.mockReset());
 
 describe('searchTenantData', () => {
-    it('builds the search URL from all params and unwraps the HAL list', async () => {
-        fetchMock.mockResolvedValue({ total: 1, _embedded: [{ id: 9 }] });
-
-        const result = await searchTenantData({ page: 2, search: 'foo', perPage: 5, sort: 'CREATED', dir: 'DESC' });
-
-        expect(fetchMock).toHaveBeenCalledWith(
-            expect.objectContaining({
-                url: `${tenantAdminEndpoint}/search?page=2&perPage=5&query=foo&field=CREATED&order=DESC`,
-                method: FETCH_METHODS.GET,
-                skipAuth: false,
-            }),
-        );
-        expect(result).toEqual({ total: 1, data: [{ id: 9 }] });
+    beforeEach(() => {
+        mocks.fetchData.mockReset();
     });
 
-    it('applies sensible defaults when called with an empty object', async () => {
-        fetchMock.mockResolvedValue({ total: 0, _embedded: [] });
+    it('uses wildcard search when search is empty', async () => {
+        mocks.fetchData.mockResolvedValue({ _embedded: [], total: 0 });
 
-        await searchTenantData({});
+        await searchTenantData({ search: '' });
 
-        expect(fetchMock).toHaveBeenCalledWith(
-            expect.objectContaining({
-                url: `${tenantAdminEndpoint}/search?page=1&perPage=10&query=&field=NAME&order=ASC`,
-            }),
-        );
+        expect(mocks.fetchData).toHaveBeenCalledWith({
+            url: 'https://api.oriso.org/service/tenantadmin/search?page=1&perPage=10&query=*&field=NAME&order=ASC',
+            method: FETCH_METHODS.GET,
+            skipAuth: false,
+            responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        });
+    });
+
+    it('uses wildcard search when search is whitespace', async () => {
+        mocks.fetchData.mockResolvedValue({ _embedded: [], total: 0 });
+
+        await searchTenantData({ search: '   ' });
+
+        expect(mocks.fetchData).toHaveBeenCalledWith({
+            url: 'https://api.oriso.org/service/tenantadmin/search?page=1&perPage=10&query=*&field=NAME&order=ASC',
+            method: FETCH_METHODS.GET,
+            skipAuth: false,
+            responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        });
+    });
+
+    it('encodes non-empty search values', async () => {
+        mocks.fetchData.mockResolvedValue({ _embedded: [], total: 0 });
+
+        await searchTenantData({ search: 'caritas berlin' });
+
+        expect(mocks.fetchData).toHaveBeenCalledWith({
+            url: 'https://api.oriso.org/service/tenantadmin/search?page=1&perPage=10&query=caritas%20berlin&field=NAME&order=ASC',
+            method: FETCH_METHODS.GET,
+            skipAuth: false,
+            responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        });
     });
 });
