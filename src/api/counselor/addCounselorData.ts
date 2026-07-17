@@ -30,6 +30,7 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
         twoFactorAuth,
         isGroupchatConsultant,
         tenantId,
+        publicSlug,
     } = counselorData;
 
     const topicIds = parseTopicIds(counselorData);
@@ -46,6 +47,7 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
         twoFactorAuth,
         isGroupchatConsultant,
         tenantId: parseInt(tenantId, 10),
+        publicSlug,
         ...(topicIds && { topicIds }),
     };
 

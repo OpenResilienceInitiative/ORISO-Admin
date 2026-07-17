@@ -205,21 +205,18 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
         });
     }
 
-    const activityLogItems: AdminSidebarNavItem[] = [];
-    if (canSeeCaseHandoverLogs) {
-        activityLogItems.push({
-            key: 'case-handover-logs',
-            to: routePathNames.caseHandoverLogs,
-            label: navLabels.caseHandoverLogs,
-            iconPath: routePathNames.caseHandoverLogs,
-        });
-    }
-    if (canSeeInactiveAuditLogs) {
-        activityLogItems.push({
-            key: 'inactive-audit-logs',
-            to: routePathNames.inactiveAccountAuditLogs,
-            label: navLabels.inactiveAudit,
+    // Case-handover + inactive-account audit are unified into a single "Logs"
+    // entry that opens a tabbed page (Inactive default, then Case handover).
+    if (canSeeActivityLogs) {
+        upperNavItems.push({
+            key: 'activity-logs',
+            to: canSeeInactiveAuditLogs ? routePathNames.inactiveAccountAuditLogs : routePathNames.caseHandoverLogs,
+            label: navLabels.logs,
             iconPath: routePathNames.inactiveAccountAuditLogs,
+            activeMatch: {
+                paths: [routePathNames.inactiveAccountAuditLogs, routePathNames.caseHandoverLogs],
+                mode: 'startsWith',
+            },
         });
     }
 
@@ -235,9 +232,6 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
             <Layout className="protectedLayout">
                 <AdminSidebar
                     items={upperNavItems}
-                    activityLogs={
-                        canSeeActivityLogs ? { label: navLabels.activityLogs, items: activityLogItems } : undefined
-                    }
                     account={accountNavItem}
                     logout={{ label: navLabels.logout, onLogout: handleLogout }}
                     lang={navLanguage}

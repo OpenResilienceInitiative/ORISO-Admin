@@ -12,6 +12,8 @@ interface SearchTenantsProps {
     dir?: string;
 }
 
+const tenantSearchQuery = (search?: string) => encodeURIComponent(search?.trim() || '*');
+
 export const searchTenantData = ({
     page = 1,
     search = '',
@@ -20,7 +22,9 @@ export const searchTenantData = ({
     dir = 'ASC',
 }: SearchTenantsProps) => {
     return fetchData({
-        url: `${tenantAdminEndpoint}/search?page=${page}&perPage=${perPage}&query=${search}&field=${sort}&order=${dir}`,
+        url: `${tenantAdminEndpoint}/search?page=${page}&perPage=${perPage}&query=${tenantSearchQuery(
+            search,
+        )}&field=${sort}&order=${dir}`,
         method: FETCH_METHODS.GET,
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.CATCH_ALL],

@@ -22,6 +22,10 @@ export interface CounselorData {
     twoFactorAuth?: boolean;
     isGroupchatConsultant?: boolean;
     isSupervisor?: boolean;
+    publicSlug?: string;
+    pendingPublicSlug?: string;
+    publicSlugStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    rejectPendingPublicSlug?: boolean;
     hasOtherIdentity?: boolean;
     tenantId: string;
     tenantName: string;
