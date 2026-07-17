@@ -1182,6 +1182,8 @@
     "tenant.settings.cardDeck.ariaLabel": "Einstellungen scrollen",
     "tenant.settings.cardDeck.next": "Weitere Einstellungen anzeigen",
     "tenant.settings.cardDeck.previous": "Vorherige Einstellungen anzeigen",
+    "m3NumberField.decrease": "Wert verringern",
+    "m3NumberField.increase": "Wert erhöhen",
     "searchInput.clear": "Suche löschen",
     "searchInput.submit": "Suche ausführen",
     "agency.postcode.minimum": "Die Postleitzahl muss aus 5 Ziffern bestehen.",
