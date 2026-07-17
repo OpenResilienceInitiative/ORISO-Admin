@@ -72,6 +72,7 @@ const ADMIN_TABLE_TOKENS = {
     '--admin-table-surface': '#f6f3f3',
     '--admin-table-header-surface': '#e4e2e2',
     '--admin-table-row-hover-surface': '#f0edee',
+    '--admin-table-footer-surface': '#e4e2e2',
     '--admin-table-border': '#eae7e8',
     '--admin-table-text': '#444748',
     '--admin-table-header-text': '#1b1b1c',

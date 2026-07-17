@@ -41,8 +41,8 @@
             padding: 16px 24px;
             overflow: hidden;
             border-radius: 0 0 var(--admin-table-radius) var(--admin-table-radius);
-            /* Same surface as the table body — no separate grey band under the rows. */
-            background: var(--admin-table-surface, #f6f3f3);
+            /* Dedicated footer surface from the reviewed admin-table polish (#354). */
+            background: var(--admin-table-footer-surface, #e4e2e2);
         }
 
         .ant-table-thead > tr > th {
