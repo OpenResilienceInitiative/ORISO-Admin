@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ColumnType } from 'antd/lib/table';
 import { ListingTable } from '../../../components/ListingTable';
-import { Page } from '../../../components/Page';
 import { useCaseHandoverLogsData } from '../../../hooks/useCaseHandoverLogsData';
 import { CaseHandoverLogEntry } from '../../../types/caseHandoverLogs';
 
@@ -81,8 +80,7 @@ export const CaseHandoverLogsPage = () => {
     );
 
     return (
-        <Page>
-            <Page.Title titleKey="caseHandoverLogs.title" subTitle={String(t('caseHandoverLogs.subTitle'))} />
+        <>
             {isLogsError && <Alert type="error" message={t('error.loading')} showIcon />}
             <ListingTable<CaseHandoverLogEntry>
                 rowKey={(row) => `${row.requestId}`}
@@ -104,6 +102,6 @@ export const CaseHandoverLogsPage = () => {
                     },
                 }}
             />
-        </Page>
+        </>
     );
 };

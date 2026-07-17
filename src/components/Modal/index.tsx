@@ -14,6 +14,7 @@ export interface ModalProps {
     onConfirm?: () => void;
     onClose?: () => void;
     footer?: ReactNode;
+    width?: number | string;
 }
 
 export const Modal = ({
@@ -27,6 +28,7 @@ export const Modal = ({
     contentKey,
     contentKeyOptions,
     footer,
+    width,
 }: ModalProps) => {
     const { t } = useTranslation();
 
@@ -43,6 +45,7 @@ export const Modal = ({
             cancelText={cancelLabelKey && t(cancelLabelKey)}
             okText={okLabelKey && t(okLabelKey)}
             footer={footer}
+            width={width}
             afterClose={() => {
                 document.querySelectorAll('.ant-modal-root:empty').forEach((root) => root.remove());
             }}

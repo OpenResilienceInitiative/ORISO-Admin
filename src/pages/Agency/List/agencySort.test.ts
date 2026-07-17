@@ -7,9 +7,9 @@ describe('AGENCY_SORT_FIELD_BY_DATA_INDEX', () => {
     it('maps every sortable column to its API sort field', () => {
         expect(AGENCY_SORT_FIELD_BY_DATA_INDEX).toEqual({
             id: 'ID',
-            createDate: 'CREATEDATE',
+            createDate: 'CREATE_DATE',
             name: 'NAME',
-            postcode: 'POSTCODE',
+            postcode: 'POST_CODE',
             city: 'CITY',
             offline: 'OFFLINE',
         });
@@ -28,7 +28,7 @@ describe('getNextAgencyTableState', () => {
             { current: 2, pageSize: 20 },
             { field: 'createDate', order: 'descend' },
         );
-        expect(next).toMatchObject({ current: 2, pageSize: 20, sortBy: 'CREATEDATE', order: 'DESC' });
+        expect(next).toMatchObject({ current: 2, pageSize: 20, sortBy: 'CREATE_DATE', order: 'DESC' });
     });
 
     it('sends server sort for the offline column', () => {
@@ -38,6 +38,15 @@ describe('getNextAgencyTableState', () => {
             { field: 'offline', order: 'ascend' },
         );
         expect(next).toMatchObject({ sortBy: 'OFFLINE', order: 'ASC' });
+    });
+
+    it('sends server sort for the postcode column', () => {
+        const next = getNextAgencyTableState(
+            baseState,
+            { current: 1, pageSize: 10 },
+            { field: 'postcode', order: 'ascend' },
+        );
+        expect(next).toMatchObject({ sortBy: 'POST_CODE', order: 'ASC' });
     });
 
     it('resets to unsorted when the sorter is cleared (third click)', () => {
@@ -68,7 +77,7 @@ describe('getNextAgencyTableState', () => {
 
 describe('getAgencyColumnSortOrder', () => {
     it('returns the arrow direction for the column matching the server sort', () => {
-        const state: TableState = { ...baseState, sortBy: 'CREATEDATE', order: 'DESC' };
+        const state: TableState = { ...baseState, sortBy: 'CREATE_DATE', order: 'DESC' };
         expect(getAgencyColumnSortOrder('createDate', state)).toBe('descend');
         expect(getAgencyColumnSortOrder('id', state)).toBeUndefined();
     });

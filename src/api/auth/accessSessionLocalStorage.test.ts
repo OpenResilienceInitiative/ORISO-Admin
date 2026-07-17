@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     getLocalStorageItem,
     getTokenExpiryFromLocalStorage,
@@ -20,6 +20,10 @@ describe('access session local storage helpers', () => {
                 storage.set(key, value);
             }),
         });
+        vi.useRealTimers();
+    });
+
+    afterEach(() => {
         vi.useRealTimers();
     });
 
