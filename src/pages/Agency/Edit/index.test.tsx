@@ -156,6 +156,13 @@ vi.mock('../../../api/tenant/searchTenantData', () => ({
 
 describe('AgencyPageEdit create flow', () => {
     beforeAll(() => {
+        // The create flow now lays its cards out with CardDeck, whose mount effect
+        // calls deck.scrollTo — not implemented in jsdom. Stub it (as the CardDeck
+        // component's own test does) so the effect doesn't throw.
+        Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+            configurable: true,
+            value: vi.fn(),
+        });
         Object.defineProperty(window, 'matchMedia', {
             writable: true,
             value: vi.fn().mockImplementation((query: string) => ({

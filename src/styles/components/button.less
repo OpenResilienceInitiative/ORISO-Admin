@@ -1,20 +1,17 @@
-@buttonMinWidth: 200px;
 @buttonMaxWidth: 400px;
-@buttonHeight: 50px;
 
 .button {
     &__item {
-        min-width: @buttonMinWidth;
         max-width: @buttonMaxWidth;
-        height: @buttonHeight;
-        padding: 0 @grid-base-three;
+        height: 40px;
+        padding: 0 24px;
         border: none;
         appearance: none;
-        border-radius: @button-border-radius;
+        border-radius: 100px;
         cursor: pointer;
-        font-weight: @font-weight-bold;
+        font-weight: 500;
         text-decoration: none;
-        text-transform: uppercase;
+        text-transform: none;
 
         &:focus {
             outline: none;
@@ -22,12 +19,12 @@
     }
 
     &__primary {
-        background: #1f1f1f !important;
+        background: #4c555f !important;
         color: #ffffff !important;
         transition: all 0.3s ease;
 
         &:hover {
-            background-color: #3a3a3a !important;
+            background-color: #3f4852 !important;
             transition: all 0.3s ease;
         }
 
@@ -39,15 +36,15 @@
     }
 
     &__secondary {
-        border: 3px solid var(--skin-color-default, @primary);
+        border: 1px solid #c4c7c8;
         background-color: transparent;
-        color: var(--skin-color-default, @primary);
-        transition: all 0.6s ease;
+        color: #444748;
+        transition: all 0.3s ease;
 
         &:hover {
-            border-color: var(--skin-color-default, @hover-primary);
-            background-color: var(--skin-color-default, @hover-primary);
-            color: @white;
+            border-color: #444748;
+            background-color: rgba(68, 71, 72, 0.08);
+            color: #444748;
             transition: all 0.3s ease;
         }
     }
