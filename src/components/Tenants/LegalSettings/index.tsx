@@ -1,5 +1,5 @@
-import { useTranslation, Trans } from 'react-i18next';
-import { PrivacyTip } from '@mui/icons-material';
+import { useTranslation } from 'react-i18next';
+import { GdprIcon, ImprintIcon } from '../../CustomIcons/LegalIcons';
 import { CardDeck } from '../../CardDeck';
 import { CardEditable } from '../../CardEditable';
 import { FormSwitchField } from '../../FormSwitchField';
@@ -30,16 +30,9 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
         <LegalText
             tenantId={finalTenantId}
             fieldName={['content', 'privacy']}
-            icon={PrivacyTip}
+            icon={GdprIcon}
             titleKey="privacy.title"
-            subTitle={
-                <Trans
-                    i18nKey="privacy.subTitle"
-                    components={{
-                        a: <span />,
-                    }}
-                />
-            }
+            legalType="privacy"
             placeHolderKey="settings.privacy.placeholder"
             showConfirmationModal={{
                 titleKey: 'privacy.confirmation.title',
@@ -100,7 +93,8 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                     tenantId={finalTenantId}
                     fieldName={['content', 'impressum']}
                     titleKey="imprint.title"
-                    subTitle={t<string>('imprint.subTitle')}
+                    legalType="imprint"
+                    icon={ImprintIcon}
                     placeHolderKey="settings.imprint.placeholder"
                 />
             </CardDeck.Item>

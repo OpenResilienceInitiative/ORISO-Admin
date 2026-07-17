@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AgencyPageEdit } from './index';
@@ -156,6 +156,29 @@ vi.mock('../../../api/tenant/searchTenantData', () => ({
 vi.mock('../../../components/CreateConsultantModal', () => ({
     CreateConsultantModal: () => <div data-testid="create-consultant-modal" />,
 }));
+
+beforeAll(() => {
+    // The create flow now lays its cards out with CardDeck, whose mount effect
+    // calls deck.scrollTo — not implemented in jsdom. Stub it (as the CardDeck
+    // component's own test does) so the effect doesn't throw.
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+        configurable: true,
+        value: vi.fn(),
+    });
+    Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockImplementation((query: string) => ({
+            addEventListener: vi.fn(),
+            addListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+            matches: false,
+            media: query,
+            onchange: null,
+            removeEventListener: vi.fn(),
+            removeListener: vi.fn(),
+        })),
+    });
+});
 
 vi.mock('../../../utils/parseUserAuthInfo', () => ({
     parseUserAuthInfo: () => ({ tenantId: 0 }),

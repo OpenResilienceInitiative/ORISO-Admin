@@ -36,14 +36,14 @@ describe('M3RichTextEditor — anchor navigation (edit mode, default ON)', () =>
         const { container } = render(<M3RichTextEditor value={content} />);
         await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
         expect(screen.getByRole('navigation', { name: 'Section anchors' })).toBeInTheDocument();
-        expect(container.querySelectorAll('.RichEditor-anchorNav .ant-tag-close-icon')).toHaveLength(2);
+        expect(container.querySelectorAll('.RichEditor-anchorNav .RichEditor-anchorChipRemove')).toHaveLength(2);
     });
 
     it('scrolls the heading into view when a chip is clicked', async () => {
         scrollIntoViewMock.mockClear();
         const { container } = render(<M3RichTextEditor value={content} />);
         await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
-        fireEvent.click(container.querySelector('[data-anchor-chip="details"]')!);
+        fireEvent.click(container.querySelector('[data-anchor-chip="details"] .RichEditor-anchorChipLabel')!);
         expect(scrollIntoViewMock).toHaveBeenCalled();
     });
 
@@ -52,7 +52,7 @@ describe('M3RichTextEditor — anchor navigation (edit mode, default ON)', () =>
         const { container } = render(<M3RichTextEditor value={content} onChange={onChange} />);
         await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
 
-        fireEvent.click(container.querySelector('[data-anchor-chip="intro"] .ant-tag-close-icon')!);
+        fireEvent.click(container.querySelector('[data-anchor-chip="intro"] .RichEditor-anchorChipRemove')!);
 
         await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(1));
         const lastHtml = onChange.mock.calls[onChange.mock.calls.length - 1][0] as string;
@@ -105,12 +105,12 @@ describe('M3RichTextEditor — anchor navigation (read-only)', () => {
     it('shows chips without "x" and marks the clicked chip with a checkmark', async () => {
         const { container } = render(<M3RichTextEditor value={content} readOnly />);
         await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
-        expect(container.querySelectorAll('.ant-tag-close-icon')).toHaveLength(0);
+        expect(container.querySelectorAll('.RichEditor-anchorChipRemove')).toHaveLength(0);
 
-        fireEvent.click(container.querySelector('[data-anchor-chip="details"]')!);
+        fireEvent.click(container.querySelector('[data-anchor-chip="details"] .RichEditor-anchorChipLabel')!);
 
         await waitFor(() =>
-            expect(container.querySelector('[data-anchor-chip="details"] .anticon-check')).toBeTruthy(),
+            expect(container.querySelector('[data-anchor-chip="details"].RichEditor-anchorChip--active')).toBeTruthy(),
         );
     });
 

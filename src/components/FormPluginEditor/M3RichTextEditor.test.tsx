@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { M3RichTextEditor } from './M3RichTextEditor';
@@ -55,5 +55,43 @@ describe('M3RichTextEditor accessibility', () => {
         await waitFor(() => {
             expect(screen.getByRole('textbox', { name: 'Impressum' })).toBeInTheDocument();
         });
+    });
+
+    it('moves focus into the text-format menu and restores it on Escape', async () => {
+        const user = userEvent.setup();
+        render(<M3RichTextEditor title="Datenschutz" />);
+        const trigger = await screen.findByTitle(/editor\.headingMenu\.textFormat|Text format/);
+
+        expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+        expect(trigger).toHaveAttribute('aria-expanded', 'false');
+        await user.click(trigger);
+
+        const menu = await screen.findByRole('dialog', { name: /editor\.headingMenu\.textFormat|Text format/ });
+        await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+        await waitFor(() =>
+            expect(screen.getByRole('button', { name: /editor\.headingMenu\.normalText|Normal text/ })).toHaveFocus(),
+        );
+
+        fireEvent.keyDown(menu, { key: 'Escape' });
+        await waitFor(() => expect(trigger).toHaveFocus());
+        expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('inserts placeholder tokens with their literal braces intact', async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        render(
+            <M3RichTextEditor
+                title="Datenschutz"
+                placeholders={{ responsible: 'editor.plugin.placeholder.option.responsible.label' }}
+                onChange={onChange}
+            />,
+        );
+
+        await user.click(await screen.findByTitle(/editor\.plugin\.placeholder\.select\.placeholder|Placeholder/));
+        await user.click(await screen.findByText('editor.plugin.placeholder.option.responsible.label'));
+
+        const expectedTokenHtml = ['<p>$', '{responsible}</p>'].join('');
+        await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expectedTokenHtml));
     });
 });

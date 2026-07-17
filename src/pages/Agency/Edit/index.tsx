@@ -1,4 +1,4 @@
-import { Button, Col, Form, notification, Row } from 'antd';
+import { Button, Form, notification } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -75,7 +75,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
     const { isSuperAdmin } = useUserRoles();
     const [form] = Form.useForm();
-    const { mutate } = useAgencyUpdate(id);
+    const { mutate, isPending: isSaving } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
     const agencySettingsTabs = [
@@ -306,18 +306,20 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     disabled={isReadOnly}
                     onFinish={onSubmit}
                 >
-                    <Row gutter={[20, 10]}>
-                        <Col xs={24}>
-                            <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
-                        </Col>
-                        <Col xs={24} lg={12}>
+                    <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
+                    <CardDeck
+                        ariaLabel={t(`agency.edit.settings.general.title`)}
+                        previousLabel={t('agency.cardDeck.previous')}
+                        nextLabel={t('agency.cardDeck.next')}
+                    >
+                        <CardDeck.Item>
                             <AgencyGeneralInformation />
                             <RegistrationSettings />
-                        </Col>
-                        <Col xs={24} lg={12}>
+                        </CardDeck.Item>
+                        <CardDeck.Item>
                             <AgencySettings isEditMode={isEditing} />
-                        </Col>
-                    </Row>
+                        </CardDeck.Item>
+                    </CardDeck>
                 </Form>
             </ThemeProvider>
         );
@@ -341,14 +343,16 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             disabled={isReadOnly}
             onFinish={onSubmit}
         >
-            <Row gutter={[20, 10]}>
-                <Col xs={24}>
-                    <h3 className={styles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
-                </Col>
-                <Col xs={24} lg={12}>
+            <h3 className={styles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
+            <CardDeck
+                ariaLabel={t('agency.edit.settings.functionalities.title')}
+                previousLabel={t('agency.cardDeck.previous')}
+                nextLabel={t('agency.cardDeck.next')}
+            >
+                <CardDeck.Item>
                     <AgencySettings isEditMode={isEditing} />
-                </Col>
-            </Row>
+                </CardDeck.Item>
+            </CardDeck>
         </Form>
     );
 
@@ -373,17 +377,12 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <LegalTextSettings
                         agencyData={agencyData}
                         field="impressum"
-                        initialValues={initialValues}
                         onSave={onSaveCard}
+                        saving={isSaving}
                     />
                 </CardDeck.Item>
                 <CardDeck.Item>
-                    <LegalTextSettings
-                        agencyData={agencyData}
-                        field="privacy"
-                        initialValues={initialValues}
-                        onSave={onSaveCard}
-                    />
+                    <LegalTextSettings agencyData={agencyData} field="privacy" onSave={onSaveCard} saving={isSaving} />
                 </CardDeck.Item>
                 <CardDeck.Item>
                     {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
@@ -418,16 +417,21 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 tabs={agencySettingsTabs}
             >
                 {isReadOnly && !isEditing && !isLegalSection && (
-                    <Button type="primary" onClick={() => setReadOnly(false)}>
+                    <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
                         {t('edit')}
                     </Button>
                 )}
                 {!isReadOnly && !isEditing && !isLegalSection && (
                     <>
-                        <Button type="default" onClick={onCancel}>
+                        <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
                             {t('btn.cancel')}
                         </Button>
-                        <Button type="primary" onClick={() => form.submit()} disabled={submitted}>
+                        <Button
+                            type="text"
+                            className="admin-m3-text-button"
+                            onClick={() => form.submit()}
+                            disabled={submitted}
+                        >
                             {t('save')}
                         </Button>
                     </>

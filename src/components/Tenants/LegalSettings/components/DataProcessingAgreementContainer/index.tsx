@@ -5,14 +5,10 @@ import { useDpaVersions } from '../../../../../hooks/useDpaVersions.hook';
 import { usePublishDpa } from '../../../../../hooks/usePublishDpa.hook';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
+import { useUserData } from '../../../../../hooks/useUserData.hook';
 import { DpaVersion } from '../../../../../types/dpa';
-import { LegalVersion } from '../LegalVersionViewer';
-import { DataProcessingAgreementCard } from '../DataProcessingAgreementCard';
-import {
-    getEditableLanguages,
-    parseLegalContentMap,
-    pickLegalContentLanguage,
-} from '../../utils/legalContentLanguages';
+import { DataProcessingAgreementCard, LegalVersion } from '../DataProcessingAgreementCard';
+import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
 
 interface DataProcessingAgreementContainerProps {
     tenantId: string | number;
@@ -39,6 +35,11 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     const { mutate: publish, isPending } = usePublishDpa(id);
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
+    const { data: userData } = useUserData();
+    // Persist a dismissal only once the opaque user id is known. Usernames and
+    // email addresses must not become storage keys, and late identity loading
+    // must not remount the editor (which would discard an in-progress draft).
+    const dismissalScope = userData?.id ? `${id}:${userData.id}` : undefined;
 
     const latestContentByLanguage = useMemo(
         () => parseLegalContentMap((versions as DpaVersion[])[0]?.content),
@@ -59,7 +60,8 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 return {
                     id: version.activationDate,
                     label: index === 0 ? `${dateLabel} ${t('tenants.legal.version.current')}` : dateLabel,
-                    content: pickLegalContentLanguage(version.content, lang),
+                    // Complete stored map — the card picks the admin's active language.
+                    content: version.content,
                 };
             }),
         [versions, lang, t],
@@ -86,7 +88,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     return (
         <DataProcessingAgreementCard
             // remount when the stored content changes (e.g. after a publish) so the editor resets to it
-            key={`${id}-${(versions as DpaVersion[])[0]?.activationDate ?? ''}`}
+            key={(versions as DpaVersion[])[0]?.activationDate ?? ''}
             initialContentByLanguage={latestContentByLanguage}
             languages={languages}
             defaultLanguage={lang}
@@ -95,6 +97,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
             publishing={isPending}
             onTranslate={readOnly ? undefined : translate}
             readOnly={readOnly}
+            dismissalScope={dismissalScope}
         />
     );
 };

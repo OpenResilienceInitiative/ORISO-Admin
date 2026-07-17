@@ -1,10 +1,18 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { M3RichTextEditor } from './M3RichTextEditor';
+import { M3RichTextEditor, parseVersionDate } from './M3RichTextEditor';
 
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({ t: (_key: string, fallback?: string) => fallback ?? _key }),
+    useTranslation: () => ({
+        t: (_key: string, fallbackOrOptions?: unknown) => {
+            if (typeof fallbackOrOptions === 'string') return fallbackOrOptions;
+            if (fallbackOrOptions && typeof fallbackOrOptions === 'object') {
+                return `${_key}:${Object.values(fallbackOrOptions).join(':')}`;
+            }
+            return _key;
+        },
+    }),
 }));
 
 beforeAll(() => {
@@ -36,6 +44,13 @@ const openVersionMenu = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('M3RichTextEditor — version select (#268)', () => {
+    it('parses date-only ids as the same local calendar date', () => {
+        const parsed = parseVersionDate('2026-07-01');
+        expect(parsed).not.toBeNull();
+        expect([parsed?.getFullYear(), parsed?.getMonth(), parsed?.getDate()]).toEqual([2026, 6, 1]);
+        expect(parseVersionDate('2026-02-31')).toBeNull();
+        expect(parseVersionDate('not-a-date')).toBeNull();
+    });
     it('lists the current draft plus every provided version in the version menu', async () => {
         const user = userEvent.setup();
         render(
@@ -45,11 +60,28 @@ describe('M3RichTextEditor — version select (#268)', () => {
         await openVersionMenu(user);
 
         await waitFor(() => {
-            expect(screen.getByText('1. Jul 2026 – 10:00')).toBeInTheDocument();
+            expect(screen.getByText('legal.m3Editor.versionVariant:2')).toBeInTheDocument();
         });
-        expect(screen.getByText('2. Mai 2026 – 09:00')).toBeInTheDocument();
+        expect(screen.getByText('legal.m3Editor.versionVariant:1')).toBeInTheDocument();
         // A way back to the editable draft is always offered.
         expect(screen.getByText(/legal\.m3Editor\.versionCurrentDraft/i)).toBeInTheDocument();
+    });
+
+    it('reports online-since from the oldest publication', async () => {
+        const user = userEvent.setup();
+        render(
+            <M3RichTextEditor title="Datenschutz" value="<p>Entwurf</p>" versions={versions} enableAnchors={false} />,
+        );
+
+        await openVersionMenu(user);
+
+        const oldest = parseVersionDate(versions[versions.length - 1].id)!;
+        const formatted = `${oldest.toLocaleDateString('de', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+        })} | ${oldest.toLocaleTimeString('de', { hour: '2-digit', minute: '2-digit' })} Uhr`;
+        expect(screen.getByText(`legal.m3Editor.versionOnlineSince:${formatted}`)).toBeInTheDocument();
     });
 
     it('shows a selected older version read-only with a restore + back banner', async () => {
@@ -65,7 +97,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
+        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
 
         // The editor now renders the version content, read-only (contenteditable=false).
         await waitFor(() => {
@@ -90,7 +122,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
+        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
         await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.restoreVersion/i }));
 
         expect(onRestore).toHaveBeenCalledWith('<p>Fassung Mai</p>');
@@ -107,7 +139,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('1. Jul 2026 – 10:00'));
+        await user.click(await screen.findByText('legal.m3Editor.versionVariant:2'));
         await waitFor(() => expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('false'));
 
         await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.backToDraft/i }));
@@ -134,7 +166,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
             />,
         );
         await openVersionMenu(user);
-        await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
+        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
         // Viewing works, but there is no "restore as draft" in a read-only card.
         expect(screen.queryByRole('button', { name: /legal\.m3Editor\.restoreVersion/i })).not.toBeInTheDocument();
     });
@@ -154,15 +186,17 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         // Editable draft: the anchor chip row is removable (has a close "x").
-        await waitFor(() => expect(container.querySelectorAll('.ant-tag-close-icon').length).toBeGreaterThan(0));
+        await waitFor(() =>
+            expect(container.querySelectorAll('.RichEditor-anchorChipRemove').length).toBeGreaterThan(0),
+        );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('2. Mai 2026 – 09:00'));
+        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
 
         // While viewing the version (read-only) the chips still render but lose
         // their remove "x", so there is no path to mutate/overwrite the draft.
         await waitFor(() => expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('false'));
         await waitFor(() => expect(container.querySelectorAll('[data-anchor-chip]').length).toBeGreaterThan(0));
-        expect(container.querySelectorAll('.ant-tag-close-icon')).toHaveLength(0);
+        expect(container.querySelectorAll('.RichEditor-anchorChipRemove')).toHaveLength(0);
     });
 });

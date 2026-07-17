@@ -1,4 +1,4 @@
-import { Col, Form, notification, Row } from 'antd';
+import { Form, notification } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'antd/lib/form/Form';
@@ -210,8 +210,14 @@ export const GeneralTenantSettings = () => {
     return (
         <ThemeProvider theme={orisoMuiTheme}>
             <Form form={form} onFinish={handleSave} layout="vertical">
-                <Row gutter={[24, 24]} className={styles.createCardsRow}>
-                    <Col xs={24} lg={12}>
+                <CardDeck
+                    ariaLabel={t('tenants.add.mainTenantTitle')}
+                    className={styles.tenantCardDeck}
+                    deckClassName={styles.tenantCardDeckScroll}
+                    previousLabel={t('tenant.settings.cardDeck.previous')}
+                    nextLabel={t('tenant.settings.cardDeck.next')}
+                >
+                    <CardDeck.Item className={styles.tenantCardDeckItem}>
                         <Card
                             titleKey="tenants.add.mainTenantTitle"
                             fullHeight
@@ -270,8 +276,8 @@ export const GeneralTenantSettings = () => {
                                 />
                             </div>
                         </Card>
-                    </Col>
-                    <Col xs={24} lg={12}>
+                    </CardDeck.Item>
+                    <CardDeck.Item className={styles.tenantCardDeckItem}>
                         <Card
                             titleKey="tenants.add.adminCardTitle"
                             fullHeight
@@ -370,8 +376,8 @@ export const GeneralTenantSettings = () => {
                                 />
                             </div>
                         </Card>
-                    </Col>
-                </Row>
+                    </CardDeck.Item>
+                </CardDeck>
                 <div className={styles.buttons}>
                     <Button
                         item={

@@ -57,6 +57,12 @@ export interface CardMenuOption {
     trend?: TrendBadgeDefinition;
     icon?: SvgIcon;
     iconTone?: IconTone;
+    /**
+     * When set, the card renders its calm empty presentation (muted dash + this hint)
+     * instead of the raw value. The value itself stays untouched so the CSV export and
+     * screen readers keep the explicit "Keine Daten" wording.
+     */
+    emptyHint?: string;
 }
 
 export interface StatisticCardDefinition {
@@ -72,6 +78,8 @@ export interface StatisticCardDefinition {
     menuOptions?: CardMenuOption[];
     defaultMenuKey?: CardMenuKey;
     size: CardSize;
+    /** See CardMenuOption.emptyHint — calm empty presentation instead of the raw value. */
+    emptyHint?: string;
 }
 
 export interface CaseChartBar {

@@ -5,8 +5,8 @@ This file is the **access gate** for AI-assisted work on this repo. Read it firs
 ## Where to look first
 
 1. `.understand-anything/README.md` → entry point to the generated knowledge graph (architecture, onboarding, findings, `knowledge-graph.json`).
-2. `.understand-anything/meta.json` → **check `gitCommitHash` against `origin/dev` before trusting the graph.** If it is more than a few dozen commits behind, treat the Markdown summaries as orientation only and verify against the code.
-3. `AGENTS.md` → working rules (branch = `dev`, validation commands, review expectations).
+2. `.understand-anything/meta.json` → **check `gitCommitHash` against `origin/pre-dev` before trusting the graph.** If it is more than a few dozen commits behind, treat the Markdown summaries as orientation only and verify against the code.
+3. `AGENTS.md` → working rules (integration branch = `pre-dev`, stable demo = `dev`, validation commands, review expectations).
 4. `GIT.md` → Git/GitHub workflow: issue-first PRs, ORISO project board, cross-repo issue anchoring, post-merge hygiene.
 5. `docs/` → feature-specific task docs.
 

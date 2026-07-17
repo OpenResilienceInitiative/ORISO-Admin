@@ -103,13 +103,17 @@
     &:global(.active),
     &:global(.active):first-child,
     &:global(.active):last-child {
-        background: #141c25;
+        background: #4c555f;
         color: #ffffff;
         border-radius: 38px;
 
         &:hover {
-            background: #141c25;
+            background: #4c555f;
             color: #ffffff;
+        }
+
+        .tabStar {
+            color: #ffe2de;
         }
     }
 }

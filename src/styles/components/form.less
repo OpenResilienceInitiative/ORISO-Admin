@@ -1,11 +1,6 @@
-.publicContent,
-.protectedLayout,
-.ant-modal-root {
-    button:not(.ant-btn-link) {
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-}
+// M3 buttons use sentence case + label-large (500) — the legacy upstream rule
+// that forced every button to bold uppercase broke the design in ALL panels
+// (Figma 1261-48671) and was removed deliberately.
 
 /* The former global `.ant-btn-primary { #1f1f1f !important }` override is gone:
    it forced every primary button to black, bypassing the M3 theme bridge

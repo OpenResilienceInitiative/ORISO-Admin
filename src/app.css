@@ -185,6 +185,39 @@ body {
     height: 100%;
 }
 
+/* M3 text button used in edit shells (Edit / Cancel / Save) and other places
+   that used to render antd filled/primary buttons. Flat, pill-shaped, sentence
+   case, brand-blue label with a subtle state-layer on hover. */
+.ant-btn.admin-m3-text-button {
+    height: 40px;
+    padding: 0 12px;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 100px;
+    color: #273270;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    text-transform: none;
+}
+
+.ant-btn.admin-m3-text-button:not(:disabled):hover,
+.ant-btn.admin-m3-text-button:not(:disabled):focus {
+    background: rgba(68, 71, 72, 0.08);
+    color: #273270;
+}
+
+/* Destructive variant: brand red label. */
+.ant-btn.admin-m3-text-button--danger {
+    color: #a5000a;
+}
+
+.ant-btn.admin-m3-text-button--danger:not(:disabled):hover,
+.ant-btn.admin-m3-text-button--danger:not(:disabled):focus {
+    color: #a5000a;
+}
+
 .ant-table-wrapper {
     --admin-table-fixed-cell-shadow: transparent;
 }
