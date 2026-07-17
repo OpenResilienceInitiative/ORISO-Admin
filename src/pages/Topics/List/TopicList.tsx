@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Modal, Space } from 'antd';
+import { Button, Modal } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { ColumnProps } from 'antd/lib/table';
 import { InterestsOutlined } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { useDebouncedCallback } from 'use-debounce';
+import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { M3Switch } from '../../../components/M3Switch';
 import { TopicData } from '../../../types/topic';
 import { Status } from '../../../types/status';
@@ -25,6 +27,7 @@ import { Page } from '../../../components/Page';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { ResizeTable } from '../../../components/ResizableTable';
 import { useTopicList } from '../../../hooks/useTopicList';
+import styles from './TopicList.module.scss';
 
 export const TopicList = () => {
     const navigate = useNavigate();
@@ -44,6 +47,10 @@ export const TopicList = () => {
     });
     const { data: topicsData, isLoading, refetch } = useTopicList({ ...tableState });
     const isTopicsFeatureActive = isEnabled(FeatureFlag.TopicsInRegistration);
+    const updateSearch = useCallback((search: string) => {
+        setTableState((current) => ({ ...current, current: 1, search }));
+    }, []);
+    const setSearchDebounced = useDebouncedCallback(updateSearch, 100);
 
     const onTopicsSwitch = useCallback(() => {
         Modal.confirm({
@@ -171,7 +178,13 @@ export const TopicList = () => {
         <Page isLoading={isLoading}>
             <Page.Title titleKey="topics.title" subTitleKey="topics.title.text" />
 
-            <Space align="baseline">
+            <GlobalSearchBar
+                className={styles.toolbar}
+                expandedWidth={499}
+                onSearch={updateSearch}
+                onSearchChange={setSearchDebounced}
+                searchPlaceholder={t('search-placeholder')}
+            >
                 {can(PermissionAction.Create, Resource.Topic) && (
                     <Button
                         className="mb-m mr-sm"
@@ -184,16 +197,16 @@ export const TopicList = () => {
                 )}
 
                 {canShowTopicSwitch && (
-                    <>
+                    <div className={styles.featureToggle}>
                         <M3Switch
                             checked={isTopicsFeatureActive}
                             label={t('topics.featureToggle')}
                             onChange={() => onTopicsSwitch()}
                         />
                         {t('topics.featureToggle')}
-                    </>
+                    </div>
                 )}
-            </Space>
+            </GlobalSearchBar>
 
             <ResizeTable
                 rowKey="id"
