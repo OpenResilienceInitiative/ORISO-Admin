@@ -95,12 +95,12 @@ const AllStatesDemo = () => {
                     disabledChecked: true,
                 }}
             >
+                <MuiSwitchField name="unchecked" label="Off — X icon in thumb" switchLabel="Off — X icon in thumb" />
                 <MuiSwitchField
-                    name="unchecked"
-                    label="Off — X icon in thumb"
-                    switchLabel="Off — X icon in thumb"
+                    name="checked"
+                    label="On — check icon in thumb"
+                    switchLabel="On — check icon in thumb"
                 />
-                <MuiSwitchField name="checked" label="On — check icon in thumb" switchLabel="On — check icon in thumb" />
                 <MuiSwitchField
                     name="disabledUnchecked"
                     label="Disabled off (X icon)"

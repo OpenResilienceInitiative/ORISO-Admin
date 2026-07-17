@@ -24,9 +24,7 @@ const uncheckedThumb = (
 
 const checkedThumb = (
     <span className={styles.thumb}>
-        <CheckIcon
-            sx={{ fontSize: 16, color: 'var(--admin-control-selected, var(--m3-primary, #a5000a))' }}
-        />
+        <CheckIcon sx={{ fontSize: 16, color: 'var(--admin-control-selected, var(--m3-primary, #a5000a))' }} />
     </span>
 );
 
