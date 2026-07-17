@@ -2,9 +2,9 @@ import { TablePaginationConfig } from 'antd';
 
 export const AGENCY_SORT_FIELD_BY_DATA_INDEX: Record<string, string> = {
     id: 'ID',
-    createDate: 'CREATEDATE',
+    createDate: 'CREATE_DATE',
     name: 'NAME',
-    postcode: 'POSTCODE',
+    postcode: 'POST_CODE',
     city: 'CITY',
     offline: 'OFFLINE',
 };

@@ -1,12 +1,13 @@
 import React from 'react';
 import { Modal } from 'antd';
+import { useDebouncedCallback } from 'use-debounce';
 
 import Title from 'antd/es/typography/Title';
 
 import EditableTableProps from '../../types/editabletable';
 import { ListingTable } from '../ListingTable';
 import AddButton from './AddButton';
-import SearchInput from '../SearchInput/SearchInput';
+import { GlobalSearchBar } from '../GlobalSearch';
 
 const EditableTable = ({
     handleBtnAdd,
@@ -23,6 +24,14 @@ const EditableTable = ({
     handleDeleteModalText,
     allowedNumberOfUsers = 9999,
 }: EditableTableProps) => {
+    const handleSearchChange = useDebouncedCallback((value: string) => {
+        if (value.length >= 3) {
+            handleOnSearch?.(value);
+        } else if (value.length === 0) {
+            handleOnSearchClear?.();
+        }
+    }, 1000);
+
     return (
         <>
             <div className="lg-flex justify-between">
@@ -34,7 +43,11 @@ const EditableTable = ({
 
                 {hasSearch && (
                     <div className="tableSearch">
-                        <SearchInput handleOnSearch={handleOnSearch} handleOnSearchClear={handleOnSearchClear} />
+                        <GlobalSearchBar
+                            defaultExpanded
+                            onSearch={handleOnSearch}
+                            onSearchChange={handleSearchChange}
+                        />
                     </div>
                 )}
             </div>

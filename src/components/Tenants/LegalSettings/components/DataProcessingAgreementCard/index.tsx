@@ -46,7 +46,6 @@ const persistBlockerClosedForSession = (scope: string) => {
         // Private mode / storage disabled: the close still works for this mount.
     }
 };
-
 export interface LegalVersion {
     /** Stable id for the version — e.g. the activation timestamp in ISO form. */
     id: string;
@@ -152,7 +151,6 @@ export const DataProcessingAgreementCard = ({
     }, [dismissalScope]);
     const isBlockerState = help.keyBase === 'legal.help.dpa.platform.empty';
     const showBlockerSnackbar = isBlockerState && !blockerHidden;
-
     // The editor's version select browses the versions in the ACTIVE language; a version
     // that was never stored in that language falls back to its first stored language
     // rather than showing an empty page.

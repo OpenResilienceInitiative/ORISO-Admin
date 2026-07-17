@@ -4,6 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { M3RichTextEditor } from './M3RichTextEditor';
 
 describe('M3RichTextEditor fullscreen dialog', () => {
+    // This is the first test in the file, so it pays the one-off cost of
+    // lazily evaluating TipTap/antd Modal module graphs on first render
+    // (~1s locally; see the sibling "closes with Escape" test at ~0.4s for
+    // the warm-cache baseline). That cold-start cost occasionally pushed
+    // this test past vitest's 5s default under loaded/shared CI runners
+    // even though nothing here is actually hanging - give it real headroom.
     it('opens a modal dialog on maximize and closes it via the close button', async () => {
         const user = userEvent.setup();
         render(<M3RichTextEditor title="Datenschutz" />);
@@ -16,7 +22,7 @@ describe('M3RichTextEditor fullscreen dialog', () => {
         await waitFor(() => {
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         });
-    });
+    }, 15_000);
 
     it('closes the dialog with Escape', async () => {
         const user = userEvent.setup();

@@ -317,7 +317,6 @@ describe('DataProcessingAgreementCard — version select wiring (#268)', () => {
         expect(screen.getByTestId('version-v1')).toHaveAttribute('data-content', '<p>DE v1</p>');
         expect(screen.queryByRole('button', { name: 'restore v1' })).not.toBeInTheDocument();
     });
-
     it('offers no restore in read-only mode (agency page: look, do not edit)', () => {
         render(
             <DataProcessingAgreementCard

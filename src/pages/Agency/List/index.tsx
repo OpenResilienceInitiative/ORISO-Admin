@@ -21,8 +21,8 @@ import { Resource } from '../../../enums/Resource';
 import { Page } from '../../../components/Page';
 import { useAgenciesData } from '../../../hooks/useAgencysData';
 import { ResizeTable } from '../../../components/ResizableTable';
+import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import styles from './styles.module.scss';
-import SearchInput from '../../../components/SearchInput/SearchInput';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { ReactComponent as RowExpandIcon } from '../../../resources/img/svg/table-actions/row_expand_200.svg';
@@ -56,10 +56,11 @@ export const AgencyList = () => {
         refetch();
     }, []);
 
-    const setSearchDebounced = useDebouncedCallback((search?: string) => {
+    const updateSearch = useCallback((search?: string) => {
         setExpandedTopicRows([]);
         setTableState((tmpData) => ({ ...tmpData, current: 1, search }));
-    }, 100);
+    }, []);
+    const setSearchDebounced = useDebouncedCallback(updateSearch, 100);
     const tenantNameById = new Map(
         (tenantsData?.data || []).map((tenant) => [Number(tenant.id), String(tenant.name || '')]),
     );
@@ -320,24 +321,26 @@ export const AgencyList = () => {
                 subTitleKey={`agency.title.text${can(PermissionAction.Create, Resource.Agency) ? '' : '.self'}`}
             >
                 <div className={styles.searchNewContainer}>
-                    <SearchInput
+                    <GlobalSearchBar
                         className={styles.searchField}
-                        placeholder={t('agency.list.searchPlaceholder')}
-                        handleOnSearch={setSearchDebounced}
-                        handleOnSearchClear={() => setSearchDebounced('')}
-                    />
-                    {can(PermissionAction.Create, Resource.Agency) && (
-                        <div className={styles.toolbarActions}>
-                            <Button
-                                className={styles.addButton}
-                                type="primary"
-                                icon={<PlusOutlined className={styles.addButtonIcon} />}
-                                onClick={() => navigate(`${routePathNames.agencyAdd}`)}
-                            >
-                                {t('new')}
-                            </Button>
-                        </div>
-                    )}
+                        expandedWidth={499}
+                        onSearch={updateSearch}
+                        onSearchChange={setSearchDebounced}
+                        searchPlaceholder={t('agency.list.searchPlaceholder')}
+                    >
+                        {can(PermissionAction.Create, Resource.Agency) && (
+                            <div className={styles.toolbarActions}>
+                                <Button
+                                    className={styles.addButton}
+                                    type="primary"
+                                    icon={<PlusOutlined className={styles.addButtonIcon} />}
+                                    onClick={() => navigate(`${routePathNames.agencyAdd}`)}
+                                >
+                                    {t('new')}
+                                </Button>
+                            </div>
+                        )}
+                    </GlobalSearchBar>
                 </div>
             </Page.Title>
 

@@ -1,10 +1,6 @@
-import { Form, Input } from 'antd';
-import { useContext } from 'react';
-import classNames from 'classnames';
+import { Input } from 'antd';
 import { Rule } from 'antd/es/form';
-import DisabledContext from 'antd/es/config-provider/DisabledContext';
-import { useTranslation } from 'react-i18next';
-import styles from './styles.module.scss';
+import { FormBaseInputField } from '../FormBaseInputField';
 
 interface FormTextAreaFieldProps {
     labelKey: string;
@@ -15,25 +11,10 @@ interface FormTextAreaFieldProps {
     rules?: Rule[];
 }
 
-export const FormTextAreaField = ({
-    className,
-    name,
-    labelKey,
-    required,
-    placeholderKey,
-    rules = [],
-}: FormTextAreaFieldProps) => {
-    const { t } = useTranslation();
-    const contextDisabled = useContext(DisabledContext);
-
-    return (
-        <Form.Item
-            label={t(labelKey)}
-            name={name}
-            rules={[{ required }, ...rules]}
-            className={classNames(className, styles.item, { [styles.disabled]: contextDisabled })}
-        >
-            <Input.TextArea className={styles.textarea} placeholder={placeholderKey && t(placeholderKey)} rows={3} />
-        </Form.Item>
-    );
+/**
+ * M3 floating-label textarea: same outlined shell as the other form fields,
+ * the label floats to the top edge and the field auto-grows with its content.
+ */
+export const FormTextAreaField = (props: FormTextAreaFieldProps) => {
+    return <FormBaseInputField {...props} component={Input.TextArea} />;
 };
