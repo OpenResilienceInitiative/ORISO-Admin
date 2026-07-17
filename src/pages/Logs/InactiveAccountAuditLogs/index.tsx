@@ -1,8 +1,9 @@
-import { Button, Input, Select, Space, Tag } from 'antd';
+import { Button, Select, Space, Tag } from 'antd';
 import { ColumnType } from 'antd/lib/table';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListingTable } from '../../../components/ListingTable';
+import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { useInactiveAccountAuditLogsData } from '../../../hooks/useInactiveAccountAuditLogsData';
 import { InactiveAccountAuditLogEntry } from '../../../types/inactiveAccountAuditLogs';
 
@@ -110,25 +111,18 @@ export const InactiveAccountAuditLogsPage = () => {
                         { value: 'ADMIN', label: 'ADMIN' },
                     ]}
                 />
-                <Input
-                    placeholder={t('inactiveAudit.filters.accountId')}
+                <GlobalSearchBar
+                    ariaLabel={t('inactiveAudit.filters.accountId')}
+                    defaultExpanded
+                    expandedWidth={320}
+                    searchPlaceholder={t('inactiveAudit.filters.accountId')}
                     value={accountIdInput}
-                    onChange={(event) => setAccountIdInput(event.target.value)}
-                    onPressEnter={() => {
-                        setAccountIdFilter(accountIdInput);
+                    onSearchChange={setAccountIdInput}
+                    onSearch={(value) => {
+                        setAccountIdFilter(value);
                         setPage(1);
                     }}
-                    style={{ width: 260 }}
                 />
-                <Button
-                    type="primary"
-                    onClick={() => {
-                        setAccountIdFilter(accountIdInput);
-                        setPage(1);
-                    }}
-                >
-                    {t('search')}
-                </Button>
                 <Button
                     onClick={() => {
                         setAccountRole(undefined);

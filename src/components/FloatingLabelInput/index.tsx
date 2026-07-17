@@ -14,7 +14,7 @@ export interface FloatingLabelInputProps extends Omit<InputProps, 'variant' | 's
     error?: boolean;
     /** Supporting text below the field; shown in the error colour while the field is in the error state. */
     supportingText?: string;
-    inputRef?: React.Ref<InputRef>;
+    ref?: React.Ref<InputRef>;
     /**
      * Underlying antd control rendered inside the outlined shell.
      * Supports `Input` (default), `Input.Password` and `Input.TextArea`.
@@ -42,7 +42,7 @@ export const FloatingLabelInput = ({
     defaultValue,
     disabled,
     placeholder,
-    inputRef,
+    ref,
     component,
     onBlur,
     onChange,
@@ -105,7 +105,7 @@ export const FloatingLabelInput = ({
                     {...(isTextArea ? { autoSize: { minRows: 3 } } : null)}
                     {...inputProps}
                     id={inputId}
-                    ref={inputRef}
+                    ref={ref}
                     className={styles.input}
                     variant="borderless"
                     placeholder={focused ? placeholder : undefined}

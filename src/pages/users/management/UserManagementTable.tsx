@@ -7,8 +7,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
 import { PlusOutlined } from '@ant-design/icons';
 import { Modal } from '../../../components/Modal';
+import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
-import SearchInput from '../../../components/SearchInput/SearchInput';
 import { ResizeTable } from '../../../components/ResizableTable';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
@@ -194,10 +194,11 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         order: tableState.order,
     }).filter((column) => column.key !== 'status' || config.showStatus);
 
-    const setSearchDebounced = useDebouncedCallback((value: string) => {
+    const updateSearch = useCallback((value: string) => {
         setTableState((state) => ({ ...state, current: 1 }));
         setSearch(value);
-    }, 100);
+    }, []);
+    const setSearchDebounced = useDebouncedCallback(updateSearch, 100);
 
     const handleTableAction = useCallback(
         (pagination: TablePaginationConfig, _: unknown, sorter: any) => {
@@ -317,15 +318,15 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     return (
         <div className={classNames('counselorList', styles.wrapper)}>
             <div className={styles.searchContainer}>
-                <div className={styles.searchWithButton}>
-                    <SearchInput
-                        className={styles.searchField}
-                        placeholder={t(config.searchPlaceholderKey)}
-                        handleOnSearch={setSearchDebounced}
-                        handleOnSearchClear={() => setSearch('')}
-                    />
+                <GlobalSearchBar
+                    className={styles.searchWithButton}
+                    expandedWidth={499}
+                    onSearch={updateSearch}
+                    onSearchChange={setSearchDebounced}
+                    searchPlaceholder={t(config.searchPlaceholderKey)}
+                >
                     {canCreate && <div className={styles.toolbarActions}>{createButton}</div>}
-                </div>
+                </GlobalSearchBar>
                 {isConsultants && allowedNumberOfUsers > 0 && (
                     <span className={styles.sectionCount}>
                         {consultantCount}/{allowedNumberOfUsers} {t('counselor.title')}

@@ -1,0 +1,132 @@
+.pill {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 2px;
+}
+
+.segment {
+    position: relative;
+    display: inline-flex;
+    height: 56px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    appearance: none;
+    background: transparent;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.pill:not(.pillDisabled) .segment:hover {
+    background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+}
+
+.segment:focus-visible {
+    /* Lift the focused segment above its siblings so the ring is never clipped. */
+    z-index: 1;
+    outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
+    outline-offset: 2px;
+}
+
+.main {
+    gap: 8px;
+    padding: 16px 24px;
+    border-radius: 28px 4px 4px 28px;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    white-space: nowrap;
+}
+
+.chevron {
+    width: 56px;
+    border-radius: 4px 28px 28px 4px;
+}
+
+.chevronIcon {
+    width: 20px;
+    height: 20px;
+    transition: transform 200ms ease;
+}
+
+.pillOpen .chevronIcon {
+    transform: rotate(180deg);
+}
+
+.icon {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+/* Selected state: light tonal fill, primary text/icon, M3 elevation. */
+.pillSelected {
+    filter: drop-shadow(0 1px 1.5px color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 30%, transparent))
+        drop-shadow(0 4px 4px color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 15%, transparent));
+}
+
+.pillSelected .segment {
+    border-color: transparent;
+    background: var(--m3-surface-container-low, #f6f3f3);
+    color: var(--m3-primary, #a5000a);
+}
+
+.pillSelected:not(.pillDisabled) .segment:hover {
+    background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, var(--m3-surface-container-low, #f6f3f3));
+}
+
+.pillDisabled .segment {
+    cursor: not-allowed;
+    opacity: 0.38;
+}
+
+/* Dropdown option row of a multi-select pill. */
+.option {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.optionCheckbox {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--m3-on-surface-variant, #444748);
+    border-radius: 2px;
+}
+
+.optionCheckboxChecked {
+    border-color: var(--m3-primary, #a5000a);
+    background: var(--m3-primary, #a5000a);
+}
+
+/* PillFilterRow layout + gated action button. */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.action {
+    height: 56px;
+    padding-inline: 24px;
+    border-radius: 100px;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+}
