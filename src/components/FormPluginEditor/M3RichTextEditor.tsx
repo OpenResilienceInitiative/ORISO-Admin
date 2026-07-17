@@ -658,7 +658,7 @@ export const M3RichTextEditor = ({
     if (!editor) return null;
 
     const html = () => (editorSlot || editor.isEmpty ? '' : editor.getHTML());
-    const latestVersionDate = versions.length > 0 ? parseVersionDate(versions[0].id) : null;
+    const onlineSinceDate = versions.length > 0 ? parseVersionDate(versions[versions.length - 1].id) : null;
     // Read mode (published view / version look-back): text without box, outline
     // or padding (Figma 1261-51137). Only the built-in editor is restyled — an
     // editorSlot owns its own surface.
@@ -738,7 +738,7 @@ export const M3RichTextEditor = ({
                     <div className={styles.contentInset}>{editorSlot}</div>
                 ) : (
                     <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
-                        <div className={styles.editor}>
+                        <div className={`${styles.editor} ${snackbarSlot ? styles.hasSnackbar : ''}`}>
                             <div className={styles.editorContentScroll}>
                                 <EditorContent editor={editor} />
                             </div>
@@ -844,7 +844,7 @@ export const M3RichTextEditor = ({
                                           label: t('legal.m3Editor.versionCurrentDraft'),
                                       },
                                       { type: 'divider' as const },
-                                      ...(latestVersionDate
+                                      ...(onlineSinceDate
                                           ? [
                                                 {
                                                     key: 'onlineSince',
@@ -852,7 +852,7 @@ export const M3RichTextEditor = ({
                                                     label: (
                                                         <span className={styles.versionMenuHeader}>
                                                             {t('legal.m3Editor.versionOnlineSince', {
-                                                                date: formatVersionDate(latestVersionDate),
+                                                                date: formatVersionDate(onlineSinceDate),
                                                             })}
                                                         </span>
                                                     ),

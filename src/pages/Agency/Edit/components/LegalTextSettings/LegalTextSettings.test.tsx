@@ -155,4 +155,22 @@ describe('LegalTextSettings (M3 editor)', () => {
         await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
         expect(onSave).toHaveBeenLastCalledWith({ content: { privacy: { de: '<p>Other agency</p>' } } });
     });
+
+    it('drops unsaved edits when the agency moves to another tenant', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        const { rerender } = render(<LegalTextSettings agencyData={agencyData} field="privacy" onSave={onSave} />);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
+
+        rerender(
+            <LegalTextSettings
+                agencyData={{ ...agencyData, tenantId: '2' } as unknown as AgencyData}
+                field="privacy"
+                onSave={onSave}
+            />,
+        );
+
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Agency DE</p>');
+    });
 });

@@ -569,8 +569,20 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     padding: 0 16px;
 }
 
-// M3 inverse snackbar (Figma 1229-17864). Keep it in normal document flow:
-// an administrative blocker must never cover the legal text it explains.
+// The blocker intentionally floats over the white editor surface. Reserve scrollable
+// space for it so the final legal-text lines can always be brought above the overlay.
+.hasSnackbar .editorContentScroll {
+    padding-bottom: 64px;
+    scroll-padding-bottom: 64px;
+}
+
+.hasAnchors .hasSnackbar .editorContentScroll {
+    padding-bottom: 110px;
+    scroll-padding-bottom: 110px;
+}
+
+// M3 inverse snackbar (Figma 1229-17864). It floats inside the editor surface;
+// .hasSnackbar above reserves matching scroll space so text remains reachable.
 .hintSnackbar {
     position: absolute;
     z-index: 5;

@@ -13,8 +13,8 @@ export type EditorHintSnackbarProps = {
 /**
  * M3 snackbar for a functionality-blocker CTA (Figma Admin.ORISO 1229-17864),
  * e.g. "you must publish a DPA before creating tenants". Overlays the bottom of
- * the editor surface. It stays in normal document flow so neither editor text
- * nor controls are obscured, including on narrow viewports.
+ * the editor surface. The editor reserves scroll space for the overlay so neither
+ * legal text nor controls become unreachable, including on narrow viewports.
  */
 export const EditorHintSnackbar = ({ text, onClose, onDismiss }: EditorHintSnackbarProps) => {
     const { t } = useTranslation();

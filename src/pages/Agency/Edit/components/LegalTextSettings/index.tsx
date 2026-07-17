@@ -49,7 +49,7 @@ export const LegalTextSettings = ({ agencyData, field, onSave, saving }: LegalTe
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const [activeLanguage, setActiveLanguage] = useState('de');
     const [edits, setEdits] = useState<Record<string, string>>({});
-    const editorIdentity = `${agencyData?.id ?? ''}:${field}`;
+    const editorIdentity = `${agencyData?.id ?? ''}:${agencyData?.tenantId ?? ''}:${field}`;
     const agencyOverrides = useMemo(() => agencyData?.content?.[field] || {}, [agencyData, field]);
 
     const languages = useMemo(() => {

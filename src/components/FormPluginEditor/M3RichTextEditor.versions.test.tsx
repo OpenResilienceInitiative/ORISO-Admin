@@ -67,6 +67,23 @@ describe('M3RichTextEditor — version select (#268)', () => {
         expect(screen.getByText(/legal\.m3Editor\.versionCurrentDraft/i)).toBeInTheDocument();
     });
 
+    it('reports online-since from the oldest publication', async () => {
+        const user = userEvent.setup();
+        render(
+            <M3RichTextEditor title="Datenschutz" value="<p>Entwurf</p>" versions={versions} enableAnchors={false} />,
+        );
+
+        await openVersionMenu(user);
+
+        const oldest = parseVersionDate(versions[versions.length - 1].id)!;
+        const formatted = `${oldest.toLocaleDateString('de', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+        })} | ${oldest.toLocaleTimeString('de', { hour: '2-digit', minute: '2-digit' })} Uhr`;
+        expect(screen.getByText(`legal.m3Editor.versionOnlineSince:${formatted}`)).toBeInTheDocument();
+    });
+
     it('shows a selected older version read-only with a restore + back banner', async () => {
         const user = userEvent.setup();
         const { container } = render(

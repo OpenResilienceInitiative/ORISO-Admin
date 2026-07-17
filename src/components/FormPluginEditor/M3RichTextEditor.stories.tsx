@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { EditorHintSnackbar } from './EditorHintSnackbar';
 import { M3RichTextEditor } from './M3RichTextEditor';
 
 // MUI Material 3 "Tip Tap Editor Module" (Figma Admin.ORISO 1:34903).
@@ -110,6 +111,68 @@ export const AnchorRowNarrowOverflow: Story = {
             </div>
         ),
     ],
+};
+
+const ResponsiveHintEditor = (args: Parameters<typeof M3RichTextEditor>[0]) => {
+    const [visible, setVisible] = useState(true);
+    return (
+        <ControlledEditor
+            {...args}
+            snackbarSlot={
+                visible ? (
+                    <EditorHintSnackbar
+                        text="Bitte veröffentlichen Sie zuerst den Vertrag."
+                        onClose={() => setVisible(false)}
+                        onDismiss={() => setVisible(false)}
+                    />
+                ) : undefined
+            }
+        />
+    );
+};
+
+// Browser-level regression coverage for the narrow layout: the floating blocker
+// reserves scroll space, the chapter navigation remains available, and the first
+// function-bar control starts inside the viewport.
+export const ResponsiveHintAndFunctionBar: Story = {
+    render: (args) => <ResponsiveHintEditor {...args} />,
+    args: {
+        title: 'Datenschutz',
+        value: anchoredContent,
+        languages: [
+            { value: 'de', label: 'Deutsch' },
+            { value: 'en', label: 'Englisch' },
+        ],
+        language: 'de',
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 375 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByRole('status')).toBeInTheDocument());
+
+        const textbox = canvas.getByRole('textbox');
+        let scrollContainer = textbox.parentElement;
+        while (scrollContainer && window.getComputedStyle(scrollContainer).overflowY !== 'auto') {
+            scrollContainer = scrollContainer.parentElement;
+        }
+        expect(scrollContainer).not.toBeNull();
+        expect(parseFloat(window.getComputedStyle(scrollContainer!).paddingBottom)).toBeGreaterThan(0);
+        expect(canvas.getByRole('navigation')).toBeVisible();
+
+        const languageControl = canvas.getByTitle('Sprache wählen');
+        expect(languageControl.getBoundingClientRect().left).toBeGreaterThanOrEqual(
+            canvasElement.getBoundingClientRect().left,
+        );
+
+        await userEvent.click(canvas.getByRole('button', { name: 'Hinweis ausblenden' }));
+        await waitFor(() => expect(canvas.queryByRole('status')).not.toBeInTheDocument());
+    },
 };
 
 // Read-only: chips have no "x", clicking one marks it with a checkmark, and
