@@ -572,9 +572,13 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 // M3 inverse snackbar (Figma 1229-17864). Keep it in normal document flow:
 // an administrative blocker must never cover the legal text it explains.
 .hintSnackbar {
+    position: absolute;
+    z-index: 5;
+    right: 6px;
+    bottom: 6px;
+    left: 6px;
     display: flex;
     align-items: center;
-    margin: 8px 16px 0;
     padding: 4px 4px 4px 16px;
     background: #303031;
     border-radius: 4px;
@@ -604,6 +608,17 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 }
 
 // In read mode the dismiss label may wrap onto two lines.
+// With a chapter chip footer the snackbar floats above it.
+.hasAnchors .hintSnackbar {
+    bottom: 52px;
+}
+
+// Read mode has no white surface: the snackbar flows below the text.
+.readMode .hintSnackbar {
+    position: static;
+    margin: 8px 0 0;
+}
+
 .readMode .hintSnackbarAction {
     max-width: 130px;
     line-height: 14px;
@@ -668,6 +683,8 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 }
 
 .editor {
+    // Anchor for the floating blocker snackbar (6px inside the white surface).
+    position: relative;
     min-height: 280px;
     padding: 16px;
     background: #fff;

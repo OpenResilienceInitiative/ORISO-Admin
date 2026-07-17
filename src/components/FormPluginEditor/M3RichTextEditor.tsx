@@ -50,7 +50,7 @@ import {
     MaximizeContentIcon,
     MinimizeContentIcon,
     PublishedIcon,
-    UnpublishedIcon,
+    EditIcon,
 } from '../CustomIcons/EditorIcons';
 import { HeadingAnchors } from './headingAnchors';
 import { HeadingMenu } from './HeadingMenu';
@@ -742,6 +742,9 @@ export const M3RichTextEditor = ({
                             <div className={styles.editorContentScroll}>
                                 <EditorContent editor={editor} />
                             </div>
+                            {/* Blocker snackbar floats OVER the text area (Figma 1229-17864),
+                                anchored above the chapter chips. */}
+                            {snackbarSlot}
                             {/* Anchor chips live at the bottom of the text surface, with
                                 overflow nav arrows (Figma 1261-48667 / 1280-73048). */}
                             {anchorsEnabled && (
@@ -758,7 +761,6 @@ export const M3RichTextEditor = ({
                         </div>
                     </div>
                 )}
-                {snackbarSlot}
             </div>
 
             {anchorsEnabled && editorEditable && (
@@ -917,7 +919,7 @@ export const M3RichTextEditor = ({
                                 className={`${styles.textBtn} ${styles.draft}`}
                                 onClick={() => onSaveDraft(html())}
                             >
-                                <UnpublishedIcon />
+                                <EditIcon />
                                 <span>{t('legal.m3Editor.saveDraft')}</span>
                             </button>
                         )}
