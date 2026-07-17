@@ -3,7 +3,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { CSVLink } from 'react-csv';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import routePathNames from '../appConfig';
 import { AdminSegmentedTabs } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
+import { DashboardEmptyState } from '../components/DashboardEmptyState/DashboardEmptyState';
 import { Page } from '../components/Page';
 import { GlobalSearchBar } from '../components/GlobalSearch';
 import Spinner from '../components/Spinner/Spinner';
@@ -47,6 +50,7 @@ import {
     caseChartDayCodes,
     getTodayDayCode,
     NO_DATA_LABEL,
+    SUPPRESSED_DETAIL,
 } from './Statistic/statisticDashboardData';
 import type {
     ConversationValues,
@@ -146,6 +150,9 @@ const dashboardTextKeyByValue: Record<string, string> = {
     Interna: 'statistic.dashboard.text.internal',
     'Kennzahl in diesem Dashboard-Slot auswählen': 'statistic.dashboard.menu.selectDashboardMetric',
     'Keine Daten': 'statistic.dashboard.text.noData',
+    'wird noch nicht erfasst': 'statistic.dashboard.empty.notTracked',
+    'noch keine Daten': 'statistic.dashboard.empty.noDataYet',
+    'zeigt sich ab dem ersten Gespräch': 'statistic.dashboard.empty.topicPending',
     'Aktuell in Beratung': 'statistic.dashboard.text.currentlyInCounselling',
     'Statistik unterdrückt': 'statistic.dashboard.filter.suppressed',
     'Keine Filter verfügbar': 'statistic.dashboard.filter.noFilters',
@@ -295,6 +302,7 @@ const localizeCardMenuOption = (
         ? translateDashboardText(translate, option.description, locale)
         : option.description,
     detail: option.detail ? translateDashboardText(translate, option.detail, locale) : option.detail,
+    emptyHint: option.emptyHint ? translateDashboardText(translate, option.emptyHint, locale) : option.emptyHint,
     label: translateDashboardText(translate, option.label, locale),
     title: option.title ? translateDashboardText(translate, option.title, locale) : option.title,
     value: translateDashboardValue(translate, option.value, locale),
@@ -307,6 +315,7 @@ const localizeStatisticCard = (
 ): StatisticCardDefinition => ({
     ...card,
     detail: card.detail ? translateDashboardText(translate, card.detail, locale) : card.detail,
+    emptyHint: card.emptyHint ? translateDashboardText(translate, card.emptyHint, locale) : card.emptyHint,
     menuAriaLabel: card.menuAriaLabel
         ? translateDashboardText(translate, card.menuAriaLabel, locale)
         : card.menuAriaLabel,
@@ -994,6 +1003,30 @@ const getEffectiveStatisticTargetIds = (
 
 const formatMetricValue = (value: MetricValue) => (value === null ? NO_DATA_LABEL : formatIntegerMetric(value));
 
+/**
+ * True when the aggregated statistics carry no counselling activity at all — fresh
+ * tenant or agency, nothing happened yet. The dashboard then shows ONE friendly
+ * DashboardEmptyState hero instead of repeating "Keine Daten" on every card.
+ * Structural values (counselors, assigned agencies) don't count as activity: a tenant
+ * with onboarded counsellors but no counselling yet still gets the hero. KDG
+ * suppression is handled separately (notice + per-card hints), never by the hero.
+ */
+const activityMetricKeys = numericFilterMetricKeys.filter(
+    (metricKey) => metricKey !== 'counselors' && metricKey !== 'activeAgencies',
+);
+
+const isFilterStatsEmpty = (stats: FilterTargetStatistics): boolean =>
+    !stats.enquiriesPreviousMonth &&
+    activityMetricKeys.every((metricKey) => !stats.metrics[metricKey]) &&
+    [
+        stats.metrics.topTopic,
+        stats.metrics.previousMonth,
+        stats.metrics.twoMonthsAgo,
+        stats.metrics.threeMonthsAgo,
+    ].every((topic) => topic.share === 0) &&
+    Object.values(stats.caseCharts).every((weekValues) => weekValues.every((value) => value === 0)) &&
+    Object.values(stats.conversation).every((segmentValues) => segmentValues.every((value) => value === 0));
+
 const buildChangeTrend = (current: MetricValue, previous: MetricValue): TrendBadgeDefinition | undefined => {
     if (current === null || previous === null || (previous === 0 && current === 0)) {
         return undefined;
@@ -1012,99 +1045,126 @@ const buildChangeTrend = (current: MetricValue, previous: MetricValue): TrendBad
 const buildTopicTrend = (topic: TopicStatistic): TrendBadgeDefinition | undefined =>
     topic.share > 0 ? { value: `~ ${topic.share}%`, tone: 'dark' } : undefined;
 
+// German seed strings for the calm empty presentation (translated like every other
+// dashboard seed via dashboardTextKeyByValue).
+const NOT_TRACKED_HINT = 'wird noch nicht erfasst';
+const NO_DATA_YET_HINT = 'noch keine Daten';
+const TOPIC_PENDING_HINT = 'zeigt sich ab dem ersten Gespräch';
+
 /**
  * Maps aggregated real statistics onto the dashboard metric slots. Metrics without an
- * application-layer data source are rendered as "Keine Daten"; trends are only shown
- * where a real comparison value exists (requests vs. previous month, topic shares).
+ * application-layer data source keep the "Keine Daten" value (CSV export, screen
+ * readers) but additionally carry an emptyHint so the card renders the calm dash +
+ * hint presentation; trends are only shown where a real comparison value exists
+ * (requests vs. previous month, topic shares).
  */
 // Record (not Partial<Record<...>>) is deliberate: it makes a missing CardMenuKey a
 // compile-time error instead of a silent runtime gap, so every card/menu key added to
 // CardMenuKey is forced to get a real mapping here before it can render anything.
 const buildMetricOverridesFromFilterStats = (
     stats: FilterTargetStatistics,
+    allTargetsSuppressed = false,
 ): Record<CardMenuKey, Partial<CardMenuOption>> => {
     const requestTrend = buildChangeTrend(stats.metrics.oneToOne, stats.enquiriesPreviousMonth);
     const requestDetail =
         stats.enquiriesPreviousMonth !== null
             ? `Vormonat gesamt ${formatIntegerMetric(stats.enquiriesPreviousMonth)}`
             : undefined;
+    // null = withheld (all targets KDG-suppressed) or simply not there yet.
+    const emptyMetricHint = allTargetsSuppressed ? SUPPRESSED_DETAIL : NO_DATA_YET_HINT;
+    const emptyTopicHint = allTargetsSuppressed ? SUPPRESSED_DETAIL : TOPIC_PENDING_HINT;
+    const metricEmptyHint = (value: MetricValue) => (value === null ? emptyMetricHint : undefined);
+    const topicEmptyHint = (topic: TopicStatistic) => (topic.label === NO_DATA_LABEL ? emptyTopicHint : undefined);
 
     return {
         activeAgencies: {
             value: formatMetricValue(stats.metrics.activeAgencies),
+            emptyHint: metricEmptyHint(stats.metrics.activeAgencies),
             detail: 'zugeordnete Beratungsstellen',
             trend: undefined,
         },
         activeConversations: {
             value: formatMetricValue(stats.metrics.activeConversations),
+            emptyHint: metricEmptyHint(stats.metrics.activeConversations),
             detail: 'heute aktiv',
             trend: undefined,
         },
         activeCounselors: {
             value: formatMetricValue(stats.metrics.counselors),
+            emptyHint: metricEmptyHint(stats.metrics.counselors),
             detail: undefined,
             trend: undefined,
         },
         all: {
             value: formatMetricValue(stats.metrics.oneToOne),
+            emptyHint: metricEmptyHint(stats.metrics.oneToOne),
             detail: requestDetail,
             trend: requestTrend,
         },
         cases: {
             value: formatMetricValue(stats.metrics.cases),
+            emptyHint: metricEmptyHint(stats.metrics.cases),
             detail: 'Aktuell in Beratung',
             trend: undefined,
         },
-        consultations: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        consultations: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
         conversationsTotal: {
             value: formatMetricValue(stats.metrics.conversationsTotal),
+            emptyHint: metricEmptyHint(stats.metrics.conversationsTotal),
             detail: 'gesamt',
             trend: undefined,
         },
         counselors: {
             value: formatMetricValue(stats.metrics.counselors),
+            emptyHint: metricEmptyHint(stats.metrics.counselors),
             detail: undefined,
             trend: undefined,
         },
         groups: {
             value: formatMetricValue(stats.metrics.groups),
+            emptyHint: metricEmptyHint(stats.metrics.groups),
             detail: 'gesamt',
             trend: undefined,
         },
-        liveChat: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
-        messagesCounselors: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
-        messagesPerSession: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
-        messagesSeekers: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        liveChat: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        messagesCounselors: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        messagesPerSession: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        messagesSeekers: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
         oneToOne: {
             value: formatMetricValue(stats.metrics.oneToOne),
+            emptyHint: metricEmptyHint(stats.metrics.oneToOne),
             detail: '1:1-Anfragen',
             trend: requestTrend,
         },
-        phoneShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        phoneShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
         previousMonth: {
             value: stats.metrics.previousMonth.label,
+            emptyHint: topicEmptyHint(stats.metrics.previousMonth),
             detail: 'Letzter Monat',
             trend: buildTopicTrend(stats.metrics.previousMonth),
         },
-        textMessagesTotal: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        textMessagesTotal: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
         threeMonthsAgo: {
             value: stats.metrics.threeMonthsAgo.label,
+            emptyHint: topicEmptyHint(stats.metrics.threeMonthsAgo),
             detail: 'Vor 3 Monaten',
             trend: buildTopicTrend(stats.metrics.threeMonthsAgo),
         },
         topTopic: {
             value: stats.metrics.topTopic.label,
+            emptyHint: topicEmptyHint(stats.metrics.topTopic),
             detail: 'Dieser Monat',
             trend: buildTopicTrend(stats.metrics.topTopic),
         },
         twoMonthsAgo: {
             value: stats.metrics.twoMonthsAgo.label,
+            emptyHint: topicEmptyHint(stats.metrics.twoMonthsAgo),
             detail: 'Vor 2 Monaten',
             trend: buildTopicTrend(stats.metrics.twoMonthsAgo),
         },
-        videoCallCount: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
-        videoShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
-        voiceShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        videoCallCount: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        videoShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        voiceShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
     };
 };
 
@@ -1137,10 +1197,11 @@ const buildConversationByPeriodFromFilterStats = (
         {} as Record<ConversationPeriodKey, ConversationPeriodData>,
     );
 
-const noSourceMetricOverride: Required<Pick<CardMenuOption, 'value' | 'detail' | 'trend'>> = {
+const noSourceMetricOverride: Required<Pick<CardMenuOption, 'value' | 'detail' | 'trend' | 'emptyHint'>> = {
     value: NO_DATA_LABEL,
     detail: undefined,
     trend: undefined,
+    emptyHint: NOT_TRACKED_HINT,
 };
 
 /**
@@ -2014,6 +2075,7 @@ export const Statistic = () => {
         isError: hasStatisticLoadError,
         isLoading: isStatisticLoading,
     } = useStatisticDashboardData();
+    const navigate = useNavigate();
     const caseChartDateLabelsByPeriod = useMemo(() => buildCaseChartDateLabels(new Date()), []);
     const todayDayCode = useMemo(() => getTodayDayCode(new Date()), []);
     const dashboard = dashboardByScope[activeScope];
@@ -2036,7 +2098,14 @@ export const Statistic = () => {
             effectiveStatisticTargetIds.filter((targetId) => statisticData.statisticsById[targetId]?.suppressed).length,
         [effectiveStatisticTargetIds, statisticData.statisticsById],
     );
-    const metricOverrides = useMemo(() => buildMetricOverridesFromFilterStats(filteredStats), [filteredStats]);
+    const allTargetsSuppressed =
+        effectiveStatisticTargetIds.length > 0 && suppressedSelectedTargetCount === effectiveStatisticTargetIds.length;
+    const metricOverrides = useMemo(
+        () => buildMetricOverridesFromFilterStats(filteredStats, allTargetsSuppressed),
+        [allTargetsSuppressed, filteredStats],
+    );
+    const isDashboardEmpty = useMemo(() => isFilterStatsEmpty(filteredStats), [filteredStats]);
+    const showEmptyHero = isDashboardEmpty && !isStatisticLoading && !hasStatisticLoadError && !allTargetsSuppressed;
     const csvExportRows = useMemo(
         () => [
             ...dashboard.topCards.map((card) => {
@@ -2278,6 +2347,30 @@ export const Statistic = () => {
                                         )}
                                     </p>
                                 )}
+                                {showEmptyHero && (
+                                    <DashboardEmptyState
+                                        className="statisticDashboard__emptyHero"
+                                        icon={<ConversationsIcon />}
+                                        title={translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.empty.heroTitle',
+                                            'Ihr Dashboard füllt sich mit der ersten Beratung',
+                                        )}
+                                        description={translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.empty.heroDescription',
+                                            'Sobald Anfragen eingehen, sehen Sie hier Gespräche, Themen und Auslastung auf einen Blick.',
+                                        )}
+                                        action={{
+                                            label: translateDashboardKey(
+                                                translate,
+                                                'statistic.dashboard.empty.heroAction',
+                                                'Beratende verwalten',
+                                            ),
+                                            onClick: () => navigate(routePathNames.consultants),
+                                        }}
+                                    />
+                                )}
                                 <div className="statisticDashboard__export">
                                     <CSVLink
                                         className="statisticDashboard__exportLink"
@@ -2315,7 +2408,11 @@ export const Statistic = () => {
                                         )}
                                     </CSVLink>
                                 </div>
-                                <div className="statisticDashboard__summaryGrid">
+                                <div
+                                    className={`statisticDashboard__summaryGrid${
+                                        showEmptyHero ? ' statisticDashboard__summaryGrid--quiet' : ''
+                                    }`}
+                                >
                                     {dashboard.topCards.map((card) => (
                                         <StatisticCard
                                             key={card.key}
@@ -2332,7 +2429,11 @@ export const Statistic = () => {
                                     ))}
                                 </div>
 
-                                <div className="statisticDashboard__communicationGrid">
+                                <div
+                                    className={`statisticDashboard__communicationGrid${
+                                        showEmptyHero ? ' statisticDashboard__communicationGrid--quiet' : ''
+                                    }`}
+                                >
                                     {dashboard.communicationCards.map((card) => (
                                         <StatisticCard
                                             key={card.key}
@@ -2347,7 +2448,11 @@ export const Statistic = () => {
                                     ))}
                                 </div>
 
-                                <div className="statisticDashboard__chartGrid">
+                                <div
+                                    className={`statisticDashboard__chartGrid${
+                                        showEmptyHero ? ' statisticDashboard__chartGrid--quiet' : ''
+                                    }`}
+                                >
                                     <section className="statisticDashboard__chartCard statisticDashboard__caseChartCard">
                                         <div className="statisticDashboard__chartHeader">
                                             <h2>{translateDashboardText(translate, 'Beratungsfälle', locale)}</h2>

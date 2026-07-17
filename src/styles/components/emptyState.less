@@ -1,0 +1,72 @@
+// DashboardEmptyState — friendly full-width empty state ("Keine Daten" redesign).
+// Mirrors the statistic dashboard card look (white surface, 27px radius) so it can sit
+// inside any dashboard grid without visual drift.
+
+.dashboardEmptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 32px;
+    border-radius: 27px;
+    background: #ffffff;
+    text-align: center;
+}
+
+.dashboardEmptyState__icon {
+    display: flex;
+    width: 64px;
+    height: 64px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-bottom: 16px;
+    background: #f8e6e7;
+    color: #bd000d;
+
+    svg {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+.dashboardEmptyState__title {
+    margin: 0 0 6px;
+    color: #000000;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 28px;
+}
+
+.dashboardEmptyState__description {
+    max-width: 560px;
+    margin: 0;
+    color: #63636a;
+    font-size: 15px;
+    line-height: 22px;
+}
+
+.dashboardEmptyState__action {
+    margin-top: 20px;
+}
+
+@media screen and (max-width: 840px) {
+    .dashboardEmptyState {
+        padding: 32px 20px;
+        border-radius: 20px;
+    }
+
+    .dashboardEmptyState__icon {
+        width: 52px;
+        height: 52px;
+
+        svg {
+            width: 26px;
+            height: 26px;
+        }
+    }
+
+    .dashboardEmptyState__title {
+        font-size: 18px;
+        line-height: 25px;
+    }
+}

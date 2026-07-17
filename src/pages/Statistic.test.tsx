@@ -2,6 +2,7 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { AdminDashboardStatisticsResponse } from '../api/statistic/getDashboardStatistics';
 import { UserRole } from '../enums/UserRole';
@@ -74,7 +75,9 @@ const renderStatistic = () => {
 
     return render(
         <QueryClientProvider client={client}>
-            <Statistic />
+            <MemoryRouter>
+                <Statistic />
+            </MemoryRouter>
         </QueryClientProvider>,
     );
 };
@@ -114,8 +117,10 @@ describe('Statistic page', () => {
         await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
         // previous month detail is computed from the real comparison value
         expect(screen.getAllByText(/Vormonat gesamt 10/).length).toBeGreaterThan(0);
-        // metrics without an application-layer source degrade to "Keine Daten"
-        expect(screen.getAllByText('Keine Daten').length).toBeGreaterThan(0);
+        // metrics without an application-layer source render the calm empty
+        // presentation (dash + hint) instead of a shouty "Keine Daten" value
+        expect(screen.getAllByText('wird noch nicht erfasst').length).toBeGreaterThan(0);
+        expect(screen.getAllByLabelText('Keine Daten').length).toBeGreaterThan(0);
         // legacy mock numbers must be gone
         expect(screen.queryByText('312')).toBeNull();
         expect(screen.queryByText('Caritas NRW')).toBeNull();
@@ -227,5 +232,67 @@ describe('Statistic page', () => {
         expect(csvBlobParts).not.toContain('Caritas NRW');
 
         blobSpy.mockRestore();
+    });
+
+    it('shows one friendly empty-state hero when nothing happened yet', async () => {
+        const zeroCounts = { today: 0, yesterday: 0, thisWeek: 0, total: 0, thisYear: 0, lastYear: 0 };
+        dashboardMock.mockResolvedValue({
+            ...response,
+            targets: [
+                {
+                    ...response.targets[0],
+                    // counsellors are onboarded, but no counselling activity yet
+                    counselorCount: 3,
+                    metrics: {
+                        enquiriesCurrentMonth: 0,
+                        enquiriesPreviousMonth: 0,
+                        activeCases: 0,
+                        activeConversationsToday: 0,
+                        groupChatsTotal: 0,
+                    },
+                    sessionCountsByPeriod: zeroCounts,
+                    groupChatCountsByPeriod: zeroCounts,
+                },
+            ],
+        });
+
+        renderStatistic();
+
+        await waitFor(() =>
+            expect(screen.getByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeInTheDocument(),
+        );
+        // the metric grids step back but stay visible (disable, don't hide)
+        expect(document.querySelector('.statisticDashboard__summaryGrid--quiet')).not.toBeNull();
+    });
+
+    it('does not show the empty-state hero when real activity exists', async () => {
+        dashboardMock.mockResolvedValue(response);
+
+        renderStatistic();
+
+        await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        expect(screen.queryByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeNull();
+        expect(document.querySelector('.statisticDashboard__summaryGrid--quiet')).toBeNull();
+    });
+
+    it('hints KDG suppression on the cards instead of showing the hero', async () => {
+        dashboardMock.mockResolvedValue({
+            ...response,
+            targets: [
+                {
+                    ...response.targets[0],
+                    counselorCount: 1,
+                    suppressed: true,
+                    metrics: null,
+                    sessionCountsByPeriod: null,
+                    groupChatCountsByPeriod: null,
+                },
+            ],
+        });
+
+        renderStatistic();
+
+        await waitFor(() => expect(screen.getAllByText('Statistik unterdrückt').length).toBeGreaterThan(0));
+        expect(screen.queryByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeNull();
     });
 });

@@ -174,6 +174,7 @@ export const StatisticCard = ({ card, locale, menuValue, onMenuChange, translate
     const displayValue = selectedMenuOption?.value || card.value;
     const displayDetail = selectedMenuOption?.detail ?? card.detail;
     const displayTrend = selectedMenuOption?.trend || card.trend;
+    const displayEmptyHint = selectedMenuOption ? selectedMenuOption.emptyHint : card.emptyHint;
     const DisplayIcon = selectedMenuOption?.icon || card.icon;
     const displayIconTone = selectedMenuOption?.iconTone ?? card.iconTone;
     const menuLabel =
@@ -266,13 +267,23 @@ export const StatisticCard = ({ card, locale, menuValue, onMenuChange, translate
                 )}
             </div>
 
-            <div className="statisticDashboard__cardValueRow">
-                <strong>
-                    <AnimatedValue locale={locale} value={displayValue} />
-                </strong>
-                <TrendBadge locale={locale} translate={translate} trend={displayTrend} />
-                {displayDetail && <span className="statisticDashboard__cardDetail">{displayDetail}</span>}
-            </div>
+            {displayEmptyHint ? (
+                <div className="statisticDashboard__cardValueRow statisticDashboard__cardValueRow--empty">
+                    {/* Screen readers get the explicit wording; the dash is purely visual. */}
+                    <strong aria-label={displayValue}>
+                        <span aria-hidden="true">–</span>
+                    </strong>
+                    <span className="statisticDashboard__cardEmptyHint">{displayEmptyHint}</span>
+                </div>
+            ) : (
+                <div className="statisticDashboard__cardValueRow">
+                    <strong>
+                        <AnimatedValue locale={locale} value={displayValue} />
+                    </strong>
+                    <TrendBadge locale={locale} translate={translate} trend={displayTrend} />
+                    {displayDetail && <span className="statisticDashboard__cardDetail">{displayDetail}</span>}
+                </div>
+            )}
         </section>
     );
 };

@@ -147,3 +147,63 @@ export const WithMetricMenu: Story = {
         });
     },
 };
+
+// ---- Empty states ("Keine Daten" redesign) ----
+// When `emptyHint` is set the card renders a calm muted dash + one-line hint instead
+// of a shouty "Keine Daten" value. The raw value stays in place for screen readers
+// and the CSV export.
+
+// Metric that has no application-layer data source yet (messages, calls, ...).
+export const EmptyNotTracked: Story = {
+    args: {
+        card: {
+            key: 'video-calls-empty',
+            title: 'Videoanrufe',
+            value: 'Keine Daten',
+            emptyHint: 'wird noch nicht erfasst',
+            icon: VideoCallsIcon,
+            iconTone: 'danger',
+            size: 'small',
+        },
+    },
+};
+
+// KDG small-cell suppression: fewer than two counsellors behind the number.
+export const EmptySuppressed: Story = {
+    args: {
+        card: {
+            key: 'requests-suppressed',
+            title: 'Anfragen',
+            value: 'Keine Daten',
+            emptyHint: 'Statistik unterdrückt',
+            icon: RequestsIcon,
+            size: 'large',
+        },
+    },
+};
+
+// Fresh tenant: data source exists but nothing has happened yet.
+export const EmptyNoActivity: Story = {
+    args: {
+        card: {
+            key: 'top-topic-empty',
+            title: 'Häufigstes Thema',
+            value: 'Keine Daten',
+            emptyHint: 'zeigt sich ab dem ersten Gespräch',
+            icon: TopicIcon,
+            size: 'small',
+        },
+    },
+};
+
+// Narrow viewport: empty presentation must stay legible at 375px cards.
+export const EmptyMobile: Story = {
+    args: EmptyNotTracked.args,
+    decorators: [
+        (Story) => (
+            <div style={{ width: 280 }}>
+                <Story />
+            </div>
+        ),
+    ],
+};
