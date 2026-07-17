@@ -50,4 +50,22 @@ describe('M3RichTextEditor accessibility', () => {
             expect(screen.getByRole('textbox', { name: 'Impressum' })).toBeInTheDocument();
         });
     });
+
+    it('moves focus into the text-format menu and restores it on Escape', async () => {
+        const user = userEvent.setup();
+        render(<M3RichTextEditor title="Datenschutz" />);
+        const trigger = await screen.findByTitle(/editor\.headingMenu\.textFormat|Text format/);
+
+        expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+        expect(trigger).toHaveAttribute('aria-expanded', 'false');
+        await user.click(trigger);
+
+        const menu = await screen.findByRole('menu');
+        await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+        await waitFor(() => expect(screen.getAllByRole('menuitem')[0]).toHaveFocus());
+
+        fireEvent.keyDown(menu, { key: 'Escape' });
+        await waitFor(() => expect(trigger).toHaveFocus());
+        expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    });
 });

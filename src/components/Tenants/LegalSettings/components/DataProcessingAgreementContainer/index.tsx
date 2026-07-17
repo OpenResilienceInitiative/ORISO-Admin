@@ -5,6 +5,7 @@ import { useDpaVersions } from '../../../../../hooks/useDpaVersions.hook';
 import { usePublishDpa } from '../../../../../hooks/usePublishDpa.hook';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
+import { useUserData } from '../../../../../hooks/useUserData.hook';
 import { DpaVersion } from '../../../../../types/dpa';
 import { DataProcessingAgreementCard, LegalVersion } from '../DataProcessingAgreementCard';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
@@ -34,6 +35,8 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     const { mutate: publish, isPending } = usePublishDpa(id);
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
+    const { data: userData } = useUserData();
+    const dismissalScope = `${id}:${userData?.id ?? userData?.username ?? userData?.email ?? 'unknown'}`;
 
     const latestContentByLanguage = useMemo(
         () => parseLegalContentMap((versions as DpaVersion[])[0]?.content),
@@ -82,7 +85,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     return (
         <DataProcessingAgreementCard
             // remount when the stored content changes (e.g. after a publish) so the editor resets to it
-            key={`${id}-${(versions as DpaVersion[])[0]?.activationDate ?? ''}`}
+            key={`${dismissalScope}-${(versions as DpaVersion[])[0]?.activationDate ?? ''}`}
             initialContentByLanguage={latestContentByLanguage}
             languages={languages}
             defaultLanguage={lang}
@@ -91,6 +94,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
             publishing={isPending}
             onTranslate={readOnly ? undefined : translate}
             readOnly={readOnly}
+            dismissalScope={dismissalScope}
         />
     );
 };

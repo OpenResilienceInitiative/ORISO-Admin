@@ -49,7 +49,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         snackbarSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
-        versions?: { id: string; label: string; content: string }[];
+        versions?: { id: string; label: string; content: string; restorable?: boolean }[];
         onRestoreVersion?: (content: string) => void;
     }) => (
         <div data-testid="editor" data-value={value} data-readonly={readOnly ? 'true' : 'false'}>
@@ -70,7 +70,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
             {(versions ?? []).map((version) => (
                 <div key={version.id} data-testid={`version-${version.id}`} data-content={version.content}>
                     {version.label}
-                    {onRestoreVersion && (
+                    {onRestoreVersion && version.restorable !== false && (
                         <button type="button" onClick={() => onRestoreVersion(version.content)}>
                             restore {version.id}
                         </button>
@@ -301,6 +301,21 @@ describe('DataProcessingAgreementCard — version select wiring (#268)', () => {
         await user.click(screen.getByRole('button', { name: publishButtonName }));
         // Only the active language's draft was replaced — the other languages stay untouched.
         expect(onPublish).toHaveBeenCalledWith({ de: '<p>DE</p>', en: '<p>EN v2</p>' });
+    });
+
+    it('does not restore fallback German content into an English draft', () => {
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="en"
+                versions={storedVersions}
+                onPublish={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByTestId('version-v1')).toHaveAttribute('data-content', '<p>DE v1</p>');
+        expect(screen.queryByRole('button', { name: 'restore v1' })).not.toBeInTheDocument();
     });
 
     it('offers no restore in read-only mode (agency page: look, do not edit)', () => {

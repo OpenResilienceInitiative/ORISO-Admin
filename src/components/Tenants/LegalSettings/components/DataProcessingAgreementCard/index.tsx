@@ -10,28 +10,43 @@ import { LegalHelpRole } from '../../utils/legalHelpTexts';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
-import { pickLegalContentLanguage } from '../../utils/legalContentLanguages';
+import { parseLegalContentMap, pickLegalContentLanguage } from '../../utils/legalContentLanguages';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
 import styles from './styles.module.scss';
 
 // "Nicht mehr anzeigen" on the DPA blocker snackbar persists across sessions.
 const DPA_BLOCKER_DISMISSED_KEY = 'oriso-admin.legal.dpa.blocker.dismissed';
+const DPA_BLOCKER_SESSION_KEY = 'oriso-admin.legal.dpa.blocker.closed';
 
-const isBlockerDismissed = () => {
+const scopedDismissalKey = (key: string, scope: string) => `${key}.${scope}`;
+
+const isBlockerDismissed = (scope: string) => {
     try {
-        return window.localStorage.getItem(DPA_BLOCKER_DISMISSED_KEY) === 'true';
+        return (
+            window.localStorage.getItem(scopedDismissalKey(DPA_BLOCKER_DISMISSED_KEY, scope)) === 'true' ||
+            window.sessionStorage.getItem(scopedDismissalKey(DPA_BLOCKER_SESSION_KEY, scope)) === 'true'
+        );
     } catch {
         return false;
     }
 };
 
-const persistBlockerDismissed = () => {
+const persistBlockerDismissed = (scope: string) => {
     try {
-        window.localStorage.setItem(DPA_BLOCKER_DISMISSED_KEY, 'true');
+        window.localStorage.setItem(scopedDismissalKey(DPA_BLOCKER_DISMISSED_KEY, scope), 'true');
     } catch {
         // Private mode / storage disabled: the snackbar just reappears next session.
     }
 };
+
+const persistBlockerClosedForSession = (scope: string) => {
+    try {
+        window.sessionStorage.setItem(scopedDismissalKey(DPA_BLOCKER_SESSION_KEY, scope), 'true');
+    } catch {
+        // Private mode / storage disabled: the close still works for this mount.
+    }
+};
+
 export interface LegalVersion {
     /** Stable id for the version — e.g. the activation timestamp in ISO form. */
     id: string;
@@ -73,6 +88,8 @@ interface DataProcessingAgreementCardProps {
     readOnly?: boolean;
     /** Bypass the JWT role lookup for the help texts (Storybook/demo contexts). */
     helpRole?: LegalHelpRole;
+    /** Tenant/account scope for dismissal persistence. */
+    dismissalScope?: string;
 }
 
 /**
@@ -92,6 +109,7 @@ export const DataProcessingAgreementCard = ({
     onTranslate,
     readOnly,
     helpRole,
+    dismissalScope = 'unscoped',
 }: DataProcessingAgreementCardProps) => {
     const { t } = useTranslation();
     const {
@@ -126,7 +144,7 @@ export const DataProcessingAgreementCard = ({
     // header. The platform-admin "no DPA published yet" CTA lives ONLY in the
     // dismissible snackbar (Figma 1229-17864) — once dismissed it is gone for good.
     const help = useLegalHelp('dpa', { empty: versions.length === 0, readOnly: !!readOnly }, helpRole);
-    const [blockerHidden, setBlockerHidden] = useState(isBlockerDismissed);
+    const [blockerHidden, setBlockerHidden] = useState(() => isBlockerDismissed(dismissalScope));
     const isBlockerState = help.keyBase === 'legal.help.dpa.platform.empty';
     const showBlockerSnackbar = isBlockerState && !blockerHidden;
 
@@ -135,11 +153,15 @@ export const DataProcessingAgreementCard = ({
     // rather than showing an empty page.
     const editorVersions: EditorVersion[] = useMemo(
         () =>
-            versions.map((version) => ({
-                id: version.id,
-                label: version.label,
-                content: pickLegalContentLanguage(version.content, activeLanguage),
-            })),
+            versions.map((version) => {
+                const contentMap = parseLegalContentMap(version.content);
+                return {
+                    id: version.id,
+                    label: version.label,
+                    content: pickLegalContentLanguage(version.content, activeLanguage),
+                    restorable: Object.prototype.hasOwnProperty.call(contentMap, activeLanguage),
+                };
+            }),
         [versions, activeLanguage],
     );
 
@@ -171,9 +193,12 @@ export const DataProcessingAgreementCard = ({
                     showBlockerSnackbar && (
                         <EditorHintSnackbar
                             text={help.hint}
-                            onClose={() => setBlockerHidden(true)}
+                            onClose={() => {
+                                persistBlockerClosedForSession(dismissalScope);
+                                setBlockerHidden(true);
+                            }}
                             onDismiss={() => {
-                                persistBlockerDismissed();
+                                persistBlockerDismissed(dismissalScope);
                                 setBlockerHidden(true);
                             }}
                         />

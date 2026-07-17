@@ -40,12 +40,14 @@ vi.mock('../../../../../components/FormPluginEditor/M3RichTextEditor', () => ({
         value,
         onChange,
         readOnly,
+        publishing,
         onPublish,
         helpSlot,
     }: {
         value?: string;
         onChange?: (html: string) => void;
         readOnly?: boolean;
+        publishing?: boolean;
         onPublish?: () => void;
         helpSlot?: React.ReactNode;
     }) => (
@@ -57,7 +59,7 @@ vi.mock('../../../../../components/FormPluginEditor/M3RichTextEditor', () => ({
                 </button>
             )}
             {!readOnly && onPublish && (
-                <button type="button" onClick={() => onPublish()}>
+                <button type="button" disabled={publishing} onClick={() => onPublish()}>
                     legal.m3Editor.publish
                 </button>
             )}
@@ -88,7 +90,7 @@ const agencyData = {
 } as unknown as AgencyData;
 
 describe('LegalTextSettings (M3 editor)', () => {
-    it('publishes the complete merged map in the CardEditable formData structure', async () => {
+    it('publishes only agency overrides and local edits, not inherited tenant values', async () => {
         const user = userEvent.setup();
         const onSave = vi.fn();
         render(<LegalTextSettings agencyData={agencyData} field="privacy" onSave={onSave} />);
@@ -99,11 +101,20 @@ describe('LegalTextSettings (M3 editor)', () => {
         await user.click(screen.getByRole('button', { name: 'edit' }));
         await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
 
-        // Same structure the old CardEditable submitted; the untouched inherited
-        // English text is kept.
         expect(onSave).toHaveBeenCalledWith({
-            content: { privacy: { de: '<p>edited</p>', en: '<p>Tenant EN</p>' } },
+            content: { privacy: { de: '<p>edited</p>' } },
         });
+    });
+
+    it('prevents duplicate publishing while the agency mutation is pending', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        render(<LegalTextSettings agencyData={agencyData} field="privacy" onSave={onSave} saving />);
+
+        const publish = screen.getByRole('button', { name: 'legal.m3Editor.publish' });
+        expect(publish).toBeDisabled();
+        await user.click(publish);
+        expect(onSave).not.toHaveBeenCalled();
     });
 
     it('renders read-only without a publish action when the permission is missing', () => {

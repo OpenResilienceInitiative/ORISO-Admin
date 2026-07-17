@@ -105,7 +105,7 @@ const AnchorChips = ({
                                 {active && <AutoStories className="RichEditor-anchorChipIcon" />}
                                 <span>{anchor.text}</span>
                             </button>
-                            {editable && (
+                            {editable && onRemove && (
                                 <button
                                     type="button"
                                     className="RichEditor-anchorChipRemove"
@@ -113,7 +113,7 @@ const AnchorChips = ({
                                         text: anchor.text,
                                         defaultValue: '{{text}} remove',
                                     })}
-                                    onClick={() => onRemove?.(anchor.id)}
+                                    onClick={() => onRemove(anchor.id)}
                                 >
                                     <Close />
                                 </button>

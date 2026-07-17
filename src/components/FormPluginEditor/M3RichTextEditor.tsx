@@ -67,6 +67,8 @@ export type EditorVersion = {
     label: string;
     /** The version's HTML content. */
     content: string;
+    /** False when content is a preview fallback from another language. */
+    restorable?: boolean;
 };
 
 export type M3RichTextEditorProps = {
@@ -141,8 +143,9 @@ export type M3RichTextEditorProps = {
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
 
 /** Version ids are ISO activation dates (DPA container) — null when they aren't parseable. */
-const parseVersionDate = (id: string): Date | null => {
-    const date = new Date(id);
+export const parseVersionDate = (id: string): Date | null => {
+    const dateOnly = id.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const date = dateOnly ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])) : new Date(id);
     return Number.isNaN(date.getTime()) ? null : date;
 };
 
@@ -567,28 +570,12 @@ export const M3RichTextEditor = ({
         `${date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}` +
         `${locale.startsWith('de') ? ' Uhr' : ''}`;
     // "Auto Chapters" (Figma 1280-73045): per heading level, whether new
-    // headings automatically get a clickable anchor. Persisted per editor
-    // (keyed by the card title) until re-enabled.
-    const autoChaptersStorageKey = `oriso-admin.editor.autoChapters.${title}`;
-    const [autoChapters, setAutoChapters] = useState<Record<number, boolean>>(() => {
-        const initial: Record<number, boolean> = { 1: true, 2: true, 3: true };
-        try {
-            [1, 2, 3].forEach((level) => {
-                initial[level] = window.localStorage.getItem(`${autoChaptersStorageKey}.h${level}`) !== 'false';
-            });
-        } catch {
-            // Storage unavailable: default to on.
-        }
-        return initial;
-    });
+    // headings automatically get a clickable anchor for this editor session.
+    // Titles are translated and therefore not safe persistence identifiers.
+    const [autoChapters, setAutoChapters] = useState<Record<number, boolean>>({ 1: true, 2: true, 3: true });
     const toggleAutoChapters = (level: number) =>
         setAutoChapters((current) => {
             const next = { ...current, [level]: !(current[level] !== false) };
-            try {
-                window.localStorage.setItem(`${autoChaptersStorageKey}.h${level}`, String(next[level]));
-            } catch {
-                // Storage unavailable: the toggle still works for this session.
-            }
             return next;
         });
     // Which saved version is being viewed (null = the editable current draft).
@@ -718,7 +705,7 @@ export const M3RichTextEditor = ({
                         {t('legal.m3Editor.viewingVersion')}: {viewingVersion.label}
                     </span>
                     <div className={styles.versionBannerActions}>
-                        {!readOnly && onRestoreVersion && (
+                        {!readOnly && onRestoreVersion && viewingVersion.restorable !== false && (
                             <button
                                 type="button"
                                 className={styles.outlineBtn}

@@ -14,6 +14,9 @@ const { useDpaVersions, publishMutate, useTranslation, useTenantAdminData } = vi
 vi.mock('react-i18next', () => ({ useTranslation }));
 vi.mock('../../../../../hooks/useDpaVersions.hook', () => ({ useDpaVersions }));
 vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminData }));
+vi.mock('../../../../../hooks/useUserData.hook', () => ({
+    useUserData: () => ({ data: { id: 'admin-1' } }),
+}));
 vi.mock('../../../../../hooks/usePublishDpa.hook', () => ({
     usePublishDpa: () => ({ mutate: publishMutate, isPending: false }),
 }));
