@@ -20,10 +20,7 @@ describe('admin tour definitions', () => {
         const keys = [
             adminDemoTour.titleKey,
             adminDemoTour.summaryKey,
-            ...adminDemoTour.steps.flatMap((step) => [
-                step.titleKey,
-                step.contentKey,
-            ]),
+            ...adminDemoTour.steps.flatMap((step) => [step.titleKey, step.contentKey]),
         ];
         keys.forEach((key) => {
             expect(typeof de[key], `missing DE key ${key}`).toBe('string');

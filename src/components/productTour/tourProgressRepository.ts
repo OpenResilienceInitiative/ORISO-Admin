@@ -22,10 +22,7 @@ export const inMemoryTourProgressRepository = (): TourProgressRepository => {
         async saveProgress(progress: TourProgress): Promise<void> {
             store.set(key(progress.tourId, progress.tourVersion), progress);
         },
-        async getProgress(
-            tourId: string,
-            tourVersion: number
-        ): Promise<TourProgress | null> {
+        async getProgress(tourId: string, tourVersion: number): Promise<TourProgress | null> {
             return store.get(key(tourId, tourVersion)) ?? null;
         },
     };

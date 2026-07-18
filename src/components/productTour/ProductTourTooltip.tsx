@@ -8,29 +8,15 @@ import { Button, BUTTON_TYPES } from '../button/Button';
  * keys (set by mapStepsToJoyride) and are translated here; step copy may
  * contain static markup like <br /> from the translation bundles.
  */
-export const ProductTourTooltip = ({
-    index,
-    size,
-    isLastStep,
-    step,
-    controls,
-    tooltipProps,
-}: TooltipRenderProps) => {
+export const ProductTourTooltip = ({ index, size, isLastStep, step, controls, tooltipProps }: TooltipRenderProps) => {
     const { t } = useTranslation();
 
     const nextLabel = isLastStep ? t('productTour.done') : t('productTour.next');
 
     return (
-        <div
-            className="productTourTooltip"
-            role="alertdialog"
-            aria-label={t(String(step.title))}
-            {...tooltipProps}
-        >
+        <div className="productTourTooltip" role="alertdialog" aria-label={t(String(step.title))} {...tooltipProps}>
             <div className="productTourTooltip__header">
-                <h2 className="productTourTooltip__title">
-                    {t(String(step.title))}
-                </h2>
+                <h2 className="productTourTooltip__title">{t(String(step.title))}</h2>
                 <button
                     type="button"
                     className="productTourTooltip__close"
@@ -42,6 +28,7 @@ export const ProductTourTooltip = ({
             </div>
             <div
                 className="productTourTooltip__content"
+                // eslint-disable-next-line react/no-danger -- step copy is static, trusted i18n bundle text (same rendering the legacy intro.js walkthrough used)
                 dangerouslySetInnerHTML={{
                     __html: t(String(step.content)),
                 }}

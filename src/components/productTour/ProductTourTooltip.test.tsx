@@ -61,25 +61,15 @@ describe('ProductTourTooltip (admin)', () => {
         render(<ProductTourTooltip {...(baseProps() as any)} />);
 
         expect(screen.getByText('Schritt 2 von 4')).toBeTruthy();
-        expect(
-            screen
-                .getByRole('alertdialog')
-                .querySelectorAll('.productTourTooltip__bullet')
-        ).toHaveLength(4);
+        expect(screen.getByRole('alertdialog').querySelectorAll('.productTourTooltip__bullet')).toHaveLength(4);
     });
 
     it('hides the back button on the first step and shows done on the last', () => {
-        const { unmount } = render(
-            <ProductTourTooltip {...(baseProps({ index: 0 }) as any)} />
-        );
+        const { unmount } = render(<ProductTourTooltip {...(baseProps({ index: 0 }) as any)} />);
         expect(screen.queryByText('Zurück')).toBeNull();
         unmount();
 
-        render(
-            <ProductTourTooltip
-                {...(baseProps({ index: 3, isLastStep: true }) as any)}
-            />
-        );
+        render(<ProductTourTooltip {...(baseProps({ index: 3, isLastStep: true }) as any)} />);
         expect(screen.getByText('Fertig')).toBeTruthy();
         expect(screen.queryByText('Weiter')).toBeNull();
     });
