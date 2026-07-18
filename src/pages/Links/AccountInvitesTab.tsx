@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import {
     accountInviteAcceptBaseUrl,
     AccountInviteDTO,
+    AccountInviteStatus,
     AccountInviteTargetRole,
     createAccountInvite,
     InviteEmailTemplateDTO,
@@ -16,11 +17,13 @@ import {
 } from '../../api/accountInvites/accountInvites';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
+import { Modal } from '../../components/Modal';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 import { InviteComposer, InviteComposerValues, InviteSendMode } from './InviteComposer';
 import { InviteCsvImportModal, type InviteCsvCreateRow } from './InviteCsvImportModal';
+import styles from './styles.module.scss';
 
 interface AccountInvitesTabProps {
     targetRole: AccountInviteTargetRole;
@@ -57,6 +60,29 @@ const statusColor = (value?: string | null) => {
 
 const StatusValue = ({ value }: { value?: string | null }) => <Tag color={statusColor(value)}>{value || '—'}</Tag>;
 
+/**
+ * Send-state column (#316, Figma 1165:17005 red annotation "2nd: send state,
+ * draft, sent, declined etc."): the raw enum is translated into the German
+ * labels the owner asked for; colors keep the existing statusColor mapping.
+ * Fallbacks double as the i18n defaults for both locales' JSON files.
+ */
+const INVITE_STATUS_FALLBACK_LABELS: Record<AccountInviteStatus, string> = {
+    DRAFT: 'Draft',
+    EMAIL_SENT: 'Gesendet',
+    ACCEPTED: 'Angenommen',
+    EXPIRED: 'Abgelaufen',
+    REVOKED: 'Widerrufen',
+    SUPERSEDED: 'Ersetzt',
+};
+
+/**
+ * Bulk actions (#316) only make sense while an invite can still change:
+ * DRAFT can be sent, EMAIL_SENT can be resent, and both can be revoked.
+ * Terminal states (ACCEPTED/EXPIRED/REVOKED/SUPERSEDED) are not selectable.
+ */
+const isBulkSelectable = (invite: AccountInviteDTO) =>
+    invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
+
 export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField = false }: AccountInvitesTabProps) => {
     const { t } = useTranslation();
     const [invites, setInvites] = useState<AccountInviteDTO[]>([]);
@@ -69,6 +95,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [templatesDialogView, setTemplatesDialogView] = useState<'list' | 'create' | null>(null);
     // CSV import (#315): parse result + the send mode captured when the file was picked.
     const [csvImport, setCsvImport] = useState<{ result: ParseInviteCsvResult; sendMode: InviteSendMode } | null>(null);
+    // Bulk selection (#316): checked row ids, the open/closed state of the
+    // "Ausgewählte löschen" confirmation, and a guard while a batch runs.
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
+    const [bulkRunning, setBulkRunning] = useState(false);
 
     const currentTenantId = parseUserAuthInfo().tenantId || undefined;
 
@@ -364,6 +395,110 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [loadInvites, pagination.current, pagination.pageSize, t],
     );
 
+    // Selection follows the visible page: reloading (pagination, refresh after an
+    // action) drops ids that are no longer listed or no longer selectable, so the
+    // bulk actions can never act on stale rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) => invites.some((invite) => invite.id === id && isBulkSelectable(invite))),
+        );
+    }, [invites]);
+
+    const selectedInvites = useMemo(
+        () => invites.filter((invite) => selectedIds.includes(invite.id) && isBulkSelectable(invite)),
+        [invites, selectedIds],
+    );
+
+    // "Ausgewählte löschen" (#316): there is no hard-delete endpoint — revoke IS
+    // the delete in this domain, which the confirmation dialog spells out. One
+    // sequential revoke per row keeps failures attributable; they are collected
+    // into a single summary instead of one toast per row.
+    const onBulkRevokeConfirmed = useCallback(async () => {
+        setBulkDeleteConfirmOpen(false);
+        const targets = selectedInvites;
+        if (targets.length === 0) return;
+        setBulkRunning(true);
+        const failedEmails: string[] = [];
+        for (let i = 0; i < targets.length; i += 1) {
+            try {
+                // eslint-disable-next-line no-await-in-loop -- sequential on purpose: per-row attribution, no backend burst
+                await revokeAccountInvite(targets[i].id);
+            } catch {
+                failedEmails.push(targets[i].recipientEmail);
+            }
+        }
+        setBulkRunning(false);
+        if (failedEmails.length === 0) {
+            message.success(
+                t('links.bulk.revokeSummaryAll', '{{count}} Einladungen widerrufen', { count: targets.length }),
+            );
+        } else {
+            message.warning(
+                t('links.bulk.revokeSummaryPartial', '{{revoked}} widerrufen, {{failed}} fehlgeschlagen: {{emails}}', {
+                    revoked: targets.length - failedEmails.length,
+                    failed: failedEmails.length,
+                    emails: failedEmails.join(', '),
+                }),
+            );
+        }
+        setSelectedIds([]);
+        await loadInvites(pagination.current, pagination.pageSize);
+    }, [loadInvites, pagination.current, pagination.pageSize, selectedInvites, t]);
+
+    // Bulk send (#316): the composer's send button acts on the selection — one
+    // resend per selected DRAFT/EMAIL_SENT row with the current template. Failed
+    // rows stay selected (their checkbox marks them for a retry); a full success
+    // clears the selection.
+    const onBulkSend = useCallback(async () => {
+        const templateId = selectedTemplateId ?? activeTemplates[0]?.id;
+        if (!templateId) {
+            message.error(t('links.accountInvites.templateRequired', 'Select a template first.'));
+            return;
+        }
+        const targets = selectedInvites;
+        if (targets.length === 0) return;
+        setBulkRunning(true);
+        const failed: AccountInviteDTO[] = [];
+        for (let i = 0; i < targets.length; i += 1) {
+            try {
+                // eslint-disable-next-line no-await-in-loop -- sequential on purpose: per-row attribution, no mail burst
+                const resent = await resendAccountInvite(targets[i].id, {
+                    acceptBaseUrl: accountInviteAcceptBaseUrl,
+                    templateId,
+                });
+                rememberGeneratedLink(resent);
+            } catch {
+                failed.push(targets[i]);
+            }
+        }
+        setBulkRunning(false);
+        if (failed.length === 0) {
+            message.success(
+                t('links.bulk.sendSummaryAll', '{{count}} Einladungen gesendet', { count: targets.length }),
+            );
+            setSelectedIds([]);
+        } else {
+            message.warning(
+                t('links.bulk.sendSummaryPartial', '{{sent}} gesendet, {{failed}} fehlgeschlagen: {{emails}}', {
+                    sent: targets.length - failed.length,
+                    failed: failed.length,
+                    emails: failed.map((invite) => invite.recipientEmail).join(', '),
+                }),
+            );
+            setSelectedIds(failed.map((invite) => invite.id));
+        }
+        await loadInvites(pagination.current, pagination.pageSize);
+    }, [
+        activeTemplates,
+        loadInvites,
+        pagination.current,
+        pagination.pageSize,
+        rememberGeneratedLink,
+        selectedInvites,
+        selectedTemplateId,
+        t,
+    ]);
+
     const onTableChange = useCallback(
         (tablePagination: TablePaginationConfig) => {
             loadInvites(tablePagination.current ?? 1, tablePagination.pageSize ?? 20);
@@ -384,7 +519,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 title: t('links.accountInvites.inviteStatus', 'Invite'),
                 dataIndex: 'inviteStatus',
                 key: 'inviteStatus',
-                render: (value: string) => <StatusValue value={value} />,
+                render: (value: AccountInviteStatus) => (
+                    <Tag color={statusColor(value)}>
+                        {t(`links.accountInvites.status.${value}`, INVITE_STATUS_FALLBACK_LABELS[value] ?? value)}
+                    </Tag>
+                ),
             },
             {
                 title: t('links.accountInvites.mailStatus', 'Mail'),
@@ -454,17 +593,25 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 initialTenantId={isTenantInvite ? undefined : currentTenantId}
                 persistKey={targetRole}
                 requireTenantId={isTenantInvite}
-                submitting={submitting}
+                selectionCount={selectedInvites.length}
+                submitting={submitting || bulkRunning}
                 suggestedTenantId={suggestedTenantId}
                 takenTenantIds={takenTenantIds}
                 templateId={selectedTemplateId}
                 templates={templates}
+                onBulkSend={onBulkSend}
                 onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
+                onDeleteSelected={() => setBulkDeleteConfirmOpen(true)}
                 onManageTemplates={(intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list')}
                 onSubmit={onCreate}
                 onTemplateIdChange={setSelectedTemplateId}
             />
-            <ListingTable
+            {selectedInvites.length > 0 && (
+                <div className={styles.selectionCount} role="status">
+                    {t('links.bulk.selectedCount', '{{count}} ausgewählt', { count: selectedInvites.length })}
+                </div>
+            )}
+            <ListingTable<AccountInviteDTO>
                 rowKey="id"
                 loading={loading}
                 columns={columns}
@@ -476,8 +623,24 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     showSizeChanger: true,
                     pageSizeOptions: ['10', '20', '30'],
                 }}
+                rowSelection={{
+                    selectedRowKeys: selectedIds,
+                    onChange: (keys) => setSelectedIds(keys.map(Number)),
+                    getCheckboxProps: (invite) => ({ disabled: !isBulkSelectable(invite) || bulkRunning }),
+                }}
                 onChange={onTableChange}
             />
+            {bulkDeleteConfirmOpen && (
+                <Modal
+                    titleKey="links.bulk.deleteConfirmTitle"
+                    contentKey="links.bulk.deleteConfirmBody"
+                    contentKeyOptions={{ count: selectedInvites.length }}
+                    okLabelKey="links.bulk.deleteConfirmOk"
+                    cancelLabelKey="links.bulk.deleteConfirmCancel"
+                    onConfirm={onBulkRevokeConfirmed}
+                    onClose={() => setBulkDeleteConfirmOpen(false)}
+                />
+            )}
             {csvImport && (
                 <InviteCsvImportModal
                     autoAssignTenantIds={isTenantInvite}
