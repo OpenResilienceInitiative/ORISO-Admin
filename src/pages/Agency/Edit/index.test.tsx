@@ -204,14 +204,19 @@ describe('AgencyPageEdit create flow', () => {
     it('does not submit a new agency without a selected tenant', async () => {
         renderWithClient(<AgencyPageEdit />);
 
+        // Wait for the tenant assignment field before interacting — clicking
+        // Speichern earlier races the async tenant-options fetch and the
+        // required rule may not be registered yet when the form validates.
+        expect(await screen.findByText('Trägerzuordnung')).toBeInTheDocument();
+
         fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Neue Beratungsstelle' } });
         fireEvent.change(screen.getByLabelText('PLZ *'), { target: { value: '86161' } });
         fireEvent.change(screen.getByLabelText('Stadt *'), { target: { value: 'Augsburg' } });
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
-        // antd resolves required-field validation asynchronously; on a loaded CI
-        // runner the error can take longer than RTL's 1s default to render, so
-        // give the assertion real headroom (flake seen in CI, passes locally).
+        // Generous timeout: the error surfaces via antd async validation plus a
+        // notification render; the 1s findBy default is too tight on loaded CI
+        // runners (observed flake in run 29576826138).
         expect(
             await screen.findByText('Bitte füllen Sie das markierte Feld aus.', undefined, { timeout: 5000 }),
         ).toBeInTheDocument();
