@@ -1,4 +1,4 @@
-import { Button, Form, Input, InputNumber, message, Select, Tag } from 'antd';
+import { Button, message, Tag } from 'antd';
 import type { TablePaginationConfig } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,21 +18,12 @@ import { searchTenantData } from '../../api/tenant/searchTenantData';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
+import { InviteComposer, InviteComposerValues } from './InviteComposer';
 
 interface AccountInvitesTabProps {
     targetRole: AccountInviteTargetRole;
     templateKind: InviteEmailTemplateKind;
     includeAgencyField?: boolean;
-}
-
-interface AccountInviteFormValues {
-    tenantId?: number;
-    recipientEmail: string;
-    firstName?: string;
-    lastName?: string;
-    agencyId?: number;
-    expiresInDays?: number;
-    templateId: number;
 }
 
 const statusColor = (value?: string | null) => {
@@ -66,14 +57,14 @@ const StatusValue = ({ value }: { value?: string | null }) => <Tag color={status
 
 export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField = false }: AccountInvitesTabProps) => {
     const { t } = useTranslation();
-    const [form] = Form.useForm<AccountInviteFormValues>();
     const [invites, setInvites] = useState<AccountInviteDTO[]>([]);
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
+    const [selectedTemplateId, setSelectedTemplateId] = useState<number | undefined>();
     const [generatedLinks, setGeneratedLinks] = useState<Record<number, string>>({});
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
-    const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
+    const [templatesDialogView, setTemplatesDialogView] = useState<'list' | 'create' | null>(null);
 
     const currentTenantId = parseUserAuthInfo().tenantId || undefined;
 
@@ -177,22 +168,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         return candidate;
     }, [isTenantInvite, existingTenantIdsLoaded, activeInviteTenantIdsLoaded, takenTenantIds]);
 
-    useEffect(() => {
-        if (suggestedTenantId == null) return;
-        // Never clobber a value the admin already typed (or a value from a prior
-        // suggestion); only fill in while the field is genuinely empty.
-        if (form.getFieldValue('tenantId') == null) {
-            form.setFieldValue('tenantId', suggestedTenantId);
-        }
-    }, [form, suggestedTenantId]);
-
-    const templateOptions = useMemo(
-        () =>
-            templates
-                .filter((template) => template.active)
-                .map((template) => ({ value: template.id, label: template.name })),
-        [templates],
-    );
+    const activeTemplates = useMemo(() => templates.filter((template) => template.active), [templates]);
 
     const loadInvites = useCallback(
         async (page: number, pageSize: number) => {
@@ -228,23 +204,23 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         loadTemplates();
     }, [loadTemplates]);
 
-    // After a template is created/edited in the dialog, refresh the select — and if it
+    // After a template is created/edited in the dialog, refresh the picker — and if it
     // is a newly created, active template of this tab's kind, preselect it right away.
-    // The saved template is merged into local state immediately so the select can show
-    // its name even before the refetch lands (or if that refetch fails).
+    // The saved template is merged into local state immediately so the split button can
+    // show its name even before the refetch lands (or if that refetch fails).
     const onTemplateChanged = useCallback(
         (template: InviteEmailTemplateDTO) => {
             if (template.kind === templateKind) {
                 setTemplates((current) => [...current.filter((existing) => existing.id !== template.id), template]);
                 if (template.active) {
-                    form.setFieldValue('templateId', template.id);
-                } else if (form.getFieldValue('templateId') === template.id) {
-                    form.setFieldValue('templateId', undefined);
+                    setSelectedTemplateId(template.id);
+                } else {
+                    setSelectedTemplateId((current) => (current === template.id ? undefined : current));
                 }
             }
             loadTemplates();
         },
-        [form, loadTemplates, templateKind],
+        [loadTemplates, templateKind],
     );
 
     useEffect(() => {
@@ -252,10 +228,10 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     }, [loadInvites]);
 
     useEffect(() => {
-        if (templateOptions.length === 1) {
-            form.setFieldValue('templateId', templateOptions[0].value);
+        if (activeTemplates.length === 1) {
+            setSelectedTemplateId(activeTemplates[0].id);
         }
-    }, [form, templateOptions]);
+    }, [activeTemplates]);
 
     const copyLink = useCallback(
         (url?: string) => {
@@ -279,24 +255,30 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     }, []);
 
     const onCreate = useCallback(
-        async (values: AccountInviteFormValues) => {
+        async (values: InviteComposerValues): Promise<boolean> => {
             setSubmitting(true);
             try {
                 const created = await createAccountInvite({
                     acceptBaseUrl: accountInviteAcceptBaseUrl,
                     agencyId: values.agencyId,
-                    expiresInDays: values.expiresInDays ?? 30,
+                    expiresInDays: 30,
                     firstName: values.firstName,
                     lastName: values.lastName,
                     recipientEmail: values.recipientEmail,
                     targetRole,
-                    templateId: values.templateId,
+                    // "Empfänger nur anlegen": the API creates without sending when
+                    // templateId is omitted (JSON.stringify drops the undefined key).
+                    templateId: values.sendMode === 'direct' ? values.templateId : undefined,
                     tenantId: values.tenantId,
                 });
                 rememberGeneratedLink(created);
-                message.success(t('links.accountInvites.created', 'Invite sent'));
-                form.resetFields(['recipientEmail', 'firstName', 'lastName', 'agencyId']);
+                message.success(
+                    values.sendMode === 'direct'
+                        ? t('links.accountInvites.created', 'Invite sent')
+                        : t('links.accountInvites.createdNoEmail', 'Recipient created without sending an email'),
+                );
                 await loadInvites(1, pagination.pageSize);
+                return true;
             } catch (error) {
                 // The backend also rejects a colliding tenantId with 409 (see
                 // createAccountInvite's CONFLICT_WITH_RESPONSE handling); surface that
@@ -306,16 +288,17 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 } else {
                     message.error(t('links.error.createFailed', 'Could not create link'));
                 }
+                return false;
             } finally {
                 setSubmitting(false);
             }
         },
-        [form, isTenantInvite, loadInvites, pagination.pageSize, rememberGeneratedLink, targetRole, t],
+        [isTenantInvite, loadInvites, pagination.pageSize, rememberGeneratedLink, targetRole, t],
     );
 
     const onResend = useCallback(
         async (invite: AccountInviteDTO) => {
-            const templateId = form.getFieldValue('templateId') || templateOptions[0]?.value;
+            const templateId = selectedTemplateId ?? activeTemplates[0]?.id;
             if (!templateId) {
                 message.error(t('links.accountInvites.templateRequired', 'Select a template first.'));
                 return;
@@ -332,7 +315,15 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 message.error(t('links.accountInvites.resendFailed', 'Could not resend invite'));
             }
         },
-        [form, loadInvites, pagination.current, pagination.pageSize, rememberGeneratedLink, t, templateOptions],
+        [
+            activeTemplates,
+            loadInvites,
+            pagination.current,
+            pagination.pageSize,
+            rememberGeneratedLink,
+            selectedTemplateId,
+            t,
+        ],
     );
 
     const onRevoke = useCallback(
@@ -433,92 +424,20 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
 
     return (
         <>
-            <Form
-                form={form}
-                className={listingTableStyles.createForm}
-                layout="inline"
-                initialValues={{ expiresInDays: 30, tenantId: isTenantInvite ? undefined : currentTenantId }}
-                onFinish={onCreate}
-            >
-                <div className={listingTableStyles.formFields}>
-                    <Form.Item
-                        name="tenantId"
-                        label={t('links.accountInvites.tenantId', 'Tenant ID')}
-                        rules={
-                            isTenantInvite
-                                ? [
-                                      {
-                                          required: true,
-                                          message: t('links.accountInvites.tenantIdRequired', 'Tenant ID is required.'),
-                                      },
-                                      {
-                                          validator: (_, value) =>
-                                              value != null && takenTenantIds.has(Number(value))
-                                                  ? Promise.reject(
-                                                        new Error(
-                                                            t(
-                                                                'links.accountInvites.tenantIdTaken',
-                                                                'This tenant ID is already taken.',
-                                                            ),
-                                                        ),
-                                                    )
-                                                  : Promise.resolve(),
-                                      },
-                                  ]
-                                : []
-                        }
-                    >
-                        <InputNumber min={1} />
-                    </Form.Item>
-                    <Form.Item
-                        name="recipientEmail"
-                        label={t('links.accountInvites.email', 'E-mail')}
-                        rules={[{ required: true, type: 'email' }]}
-                    >
-                        <Input style={{ minWidth: 220 }} />
-                    </Form.Item>
-                    <Form.Item name="firstName" label={t('links.accountInvites.firstName', 'First name')}>
-                        <Input />
-                    </Form.Item>
-                    <Form.Item name="lastName" label={t('links.accountInvites.lastName', 'Last name')}>
-                        <Input />
-                    </Form.Item>
-                    {includeAgencyField && (
-                        <Form.Item name="agencyId" label={t('links.accountInvites.agencyId', 'Agency ID')}>
-                            <InputNumber min={1} />
-                        </Form.Item>
-                    )}
-                    <Form.Item
-                        name="templateId"
-                        label={t('links.accountInvites.template', 'Template')}
-                        rules={[{ required: true, message: t('plsSelect') }]}
-                    >
-                        <Select
-                            style={{ minWidth: 220 }}
-                            placeholder={t('links.accountInvites.templatePh', 'Select template')}
-                            options={templateOptions}
-                        />
-                    </Form.Item>
-                    <Form.Item>
-                        <Button onClick={() => setTemplatesDialogOpen(true)}>
-                            {t('links.templates.manage', 'Manage templates')}
-                        </Button>
-                    </Form.Item>
-                    <Form.Item name="expiresInDays" label={t('links.form.expiresInDays', 'Expires in days')}>
-                        <InputNumber min={1} max={365} />
-                    </Form.Item>
-                </div>
-                <Form.Item>
-                    <Button
-                        type="primary"
-                        htmlType="submit"
-                        loading={submitting}
-                        className={listingTableStyles.createButton}
-                    >
-                        {t('links.accountInvites.createAndSend', 'Create and send')}
-                    </Button>
-                </Form.Item>
-            </Form>
+            <InviteComposer
+                includeAgencyField={includeAgencyField}
+                initialTenantId={isTenantInvite ? undefined : currentTenantId}
+                persistKey={targetRole}
+                requireTenantId={isTenantInvite}
+                submitting={submitting}
+                suggestedTenantId={suggestedTenantId}
+                takenTenantIds={takenTenantIds}
+                templateId={selectedTemplateId}
+                templates={templates}
+                onManageTemplates={(intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list')}
+                onSubmit={onCreate}
+                onTemplateIdChange={setSelectedTemplateId}
+            />
             <ListingTable
                 rowKey="id"
                 loading={loading}
@@ -533,10 +452,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 }}
                 onChange={onTableChange}
             />
-            {templatesDialogOpen && (
+            {templatesDialogView && (
                 <EmailTemplatesDialog
+                    initialView={templatesDialogView}
                     templateKind={templateKind}
-                    onClose={() => setTemplatesDialogOpen(false)}
+                    onClose={() => setTemplatesDialogView(null)}
                     onChanged={onTemplateChanged}
                 />
             )}
