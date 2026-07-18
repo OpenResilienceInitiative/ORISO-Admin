@@ -104,6 +104,12 @@ describe('LoginForm', () => {
         consoleWarnSpy.mockRestore();
     });
 
+    it('links password recovery to the admin-owned reset flow', () => {
+        render(<LoginForm />);
+
+        expect(screen.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute('href', '/admin/password-reset');
+    });
+
     it('keeps sign in disabled until username and password are entered', async () => {
         const user = userEvent.setup({ delay: null });
         render(<LoginForm />);
