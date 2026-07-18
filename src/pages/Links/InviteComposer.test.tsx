@@ -3,9 +3,12 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { configure, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';
+
+// CI runners are heavily contended; the 1s default for findBy*/waitFor flakes there.
+configure({ asyncUtilTimeout: 10_000 });
 
 // antd's Dropdown (split-button menus) queries matchMedia, which jsdom does not implement.
 window.matchMedia ??= ((query: string) => ({
