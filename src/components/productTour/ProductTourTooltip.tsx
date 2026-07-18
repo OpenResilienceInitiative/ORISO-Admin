@@ -1,4 +1,5 @@
 import { CloseOutlined } from '@ant-design/icons';
+import DOMPurify from 'dompurify';
 import { useTranslation } from 'react-i18next';
 import type { TooltipRenderProps } from 'react-joyride';
 import { Button, BUTTON_TYPES } from '../button/Button';
@@ -28,9 +29,12 @@ export const ProductTourTooltip = ({ index, size, isLastStep, step, controls, to
             </div>
             <div
                 className="productTourTooltip__content"
-                // eslint-disable-next-line react/no-danger -- step copy is static, trusted i18n bundle text (same rendering the legacy intro.js walkthrough used)
+                // eslint-disable-next-line react/no-danger -- sanitized below; only inline formatting from the i18n bundles survives
                 dangerouslySetInnerHTML={{
-                    __html: t(String(step.content)),
+                    __html: DOMPurify.sanitize(t(String(step.content)), {
+                        ALLOWED_TAGS: ['br', 'b', 'strong', 'i', 'em'],
+                        ALLOWED_ATTR: [],
+                    }),
                 }}
             />
             <div className="productTourTooltip__actions">

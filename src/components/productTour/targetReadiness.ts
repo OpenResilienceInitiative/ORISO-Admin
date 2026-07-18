@@ -12,7 +12,16 @@ export const waitForTarget = (selector: string, { timeoutMs, pollMs = 50 }: Wait
     new Promise((resolve) => {
         const deadline = Date.now() + timeoutMs;
         const check = () => {
-            if (document.querySelector(selector)) {
+            let target: Element | null;
+            try {
+                target = document.querySelector(selector);
+            } catch {
+                // An invalid selector can never match: keep the never-reject
+                // contract and let the caller skip the step safely.
+                resolve(false);
+                return;
+            }
+            if (target) {
                 resolve(true);
             } else if (Date.now() >= deadline) {
                 resolve(false);
