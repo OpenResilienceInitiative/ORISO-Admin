@@ -1,4 +1,4 @@
-import { Button, Form, Input, message, Select, Switch, Tag } from 'antd';
+import { Button, Form, Input, message, Select, Switch, Tag, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -17,6 +17,11 @@ const TEMPLATE_KINDS: InviteEmailTemplateKind[] = ['TENANT_INVITE', 'COUNSELLOR_
 interface EmailTemplatesDialogProps {
     /** The template kind of the invite tab the dialog was opened from — used to preset new templates. */
     templateKind: InviteEmailTemplateKind;
+    /**
+     * `'create'` opens directly in the create form (invite composer's
+     * "Neue E-Mail-Vorlage erstellen"); default is the template list.
+     */
+    initialView?: 'list' | 'create';
     onClose: () => void;
     /** Fired after any successful create/update so the opener can refetch its template select. */
     onChanged?: (template: InviteEmailTemplateDTO) => void;
@@ -37,7 +42,12 @@ interface TemplateFormValues {
  * create/edit form. Deliberately NOT a separate admin section — templates are only
  * ever needed right where invites are sent.
  */
-export const EmailTemplatesDialog = ({ templateKind, onClose, onChanged }: EmailTemplatesDialogProps) => {
+export const EmailTemplatesDialog = ({
+    templateKind,
+    initialView = 'list',
+    onClose,
+    onChanged,
+}: EmailTemplatesDialogProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm<TemplateFormValues>();
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
@@ -82,6 +92,14 @@ export const EmailTemplatesDialog = ({ templateKind, onClose, onChanged }: Email
         form.setFieldsValue({ kind: templateKind, language: undefined, active: true });
         setView('form');
     }, [form, templateKind]);
+
+    // Deep link from the invite composer ("Neue E-Mail-Vorlage erstellen"): open
+    // straight in the create form instead of the list.
+    useEffect(() => {
+        if (initialView === 'create') {
+            openCreateForm();
+        }
+    }, [initialView, openCreateForm]);
 
     const openEditForm = useCallback(
         (template: InviteEmailTemplateDTO) => {
@@ -179,9 +197,22 @@ export const EmailTemplatesDialog = ({ templateKind, onClose, onChanged }: Email
                 title: t('links.templates.col.actions', 'Actions'),
                 key: 'actions',
                 render: (_: unknown, template: InviteEmailTemplateDTO) => (
-                    <Button size="small" onClick={() => openEditForm(template)}>
-                        {t('links.templates.edit', 'Edit')}
-                    </Button>
+                    <div className={listingTableStyles.actionGroup}>
+                        <Button size="small" onClick={() => openEditForm(template)}>
+                            {t('links.templates.edit', 'Edit')}
+                        </Button>
+                        {/* The backend exposes no DELETE for invite-email-templates yet
+                            (AccountInviteController: POST/PUT/GET only), so per #314 the
+                            delete action ships disabled with an explanatory tooltip
+                            instead of inventing an endpoint. */}
+                        <Tooltip title={t('links.templates.deleteUnavailable', 'Backend-Endpoint fehlt (#314)')}>
+                            <span>
+                                <Button danger disabled size="small">
+                                    {t('links.templates.delete', 'Delete')}
+                                </Button>
+                            </span>
+                        </Tooltip>
+                    </div>
                 ),
             },
         ],
