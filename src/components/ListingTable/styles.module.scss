@@ -31,7 +31,12 @@
             z-index: 850;
             left: 0;
             right: 0;
-            bottom: 24px;
+            /* Flush with the viewport bottom: at 24px the table container kept
+               peeking through the gap below the sticky bar on tall pages
+               (owner report 2026-07-18, Logs page). The 24px breathing room
+               still applies once the page is scrolled to its end (wrapper
+               padding takes over when sticky releases). */
+            bottom: 0;
             display: flex;
             width: 100%;
             box-sizing: border-box;
