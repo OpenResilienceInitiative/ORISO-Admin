@@ -163,6 +163,25 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(screen.getByLabelText('E-Mail')).toHaveValue('');
     });
 
+    it('parses a picked CSV client-side and opens the preview modal (#315)', async () => {
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }));
+        await screen.findByText('CSV-Datei importieren');
+
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        await user.upload(
+            fileInput,
+            new File(['maria@example.org,Maria,Huber\n'], 'invites.csv', { type: 'text/csv' }),
+        );
+
+        // The preview modal opened with the one parsed recipient in its batch. The
+        // mocked `t` returns raw fallbacks, so the count stays uninterpolated here.
+        expect(await screen.findByRole('button', { name: '{{count}} Empfänger anlegen' })).toBeInTheDocument();
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+    });
+
     it('opens the templates dialog in create view from the template menu', async () => {
         await renderTenantTab();
         const user = userEvent.setup();

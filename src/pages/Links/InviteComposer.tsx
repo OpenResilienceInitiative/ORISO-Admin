@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
-import type { MenuProps } from 'antd';
+import { MoreOutlined, UploadOutlined } from '@ant-design/icons';
+import { message, Upload, type MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import { FloatingLabelInput } from '../../components/FloatingLabelInput';
-import { GlobalSearchBar } from '../../components/GlobalSearch';
+import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { M3NumberField } from '../../components/M3NumberField';
+import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
 import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
@@ -55,6 +57,12 @@ export interface InviteComposerProps {
     onSubmit: (values: InviteComposerValues) => Promise<boolean> | boolean;
     /** Open the EmailTemplatesDialog in the requested view. */
     onManageTemplates: (intent: 'create' | 'delete') => void;
+    /**
+     * Enables the "⋮" more-menu with the "CSV-Datei importieren" entry (#315).
+     * Called with the client-side parse result and the send mode captured at
+     * import time — the file itself is never uploaded anywhere.
+     */
+    onCsvParsed?: (result: ParseInviteCsvResult, sendMode: InviteSendMode) => void;
     searchPlaceholder?: string;
     className?: string;
 }
@@ -62,6 +70,17 @@ export interface InviteComposerProps {
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const sendModeStorageKey = (persistKey: string) => `oriso-admin.invite-composer.send-mode.${persistKey}`;
+
+// `File.text()` with a FileReader fallback — jsdom (tests) implements only the latter.
+const readFileText = (file: File): Promise<string> =>
+    typeof file.text === 'function'
+        ? file.text()
+        : new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(String(reader.result ?? ''));
+              reader.onerror = () => reject(reader.error);
+              reader.readAsText(file);
+          });
 
 const readPersistedSendMode = (persistKey: string): InviteSendMode => {
     try {
@@ -94,6 +113,7 @@ export const InviteComposer = ({
     persistKey,
     onSubmit,
     onManageTemplates,
+    onCsvParsed,
     searchPlaceholder,
     className,
 }: InviteComposerProps) => {
@@ -178,6 +198,45 @@ export const InviteComposer = ({
         },
     };
 
+    // "CSV-Datei importieren" (#315, Figma "Invite Link Options"): the file is read
+    // and parsed entirely client-side; the parse result plus the CURRENT persisted
+    // send mode go to the tab, which opens the preview modal. Direct mode needs a
+    // template — same gate as the send button — otherwise the batch would silently
+    // create-without-send.
+    const handleCsvFile = async (file: File) => {
+        if (sendMode === 'direct' && selectedTemplate == null) {
+            message.error(t('links.accountInvites.templateRequired', 'Bitte zuerst ein Template auswählen.'));
+            return Upload.LIST_IGNORE;
+        }
+        try {
+            const result = parseInviteCsv(await readFileText(file));
+            if (result.rows.length === 0 && result.rejected.length === 0) {
+                message.info(t('links.csvImport.emptyFile', 'Die CSV-Datei enthält keine Empfänger.'));
+            } else {
+                onCsvParsed?.(result, sendMode);
+            }
+        } catch {
+            message.error(t('links.csvImport.readFailed', 'CSV-Datei konnte nicht gelesen werden.'));
+        }
+        return Upload.LIST_IGNORE;
+    };
+
+    const moreMenu: MenuProps = {
+        items: [
+            {
+                key: 'csv-import',
+                label: (
+                    <Upload accept=".csv,text/csv" beforeUpload={handleCsvFile} showUploadList={false}>
+                        <span className={styles.csvImportEntry}>
+                            <UploadOutlined aria-hidden />
+                            {t('links.csvImport.menuEntry', 'CSV-Datei importieren')}
+                        </span>
+                    </Upload>
+                ),
+            },
+        ],
+    };
+
     const sendMenu: MenuProps = {
         items: [
             { key: 'direct', label: t('links.composer.sendDirect', 'Direkt Versenden') },
@@ -188,8 +247,23 @@ export const InviteComposer = ({
         onClick: ({ key }) => changeSendMode(key as InviteSendMode),
     };
 
+    // "⋮" control before the search pill (Figma "Invite Link Options"): opens the
+    // more-menu with secondary composer actions — currently only the CSV import.
+    const moreButton = onCsvParsed ? (
+        <GlobalSearchMenu menu={moreMenu}>
+            <button
+                aria-haspopup="menu"
+                aria-label={t('links.csvImport.moreMenuLabel', 'Weitere Aktionen')}
+                className={styles.moreButton}
+                type="button"
+            >
+                <MoreOutlined aria-hidden />
+            </button>
+        </GlobalSearchMenu>
+    ) : undefined;
+
     return (
-        <GlobalSearchBar className={className} searchPlaceholder={searchPlaceholder}>
+        <GlobalSearchBar className={className} leading={moreButton} searchPlaceholder={searchPlaceholder}>
             <FloatingLabelInput
                 className={styles.emailField}
                 error={showEmailError}

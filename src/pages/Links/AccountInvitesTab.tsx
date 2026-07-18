@@ -17,8 +17,10 @@ import {
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
+import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
-import { InviteComposer, InviteComposerValues } from './InviteComposer';
+import { InviteComposer, InviteComposerValues, InviteSendMode } from './InviteComposer';
+import { InviteCsvImportModal, type InviteCsvCreateRow } from './InviteCsvImportModal';
 
 interface AccountInvitesTabProps {
     targetRole: AccountInviteTargetRole;
@@ -65,6 +67,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [submitting, setSubmitting] = useState(false);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
     const [templatesDialogView, setTemplatesDialogView] = useState<'list' | 'create' | null>(null);
+    // CSV import (#315): parse result + the send mode captured when the file was picked.
+    const [csvImport, setCsvImport] = useState<{ result: ParseInviteCsvResult; sendMode: InviteSendMode } | null>(null);
 
     const currentTenantId = parseUserAuthInfo().tenantId || undefined;
 
@@ -296,6 +300,27 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [isTenantInvite, loadInvites, pagination.pageSize, rememberGeneratedLink, targetRole, t],
     );
 
+    // One row of the CSV batch. Uses the send mode captured at file-pick time:
+    // direct = with templateId (falling back to the single active template, like
+    // resend), create-only = without. Rejections propagate — the modal marks the
+    // row (409 = Träger-ID collision) instead of aborting the batch.
+    const createCsvInvite = useCallback(
+        async (row: InviteCsvCreateRow) => {
+            if (!csvImport) return;
+            await createAccountInvite({
+                acceptBaseUrl: accountInviteAcceptBaseUrl,
+                expiresInDays: 30,
+                firstName: row.firstName,
+                lastName: row.lastName,
+                recipientEmail: row.recipientEmail,
+                targetRole,
+                templateId: csvImport.sendMode === 'direct' ? selectedTemplateId ?? activeTemplates[0]?.id : undefined,
+                tenantId: row.tenantId,
+            });
+        },
+        [activeTemplates, csvImport, selectedTemplateId, targetRole],
+    );
+
     const onResend = useCallback(
         async (invite: AccountInviteDTO) => {
             const templateId = selectedTemplateId ?? activeTemplates[0]?.id;
@@ -434,6 +459,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 takenTenantIds={takenTenantIds}
                 templateId={selectedTemplateId}
                 templates={templates}
+                onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
                 onManageTemplates={(intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list')}
                 onSubmit={onCreate}
                 onTemplateIdChange={setSelectedTemplateId}
@@ -452,6 +478,17 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 }}
                 onChange={onTableChange}
             />
+            {csvImport && (
+                <InviteCsvImportModal
+                    autoAssignTenantIds={isTenantInvite}
+                    createInvite={createCsvInvite}
+                    defaultTenantId={isTenantInvite ? undefined : currentTenantId}
+                    parseResult={csvImport.result}
+                    takenTenantIds={takenTenantIds}
+                    onClose={() => setCsvImport(null)}
+                    onCreated={() => loadInvites(1, pagination.pageSize)}
+                />
+            )}
             {templatesDialogView && (
                 <EmailTemplatesDialog
                     initialView={templatesDialogView}
