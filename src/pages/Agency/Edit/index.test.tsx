@@ -209,7 +209,12 @@ describe('AgencyPageEdit create flow', () => {
         fireEvent.change(screen.getByLabelText('Stadt *'), { target: { value: 'Augsburg' } });
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
-        expect(await screen.findByText('Bitte füllen Sie das markierte Feld aus.')).toBeInTheDocument();
+        // antd resolves required-field validation asynchronously; on a loaded CI
+        // runner the error can take longer than RTL's 1s default to render, so
+        // give the assertion real headroom (flake seen in CI, passes locally).
+        expect(
+            await screen.findByText('Bitte füllen Sie das markierte Feld aus.', undefined, { timeout: 5000 }),
+        ).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 });
