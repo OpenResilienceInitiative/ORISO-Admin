@@ -51,6 +51,7 @@ export const twoFactorAuthAppEmail = `${userServiceURL}/service/users/2fa/email`
 export const userDataEndpoint = `${userServiceURL}/service/users/data`;
 export const userAdminDataEndpoint = `${userServiceURL}/service/useradmin/data`;
 export const userPasswordChangeEndpoint = `${userServiceURL}/service/users/password/change`;
+export const tutorialProgressEndpoint = `${userServiceURL}/service/users/tutorials/progress`;
 export const passwordResetRequestEndpoint = `${userServiceURL}/service/users/password-reset/request`;
 export const passwordResetConfirmEndpoint = `${userServiceURL}/service/users/password-reset/confirm`;
 export const globalSmtpTestEmailEndpoint = `${userServiceURL}/service/users/system-notification-emails/test`;
