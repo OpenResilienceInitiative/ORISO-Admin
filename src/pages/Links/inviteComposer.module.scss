@@ -12,3 +12,47 @@
     width: 210px;
     flex: 0 0 auto;
 }
+
+/* "⋮" more-menu trigger before the search pill (#315) — same 48px round icon
+ * geometry as the search pill's own icon buttons. */
+.moreButton {
+    display: inline-flex;
+    width: 48px;
+    height: 48px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 100px;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    transition: background-color 160ms ease;
+
+    &:hover,
+    &:focus {
+        background: var(--m3-surface-container, #f0edee);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: -4px;
+    }
+
+    :global(.anticon) {
+        font-size: 24px;
+        line-height: 1;
+    }
+}
+
+.csvImportEntry {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    :global(.anticon) {
+        font-size: 18px;
+        line-height: 1;
+    }
+}
