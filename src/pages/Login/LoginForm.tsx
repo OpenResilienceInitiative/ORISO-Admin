@@ -93,7 +93,7 @@ const LoginForm = () => {
                         />
                     )}
 
-                    <a href={routePathNames.loginResetPasswordLink} className="forgotPW">
+                    <a href={routePathNames.passwordReset} className="forgotPW">
                         {t('password.forgot')}
                     </a>
 
