@@ -98,28 +98,28 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
 
     const demographicsInitialValues = isEnabled(FeatureFlag.Demographics)
         ? {
-            demographics: {
-                age:
-                    agencyData?.demographics?.ageFrom !== undefined
-                        ? [agencyData.demographics.ageFrom, agencyData.demographics.ageTo]
-                        : [DEFAULT_MIN_AGE, DEFAULT_MAX_AGE],
-                genders: (agencyData?.demographics?.genders || Object.values(Gender)).map((gender) => ({
-                    value: gender,
-                    label: t(`agency.gender.option.${gender.toLowerCase()}`),
-                })),
-            },
-        }
+              demographics: {
+                  age:
+                      agencyData?.demographics?.ageFrom !== undefined
+                          ? [agencyData.demographics.ageFrom, agencyData.demographics.ageTo]
+                          : [DEFAULT_MIN_AGE, DEFAULT_MAX_AGE],
+                  genders: (agencyData?.demographics?.genders || Object.values(Gender)).map((gender) => ({
+                      value: gender,
+                      label: t(`agency.gender.option.${gender.toLowerCase()}`),
+                  })),
+              },
+          }
         : {};
 
     const counsellingRelationsInitialValues = isReleaseToggleEnabled(ReleaseToggle.COUNSELLING_RELATIONS)
         ? {
-            counsellingRelations: (agencyData?.counsellingRelations || Object.values(CounsellingRelation)).map(
-                (relation) => ({
-                    value: relation,
-                    label: t(`agency.relation.option.${relation.replace('_COUNSELLING', '').toLowerCase()}`),
-                }),
-            ),
-        }
+              counsellingRelations: (agencyData?.counsellingRelations || Object.values(CounsellingRelation)).map(
+                  (relation) => ({
+                      value: relation,
+                      label: t(`agency.relation.option.${relation.replace('_COUNSELLING', '').toLowerCase()}`),
+                  }),
+              ),
+          }
         : {};
 
     const initialValues = {
@@ -153,10 +153,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 demographics:
                     mergedFormData.demographics?.age !== undefined
                         ? {
-                            ageFrom: mergedFormData.demographics.age[0],
-                            ageTo: mergedFormData.demographics.age[1],
-                            genders: mergedFormData.demographics.genders.map(({ value }) => value),
-                        }
+                              ageFrom: mergedFormData.demographics.age[0],
+                              ageTo: mergedFormData.demographics.age[1],
+                              genders: mergedFormData.demographics.genders.map(({ value }) => value),
+                          }
                         : mergedFormData.demographics,
                 topicIds: normalizeTopicIds(mergedFormData.topicIds),
                 offline: !mergedFormData.online,

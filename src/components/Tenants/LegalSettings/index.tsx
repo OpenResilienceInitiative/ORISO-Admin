@@ -60,7 +60,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
             nextLabel={t('legal.cardDeck.next')}
         >
             {settings?.multitenancyWithSingleDomainEnabled && (
-                <CardDeck.Item >
+                <CardDeck.Item>
                     <CardEditable
                         key={`legal-toggle-${settings.legalContentChangesBySingleTenantAdminsAllowed}`}
                         allowEdit={isSuperAdmin}
