@@ -27,6 +27,7 @@ export interface CounselorData {
     publicSlugStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
     rejectPendingPublicSlug?: boolean;
     hasOtherIdentity?: boolean;
+    otherIdentityTypes?: ('TENANT_ADMIN' | 'AGENCY_ADMIN')[];
     tenantId: string;
     tenantName: string;
     tenantSubdomain?: string;

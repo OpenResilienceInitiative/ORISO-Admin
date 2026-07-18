@@ -1,9 +1,5 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
-import {
-    agencyAdminsSearchEndpoint,
-    tenantAdminsSearchEndpoint,
-    usersConsultantsSearchEndpoint,
-} from '../appConfig';
+import { agencyAdminsSearchEndpoint, tenantAdminsSearchEndpoint, usersConsultantsSearchEndpoint } from '../appConfig';
 import { USER_TABLE_DEFAULT_ORDER, USER_TABLE_DEFAULT_SORT } from '../constants/userTableSort';
 import { TypeOfUser } from '../enums/TypeOfUser';
 import { CounselorData } from '../types/counselor';

@@ -3,7 +3,7 @@ import { TypeOfUser } from '../enums/TypeOfUser';
 import { canGrantConsultantIdentity } from './canGrantConsultantIdentity';
 import { CounselorData } from '../types/counselor';
 
-const admin = (hasOtherIdentity: boolean) => ({ id: 'a-1', hasOtherIdentity }) as CounselorData;
+const admin = (hasOtherIdentity: boolean) => ({ id: 'a-1', hasOtherIdentity } as CounselorData);
 
 describe('canGrantConsultantIdentity', () => {
     it('allows granting for an edited tenant admin without a consultant identity', () => {

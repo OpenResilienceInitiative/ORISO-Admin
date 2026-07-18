@@ -133,8 +133,6 @@
     "users.table.lastUpdated": "Zuletzt aktualisiert",
     "users.table.expand": "Zeilen erweitern",
     "users.table.collapse": "Zeile einklappen",
-    "users.table.hasOtherIdentity": "Weitere Rechte",
-    "users.table.hasOtherIdentity.badge": "Hat weitere Rechte",
     "users.sectionPills.platformAdmins": "Platform Admin",
     "users.sectionPills.tenantAdmins": "Träger Admin",
     "users.sectionPills.counsellorAdmins": "Berater*innen Admins",
@@ -1346,5 +1344,7 @@
     "pillSelect.toggleOptions": "Optionen für {{label}} anzeigen",
     "tenants.permissions.feature.mediaUpload": "Medien-Upload",
     "tenants.permissions.feature.mediaInlineDisplay": "Medien-Vorschau (Inline-Anzeige)",
-    "tenants.permissions.feature.mediaAiScan": "KI-Bildprüfung"
+    "tenants.permissions.feature.mediaAiScan": "KI-Bildprüfung",
+    "users.table.alsoTenantAdmin": "Auch Träger-Admin",
+    "users.table.alsoConsultant": "Auch Berater*in"
 }
