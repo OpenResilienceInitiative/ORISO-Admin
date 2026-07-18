@@ -1407,5 +1407,17 @@
     "pillSelect.toggleOptions": "Show options for {{label}}",
     "tenants.permissions.feature.mediaUpload": "Media upload",
     "tenants.permissions.feature.mediaInlineDisplay": "Media preview (inline display)",
-    "tenants.permissions.feature.mediaAiScan": "AI media check"
+    "tenants.permissions.feature.mediaAiScan": "AI media check",
+    "productTour.next": "Next",
+    "productTour.back": "Back",
+    "productTour.done": "Done",
+    "productTour.step": "Step",
+    "productTour.of": "of",
+    "productTour.close": "Close tour",
+    "productTour.adminTour.title": "Admin tour",
+    "productTour.adminTour.summary": "Get to know the most important areas of the admin console.",
+    "productTour.adminTour.welcome.title": "Welcome",
+    "productTour.adminTour.welcome.content": "This short tour shows you the most important areas of the admin console. <br /><br /> You can close it at any time.",
+    "productTour.adminTour.navigation.title": "Navigation",
+    "productTour.adminTour.navigation.content": "The sidebar takes you to every admin area."
 }

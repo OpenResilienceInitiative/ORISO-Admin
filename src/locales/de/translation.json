@@ -1407,5 +1407,17 @@
     "pillSelect.toggleOptions": "Optionen für {{label}} anzeigen",
     "tenants.permissions.feature.mediaUpload": "Medien-Upload",
     "tenants.permissions.feature.mediaInlineDisplay": "Medien-Vorschau (Inline-Anzeige)",
-    "tenants.permissions.feature.mediaAiScan": "KI-Bildprüfung"
+    "tenants.permissions.feature.mediaAiScan": "KI-Bildprüfung",
+    "productTour.next": "Weiter",
+    "productTour.back": "Zurück",
+    "productTour.done": "Fertig",
+    "productTour.step": "Schritt",
+    "productTour.of": "von",
+    "productTour.close": "Tour schließen",
+    "productTour.adminTour.title": "Admin-Rundgang",
+    "productTour.adminTour.summary": "Lernen Sie die wichtigsten Bereiche der Verwaltung kennen.",
+    "productTour.adminTour.welcome.title": "Willkommen",
+    "productTour.adminTour.welcome.content": "Diese kurze Tour zeigt Ihnen die wichtigsten Bereiche der Verwaltungsoberfläche. <br /><br /> Sie können sie jederzeit schließen.",
+    "productTour.adminTour.navigation.title": "Navigation",
+    "productTour.adminTour.navigation.content": "Über die Seitenleiste erreichen Sie alle Verwaltungsbereiche."
 }
