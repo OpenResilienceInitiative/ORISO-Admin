@@ -28,6 +28,10 @@
         }
 
         .ant-modal-footer {
+            /* Stack divider above the action row (antd lays footer children inline). */
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
             padding: 0;
             margin: 0;
         }
@@ -62,6 +66,8 @@
 }
 
 .divider {
+    display: block;
+    width: 100%;
     height: 0;
     margin-top: 16px;
     border-top: 1px solid var(--m3-outline-variant, #c4c7c8);
