@@ -21,8 +21,14 @@
     transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
-.splitButton:not(.disabled) .segment:hover {
+.splitButton:not(.disabled) .segment:not(:disabled):hover {
     background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+}
+
+/* Per-segment disabling (`mainDisabled`): only the action segment greys out. */
+.segment:disabled {
+    cursor: not-allowed;
+    opacity: 0.38;
 }
 
 .segment:focus-visible {
@@ -84,7 +90,7 @@
     color: var(--m3-primary, #a5000a);
 }
 
-.tonal:not(.disabled) .segment:hover {
+.tonal:not(.disabled) .segment:not(:disabled):hover {
     background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, var(--m3-surface-container-low, #f6f3f3));
 }
 
@@ -95,7 +101,7 @@
     color: var(--m3-on-primary, #ffffff);
 }
 
-.primary:not(.disabled) .segment:hover {
+.primary:not(.disabled) .segment:not(:disabled):hover {
     background: color-mix(in srgb, var(--m3-on-primary, #fff) 8%, var(--m3-primary, #a5000a));
 }
 

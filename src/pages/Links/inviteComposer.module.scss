@@ -1,0 +1,14 @@
+/*
+ * Invite composer row (#314, Figma 1165:17005 middle row). Only widths and
+ * flex behaviour live here — colours come from the shared component tokens.
+ */
+
+.emailField {
+    width: 304px;
+    flex: 0 0 auto;
+}
+
+.nameField {
+    width: 210px;
+    flex: 0 0 auto;
+}

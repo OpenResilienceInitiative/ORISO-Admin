@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-// antd's responsive grid (used by the tab's Form layout) queries matchMedia,
+// antd components used by the composer (Dropdown/menus) query matchMedia,
 // which jsdom does not implement.
 window.matchMedia ??= ((query: string) => ({
     matches: false,
@@ -62,26 +62,6 @@ vi.mock('../../utils/parseUserAuthInfo', () => ({
     parseUserAuthInfo: mocks.parseUserAuthInfo,
 }));
 
-// antd's rc-select virtual list is flaky under jsdom; a native <select> keeps the
-// template field driven through Form.Item's injected value/onChange (same pattern
-// as EmailTemplatesDialog.test.tsx).
-vi.mock('antd', async () => {
-    const actual = await vi.importActual<typeof import('antd')>('antd');
-    return {
-        ...actual,
-        Select: ({ options = [], value, onChange, ...rest }: any) => (
-            <select {...rest} value={value ?? ''} onChange={(event) => onChange?.(Number(event.target.value))}>
-                <option value="" disabled />
-                {options.map((option: any) => (
-                    <option key={option.value} value={option.value}>
-                        {option.label}
-                    </option>
-                ))}
-            </select>
-        ),
-    };
-});
-
 const invitesPage = (content: any[]) => ({
     content,
     totalElements: content.length,
@@ -135,6 +115,7 @@ const renderTenantTab = async () => {
 describe('TenantInvitesTab Träger-ID suggestion', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        window.localStorage.clear();
         mocks.parseUserAuthInfo.mockReturnValue({});
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
     });
@@ -146,7 +127,7 @@ describe('TenantInvitesTab Träger-ID suggestion', () => {
 
         await renderTenantTab();
 
-        const field = await screen.findByLabelText('Tenant ID');
+        const field = await screen.findByLabelText('Träger-ID');
         await waitFor(() => expect(field).toHaveValue('5'));
     });
 
@@ -158,10 +139,12 @@ describe('TenantInvitesTab Träger-ID suggestion', () => {
         await renderTenantTab();
         const user = userEvent.setup();
 
-        await user.type(await screen.findByLabelText('E-mail'), 'neu@example.org');
+        await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
         // Single active template is auto-selected by the tab; only e-mail is required on top.
-        await waitFor(() => expect(screen.getByLabelText('Template')).toHaveValue('7'));
-        await user.click(screen.getByRole('button', { name: 'Create and send' }));
+        expect(await screen.findByRole('button', { name: /Standard/ })).toBeInTheDocument();
+        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
 
         await waitFor(() =>
             expect(mocks.createAccountInvite).toHaveBeenCalledWith(
@@ -176,7 +159,7 @@ describe('TenantInvitesTab Träger-ID suggestion', () => {
         const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
         render(<CounsellorInvitesTab />);
 
-        const field = await screen.findByLabelText('Tenant ID');
+        const field = await screen.findByLabelText('Träger-ID');
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
         expect(field).toHaveValue('');
         expect(mocks.searchTenantData).not.toHaveBeenCalled();
