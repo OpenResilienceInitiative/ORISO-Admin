@@ -60,7 +60,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
             nextLabel={t('legal.cardDeck.next')}
         >
             {settings?.multitenancyWithSingleDomainEnabled && (
-                <CardDeck.Item>
+                <CardDeck.Item >
                     <CardEditable
                         key={`legal-toggle-${settings.legalContentChangesBySingleTenantAdminsAllowed}`}
                         allowEdit={isSuperAdmin}
@@ -71,6 +71,9 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                         onSave={mutate}
                     >
                         <div className={styles.checkGroup}>
+                            <p className={styles.checkInfo}>
+                                {t('tenants.legal.singleTenantsManageLegal.setting.description')}
+                            </p>
                             <FormSwitchField
                                 labelKey="tenants.legal.singleTenantsManageLegal.setting.title"
                                 name={['legalContentChangesBySingleTenantAdminsAllowed']}
@@ -78,17 +81,14 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                                 disableLabels
                                 disabled={!isSuperAdmin}
                             />
-                            <p className={styles.checkInfo}>
-                                {t('tenants.legal.singleTenantsManageLegal.setting.description')}
-                            </p>
                         </div>
                     </CardEditable>
                 </CardDeck.Item>
             )}
-            <CardDeck.Item>
+            <CardDeck.Item className={styles.cardDeckItem}>
                 <DataProcessingAgreementContainer tenantId={finalTenantId} />
             </CardDeck.Item>
-            <CardDeck.Item>
+            <CardDeck.Item className={styles.cardDeckItem}>
                 <LegalText
                     tenantId={finalTenantId}
                     fieldName={['content', 'impressum']}
@@ -112,7 +112,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                     field: ['content', 'confirmTermsAndConditions'],
                 }}
             /> */}
-            <CardDeck.Item>{LegalTextElement}</CardDeck.Item>
+            <CardDeck.Item className={styles.cardDeckItem}>{LegalTextElement}</CardDeck.Item>
         </CardDeck>
     );
 };

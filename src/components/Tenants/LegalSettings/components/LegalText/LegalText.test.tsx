@@ -38,6 +38,21 @@ vi.mock('../../../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({ can: mocks.can }),
 }));
 
+vi.mock('../../../../../hooks/useUserData.hook', () => ({
+    useUserData: () => ({ data: { id: 'user-1' } }),
+}));
+
+vi.mock('../../../../../hooks/useUserRoles.hook', () => ({
+    useUserRoles: () => ({
+        roles: [],
+        hasRole: () => false,
+        isSuperAdmin: true,
+        isTechnicalAccount: false,
+        isTenantScopedAdmin: false,
+        tenantId: 0,
+    }),
+}));
+
 // The M3 editor mock mirrors the real contract: echoes the value, renders the
 // slots, emits an edit via onChange and exposes the publish action.
 vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
@@ -47,6 +62,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         readOnly,
         onPublish,
         helpSlot,
+        snackbarSlot,
         aboveEditorSlot,
         belowSlot,
     }: {
@@ -55,11 +71,13 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         readOnly?: boolean;
         onPublish?: () => void;
         helpSlot?: React.ReactNode;
+        snackbarSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
     }) => (
         <div data-testid="m3-editor" data-value={value} data-readonly={readOnly ? 'true' : 'false'}>
             {helpSlot}
+            {snackbarSlot}
             {aboveEditorSlot}
             {!readOnly && onChange && (
                 <button type="button" onClick={() => onChange('<p>edited</p>')}>
@@ -99,6 +117,8 @@ beforeEach(() => {
     mocks.imprint = DEFAULT_IMPRINT;
     mocks.activeLanguages = ['de', 'en'];
     mocks.canEdit = true;
+    window.localStorage.clear();
+    window.sessionStorage.clear();
 });
 
 describe('LegalText (M3 editor)', () => {
@@ -258,5 +278,88 @@ describe('LegalText (M3 editor)', () => {
         await vi.waitFor(() =>
             expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>'),
         );
+    });
+});
+
+describe('LegalText hint snackbar (imprint / privacy)', () => {
+    it('shows the imprint hint as a dismissible snackbar (not duplicated inline)', () => {
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                legalType="imprint"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        expect(screen.getByText('legal.help.imprint.platform.published.text')).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent('legal.help.imprint.platform.published.hint');
+        expect(screen.getAllByText('legal.help.imprint.platform.published.hint')).toHaveLength(1);
+    });
+
+    it('shows the privacy hint as a dismissible snackbar (not duplicated inline)', () => {
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="privacy.title"
+                legalType="privacy"
+                placeHolderKey="settings.privacy.placeholder"
+            />,
+        );
+
+        expect(screen.getByText('legal.help.privacy.platform.published.text')).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent('legal.help.privacy.platform.published.hint');
+        expect(screen.getAllByText('legal.help.privacy.platform.published.hint')).toHaveLength(1);
+    });
+
+    it('"nicht mehr anzeigen" hides the snackbar and persists across remounts', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                legalType="imprint"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' }));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(window.localStorage.getItem('oriso-admin.legal.imprint.hint.dismissed.1:user-1')).toBe('true');
+
+        unmount();
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                legalType="imprint"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        // Hint falls back to the inline help row once the snackbar is dismissed.
+        expect(screen.getByText('legal.help.imprint.platform.published.hint')).toBeInTheDocument();
+    });
+
+    it('"X" hides the snackbar for the session only', async () => {
+        const user = userEvent.setup();
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="privacy.title"
+                legalType="privacy"
+                placeHolderKey="settings.privacy.placeholder"
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.close' }));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(window.localStorage.getItem('oriso-admin.legal.privacy.hint.dismissed.1:user-1')).toBeNull();
+        expect(window.sessionStorage.getItem('oriso-admin.legal.privacy.hint.closed.1:user-1')).toBe('true');
     });
 });
