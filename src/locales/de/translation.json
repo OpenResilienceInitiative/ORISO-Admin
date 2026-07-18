@@ -1419,5 +1419,15 @@
     "productTour.adminTour.welcome.title": "Willkommen",
     "productTour.adminTour.welcome.content": "Diese kurze Tour zeigt Ihnen die wichtigsten Bereiche der Verwaltungsoberfläche. <br /><br /> Sie können sie jederzeit schließen.",
     "productTour.adminTour.navigation.title": "Navigation",
-    "productTour.adminTour.navigation.content": "Über die Seitenleiste erreichen Sie alle Verwaltungsbereiche."
+    "productTour.adminTour.navigation.content": "Über die Seitenleiste erreichen Sie alle Verwaltungsbereiche.",
+    "productTour.overview.title": "Meine Rundgänge",
+    "productTour.overview.subtitle": "Starten Sie Rundgänge durch die Verwaltung oder setzen Sie sie fort.",
+    "productTour.overview.empty": "Aktuell sind keine Rundgänge verfügbar.",
+    "productTour.overview.status.not_started": "Nicht gestartet",
+    "productTour.overview.status.in_progress": "In Bearbeitung",
+    "productTour.overview.status.completed": "Abgeschlossen",
+    "productTour.overview.status.skipped": "Übersprungen",
+    "productTour.overview.action.start": "Starten",
+    "productTour.overview.action.continue": "Fortsetzen",
+    "productTour.overview.action.restart": "Neu starten"
 }

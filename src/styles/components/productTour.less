@@ -114,3 +114,66 @@
         }
     }
 }
+
+.tourOverview {
+    &__empty {
+        margin: 0;
+        color: var(--m3-on-surface-variant, #444748);
+    }
+
+    &__list {
+        display: flex;
+        gap: 16px;
+        margin: 0;
+        padding: 0 0 8px;
+        list-style: none;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+    }
+
+    &__card {
+        display: flex;
+        flex: 0 0 min(240px, 80vw);
+        flex-direction: column;
+        gap: 8px;
+        padding: 16px;
+        border: 1px solid var(--m3-outline, #747878);
+        border-radius: 8px;
+        background-color: var(--m3-surface, #fcf9f9);
+        scroll-snap-align: start;
+    }
+
+    &__status {
+        align-self: flex-start;
+        padding: 2px 8px;
+        border-radius: 100px;
+        font-size: 12px;
+        background-color: var(--m3-surface-variant, #e1e3e3);
+        color: var(--m3-on-surface, #1b1b1c);
+
+        &--completed {
+            background-color: var(--m3-primary, #a5000a);
+            color: #ffffff;
+        }
+    }
+
+    &__cardTitle {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    &__cardSummary {
+        flex: 1 1 auto;
+        margin: 0;
+        font-size: 13px;
+        line-height: 20px;
+    }
+
+    &__action {
+        .button__item {
+            width: 100%;
+            min-width: 0;
+        }
+    }
+}

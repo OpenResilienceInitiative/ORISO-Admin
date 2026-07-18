@@ -4,6 +4,7 @@ import { useAppConfigContext } from '../../context/useAppConfig';
 import { UserRole } from '../../enums/UserRole';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { Documentation } from './Documentation';
+import { TourOverviewSection } from '../../components/productTour/TourOverviewSection';
 import { LanguageSettings } from './LanguageSettings';
 import { PasswordChange } from './PassswordChange';
 import { PrivateData } from './PrivateData';
@@ -22,6 +23,10 @@ export const UserProfile = () => {
                     <LanguageSettings />
                     <PasswordChange />
                     {settings.documentationEnabled && <Documentation />}
+                </Col>
+
+                <Col xs={24} sm={24} md={12} lg={8} xl={6}>
+                    <TourOverviewSection />
                 </Col>
 
                 {/* 2FA disabled - Keycloak extension not implemented */}
