@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MoreOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
 import { message, Upload, type MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
@@ -63,6 +63,24 @@ export interface InviteComposerProps {
      * import time — the file itself is never uploaded anywhere.
      */
     onCsvParsed?: (result: ParseInviteCsvResult, sendMode: InviteSendMode) => void;
+    /**
+     * Number of rows currently checked in the invites table (#316). Any value
+     * > 0 flips the send split button into bulk mode ("N ausgewählte senden").
+     */
+    selectionCount?: number;
+    /**
+     * Bulk mode (#316): resend the selected invites with the currently chosen
+     * template. Only reachable while `selectionCount` > 0 and a template is
+     * selected — resending always mails, so a template is required regardless
+     * of the persisted send mode.
+     */
+    onBulkSend?: () => void;
+    /**
+     * Enables the "Ausgewählte löschen" entry in the "⋮" more-menu (#316).
+     * The entry is disabled without a selection; the tab opens the revoke
+     * confirmation dialog.
+     */
+    onDeleteSelected?: () => void;
     searchPlaceholder?: string;
     className?: string;
 }
@@ -114,6 +132,9 @@ export const InviteComposer = ({
     onSubmit,
     onManageTemplates,
     onCsvParsed,
+    selectionCount = 0,
+    onBulkSend,
+    onDeleteSelected,
     searchPlaceholder,
     className,
 }: InviteComposerProps) => {
@@ -140,6 +161,14 @@ export const InviteComposer = ({
     const templateValid = sendMode === 'createOnly' || selectedTemplate != null;
     const isValid = emailValid && tenantIdValid && templateValid;
     const showEmailError = emailTouched && recipientEmail.length > 0 && !emailValid;
+
+    // Bulk mode (#316): while rows are checked, sending acts on the selection
+    // (resend per row) instead of creating a new invite. Resending always mails,
+    // so readiness is gated on a chosen template — independent of the persisted
+    // send mode, which only applies to the single-create flow.
+    const bulkMode = selectionCount > 0 && onBulkSend != null;
+    const bulkValid = selectedTemplate != null;
+    const sendReady = bulkMode ? bulkValid : isValid;
 
     const changeSendMode = (mode: InviteSendMode) => {
         setSendMode(mode);
@@ -221,21 +250,46 @@ export const InviteComposer = ({
         return Upload.LIST_IGNORE;
     };
 
+    const moreMenuItems: NonNullable<MenuProps['items']> = [];
+    if (onCsvParsed) {
+        moreMenuItems.push({
+            key: 'csv-import',
+            label: (
+                <Upload accept=".csv,text/csv" beforeUpload={handleCsvFile} showUploadList={false}>
+                    <span className={styles.csvImportEntry}>
+                        <UploadOutlined aria-hidden />
+                        {t('links.csvImport.menuEntry', 'CSV-Datei importieren')}
+                    </span>
+                </Upload>
+            ),
+        });
+    }
+    if (onDeleteSelected) {
+        // Owner wording is "löschen"; the confirmation dialog explains that
+        // deleting means revoking (there is no hard-delete endpoint, #316).
+        moreMenuItems.push({
+            key: 'delete-selected',
+            danger: true,
+            disabled: selectionCount === 0,
+            icon: <DeleteOutlined aria-hidden />,
+            label: t('links.bulk.deleteSelected', 'Ausgewählte löschen'),
+        });
+    }
+
     const moreMenu: MenuProps = {
-        items: [
-            {
-                key: 'csv-import',
-                label: (
-                    <Upload accept=".csv,text/csv" beforeUpload={handleCsvFile} showUploadList={false}>
-                        <span className={styles.csvImportEntry}>
-                            <UploadOutlined aria-hidden />
-                            {t('links.csvImport.menuEntry', 'CSV-Datei importieren')}
-                        </span>
-                    </Upload>
-                ),
-            },
-        ],
+        items: moreMenuItems,
+        onClick: ({ key }) => {
+            if (key === 'delete-selected') {
+                onDeleteSelected?.();
+            }
+        },
     };
+
+    const singleSendLabel =
+        sendMode === 'direct'
+            ? t('links.composer.sendDirect', 'Direkt Versenden')
+            : t('links.composer.sendCreateOnly', 'Empfänger nur anlegen');
+    const bulkSendLabel = t('links.bulk.sendSelected', '{{count}} ausgewählte senden', { count: selectionCount });
 
     const sendMenu: MenuProps = {
         items: [
@@ -248,19 +302,21 @@ export const InviteComposer = ({
     };
 
     // "⋮" control before the search pill (Figma "Invite Link Options"): opens the
-    // more-menu with secondary composer actions — currently only the CSV import.
-    const moreButton = onCsvParsed ? (
-        <GlobalSearchMenu menu={moreMenu}>
-            <button
-                aria-haspopup="menu"
-                aria-label={t('links.csvImport.moreMenuLabel', 'Weitere Aktionen')}
-                className={styles.moreButton}
-                type="button"
-            >
-                <MoreOutlined aria-hidden />
-            </button>
-        </GlobalSearchMenu>
-    ) : undefined;
+    // more-menu with secondary composer actions — CSV import (#315) and
+    // "Ausgewählte löschen" (#316).
+    const moreButton =
+        moreMenuItems.length > 0 ? (
+            <GlobalSearchMenu menu={moreMenu}>
+                <button
+                    aria-haspopup="menu"
+                    aria-label={t('links.csvImport.moreMenuLabel', 'Weitere Aktionen')}
+                    className={styles.moreButton}
+                    type="button"
+                >
+                    <MoreOutlined aria-hidden />
+                </button>
+            </GlobalSearchMenu>
+        ) : undefined;
 
     return (
         <GlobalSearchBar className={className} leading={moreButton} searchPlaceholder={searchPlaceholder}>
@@ -315,17 +371,13 @@ export const InviteComposer = ({
                 variant="tonal"
             />
             <SplitButton
-                icon={isValid ? <SendFilledIcon /> : <SendIcon />}
-                label={
-                    sendMode === 'direct'
-                        ? t('links.composer.sendDirect', 'Direkt Versenden')
-                        : t('links.composer.sendCreateOnly', 'Empfänger nur anlegen')
-                }
-                mainDisabled={!isValid || submitting}
+                icon={sendReady ? <SendFilledIcon /> : <SendIcon />}
+                label={bulkMode ? bulkSendLabel : singleSendLabel}
+                mainDisabled={!sendReady || submitting}
                 menu={sendMenu}
                 menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
-                variant={isValid ? 'primary' : 'outlined'}
-                onClick={handleSend}
+                variant={sendReady ? 'primary' : 'outlined'}
+                onClick={bulkMode ? onBulkSend : handleSend}
             />
         </GlobalSearchBar>
     );
