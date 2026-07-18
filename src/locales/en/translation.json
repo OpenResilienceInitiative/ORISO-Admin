@@ -720,7 +720,6 @@
     "tenants.add.mainTenant.headline": "Create main tenant",
     "tenants.add.headline": "Create new tenant",
     "tenants.add.mainTenantTitle": "Tenant information",
-    "tenants.appSettings.communications.allowAttachments.title": "Allow file attachments in chat",
     "tenants.appSettings.communications.title": "Communication features",
     "tenants.appSettings.communications.video.title": "Video counseling",
     "tenants.appSettings.nextSteps.label": "Next steps",
@@ -1331,5 +1330,8 @@
     "statistic.dashboard.empty.heroTitle": "Your dashboard fills up with the first counselling session",
     "statistic.dashboard.empty.heroDescription": "As soon as enquiries come in, you'll see conversations, topics and workload here at a glance.",
     "statistic.dashboard.empty.heroAction": "Manage counsellors",
-    "pillSelect.toggleOptions": "Show options for {{label}}"
+    "pillSelect.toggleOptions": "Show options for {{label}}",
+    "tenants.permissions.feature.mediaUpload": "Media upload",
+    "tenants.permissions.feature.mediaInlineDisplay": "Media preview (inline display)",
+    "tenants.permissions.feature.mediaAiScan": "AI media check"
 }
