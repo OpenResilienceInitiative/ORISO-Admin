@@ -34,6 +34,7 @@ import { GrantConsultantIdentityModal } from '../../../components/GrantConsultan
 import { CreateAgencyModal } from '../../../components/CreateAgencyModal';
 import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
+import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
     const seen = new Set(current.map(({ value }) => value));
@@ -63,7 +64,7 @@ export const UserEditOrAdd = () => {
     });
     const singleData = consultantsResponse?.data.find((c) => c.id === id);
     const isAdminUserForm = typeOfUsers === TypeOfUser.AgencyAdmins || typeOfUsers === TypeOfUser.TenantAdmins;
-    const canGrantConsultantIdentity = isEditing && isAdminUserForm && !!singleData && !singleData.hasOtherIdentity;
+    const showGrantConsultantIdentity = canGrantConsultantIdentity(isEditing, typeOfUsers, singleData);
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted] = useState(false);
     const [tenantsData, setTenantsData] = useState([]);
@@ -315,7 +316,7 @@ export const UserEditOrAdd = () => {
     return (
         <Page isLoading={isLoadingConsultants || isLoading || isLoadingTopics || isLoadingConsultantById} stickyHeader>
             <Page.BackWithActions path={`/admin/users/${typeOfUsers}`} titleKey="agency.add.general.headline">
-                {canGrantConsultantIdentity && (
+                {showGrantConsultantIdentity && (
                     <GrantConsultantIdentityModal
                         adminId={id}
                         tenantId={singleData?.tenantId}
