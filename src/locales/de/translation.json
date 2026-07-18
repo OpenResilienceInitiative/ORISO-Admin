@@ -809,7 +809,6 @@
     "tenants.appSettings.notifications.option.allTeamConsultants": "Alle Teamberater",
     "tenants.appSettings.communications.title": "Kommunikationsfunktionen",
     "tenants.appSettings.communications.video.title": "Video-Beratung",
-    "tenants.appSettings.communications.allowAttachments.title": "Dateianhänge im Chat erlauben",
     "tenants.appSettings.smtp.title": "SMTP & System-E-Mails",
     "tenants.appSettings.smtp.description": "Konfigurieren Sie SMTP-Versand und System-E-Mail-Benachrichtigungen für diesen Träger.",
     "tenants.appSettings.smtp.systemEmailToggle.title": "Systembenachrichtigungen per E-Mail",
@@ -1344,5 +1343,8 @@
     "statistic.dashboard.empty.heroTitle": "Ihr Dashboard füllt sich mit der ersten Beratung",
     "statistic.dashboard.empty.heroDescription": "Sobald Anfragen eingehen, sehen Sie hier Gespräche, Themen und Auslastung auf einen Blick.",
     "statistic.dashboard.empty.heroAction": "Beratende verwalten",
-    "pillSelect.toggleOptions": "Optionen für {{label}} anzeigen"
+    "pillSelect.toggleOptions": "Optionen für {{label}} anzeigen",
+    "tenants.permissions.feature.mediaUpload": "Medien-Upload",
+    "tenants.permissions.feature.mediaInlineDisplay": "Medien-Vorschau (Inline-Anzeige)",
+    "tenants.permissions.feature.mediaAiScan": "KI-Bildprüfung"
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    DEFAULT_PERMISSION_SETTINGS,
     applyEnforcedOnFields,
     applyForcedOffFields,
     applyPermissionConstraintsToSettings,
@@ -19,6 +20,36 @@ describe('permissions settings utils', () => {
 
         expect(forcedOffFields.has('featureAnonymousChatEnabled')).toBe(true);
         expect(forcedOffFields.has('featureVideoCallsAnonymousChatsEnabled')).toBe(true);
+    });
+
+    it('expands the media family toggles into their concrete feature fields', () => {
+        const uploadOff = getForcedOffFields({ mediaUpload: false } as any);
+        expect(uploadOff.has('featureMediaUploadEnabled')).toBe(true);
+        expect(uploadOff.has('featureMediaUploadAnonymousChatsEnabled')).toBe(true);
+        expect(uploadOff.has('featureMediaUploadOneOnOneChatsEnabled')).toBe(true);
+        expect(uploadOff.has('featureMediaUploadGroupChatsEnabled')).toBe(true);
+        expect(uploadOff.has('featureMediaUploadSupervisionChatsEnabled')).toBe(true);
+        // family toggles stay independent of each other
+        expect(uploadOff.has('featureMediaInlineDisplayEnabled')).toBe(false);
+
+        const singleAiScan = getForcedOffFields({ mediaAiScanGroupChats: false } as any);
+        expect(singleAiScan.has('featureMediaAiScanGroupChatsEnabled')).toBe(true);
+        expect(singleAiScan.size).toBe(1);
+    });
+
+    it('defaults media upload and inline display on, AI scan off', () => {
+        expect(DEFAULT_PERMISSION_SETTINGS.featureMediaUploadEnabled).toBe(true);
+        expect(DEFAULT_PERMISSION_SETTINGS.featureMediaInlineDisplayEnabled).toBe(true);
+        expect(DEFAULT_PERMISSION_SETTINGS.featureMediaAiScanEnabled).toBe(false);
+        expect(DEFAULT_PERMISSION_SETTINGS.featureMediaAiScanOneOnOneChatsEnabled).toBe(false);
+    });
+
+    it('round-trips media enforcement fields into toggle keys', () => {
+        const toggles = enforcedFieldsToToggles(
+            new Set(['featureMediaInlineDisplayOneOnOneChatsEnabled', 'featureMediaUploadEnabled']),
+        );
+
+        expect(toggles).toEqual({ mediaInlineDisplayOneOnOneChats: true, mediaUpload: true });
     });
 
     it('resolves all feature fields enforced-on by upper-level enforcement flags', () => {
