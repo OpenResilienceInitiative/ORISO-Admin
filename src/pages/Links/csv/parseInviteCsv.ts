@@ -6,6 +6,27 @@
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * First-cell labels (lower-cased) that mark a header row. Only a *recognised*
+ * label is treated as a header — a first row whose e-mail is merely invalid is
+ * data and must surface as a rejection, not be silently dropped.
+ */
+const RECOGNISED_HEADER_FIRST_CELLS = new Set([
+    'email',
+    'email address',
+    'e-mail',
+    'e-mail address',
+    'e-mailadresse',
+    'e-mail-adresse',
+    'emailadresse',
+    'mail',
+    'empfänger',
+    'empfänger e-mail',
+    'recipient',
+    'recipient email',
+    'recipients emails',
+]);
+
 export type InviteCsvRejectionReason = 'invalidEmail' | 'invalidTenantId';
 
 export interface ParsedInviteRow {
@@ -101,7 +122,9 @@ const tokenize = (text: string, delimiter: ',' | ';'): CsvRecord[] => {
                     inQuotes = false;
                 }
             } else {
-                if (char === '\n') line += 1;
+                // Count physical lines inside a quoted cell: LF, or a bare CR that
+                // is not part of a CRLF pair (old-Mac breaks) — for accurate line nrs.
+                if (char === '\n' || (char === '\r' && text[i + 1] !== '\n')) line += 1;
                 cell += char;
             }
         } else if (char === '"') {
@@ -127,7 +150,7 @@ const tokenize = (text: string, delimiter: ',' | ';'): CsvRecord[] => {
  * Parses invite CSV content (already read client-side — the file itself is
  * never uploaded). Robustness: BOM strip, `,`/`;` auto-detect, quoted fields,
  * CRLF/LF/CR, trailing/interspersed empty lines, header auto-detect (the first
- * row is skipped when its first cell is not email-shaped).
+ * row is skipped only when its first cell is a recognised header label).
  */
 export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
     const content = stripBom(text);
@@ -136,7 +159,7 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
 
     let headerSkipped = false;
     let dataRecords = records;
-    if (records.length > 0 && !EMAIL_PATTERN.test((records[0].cells[0] ?? '').trim())) {
+    if (records.length > 0 && RECOGNISED_HEADER_FIRST_CELLS.has((records[0].cells[0] ?? '').trim().toLowerCase())) {
         headerSkipped = true;
         dataRecords = records.slice(1);
     }
@@ -154,7 +177,13 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
             rejected.push({ line: record.line, cells: record.cells, reason: 'invalidEmail' });
             return;
         }
-        if (tenantRaw !== '' && !(/^\d+$/.test(tenantRaw) && Number(tenantRaw) >= 1)) {
+        const tenantId = tenantRaw === '' ? undefined : Number(tenantRaw);
+        // Positive *safe* integer only: `/^\d+$/` alone accepts huge values that
+        // Number() turns into Infinity, which JSON-serialises to null downstream.
+        if (
+            tenantRaw !== '' &&
+            !(/^\d+$/.test(tenantRaw) && Number.isSafeInteger(tenantId) && (tenantId as number) >= 1)
+        ) {
             rejected.push({ line: record.line, cells: record.cells, reason: 'invalidTenantId' });
             return;
         }
@@ -164,7 +193,7 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
             email,
             firstName,
             lastName,
-            tenantId: tenantRaw === '' ? undefined : Number(tenantRaw),
+            tenantId,
             missingName: firstName === '' || lastName === '',
         });
     });

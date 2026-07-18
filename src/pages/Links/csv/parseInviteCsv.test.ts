@@ -67,6 +67,24 @@ describe('parseInviteCsv', () => {
         expect(result.rows[0]).toMatchObject({ line: 2, email: 'maria@example.org', tenantId: 4 });
     });
 
+    it('does not treat a merely invalid first e-mail as a header (surfaces it as a rejection)', () => {
+        const result = parseInviteCsv('not-an-email,Peter,Maier\nmaria@example.org,Maria,Huber');
+
+        expect(result.headerSkipped).toBe(false);
+        expect(result.rejected).toEqual([
+            { line: 1, cells: ['not-an-email', 'Peter', 'Maier'], reason: 'invalidEmail' },
+        ]);
+        expect(result.rows).toHaveLength(1);
+        expect(result.rows[0]).toMatchObject({ line: 2, email: 'maria@example.org' });
+    });
+
+    it('rejects a tenant id that overflows a safe integer (Infinity → null downstream)', () => {
+        const result = parseInviteCsv(`maria@example.org,Maria,Huber,${'9'.repeat(400)}`);
+
+        expect(result.rows).toEqual([]);
+        expect(result.rejected.map((row) => row.reason)).toEqual(['invalidTenantId']);
+    });
+
     it('keeps rows with missing names importable but flags them', () => {
         const result = parseInviteCsv('maria@example.org,,,\npeter@example.org,Peter,,9');
 
