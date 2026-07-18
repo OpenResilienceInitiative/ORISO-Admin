@@ -29,7 +29,7 @@ import { DataProcessingAgreementContainer } from '../../../components/Tenants/Le
 import { DepartmentDataProtectionContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentDataProtectionContainer';
 import styles from '../../../components/Page/styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
-import { PermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings';
+import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
@@ -324,7 +324,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const renderFunctionalitiesSettings = () => (
         <>
             <h3 className={styles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
-            {agencyTenantId ? <PermissionsSettings tenantId={agencyTenantId} /> : null}
+            {/* Agency-scoped toggles (the agency's own settings JSON) — not the tenant's. */}
+            <AgencyPermissionsSettings agencyId={id} />
         </>
     );
 

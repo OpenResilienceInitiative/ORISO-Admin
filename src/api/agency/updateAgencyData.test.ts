@@ -45,3 +45,44 @@ describe('updateAgencyData — ADR-003 single-select topic', () => {
         expect(sentBody().topicIds).toEqual(['3', '9']);
     });
 });
+
+describe('updateAgencyData — agency settings (feature toggles)', () => {
+    beforeEach(() => {
+        mocks.fetchData.mockReset();
+        mocks.fetchData.mockResolvedValue({ _embedded: {} });
+    });
+
+    it('includes settings in the PUT body when present', async () => {
+        await updateAgencyData(agencyModel, {
+            ...agencyModel,
+            settings: { featureVideoCallsEnabled: false, featureAnonymousChatEnabled: true },
+        } as any);
+        expect(sentBody().settings).toEqual({
+            featureVideoCallsEnabled: false,
+            featureAnonymousChatEnabled: true,
+        });
+    });
+
+    it('strips the injected agencyAdminControls before sending', async () => {
+        // The GET response carries the platform-wide agencyAdminControls injected into each
+        // agency's settings. Sending them back would make the backend treat the save as a
+        // platform-controls update, which only the super admin may perform (403 for everyone else).
+        await updateAgencyData(agencyModel, {
+            ...agencyModel,
+            settings: {
+                featureVideoCallsEnabled: true,
+                agencyAdminControls: {
+                    permissionsPageEnabled: true,
+                    allowedPermissionToggles: { videoCalls: false },
+                },
+            },
+        } as any);
+        expect(sentBody().settings).toEqual({ featureVideoCallsEnabled: true });
+        expect(sentBody().settings.agencyAdminControls).toBeUndefined();
+    });
+
+    it('omits settings from the PUT body when absent, so the backend keeps the stored value', async () => {
+        await updateAgencyData(agencyModel, { ...agencyModel } as any);
+        expect('settings' in sentBody()).toBe(false);
+    });
+});
