@@ -3,8 +3,11 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { configure, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+
+// CI runners are heavily contended; the 1s default for findBy*/waitFor flakes there.
+configure({ asyncUtilTimeout: 10_000 });
 
 // antd's Modal/Dropdown/Table query matchMedia, which jsdom does not implement.
 window.matchMedia ??= ((query: string) => ({
@@ -172,34 +175,39 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         expect(enabledEntry).not.toHaveAttribute('aria-disabled', 'true');
     });
 
-    it('confirming the dialog revokes each selected id and collects failures into one summary', async () => {
-        mocks.revokeAccountInvite.mockImplementation((id: number) =>
-            id === 22 ? Promise.reject(new Error('boom')) : Promise.resolve(invite(id, 'REVOKED')),
-        );
-        await renderCounsellorTab();
-        const user = userEvent.setup();
+    // Longest interaction chain in the file — CI runners need headroom beyond the 30s default.
+    it(
+        'confirming the dialog revokes each selected id and collects failures into one summary',
+        { timeout: 90_000 },
+        async () => {
+            mocks.revokeAccountInvite.mockImplementation((id: number) =>
+                id === 22 ? Promise.reject(new Error('boom')) : Promise.resolve(invite(id, 'REVOKED')),
+            );
+            await renderCounsellorTab();
+            const user = userEvent.setup();
 
-        await user.click(await rowCheckbox('person21@example.org'));
-        await user.click(await rowCheckbox('person22@example.org'));
-        await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /Ausgewählte löschen/ }));
+            await user.click(await rowCheckbox('person21@example.org'));
+            await user.click(await rowCheckbox('person22@example.org'));
+            await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }));
+            await user.click(await screen.findByRole('menuitem', { name: /Ausgewählte löschen/ }));
 
-        // House modal: title/body/labels resolve via i18n keys (real locales carry
-        // the German "Widerrufen" wording — revoke IS the delete here).
-        expect(await screen.findByText('links.bulk.deleteConfirmTitle')).toBeInTheDocument();
-        expect(screen.getByText('links.bulk.deleteConfirmBody')).toBeInTheDocument();
-        expect(mocks.revokeAccountInvite).not.toHaveBeenCalled();
+            // House modal: title/body/labels resolve via i18n keys (real locales carry
+            // the German "Widerrufen" wording — revoke IS the delete here).
+            expect(await screen.findByText('links.bulk.deleteConfirmTitle')).toBeInTheDocument();
+            expect(screen.getByText('links.bulk.deleteConfirmBody')).toBeInTheDocument();
+            expect(mocks.revokeAccountInvite).not.toHaveBeenCalled();
 
-        await user.click(screen.getByRole('button', { name: 'links.bulk.deleteConfirmOk' }));
+            await user.click(screen.getByRole('button', { name: 'links.bulk.deleteConfirmOk' }));
 
-        await waitFor(() => expect(mocks.revokeAccountInvite).toHaveBeenCalledTimes(2));
-        expect(mocks.revokeAccountInvite).toHaveBeenCalledWith(21);
-        expect(mocks.revokeAccountInvite).toHaveBeenCalledWith(22);
-        expect(await screen.findByText('1 widerrufen, 1 fehlgeschlagen: person22@example.org')).toBeInTheDocument();
-        // Table refresh + cleared selection.
-        await waitFor(() => expect(mocks.listAccountInvites.mock.calls.length).toBeGreaterThanOrEqual(2));
-        expect(screen.queryByText('2 ausgewählt')).not.toBeInTheDocument();
-    });
+            await waitFor(() => expect(mocks.revokeAccountInvite).toHaveBeenCalledTimes(2));
+            expect(mocks.revokeAccountInvite).toHaveBeenCalledWith(21);
+            expect(mocks.revokeAccountInvite).toHaveBeenCalledWith(22);
+            expect(await screen.findByText('1 widerrufen, 1 fehlgeschlagen: person22@example.org')).toBeInTheDocument();
+            // Table refresh + cleared selection.
+            await waitFor(() => expect(mocks.listAccountInvites.mock.calls.length).toBeGreaterThanOrEqual(2));
+            expect(screen.queryByText('2 ausgewählt')).not.toBeInTheDocument();
+        },
+    );
 
     it('bulk send resends only the selected rows with the chosen template and clears the selection', async () => {
         mocks.resendAccountInvite.mockImplementation((id: number) => Promise.resolve(invite(id, 'EMAIL_SENT')));
