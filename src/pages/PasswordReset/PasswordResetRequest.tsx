@@ -4,6 +4,7 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { MuiFormField } from '../../components/mui/MuiFormField';
 import { requestAdminPasswordReset } from '../../api/passwordReset/passwordReset';
 import routePathNames from '../../appConfig';
@@ -35,9 +36,9 @@ export const PasswordResetRequestForm = () => {
                     {t('passwordReset.sentTitle')}
                 </Typography>
                 <Typography sx={{ mb: 4 }}>{t('passwordReset.sentDescription')}</Typography>
-                <a href={routePathNames.login} className="forgotPW">
+                <Link to={routePathNames.login} className="forgotPW">
                     {t('passwordReset.backToLogin')}
-                </a>
+                </Link>
             </div>
         );
     }
@@ -71,9 +72,9 @@ export const PasswordResetRequestForm = () => {
                 >
                     {t('passwordReset.submit')}
                 </Button>
-                <a href={routePathNames.login} className="forgotPW">
+                <Link to={routePathNames.login} className="forgotPW">
                     {t('passwordReset.backToLogin')}
-                </a>
+                </Link>
             </Form>
         </div>
     );

@@ -36,4 +36,23 @@ describe('PasswordResetConfirmForm', () => {
         });
         expect(await screen.findByRole('heading', { name: 'passwordReset.successTitle' })).toBeInTheDocument();
     });
+
+    it('keeps the form visible and shows a non-destructive error when confirmation fails', async () => {
+        vi.mocked(confirmAdminPasswordReset).mockRejectedValue(new Error('service unavailable'));
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/admin/password-reset/confirm?token=one-time-token']}>
+                <PasswordResetConfirmForm />
+            </MemoryRouter>,
+        );
+
+        await user.type(screen.getByLabelText('passwordReset.newPassword'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('passwordReset.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'passwordReset.setPassword' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('passwordReset.confirmError');
+        expect(screen.getByLabelText('passwordReset.newPassword')).toBeInTheDocument();
+        expect(screen.getByLabelText('passwordReset.repeatPassword')).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'passwordReset.invalidTitle' })).not.toBeInTheDocument();
+    });
 });

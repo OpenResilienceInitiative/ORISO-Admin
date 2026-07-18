@@ -35,6 +35,7 @@
     "passwordReset.setPassword": "Set password",
     "passwordReset.successTitle": "Password changed",
     "passwordReset.successDescription": "You can now sign in to the admin panel with your new password.",
+    "passwordReset.confirmError": "The password could not be changed. Please try again.",
     "passwordReset.invalidTitle": "This reset link is not valid",
     "passwordReset.invalidDescription": "The link may have expired or already been used. Request a new reset link to continue.",
     "passwordReset.requestNewLink": "Request a new reset link",

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { PasswordResetRequestForm } from './PasswordResetRequest';
 import { requestAdminPasswordReset } from '../../api/passwordReset/passwordReset';
 
@@ -20,7 +21,14 @@ describe('PasswordResetRequestForm', () => {
     it('submits the admin identity and shows the enumeration-safe success state', async () => {
         vi.mocked(requestAdminPasswordReset).mockResolvedValue(new Response(null, { status: 204 }));
         const user = userEvent.setup();
-        render(<PasswordResetRequestForm />);
+        render(
+            <MemoryRouter initialEntries={['/admin/password-reset']}>
+                <Routes>
+                    <Route path="/admin/password-reset" element={<PasswordResetRequestForm />} />
+                    <Route path="/admin/login" element={<div>login route</div>} />
+                </Routes>
+            </MemoryRouter>,
+        );
 
         await user.type(screen.getByLabelText('passwordReset.identityLabel'), 'admin@example.com');
         await user.click(screen.getByRole('button', { name: 'passwordReset.submit' }));
@@ -30,5 +38,24 @@ describe('PasswordResetRequestForm', () => {
         });
         expect(await screen.findByRole('heading', { name: 'passwordReset.sentTitle' })).toBeInTheDocument();
         expect(screen.queryByLabelText('passwordReset.identityLabel')).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('link', { name: 'passwordReset.backToLogin' }));
+        expect(await screen.findByText('login route')).toBeInTheDocument();
+    });
+
+    it('keeps the form visible and shows an inline error when the request fails', async () => {
+        vi.mocked(requestAdminPasswordReset).mockRejectedValue(new Error('network failure'));
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter>
+                <PasswordResetRequestForm />
+            </MemoryRouter>,
+        );
+
+        await user.type(screen.getByLabelText('passwordReset.identityLabel'), 'admin@example.com');
+        await user.click(screen.getByRole('button', { name: 'passwordReset.submit' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('passwordReset.requestError');
+        expect(screen.getByLabelText('passwordReset.identityLabel')).toHaveValue('admin@example.com');
     });
 });

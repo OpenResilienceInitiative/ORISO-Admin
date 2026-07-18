@@ -30,6 +30,7 @@
     "passwordReset.setPassword": "Passwort festlegen",
     "passwordReset.successTitle": "Passwort geändert",
     "passwordReset.successDescription": "Sie können sich jetzt mit Ihrem neuen Passwort in der Verwaltung anmelden.",
+    "passwordReset.confirmError": "Das Passwort konnte nicht geändert werden. Bitte versuchen Sie es erneut.",
     "passwordReset.invalidTitle": "Dieser Link ist nicht gültig",
     "passwordReset.invalidDescription": "Der Link ist möglicherweise abgelaufen oder wurde bereits verwendet. Fordern Sie einen neuen Link an.",
     "passwordReset.requestNewLink": "Neuen Link anfordern",

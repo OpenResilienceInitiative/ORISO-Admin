@@ -4,7 +4,7 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { confirmAdminPasswordReset } from '../../api/passwordReset/passwordReset';
 import { validatePasswordCriteria } from '../../utils/validateInputValue';
@@ -32,7 +32,7 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
         }
     };
 
-    if (!token || failed) {
+    if (!token) {
         return (
             <div className="loginForm">
                 <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
@@ -41,9 +41,9 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
                 <Typography role="alert" sx={{ mb: 4 }}>
                     {t('passwordReset.invalidDescription')}
                 </Typography>
-                <a href={routePathNames.passwordReset} className="forgotPW">
+                <Link to={routePathNames.passwordReset} className="forgotPW">
                     {t('passwordReset.requestNewLink')}
-                </a>
+                </Link>
             </div>
         );
     }
@@ -55,9 +55,9 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
                     {t('passwordReset.successTitle')}
                 </Typography>
                 <Typography sx={{ mb: 4 }}>{t('passwordReset.successDescription')}</Typography>
-                <a href={routePathNames.login} className="forgotPW">
+                <Link to={routePathNames.login} className="forgotPW">
                     {t('passwordReset.backToLogin')}
-                </a>
+                </Link>
             </div>
         );
     }
@@ -100,6 +100,11 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
                         },
                     ]}
                 />
+                {failed && (
+                    <Typography role="alert" color="error" sx={{ mb: 2 }}>
+                        {t('passwordReset.confirmError')}
+                    </Typography>
+                )}
                 <Button
                     type="submit"
                     variant="contained"
