@@ -1,7 +1,10 @@
 import { Modal as AntModal } from 'antd';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactNode } from 'react';
 import styles from './styles.module.scss';
+
+export { DialogButton } from './DialogButton';
 
 export interface ModalProps {
     titleKey?: string;
@@ -59,7 +62,12 @@ export const Modal = ({
                 </button>
             )}
             {okLabelKey && (
-                <button type="button" className={styles.actionButton} disabled={confirmDisabled} onClick={onConfirm}>
+                <button
+                    type="button"
+                    className={classNames(styles.actionButton, styles.actionButtonPrimary)}
+                    disabled={confirmDisabled}
+                    onClick={onConfirm}
+                >
                     {t(okLabelKey)}
                 </button>
             )}
@@ -96,7 +104,9 @@ export const Modal = ({
                 resolvedFooter ? (
                     <>
                         {showDivider && <div className={styles.divider} aria-hidden />}
-                        {resolvedFooter}
+                        {/* The Modal owns footer padding so custom footers can never sit
+                            flush against the 28px rounded surface (which used to clip them). */}
+                        <div className={styles.footerBody}>{resolvedFooter}</div>
                     </>
                 ) : null
             }
