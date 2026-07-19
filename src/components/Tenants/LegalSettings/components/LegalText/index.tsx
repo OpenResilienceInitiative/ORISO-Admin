@@ -5,13 +5,48 @@ import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
+import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
 import { useLegalHelp } from '../../hooks/useLegalHelp';
 import { isEmptyLegalContent } from '../../utils/legalHelpTexts';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
+import { useUserData } from '../../../../../hooks/useUserData.hook';
 import styles from './styles.module.scss';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
+
+// Hint snackbar dismissal: "Nicht mehr anzeigen" persists; X is session-only.
+const hintDismissedKey = (type: 'privacy' | 'imprint') => `oriso-admin.legal.${type}.hint.dismissed`;
+const hintSessionKey = (type: 'privacy' | 'imprint') => `oriso-admin.legal.${type}.hint.closed`;
+
+const scopedKey = (key: string, scope: string) => `${key}.${scope}`;
+
+const isHintDismissed = (type: 'privacy' | 'imprint', scope: string) => {
+    try {
+        return (
+            window.localStorage.getItem(scopedKey(hintDismissedKey(type), scope)) === 'true' ||
+            window.sessionStorage.getItem(scopedKey(hintSessionKey(type), scope)) === 'true'
+        );
+    } catch {
+        return false;
+    }
+};
+
+const persistHintDismissed = (type: 'privacy' | 'imprint', scope: string) => {
+    try {
+        window.localStorage.setItem(scopedKey(hintDismissedKey(type), scope), 'true');
+    } catch {
+        // Private mode / storage disabled: the snackbar just reappears next session.
+    }
+};
+
+const persistHintClosedForSession = (type: 'privacy' | 'imprint', scope: string) => {
+    try {
+        window.sessionStorage.setItem(scopedKey(hintSessionKey(type), scope), 'true');
+    } catch {
+        // Private mode / storage disabled: the close still works for this mount.
+    }
+};
 
 interface LegalTextProps {
     tenantId: string | number;
@@ -54,10 +89,16 @@ export const LegalText = ({
     const { can } = useUserPermissions();
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const { data, isLoading, mutate: updateTenant, isPending } = useTenantAppearanceFormData(`${tenantId}`);
+    const { data: userData } = useUserData();
+    // Persist dismissal only once the opaque user id is known (same pattern as DPA).
+    const dismissalScope = userData?.id ? `${tenantId}:${userData.id}` : undefined;
     const [activeLanguage, setActiveLanguage] = useState('de');
     const [edits, setEdits] = useState<Record<string, string>>({});
     const [pendingFormData, setPendingFormData] = useState<Record<string, unknown>>();
     const [modalVisible, setModalVisible] = useState(false);
+    const [hintHidden, setHintHidden] = useState(() =>
+        legalType && dismissalScope ? isHintDismissed(legalType, dismissalScope) : false,
+    );
 
     const languages = useMemo(() => {
         const configured = data?.settings?.activeLanguages;
@@ -106,6 +147,12 @@ export const LegalText = ({
         readOnly: !canEditLegalText,
     });
 
+    useEffect(() => {
+        setHintHidden(legalType && dismissalScope ? isHintDismissed(legalType, dismissalScope) : false);
+    }, [legalType, dismissalScope]);
+
+    const showHintSnackbar = !!legalType && !hintHidden;
+
     const onConfirm = useCallback(() => {
         updateTenant(set(pendingFormData, showConfirmationModal.field, false));
         setModalVisible(false);
@@ -149,7 +196,24 @@ export const LegalText = ({
                 }))}
                 language={activeLanguage}
                 onLanguageChange={setActiveLanguage}
-                helpSlot={legalType && <EditorHelpText text={help.text} hint={help.hint} />}
+                helpSlot={
+                    legalType && <EditorHelpText text={help.text} hint={showHintSnackbar ? undefined : help.hint} />
+                }
+                snackbarSlot={
+                    showHintSnackbar && (
+                        <EditorHintSnackbar
+                            text={help.hint}
+                            onClose={() => {
+                                if (legalType && dismissalScope) persistHintClosedForSession(legalType, dismissalScope);
+                                setHintHidden(true);
+                            }}
+                            onDismiss={() => {
+                                if (legalType && dismissalScope) persistHintDismissed(legalType, dismissalScope);
+                                setHintHidden(true);
+                            }}
+                        />
+                    )
+                }
                 aboveEditorSlot={!legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined}
                 placeholder={t(placeHolderKey)}
                 placeholders={placeholders}

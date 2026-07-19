@@ -370,7 +370,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 <CardDeck.Item>
                     <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
                 </CardDeck.Item>
-                <CardDeck.Item>
+                <CardDeck.Item className={styles.cardDeckItem}>
                     <LegalTextSettings
                         agencyData={agencyData}
                         field="impressum"
@@ -378,10 +378,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                         saving={isSaving}
                     />
                 </CardDeck.Item>
-                <CardDeck.Item>
+                <CardDeck.Item className={styles.cardDeckItem}>
                     <LegalTextSettings agencyData={agencyData} field="privacy" onSave={onSaveCard} saving={isSaving} />
                 </CardDeck.Item>
-                <CardDeck.Item>
+                <CardDeck.Item className={styles.cardDeckItem}>
                     {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
                     <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />
                 </CardDeck.Item>
@@ -389,7 +389,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     (agencyData.topics || [])
                         .filter((topic) => topic.id != null)
                         .map((topic) => (
-                            <CardDeck.Item key={`dpp-${topic.id}`}>
+                            <CardDeck.Item key={`dpp-${topic.id}`} className={styles.cardDeckItem}>
                                 <DepartmentDataProtectionContainer
                                     agencyId={Number(agencyData.id)}
                                     topicId={topic.id as number}
