@@ -65,7 +65,7 @@ interface FetchDataProps {
     url: string;
     method: string;
     headersData?: object;
-    bodyData?: string;
+    bodyData?: BodyInit;
     skipAuth?: boolean;
     responseHandling?: string[];
     timeout?: number;
@@ -107,10 +107,11 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
 
         const normalizedLanguage = normalizeLanguage(i18next.resolvedLanguage || i18next.language) || DEFAULT_LANGUAGE;
 
+        const isMultipartBody = typeof FormData !== 'undefined' && props.bodyData instanceof FormData;
         const req = new Request(props.url, {
             method: props.method,
             headers: {
-                'Content-Type': 'application/json',
+                ...(isMultipartBody ? {} : { 'Content-Type': 'application/json' }),
                 'cache-control': 'no-cache',
                 'Accept-Language': normalizedLanguage,
                 ...authorization,

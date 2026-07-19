@@ -20,7 +20,7 @@ const pngFile = () => {
 };
 
 const pasteImageIntoEditor = async (canvasElement: HTMLElement) => {
-    const editorEl = canvasElement.querySelector('[contenteditable="true"]');
+    const editorEl = within(canvasElement).getByRole('textbox', { name: 'Impressum' });
     // A real DataTransfer: the browser's ClipboardEvent constructor rejects plain objects.
     const clipboardData = new DataTransfer();
     clipboardData.items.add(pngFile());
@@ -98,9 +98,7 @@ export const UploadError: Story = {
     },
     play: async ({ canvasElement }) => {
         await pasteImageIntoEditor(canvasElement);
-        await waitFor(() => {
-            expect(document.body.textContent).toMatch(/upload failed|Upload fehlgeschlagen/i);
-        });
+        expect(await within(document.body).findByText(/upload failed|Upload fehlgeschlagen/i)).toBeTruthy();
         expect(canvasElement.querySelector('img')).toBeFalsy();
     },
 };

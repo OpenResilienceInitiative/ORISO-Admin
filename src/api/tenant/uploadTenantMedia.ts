@@ -1,6 +1,5 @@
 import { tenantAdminEndpoint } from '../../appConfig';
-import { getAccessTokenForRequests } from '../auth/auth';
-import generateCsrfToken from '../../utils/generateCsrfToken';
+import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 
 export interface TenantMediaResponse {
     id: string;
@@ -10,24 +9,17 @@ export interface TenantMediaResponse {
 
 /**
  * Uploads an editor image to the tenant media endpoint (WP-3a, TenantService#92).
- * Deliberately not routed through `fetchData`: multipart bodies must let the browser
- * set the boundary content type, which fetchData hardwires to application/json.
+ * `fetchData` keeps auth refresh/logout behavior consistent with the other Admin APIs
+ * while omitting its JSON content type for FormData so the browser owns the boundary.
  */
 export const uploadTenantMedia = async (file: File): Promise<TenantMediaResponse> => {
     const body = new FormData();
     body.append('file', file, file.name);
 
-    const response = await fetch(`${tenantAdminEndpoint}/media`, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${getAccessTokenForRequests()}`,
-            'X-CSRF-TOKEN': generateCsrfToken(),
-        },
-        credentials: 'include',
-        body,
+    return fetchData({
+        url: `${tenantAdminEndpoint}/media`,
+        method: FETCH_METHODS.POST,
+        bodyData: body,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_SUCCESS.CONTENT],
     });
-    if (!response.ok) {
-        throw new Error(`media upload failed with status ${response.status}`);
-    }
-    return response.json();
 };

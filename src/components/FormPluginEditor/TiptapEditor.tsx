@@ -51,11 +51,15 @@ const ToolbarButton = ({
     onClick,
     children,
     title,
+    disabled,
+    busy,
 }: {
     active?: boolean;
     onClick: () => void;
     children: React.ReactNode;
     title: string;
+    disabled?: boolean;
+    busy?: boolean;
 }) => (
     <Button
         type={active ? 'primary' : 'text'}
@@ -64,6 +68,8 @@ const ToolbarButton = ({
         onClick={onClick}
         title={title}
         aria-pressed={active}
+        disabled={disabled}
+        aria-busy={busy}
     >
         {children}
     </Button>
@@ -173,7 +179,13 @@ const Toolbar = ({
                     <ToolbarButton active={editor.isActive('link')} onClick={insertLink} title="Link">
                         <LinkIcon fontSize="small" />
                     </ToolbarButton>
-                    <ToolbarButton onClick={onInsertImage} title="Image" active={imageUploading}>
+                    <ToolbarButton
+                        onClick={onInsertImage}
+                        title="Image"
+                        active={imageUploading}
+                        disabled={imageUploading}
+                        busy={imageUploading}
+                    >
                         <ImageIcon fontSize="small" />
                     </ToolbarButton>
                 </div>

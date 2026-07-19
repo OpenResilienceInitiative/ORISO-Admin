@@ -945,7 +945,8 @@ export const M3RichTextEditor = ({
                             <button
                                 type="button"
                                 className={`${styles.textBtn} ${styles.publish}`}
-                                disabled={publishing}
+                                disabled={publishing || imageUpload.uploading}
+                                aria-busy={publishing || imageUpload.uploading}
                                 onClick={() => onPublish(html())}
                             >
                                 <PublishedIcon />
@@ -956,6 +957,8 @@ export const M3RichTextEditor = ({
                             <button
                                 type="button"
                                 className={`${styles.textBtn} ${styles.draft}`}
+                                disabled={imageUpload.uploading}
+                                aria-busy={imageUpload.uploading}
                                 onClick={() => onSaveDraft(html())}
                             >
                                 <EditIcon />

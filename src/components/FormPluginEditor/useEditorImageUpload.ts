@@ -1,6 +1,7 @@
 import { notification } from 'antd';
 import type { Editor } from '@tiptap/react';
-import { useCallback, useState } from 'react';
+import type { Transaction } from '@tiptap/pm/state';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { uploadTenantMedia } from '../../api/tenant/uploadTenantMedia';
 
@@ -21,9 +22,26 @@ export const imageFilesFrom = (files: FileList | File[] | undefined): File[] =>
 export const useEditorImageUpload = (getEditor: () => Editor | null) => {
     const { t } = useTranslation();
     const [uploading, setUploading] = useState(false);
+    const queueRef = useRef<Promise<void>>(Promise.resolve());
+    const queuedBatchCountRef = useRef(0);
 
     const uploadAndInsert = useCallback(
-        async (files: FileList | File[]) => {
+        (files: FileList | File[]): Promise<void> => {
+            const editor = getEditor();
+            let selectionBookmark = editor?.state?.selection?.getBookmark();
+            const mapSelection = ({ transaction }: { transaction: Transaction }) => {
+                selectionBookmark = selectionBookmark?.map(transaction.mapping);
+            };
+            editor?.on?.('transaction', mapSelection);
+
+            const restoreInsertionPoint = () => {
+                if (!editor || editor.isDestroyed || !selectionBookmark) {
+                    return;
+                }
+                const selection = selectionBookmark.resolve(editor.state.doc);
+                editor.view.dispatch(editor.state.tr.setSelection(selection));
+            };
+
             const uploadOne = async (file: File) => {
                 if (!SUPPORTED_IMAGE_TYPES.includes(file.type)) {
                     notification.error({
@@ -36,18 +54,35 @@ export const useEditorImageUpload = (getEditor: () => Editor | null) => {
                     notification.error({ message: t('editor.image.upload.tooLarge'), duration: 5 });
                     return;
                 }
-                setUploading(true);
                 try {
                     const media = await uploadTenantMedia(file);
+                    restoreInsertionPoint();
                     getEditor()?.chain().focus().setImage({ src: media.url }).run();
                 } catch {
                     notification.error({ message: t('editor.image.upload.failed'), duration: 5 });
-                } finally {
-                    setUploading(false);
                 }
             };
-            // sequential on purpose: multi-file drops keep their document order
-            await Array.from(files).reduce((chain, file) => chain.then(() => uploadOne(file)), Promise.resolve());
+
+            queuedBatchCountRef.current += 1;
+            setUploading(true);
+
+            // One queue covers picker, paste, and drop invocations so completion
+            // order always matches the document interaction order.
+            const batch = queueRef.current.then(() =>
+                Array.from(files).reduce(
+                    (previous, file) => previous.then(() => uploadOne(file)),
+                    Promise.resolve(),
+                ),
+            );
+            queueRef.current = batch.catch(() => undefined);
+
+            return batch.finally(() => {
+                editor?.off?.('transaction', mapSelection);
+                queuedBatchCountRef.current -= 1;
+                if (queuedBatchCountRef.current === 0) {
+                    setUploading(false);
+                }
+            });
         },
         [getEditor, t],
     );

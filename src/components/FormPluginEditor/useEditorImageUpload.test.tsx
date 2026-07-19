@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../i18n';
 
@@ -80,6 +80,79 @@ describe('useEditorImageUpload', () => {
 
         expect(setImage).not.toHaveBeenCalled();
         expect(mocks.notificationError).toHaveBeenCalledTimes(1);
+    });
+
+    it('serializes separate upload invocations and stays busy until the shared queue drains', async () => {
+        let resolveFirst: (value: { id: string; url: string; contentType: string }) => void = () => undefined;
+        let resolveSecond: (value: { id: string; url: string; contentType: string }) => void = () => undefined;
+        mocks.uploadTenantMedia
+            .mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+            .mockReturnValueOnce(new Promise((resolve) => (resolveSecond = resolve)));
+        const { editor, setImage } = makeEditor();
+        const { result } = renderHook(() => useEditorImageUpload(() => editor));
+
+        let first: Promise<void>;
+        let second: Promise<void>;
+        act(() => {
+            first = result.current.uploadAndInsert([file('first.png', 'image/png')]);
+            second = result.current.uploadAndInsert([file('second.png', 'image/png')]);
+        });
+
+        expect(result.current.uploading).toBe(true);
+        await waitFor(() => expect(mocks.uploadTenantMedia).toHaveBeenCalledTimes(1));
+
+        await act(async () => resolveFirst({ id: 'first', url: '/media/first', contentType: 'image/png' }));
+        await waitFor(() => expect(mocks.uploadTenantMedia).toHaveBeenCalledTimes(2));
+        expect(result.current.uploading).toBe(true);
+
+        await act(async () => resolveSecond({ id: 'second', url: '/media/second', contentType: 'image/png' }));
+        await act(async () => Promise.all([first!, second!]));
+
+        expect(result.current.uploading).toBe(false);
+        expect(setImage).toHaveBeenNthCalledWith(1, { src: '/media/first' });
+        expect(setImage).toHaveBeenNthCalledWith(2, { src: '/media/second' });
+    });
+
+    it('maps and restores the original editor selection before inserting an async upload', async () => {
+        let resolveUpload: (value: { id: string; url: string; contentType: string }) => void = () => undefined;
+        mocks.uploadTenantMedia.mockReturnValueOnce(new Promise((resolve) => (resolveUpload = resolve)));
+        const mappedSelection = { from: 7 };
+        const mappedBookmark = { map: vi.fn(), resolve: vi.fn(() => mappedSelection) };
+        mappedBookmark.map.mockReturnValue(mappedBookmark);
+        const initialBookmark = { map: vi.fn(() => mappedBookmark) };
+        const transaction = { setSelection: vi.fn() };
+        transaction.setSelection.mockReturnValue(transaction);
+        const dispatch = vi.fn();
+        let transactionListener: ((event: { transaction: { mapping: object } }) => void) | undefined;
+        const { editor, setImage } = makeEditor();
+        const trackedEditor = {
+            ...editor,
+            state: { selection: { getBookmark: () => initialBookmark }, doc: {}, tr: transaction },
+            view: { dispatch },
+            isDestroyed: false,
+            on: vi.fn((_event: string, listener: typeof transactionListener) => {
+                transactionListener = listener;
+            }),
+            off: vi.fn(),
+        } as any;
+        const { result } = renderHook(() => useEditorImageUpload(() => trackedEditor));
+
+        let pending: Promise<void>;
+        act(() => {
+            pending = result.current.uploadAndInsert([file('positioned.png', 'image/png')]);
+        });
+        await waitFor(() => expect(mocks.uploadTenantMedia).toHaveBeenCalledTimes(1));
+        const mapping = {};
+        act(() => transactionListener?.({ transaction: { mapping } }));
+
+        await act(async () => resolveUpload({ id: 'positioned', url: '/media/positioned', contentType: 'image/png' }));
+        await act(async () => pending!);
+
+        expect(initialBookmark.map).toHaveBeenCalledWith(mapping);
+        expect(mappedBookmark.resolve).toHaveBeenCalledWith(trackedEditor.state.doc);
+        expect(transaction.setSelection).toHaveBeenCalledWith(mappedSelection);
+        expect(dispatch).toHaveBeenCalledWith(transaction);
+        expect(setImage).toHaveBeenCalledWith({ src: '/media/positioned' });
     });
 });
 
