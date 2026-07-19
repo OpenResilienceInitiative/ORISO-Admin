@@ -23,6 +23,10 @@ export const FETCH_ERRORS = {
     BAD_REQUEST_WITH_RESPONSE: 'BAD_REQUEST_WITH_RESPONSE',
     CATCH_ALL: 'CATCH_ALL',
     CATCH_ALL_SILENT: 'CATCH_ALL_SILENT',
+    // Opt-in only: skips the global `/admin/access-denied` redirect for this one call so the
+    // caller can render its own inline access-denied state. Additive — every existing caller
+    // that doesn't pass this flag keeps the redirect exactly as before.
+    FORBIDDEN_SILENT: 'FORBIDDEN_SILENT',
     CONFLICT: 'CONFLICT',
     CONFLICT_WITH_RESPONSE: 'CONFLICT_WITH_RESPONSE',
     EMPTY: 'EMPTY',
@@ -160,8 +164,12 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                                 : new Error(FETCH_ERRORS.CONFLICT),
                         );
                     } else if (response.status === 403) {
-                        window.location.href = '/admin/access-denied';
-                        reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
+                        if (props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN_SILENT)) {
+                            reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
+                        } else {
+                            window.location.href = '/admin/access-denied';
+                            reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
+                        }
                     } else if (response.status === 401) {
                         // Don't force a logout here. fetchData()'s wrapper attempts a single
                         // token refresh + retry before falling back to logout, so a lapsed or

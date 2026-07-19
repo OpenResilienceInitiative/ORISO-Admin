@@ -159,6 +159,23 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         expect(location.href).toBe('/admin/access-denied');
     });
 
+    it('skips the access-denied redirect on 403 when the caller opts into FORBIDDEN_SILENT', async () => {
+        const location = { href: '' };
+        vi.stubGlobal('window', { location });
+        const fetchMock = vi.fn().mockResolvedValue(response(403));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/agencyadmin/agencies/42',
+                method: FETCH_METHODS.GET,
+                responseHandling: [FETCH_ERRORS.FORBIDDEN_SILENT],
+            }),
+        ).rejects.toThrow(FETCH_ERRORS.NOT_ALLOWED);
+
+        expect(location.href).toBe('');
+    });
+
     // AD-H07 / #143: every request must eventually fail instead of hanging forever.
     it('aborts a hanging request after the 30s default timeout and rejects with TIMEOUT', async () => {
         vi.useFakeTimers();

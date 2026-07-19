@@ -3,11 +3,13 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
+import { AgencyAccessError } from '../../../api/agency/getAgencyById';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
 import { normalizeTopicIds } from '../../../api/agency/normalizeTopicIds';
 import routePathNames from '../../../appConfig';
 import { Page } from '../../../components/Page';
 import { CardDeck } from '../../../components/CardDeck';
+import { DashboardEmptyState } from '../../../components/DashboardEmptyState/DashboardEmptyState';
 import { useFeatureContext } from '../../../context/FeatureContext';
 import { FeatureFlag } from '../../../enums/FeatureFlag';
 import { Gender } from '../../../enums/Gender';
@@ -67,7 +69,11 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const isFunctionalitiesSection = section === 'functionalities';
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted, setSubmitted] = useState(false);
-    const { data: agencyData, isLoading } = useAgencyData({ id });
+    const { data: agencyData, isLoading, error: agencyError } = useAgencyData({ id });
+    // 403 and 404 are surfaced identically here so a foreign agency's mere existence
+    // isn't observable from the UI. Any other failure keeps rendering the (empty) page
+    // as before, since fetchData's generic toast already told the user something broke.
+    const isAgencyInaccessible = isEditing && !isLoading && agencyError instanceof AgencyAccessError;
     const { data: postCodes, isLoading: isLoadingPostCodes } = useAgencyPostCodesData({ id });
     const { isEnabled } = useFeatureContext();
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
@@ -76,25 +82,27 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { mutate, isPending: isSaving } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
-    const agencySettingsTabs = [
-        {
-            titleKey: 'settings.subhead.masterData',
-            to: `${routePathNames.agency}/${id}/general`,
-            iconName: 'master_data',
-            icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
-        },
-        isEditing && {
-            titleKey: 'settings.subhead.legal',
-            to: `${routePathNames.agency}/${id}/legal-settings`,
-            iconName: 'legal',
-            icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
-        },
-        isEditing && {
-            titleKey: 'settings.subhead.functionAccess',
-            to: `${routePathNames.agency}/${id}/functionalities`,
-            iconName: 'functionality_access',
-        },
-    ];
+    const agencySettingsTabs = isAgencyInaccessible
+        ? []
+        : [
+              {
+                  titleKey: 'settings.subhead.masterData',
+                  to: `${routePathNames.agency}/${id}/general`,
+                  iconName: 'master_data',
+                  icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
+              },
+              isEditing && {
+                  titleKey: 'settings.subhead.legal',
+                  to: `${routePathNames.agency}/${id}/legal-settings`,
+                  iconName: 'legal',
+                  icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
+              },
+              isEditing && {
+                  titleKey: 'settings.subhead.functionAccess',
+                  to: `${routePathNames.agency}/${id}/functionalities`,
+                  iconName: 'functionality_access',
+              },
+          ];
 
     const demographicsInitialValues = isEnabled(FeatureFlag.Demographics)
         ? {
@@ -412,12 +420,12 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 titleMaxLength={isEditing ? 10 : undefined}
                 tabs={agencySettingsTabs}
             >
-                {isReadOnly && !isEditing && !isLegalSection && (
+                {!isAgencyInaccessible && isReadOnly && !isEditing && !isLegalSection && (
                     <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
                         {t('edit')}
                     </Button>
                 )}
-                {!isReadOnly && !isEditing && !isLegalSection && (
+                {!isAgencyInaccessible && !isReadOnly && !isEditing && !isLegalSection && (
                     <>
                         <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
                             {t('btn.cancel')}
@@ -433,10 +441,24 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     </>
                 )}
             </Page.BackWithActions>
-            {isLegalSection && renderLegalSettings()}
-            {isFunctionalitiesSection &&
-                (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
-            {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
+            {isAgencyInaccessible ? (
+                <DashboardEmptyState
+                    icon={<ErrorOutlinedIcon fontSize="large" />}
+                    title={t('agency.edit.notFound.title')}
+                    description={t('agency.edit.notFound.description')}
+                    action={{
+                        label: t('agency.edit.notFound.backToOverview'),
+                        onClick: () => navigate(routePathNames.agency),
+                    }}
+                />
+            ) : (
+                <>
+                    {isLegalSection && renderLegalSettings()}
+                    {isFunctionalitiesSection &&
+                        (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
+                    {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
+                </>
+            )}
         </Page>
     );
 };
