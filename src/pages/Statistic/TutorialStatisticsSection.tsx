@@ -1,21 +1,15 @@
 import { Alert, Table } from 'antd';
 import type { ColumnType } from 'antd/lib/table';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import getTutorialStatistics, { TutorialStatisticsResponse } from '../../api/statistic/getTutorialStatistics';
-import { FETCH_ERRORS } from '../../api/fetchData';
+import type { TutorialStatisticsResponse } from '../../api/statistic/getTutorialStatistics';
 import { buildTutorialStatisticRows, TutorialStatisticRow } from './tutorialStatisticsData';
+import { useTutorialStatistics } from './useTutorialStatistics.hook';
 
 export interface TutorialStatisticsSectionProps {
     /** Injectable for tests/Storybook; defaults to the real admin statistics API. */
     loadStatistics?: () => Promise<TutorialStatisticsResponse>;
 }
-
-type SectionState =
-    | { phase: 'loading' }
-    | { phase: 'forbidden' }
-    | { phase: 'error' }
-    | { phase: 'loaded'; response: TutorialStatisticsResponse };
 
 /**
  * Aggregate tutorial-completion dashboard section (epic TOUR-07). Backend scoping is
@@ -24,37 +18,13 @@ type SectionState =
  * failures as a real error state — never as an empty-success table. No per-user
  * tutorial history exists in the API contract or in this view.
  */
-export const TutorialStatisticsSection = ({
-    loadStatistics = getTutorialStatistics,
-}: TutorialStatisticsSectionProps) => {
+export const TutorialStatisticsSection = ({ loadStatistics }: TutorialStatisticsSectionProps) => {
     const { t } = useTranslation();
-    const [state, setState] = useState<SectionState>({ phase: 'loading' });
+    const { response, isLoading, isForbidden, isError } = useTutorialStatistics(loadStatistics);
 
-    useEffect(() => {
-        let cancelled = false;
-        loadStatistics()
-            .then((response) => {
-                if (!cancelled) {
-                    setState({ phase: 'loaded', response });
-                }
-            })
-            .catch((error: unknown) => {
-                if (cancelled) {
-                    return;
-                }
-                const isForbidden = error instanceof Error && error.message === FETCH_ERRORS.FORBIDDEN;
-                setState({ phase: isForbidden ? 'forbidden' : 'error' });
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [loadStatistics]);
-
-    const rows = useMemo(
-        () => buildTutorialStatisticRows(state.phase === 'loaded' ? state.response : undefined),
-        [state],
-    );
-    const isPlatformScope = state.phase === 'loaded' && state.response.scope === 'PLATFORM';
+    const rows = useMemo(() => buildTutorialStatisticRows(response), [response]);
+    const isLoaded = !isLoading && !isForbidden && !isError;
+    const isPlatformScope = response?.scope === 'PLATFORM';
 
     const columns = useMemo(() => {
         const tenantColumn: ColumnType<TutorialStatisticRow>[] = isPlatformScope
@@ -128,24 +98,16 @@ export const TutorialStatisticsSection = ({
     }, [isPlatformScope, t]);
 
     return (
-        <section
-            className="tutorialStatistics"
-            aria-label={t('statistic.tutorials.title')}
-            aria-busy={state.phase === 'loading'}
-        >
+        <section className="tutorialStatistics" aria-label={t('statistic.tutorials.title')} aria-busy={isLoading}>
             <h2 className="tutorialStatistics__title">{t('statistic.tutorials.title')}</h2>
             <p className="tutorialStatistics__subtitle">{t('statistic.tutorials.subtitle')}</p>
-            {state.phase === 'loading' && (
-                <p className="tutorialStatistics__notice">{t('statistic.tutorials.loading')}</p>
-            )}
-            {state.phase === 'forbidden' && <Alert type="info" showIcon message={t('statistic.tutorials.forbidden')} />}
-            {state.phase === 'error' && (
-                <Alert type="error" showIcon role="alert" message={t('statistic.tutorials.loadError')} />
-            )}
-            {state.phase === 'loaded' && rows.length === 0 && (
+            {isLoading && <p className="tutorialStatistics__notice">{t('statistic.tutorials.loading')}</p>}
+            {isForbidden && <Alert type="info" showIcon message={t('statistic.tutorials.forbidden')} />}
+            {isError && <Alert type="error" showIcon role="alert" message={t('statistic.tutorials.loadError')} />}
+            {isLoaded && rows.length === 0 && (
                 <p className="tutorialStatistics__notice">{t('statistic.tutorials.empty')}</p>
             )}
-            {state.phase === 'loaded' && rows.length > 0 && (
+            {isLoaded && rows.length > 0 && (
                 <>
                     {/* Focusable scroll region: keyboard users must be able to reach and
                         scroll a wide table (axe: scrollable-region-focusable). */}

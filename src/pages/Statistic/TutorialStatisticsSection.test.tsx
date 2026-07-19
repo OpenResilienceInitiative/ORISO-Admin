@@ -1,8 +1,16 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TutorialStatisticsSection } from './TutorialStatisticsSection';
+import { TutorialStatisticsSection, TutorialStatisticsSectionProps } from './TutorialStatisticsSection';
 import { FETCH_ERRORS } from '../../api/fetchData';
 import type { TutorialStatisticsResponse } from '../../api/statistic/getTutorialStatistics';
+
+const renderSection = (loadStatistics: TutorialStatisticsSectionProps['loadStatistics']) =>
+    render(
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+            <TutorialStatisticsSection loadStatistics={loadStatistics} />
+        </QueryClientProvider>,
+    );
 
 const translations: Record<string, string> = {
     'statistic.tutorials.title': 'Tutorial-Abschlüsse',
@@ -71,7 +79,7 @@ afterEach(() => {
 
 describe('TutorialStatisticsSection', () => {
     it('renders the aggregate counts of a tenant-scoped response', async () => {
-        render(<TutorialStatisticsSection loadStatistics={() => Promise.resolve(tenantResponse)} />);
+        renderSection(() => Promise.resolve(tenantResponse));
 
         await waitFor(() => expect(screen.getByText('Beraterrundgang')).toBeTruthy());
         expect(screen.getByText('Tutorial-Abschlüsse')).toBeTruthy();
@@ -83,11 +91,7 @@ describe('TutorialStatisticsSection', () => {
     });
 
     it('shows the tenant column for a platform-scoped response', async () => {
-        render(
-            <TutorialStatisticsSection
-                loadStatistics={() => Promise.resolve({ ...tenantResponse, scope: 'PLATFORM' })}
-            />,
-        );
+        renderSection(() => Promise.resolve({ ...tenantResponse, scope: 'PLATFORM' }));
 
         await waitFor(() => expect(screen.getByText('Beraterrundgang')).toBeTruthy());
         // antd renders the header cell twice for scrollable tables.
@@ -95,7 +99,7 @@ describe('TutorialStatisticsSection', () => {
     });
 
     it('shows a dedicated notice when access is forbidden instead of an empty success state', async () => {
-        render(<TutorialStatisticsSection loadStatistics={() => Promise.reject(new Error(FETCH_ERRORS.FORBIDDEN))} />);
+        renderSection(() => Promise.reject(new Error(FETCH_ERRORS.FORBIDDEN)));
 
         await waitFor(() =>
             expect(screen.getByText('Für die Tutorial-Statistik fehlt Ihnen die Berechtigung.')).toBeTruthy(),
@@ -104,28 +108,20 @@ describe('TutorialStatisticsSection', () => {
     });
 
     it('shows an error state for any other failure', async () => {
-        render(<TutorialStatisticsSection loadStatistics={() => Promise.reject(new Error('API call error: 500'))} />);
+        renderSection(() => Promise.reject(new Error('API call error: 500')));
 
         await waitFor(() => expect(screen.getByText('Tutorial-Statistik konnte nicht geladen werden.')).toBeTruthy());
         expect(screen.getByRole('alert')).toBeTruthy();
     });
 
     it('shows the empty state when no counts exist yet', async () => {
-        render(
-            <TutorialStatisticsSection
-                loadStatistics={() =>
-                    Promise.resolve({ generatedAt: '2026-07-19T10:00:00Z', scope: 'TENANT', tenants: [] })
-                }
-            />,
-        );
+        renderSection(() => Promise.resolve({ generatedAt: '2026-07-19T10:00:00Z', scope: 'TENANT', tenants: [] }));
 
         await waitFor(() => expect(screen.getByText('Noch keine Tutorial-Nutzung erfasst.')).toBeTruthy());
     });
 
     it('never renders per-user information', async () => {
-        const { container } = render(
-            <TutorialStatisticsSection loadStatistics={() => Promise.resolve(tenantResponse)} />,
-        );
+        const { container } = renderSection(() => Promise.resolve(tenantResponse));
 
         await waitFor(() => expect(screen.getByText('Beraterrundgang')).toBeTruthy());
         expect(container.textContent).not.toMatch(/user|nutzerkennung/i);
