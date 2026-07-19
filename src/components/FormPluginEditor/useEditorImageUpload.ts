@@ -69,10 +69,7 @@ export const useEditorImageUpload = (getEditor: () => Editor | null) => {
             // One queue covers picker, paste, and drop invocations so completion
             // order always matches the document interaction order.
             const batch = queueRef.current.then(() =>
-                Array.from(files).reduce(
-                    (previous, file) => previous.then(() => uploadOne(file)),
-                    Promise.resolve(),
-                ),
+                Array.from(files).reduce((previous, file) => previous.then(() => uploadOne(file)), Promise.resolve()),
             );
             queueRef.current = batch.catch(() => undefined);
 

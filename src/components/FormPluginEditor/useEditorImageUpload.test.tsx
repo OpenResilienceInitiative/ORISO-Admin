@@ -86,8 +86,16 @@ describe('useEditorImageUpload', () => {
         let resolveFirst: (value: { id: string; url: string; contentType: string }) => void = () => undefined;
         let resolveSecond: (value: { id: string; url: string; contentType: string }) => void = () => undefined;
         mocks.uploadTenantMedia
-            .mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
-            .mockReturnValueOnce(new Promise((resolve) => (resolveSecond = resolve)));
+            .mockReturnValueOnce(
+                new Promise((resolve) => {
+                    resolveFirst = resolve;
+                }),
+            )
+            .mockReturnValueOnce(
+                new Promise((resolve) => {
+                    resolveSecond = resolve;
+                }),
+            );
         const { editor, setImage } = makeEditor();
         const { result } = renderHook(() => useEditorImageUpload(() => editor));
 
@@ -115,7 +123,11 @@ describe('useEditorImageUpload', () => {
 
     it('maps and restores the original editor selection before inserting an async upload', async () => {
         let resolveUpload: (value: { id: string; url: string; contentType: string }) => void = () => undefined;
-        mocks.uploadTenantMedia.mockReturnValueOnce(new Promise((resolve) => (resolveUpload = resolve)));
+        mocks.uploadTenantMedia.mockReturnValueOnce(
+            new Promise((resolve) => {
+                resolveUpload = resolve;
+            }),
+        );
         const mappedSelection = { from: 7 };
         const mappedBookmark = { map: vi.fn(), resolve: vi.fn(() => mappedSelection) };
         mappedBookmark.map.mockReturnValue(mappedBookmark);

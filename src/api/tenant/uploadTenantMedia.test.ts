@@ -49,13 +49,11 @@ describe('uploadTenantMedia', () => {
     });
 
     it('refreshes an expired access token and retries the multipart upload once', async () => {
-        fetchSpy
-            .mockResolvedValueOnce(new Response(null, { status: 401 }))
-            .mockResolvedValueOnce(
-                new Response(JSON.stringify({ id: 'abc', url: '/media/abc', contentType: 'image/png' }), {
-                    status: 201,
-                }),
-            );
+        fetchSpy.mockResolvedValueOnce(new Response(null, { status: 401 })).mockResolvedValueOnce(
+            new Response(JSON.stringify({ id: 'abc', url: '/media/abc', contentType: 'image/png' }), {
+                status: 201,
+            }),
+        );
         authMocks.tryRefreshAccessToken.mockResolvedValue(true);
 
         await expect(uploadTenantMedia(pngFile())).resolves.toMatchObject({ id: 'abc' });

@@ -103,7 +103,11 @@ describe('M3RichTextEditor accessibility', () => {
 describe('M3RichTextEditor image upload integrity', () => {
     it('blocks save and publish until a pending image has been inserted', async () => {
         let resolveUpload: (value: { id: string; url: string; contentType: string }) => void = () => undefined;
-        imageUploadMocks.uploadTenantMedia.mockReturnValueOnce(new Promise((resolve) => (resolveUpload = resolve)));
+        imageUploadMocks.uploadTenantMedia.mockReturnValueOnce(
+            new Promise((resolve) => {
+                resolveUpload = resolve;
+            }),
+        );
         const onPublish = vi.fn();
         const onSaveDraft = vi.fn();
         render(<M3RichTextEditor title="Impressum" onPublish={onPublish} onSaveDraft={onSaveDraft} />);
