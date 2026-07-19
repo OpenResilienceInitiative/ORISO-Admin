@@ -1,10 +1,9 @@
-import { Alert } from 'antd';
+import { Alert, Table } from 'antd';
 import type { ColumnType } from 'antd/lib/table';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import getTutorialStatistics, { TutorialStatisticsResponse } from '../../api/statistic/getTutorialStatistics';
 import { FETCH_ERRORS } from '../../api/fetchData';
-import { ListingTable } from '../../components/ListingTable';
 import { buildTutorialStatisticRows, TutorialStatisticRow } from './tutorialStatisticsData';
 
 export interface TutorialStatisticsSectionProps {
@@ -147,13 +146,28 @@ export const TutorialStatisticsSection = ({
                 <p className="tutorialStatistics__notice">{t('statistic.tutorials.empty')}</p>
             )}
             {state.phase === 'loaded' && rows.length > 0 && (
-                <ListingTable<TutorialStatisticRow>
-                    columns={columns}
-                    dataSource={rows}
-                    rowKey="key"
-                    pagination={false}
-                    scroll={{ x: 900 }}
-                />
+                <>
+                    {/* Focusable scroll region: keyboard users must be able to reach and
+                        scroll a wide table (axe: scrollable-region-focusable). */}
+                    {/* eslint-disable jsx-a11y/no-noninteractive-tabindex */}
+                    <div
+                        className="tutorialStatistics__tableWrap"
+                        role="region"
+                        aria-label={t('statistic.tutorials.title')}
+                        tabIndex={0}
+                    >
+                        {/* Deliberately not ListingTable: its viewport-height scroll
+                            container is unreachable by keyboard; the wrapper above is
+                            the single scrollable region of this embedded section. */}
+                        <Table<TutorialStatisticRow>
+                            columns={columns}
+                            dataSource={rows}
+                            rowKey="key"
+                            pagination={false}
+                        />
+                    </div>
+                    {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
+                </>
             )}
         </section>
     );
