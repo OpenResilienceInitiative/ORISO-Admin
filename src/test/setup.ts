@@ -1,6 +1,5 @@
 import '@testing-library/jest-dom';
 import { afterEach, vi } from 'vitest';
-import { message } from 'antd';
 
 if (typeof window !== 'undefined') {
     // jsdom does not implement matchMedia; antd responsive hooks need it.
@@ -84,12 +83,4 @@ if (typeof window !== 'undefined') {
 // Prevent fake-timer leakage between test files when a test forgets to restore.
 afterEach(() => {
     vi.useRealTimers();
-    // Clear antd static-message toasts and their auto-dismiss timers. Otherwise a
-    // toast raised by the last test in a file can re-render during a later file's
-    // teardown, after jsdom is gone — surfacing as an unhandled "window is not
-    // defined" in react-dom's scheduler and failing the whole run. Guarded because
-    // node-environment tests (e.g. api/*) have no DOM for antd to touch.
-    if (typeof document !== 'undefined') {
-        message.destroy();
-    }
 });
