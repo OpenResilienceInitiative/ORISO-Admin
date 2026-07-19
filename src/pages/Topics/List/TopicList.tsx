@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Modal } from 'antd';
+import { Button } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { ColumnProps } from 'antd/lib/table';
 import { InterestsOutlined } from '@mui/icons-material';
@@ -11,6 +11,7 @@ import { M3Switch } from '../../../components/M3Switch';
 import { TopicData } from '../../../types/topic';
 import { Status } from '../../../types/status';
 import { TopicDeletionModal } from './TopicDeletionModal';
+import { Modal } from '../../../components/Modal';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useFeatureContext } from '../../../context/FeatureContext';
@@ -39,6 +40,7 @@ export const TopicList = () => {
     const { hasRole } = useUserRoles();
     const { mutate: updateTenantData } = useTenantAdminDataMutation({ id: `${data.id}` });
     const [topicIdForDelete, setTopicIdForDelete] = useState<number>(null);
+    const [switchConfirmOpen, setSwitchConfirmOpen] = useState(false);
     const [tableState, setTableState] = useState<TableState>({
         current: 1,
         sortBy: undefined,
@@ -52,28 +54,15 @@ export const TopicList = () => {
     }, []);
     const setSearchDebounced = useDebouncedCallback(updateSearch, 100);
 
-    const onTopicsSwitch = useCallback(() => {
-        Modal.confirm({
-            title: t(isTopicsFeatureActive ? 'topics.featureToggle.off.title' : 'topics.featureToggle.on.title'),
-            content: t(
-                isTopicsFeatureActive ? 'topics.featureToggle.off.description' : 'topics.featureToggle.on.description',
-            ),
-            width: '768px',
-            icon: <InterestsOutlined />,
-            onOk() {
-                updateTenantData(
-                    {
-                        settings: {
-                            topicsInRegistrationEnabled: !isTopicsFeatureActive,
-                        },
-                    },
-                    {
-                        onSuccess: () => toggleFeature(FeatureFlag.TopicsInRegistration),
-                    },
-                );
-            },
-        });
-    }, [isTopicsFeatureActive]);
+    const onTopicsSwitch = useCallback(() => setSwitchConfirmOpen(true), []);
+
+    const confirmTopicsSwitch = useCallback(() => {
+        updateTenantData(
+            { settings: { topicsInRegistrationEnabled: !isTopicsFeatureActive } },
+            { onSuccess: () => toggleFeature(FeatureFlag.TopicsInRegistration) },
+        );
+        setSwitchConfirmOpen(false);
+    }, [isTopicsFeatureActive, toggleFeature, updateTenantData]);
 
     const onCloseDeleteModal = useCallback(() => {
         setTopicIdForDelete(null);
@@ -219,6 +208,24 @@ export const TopicList = () => {
             />
 
             {topicIdForDelete && <TopicDeletionModal id={topicIdForDelete} onClose={onCloseDeleteModal} />}
+            {switchConfirmOpen && (
+                <Modal
+                    titleKey={
+                        isTopicsFeatureActive ? 'topics.featureToggle.off.title' : 'topics.featureToggle.on.title'
+                    }
+                    contentKey={
+                        isTopicsFeatureActive
+                            ? 'topics.featureToggle.off.description'
+                            : 'topics.featureToggle.on.description'
+                    }
+                    icon={<InterestsOutlined />}
+                    width={768}
+                    cancelLabelKey="btn.cancel.uppercase"
+                    okLabelKey="btn.ok.uppercase"
+                    onConfirm={confirmTopicsSwitch}
+                    onClose={() => setSwitchConfirmOpen(false)}
+                />
+            )}
         </Page>
     );
 };
