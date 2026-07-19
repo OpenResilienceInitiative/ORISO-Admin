@@ -65,9 +65,9 @@ describe('TranslateOnPublishModal', () => {
         expect(screen.getByText('legal.translation.error.keyInvalid')).toBeInTheDocument();
     });
 
-    it('locks cancel and skip while translating', () => {
+    it('locks the actions while translating (cancel is the top-right close icon)', () => {
         render(<TranslateOnPublishModal {...baseProps} translating />);
-        expect(screen.getByRole('button', { name: 'legal.translation.modal.cancel' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'legal.translation.modal.skip' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'legal.translation.modal.confirm' })).toBeDisabled();
     });
 });
