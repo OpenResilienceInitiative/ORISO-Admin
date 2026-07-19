@@ -16,6 +16,15 @@ const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
     navigate: vi.fn(),
     searchTenantData: vi.fn(),
+    userRoles: {
+        hasRole: () => true,
+        isSuperAdmin: true,
+        isTechnicalAccount: false,
+        isTenantScopedAdmin: false,
+        roles: [],
+        tenantId: 0,
+    },
+    dpaGate: { dpaPublished: true, dpaSigned: true },
 }));
 
 const translations: Record<string, string> = {
@@ -39,6 +48,8 @@ const translations: Record<string, string> = {
     'form.errors.required': 'Bitte füllen Sie das markierte Feld aus.',
     plsSelect: 'Bitte wählen',
     save: 'Speichern',
+    'agency.dpaGate.title': 'AVV-Unterschrift erforderlich',
+    'agency.dpaGate.description': 'Unterschreiben Sie zuerst den AVV.',
 };
 
 const t = (key: string) => translations[key] || key;
@@ -139,14 +150,11 @@ vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
 }));
 
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
-    useUserRoles: () => ({
-        hasRole: () => true,
-        isSuperAdmin: true,
-        isTechnicalAccount: false,
-        isTenantScopedAdmin: false,
-        roles: [],
-        tenantId: 0,
-    }),
+    useUserRoles: () => mocks.userRoles,
+}));
+
+vi.mock('../../../hooks/useDpaGate.hook', () => ({
+    useDpaGate: () => ({ data: mocks.dpaGate, isLoading: false, isError: false }),
 }));
 
 vi.mock('../../../api/tenant/searchTenantData', () => ({
@@ -192,6 +200,15 @@ describe('AgencyPageEdit create flow', () => {
         mocks.searchTenantData.mockResolvedValue({
             data: [{ id: 7, name: 'Caritas Augsburg' }],
         });
+        mocks.userRoles = {
+            hasRole: () => true,
+            isSuperAdmin: true,
+            isTechnicalAccount: false,
+            isTenantScopedAdmin: false,
+            roles: [],
+            tenantId: 0,
+        };
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
     });
 
     it('renders the tenant assignment field for super-admin agency creation', async () => {
@@ -227,5 +244,22 @@ describe('AgencyPageEdit create flow', () => {
             await screen.findByText('Bitte füllen Sie das markierte Feld aus.', undefined, { timeout: 5000 }),
         ).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('blocks the direct add route for a tenant admin whose DPA is unsigned', () => {
+        mocks.userRoles = {
+            hasRole: () => true,
+            isSuperAdmin: false,
+            isTechnicalAccount: false,
+            isTenantScopedAdmin: true,
+            roles: [],
+            tenantId: 84,
+        };
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: false };
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(screen.getByText('AVV-Unterschrift erforderlich')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Name *')).not.toBeInTheDocument();
     });
 });

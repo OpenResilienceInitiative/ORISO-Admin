@@ -4,12 +4,30 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DataProcessingAgreementContainer } from './index';
 
-const { useDpaVersions, publishMutate, useTranslation, useTenantAdminData, useUserData } = vi.hoisted(() => ({
+const {
+    useDpaVersions,
+    publishMutate,
+    useTranslation,
+    useTenantAdminData,
+    useUserData,
+    useDpaGate,
+    useDpaSignatures,
+    createInviteMutate,
+    userRoles,
+} = vi.hoisted(() => ({
     useDpaVersions: vi.fn(),
     publishMutate: vi.fn(),
     useTranslation: vi.fn(),
     useTenantAdminData: vi.fn(),
     useUserData: vi.fn(),
+    useDpaGate: vi.fn(),
+    useDpaSignatures: vi.fn(),
+    createInviteMutate: vi.fn(),
+    userRoles: {
+        isSuperAdmin: true,
+        isTenantScopedAdmin: false,
+        tenantId: 0,
+    },
 }));
 
 vi.mock('react-i18next', () => ({ useTranslation }));
@@ -17,6 +35,14 @@ vi.mock('../../../../../hooks/useDpaVersions.hook', () => ({ useDpaVersions }));
 vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminData }));
 vi.mock('../../../../../hooks/useUserData.hook', () => ({
     useUserData,
+}));
+vi.mock('../../../../../hooks/useUserRoles.hook', () => ({
+    useUserRoles: () => userRoles,
+}));
+vi.mock('../../../../../hooks/useDpaGate.hook', () => ({ useDpaGate }));
+vi.mock('../../../../../hooks/useDpaSignatures.hook', () => ({ useDpaSignatures }));
+vi.mock('../../../../../hooks/useCreateDpaInvite.hook', () => ({
+    useCreateDpaInvite: () => ({ mutate: createInviteMutate, isPending: false }),
 }));
 vi.mock('../../../../../hooks/usePublishDpa.hook', () => ({
     usePublishDpa: () => ({ mutate: publishMutate, isPending: false }),
@@ -70,6 +96,12 @@ beforeEach(() => {
     });
     useTenantAdminData.mockReturnValue({ data: { settings: { activeLanguages: ['de', 'en'] } } });
     useUserData.mockReturnValue({ data: { id: 'admin-1' } });
+    useDpaGate.mockReturnValue({ data: { dpaPublished: true, dpaSigned: true }, isError: false });
+    useDpaSignatures.mockReturnValue({ data: [], isError: false });
+    createInviteMutate.mockReset();
+    userRoles.isSuperAdmin = true;
+    userRoles.isTenantScopedAdmin = false;
+    userRoles.tenantId = 0;
 });
 
 describe('DataProcessingAgreementContainer', () => {
@@ -169,5 +201,50 @@ describe('DataProcessingAgreementContainer', () => {
 
         expect(screen.getByTestId('draft')).toHaveTextContent('unsaved draft');
         expect(screen.getByTestId('card')).toHaveAttribute('data-dismissal-scope', '1:resolved-admin');
+    });
+
+    it('keeps the tenant DPA read-only and creates a sign action while the gate is unsigned', async () => {
+        userRoles.isSuperAdmin = false;
+        userRoles.isTenantScopedAdmin = true;
+        userRoles.tenantId = 84;
+        useDpaGate.mockReturnValue({ data: { dpaPublished: true, dpaSigned: false }, isError: false });
+        createInviteMutate.mockImplementation((_variables, options) =>
+            options.onSuccess({ signLink: 'https://app.example/dpa-sign/secret', expiresAt: '2026-07-20T12:00:00Z' }),
+        );
+
+        const user = userEvent.setup();
+        render(<DataProcessingAgreementContainer tenantId={84} />);
+
+        expect(screen.getByTestId('card')).toHaveAttribute('data-read-only', 'true');
+        await user.click(screen.getByRole('button', { name: 'legal.dpa.sign.createLink' }));
+        expect(createInviteMutate).toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: 'legal.dpa.sign.openLink' })).toBeInTheDocument();
+        expect(screen.queryByText(/secret/)).not.toBeInTheDocument();
+    });
+
+    it('shows the confirmed signer identity and date to the tenant admin', () => {
+        userRoles.isSuperAdmin = false;
+        userRoles.isTenantScopedAdmin = true;
+        userRoles.tenantId = 84;
+        useDpaGate.mockReturnValue({ data: { dpaPublished: true, dpaSigned: true }, isError: false });
+        useDpaSignatures.mockReturnValue({
+            data: [
+                {
+                    status: 'SIGNED',
+                    signerName: 'Erika E2E Mustermann',
+                    signerPosition: 'Geschäftsführung',
+                    signerOrganisation: 'E2E Full Gate 202607191747',
+                    signedAt: '2026-07-19T18:49:00Z',
+                },
+            ],
+            isError: false,
+        });
+
+        render(<DataProcessingAgreementContainer tenantId={84} />);
+
+        expect(screen.getByText('Erika E2E Mustermann')).toBeInTheDocument();
+        expect(screen.getByText('Geschäftsführung')).toBeInTheDocument();
+        expect(screen.getByText('E2E Full Gate 202607191747')).toBeInTheDocument();
+        expect(screen.getByText(/19\.07\.2026/)).toBeInTheDocument();
     });
 });

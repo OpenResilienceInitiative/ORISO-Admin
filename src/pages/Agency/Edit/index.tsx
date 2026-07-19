@@ -1,4 +1,4 @@
-import { Button, Form, notification } from 'antd';
+import { Alert, Button, Form, notification } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -31,6 +31,7 @@ import styles from '../../../components/Page/styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -71,7 +72,13 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { data: postCodes, isLoading: isLoadingPostCodes } = useAgencyPostCodesData({ id });
     const { isEnabled } = useFeatureContext();
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin, tenantId } = useUserRoles();
+    const {
+        data: dpaGate,
+        isLoading: isDpaGateLoading,
+        isError: isDpaGateError,
+        refetch: refetchDpaGate,
+    } = useDpaGate(tenantId ?? 0, !isEditing && isTenantScopedAdmin);
     const [form] = Form.useForm();
     const { mutate, isPending: isSaving } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
@@ -95,6 +102,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             iconName: 'functionality_access',
         },
     ];
+    const isAgencyCreationDpaBlocked =
+        !isEditing && isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || dpaGate?.dpaSigned !== true);
 
     const demographicsInitialValues = isEnabled(FeatureFlag.Demographics)
         ? {
@@ -413,12 +422,12 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 titleMaxLength={isEditing ? 10 : undefined}
                 tabs={agencySettingsTabs}
             >
-                {isReadOnly && !isEditing && !isLegalSection && (
+                {!isAgencyCreationDpaBlocked && isReadOnly && !isEditing && !isLegalSection && (
                     <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
                         {t('edit')}
                     </Button>
                 )}
-                {!isReadOnly && !isEditing && !isLegalSection && (
+                {!isAgencyCreationDpaBlocked && !isReadOnly && !isEditing && !isLegalSection && (
                     <>
                         <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
                             {t('btn.cancel')}
@@ -434,10 +443,32 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     </>
                 )}
             </Page.BackWithActions>
-            {isLegalSection && renderLegalSettings()}
-            {isFunctionalitiesSection &&
-                (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
-            {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
+            {isAgencyCreationDpaBlocked ? (
+                <Alert
+                    type="warning"
+                    showIcon
+                    message={t('agency.dpaGate.title')}
+                    description={t('agency.dpaGate.description')}
+                    action={
+                        isDpaGateError ? (
+                            <Button size="small" onClick={() => refetchDpaGate()}>
+                                {t('tenants.legal.version.retry')}
+                            </Button>
+                        ) : (
+                            <Button size="small" onClick={() => navigate(`${routePathNames.themeSettings}/legal`)}>
+                                {t('agency.dpaGate.openLegalSettings')}
+                            </Button>
+                        )
+                    }
+                />
+            ) : (
+                <>
+                    {isLegalSection && renderLegalSettings()}
+                    {isFunctionalitiesSection &&
+                        (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
+                    {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
+                </>
+            )}
         </Page>
     );
 };

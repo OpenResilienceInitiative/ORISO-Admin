@@ -6,6 +6,8 @@ export interface LegalHelpContext {
     empty: boolean;
     /** The current user may look but not edit. */
     readOnly: boolean;
+    /** Whether the current DPA version was actually confirmed. */
+    signed?: boolean;
 }
 
 /**
@@ -42,12 +44,12 @@ export const isEmptyLegalContent = (value: unknown): boolean => {
 export const resolveLegalHelpKey = (
     type: LegalHelpType,
     role: LegalHelpRole,
-    { empty, readOnly }: LegalHelpContext,
+    { empty, readOnly, signed }: LegalHelpContext,
 ): string => {
     let state: string;
     if (type === 'dpa') {
         if (role === 'platform') state = empty ? 'empty' : 'published';
-        else if (role === 'tenant') state = readOnly ? 'signed' : 'unsigned';
+        else if (role === 'tenant') state = signed ? 'signed' : 'unsigned';
         else state = 'published';
     } else if (role === 'platform') {
         state = empty ? 'empty' : 'published';
