@@ -1,7 +1,8 @@
 // antd's static message API is a silent no-op under React 19 without this patch.
 import '@ant-design/v5-patch-for-react-19';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
+import { message } from 'antd';
 import userEvent from '@testing-library/user-event';
 import { InviteCsvImportModal } from './InviteCsvImportModal';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
@@ -52,6 +53,24 @@ describe('InviteCsvImportModal', () => {
         createInvite.mockResolvedValue(undefined);
     });
 
+    afterEach(async () => {
+        // The import summary uses antd's static message API: an own React root with an
+        // auto-dismiss timer. Tear it down and drain the scheduler's pending ticks here,
+        // or the timer fires after this file's jsdom is gone and react-dom crashes with
+        // "window is not defined" (unhandled error -> vitest exit 1; CI run 29667445994).
+        message.destroy();
+        // Three chained ticks: a drained render may schedule one follow-up each.
+        await new Promise((resolve) => {
+            setImmediate(resolve);
+        });
+        await new Promise((resolve) => {
+            setImmediate(resolve);
+        });
+        await new Promise((resolve) => {
+            setImmediate(resolve);
+        });
+    });
+
     const renderModal = (parseResult: ParseInviteCsvResult, props: Record<string, unknown> = {}) =>
         render(
             <InviteCsvImportModal
@@ -95,6 +114,8 @@ describe('InviteCsvImportModal', () => {
         expect(createInvite.mock.calls.map(([row]) => row.tenantId)).toEqual([3, 5, 6]);
         await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
         expect(onCreated).toHaveBeenCalledTimes(1);
+        // Deterministically consume the success message instead of leaving it mid-render.
+        expect(await screen.findByText('3 Empfänger angelegt')).toBeInTheDocument();
     });
 
     it('marks a per-row 409 as "Träger-ID vergeben" and keeps the modal open', async () => {
@@ -129,6 +150,8 @@ describe('InviteCsvImportModal', () => {
         expect(onClose).not.toHaveBeenCalled();
         // Only the failed row remains in the batch.
         expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeInTheDocument();
+        // Deterministically consume the partial-summary message instead of leaving it mid-render.
+        expect(await screen.findByText('1 Empfänger angelegt, 1 fehlgeschlagen')).toBeInTheDocument();
     });
 
     it('lists rejected rows read-only, supports removing rows and editing names', async () => {
