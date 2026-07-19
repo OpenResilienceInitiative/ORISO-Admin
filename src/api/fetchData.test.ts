@@ -159,6 +159,23 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         expect(location.href).toBe('/admin/access-denied');
     });
 
+    it('rejects a 403 locally without redirecting when FORBIDDEN handling is requested', async () => {
+        const location = { href: '' };
+        vi.stubGlobal('window', { location });
+        const fetchMock = vi.fn().mockResolvedValue(response(403));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/useradmin/statistics/tutorials',
+                method: FETCH_METHODS.GET,
+                responseHandling: [FETCH_ERRORS.FORBIDDEN],
+            }),
+        ).rejects.toThrow(FETCH_ERRORS.FORBIDDEN);
+
+        expect(location.href).toBe('');
+    });
+
     // AD-H07 / #143: every request must eventually fail instead of hanging forever.
     it('aborts a hanging request after the 30s default timeout and rejects with TIMEOUT', async () => {
         vi.useFakeTimers();
