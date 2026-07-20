@@ -10,7 +10,7 @@ export const appURL = runtimeConfig.appBaseUrl;
 export const matrixURL = runtimeConfig.matrixBaseUrl;
 const userServiceURL = runtimeConfig.userServiceOrigin;
 const agencyServiceURL = runtimeConfig.agencyServiceOrigin;
-const tenantServiceURL = runtimeConfig.tenantServiceOrigin;
+export const tenantServiceURL = runtimeConfig.tenantServiceOrigin;
 const consultingTypeServiceURL = runtimeConfig.consultingTypeServiceOrigin;
 
 export const clusterFeatureFlags = {

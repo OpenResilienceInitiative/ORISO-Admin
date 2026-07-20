@@ -3,7 +3,7 @@ import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
+import { ResolvingImage } from './createResolvingImage';
 import Highlight from '@tiptap/extension-highlight';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
@@ -616,7 +616,7 @@ export const M3RichTextEditor = ({
             StarterKit,
             Underline,
             Link.configure({ openOnClick: false, autolink: false }),
-            Image,
+            ResolvingImage,
             Highlight.configure({ multicolor: true }),
             TaskList,
             TaskItem.configure({ nested: true }),
