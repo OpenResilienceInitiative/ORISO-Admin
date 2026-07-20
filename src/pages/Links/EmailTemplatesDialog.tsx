@@ -1,6 +1,7 @@
 import { Button, Form, Input, message, Select, Switch, Tag, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import {
     createInviteEmailTemplate,
     InviteEmailTemplateDTO,
@@ -10,7 +11,8 @@ import {
     updateInviteEmailTemplate,
 } from '../../api/accountInvites/accountInvites';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
-import { Modal } from '../../components/Modal';
+import { Modal, DialogButton } from '../../components/Modal';
+import styles from './EmailTemplatesDialog.module.scss';
 
 const TEMPLATE_KINDS: InviteEmailTemplateKind[] = ['TENANT_INVITE', 'COUNSELLOR_INVITE', 'DPA_FORWARD'];
 
@@ -220,25 +222,22 @@ export const EmailTemplatesDialog = ({
     );
 
     const listFooter = (
-        <div className={listingTableStyles.actionGroup}>
-            <Button onClick={onClose}>{t('links.templates.close', 'Close')}</Button>
-            <Button type="primary" className={listingTableStyles.createButton} onClick={openCreateForm}>
+        <div className={styles.footerActions}>
+            <DialogButton onClick={onClose}>{t('links.templates.close', 'Close')}</DialogButton>
+            <DialogButton primary onClick={openCreateForm}>
                 {t('links.templates.new', 'New template')}
-            </Button>
+            </DialogButton>
         </div>
     );
 
     const formFooter = (
-        <div className={listingTableStyles.actionGroup}>
-            <Button onClick={backToList}>{t('links.templates.back', 'Back')}</Button>
-            <Button
-                type="primary"
-                className={listingTableStyles.createButton}
-                loading={submitting}
-                onClick={() => form.submit()}
-            >
+        <div className={styles.footerActions}>
+            <DialogButton onClick={backToList} disabled={submitting}>
+                {t('links.templates.back', 'Back')}
+            </DialogButton>
+            <DialogButton primary loading={submitting} onClick={() => form.submit()}>
                 {t('links.templates.save', 'Save')}
-            </Button>
+            </DialogButton>
         </div>
     );
 
@@ -248,7 +247,13 @@ export const EmailTemplatesDialog = ({
     }
 
     return (
-        <Modal titleKey={titleKey} onClose={onClose} footer={view === 'list' ? listFooter : formFooter} width={860}>
+        <Modal
+            titleKey={titleKey}
+            icon={<EmailOutlinedIcon />}
+            onClose={onClose}
+            footer={view === 'list' ? listFooter : formFooter}
+            width={860}
+        >
             {view === 'list' ? (
                 <ListingTable
                     rowKey="id"

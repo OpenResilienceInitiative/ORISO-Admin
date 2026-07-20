@@ -1,12 +1,15 @@
-import { Alert, Button, Form, message, Modal, Tooltip } from 'antd';
+import { Alert, Button, Form, message, Tooltip } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import DomainAddOutlinedIcon from '@mui/icons-material/DomainAddOutlined';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UnsavedChangesModal } from '../CardEditable/components/UnsavedChanges';
 import { FormInputField } from '../FormInputField';
+import { Modal, DialogButton } from '../Modal';
 import { useAgencyUpdate } from '../../hooks/useAgencyUpdate';
 import { AgencyData } from '../../types/agency';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
+import styles from './styles.module.scss';
 
 interface CreateAgencyModalProps {
     /**
@@ -88,45 +91,51 @@ export const CreateAgencyModal = ({ tenantId, disabled, onSuccess }: CreateAgenc
             ) : (
                 button
             )}
-            <Modal
-                title={t('counselor.form.createAgency.title')}
-                open={open}
-                centered
-                destroyOnClose
-                confirmLoading={isPending}
-                okText={t('counselor.form.createAgency.confirm')}
-                cancelText={t('btn.cancel')}
-                onOk={() => form.submit()}
-                onCancel={requestClose}
-            >
-                {/* disabled={false} keeps the outer (read-only) form context from disabling these fields */}
-                {/* onFinish also fires on Enter inside a field, not only via the OK button */}
-                <Form form={form} layout="vertical" size="large" disabled={false} onFinish={onFinish}>
-                    <Alert type="info" description={t('counselor.form.createAgency.offlineHint')} />
-                    <br />
-                    <FormInputField
-                        name="name"
-                        labelKey="agency.edit.general.general_information.name"
-                        placeholderKey="agency.edit.general.general_information.name"
-                        required
-                        autoFocus
-                    />
-                    <FormInputField
-                        name="postcode"
-                        labelKey="agency.edit.general.address.postcode"
-                        placeholderKey="agency.edit.general.address.postcode"
-                        required
-                        maxLength={5}
-                        rules={[{ min: 5, required: true, message: t('agency.postcode.minimum') }]}
-                    />
-                    <FormInputField
-                        name="city"
-                        labelKey="agency.edit.general.address.city"
-                        placeholderKey="agency.edit.general.address.city"
-                        required
-                    />
-                </Form>
-            </Modal>
+            {open && (
+                <Modal
+                    titleKey="counselor.form.createAgency.title"
+                    icon={<DomainAddOutlinedIcon />}
+                    footer={
+                        <div className={styles.footerActions}>
+                            <DialogButton onClick={requestClose} disabled={isPending}>
+                                {t('btn.cancel')}
+                            </DialogButton>
+                            <DialogButton primary loading={isPending} onClick={() => form.submit()}>
+                                {t('counselor.form.createAgency.confirm')}
+                            </DialogButton>
+                        </div>
+                    }
+                    onClose={requestClose}
+                >
+                    {/* disabled={false} keeps the outer (read-only) form context from disabling these fields */}
+                    {/* onFinish also fires on Enter inside a field, not only via the OK button */}
+                    <Form form={form} layout="vertical" size="large" disabled={false} onFinish={onFinish}>
+                        <Alert type="info" description={t('counselor.form.createAgency.offlineHint')} />
+                        <br />
+                        <FormInputField
+                            name="name"
+                            labelKey="agency.edit.general.general_information.name"
+                            placeholderKey="agency.edit.general.general_information.name"
+                            required
+                            autoFocus
+                        />
+                        <FormInputField
+                            name="postcode"
+                            labelKey="agency.edit.general.address.postcode"
+                            placeholderKey="agency.edit.general.address.postcode"
+                            required
+                            maxLength={5}
+                            rules={[{ min: 5, required: true, message: t('agency.postcode.minimum') }]}
+                        />
+                        <FormInputField
+                            name="city"
+                            labelKey="agency.edit.general.address.city"
+                            placeholderKey="agency.edit.general.address.city"
+                            required
+                        />
+                    </Form>
+                </Modal>
+            )}
             {showUnsavedWarning && (
                 <UnsavedChangesModal onConfirm={closeModal} onClose={() => setShowUnsavedWarning(false)} />
             )}
