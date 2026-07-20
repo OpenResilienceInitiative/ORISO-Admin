@@ -85,6 +85,8 @@ interface DataProcessingAgreementCardProps {
      * so agency admins only get to look at the published text, not edit it.
      */
     readOnly?: boolean;
+    /** Actual confirmation state; read-only alone does not mean the DPA was confirmed. */
+    dpaSigned?: boolean;
     /** Bypass the JWT role lookup for the help texts (Storybook/demo contexts). */
     helpRole?: LegalHelpRole;
     /** Tenant/account scope for dismissal persistence. */
@@ -107,6 +109,7 @@ export const DataProcessingAgreementCard = ({
     publishing,
     onTranslate,
     readOnly,
+    dpaSigned,
     helpRole,
     dismissalScope,
 }: DataProcessingAgreementCardProps) => {
@@ -140,17 +143,23 @@ export const DataProcessingAgreementCard = ({
     });
 
     // Role/state dependent help texts (Figma 457-13255): description under the
-    // header. The platform-admin "no DPA published yet" CTA lives ONLY in the
-    // dismissible snackbar (Figma 1229-17864) — once dismissed it is gone for good.
-    const help = useLegalHelp('dpa', { empty: versions.length === 0, readOnly: !!readOnly }, helpRole);
+    // header. For platform (super) admins the bold CTA tip lives ONLY in the
+    // dismissible snackbar (Figma 1229-17864) — empty or published — once
+    // dismissed it is gone for good. Tenant/agency roles keep the inline hint.
+    const help = useLegalHelp(
+        'dpa',
+        { empty: versions.length === 0, readOnly: !!readOnly, signed: dpaSigned },
+        helpRole,
+    );
     const [blockerHidden, setBlockerHidden] = useState(() =>
         dismissalScope ? isBlockerDismissed(dismissalScope) : false,
     );
     useEffect(() => {
         setBlockerHidden(dismissalScope ? isBlockerDismissed(dismissalScope) : false);
     }, [dismissalScope]);
-    const isBlockerState = help.keyBase === 'legal.help.dpa.platform.empty';
-    const showBlockerSnackbar = isBlockerState && !blockerHidden;
+    // Gate snackbar vs inline hint on the resolved help role (platform = super admin).
+    const isPlatformAdmin = help.role === 'platform';
+    const showBlockerSnackbar = isPlatformAdmin && !blockerHidden;
     // The editor's version select browses the versions in the ACTIVE language; a version
     // that was never stored in that language falls back to its first stored language
     // rather than showing an empty page.
@@ -191,7 +200,7 @@ export const DataProcessingAgreementCard = ({
                         contentMap={contentMapWithEdits}
                     />
                 }
-                helpSlot={<EditorHelpText text={help.text} hint={isBlockerState ? undefined : help.hint} />}
+                helpSlot={<EditorHelpText text={help.text} hint={isPlatformAdmin ? undefined : help.hint} />}
                 snackbarSlot={
                     showBlockerSnackbar && (
                         <EditorHintSnackbar

@@ -13,6 +13,8 @@ export interface GlobalSearchBarProps {
     className?: string;
     /** Initial expansion state of the search control. */
     defaultExpanded?: boolean;
+    /** Row content rendered BEFORE the search pill (e.g. the composer's "⋮" more-menu). */
+    leading?: ReactNode;
     /** Width the search control animates to when expanded. */
     expandedWidth?: number;
     /** Called after each expand/collapse toggle. */
@@ -56,6 +58,7 @@ export const GlobalSearchBar = ({
     className,
     defaultExpanded = false,
     expandedWidth = 360,
+    leading,
     onExpandedChange,
     onInputClick,
     onInputFocus,
@@ -116,6 +119,7 @@ export const GlobalSearchBar = ({
     return (
         <div className={classNames(styles.scroller, className)}>
             <div className={styles.row}>
+                {leading}
                 <div
                     className={classNames(styles.search, { [styles.searchExpanded]: expanded })}
                     style={{ width: expanded ? expandedWidth : undefined }}

@@ -117,6 +117,9 @@
     --oriso-app-accent-dark: #a5000a;
     --admin-control-selected: var(--oriso-app-accent-dark, var(--m3-primary, #a5000a));
     --admin-workspace-background: #e4e2e2;
+    /* Card elevation. Softer + wider than M3 elevation-1 (which is a tight
+       0 1px 3px) — a gentle, diffuse drop like the M3 dialog, tunable here. */
+    --admin-card-elevation: 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%);
     --admin-search-surface: #fcf9f9;
     --admin-search-text: #444748;
     --admin-search-placeholder: #444748;
@@ -179,6 +182,54 @@
 
 body {
     background: var(--admin-workspace-background, #e4e2e2);
+}
+
+/* ── M3 type scale (Figma Admin.ORISO variable defs) ───────────────────────────
+   Global utility classes so both CSS-module components and the <Typography> atom
+   share one source of truth. Inter for everything except Title Small (Roboto).
+   Sizes/weights/tracking are copied verbatim from the Figma M3/* font variables. */
+:root {
+    --m3-title-small-font-family: 'Roboto', var(--m3-body-font-family);
+}
+
+.m3-headline-small {
+    font: 400 24px/32px var(--m3-body-font-family);
+    letter-spacing: 0;
+}
+
+.m3-title-medium {
+    font: 500 16px/24px var(--m3-body-font-family);
+    letter-spacing: 0.15px;
+}
+
+.m3-title-small {
+    font: 500 14px/20px var(--m3-title-small-font-family);
+    letter-spacing: 0.1px;
+}
+
+.m3-body-large {
+    font: 400 16px/24px var(--m3-body-font-family);
+    letter-spacing: 0.5px;
+}
+
+.m3-body-medium {
+    font: 400 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.25px;
+}
+
+.m3-body-medium-emphasized {
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.25px;
+}
+
+.m3-body-small {
+    font: 400 12px/16px var(--m3-body-font-family);
+    letter-spacing: 0.4px;
+}
+
+.m3-label-large {
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
 }
 
 .ant-layout {

@@ -1,0 +1,386 @@
+import { useMemo, useState } from 'react';
+import { DeleteOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
+import { message, Upload, type MenuProps } from 'antd';
+import { useTranslation } from 'react-i18next';
+import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
+import { FloatingLabelInput } from '../../components/FloatingLabelInput';
+import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch';
+import { SplitButton } from '../../components/GlobalSearch/SplitButton';
+import { M3NumberField } from '../../components/M3NumberField';
+import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
+import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
+import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
+import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
+import styles from './inviteComposer.module.scss';
+
+/**
+ * `direct` = create the invite AND send the templated e-mail;
+ * `createOnly` = create the recipient without sending (the API supports this
+ * by simply omitting `templateId`).
+ */
+export type InviteSendMode = 'direct' | 'createOnly';
+
+export interface InviteComposerValues {
+    recipientEmail: string;
+    firstName?: string;
+    lastName?: string;
+    tenantId?: number;
+    agencyId?: number;
+    /** Only set in `direct` mode — `createOnly` posts without a template. */
+    templateId?: number;
+    sendMode: InviteSendMode;
+}
+
+export interface InviteComposerProps {
+    /** Templates of this tab's kind; only active ones are offered in the menu. */
+    templates: InviteEmailTemplateDTO[];
+    /** Currently selected template (lifted so the tab can reuse it, e.g. for resend). */
+    templateId?: number;
+    onTemplateIdChange: (templateId: number) => void;
+    /** Träger tab: the Träger-ID is required, auto-suggested and collision-checked. */
+    requireTenantId?: boolean;
+    /**
+     * Auto-suggested free Träger-ID. The field tracks this suggestion until the
+     * admin edits the field; a successful submit re-arms the tracking so the
+     * next free id flows in for the following invite.
+     */
+    suggestedTenantId?: number;
+    /** Ids that must be rejected client-side (existing tenants + active invites). */
+    takenTenantIds?: Set<number>;
+    /** Non-Träger tabs: prefill with the admin's own tenant. */
+    initialTenantId?: number;
+    includeAgencyField?: boolean;
+    submitting?: boolean;
+    /** Discriminator for the persisted send mode (one per tab), e.g. the target role. */
+    persistKey: string;
+    /** Resolve `true` on success — the composer then clears its fields. */
+    onSubmit: (values: InviteComposerValues) => Promise<boolean> | boolean;
+    /** Open the EmailTemplatesDialog in the requested view. */
+    onManageTemplates: (intent: 'create' | 'delete') => void;
+    /**
+     * Enables the "⋮" more-menu with the "CSV-Datei importieren" entry (#315).
+     * Called with the client-side parse result and the send mode captured at
+     * import time — the file itself is never uploaded anywhere.
+     */
+    onCsvParsed?: (result: ParseInviteCsvResult, sendMode: InviteSendMode) => void;
+    /**
+     * Number of rows currently checked in the invites table (#316). Any value
+     * > 0 flips the send split button into bulk mode ("N ausgewählte senden").
+     */
+    selectionCount?: number;
+    /**
+     * Bulk mode (#316): resend the selected invites with the currently chosen
+     * template. Only reachable while `selectionCount` > 0 and a template is
+     * selected — resending always mails, so a template is required regardless
+     * of the persisted send mode.
+     */
+    onBulkSend?: () => void;
+    /**
+     * Enables the "Ausgewählte löschen" entry in the "⋮" more-menu (#316).
+     * The entry is disabled without a selection; the tab opens the revoke
+     * confirmation dialog.
+     */
+    onDeleteSelected?: () => void;
+    searchPlaceholder?: string;
+    className?: string;
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export const sendModeStorageKey = (persistKey: string) => `oriso-admin.invite-composer.send-mode.${persistKey}`;
+
+// `File.text()` with a FileReader fallback — jsdom (tests) implements only the latter.
+const readFileText = (file: File): Promise<string> =>
+    typeof file.text === 'function'
+        ? file.text()
+        : new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(String(reader.result ?? ''));
+              reader.onerror = () => reject(reader.error);
+              reader.readAsText(file);
+          });
+
+const readPersistedSendMode = (persistKey: string): InviteSendMode => {
+    try {
+        return window.localStorage.getItem(sendModeStorageKey(persistKey)) === 'createOnly' ? 'createOnly' : 'direct';
+    } catch {
+        return 'direct';
+    }
+};
+
+/**
+ * Invite composer row (#314, Figma 1165:17005 middle row): minimized global
+ * search pill, floating-label recipient fields, the pill-shaped Träger-ID
+ * number field (auto-suggest preserved), a tonal template split button whose
+ * chevron menu selects/creates/deletes templates, and the send split button.
+ * The send button rests `outlined` + disabled and only turns `primary` once
+ * everything is validly filled; its chevron switches the persisted send mode
+ * ("Direkt Versenden" vs "Empfänger nur anlegen", saved per tab in
+ * localStorage until the admin changes it again).
+ */
+export const InviteComposer = ({
+    templates,
+    templateId,
+    onTemplateIdChange,
+    requireTenantId = false,
+    suggestedTenantId,
+    takenTenantIds,
+    initialTenantId,
+    includeAgencyField = false,
+    submitting = false,
+    persistKey,
+    onSubmit,
+    onManageTemplates,
+    onCsvParsed,
+    selectionCount = 0,
+    onBulkSend,
+    onDeleteSelected,
+    searchPlaceholder,
+    className,
+}: InviteComposerProps) => {
+    const { t } = useTranslation();
+    const [recipientEmail, setRecipientEmail] = useState('');
+    const [emailTouched, setEmailTouched] = useState(false);
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [agencyId, setAgencyId] = useState<number | undefined>();
+    // `null` = untouched → the field renders (and tracks) the suggestion / initial
+    // tenant. Any admin edit (including clearing) becomes an override that is never
+    // clobbered; a successful submit resets to `null` so the next suggestion flows in.
+    const [tenantIdOverride, setTenantIdOverride] = useState<number | undefined | null>(null);
+    const [sendMode, setSendMode] = useState<InviteSendMode>(() => readPersistedSendMode(persistKey));
+
+    const defaultTenantId = requireTenantId ? suggestedTenantId : initialTenantId;
+    const tenantId = tenantIdOverride !== null ? tenantIdOverride : defaultTenantId;
+
+    const activeTemplates = useMemo(() => templates.filter((template) => template.active), [templates]);
+    const selectedTemplate = activeTemplates.find((template) => template.id === templateId);
+
+    const emailValid = EMAIL_PATTERN.test(recipientEmail.trim());
+    const tenantIdValid = !requireTenantId || (tenantId != null && !takenTenantIds?.has(tenantId));
+    const templateValid = sendMode === 'createOnly' || selectedTemplate != null;
+    const isValid = emailValid && tenantIdValid && templateValid;
+    const showEmailError = emailTouched && recipientEmail.length > 0 && !emailValid;
+
+    // Bulk mode (#316): while rows are checked, sending acts on the selection
+    // (resend per row) instead of creating a new invite. Resending always mails,
+    // so readiness is gated on a chosen template — independent of the persisted
+    // send mode, which only applies to the single-create flow.
+    const bulkMode = selectionCount > 0 && onBulkSend != null;
+    const bulkValid = selectedTemplate != null;
+    const sendReady = bulkMode ? bulkValid : isValid;
+
+    const changeSendMode = (mode: InviteSendMode) => {
+        setSendMode(mode);
+        try {
+            window.localStorage.setItem(sendModeStorageKey(persistKey), mode);
+        } catch {
+            // Storage unavailable (e.g. private mode) — the choice still holds for this session.
+        }
+    };
+
+    const handleSend = async () => {
+        if (!isValid || submitting) {
+            return;
+        }
+
+        const succeeded = await onSubmit({
+            recipientEmail: recipientEmail.trim(),
+            firstName: firstName.trim() || undefined,
+            lastName: lastName.trim() || undefined,
+            tenantId,
+            agencyId: includeAgencyField ? agencyId : undefined,
+            templateId: sendMode === 'direct' ? templateId : undefined,
+            sendMode,
+        });
+
+        if (succeeded) {
+            setRecipientEmail('');
+            setEmailTouched(false);
+            setFirstName('');
+            setLastName('');
+            setAgencyId(undefined);
+            setTenantIdOverride(null);
+        }
+    };
+
+    const templateMenu: MenuProps = {
+        items: [
+            {
+                key: 'templates',
+                type: 'group',
+                label: t('links.composer.templateGroup', 'E-Mail-Vorlagen auswählen oder erstellen'),
+                children: activeTemplates.map((template) => ({ key: String(template.id), label: template.name })),
+            },
+            { key: 'divider', type: 'divider' },
+            { key: 'create', label: t('links.composer.templateCreate', 'Neue E-Mail-Vorlage erstellen') },
+            { key: 'delete', label: t('links.composer.templateDelete', 'E-Mail-Vorlage löschen') },
+        ],
+        selectable: true,
+        selectedKeys: templateId != null ? [String(templateId)] : [],
+        onClick: ({ key }) => {
+            if (key === 'create' || key === 'delete') {
+                onManageTemplates(key);
+                return;
+            }
+            onTemplateIdChange(Number(key));
+        },
+    };
+
+    // "CSV-Datei importieren" (#315, Figma "Invite Link Options"): the file is read
+    // and parsed entirely client-side; the parse result plus the CURRENT persisted
+    // send mode go to the tab, which opens the preview modal. Direct mode needs a
+    // template — same gate as the send button — otherwise the batch would silently
+    // create-without-send.
+    const handleCsvFile = async (file: File) => {
+        if (sendMode === 'direct' && selectedTemplate == null) {
+            message.error(t('links.accountInvites.templateRequired', 'Bitte zuerst ein Template auswählen.'));
+            return Upload.LIST_IGNORE;
+        }
+        try {
+            const result = parseInviteCsv(await readFileText(file));
+            if (result.rows.length === 0 && result.rejected.length === 0) {
+                message.info(t('links.csvImport.emptyFile', 'Die CSV-Datei enthält keine Empfänger.'));
+            } else {
+                onCsvParsed?.(result, sendMode);
+            }
+        } catch {
+            message.error(t('links.csvImport.readFailed', 'CSV-Datei konnte nicht gelesen werden.'));
+        }
+        return Upload.LIST_IGNORE;
+    };
+
+    const moreMenuItems: NonNullable<MenuProps['items']> = [];
+    if (onCsvParsed) {
+        moreMenuItems.push({
+            key: 'csv-import',
+            label: (
+                <Upload accept=".csv,text/csv" beforeUpload={handleCsvFile} showUploadList={false}>
+                    <span className={styles.csvImportEntry}>
+                        <UploadOutlined aria-hidden />
+                        {t('links.csvImport.menuEntry', 'CSV-Datei importieren')}
+                    </span>
+                </Upload>
+            ),
+        });
+    }
+    if (onDeleteSelected) {
+        // Owner wording is "löschen"; the confirmation dialog explains that
+        // deleting means revoking (there is no hard-delete endpoint, #316).
+        moreMenuItems.push({
+            key: 'delete-selected',
+            danger: true,
+            disabled: selectionCount === 0,
+            icon: <DeleteOutlined aria-hidden />,
+            label: t('links.bulk.deleteSelected', 'Ausgewählte löschen'),
+        });
+    }
+
+    const moreMenu: MenuProps = {
+        items: moreMenuItems,
+        onClick: ({ key }) => {
+            if (key === 'delete-selected') {
+                onDeleteSelected?.();
+            }
+        },
+    };
+
+    const singleSendLabel =
+        sendMode === 'direct'
+            ? t('links.composer.sendDirect', 'Direkt Versenden')
+            : t('links.composer.sendCreateOnly', 'Empfänger nur anlegen');
+    const bulkSendLabel = t('links.bulk.sendSelected', '{{count}} ausgewählte senden', { count: selectionCount });
+
+    const sendMenu: MenuProps = {
+        items: [
+            { key: 'direct', label: t('links.composer.sendDirect', 'Direkt Versenden') },
+            { key: 'createOnly', label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen') },
+        ],
+        selectable: true,
+        selectedKeys: [sendMode],
+        onClick: ({ key }) => changeSendMode(key as InviteSendMode),
+    };
+
+    // "⋮" control before the search pill (Figma "Invite Link Options"): opens the
+    // more-menu with secondary composer actions — CSV import (#315) and
+    // "Ausgewählte löschen" (#316).
+    const moreButton =
+        moreMenuItems.length > 0 ? (
+            <GlobalSearchMenu menu={moreMenu}>
+                <button
+                    aria-haspopup="menu"
+                    aria-label={t('links.csvImport.moreMenuLabel', 'Weitere Aktionen')}
+                    className={styles.moreButton}
+                    type="button"
+                >
+                    <MoreOutlined aria-hidden />
+                </button>
+            </GlobalSearchMenu>
+        ) : undefined;
+
+    return (
+        <GlobalSearchBar className={className} leading={moreButton} searchPlaceholder={searchPlaceholder}>
+            <FloatingLabelInput
+                className={styles.emailField}
+                error={showEmailError}
+                label={t('links.accountInvites.email', 'E-Mail')}
+                name="recipientEmail"
+                supportingText={
+                    showEmailError
+                        ? t('links.composer.emailInvalid', 'Bitte gültige E-Mail-Adresse eingeben.')
+                        : undefined
+                }
+                type="email"
+                value={recipientEmail}
+                onBlur={() => setEmailTouched(true)}
+                onChange={(event) => setRecipientEmail(event.target.value)}
+            />
+            <FloatingLabelInput
+                className={styles.nameField}
+                label={t('links.accountInvites.firstName', 'Vorname')}
+                name="firstName"
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+            />
+            <FloatingLabelInput
+                className={styles.nameField}
+                label={t('links.composer.lastName', 'Name')}
+                name="lastName"
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+            />
+            <M3NumberField
+                label={t('links.accountInvites.tenantId', 'Träger-ID')}
+                min={1}
+                value={tenantId}
+                onChange={setTenantIdOverride}
+            />
+            {includeAgencyField && (
+                <M3NumberField
+                    label={t('links.accountInvites.agencyId', 'Beratungsstellen-ID')}
+                    min={1}
+                    value={agencyId}
+                    onChange={setAgencyId}
+                />
+            )}
+            <SplitButton
+                icon={<MailFilledIcon />}
+                label={selectedTemplate?.name ?? t('links.composer.templatePlaceholder', 'E-Mail-Vorlage')}
+                menu={templateMenu}
+                menuLabel={t('links.composer.templateMenuLabel', 'E-Mail-Vorlage wählen')}
+                variant="tonal"
+            />
+            <SplitButton
+                icon={sendReady ? <SendFilledIcon /> : <SendIcon />}
+                label={bulkMode ? bulkSendLabel : singleSendLabel}
+                mainDisabled={!sendReady || submitting}
+                menu={sendMenu}
+                menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
+                variant={sendReady ? 'primary' : 'outlined'}
+                onClick={bulkMode ? onBulkSend : handleSend}
+            />
+        </GlobalSearchBar>
+    );
+};
+
+export default InviteComposer;

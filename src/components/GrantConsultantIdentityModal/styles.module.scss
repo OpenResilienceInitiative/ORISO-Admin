@@ -1,0 +1,7 @@
+/* Right-aligned action row; the shared Modal supplies the surrounding padding. */
+.footerActions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}

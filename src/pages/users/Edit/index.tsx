@@ -13,6 +13,7 @@ import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { Page } from '../../../components/Page';
 import { SelectFormField, Option } from '../../../components/SelectFormField';
 import { PermissionAction } from '../../../enums/PermissionAction';
+import { FeatureFlag } from '../../../enums/FeatureFlag';
 import { Resource } from '../../../enums/Resource';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { useAddOrUpdateConsultantOrAdmin } from '../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin';
@@ -34,6 +35,8 @@ import { GrantConsultantIdentityModal } from '../../../components/GrantConsultan
 import { CreateAgencyModal } from '../../../components/CreateAgencyModal';
 import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
+import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
+import { useFeatureContext } from '../../../context/FeatureContext';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
     const seen = new Set(current.map(({ value }) => value));
@@ -47,6 +50,7 @@ export const UserEditOrAdd = () => {
     const { can } = useUserPermissions();
     const { t } = useTranslation();
     const { isSuperAdmin } = useUserRoles();
+    const { isEnabled } = useFeatureContext();
 
     const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
     const isEditing = id !== 'add';
@@ -62,8 +66,7 @@ export const UserEditOrAdd = () => {
         id: isEditing && isConsultantForm ? id : undefined,
     });
     const singleData = consultantsResponse?.data.find((c) => c.id === id);
-    const isAdminUserForm = typeOfUsers === TypeOfUser.AgencyAdmins || typeOfUsers === TypeOfUser.TenantAdmins;
-    const canGrantConsultantIdentity = isEditing && isAdminUserForm && !!singleData && !singleData.hasOtherIdentity;
+    const showGrantConsultantIdentity = canGrantConsultantIdentity(isEditing, typeOfUsers, singleData);
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted] = useState(false);
     const [tenantsData, setTenantsData] = useState([]);
@@ -317,7 +320,7 @@ export const UserEditOrAdd = () => {
     return (
         <Page isLoading={isLoadingConsultants || isLoading || isLoadingTopics || isLoadingConsultantById} stickyHeader>
             <Page.BackWithActions path={`/admin/users/${typeOfUsers}`} titleKey="agency.add.general.headline">
-                {canGrantConsultantIdentity && (
+                {showGrantConsultantIdentity && (
                     <GrantConsultantIdentityModal
                         adminId={id}
                         tenantId={singleData?.tenantId}

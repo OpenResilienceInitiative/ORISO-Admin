@@ -8,7 +8,7 @@ vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-// Platform admin: the "no DPA published yet" state carries the blocker snackbar.
+// Platform admin: the CTA tip lives in the dismissible snackbar for any DPA state.
 vi.mock('../../../../../hooks/useUserRoles.hook', () => ({
     useUserRoles: () => ({
         roles: [],
@@ -29,19 +29,33 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
     ),
 }));
 
-describe('DataProcessingAgreementCard blocker snackbar (platform admin, no published DPA)', () => {
+describe('DataProcessingAgreementCard snackbar (platform admin)', () => {
     beforeEach(() => {
         window.localStorage.clear();
         window.sessionStorage.clear();
     });
 
-    it('shows the CTA as a snackbar instead of the inline bold hint', () => {
+    it('shows the empty-state CTA as a snackbar instead of the inline bold hint', () => {
         render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant:user" />);
 
         expect(screen.getByText('legal.help.dpa.platform.empty.text')).toBeInTheDocument();
         expect(screen.getByRole('status')).toHaveTextContent('legal.help.dpa.platform.empty.hint');
         // The hint is not duplicated inline while the snackbar shows it.
         expect(screen.getAllByText('legal.help.dpa.platform.empty.hint')).toHaveLength(1);
+    });
+
+    it('shows the published-state CTA as a snackbar for platform admins', () => {
+        render(
+            <DataProcessingAgreementCard
+                versions={[{ id: '2026-07-13', label: '13. Jul 2026 – 10:22', content: '<p>AVV</p>' }]}
+                onPublish={vi.fn()}
+                dismissalScope="tenant:user"
+            />,
+        );
+
+        expect(screen.getByText('legal.help.dpa.platform.published.text')).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent('legal.help.dpa.platform.published.hint');
+        expect(screen.getAllByText('legal.help.dpa.platform.published.hint')).toHaveLength(1);
     });
 
     it('"nicht mehr anzeigen" removes the CTA text completely and persists', async () => {
@@ -94,16 +108,17 @@ describe('DataProcessingAgreementCard blocker snackbar (platform admin, no publi
         expect(screen.getByRole('status')).toBeInTheDocument();
     });
 
-    it('does not show the blocker once a version is published', () => {
+    it('keeps the hint inline for non-platform roles (no snackbar)', () => {
         render(
             <DataProcessingAgreementCard
                 versions={[{ id: '2026-07-13', label: '13. Jul 2026 – 10:22', content: '<p>AVV</p>' }]}
                 onPublish={vi.fn()}
+                helpRole="agency"
             />,
         );
 
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
-        expect(screen.getByText('legal.help.dpa.platform.published.text')).toBeInTheDocument();
-        expect(screen.getByText('legal.help.dpa.platform.published.hint')).toBeInTheDocument();
+        expect(screen.getByText('legal.help.dpa.agency.published.text')).toBeInTheDocument();
+        expect(screen.getByText('legal.help.dpa.agency.published.hint')).toBeInTheDocument();
     });
 });

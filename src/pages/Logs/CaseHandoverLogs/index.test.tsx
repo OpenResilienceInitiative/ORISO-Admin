@@ -17,9 +17,19 @@ vi.mock('../../../components/Page', () => {
 });
 
 vi.mock('../../../components/ListingTable', () => ({
-    ListingTable: ({ columns = [], dataSource = [], pagination }: any) => (
+    ListingTable: ({ columns = [], dataSource = [], pagination, scroll }: any) => (
         <div data-testid="listing-table">
             <div data-testid="columns">{columns.map((column: any) => String(column.title)).join('|')}</div>
+            <div data-testid="column-meta">
+                {JSON.stringify(
+                    columns.map((column: any) => ({
+                        key: column.key,
+                        width: column.width,
+                        ellipsis: column.ellipsis,
+                    })),
+                )}
+            </div>
+            <div data-testid="scroll-x">{scroll?.x ?? ''}</div>
             {dataSource.map((row: any, rowIndex: number) => (
                 <div key={row.requestId ?? rowIndex} data-testid="log-row">
                     {columns.map((column: any, columnIndex: number) => {
@@ -99,6 +109,21 @@ describe('CaseHandoverLogsPage', () => {
         expect(screen.queryByText('caseHandoverLogs.policy.title')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'caseHandoverLogs.policy.save' })).not.toBeInTheDocument();
         expect(screen.queryByText('should no longer be shown')).not.toBeInTheDocument();
+    });
+
+    it('gives Audit outcome a fixed width so the header and values do not squeeze-wrap', () => {
+        render(<CaseHandoverLogsPage />);
+
+        const meta = JSON.parse(screen.getByTestId('column-meta').textContent ?? '[]') as Array<{
+            key: string;
+            width?: number;
+            ellipsis?: boolean;
+        }>;
+        const auditOutcome = meta.find((column) => column.key === 'auditOutcome');
+
+        expect(auditOutcome?.width).toBeGreaterThanOrEqual(240);
+        expect(auditOutcome?.ellipsis).toBe(true);
+        expect(Number(screen.getByTestId('scroll-x').textContent)).toBeGreaterThanOrEqual(1430);
     });
 
     it('renders the error Alert when the logs fail to load', () => {

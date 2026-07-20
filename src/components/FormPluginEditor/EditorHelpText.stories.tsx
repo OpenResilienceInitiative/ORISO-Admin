@@ -23,7 +23,7 @@ const cta = 'Um Träger anzulegen, müssen Sie erst einen Auftragsverarbeitungsv
 
 // Several headings so the anchor chip row overflows → prev/next nav appears.
 const contractHtml =
-    '<h1 id="vereinbarung-zur-auftragsverarbeitung">Auftragsdatenverarbeitungsvertrag</h1>' +
+    '<h1 id="vereinbarung-zur-auftragsdaten-verarbeitung">Auftragsdaten Verarbeitungsvertrag</h1>' +
     '<p>Diese Datenschutzerklärung beschreibt, wie wir personenbezogene Daten erheben, verarbeiten und speichern. ' +
     'Wir erheben Daten ausschließlich für legitime Zwecke und verarbeiten diese gemäß der DSGVO.</p>' +
     '<h2 id="1-dokument-angabe">1. Dokument Angabe</h2><p>Welche Daten erheben wir? Name, E-Mail-Adresse, IP-Adresse.</p>' +
@@ -66,7 +66,7 @@ const PanelDemo = ({ readOnly }: { readOnly?: boolean }) => {
     );
     return (
         <M3RichTextEditor
-            title="Auftragsdatenverarbeitungsvertrag"
+            title="Auftragsdaten Verarbeitungsvertrag"
             icon={DpaIcon}
             value={contractHtml}
             versions={versions}

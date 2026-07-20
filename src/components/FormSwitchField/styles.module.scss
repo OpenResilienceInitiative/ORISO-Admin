@@ -38,6 +38,7 @@
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
+        flex-wrap: nowrap;
     }
     :global(.ant-form-item-label) {
         flex-grow: 1;

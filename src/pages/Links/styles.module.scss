@@ -4,6 +4,13 @@
     pointer-events: none;
 }
 
+/* Bulk selection (#316): "N ausgewählt" line between composer and table. */
+.selectionCount {
+    padding: 0 12px 8px;
+    font-size: 14px;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
 .pageHeader {
     display: flex;
     align-items: center;

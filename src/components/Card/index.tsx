@@ -24,6 +24,11 @@ interface CardProps {
     tooltip?: string;
     children: React.ReactElement<any> | number | string | (React.ReactElement<any> | number | string)[];
     cardTitleChildren?: React.ReactElement<any> | number | string | (React.ReactElement<any> | number | string)[];
+    /** Optional footer slot: rendered below a top divider (M3 card action row —
+     *  Back/Next, Cancel/Save, Edit, etc.). Shared by every wizard/settings card. */
+    footer?: React.ReactNode;
+    /** Forwarded to the card root as `data-testid` (preserves existing test anchors). */
+    dataTestId?: string;
 }
 
 export const Card = ({
@@ -40,6 +45,8 @@ export const Card = ({
     cardTitleClassName,
     variant = 'default',
     headerIcon,
+    footer,
+    dataTestId,
     children,
 }: CardProps) => {
     const { t } = useTranslation();
@@ -47,6 +54,7 @@ export const Card = ({
 
     return (
         <Box
+            data-testid={dataTestId}
             className={classNames(styles.card, className, {
                 [styles.fullHeight]: fullHeight,
                 [styles.dialogCard]: isDialog,
@@ -89,6 +97,7 @@ export const Card = ({
                 {isLoading && <Spin />}
                 {!isLoading && children}
             </div>
+            {footer && <div className={styles.footer}>{footer}</div>}
         </Box>
     );
 };

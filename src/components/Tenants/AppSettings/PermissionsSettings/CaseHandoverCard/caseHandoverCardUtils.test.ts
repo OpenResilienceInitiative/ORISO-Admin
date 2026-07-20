@@ -10,6 +10,8 @@ import {
     NOTIFICATION_LANGUAGES,
     NOTIFICATION_TEMPLATE_SAMPLES,
     sortPoliciesByDisplayOrder,
+    applyNotificationTemplate,
+    getNotificationTemplate,
 } from './caseHandoverCardUtils';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
 
@@ -65,6 +67,31 @@ describe('caseHandoverCardUtils', () => {
     it('advisor consent is implicit only for advice requests', () => {
         expect(isAdvisorConsentImplicit('COUNSELLOR_ASKED_FOR_ADVICE')).toBe(true);
         expect(isAdvisorConsentImplicit('COUNSELLOR_IS_ILL')).toBe(false);
+    });
+
+    it('prefers the stored backend template over the sample', () => {
+        const stored = policy({
+            code: 'COUNSELLOR_IS_ILL',
+            clientNotificationTemplates: { de: 'Eigener Text mit {{newAdvisor}}.' },
+        });
+        expect(getNotificationTemplate(stored, 'COUNSELLOR_IS_ILL', 'de')).toEqual('Eigener Text mit {{newAdvisor}}.');
+        // missing language falls back to the sample copy
+        expect(getNotificationTemplate(stored, 'COUNSELLOR_IS_ILL', 'en')).toEqual(
+            getNotificationTemplateSample('COUNSELLOR_IS_ILL', 'en'),
+        );
+        expect(getNotificationTemplate(null, 'COUNSELLOR_IS_ILL', 'de')).toEqual(
+            getNotificationTemplateSample('COUNSELLOR_IS_ILL', 'de'),
+        );
+    });
+
+    it('writes, trims and clears per-language templates on the matching reason only', () => {
+        const policies = [policy({ code: 'A' }), policy({ code: 'B' })];
+        const written = applyNotificationTemplate(policies, 'A', 'de', '  Neuer Text  ');
+        expect(written[0].clientNotificationTemplates).toEqual({ de: 'Neuer Text' });
+        expect(written[1].clientNotificationTemplates).toBeUndefined();
+
+        const cleared = applyNotificationTemplate(written, 'A', 'de', '   ');
+        expect(cleared[0].clientNotificationTemplates).toBeNull();
     });
 
     it('provides a notification sample for every seeded reason in every language', () => {

@@ -1,5 +1,5 @@
-import { Button, Form, notification } from 'antd';
-import { useCallback, useState } from 'react';
+import { Alert, Button, Form, notification } from 'antd';
+import { Fragment, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
@@ -26,13 +26,15 @@ import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useAgencyLegalDataMissing } from '../../../hooks/useAgencyLegalDataMissing';
 import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
-import { LegalTextSettings } from './components/LegalTextSettings';
 import { DataProcessingAgreementContainer } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer';
 import { DepartmentDataProtectionContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentDataProtectionContainer';
+import { DepartmentImprintContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentImprintContainer';
 import styles from '../../../components/Page/styles.module.scss';
+import agencyStyles from './styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
-import { PermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings';
+import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -73,9 +75,15 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { data: postCodes, isLoading: isLoadingPostCodes } = useAgencyPostCodesData({ id });
     const { isEnabled } = useFeatureContext();
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin, tenantId } = useUserRoles();
+    const {
+        data: dpaGate,
+        isLoading: isDpaGateLoading,
+        isError: isDpaGateError,
+        refetch: refetchDpaGate,
+    } = useDpaGate(tenantId ?? 0, !isEditing && isTenantScopedAdmin);
     const [form] = Form.useForm();
-    const { mutate, isPending: isSaving } = useAgencyUpdate(id);
+    const { mutate } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
     const agencySettingsTabs = [
@@ -97,6 +105,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             iconName: 'functionality_access',
         },
     ];
+    const isAgencyCreationDpaBlocked =
+        !isEditing && isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || dpaGate?.dpaSigned !== true);
 
     const demographicsInitialValues = isEnabled(FeatureFlag.Demographics)
         ? {
@@ -219,7 +229,11 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
 
     const onSaveCard = useCallback(
         (formData, options?: { onError?: () => void }) => {
-            mutate(buildAgencyUpdateData(formData), {
+            // Card forms deliberately submit only their own nested fields. Passing a
+            // full snapshot here lets a fast follow-up card save re-send stale nulls
+            // before the invalidated agency query has completed, wiping the previous
+            // card. useAgencyUpdate merges this narrow patch into its latest cache.
+            mutate(formData, {
                 onError: () => {
                     options?.onError?.();
                 },
@@ -231,7 +245,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 },
             });
         },
-        [buildAgencyUpdateData, isEditing, mutate, t],
+        [isEditing, mutate, t],
     );
 
     const onCancel = useCallback(() => {
@@ -328,7 +342,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const renderFunctionalitiesSettings = () => (
         <>
             <h3 className={styles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
-            {agencyTenantId ? <PermissionsSettings tenantId={agencyTenantId} /> : null}
+            {/* Agency-scoped toggles (the agency's own settings JSON) — not the tenant's. */}
+            <AgencyPermissionsSettings agencyId={id} />
         </>
     );
 
@@ -373,18 +388,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 <CardDeck.Item>
                     <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
                 </CardDeck.Item>
-                <CardDeck.Item>
-                    <LegalTextSettings
-                        agencyData={agencyData}
-                        field="impressum"
-                        onSave={onSaveCard}
-                        saving={isSaving}
-                    />
-                </CardDeck.Item>
-                <CardDeck.Item>
-                    <LegalTextSettings agencyData={agencyData} field="privacy" onSave={onSaveCard} saving={isSaving} />
-                </CardDeck.Item>
-                <CardDeck.Item>
+                <CardDeck.Item className={styles.cardDeckItem}>
                     {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
                     <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />
                 </CardDeck.Item>
@@ -392,13 +396,22 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     (agencyData.topics || [])
                         .filter((topic) => topic.id != null)
                         .map((topic) => (
-                            <CardDeck.Item key={`dpp-${topic.id}`}>
-                                <DepartmentDataProtectionContainer
-                                    agencyId={Number(agencyData.id)}
-                                    topicId={topic.id as number}
-                                    departmentName={topic.name}
-                                />
-                            </CardDeck.Item>
+                            <Fragment key={`legal-${topic.id}`}>
+                                <CardDeck.Item className={styles.cardDeckItem}>
+                                    <DepartmentImprintContainer
+                                        agencyId={Number(agencyData.id)}
+                                        topicId={topic.id as number}
+                                        departmentName={topic.name}
+                                    />
+                                </CardDeck.Item>
+                                <CardDeck.Item className={styles.cardDeckItem}>
+                                    <DepartmentDataProtectionContainer
+                                        agencyId={Number(agencyData.id)}
+                                        topicId={topic.id as number}
+                                        departmentName={topic.name}
+                                    />
+                                </CardDeck.Item>
+                            </Fragment>
                         ))}
             </CardDeck>
         </>
@@ -416,12 +429,12 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 titleMaxLength={isEditing ? 10 : undefined}
                 tabs={agencySettingsTabs}
             >
-                {isReadOnly && !isEditing && !isLegalSection && (
+                {!isAgencyCreationDpaBlocked && isReadOnly && !isEditing && !isLegalSection && (
                     <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
                         {t('edit')}
                     </Button>
                 )}
-                {!isReadOnly && !isEditing && !isLegalSection && (
+                {!isAgencyCreationDpaBlocked && !isReadOnly && !isEditing && !isLegalSection && (
                     <>
                         <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
                             {t('btn.cancel')}
@@ -437,10 +450,32 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     </>
                 )}
             </Page.BackWithActions>
-            {isLegalSection && renderLegalSettings()}
-            {isFunctionalitiesSection &&
-                (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
-            {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
+            {isAgencyCreationDpaBlocked ? (
+                <Alert
+                    type="warning"
+                    showIcon
+                    message={t('agency.dpaGate.title')}
+                    description={t('agency.dpaGate.description')}
+                    action={
+                        isDpaGateError ? (
+                            <Button size="small" onClick={() => refetchDpaGate()}>
+                                {t('tenants.legal.version.retry')}
+                            </Button>
+                        ) : (
+                            <Button size="small" onClick={() => navigate(`${routePathNames.themeSettings}/legal`)}>
+                                {t('agency.dpaGate.openLegalSettings')}
+                            </Button>
+                        )
+                    }
+                />
+            ) : (
+                <>
+                    {isLegalSection && renderLegalSettings()}
+                    {isFunctionalitiesSection &&
+                        (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
+                    {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
+                </>
+            )}
         </Page>
     );
 };

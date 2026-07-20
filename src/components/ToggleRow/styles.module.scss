@@ -1,0 +1,24 @@
+/* M3 toggle row: leading (optional checkbox + label/description) pushed apart
+   from a trailing switch. Label = M3 body-large, description = body-small. */
+
+.row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 40px;
+}
+
+.lead {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}

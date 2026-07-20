@@ -29,6 +29,7 @@ import { ReactComponent as RowExpandIcon } from '../../../resources/img/svg/tabl
 import { ReactComponent as RowExpandHoverIcon } from '../../../resources/img/svg/table-actions/row_expand_400.svg';
 import { ReactComponent as RowExpandSelectedIcon } from '../../../resources/img/svg/table-actions/row_expand_filled.svg';
 import { getAgencyColumnSortOrder, getNextAgencyTableState } from './agencySort';
+import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 
 export const AgencyList = () => {
     const screens = Grid.useBreakpoint();
@@ -42,12 +43,19 @@ export const AgencyList = () => {
     const [expandedTopicRows, setExpandedTopicRows] = useState<string[]>([]);
     const { data, isLoading, isError, refetch } = useAgenciesData({ ...tableState });
     const { can } = useUserPermissions();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin, tenantId } = useUserRoles();
+    const {
+        data: dpaGate,
+        isLoading: isDpaGateLoading,
+        isError: isDpaGateError,
+    } = useDpaGate(tenantId ?? 0, isTenantScopedAdmin);
     const { data: tenantsData } = useTenantsData({ perPage: 1000, page: 1, enabled: isSuperAdmin });
     const { isEnabled } = useFeatureContext();
     const [agencyToDelete, setAgencyToDelete] = useState<AgencyData>();
     const isTopicsFeatureActive = isEnabled(FeatureFlag.TopicsInRegistration);
     const isMobile = !screens.md;
+    const isAgencyCreationDpaBlocked =
+        isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || dpaGate?.dpaSigned !== true);
 
     const navigate = useNavigate();
 
@@ -334,6 +342,8 @@ export const AgencyList = () => {
                                     className={styles.addButton}
                                     type="primary"
                                     icon={<PlusOutlined className={styles.addButtonIcon} />}
+                                    disabled={isAgencyCreationDpaBlocked}
+                                    title={isAgencyCreationDpaBlocked ? t('agency.dpaGate.title') : undefined}
                                     onClick={() => navigate(`${routePathNames.agencyAdd}`)}
                                 >
                                     {t('new')}

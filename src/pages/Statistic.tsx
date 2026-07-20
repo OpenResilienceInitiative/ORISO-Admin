@@ -61,6 +61,7 @@ import type {
     StatisticData,
     TopicStatistic,
 } from './Statistic/statisticDashboardData';
+import { TutorialStatisticsSection } from './Statistic/TutorialStatisticsSection';
 import { useStatisticDashboardData } from './Statistic/useStatisticDashboardData.hook';
 import type {
     CardMenuKey,
@@ -2659,6 +2660,9 @@ export const Statistic = () => {
                             </>
                         )}
                     </div>
+                    {(isSuperAdmin || hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])) && (
+                        <TutorialStatisticsSection />
+                    )}
                 </div>
             </div>
         </Page>

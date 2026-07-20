@@ -6,6 +6,7 @@ import updateAgencyType from './updateAgencyType';
 import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant';
 import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
 import { normalizeTopicIds } from './normalizeTopicIds';
+import { stripAgencyAdminControls } from './stripAgencyAdminControls';
 
 /**
  * update agency
@@ -50,6 +51,9 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         dataProtection: formInput.dataProtection,
         content: formInput.content,
         agencyLogo: formInput.agencyLogo,
+        // Omitting `settings` keeps the stored value backend-side; the injected platform
+        // controls must never be echoed back (super-admin-only update path).
+        ...(formInput.settings ? { settings: stripAgencyAdminControls(formInput.settings) } : {}),
     });
 
     return fetchData({
@@ -59,7 +63,13 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_SUCCESS.CONTENT],
         bodyData: JSON.stringify(agencyDataRequestBody),
     }).then(async (response) => {
-        await updateAgencyPostCodeRange(agencyId, formInput.postCodes, '');
+        // Card-based agency edits submit narrow patches. The regular agency GET
+        // does not contain postcode ranges, so treating an absent `postCodes`
+        // field as an empty selection silently replaces the stored range with
+        // 00000-99999. Only the registration card may mutate postcode ranges.
+        if (formInput.postCodes !== undefined) {
+            await updateAgencyPostCodeRange(agencyId, formInput.postCodes, '');
+        }
         // eslint-disable-next-line no-underscore-dangle
         return response?._embedded;
     });

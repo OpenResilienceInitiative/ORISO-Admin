@@ -1,0 +1,53 @@
+/* M3 underline tabs. Row on a bottom hairline; active tab = primary text + a
+   2px primary underline that sits on the hairline. Horizontal scroll on overflow. */
+
+.tabs {
+    display: flex;
+    gap: 24px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--m3-outline-variant, #c4c7c8);
+    scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.tab {
+    position: relative;
+    flex: 0 0 auto;
+    padding: 10px 2px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    background: transparent;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    line-height: 20px;
+    white-space: nowrap;
+    transition: color 160ms ease, border-color 160ms ease;
+}
+
+.tab:hover:not(.tabActive):not(:disabled) {
+    color: var(--m3-on-surface, #1b1b1c);
+}
+
+.tab:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}
+
+.tab:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 2px;
+}
+
+.tabActive {
+    border-bottom-color: var(--m3-primary, #a5000a);
+    color: var(--m3-primary, #a5000a);
+    font-weight: 600;
+}

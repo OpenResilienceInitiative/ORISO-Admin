@@ -1,5 +1,5 @@
-import { HistoryOutlined } from '@ant-design/icons';
-import { Tag } from 'antd';
+import { CheckOutlined, HistoryOutlined } from '@ant-design/icons';
+
 import { ColumnProps } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -217,15 +217,25 @@ export const useUserTableColumns = ({
                             }
                         },
                     };
-                case 'hasOtherIdentity':
+                case 'hasOtherIdentity': {
+                    // Identity-specific, read-only checkmark for the *other* identity:
+                    // consultants table → "also Träger-Admin"; admin tables → "also Berater*in".
+                    const isConsultantSection = sectionId === TypeOfUser.Consultants;
+                    const titleKey = isConsultantSection ? 'users.table.alsoTenantAdmin' : 'users.table.alsoConsultant';
                     return {
                         ...base,
-                        title: t('users.table.hasOtherIdentity'),
-                        render: (_: unknown, record: TableRow) =>
-                            (record as CounselorData).hasOtherIdentity ? (
-                                <Tag>{t('users.table.hasOtherIdentity.badge')}</Tag>
-                            ) : null,
+                        title: t(titleKey),
+                        render: (_: unknown, record: TableRow) => {
+                            const row = record as CounselorData;
+                            const hasOtherIdentityForSection = isConsultantSection
+                                ? (row.otherIdentityTypes || []).includes('TENANT_ADMIN')
+                                : !!row.hasOtherIdentity;
+                            return hasOtherIdentityForSection ? (
+                                <CheckOutlined data-testid="other-identity-checkmark" aria-label={t(titleKey)} />
+                            ) : null;
+                        },
                     };
+                }
                 case 'agency':
                     return {
                         ...base,

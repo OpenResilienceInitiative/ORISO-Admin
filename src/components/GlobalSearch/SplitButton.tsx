@@ -18,6 +18,12 @@ export interface SplitButtonProps {
      */
     variant?: 'outlined' | 'tonal' | 'primary';
     disabled?: boolean;
+    /**
+     * Disables only the main (action) segment while the chevron menu stays
+     * interactive — e.g. the invite composer's send button, whose action is
+     * gated on form validity but whose send-mode menu must remain reachable.
+     */
+    mainDisabled?: boolean;
     /** Pressing the main segment triggers the action itself. */
     onClick?: () => void;
     /** Dropdown menu opened by the chevron segment (secondary options). */
@@ -38,6 +44,7 @@ export const SplitButton = ({
     icon,
     variant = 'outlined',
     disabled = false,
+    mainDisabled = false,
     onClick,
     menu,
     menuLabel,
@@ -64,7 +71,7 @@ export const SplitButton = ({
             <button
                 type="button"
                 className={classNames(styles.segment, styles.main)}
-                disabled={disabled}
+                disabled={disabled || mainDisabled}
                 onClick={onClick}
             >
                 {icon && (
