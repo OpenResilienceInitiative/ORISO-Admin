@@ -435,7 +435,7 @@ const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
                 <M3Switch
                     onChange={() => handleSwitchChange()}
                     checked={userData?.twoFactorAuth.isActive || false}
-                    disabled={!userData?.twoFactorAuth || (required && userData.twoFactorAuth.isActive)}
+                    disabled={!userData?.twoFactorAuth?.isEnabled || (required && userData.twoFactorAuth.isActive)}
                     label={
                         userData?.twoFactorAuth.isActive
                             ? t('twoFactorAuth.switch.active.label')
