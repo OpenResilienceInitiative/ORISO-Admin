@@ -72,10 +72,19 @@ export const GlobalSearchBar = ({
     const [expanded, setExpanded] = useState(defaultExpanded);
     const [internalValue, setInternalValue] = useState('');
     const inputRef = useRef<InputRef>(null);
+    const hasMountedRef = useRef(false);
     const isControlled = value !== undefined;
     const searchValue = isControlled ? value : internalValue;
 
+    // Focus follows a user-driven expand only. Pages that render with
+    // `defaultExpanded` must not steal focus on mount — that fires their
+    // `onInputFocus` hook and pops suggestion menus open unprompted (#417).
     useEffect(() => {
+        if (!hasMountedRef.current) {
+            hasMountedRef.current = true;
+            return;
+        }
+
         if (expanded) {
             inputRef.current?.focus({ preventScroll: true });
         }

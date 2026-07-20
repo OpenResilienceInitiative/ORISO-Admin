@@ -82,6 +82,23 @@ describe('GlobalSearchBar', () => {
         expect(input).toHaveAttribute('name', 'search');
     });
 
+    it('does not focus the input on mount when it starts expanded', () => {
+        const onInputFocus = vi.fn();
+        render(<GlobalSearchBar defaultExpanded onInputFocus={onInputFocus} />);
+
+        expect(screen.getByRole('textbox')).not.toHaveFocus();
+        expect(onInputFocus).not.toHaveBeenCalled();
+    });
+
+    it('focuses the input once the user expands the search', async () => {
+        const user = userEvent.setup();
+        render(<GlobalSearchBar />);
+
+        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
+
+        expect(screen.getByRole('textbox')).toHaveFocus();
+    });
+
     it('renders the row inside the horizontal-scroll container with its children', () => {
         const { container } = render(
             <GlobalSearchBar>
