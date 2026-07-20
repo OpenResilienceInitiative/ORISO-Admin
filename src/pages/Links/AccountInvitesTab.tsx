@@ -2,6 +2,7 @@ import { Button, message, Tag } from 'antd';
 import type { TablePaginationConfig } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import {
     accountInviteAcceptBaseUrl,
     AccountInviteDTO,
@@ -633,6 +634,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             {bulkDeleteConfirmOpen && (
                 <Modal
                     titleKey="links.bulk.deleteConfirmTitle"
+                    icon={<DeleteOutlineOutlinedIcon />}
                     contentKey="links.bulk.deleteConfirmBody"
                     contentKeyOptions={{ count: selectedInvites.length }}
                     okLabelKey="links.bulk.deleteConfirmOk"

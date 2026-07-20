@@ -1,12 +1,15 @@
-import { Button, Form, message, Modal } from 'antd';
+import { Button, Form, message } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LabeledValue } from 'antd/lib/select';
+import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
 import { SelectFormField } from '../SelectFormField';
+import { Modal, DialogButton } from '../Modal';
 import { useAgenciesData } from '../../hooks/useAgencysData';
 import { convertToOptions } from '../../utils/convertToOptions';
 import { grantConsultantIdentityData } from '../../api/admins/grantConsultantIdentityData';
 import { isActiveDeleteDate } from '../../utils/deleteDate';
+import styles from './styles.module.scss';
 
 interface GrantConsultantIdentityModalProps {
     adminId: string;
@@ -75,30 +78,36 @@ export const GrantConsultantIdentityModal = ({
             <Button type="default" disabled={disabled} onClick={() => setOpen(true)}>
                 {t('grantConsultantIdentity.button')}
             </Button>
-            <Modal
-                title={t('grantConsultantIdentity.modal.title')}
-                open={open}
-                centered
-                destroyOnClose
-                confirmLoading={isSubmitting}
-                okText={t('grantConsultantIdentity.modal.confirm')}
-                cancelText={t('btn.cancel')}
-                onOk={onConfirm}
-                onCancel={closeModal}
-            >
-                <Form form={form} layout="vertical">
-                    <SelectFormField
-                        name="agencies"
-                        label="grantConsultantIdentity.modal.agencyLabel"
-                        labelInValue
-                        isMulti
-                        required
-                        loading={isLoading}
-                        placeholder="plsSelect"
-                        options={convertToOptions(availableAgencies, ['postcode', 'name', 'city'], 'id')}
-                    />
-                </Form>
-            </Modal>
+            {open && (
+                <Modal
+                    titleKey="grantConsultantIdentity.modal.title"
+                    icon={<AssignmentIndOutlinedIcon />}
+                    footer={
+                        <div className={styles.footerActions}>
+                            <DialogButton onClick={closeModal} disabled={isSubmitting}>
+                                {t('btn.cancel')}
+                            </DialogButton>
+                            <DialogButton primary loading={isSubmitting} onClick={onConfirm}>
+                                {t('grantConsultantIdentity.modal.confirm')}
+                            </DialogButton>
+                        </div>
+                    }
+                    onClose={closeModal}
+                >
+                    <Form form={form} layout="vertical">
+                        <SelectFormField
+                            name="agencies"
+                            label="grantConsultantIdentity.modal.agencyLabel"
+                            labelInValue
+                            isMulti
+                            required
+                            loading={isLoading}
+                            placeholder="plsSelect"
+                            options={convertToOptions(availableAgencies, ['postcode', 'name', 'city'], 'id')}
+                        />
+                    </Form>
+                </Modal>
+            )}
         </>
     );
 };
