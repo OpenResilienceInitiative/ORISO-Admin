@@ -27,6 +27,12 @@ describe('canGrantConsultantIdentity', () => {
         expect(canGrantConsultantIdentity(true, TypeOfUser.PlatformAdmins, admin(false))).toBe(false);
     });
 
+    it('denies granting while the backend does not report the identity yet (field absent)', () => {
+        // Pre-UserService#490 the field is undefined — fail closed rather than
+        // offering the grant action to every admin.
+        expect(canGrantConsultantIdentity(true, TypeOfUser.TenantAdmins, { id: 'a-1' } as CounselorData)).toBe(false);
+    });
+
     it('denies granting when the edited row is not loaded', () => {
         expect(canGrantConsultantIdentity(true, TypeOfUser.TenantAdmins, undefined)).toBe(false);
     });
