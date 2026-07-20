@@ -1,0 +1,16 @@
+.row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.field {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.separator {
+    flex-shrink: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 18px;
+}

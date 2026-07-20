@@ -1,5 +1,6 @@
 import { Form } from 'antd';
 import { Trans, useTranslation } from 'react-i18next';
+import { Card } from '../../../Card';
 import { CardDeck } from '../../../CardDeck';
 import { CardEditable } from '../../../CardEditable';
 import { EditButton } from '../../../EditButton';
@@ -88,14 +89,18 @@ export const PermissionsSettingsView = ({
                                         const masterEnabled = masterField ? getFieldValue(masterField) !== false : true;
                                         const CardIcon = card.Icon;
                                         return (
-                                            <div className={styles.chatTypeCard}>
-                                                <div className={styles.cardHeader}>
-                                                    <span className={styles.cardIcon} aria-hidden>
-                                                        <CardIcon width={40} height={40} />
-                                                    </span>
-                                                    <h3 className={styles.cardTitle}>{t(card.titleKey)}</h3>
-                                                </div>
-
+                                            <Card
+                                                headerIcon={<CardIcon width={40} height={40} />}
+                                                titleKey={card.titleKey}
+                                                footer={
+                                                    !editing ? (
+                                                        <EditButton
+                                                            className={styles.cardFooterEditButton}
+                                                            onClick={startEditing}
+                                                        />
+                                                    ) : undefined
+                                                }
+                                            >
                                                 <div className={styles.masterRow}>
                                                     {enforceMode && masterField && (
                                                         <M3Checkbox
@@ -186,16 +191,7 @@ export const PermissionsSettingsView = ({
                                                         {t('tenants.permissions.enforce.footerNote')}
                                                     </p>
                                                 )}
-
-                                                <div className={styles.cardFooterActions}>
-                                                    {!editing && (
-                                                        <EditButton
-                                                            className={styles.cardFooterEditButton}
-                                                            onClick={startEditing}
-                                                        />
-                                                    )}
-                                                </div>
-                                            </div>
+                                            </Card>
                                         );
                                     }}
                                 </Form.Item>

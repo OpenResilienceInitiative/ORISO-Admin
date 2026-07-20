@@ -18,6 +18,8 @@ export interface FloatingLabelSelectProps<
     error?: boolean;
     /** Supporting text below the field; shown in the error colour while the field is in the error state. */
     supportingText?: string;
+    /** Optional leading icon inside the outline (Figma Admin.ORISO 900-7044 — session-duration clock). */
+    leadingIcon?: React.ReactNode;
 }
 
 /**
@@ -38,6 +40,7 @@ export const FloatingLabelSelect = <
     defaultValue,
     disabled,
     placeholder,
+    leadingIcon,
     mode,
     onBlur,
     onFocus,
@@ -89,15 +92,22 @@ export const FloatingLabelSelect = <
                     [styles.fieldError]: hasError,
                     [styles.fieldDisabled]: isDisabled,
                     [styles.labelFloating]: floating,
+                    [styles.hasLeadingIcon]: Boolean(leadingIcon),
                 },
                 className,
             )}
         >
             <div className={styles.outline}>
+                {leadingIcon && (
+                    <span className={styles.leadingIcon} aria-hidden>
+                        {leadingIcon}
+                    </span>
+                )}
                 <Select<ValueType, OptionType>
                     {...selectProps}
                     id={fieldId}
                     className={styles.select}
+                    classNames={{ popup: { root: styles.dropdown } }}
                     variant="borderless"
                     mode={mode}
                     value={currentValue}

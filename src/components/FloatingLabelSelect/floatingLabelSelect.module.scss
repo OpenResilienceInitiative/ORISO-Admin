@@ -92,3 +92,91 @@
         color: var(--m3-on-surface-variant, #444748);
     }
 }
+
+/* Optional leading icon (e.g. session-duration clock, Figma 900-7044). Muted,
+   20px, vertically centred in the outline; the select content is padded clear
+   of it. Intended for always-valued selects — the floated label sits top-left,
+   clear of the icon. */
+.leadingIcon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    z-index: 1;
+    display: flex;
+    width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    color: var(--m3-on-surface-variant, #444748);
+    pointer-events: none;
+    transform: translateY(-50%);
+
+    :global(svg) {
+        width: 20px;
+        height: 20px;
+        color: inherit;
+        fill: currentcolor;
+    }
+}
+
+.hasLeadingIcon .select :global(.ant-select-selector) {
+    padding-left: 44px !important;
+}
+
+/* M3 select menu (Figma Admin.ORISO 1-34809 "Menu with Text field"): compact
+   surface-container-low popup, tight item padding, tonal selected pill with a
+   leading checkmark instead of antd's default bulky/white menu. */
+.dropdown {
+    padding: 2px 0;
+    background: var(--m3-surface-container-low, #f6f3f3);
+    border-radius: 16px;
+    box-shadow: var(--m3-elevation-3, 0 1px 3px rgb(0 0 0 / 30%), 0 4px 8px 3px rgb(0 0 0 / 15%));
+
+    :global(.ant-select-item) {
+        width: calc(100% - 8px);
+        padding: 0;
+        margin: 2px 4px;
+        border-radius: 4px;
+    }
+
+    :global(.ant-select-item-option-content) {
+        padding: 12px;
+        color: var(--m3-on-surface, #1b1b1c);
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.1px;
+        line-height: 20px;
+    }
+
+    :global(.ant-select-item-option-active:not(.ant-select-item-option-disabled)) {
+        background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+    }
+
+    /* Dedicated token, not --m3-tertiary-container (already claimed app-wide by
+       the OrisoScheme brand pink). Figma's raw baseline for menu-selection is a
+       neutral grey-blue. */
+    :global(.ant-select-item-option-selected:not(.ant-select-item-option-disabled)) {
+        border-radius: 12px;
+        background: var(--admin-select-selected-surface, #9ba4b0);
+    }
+
+    :global(.ant-select-item-option-selected .ant-select-item-option-content) {
+        color: #ffffff;
+    }
+
+    :global(.ant-select-item-option-selected .ant-select-item-option-content)::before {
+        content: '';
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        margin-right: 8px;
+        vertical-align: -4px;
+        background-color: currentcolor;
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M7.1 12.3 3.6 8.8l1-1 2.5 2.5 5.3-5.3 1 1z'/%3E%3C/svg%3E");
+        mask-repeat: no-repeat;
+        mask-position: center;
+        -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M7.1 12.3 3.6 8.8l1-1 2.5 2.5 5.3-5.3 1 1z'/%3E%3C/svg%3E");
+        -webkit-mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+    }
+}

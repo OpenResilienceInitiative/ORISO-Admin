@@ -85,7 +85,9 @@ describe('buildAdminAntdTheme', () => {
             expect(token?.borderRadius).toBe(8);
             expect(token?.borderRadiusLG).toBe(16);
             expect(token?.borderRadiusSM).toBe(4);
-            expect(token?.fontFamily).toMatch(/^'Inter', 'Roboto'/);
+            // 'Inter Variable' must lead: it's the actual @font-face name (Fonts.less);
+            // bare 'Inter' isn't a loaded face and silently falls back to the system font.
+            expect(token?.fontFamily).toMatch(/^'Inter Variable', 'Inter', 'Roboto'/);
             expect(token?.fontSize).toBe(14);
             // 40px control height = WCAG 2.2 target-size headroom.
             expect(token?.controlHeight).toBe(40);

@@ -1,0 +1,56 @@
+/* M3 icon button — always circular. filled = secondary-container tonal;
+   standard = transparent with an on-surface hover state layer. */
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    transition: background 160ms ease, opacity 160ms ease;
+}
+
+.button:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 2px;
+}
+
+.button:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}
+
+.filled {
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
+}
+
+.filled:not(:disabled):hover {
+    background: color-mix(in srgb, var(--m3-secondary-container, #646d78) 90%, #000);
+}
+
+.standard {
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.standard:not(:disabled):hover {
+    background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+}
+
+.icon {
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon :global(svg) {
+    width: 24px;
+    height: 24px;
+    color: inherit;
+    fill: currentcolor;
+}

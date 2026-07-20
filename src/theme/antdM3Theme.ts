@@ -16,8 +16,12 @@ import type { TenantSeeds } from '../utils/themeSeeds';
  */
 
 // M3 body/medium is the admin's default text size; Inter is the M3 body face,
-// Roboto the title face (see Figma variable defs).
-const M3_FONT_FAMILY = "'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+// Roboto the title face (see Figma variable defs). The loaded @font-face in
+// Fonts.less is registered as 'Inter Variable', so it MUST lead the stack —
+// requesting bare 'Inter' (not a loaded face) silently fell back to the system
+// font on every antd-rendered surface (card titles, inputs).
+const M3_FONT_FAMILY =
+    "'Inter Variable', 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 
 // M3 corner radii. Cards/sheets use the large radius, controls the base one.
 const M3_RADIUS = 8;
