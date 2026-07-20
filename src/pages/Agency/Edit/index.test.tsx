@@ -197,7 +197,10 @@ describe('AgencyPageEdit create flow', () => {
     it('renders the tenant assignment field for super-admin agency creation', async () => {
         renderWithClient(<AgencyPageEdit />);
 
-        expect(await screen.findByText('Trägerzuordnung')).toBeInTheDocument();
+        // Required field: SelectFormField now mirrors FormInputField's M3 label
+        // convention (a visible " *" appended to the text) instead of antd's
+        // CSS-only pseudo-asterisk.
+        expect(await screen.findByText('Trägerzuordnung *')).toBeInTheDocument();
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
     });
 
@@ -207,7 +210,10 @@ describe('AgencyPageEdit create flow', () => {
         // Wait for the tenant assignment field before interacting — clicking
         // Speichern earlier races the async tenant-options fetch and the
         // required rule may not be registered yet when the form validates.
-        expect(await screen.findByText('Trägerzuordnung')).toBeInTheDocument();
+        // Required field: SelectFormField now mirrors FormInputField's M3 label
+        // convention (a visible " *" appended to the text) instead of antd's
+        // CSS-only pseudo-asterisk.
+        expect(await screen.findByText('Trägerzuordnung *')).toBeInTheDocument();
 
         fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Neue Beratungsstelle' } });
         fireEvent.change(screen.getByLabelText('PLZ *'), { target: { value: '86161' } });
