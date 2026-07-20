@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Alert, Button } from 'antd';
+import { Alert, Button, Input, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useDpaVersions } from '../../../../../hooks/useDpaVersions.hook';
 import { usePublishDpa } from '../../../../../hooks/usePublishDpa.hook';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
 import { useUserData } from '../../../../../hooks/useUserData.hook';
-import { DpaVersion } from '../../../../../types/dpa';
+import { DpaSignInvite, DpaVersion } from '../../../../../types/dpa';
 import { DataProcessingAgreementCard, LegalVersion } from '../DataProcessingAgreementCard';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
 import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
@@ -14,6 +14,7 @@ import { useDpaGate } from '../../../../../hooks/useDpaGate.hook';
 import { useCreateDpaInvite } from '../../../../../hooks/useCreateDpaInvite.hook';
 import { resolveDpaSignLink } from '../../../../../api/tenant/createDpaSignInvite';
 import { useDpaSignatures } from '../../../../../hooks/useDpaSignatures.hook';
+import { useSendDpaInviteEmail } from '../../../../../hooks/useSendDpaInviteEmail.hook';
 
 interface DataProcessingAgreementContainerProps {
     tenantId: string | number;
@@ -48,11 +49,15 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
         refetch: refetchDpaGate,
     } = useDpaGate(id, isTenantScopedAdmin && Number.isFinite(id) && id > 0);
     const { mutate: createSignInvite, isPending: isCreatingSignInvite } = useCreateDpaInvite(id);
+    const { mutate: sendSignInviteEmail, isPending: isSendingSignInviteEmail } = useSendDpaInviteEmail();
     const { data: dpaSignatures = [], isError: dpaSignaturesError } = useDpaSignatures(
         id,
         isTenantScopedAdmin && dpaGate?.dpaSigned === true,
     );
     const [signLink, setSignLink] = useState<string>();
+    const [signInvite, setSignInvite] = useState<DpaSignInvite>();
+    const [recipientEmail, setRecipientEmail] = useState('');
+    const [inviteEmailStatus, setInviteEmailStatus] = useState<'idle' | 'invalid' | 'sent' | 'failed'>('idle');
     const effectiveReadOnly = !!readOnly || isTenantScopedAdmin;
     // Persist a dismissal only once the opaque user id is known. Usernames and
     // email addresses must not become storage keys, and late identity loading
@@ -98,6 +103,40 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
             ? latestSignedDpa.signedAt
             : date.toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' });
     }, [lang, latestSignedDpa?.signedAt]);
+
+    const sendInvite = (invite: DpaSignInvite) => {
+        const resolvedSignLink = resolveDpaSignLink(invite.signLink);
+        setSignInvite(invite);
+        setSignLink(resolvedSignLink);
+        sendSignInviteEmail(
+            {
+                tenantId: id,
+                recipientEmail: recipientEmail.trim(),
+                signLink: resolvedSignLink,
+                expiresAt: invite.expiresAt,
+            },
+            {
+                onSuccess: () => setInviteEmailStatus('sent'),
+                onError: () => setInviteEmailStatus('failed'),
+            },
+        );
+    };
+
+    const handleSendInvite = () => {
+        if (!/^\S+@\S+\.\S+$/.test(recipientEmail.trim())) {
+            setInviteEmailStatus('invalid');
+            return;
+        }
+        setInviteEmailStatus('idle');
+        if (signInvite) {
+            sendInvite(signInvite);
+            return;
+        }
+        createSignInvite(undefined, {
+            onSuccess: sendInvite,
+            onError: () => setInviteEmailStatus('failed'),
+        });
+    };
 
     // A failed version load must not masquerade as "no versions yet": editing a
     // legal text on an unknown current state could silently overwrite it, so we
@@ -150,26 +189,46 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                     type="warning"
                     showIcon
                     message={t('legal.dpa.sign.required')}
-                    description={t('legal.dpa.sign.description')}
-                    action={
-                        signLink ? (
-                            <Button type="primary" onClick={() => window.location.assign(signLink)}>
-                                {t('legal.dpa.sign.openLink')}
-                            </Button>
-                        ) : (
-                            <Button
-                                type="primary"
-                                loading={isCreatingSignInvite}
-                                onClick={() =>
-                                    createSignInvite(undefined, {
-                                        onSuccess: (invite) => setSignLink(resolveDpaSignLink(invite.signLink)),
-                                    })
-                                }
-                            >
-                                {t('legal.dpa.sign.createLink')}
-                            </Button>
-                        )
+                    description={
+                        <Space direction="vertical" size="middle" style={{ width: '100%', maxWidth: 520 }}>
+                            <span>{t('legal.dpa.sign.description')}</span>
+                            <Input
+                                type="email"
+                                aria-label={t('legal.dpa.sign.recipientEmail')}
+                                placeholder={t('legal.dpa.sign.recipientEmail')}
+                                value={recipientEmail}
+                                status={inviteEmailStatus === 'invalid' ? 'error' : undefined}
+                                onChange={(event) => {
+                                    setRecipientEmail(event.target.value);
+                                    setInviteEmailStatus('idle');
+                                }}
+                            />
+                            {inviteEmailStatus === 'invalid' && (
+                                <Alert type="error" showIcon message={t('legal.dpa.sign.invalidEmail')} />
+                            )}
+                            {inviteEmailStatus === 'failed' && (
+                                <Alert type="error" showIcon message={t('legal.dpa.sign.sendFailed')} />
+                            )}
+                            {inviteEmailStatus === 'sent' && (
+                                <Alert type="success" showIcon message={t('legal.dpa.sign.sent')} />
+                            )}
+                            <Space wrap>
+                                <Button
+                                    type="primary"
+                                    loading={isCreatingSignInvite || isSendingSignInviteEmail}
+                                    onClick={handleSendInvite}
+                                >
+                                    {t('legal.dpa.sign.sendLink')}
+                                </Button>
+                                {signLink && (
+                                    <Button onClick={() => window.location.assign(signLink)}>
+                                        {t('legal.dpa.sign.openLink')}
+                                    </Button>
+                                )}
+                            </Space>
+                        </Space>
                     }
+                    action={null}
                 />
             )}
             {isTenantScopedAdmin && dpaGate?.dpaSigned && (
@@ -182,6 +241,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                             <div>
                                 <strong>{latestSignedDpa.signerName}</strong>
                                 {latestSignedDpa.signerPosition && <div>{latestSignedDpa.signerPosition}</div>}
+                                {latestSignedDpa.signerEmail && <div>{latestSignedDpa.signerEmail}</div>}
                                 {latestSignedDpa.signerOrganisation && <div>{latestSignedDpa.signerOrganisation}</div>}
                                 {signedAtLabel && (
                                     <div>

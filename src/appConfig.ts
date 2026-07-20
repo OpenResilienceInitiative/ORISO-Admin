@@ -67,6 +67,7 @@ export const tutorialStatisticsEndpoint = `${userServiceURL}/service/useradmin/s
 export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/invitelinks`;
 export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;
 export const inviteEmailTemplatesEndpoint = `${userServiceURL}/service/useradmin/invite-email-templates`;
+export const dpaInviteEmailEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/email`;
 export const XHRheader = { AcceptLanguage: 'de' };
 
 /*
