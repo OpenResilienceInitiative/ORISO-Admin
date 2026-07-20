@@ -32,6 +32,18 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
                 labelKey: 'tenants.permissions.feature.supervision',
                 field: ['settings', 'featureSupervisionOneOnOneChatsEnabled'],
             },
+            {
+                labelKey: 'tenants.permissions.feature.mediaUpload',
+                field: ['settings', 'featureMediaUploadOneOnOneChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.mediaInlineDisplay',
+                field: ['settings', 'featureMediaInlineDisplayOneOnOneChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.mediaAiScan',
+                field: ['settings', 'featureMediaAiScanOneOnOneChatsEnabled'],
+            },
         ],
     },
     {
@@ -61,6 +73,18 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
                 labelKey: 'tenants.permissions.feature.supervision',
                 field: ['settings', 'featureSupervisionAnonymousChatsEnabled'],
             },
+            {
+                labelKey: 'tenants.permissions.feature.mediaUpload',
+                field: ['settings', 'featureMediaUploadAnonymousChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.mediaInlineDisplay',
+                field: ['settings', 'featureMediaInlineDisplayAnonymousChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.mediaAiScan',
+                field: ['settings', 'featureMediaAiScanAnonymousChatsEnabled'],
+            },
         ],
     },
     {
@@ -86,6 +110,18 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
                 labelKey: 'tenants.permissions.feature.threads',
                 field: ['settings', 'featureThreadsGroupChatsEnabled'],
             },
+            {
+                labelKey: 'tenants.permissions.feature.mediaUpload',
+                field: ['settings', 'featureMediaUploadGroupChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.mediaInlineDisplay',
+                field: ['settings', 'featureMediaInlineDisplayGroupChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.mediaAiScan',
+                field: ['settings', 'featureMediaAiScanGroupChatsEnabled'],
+            },
         ],
     },
     {
@@ -110,6 +146,18 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             {
                 labelKey: 'tenants.permissions.feature.threads',
                 field: ['settings', 'featureThreadsSupervisionChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.mediaUpload',
+                field: ['settings', 'featureMediaUploadSupervisionChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.mediaInlineDisplay',
+                field: ['settings', 'featureMediaInlineDisplaySupervisionChatsEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.feature.mediaAiScan',
+                field: ['settings', 'featureMediaAiScanSupervisionChatsEnabled'],
             },
         ],
     },

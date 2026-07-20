@@ -1,6 +1,7 @@
-import { Button, Form, Input, message, Select, Switch, Tag } from 'antd';
+import { Button, Form, Input, message, Select, Switch, Tag, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import {
     createInviteEmailTemplate,
     InviteEmailTemplateDTO,
@@ -10,13 +11,19 @@ import {
     updateInviteEmailTemplate,
 } from '../../api/accountInvites/accountInvites';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
-import { Modal } from '../../components/Modal';
+import { Modal, DialogButton } from '../../components/Modal';
+import styles from './EmailTemplatesDialog.module.scss';
 
 const TEMPLATE_KINDS: InviteEmailTemplateKind[] = ['TENANT_INVITE', 'COUNSELLOR_INVITE', 'DPA_FORWARD'];
 
 interface EmailTemplatesDialogProps {
     /** The template kind of the invite tab the dialog was opened from — used to preset new templates. */
     templateKind: InviteEmailTemplateKind;
+    /**
+     * `'create'` opens directly in the create form (invite composer's
+     * "Neue E-Mail-Vorlage erstellen"); default is the template list.
+     */
+    initialView?: 'list' | 'create';
     onClose: () => void;
     /** Fired after any successful create/update so the opener can refetch its template select. */
     onChanged?: (template: InviteEmailTemplateDTO) => void;
@@ -37,7 +44,12 @@ interface TemplateFormValues {
  * create/edit form. Deliberately NOT a separate admin section — templates are only
  * ever needed right where invites are sent.
  */
-export const EmailTemplatesDialog = ({ templateKind, onClose, onChanged }: EmailTemplatesDialogProps) => {
+export const EmailTemplatesDialog = ({
+    templateKind,
+    initialView = 'list',
+    onClose,
+    onChanged,
+}: EmailTemplatesDialogProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm<TemplateFormValues>();
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
@@ -82,6 +94,14 @@ export const EmailTemplatesDialog = ({ templateKind, onClose, onChanged }: Email
         form.setFieldsValue({ kind: templateKind, language: undefined, active: true });
         setView('form');
     }, [form, templateKind]);
+
+    // Deep link from the invite composer ("Neue E-Mail-Vorlage erstellen"): open
+    // straight in the create form instead of the list.
+    useEffect(() => {
+        if (initialView === 'create') {
+            openCreateForm();
+        }
+    }, [initialView, openCreateForm]);
 
     const openEditForm = useCallback(
         (template: InviteEmailTemplateDTO) => {
@@ -179,9 +199,22 @@ export const EmailTemplatesDialog = ({ templateKind, onClose, onChanged }: Email
                 title: t('links.templates.col.actions', 'Actions'),
                 key: 'actions',
                 render: (_: unknown, template: InviteEmailTemplateDTO) => (
-                    <Button size="small" onClick={() => openEditForm(template)}>
-                        {t('links.templates.edit', 'Edit')}
-                    </Button>
+                    <div className={listingTableStyles.actionGroup}>
+                        <Button size="small" onClick={() => openEditForm(template)}>
+                            {t('links.templates.edit', 'Edit')}
+                        </Button>
+                        {/* The backend exposes no DELETE for invite-email-templates yet
+                            (AccountInviteController: POST/PUT/GET only), so per #314 the
+                            delete action ships disabled with an explanatory tooltip
+                            instead of inventing an endpoint. */}
+                        <Tooltip title={t('links.templates.deleteUnavailable', 'Backend-Endpoint fehlt (#314)')}>
+                            <span>
+                                <Button danger disabled size="small">
+                                    {t('links.templates.delete', 'Delete')}
+                                </Button>
+                            </span>
+                        </Tooltip>
+                    </div>
                 ),
             },
         ],
@@ -189,25 +222,22 @@ export const EmailTemplatesDialog = ({ templateKind, onClose, onChanged }: Email
     );
 
     const listFooter = (
-        <div className={listingTableStyles.actionGroup}>
-            <Button onClick={onClose}>{t('links.templates.close', 'Close')}</Button>
-            <Button type="primary" className={listingTableStyles.createButton} onClick={openCreateForm}>
+        <div className={styles.footerActions}>
+            <DialogButton onClick={onClose}>{t('links.templates.close', 'Close')}</DialogButton>
+            <DialogButton primary onClick={openCreateForm}>
                 {t('links.templates.new', 'New template')}
-            </Button>
+            </DialogButton>
         </div>
     );
 
     const formFooter = (
-        <div className={listingTableStyles.actionGroup}>
-            <Button onClick={backToList}>{t('links.templates.back', 'Back')}</Button>
-            <Button
-                type="primary"
-                className={listingTableStyles.createButton}
-                loading={submitting}
-                onClick={() => form.submit()}
-            >
+        <div className={styles.footerActions}>
+            <DialogButton onClick={backToList} disabled={submitting}>
+                {t('links.templates.back', 'Back')}
+            </DialogButton>
+            <DialogButton primary loading={submitting} onClick={() => form.submit()}>
                 {t('links.templates.save', 'Save')}
-            </Button>
+            </DialogButton>
         </div>
     );
 
@@ -217,7 +247,13 @@ export const EmailTemplatesDialog = ({ templateKind, onClose, onChanged }: Email
     }
 
     return (
-        <Modal titleKey={titleKey} onClose={onClose} footer={view === 'list' ? listFooter : formFooter} width={860}>
+        <Modal
+            titleKey={titleKey}
+            icon={<EmailOutlinedIcon />}
+            onClose={onClose}
+            footer={view === 'list' ? listFooter : formFooter}
+            width={860}
+        >
             {view === 'list' ? (
                 <ListingTable
                     rowKey="id"

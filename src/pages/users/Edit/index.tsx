@@ -12,6 +12,7 @@ import { FormTextAreaField } from '../../../components/FormTextAreaField';
 import { Page } from '../../../components/Page';
 import { SelectFormField, Option } from '../../../components/SelectFormField';
 import { PermissionAction } from '../../../enums/PermissionAction';
+import { FeatureFlag } from '../../../enums/FeatureFlag';
 import { Resource } from '../../../enums/Resource';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { useAddOrUpdateConsultantOrAdmin } from '../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin';
@@ -34,6 +35,7 @@ import { GrantConsultantIdentityModal } from '../../../components/GrantConsultan
 import { CreateAgencyModal } from '../../../components/CreateAgencyModal';
 import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
+import { useFeatureContext } from '../../../context/FeatureContext';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
     const seen = new Set(current.map(({ value }) => value));
@@ -47,6 +49,7 @@ export const UserEditOrAdd = () => {
     const { can } = useUserPermissions();
     const { t } = useTranslation();
     const { isSuperAdmin } = useUserRoles();
+    const { isEnabled } = useFeatureContext();
 
     const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
     const isEditing = id !== 'add';
@@ -490,39 +493,15 @@ export const UserEditOrAdd = () => {
                                 </div>
 
                                 {showTopicsField && (
-                                    <>
-                                        <SelectFormField
-                                            name="tenantId"
-                                            placeholder="tenantAdmins.form.tenant"
-                                            required
-                                            disabled={isReadOnly || isEditing || !isSuperAdmin}
-                                            className={styles.select}
-                                            label="tenantAdmins.form.tenantAssignment"
-                                            options={convertToOptions(tenantsData || [], 'name', 'id')}
-                                        />
-
-                                        <SelectFormField
-                                            name="agencies"
-                                            label="agency"
-                                            labelInValue
-                                            isMulti
-                                            placeholder="plsSelect"
-                                            options={convertToOptions(
-                                                filteredAgencies,
-                                                ['postcode', 'name', 'city'],
-                                                'id',
-                                            )}
-                                        />
-                                        <SelectFormField
-                                            label="topics.title"
-                                            name="topicIds"
-                                            labelInValue
-                                            isMulti
-                                            allowClear
-                                            placeholder="plsSelect"
-                                            options={topicOptions}
-                                        />
-                                    </>
+                                    <SelectFormField
+                                        label="topics.title"
+                                        name="topicIds"
+                                        labelInValue
+                                        isMulti
+                                        allowClear
+                                        placeholder="plsSelect"
+                                        options={topicOptions}
+                                    />
                                 )}
 
                                 {isConsultantForm && (
@@ -533,12 +512,12 @@ export const UserEditOrAdd = () => {
                                                 name="formalLanguage"
                                             />
                                             {/* Temporarily hidden: {isEditing && <FormSwitchField labelKey="counselor.absent" name="absent" />} */}
-                                            {/* Temporarily hidden: {isEnabled(FeatureFlag.GroupChatV2) && (
+                                            {isEnabled(FeatureFlag.GroupChatV2) && (
                                                 <FormSwitchField
                                                     labelKey="counselor.isGroupChatConsultant"
                                                     name="isGroupchatConsultant"
                                                 />
-                                            )} */}
+                                            )}
                                             <FormSwitchField labelKey="counselor.isSupervisor" name="isSupervisor" />
                                         </Space>
                                         {isAbsentEnabled && (

@@ -1,6 +1,6 @@
 import { Alert, Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { GdprIcon } from '../../../../CustomIcons/LegalIcons';
+import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
@@ -34,6 +34,8 @@ interface DepartmentDataProtectionCardProps {
      * "translate from the original" button. Draft saves never translate.
      */
     onTranslate?: (request: TranslateRequest) => Promise<TranslateResponse>;
+    /** Selects the legal document presentation while retaining the shared publication workflow. */
+    documentType?: 'privacy' | 'imprint';
 }
 
 /**
@@ -52,6 +54,7 @@ export const DepartmentDataProtectionCard = ({
     onSave,
     saving,
     onTranslate,
+    documentType = 'privacy',
 }: DepartmentDataProtectionCardProps) => {
     const { t } = useTranslation();
     const published = publicationStatus === 'PUBLISHED';
@@ -87,8 +90,12 @@ export const DepartmentDataProtectionCard = ({
     return (
         <div className={styles.card}>
             <M3RichTextEditor
-                title={t('tenants.legal.departmentDataProtection.title')}
-                icon={GdprIcon}
+                title={t(
+                    documentType === 'imprint'
+                        ? 'tenants.legal.departmentImprint.title'
+                        : 'tenants.legal.departmentDataProtection.title',
+                )}
+                icon={documentType === 'imprint' ? ImprintIcon : GdprIcon}
                 value={currentContent}
                 onChange={handleEditorChange}
                 publishing={saving}
@@ -112,7 +119,13 @@ export const DepartmentDataProtectionCard = ({
                                     : t('tenants.legal.departmentDataProtection.status.draft')}
                             </Tag>
                         </div>
-                        <p className={styles.description}>{t('tenants.legal.departmentDataProtection.description')}</p>
+                        <p className={styles.description}>
+                            {t(
+                                documentType === 'imprint'
+                                    ? 'tenants.legal.departmentImprint.description'
+                                    : 'tenants.legal.departmentDataProtection.description',
+                            )}
+                        </p>
                     </>
                 }
                 aboveEditorSlot={

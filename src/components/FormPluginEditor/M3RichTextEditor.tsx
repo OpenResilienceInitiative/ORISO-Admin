@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -52,6 +52,7 @@ import {
     PublishedIcon,
     EditIcon,
 } from '../CustomIcons/EditorIcons';
+import { createImageDropPasteHandlers, useEditorImageUpload } from './useEditorImageUpload';
 import { HeadingAnchors } from './headingAnchors';
 import { HeadingMenu } from './HeadingMenu';
 import { SplitDropdown } from './SplitDropdown';
@@ -209,6 +210,10 @@ type ToolbarProps = {
     onToggleAutoChapters?: (level: number) => void;
     /** Template placeholders (key -> i18n label key) inserted as literal `${key}` text. */
     placeholders?: { [key: string]: string };
+    /** Opens the image file picker (upload to the tenant media endpoint). */
+    onInsertImage?: () => void;
+    /** Upload in flight: the image button shows busy state. */
+    imageUploading?: boolean;
 };
 
 const Toolbar = ({
@@ -219,6 +224,8 @@ const Toolbar = ({
     autoChapters,
     onToggleAutoChapters,
     placeholders,
+    onInsertImage,
+    imageUploading,
 }: ToolbarProps) => {
     const { t } = useTranslation();
     const promptLink = () => {
@@ -229,11 +236,6 @@ const Toolbar = ({
         // eslint-disable-next-line no-alert
         const url = window.prompt('URL');
         if (url) editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-    };
-    const promptImage = () => {
-        // eslint-disable-next-line no-alert
-        const url = window.prompt('Image URL');
-        if (url) editor.chain().focus().setImage({ src: url }).run();
     };
 
     return (
@@ -493,11 +495,17 @@ const Toolbar = ({
                             type="button"
                             className={`${styles.toolBtn} ${styles.withLabel}`}
                             onMouseDown={(e) => e.preventDefault()}
-                            onClick={promptImage}
+                            onClick={onInsertImage}
+                            disabled={imageUploading}
+                            aria-busy={imageUploading}
                             title={t('editor.toolbar.addImage', 'Add image')}
                         >
                             <ImageIcon />
-                            <span>{t('editor.toolbar.add', 'Add')}</span>
+                            <span>
+                                {imageUploading
+                                    ? t('editor.image.upload.uploading', 'Uploading…')
+                                    : t('editor.toolbar.add', 'Add')}
+                            </span>
                         </button>
                     </div>
                     {placeholders && Object.keys(placeholders).length > 0 && (
@@ -596,6 +604,13 @@ export const M3RichTextEditor = ({
     // its own TiptapEditor with its own anchor row.
     const anchorsEnabled = enableAnchors && !editorSlot;
 
+    // Image upload (WP-3b): editor + handler live behind refs so the drop/paste
+    // handlers captured at editor creation always see the current instances.
+    const editorRef = useRef<Editor | null>(null);
+    const imageUpload = useEditorImageUpload(() => editorRef.current);
+    const uploadAndInsertRef = useRef(imageUpload.uploadAndInsert);
+    uploadAndInsertRef.current = imageUpload.uploadAndInsert;
+
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -616,9 +631,20 @@ export const M3RichTextEditor = ({
         // The ProseMirror contenteditable exposes role="textbox" (browser-only) but
         // no accessible name (axe: aria-input-field-name, WCAG 4.1.2) — pin the role
         // and label it with the card title.
-        editorProps: { attributes: { 'aria-label': title, role: 'textbox' } },
+        editorProps: {
+            attributes: { 'aria-label': title, role: 'textbox' },
+            ...createImageDropPasteHandlers((files) => {
+                if (editorRef.current?.isEditable) {
+                    uploadAndInsertRef.current(files);
+                }
+            }),
+        },
         onUpdate: ({ editor: e }) => onChange?.(e.isEmpty ? '' : e.getHTML()),
     });
+
+    useEffect(() => {
+        editorRef.current = editor;
+    }, [editor]);
 
     useEffect(() => {
         editor?.setEditable(editorEditable);
@@ -633,7 +659,18 @@ export const M3RichTextEditor = ({
     }, [versions, viewingVersionId]);
 
     useEffect(() => {
-        editor?.setOptions({ editorProps: { attributes: { 'aria-label': title, role: 'textbox' } } });
+        // Keep the drop/paste image handlers when re-pinning the label — setOptions
+        // replaces editorProps wholesale.
+        editor?.setOptions({
+            editorProps: {
+                attributes: { 'aria-label': title, role: 'textbox' },
+                ...createImageDropPasteHandlers((files) => {
+                    if (editorRef.current?.isEditable) {
+                        uploadAndInsertRef.current(files);
+                    }
+                }),
+            },
+        });
     }, [editor, title]);
 
     useEffect(() => {
@@ -701,6 +738,8 @@ export const M3RichTextEditor = ({
                     autoChapters={autoChapters}
                     onToggleAutoChapters={toggleAutoChapters}
                     placeholders={placeholders}
+                    onInsertImage={imageUpload.openImagePicker}
+                    imageUploading={imageUpload.uploading}
                 />
             ) : (
                 <div className={styles.toolbar}>{maximizeButton}</div>
@@ -906,7 +945,8 @@ export const M3RichTextEditor = ({
                             <button
                                 type="button"
                                 className={`${styles.textBtn} ${styles.publish}`}
-                                disabled={publishing}
+                                disabled={publishing || imageUpload.uploading}
+                                aria-busy={publishing || imageUpload.uploading}
                                 onClick={() => onPublish(html())}
                             >
                                 <PublishedIcon />
@@ -917,6 +957,8 @@ export const M3RichTextEditor = ({
                             <button
                                 type="button"
                                 className={`${styles.textBtn} ${styles.draft}`}
+                                disabled={imageUpload.uploading}
+                                aria-busy={imageUpload.uploading}
                                 onClick={() => onSaveDraft(html())}
                             >
                                 <EditIcon />

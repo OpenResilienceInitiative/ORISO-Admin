@@ -73,18 +73,21 @@
     }
 }
 
-/* Selected segment uses the tenant-themeable M3 primary (Figma 1-49824:
-   dark red on the default ORISO scheme), not a hardcoded navy. */
+/* Align with Page subsection tabs (Settings / Links) so Users / Logs / Statistics match. */
 .itemActive,
 .itemActive:first-child,
 .itemActive:last-child {
-    background: var(--m3-primary, #141c25);
+    background: #4c555f;
     border-radius: 38px;
-    color: var(--m3-on-primary, #ffffff);
+    color: #ffffff;
 
     &:hover {
-        background: var(--m3-primary, #141c25);
-        color: var(--m3-on-primary, #ffffff);
+        background: #4c555f;
+        color: #ffffff;
+    }
+
+    .icon {
+        color: #ffe2de;
     }
 }
 

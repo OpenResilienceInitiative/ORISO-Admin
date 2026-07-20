@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+
+const imageUploadMocks = vi.hoisted(() => ({ uploadTenantMedia: vi.fn() }));
+vi.mock('../../api/tenant/uploadTenantMedia', () => ({ uploadTenantMedia: imageUploadMocks.uploadTenantMedia }));
+
 import { M3RichTextEditor } from './M3RichTextEditor';
 
 describe('M3RichTextEditor fullscreen dialog', () => {
@@ -93,5 +97,37 @@ describe('M3RichTextEditor accessibility', () => {
 
         const expectedTokenHtml = ['<p>$', '{responsible}</p>'].join('');
         await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expectedTokenHtml));
+    });
+});
+
+describe('M3RichTextEditor image upload integrity', () => {
+    it('blocks save and publish until a pending image has been inserted', async () => {
+        let resolveUpload: (value: { id: string; url: string; contentType: string }) => void = () => undefined;
+        imageUploadMocks.uploadTenantMedia.mockReturnValueOnce(
+            new Promise((resolve) => {
+                resolveUpload = resolve;
+            }),
+        );
+        const onPublish = vi.fn();
+        const onSaveDraft = vi.fn();
+        render(<M3RichTextEditor title="Impressum" onPublish={onPublish} onSaveDraft={onSaveDraft} />);
+        const editor = await screen.findByRole('textbox', { name: 'Impressum' });
+
+        fireEvent.paste(editor, {
+            clipboardData: {
+                files: [new File(['image'], 'image.png', { type: 'image/png' })],
+                getData: vi.fn(() => ''),
+            },
+        });
+
+        const publish = screen.getByRole('button', { name: /legal\.m3Editor\.publish|publish/i });
+        const saveDraft = screen.getByRole('button', { name: /legal\.m3Editor\.saveDraft|save draft/i });
+        await waitFor(() => expect(publish).toBeDisabled());
+        expect(saveDraft).toBeDisabled();
+
+        await act(async () => resolveUpload({ id: 'image', url: '/media/image', contentType: 'image/png' }));
+
+        await waitFor(() => expect(publish).toBeEnabled());
+        expect(saveDraft).toBeEnabled();
     });
 });

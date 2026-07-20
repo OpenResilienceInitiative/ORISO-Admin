@@ -28,6 +28,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from './utils/language';
 import { buildAdminAntdTheme } from './theme/antdM3Theme';
 import { initObservability } from './observability/initObservability';
+import { PasswordResetRequestPage } from './pages/PasswordReset/PasswordResetRequestPage';
+import { PasswordResetConfirmPage } from './pages/PasswordReset/PasswordResetConfirmPage';
 
 // OBS-P8 (ORISO-Helm#62): start Real User Monitoring (Core Web Vitals) export
 // to SigNoz as early as possible, before the app renders.
@@ -112,6 +114,11 @@ root.render(
                         <Router>
                             <Routes>
                                 <Route path={routePathNames.login} element={<Login />} />
+                                <Route path={routePathNames.passwordReset} element={<PasswordResetRequestPage />} />
+                                <Route
+                                    path={routePathNames.passwordResetConfirm}
+                                    element={<PasswordResetConfirmPage />}
+                                />
                                 <Route path="/admin/404" element={<Error404 />} />
                                 <Route path="/admin/access-denied" element={<AccessDenied />} />
 

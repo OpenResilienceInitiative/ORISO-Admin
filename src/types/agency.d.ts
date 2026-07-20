@@ -1,6 +1,26 @@
 import { PostCodeRange } from '../api/agency/getAgencyPostCodeRange';
 import { CounsellingRelation } from '../enums/CounsellingRelation';
+import { PermissionToggleVisibility } from './PermissionToggleVisibility';
+import { TenantSettings } from './tenant';
 import { TopicData } from './topic';
+
+/**
+ * Platform-wide governance for agency-level toggles (a singleton, super-admin owned). The
+ * backend injects it into every agency's `settings` on read; it is never persisted per agency.
+ */
+export interface AgencyAdminControls {
+    permissionsPageEnabled?: boolean;
+    allowedPermissionToggles?: PermissionToggleVisibility;
+    enforcedPermissionToggles?: PermissionToggleVisibility;
+}
+
+/**
+ * Agency-level feature settings — the same flag vocabulary as the tenant level (minus
+ * tenant-only concerns like SMTP), plus the injected read-only platform controls.
+ */
+export type AgencySettings = Omit<TenantSettings, 'smtp' | 'tenantAdminControls'> & {
+    agencyAdminControls?: AgencyAdminControls;
+};
 
 export interface AgencyDemographicsData {
     age?: string[];
@@ -68,4 +88,5 @@ export interface AgencyData {
     agencyLogo: string | null;
     tenantId: number;
     tenantName?: string;
+    settings?: AgencySettings;
 }

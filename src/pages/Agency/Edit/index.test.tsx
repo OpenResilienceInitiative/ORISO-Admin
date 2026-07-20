@@ -16,6 +16,17 @@ const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
     navigate: vi.fn(),
     searchTenantData: vi.fn(),
+    userRoles: {
+        hasRole: () => true,
+        isSuperAdmin: true,
+        isTechnicalAccount: false,
+        isTenantScopedAdmin: false,
+        roles: [],
+        tenantId: 0,
+    },
+    dpaGate: { dpaPublished: true, dpaSigned: true },
+    routeId: 'add',
+    agencyData: undefined as any,
 }));
 
 const translations: Record<string, string> = {
@@ -39,6 +50,8 @@ const translations: Record<string, string> = {
     'form.errors.required': 'Bitte füllen Sie das markierte Feld aus.',
     plsSelect: 'Bitte wählen',
     save: 'Speichern',
+    'agency.dpaGate.title': 'AVV-Unterschrift erforderlich',
+    'agency.dpaGate.description': 'Unterschreiben Sie zuerst den AVV.',
 };
 
 const t = (key: string) => translations[key] || key;
@@ -52,7 +65,7 @@ vi.mock('react-router-dom', async () => {
     return {
         ...actual,
         useNavigate: () => mocks.navigate,
-        useParams: () => ({ id: 'add' }),
+        useParams: () => ({ id: mocks.routeId }),
     };
 });
 
@@ -111,7 +124,24 @@ vi.mock('../../../hooks/useReleasesToggle.hook', () => ({
 }));
 
 vi.mock('../../../hooks/useAgencyData', () => ({
-    useAgencyData: () => ({ data: undefined, isLoading: false }),
+    useAgencyData: () => ({ data: mocks.agencyData, isLoading: false }),
+}));
+
+vi.mock('./components/ResponsibleSettings', () => ({
+    ResponsibleSettings: ({ onSave }: { onSave: (data: unknown) => void }) => (
+        <button
+            type="button"
+            onClick={() =>
+                onSave({
+                    dataProtection: {
+                        agencyDataProtectionResponsibleContact: { nameAndLegalForm: 'E2E Responsible Operator gGmbH' },
+                    },
+                })
+            }
+        >
+            Save responsible card
+        </button>
+    ),
 }));
 
 vi.mock('../../../hooks/useAgencyPostCodesData', () => ({
@@ -139,14 +169,11 @@ vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
 }));
 
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
-    useUserRoles: () => ({
-        hasRole: () => true,
-        isSuperAdmin: true,
-        isTechnicalAccount: false,
-        isTenantScopedAdmin: false,
-        roles: [],
-        tenantId: 0,
-    }),
+    useUserRoles: () => mocks.userRoles,
+}));
+
+vi.mock('../../../hooks/useDpaGate.hook', () => ({
+    useDpaGate: () => ({ data: mocks.dpaGate, isLoading: false, isError: false }),
 }));
 
 vi.mock('../../../api/tenant/searchTenantData', () => ({
@@ -192,24 +219,97 @@ describe('AgencyPageEdit create flow', () => {
         mocks.searchTenantData.mockResolvedValue({
             data: [{ id: 7, name: 'Caritas Augsburg' }],
         });
+        mocks.userRoles = {
+            hasRole: () => true,
+            isSuperAdmin: true,
+            isTechnicalAccount: false,
+            isTenantScopedAdmin: false,
+            roles: [],
+            tenantId: 0,
+        };
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.routeId = 'add';
+        mocks.agencyData = undefined;
     });
 
     it('renders the tenant assignment field for super-admin agency creation', async () => {
         renderWithClient(<AgencyPageEdit />);
 
-        expect(await screen.findByText('Trägerzuordnung')).toBeInTheDocument();
+        // Required field: SelectFormField now mirrors FormInputField's M3 label
+        // convention (a visible " *" appended to the text) instead of antd's
+        // CSS-only pseudo-asterisk.
+        expect(await screen.findByText('Trägerzuordnung *')).toBeInTheDocument();
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
     });
 
     it('does not submit a new agency without a selected tenant', async () => {
         renderWithClient(<AgencyPageEdit />);
 
+        // Wait for the tenant assignment field before interacting — clicking
+        // Speichern earlier races the async tenant-options fetch and the
+        // required rule may not be registered yet when the form validates.
+        // Required field: SelectFormField now mirrors FormInputField's M3 label
+        // convention (a visible " *" appended to the text) instead of antd's
+        // CSS-only pseudo-asterisk.
+        expect(await screen.findByText('Trägerzuordnung *')).toBeInTheDocument();
+
         fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Neue Beratungsstelle' } });
         fireEvent.change(screen.getByLabelText('PLZ *'), { target: { value: '86161' } });
         fireEvent.change(screen.getByLabelText('Stadt *'), { target: { value: 'Augsburg' } });
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
-        expect(await screen.findByText('Bitte füllen Sie das markierte Feld aus.')).toBeInTheDocument();
+        // Generous timeout: the error surfaces via antd async validation plus a
+        // notification render; the 1s findBy default is too tight on loaded CI
+        // runners (observed flake in run 29576826138).
+        expect(
+            await screen.findByText('Bitte füllen Sie das markierte Feld aus.', undefined, { timeout: 5000 }),
+        ).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('blocks the direct add route for a tenant admin whose DPA is unsigned', () => {
+        mocks.userRoles = {
+            hasRole: () => true,
+            isSuperAdmin: false,
+            isTechnicalAccount: false,
+            isTenantScopedAdmin: true,
+            roles: [],
+            tenantId: 84,
+        };
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: false };
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(screen.getByText('AVV-Unterschrift erforderlich')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Name *')).not.toBeInTheDocument();
+    });
+
+    it('submits a legal card as a narrow patch so later saves cannot wipe sibling legal data', () => {
+        mocks.routeId = '282';
+        mocks.agencyData = {
+            id: 282,
+            name: 'E2E Agency',
+            tenantId: 84,
+            topics: [],
+            dataProtection: {
+                agencyDataProtectionResponsibleContact: null,
+                dataProtectionOfficerContact: null,
+            },
+            content: { impressum: { en: '<p>existing</p>' } },
+        };
+
+        renderWithClient(<AgencyPageEdit section="legal" />);
+        fireEvent.click(screen.getByRole('button', { name: 'Save responsible card' }));
+
+        expect(mocks.mutate).toHaveBeenCalledWith(
+            {
+                dataProtection: {
+                    agencyDataProtectionResponsibleContact: {
+                        nameAndLegalForm: 'E2E Responsible Operator gGmbH',
+                    },
+                },
+            },
+            expect.any(Object),
+        );
     });
 });

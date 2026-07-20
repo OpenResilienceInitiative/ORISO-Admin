@@ -74,6 +74,10 @@ export const CaseHandoverLogsPage = () => {
                 title: t('caseHandoverLogs.table.auditOutcome'),
                 dataIndex: 'auditOutcome',
                 key: 'auditOutcome',
+                // Without an explicit width, Ant Table squeezes this last column into the
+                // leftover scroll budget (~50px) so "Audit outcome" / values wrap badly.
+                width: 280,
+                ellipsis: true,
             },
         ],
         [t],
@@ -87,7 +91,7 @@ export const CaseHandoverLogsPage = () => {
                 loading={isLoading}
                 columns={columns}
                 dataSource={data?.data ?? []}
-                scroll={{ x: 1200 }}
+                scroll={{ x: 1500 }}
                 pagination={{
                     current: page,
                     pageSize: perPage,

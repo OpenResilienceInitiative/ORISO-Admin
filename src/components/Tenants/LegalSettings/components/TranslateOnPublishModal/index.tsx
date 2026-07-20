@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Checkbox, Modal, Typography } from 'antd';
+import { Alert, Checkbox, Typography } from 'antd';
+import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
 import { useTranslation } from 'react-i18next';
+import { Modal, DialogButton } from '../../../../Modal';
 import styles from './styles.module.scss';
 
 interface TranslateOnPublishModalProps {
@@ -47,22 +49,26 @@ export const TranslateOnPublishModal = ({
 
     const sourceLabel = t(`language.${sourceLanguage}`, sourceLanguage);
 
+    if (!open) {
+        return null;
+    }
+
     return (
         <Modal
-            open={open}
-            title={t('legal.translation.modal.title')}
-            onCancel={onCancel}
-            footer={[
-                <Button key="cancel" onClick={onCancel} disabled={translating}>
-                    {t('legal.translation.modal.cancel')}
-                </Button>,
-                <Button key="skip" onClick={onSkip} disabled={translating}>
-                    {t('legal.translation.modal.skip')}
-                </Button>,
-                <Button key="confirm" type="primary" loading={translating} onClick={() => onConfirm(selected)}>
-                    {t('legal.translation.modal.confirm')}
-                </Button>,
-            ]}
+            titleKey="legal.translation.modal.title"
+            icon={<TranslateOutlinedIcon />}
+            width={600}
+            onClose={onCancel}
+            footer={
+                <div className={styles.footerActions}>
+                    <DialogButton onClick={onSkip} disabled={translating}>
+                        {t('legal.translation.modal.skip')}
+                    </DialogButton>
+                    <DialogButton primary loading={translating} onClick={() => onConfirm(selected)}>
+                        {t('legal.translation.modal.confirm')}
+                    </DialogButton>
+                </div>
+            }
         >
             <p>{t('legal.translation.modal.description', { language: sourceLabel })}</p>
             <Checkbox.Group
@@ -74,7 +80,7 @@ export const TranslateOnPublishModal = ({
                     label: t(`language.${language}`, language),
                 }))}
             />
-            <Typography.Text type="secondary" className={styles.providerHint}>
+            <Typography.Text className={styles.providerHint}>
                 {t('legal.translation.modal.providerHint')}
             </Typography.Text>
             {errorKey && <Alert className={styles.error} type="error" showIcon message={t(errorKey)} />}

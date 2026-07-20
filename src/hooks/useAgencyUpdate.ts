@@ -14,12 +14,16 @@ export const useAgencyUpdate = (id: string) => {
             if (id === 'add') {
                 return addAgencyData(data);
             }
-            return updateAgencyData(
-                agencyData,
-                mergeWith({ ...agencyData }, data, (objValue, srcValue) => {
-                    return objValue instanceof Array ? srcValue : undefined;
-                }),
-            );
+            const latestAgencyData = queryClient.getQueryData<AgencyData>(['AGENCY', id]) ?? agencyData;
+            const mergedAgencyData = mergeWith({}, latestAgencyData, data, (objValue, srcValue) => {
+                return objValue instanceof Array ? srcValue : undefined;
+            }) as AgencyData;
+
+            // Make the just-submitted card patch immediately available to the next
+            // mutation. The backend read invalidation below remains the source of
+            // truth, but no rapid sequential card save can rebuild from stale data.
+            queryClient.setQueryData(['AGENCY', id], mergedAgencyData);
+            return updateAgencyData(latestAgencyData, mergedAgencyData);
         },
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['AGENCY', id] });
