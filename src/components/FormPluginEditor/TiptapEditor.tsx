@@ -3,7 +3,6 @@ import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
     FormatBold,
@@ -16,6 +15,7 @@ import {
 } from '@mui/icons-material';
 import { Button, ConfigProvider, Select } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { ResolvingImage } from './createResolvingImage';
 import { createImageDropPasteHandlers, useEditorImageUpload } from './useEditorImageUpload';
 import { HeadingAnchors } from './headingAnchors';
 import AnchorChips from './AnchorChips';
@@ -235,7 +235,7 @@ const TiptapEditor = ({
             StarterKit,
             Underline,
             Link.configure({ openOnClick: false, autolink: false }),
-            Image,
+            ResolvingImage,
             Placeholder.configure({ placeholder: () => placeholderRef.current || '' }),
             ...(enableAnchors ? [HeadingAnchors] : []),
         ],

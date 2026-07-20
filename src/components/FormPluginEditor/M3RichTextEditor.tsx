@@ -3,7 +3,6 @@ import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
 import Highlight from '@tiptap/extension-highlight';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
@@ -44,6 +43,7 @@ import {
     TextFields,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import { ResolvingImage } from './createResolvingImage';
 import {
     CrossReferenceIcon,
     KeyboardArrowDownIcon,
@@ -616,7 +616,7 @@ export const M3RichTextEditor = ({
             StarterKit,
             Underline,
             Link.configure({ openOnClick: false, autolink: false }),
-            Image,
+            ResolvingImage,
             Highlight.configure({ multicolor: true }),
             TaskList,
             TaskItem.configure({ nested: true }),
