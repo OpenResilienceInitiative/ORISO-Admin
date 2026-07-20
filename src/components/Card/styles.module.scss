@@ -4,11 +4,17 @@
 
 /* Default card surface. Matches the M3 gray card used consistently across the
    admin (dialog cards, functionality cards) so there are no more white cards:
-   flat gray surface + rounded corners, no border or shadow. */
+   gray surface + subtle border + M3 elevation-1 shadow + rounded corners. The
+   border+shadow give the card separation from the workspace background
+   (--admin-workspace-background #e4e2e2), which sits only one tonal step below
+   the card surface and would otherwise let the card fade into the page. This
+   mirrors the still-shadowed .chatTypeCard so both card systems read the same. */
 
 .card {
     background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
+    border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 22%, transparent);
     border-radius: 28px;
+    box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%));
 }
 
 .contentClassName {
@@ -34,6 +40,7 @@
     padding: 0;
     background: var(--m3-surface-container-high);
     border-radius: 28px;
+    box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%));
     font-family: var(--m3-body-font-family);
     -moz-osx-font-smoothing: auto;
     -webkit-font-smoothing: subpixel-antialiased;
@@ -70,8 +77,14 @@
     gap: 8px;
     text-align: center;
 
+    /* Figma M3/headline/small: Inter 24/32, weight 400. Canonical card title. */
     .title {
         margin-bottom: 0;
+        color: var(--m3-on-surface);
+        font-family: var(--m3-body-font-family);
+        font-size: 24px;
+        font-weight: 400;
+        line-height: 32px;
         text-align: center;
     }
 }
@@ -86,9 +99,9 @@
     .title {
         color: var(--m3-on-surface);
         font-family: var(--m3-body-font-family);
-        font-size: 20px;
-        font-weight: 600;
-        line-height: 28px;
+        font-size: 24px;
+        font-weight: 400;
+        line-height: 32px;
         text-align: center;
     }
 }
@@ -177,4 +190,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Shared card action row (M3): a top divider then right-aligned text buttons.
+   Used by every wizard/settings card — Back/Next, Cancel/Save, Edit. */
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 24px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--m3-outline-variant, rgb(0 0 0 / 12%));
 }

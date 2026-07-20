@@ -1,0 +1,13 @@
+/* Focus Topics wizard card. The Card skeleton + M3Button supply surface,
+   header and footer; only the chip grid layout is local. */
+
+.card {
+    width: 340px;
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: flex-start;
+}

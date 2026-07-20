@@ -46,3 +46,42 @@ export const DialogVariant: Story = {
         children: 'Dialog-Variante mit abgerundeter Karten-Oberfläche.',
     },
 };
+
+/** Wizard skeleton: header icon + Headline Small title (Figma 24/32/400) + body slot
+ *  + footer action row (top divider, right-aligned text buttons). Every Counsellor-
+ *  Setup-Wizard step is this skeleton with a different body. */
+export const WizardSkeleton: Story = {
+    args: {
+        headerIcon: '🛡',
+        titleKey: 'Advisor Account Data',
+        children: 'Body slot — fields, chips, toggles, etc. go here per step.',
+        footer: (
+            <>
+                <button
+                    type="button"
+                    style={{
+                        border: 0,
+                        background: 'transparent',
+                        color: 'var(--m3-primary, #a5000a)',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                    }}
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    style={{
+                        border: 0,
+                        background: 'transparent',
+                        color: 'var(--m3-primary, #a5000a)',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                    }}
+                >
+                    Next
+                </button>
+            </>
+        ),
+    },
+};

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Skeleton, Tooltip } from 'antd';
 import { ReactComponent as CaseHandoverIcon } from '../../../../../resources/img/svg/permissions/case_handover.svg';
+import { Card } from '../../../../Card';
 import { M3Switch } from '../../../../M3Switch';
 import { M3Checkbox } from '../../../../M3Checkbox';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
@@ -89,16 +90,11 @@ export const CaseHandoverCardView = ({
     const comingSoon = t('tenants.permissions.card.caseHandover.comingSoon');
 
     return (
-        <div className={cardStyles.chatTypeCard} data-testid="case-handover-card">
-            <div className={cardStyles.cardHeader}>
-                <span className={cardStyles.cardIcon} aria-hidden>
-                    <CaseHandoverIcon width={40} height={40} />
-                </span>
-                <h3 className={`${cardStyles.cardTitle} ${styles.cardTitleM3}`}>
-                    {t('tenants.permissions.card.caseHandover.title')}
-                </h3>
-            </div>
-
+        <Card
+            dataTestId="case-handover-card"
+            headerIcon={<CaseHandoverIcon width={40} height={40} />}
+            titleKey="tenants.permissions.card.caseHandover.title"
+        >
             {isLoading ? (
                 <Skeleton active paragraph={{ rows: 6 }} />
             ) : (
@@ -329,6 +325,6 @@ export const CaseHandoverCardView = ({
                     </div>
                 </>
             )}
-        </div>
+        </Card>
     );
 };
