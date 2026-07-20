@@ -63,7 +63,13 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_SUCCESS.CONTENT],
         bodyData: JSON.stringify(agencyDataRequestBody),
     }).then(async (response) => {
-        await updateAgencyPostCodeRange(agencyId, formInput.postCodes, '');
+        // Card-based agency edits submit narrow patches. The regular agency GET
+        // does not contain postcode ranges, so treating an absent `postCodes`
+        // field as an empty selection silently replaces the stored range with
+        // 00000-99999. Only the registration card may mutate postcode ranges.
+        if (formInput.postCodes !== undefined) {
+            await updateAgencyPostCodeRange(agencyId, formInput.postCodes, '');
+        }
         // eslint-disable-next-line no-underscore-dangle
         return response?._embedded;
     });

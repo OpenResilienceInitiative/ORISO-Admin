@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => ({
         tenantId: 0,
     },
     dpaGate: { dpaPublished: true, dpaSigned: true },
+    routeId: 'add',
+    agencyData: undefined as any,
 }));
 
 const translations: Record<string, string> = {
@@ -63,7 +65,7 @@ vi.mock('react-router-dom', async () => {
     return {
         ...actual,
         useNavigate: () => mocks.navigate,
-        useParams: () => ({ id: 'add' }),
+        useParams: () => ({ id: mocks.routeId }),
     };
 });
 
@@ -122,7 +124,24 @@ vi.mock('../../../hooks/useReleasesToggle.hook', () => ({
 }));
 
 vi.mock('../../../hooks/useAgencyData', () => ({
-    useAgencyData: () => ({ data: undefined, isLoading: false }),
+    useAgencyData: () => ({ data: mocks.agencyData, isLoading: false }),
+}));
+
+vi.mock('./components/ResponsibleSettings', () => ({
+    ResponsibleSettings: ({ onSave }: { onSave: (data: unknown) => void }) => (
+        <button
+            type="button"
+            onClick={() =>
+                onSave({
+                    dataProtection: {
+                        agencyDataProtectionResponsibleContact: { nameAndLegalForm: 'E2E Responsible Operator gGmbH' },
+                    },
+                })
+            }
+        >
+            Save responsible card
+        </button>
+    ),
 }));
 
 vi.mock('../../../hooks/useAgencyPostCodesData', () => ({
@@ -209,6 +228,8 @@ describe('AgencyPageEdit create flow', () => {
             tenantId: 0,
         };
         mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.routeId = 'add';
+        mocks.agencyData = undefined;
     });
 
     it('renders the tenant assignment field for super-admin agency creation', async () => {
@@ -261,5 +282,34 @@ describe('AgencyPageEdit create flow', () => {
 
         expect(screen.getByText('AVV-Unterschrift erforderlich')).toBeInTheDocument();
         expect(screen.queryByLabelText('Name *')).not.toBeInTheDocument();
+    });
+
+    it('submits a legal card as a narrow patch so later saves cannot wipe sibling legal data', () => {
+        mocks.routeId = '282';
+        mocks.agencyData = {
+            id: 282,
+            name: 'E2E Agency',
+            tenantId: 84,
+            topics: [],
+            dataProtection: {
+                agencyDataProtectionResponsibleContact: null,
+                dataProtectionOfficerContact: null,
+            },
+            content: { impressum: { en: '<p>existing</p>' } },
+        };
+
+        renderWithClient(<AgencyPageEdit section="legal" />);
+        fireEvent.click(screen.getByRole('button', { name: 'Save responsible card' }));
+
+        expect(mocks.mutate).toHaveBeenCalledWith(
+            {
+                dataProtection: {
+                    agencyDataProtectionResponsibleContact: {
+                        nameAndLegalForm: 'E2E Responsible Operator gGmbH',
+                    },
+                },
+            },
+            expect.any(Object),
+        );
     });
 });

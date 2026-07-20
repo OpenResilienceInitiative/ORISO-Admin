@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ fetchData: vi.fn() }));
+const mocks = vi.hoisted(() => ({ fetchData: vi.fn(), updateAgencyPostCodeRange: vi.fn() }));
 
 vi.mock('../fetchData', async () => {
     const actual = await vi.importActual<typeof import('../fetchData')>('../fetchData');
     return { ...actual, fetchData: mocks.fetchData };
 });
 vi.mock('./updateAgencyType', () => ({ default: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('./updateAgencyPostCodeRange', () => ({ default: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('./updateAgencyPostCodeRange', () => ({ default: mocks.updateAgencyPostCodeRange }));
 vi.mock('../consultingtype/getConsultingType4Tenant', () => ({ default: vi.fn().mockResolvedValue('1') }));
 
 import { updateAgencyData } from './updateAgencyData';
@@ -20,6 +20,8 @@ describe('updateAgencyData — ADR-003 single-select topic', () => {
     beforeEach(() => {
         mocks.fetchData.mockReset();
         mocks.fetchData.mockResolvedValue({ _embedded: {} });
+        mocks.updateAgencyPostCodeRange.mockReset();
+        mocks.updateAgencyPostCodeRange.mockResolvedValue(undefined);
     });
 
     it('sends the single-select Option as a one-element topicIds array', async () => {
@@ -43,6 +45,28 @@ describe('updateAgencyData — ADR-003 single-select topic', () => {
             topicIds: [{ value: '3' }, { value: '9' }],
         } as any);
         expect(sentBody().topicIds).toEqual(['3', '9']);
+    });
+});
+
+describe('updateAgencyData — postcode range preservation', () => {
+    beforeEach(() => {
+        mocks.fetchData.mockReset();
+        mocks.fetchData.mockResolvedValue({ _embedded: {} });
+        mocks.updateAgencyPostCodeRange.mockReset();
+        mocks.updateAgencyPostCodeRange.mockResolvedValue(undefined);
+    });
+
+    it('does not replace stored postcode ranges when a narrow card patch has no postcode data', async () => {
+        await updateAgencyData(agencyModel, { ...agencyModel, online: true } as any);
+
+        expect(mocks.updateAgencyPostCodeRange).not.toHaveBeenCalled();
+    });
+
+    it('updates postcode ranges when the registration card explicitly submits them', async () => {
+        const postCodes = [{ from: '10115', until: '10179' }];
+        await updateAgencyData(agencyModel, { ...agencyModel, online: true, postCodes } as any);
+
+        expect(mocks.updateAgencyPostCodeRange).toHaveBeenCalledWith('55', postCodes, '');
     });
 });
 

@@ -1261,6 +1261,8 @@
     "tenants.legal.version.loadError": "The previous versions could not be loaded.",
     "tenants.legal.version.retry": "Try again",
     "tenants.legal.departmentDataProtection.title": "Department data privacy policy",
+    "tenants.legal.departmentImprint.title": "Department legal notice",
+    "tenants.legal.departmentImprint.description": "This department's own legal notice. Save as a draft or publish it for clients.",
     "tenants.legal.departmentDataProtection.description": "This department's own data privacy policy. Save as a draft or publish it for clients.",
     "tenants.legal.departmentDataProtection.status.published": "Published",
     "tenants.legal.departmentDataProtection.status.draft": "Draft",

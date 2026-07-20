@@ -828,6 +828,8 @@
     "tenants.legal.version.loadError": "Die früheren Fassungen konnten nicht geladen werden.",
     "tenants.legal.version.retry": "Erneut versuchen",
     "tenants.legal.departmentDataProtection.title": "Datenschutzerklärung des Fachbereichs",
+    "tenants.legal.departmentImprint.title": "Impressum des Fachbereichs",
+    "tenants.legal.departmentImprint.description": "Eigenes Impressum dieses Fachbereichs. Als Entwurf speichern oder für Ratsuchende veröffentlichen.",
     "tenants.legal.departmentDataProtection.description": "Eigene Datenschutzerklärung dieses Fachbereichs. Als Entwurf speichern oder für Ratsuchende veröffentlichen.",
     "tenants.legal.departmentDataProtection.status.published": "Veröffentlicht",
     "tenants.legal.departmentDataProtection.status.draft": "Entwurf",
