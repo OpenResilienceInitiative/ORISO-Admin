@@ -5,11 +5,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import { AgencyAccessError } from '../../../api/agency/getAgencyById';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
 import { normalizeTopicIds } from '../../../api/agency/normalizeTopicIds';
 import routePathNames from '../../../appConfig';
 import { Page } from '../../../components/Page';
 import { CardDeck } from '../../../components/CardDeck';
+import { DashboardEmptyState } from '../../../components/DashboardEmptyState/DashboardEmptyState';
 import { useFeatureContext } from '../../../context/FeatureContext';
 import { FeatureFlag } from '../../../enums/FeatureFlag';
 import { Gender } from '../../../enums/Gender';
@@ -70,7 +72,11 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const isFunctionalitiesSection = section === 'functionalities';
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted, setSubmitted] = useState(false);
-    const { data: agencyData, isLoading } = useAgencyData({ id });
+    const { data: agencyData, isLoading, error: agencyError } = useAgencyData({ id });
+    // 403 and 404 are surfaced identically here so a foreign agency's mere existence
+    // isn't observable from the UI. Any other failure keeps rendering the (empty) page
+    // as before, since fetchData's generic toast already told the user something broke.
+    const isAgencyInaccessible = isEditing && !isLoading && agencyError instanceof AgencyAccessError;
     const { data: postCodes, isLoading: isLoadingPostCodes } = useAgencyPostCodesData({ id });
     const { isEnabled } = useFeatureContext();
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
@@ -85,25 +91,27 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { mutate } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
-    const agencySettingsTabs = [
-        {
-            titleKey: 'settings.subhead.masterData',
-            to: `${routePathNames.agency}/${id}/general`,
-            iconName: 'master_data',
-            icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
-        },
-        isEditing && {
-            titleKey: 'settings.subhead.legal',
-            to: `${routePathNames.agency}/${id}/legal-settings`,
-            iconName: 'legal',
-            icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
-        },
-        isEditing && {
-            titleKey: 'settings.subhead.functionAccess',
-            to: `${routePathNames.agency}/${id}/functionalities`,
-            iconName: 'functionality_access',
-        },
-    ];
+    const agencySettingsTabs = isAgencyInaccessible
+        ? []
+        : [
+              {
+                  titleKey: 'settings.subhead.masterData',
+                  to: `${routePathNames.agency}/${id}/general`,
+                  iconName: 'master_data',
+                  icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
+              },
+              isEditing && {
+                  titleKey: 'settings.subhead.legal',
+                  to: `${routePathNames.agency}/${id}/legal-settings`,
+                  iconName: 'legal',
+                  icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
+              },
+              isEditing && {
+                  titleKey: 'settings.subhead.functionAccess',
+                  to: `${routePathNames.agency}/${id}/functionalities`,
+                  iconName: 'functionality_access',
+              },
+          ];
     const isAgencyCreationDpaBlocked =
         !isEditing && isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || dpaGate?.dpaSigned !== true);
 
@@ -416,6 +424,52 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         </>
     );
 
+    const renderPageBody = () => (
+        <>
+            {isLegalSection && renderLegalSettings()}
+            {isFunctionalitiesSection &&
+                (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
+            {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
+        </>
+    );
+
+    let agencyContent;
+    if (isAgencyInaccessible) {
+        agencyContent = (
+            <DashboardEmptyState
+                icon={<ErrorOutlinedIcon fontSize="large" />}
+                title={t('agency.edit.notFound.title')}
+                description={t('agency.edit.notFound.description')}
+                action={{
+                    label: t('agency.edit.notFound.backToOverview'),
+                    onClick: () => navigate(routePathNames.agency),
+                }}
+            />
+        );
+    } else if (isAgencyCreationDpaBlocked) {
+        agencyContent = (
+            <Alert
+                type="warning"
+                showIcon
+                message={t('agency.dpaGate.title')}
+                description={t('agency.dpaGate.description')}
+                action={
+                    isDpaGateError ? (
+                        <Button size="small" onClick={() => refetchDpaGate()}>
+                            {t('tenants.legal.version.retry')}
+                        </Button>
+                    ) : (
+                        <Button size="small" onClick={() => navigate(`${routePathNames.themeSettings}/legal`)}>
+                            {t('agency.dpaGate.openLegalSettings')}
+                        </Button>
+                    )
+                }
+            />
+        );
+    } else {
+        agencyContent = renderPageBody();
+    }
+
     return (
         <Page isLoading={isLoading || isLoadingPostCodes} stickyHeader>
             <Page.BackWithActions
@@ -428,53 +482,36 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 titleMaxLength={isEditing ? 10 : undefined}
                 tabs={agencySettingsTabs}
             >
-                {!isAgencyCreationDpaBlocked && isReadOnly && !isEditing && !isLegalSection && (
-                    <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
-                        {t('edit')}
-                    </Button>
-                )}
-                {!isAgencyCreationDpaBlocked && !isReadOnly && !isEditing && !isLegalSection && (
-                    <>
-                        <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
-                            {t('btn.cancel')}
+                {!isAgencyInaccessible &&
+                    !isAgencyCreationDpaBlocked &&
+                    isReadOnly &&
+                    !isEditing &&
+                    !isLegalSection && (
+                        <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
+                            {t('edit')}
                         </Button>
-                        <Button
-                            type="text"
-                            className="admin-m3-text-button"
-                            onClick={() => form.submit()}
-                            disabled={submitted}
-                        >
-                            {t('save')}
-                        </Button>
-                    </>
-                )}
+                    )}
+                {!isAgencyInaccessible &&
+                    !isAgencyCreationDpaBlocked &&
+                    !isReadOnly &&
+                    !isEditing &&
+                    !isLegalSection && (
+                        <>
+                            <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
+                                {t('btn.cancel')}
+                            </Button>
+                            <Button
+                                type="text"
+                                className="admin-m3-text-button"
+                                onClick={() => form.submit()}
+                                disabled={submitted}
+                            >
+                                {t('save')}
+                            </Button>
+                        </>
+                    )}
             </Page.BackWithActions>
-            {isAgencyCreationDpaBlocked ? (
-                <Alert
-                    type="warning"
-                    showIcon
-                    message={t('agency.dpaGate.title')}
-                    description={t('agency.dpaGate.description')}
-                    action={
-                        isDpaGateError ? (
-                            <Button size="small" onClick={() => refetchDpaGate()}>
-                                {t('tenants.legal.version.retry')}
-                            </Button>
-                        ) : (
-                            <Button size="small" onClick={() => navigate(`${routePathNames.themeSettings}/legal`)}>
-                                {t('agency.dpaGate.openLegalSettings')}
-                            </Button>
-                        )
-                    }
-                />
-            ) : (
-                <>
-                    {isLegalSection && renderLegalSettings()}
-                    {isFunctionalitiesSection &&
-                        (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
-                    {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
-                </>
-            )}
+            {agencyContent}
         </Page>
     );
 };
