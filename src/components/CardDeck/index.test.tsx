@@ -23,8 +23,10 @@ const setElementMetric = (element: Element, property: 'clientWidth' | 'offsetWid
 
 describe('CardDeck', () => {
     const originalGetComputedStyle = window.getComputedStyle;
+    let mockedGap = '48px';
 
     beforeEach(() => {
+        mockedGap = '48px';
         Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
             configurable: true,
             value: vi.fn(),
@@ -32,10 +34,10 @@ describe('CardDeck', () => {
         window.getComputedStyle = ((element: Element) => {
             const style = originalGetComputedStyle(element);
 
-            if (element.hasAttribute('data-admin-card-deck-scroll')) {
+            if (element.hasAttribute('data-admin-card-deck-list')) {
                 return Object.create(style, {
-                    columnGap: { value: '48px' },
-                    gap: { value: '48px' },
+                    columnGap: { value: mockedGap },
+                    gap: { value: mockedGap },
                 });
             }
 
@@ -82,7 +84,11 @@ describe('CardDeck', () => {
         expect(nextButton).toHaveAttribute('aria-controls', scrollGroup.id);
     });
 
-    it('scrolls by one card step from the footer controls', async () => {
+    it.each([
+        { gap: '48px', expectedStep: 473 },
+        { gap: '0px', expectedStep: 425 },
+    ])('scrolls by one card step with a $gap gap', async ({ gap, expectedStep }) => {
+        mockedGap = gap;
         const user = userEvent.setup();
         const { container } = renderDeck();
         const deck = container.querySelector('[data-admin-card-deck-scroll]');
@@ -109,7 +115,7 @@ describe('CardDeck', () => {
         await user.click(nextButton);
 
         expect(scrollBy).toHaveBeenCalledWith({
-            left: 473,
+            left: expectedStep,
             behavior: 'smooth',
         });
     });

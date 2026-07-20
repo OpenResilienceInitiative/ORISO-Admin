@@ -72,8 +72,10 @@ const CardDeckRoot = ({
                 return;
             }
 
-            const computedStyle = window.getComputedStyle(deck);
-            const gap = Number.parseFloat(computedStyle.columnGap || computedStyle.gap) || 24;
+            const list = deck.querySelector('[data-admin-card-deck-list]');
+            const computedStyle = window.getComputedStyle(list ?? deck);
+            const parsedGap = Number.parseFloat(computedStyle.columnGap || computedStyle.gap);
+            const gap = Number.isFinite(parsedGap) ? parsedGap : 24;
             const firstCard = deck.querySelector('[data-admin-card-deck-item]') as HTMLElement | null;
             const cardStep = firstCard ? firstCard.offsetWidth + gap : deck.clientWidth * 0.86;
 
@@ -139,7 +141,7 @@ const CardDeckRoot = ({
                 data-admin-card-deck-scroll
                 role="group"
             >
-                <ul className={styles.list} aria-label={ariaLabel}>
+                <ul className={styles.list} aria-label={ariaLabel} data-admin-card-deck-list>
                     {cards}
                 </ul>
             </div>

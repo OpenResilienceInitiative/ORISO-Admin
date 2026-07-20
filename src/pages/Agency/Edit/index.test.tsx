@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AgencyPageEdit } from './index';
+import agencyStyles from './styles.module.scss';
 
 // Render AgencyPageEdit inside a QueryClientProvider so child components that use
 // react-query (e.g. RegistrationSettings → useConsultantsOrAdminsData) don't throw
@@ -233,12 +234,14 @@ describe('AgencyPageEdit create flow', () => {
     });
 
     it('renders the tenant assignment field for super-admin agency creation', async () => {
-        renderWithClient(<AgencyPageEdit />);
+        const { container } = renderWithClient(<AgencyPageEdit />);
 
         // Required field: SelectFormField now mirrors FormInputField's M3 label
         // convention (a visible " *" appended to the text) instead of antd's
         // CSS-only pseudo-asterisk.
         expect(await screen.findByText('Trägerzuordnung *')).toBeInTheDocument();
+        expect(container.querySelector('[data-admin-card-deck]')).toHaveClass(agencyStyles.createCardDeck);
+        expect(container.querySelectorAll('[data-admin-card-deck-item]')).toHaveLength(3);
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
     });
 
