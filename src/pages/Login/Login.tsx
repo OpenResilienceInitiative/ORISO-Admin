@@ -96,7 +96,7 @@ export const Login = () => {
             </div>
             <Stage logo={tenantData?.theming?.logo} claim={tenantData?.content?.claim} />
             <Row align="middle" style={{ flex: '1 0 auto' }}>
-                <Col xs={{ span: 10, offset: 1 }} md={{ span: 6, offset: 3 }} xl={{ span: 4, offset: 6 }}>
+                <Col xs={{ span: 22, offset: 1 }} md={{ span: 6, offset: 3 }} xl={{ span: 4, offset: 6 }}>
                     <LoginForm />
                 </Col>
             </Row>

@@ -1,4 +1,14 @@
 .loginForm {
+    /*
+     * MUI helper/error text is part of the TextField. Keep a token-based gap
+     * before the next field so multi-line validation messages never collide
+     * with the following floating label on narrow screens.
+     */
+
+    > .ant-form > .MuiTextField-root {
+        margin-bottom: @spacing-s;
+    }
+
     .ant-form-item-label > label {
         &.ant-form-item-required:not(.ant-form-item-required-mark-optional):before,
         &:after {
