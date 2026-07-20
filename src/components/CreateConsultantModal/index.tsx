@@ -1,15 +1,18 @@
-import { Button, Form, message, Modal, Tooltip } from 'antd';
+import { Button, Form, message, Tooltip } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { UnsavedChangesModal } from '../CardEditable/components/UnsavedChanges';
 import { FormInputField } from '../FormInputField';
 import { FormInputPasswordField } from '../FormInputPasswordField';
+import { Modal, DialogButton } from '../Modal';
 import { TypeOfUser } from '../../enums/TypeOfUser';
 import { useAddOrUpdateConsultantOrAdmin } from '../../hooks/useAddOrUpdateConsultantOrAgencyAdmin';
 import { CounselorData } from '../../types/counselor';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
+import styles from './styles.module.scss';
 
 interface CreateConsultantModalProps {
     /**
@@ -104,97 +107,103 @@ export const CreateConsultantModal = ({ tenantId, disabled, onSuccess }: CreateC
             ) : (
                 button
             )}
-            <Modal
-                title={t('agency.form.registrationSettings.createConsultant.title')}
-                open={open}
-                centered
-                destroyOnClose
-                confirmLoading={isPending}
-                okText={t('agency.form.registrationSettings.createConsultant.confirm')}
-                cancelText={t('btn.cancel')}
-                onOk={() => form.submit()}
-                onCancel={requestClose}
-            >
-                {/* disabled={false} keeps the outer (read-only) form context from disabling these fields */}
-                {/* onFinish also fires on Enter inside a field, not only via the OK button */}
-                <Form form={form} layout="vertical" size="large" disabled={false} onFinish={onFinish}>
-                    <FormInputField
-                        name="firstname"
-                        labelKey="firstname"
-                        placeholderKey="placeholder.firstname"
-                        required
-                        autoFocus
-                    />
-                    <FormInputField
-                        name="lastname"
-                        labelKey="lastname"
-                        placeholderKey="placeholder.lastname"
-                        required
-                    />
-                    <FormInputField
-                        name="email"
-                        labelKey="email"
-                        placeholderKey="placeholder.email"
-                        rules={[
-                            {
-                                required: true,
-                                type: 'email',
-                                message: t('message.error.email.incorrect'),
-                            },
-                        ]}
-                    />
-                    <FormInputField
-                        name="username"
-                        labelKey="counselor.username"
-                        placeholderKey="placeholder.username"
-                        rules={[
-                            {
-                                required: true,
-                                message: t('message.error.username.required'),
-                            },
-                            {
-                                pattern: /^[a-z0-9_-]+$/,
-                                message: t('message.error.username.format'),
-                            },
-                        ]}
-                    />
-                    <FormInputPasswordField
-                        name="password"
-                        labelKey="counselor.password"
-                        placeholderKey="placeholder.password"
-                        required
-                        rules={[
-                            {
-                                min: 8,
-                                message: t('message.error.password.minLength'),
-                            },
-                            {
-                                pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-                                message: t('message.error.password.policy'),
-                            },
-                        ]}
-                    />
-                    <FormInputPasswordField
-                        name="passwordConfirmation"
-                        labelKey="counselor.passwordConfirmation"
-                        placeholderKey="placeholder.password"
-                        required
-                        dependencies={['password']}
-                        rules={[
-                            ({ getFieldValue }) => ({
-                                validator(_, value) {
-                                    if (!value || getFieldValue('password') === value) {
-                                        return Promise.resolve();
-                                    }
-                                    return Promise.reject(
-                                        new Error(t('profile.passwordChange.error.passwordsNotMatch')),
-                                    );
+            {open && (
+                <Modal
+                    titleKey="agency.form.registrationSettings.createConsultant.title"
+                    icon={<PersonAddOutlinedIcon />}
+                    footer={
+                        <div className={styles.footerActions}>
+                            <DialogButton onClick={requestClose} disabled={isPending}>
+                                {t('btn.cancel')}
+                            </DialogButton>
+                            <DialogButton primary loading={isPending} onClick={() => form.submit()}>
+                                {t('agency.form.registrationSettings.createConsultant.confirm')}
+                            </DialogButton>
+                        </div>
+                    }
+                    onClose={requestClose}
+                >
+                    {/* disabled={false} keeps the outer (read-only) form context from disabling these fields */}
+                    {/* onFinish also fires on Enter inside a field, not only via the OK button */}
+                    <Form form={form} layout="vertical" size="large" disabled={false} onFinish={onFinish}>
+                        <FormInputField
+                            name="firstname"
+                            labelKey="firstname"
+                            placeholderKey="placeholder.firstname"
+                            required
+                            autoFocus
+                        />
+                        <FormInputField
+                            name="lastname"
+                            labelKey="lastname"
+                            placeholderKey="placeholder.lastname"
+                            required
+                        />
+                        <FormInputField
+                            name="email"
+                            labelKey="email"
+                            placeholderKey="placeholder.email"
+                            rules={[
+                                {
+                                    required: true,
+                                    type: 'email',
+                                    message: t('message.error.email.incorrect'),
                                 },
-                            }),
-                        ]}
-                    />
-                </Form>
-            </Modal>
+                            ]}
+                        />
+                        <FormInputField
+                            name="username"
+                            labelKey="counselor.username"
+                            placeholderKey="placeholder.username"
+                            rules={[
+                                {
+                                    required: true,
+                                    message: t('message.error.username.required'),
+                                },
+                                {
+                                    pattern: /^[a-z0-9_-]+$/,
+                                    message: t('message.error.username.format'),
+                                },
+                            ]}
+                        />
+                        <FormInputPasswordField
+                            name="password"
+                            labelKey="counselor.password"
+                            placeholderKey="placeholder.password"
+                            required
+                            rules={[
+                                {
+                                    min: 8,
+                                    message: t('message.error.password.minLength'),
+                                },
+                                {
+                                    pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
+                                    message: t('message.error.password.policy'),
+                                },
+                            ]}
+                        />
+                        <FormInputPasswordField
+                            name="passwordConfirmation"
+                            labelKey="counselor.passwordConfirmation"
+                            placeholderKey="placeholder.password"
+                            required
+                            dependencies={['password']}
+                            rules={[
+                                ({ getFieldValue }) => ({
+                                    validator(_, value) {
+                                        if (!value || getFieldValue('password') === value) {
+                                            return Promise.resolve();
+                                        }
+                                        return Promise.reject(
+                                            new Error(t('profile.passwordChange.error.passwordsNotMatch')),
+                                        );
+                                    },
+                                }),
+                            ]}
+                        />
+                    </Form>
+                </Modal>
+            )}
             {showUnsavedWarning && (
                 <UnsavedChangesModal onConfirm={closeModal} onClose={() => setShowUnsavedWarning(false)} />
             )}

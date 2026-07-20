@@ -1,26 +1,24 @@
-import { Modal } from 'antd';
-import { useTranslation } from 'react-i18next';
-import Title from 'antd/lib/typography/Title';
+import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
+import { Modal } from '../../../Modal';
 
 export interface UnsavedChangesProps {
+    /** User confirms the destructive action (discard/leave) — fires from the primary button only. */
     onConfirm: () => void;
+    /** User dismisses the warning and keeps editing — fires from Cancel, the mask, Esc and the close X. */
     onClose: () => void;
 }
 
-export const UnsavedChangesModal = ({ onConfirm, onClose }: UnsavedChangesProps) => {
-    const { t } = useTranslation();
-
-    return (
-        <Modal
-            title={<Title level={2}>{t('overlay.unsaved.title')}</Title>}
-            open
-            onOk={onClose}
-            onCancel={onConfirm}
-            cancelText={t('overlay.unsaved.confirm')}
-            centered
-            okText={t('overlay.unsaved.cancel')}
-        >
-            {t('overlay.unsaved.text')}
-        </Modal>
-    );
-};
+export const UnsavedChangesModal = ({ onConfirm, onClose }: UnsavedChangesProps) => (
+    // Never let an incidental dismiss (mask click / Esc / the X) be destructive: only
+    // the explicit, primary-coloured "Verwerfen" button may discard. Everything else
+    // — Cancel, mask, Esc, X — is the safe "keep editing" path.
+    <Modal
+        titleKey="overlay.unsaved.title"
+        icon={<WarningAmberOutlinedIcon />}
+        contentKey="overlay.unsaved.text"
+        cancelLabelKey="overlay.unsaved.cancel"
+        okLabelKey="overlay.unsaved.confirm"
+        onConfirm={onConfirm}
+        onClose={onClose}
+    />
+);

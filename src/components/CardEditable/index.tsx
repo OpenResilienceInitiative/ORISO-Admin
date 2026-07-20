@@ -166,12 +166,13 @@ export const CardEditable = ({
             )}
             {allowUnsavedChanges && showUnsavedChangesModal && (
                 <UnsavedChangesModal
-                    onConfirm={() => setShowUnsavedChangesModal(false)}
-                    onClose={() => {
+                    // onConfirm = destructive (discard + exit editing), onClose = safe (keep editing).
+                    onConfirm={() => {
                         form.resetFields();
                         setEditing(false);
                         setShowUnsavedChangesModal(false);
                     }}
+                    onClose={() => setShowUnsavedChangesModal(false)}
                 />
             )}
         </Card>

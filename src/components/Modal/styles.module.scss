@@ -19,6 +19,19 @@
             background: transparent;
         }
 
+        /* Round the close affordance so its hover state matches the 28px surface
+           instead of clashing with a square highlight. Standard for every dialog. */
+        .ant-modal-close {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            transition: background-color 150ms ease;
+
+            &:hover {
+                background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+            }
+        }
+
         .ant-modal-body {
             padding: 16px 24px 0;
             color: var(--m3-on-surface-variant, #444748);
@@ -73,20 +86,54 @@
     border-top: 1px solid var(--m3-outline-variant, #c4c7c8);
 }
 
-.actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    padding: 20px 24px 20px 8px;
+/* Uniform padding for EVERY footer — standard actions and custom footers alike —
+   so no action row sits flush against the rounded surface. Custom footers should
+   therefore NOT add their own outer padding. */
+.footerBody {
+    padding: 16px 24px 20px;
 }
 
+/* M3 mobile rule: two short actions stay a right-aligned row (as before); only when
+   there are THREE OR MORE actions (or a long label won't fit) do they stack
+   full-width with centered labels. `:has(> :nth-child(3))` = wrapper has 3+ buttons.
+   Applies generically to the standard `.actions` and any custom footer row. */
+@media (max-width: 575px) {
+    .footerBody > *:has(> :nth-child(3)) {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .footerBody > *:has(> :nth-child(3)) :global(.ant-btn),
+    .footerBody > *:has(> :nth-child(3)) button {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* Base = secondary/neutral action (e.g. Cancel): M3 grey. Keeping secondary actions
+   neutral and only the primary action coloured stops multi-button rows reading as
+   "all primary". Hover tint follows `currentColor` so it works for both variants. */
 .actionButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     height: 40px;
     padding: 10px 16px;
     border: 0;
     border-radius: 100px;
     background: transparent;
-    color: var(--m3-primary, #a5000a);
+    color: var(--m3-on-surface-variant, #444748);
     cursor: pointer;
     font-family: inherit;
     font-size: 14px;
@@ -96,16 +143,36 @@
     transition: background-color 150ms ease;
 
     &:hover:not(:disabled) {
-        background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, transparent);
+        background: color-mix(in srgb, currentColor 8%, transparent);
     }
 
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #a5000a);
+        outline: 2px solid currentColor;
         outline-offset: 2px;
     }
 
     &:disabled {
         cursor: not-allowed;
         opacity: 0.38;
+    }
+}
+
+/* Primary/confirming action — brand primary colour. */
+.actionButtonPrimary {
+    color: var(--m3-primary, #a5000a);
+}
+
+.actionSpinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: actionSpin 0.7s linear infinite;
+}
+
+@keyframes actionSpin {
+    to {
+        transform: rotate(360deg);
     }
 }

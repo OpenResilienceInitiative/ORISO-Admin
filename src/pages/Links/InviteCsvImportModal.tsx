@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { DeleteOutlined } from '@ant-design/icons';
 import { Button, Input, message, Tag, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import { ListingTable } from '../../components/ListingTable';
-import { Modal } from '../../components/Modal';
+import { Modal, DialogButton } from '../../components/Modal';
 import { assignBatchTenantIds, type InviteCsvRejectionReason, type ParseInviteCsvResult } from './csv/parseInviteCsv';
 import styles from './inviteCsvImport.module.scss';
 
@@ -270,20 +271,21 @@ export const InviteCsvImportModal = ({
     return (
         <Modal
             titleKey="links.csvImport.title"
+            icon={<UploadFileOutlinedIcon />}
             width={880}
             footer={
                 <div className={styles.footer}>
-                    <Button disabled={running} onClick={onClose}>
+                    <DialogButton disabled={running} onClick={onClose}>
                         {t('links.csvImport.cancel', 'Abbrechen')}
-                    </Button>
-                    <Button
+                    </DialogButton>
+                    <DialogButton
+                        primary
                         disabled={running || pendingRows.length === 0}
                         loading={running}
-                        type="primary"
                         onClick={runImport}
                     >
                         {t('links.csvImport.confirm', '{{count}} Empfänger anlegen', { count: pendingRows.length })}
-                    </Button>
+                    </DialogButton>
                 </div>
             }
             onClose={onClose}

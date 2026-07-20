@@ -1,11 +1,16 @@
 import { Modal as AntModal } from 'antd';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactNode } from 'react';
 import styles from './styles.module.scss';
 
+export { DialogButton } from './DialogButton';
+
 export interface ModalProps {
     titleKey?: string;
     titleKeyOptions?: Record<string, unknown>;
+    /** Raw title node for dynamic titles that are not an i18n key. Ignored if `titleKey` is set. */
+    title?: ReactNode;
     cancelLabelKey?: string;
     okLabelKey?: string;
     contentKey?: string;
@@ -22,6 +27,8 @@ export interface ModalProps {
     showDivider?: boolean;
     /** Disables the confirm text button (e.g. while submitting). */
     confirmDisabled?: boolean;
+    /** Show the top-right close (X) affordance. Defaults to true. */
+    closable?: boolean;
 }
 
 /**
@@ -34,6 +41,7 @@ export interface ModalProps {
 export const Modal = ({
     titleKey,
     titleKeyOptions,
+    title,
     okLabelKey,
     cancelLabelKey,
     children,
@@ -46,6 +54,7 @@ export const Modal = ({
     icon,
     showDivider = true,
     confirmDisabled = false,
+    closable = true,
 }: ModalProps) => {
     const { t } = useTranslation();
 
@@ -59,7 +68,12 @@ export const Modal = ({
                 </button>
             )}
             {okLabelKey && (
-                <button type="button" className={styles.actionButton} disabled={confirmDisabled} onClick={onConfirm}>
+                <button
+                    type="button"
+                    className={classNames(styles.actionButton, styles.actionButtonPrimary)}
+                    disabled={confirmDisabled}
+                    onClick={onConfirm}
+                >
                     {t(okLabelKey)}
                 </button>
             )}
@@ -75,14 +89,14 @@ export const Modal = ({
                 mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
             }}
             title={
-                titleKey ? (
+                titleKey || title ? (
                     <div className={styles.titleBlock}>
                         {icon && (
                             <span className={styles.heroIcon} aria-hidden>
                                 {icon}
                             </span>
                         )}
-                        <div className={styles.title}>{t(titleKey, titleKeyOptions)}</div>
+                        <div className={styles.title}>{titleKey ? t(titleKey, titleKeyOptions) : title}</div>
                     </div>
                 ) : null
             }
@@ -91,12 +105,15 @@ export const Modal = ({
             centered
             maskClosable
             keyboard
+            closable={closable}
             onCancel={onClose}
             footer={
                 resolvedFooter ? (
                     <>
                         {showDivider && <div className={styles.divider} aria-hidden />}
-                        {resolvedFooter}
+                        {/* The Modal owns footer padding so custom footers can never sit
+                            flush against the 28px rounded surface (which used to clip them). */}
+                        <div className={styles.footerBody}>{resolvedFooter}</div>
                     </>
                 ) : null
             }
