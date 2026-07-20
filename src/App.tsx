@@ -58,6 +58,9 @@ import {
     LazyUsersList,
 } from './pages/lazyPages';
 import { LogsTabsLayout } from './pages/Logs/LogsTabsLayout';
+import { useUserData } from './hooks/useUserData.hook';
+import { requiresPlatformAdminTwoFactor } from './utils/platformAdminTwoFactorGate';
+import { MandatoryTwoFactorSetup } from './pages/Profile/MandatoryTwoFactorSetup';
 
 const AgencyInitialMeetingRedirect = () => {
     const { id } = useParams();
@@ -72,6 +75,7 @@ export const App = () => {
         isFetched: isPublicTenantFetched,
     } = usePublicTenantData();
     const { isLoading, data } = useTenantData();
+    const { isLoading: isUserDataLoading, data: userData } = useUserData();
     useAdminTheme(publicTenantData?.theming, isPublicTenantFetched || !isPublicTenantLoading);
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
@@ -130,10 +134,23 @@ export const App = () => {
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, hasRole, can);
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, hasRole, can);
+    const requiresTwoFactorSetup = requiresPlatformAdminTwoFactor(isSuperAdmin, userData);
 
-    return isLoading ? (
-        <Initialization />
-    ) : (
+    if (isLoading || (isSuperAdmin && isUserDataLoading)) {
+        return <Initialization />;
+    }
+
+    if (requiresTwoFactorSetup) {
+        return (
+            <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
+                <ProtectedPageLayoutWrapper>
+                    <MandatoryTwoFactorSetup />
+                </ProtectedPageLayoutWrapper>
+            </FeatureProvider>
+        );
+    }
+
+    return (
         <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
             <ProtectedPageLayoutWrapper>
                 {/* Page-level boundary: a crash inside one admin page keeps the

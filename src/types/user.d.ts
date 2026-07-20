@@ -10,7 +10,9 @@ export interface UserData {
     username: string;
     tenantId: number | null;
     twoFactorAuth: {
+        isEnabled: boolean;
         isActive: boolean;
+        isToEncourage: boolean;
         qrCode: string;
         secret: string;
         type: string | null;

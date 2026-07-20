@@ -30,7 +30,11 @@ const { Paragraph } = Typography;
 
 const OTP_LENGTH = 6;
 
-const TwoFactorAuth = () => {
+interface TwoFactorAuthProps {
+    required?: boolean;
+}
+
+const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
     const { t } = useTranslation();
     const { data: userData } = useUserData();
     const { mutate: updateOrSetTwoFactorAuth } = useUserTwoFactorAuth();
@@ -55,10 +59,10 @@ const TwoFactorAuth = () => {
 
         if (!userData.twoFactorAuth.isActive) {
             setOverlayActive(true);
-        } else {
+        } else if (!required) {
             deleteTwoFactorAuth(null);
         }
-    }, [deleteTwoFactorAuth, userData?.twoFactorAuth]);
+    }, [deleteTwoFactorAuth, required, userData?.twoFactorAuth]);
 
     const twoFactorAuthStepsOverlayStart: OverlayItem[] = useMemo(
         () => [
@@ -404,7 +408,16 @@ const TwoFactorAuth = () => {
         setOverlayByType();
     }, [setOverlayByType]);
 
+    useEffect(() => {
+        if (required && userData?.twoFactorAuth && !userData.twoFactorAuth.isActive) {
+            setOverlayActive(true);
+        }
+    }, [required, userData?.twoFactorAuth]);
+
     const handleOverlayClose = useCallback(() => {
+        if (required && !userData.twoFactorAuth.isActive) {
+            return;
+        }
         setOverlayActive(false);
         setOtp('');
         setEmail(userData.email || '');
@@ -414,7 +427,7 @@ const TwoFactorAuth = () => {
         setOtpLabel(defaultOtpLabel);
         setOtpLabelState('invalid');
         setTwoFactorType(userData.twoFactorAuth.type || TwoFactorType.App);
-    }, [defaultOtpLabel, userData]);
+    }, [defaultOtpLabel, required, userData]);
 
     return (
         <>
@@ -422,7 +435,7 @@ const TwoFactorAuth = () => {
                 <M3Switch
                     onChange={() => handleSwitchChange()}
                     checked={userData?.twoFactorAuth.isActive || false}
-                    disabled={!userData?.twoFactorAuth}
+                    disabled={!userData?.twoFactorAuth || (required && userData.twoFactorAuth.isActive)}
                     label={
                         userData?.twoFactorAuth.isActive
                             ? t('twoFactorAuth.switch.active.label')

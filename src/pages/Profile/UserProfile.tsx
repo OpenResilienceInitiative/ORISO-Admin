@@ -8,6 +8,8 @@ import { TourOverviewSection } from '../../components/productTour/TourOverviewSe
 import { LanguageSettings } from './LanguageSettings';
 import { PasswordChange } from './PassswordChange';
 import { PrivateData } from './PrivateData';
+import { Card } from '../../components/Card';
+import TwoFactorAuth from './TwoFactorAuth/TwoFactorAuth';
 
 export const UserProfile = () => {
     const { settings } = useAppConfigContext();
@@ -29,12 +31,11 @@ export const UserProfile = () => {
                     <TourOverviewSection />
                 </Col>
 
-                {/* 2FA disabled - Keycloak extension not implemented */}
-                {/* <Col xs={24} sm={24} md={12} lg={8} xl={6}>
+                <Col xs={24} sm={24} md={12} lg={8} xl={6}>
                     <Card titleKey="twoFactorAuth.title" subTitleKey="twoFactorAuth.subtitle">
                         <TwoFactorAuth />
                     </Card>
-                </Col> */}
+                </Col>
             </Row>
         </Page>
     );
