@@ -1,10 +1,9 @@
 import React from 'react';
-import { Modal } from 'antd';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useDebouncedCallback } from 'use-debounce';
 
-import Title from 'antd/es/typography/Title';
-
 import EditableTableProps from '../../types/editabletable';
+import { Modal } from '../Modal';
 import { ListingTable } from '../ListingTable';
 import AddButton from './AddButton';
 import { GlobalSearchBar } from '../GlobalSearch';
@@ -61,17 +60,19 @@ const EditableTable = ({
                 tableLayout="fixed"
             />
 
-            <Modal
-                title={<Title level={2}>{handleDeleteModalTitle}</Title>}
-                open={isDeleteModalVisible}
-                onOk={handleOnDelete}
-                onCancel={handleDeleteModalCancel}
-                cancelText="ABBRECHEN"
-                closable={false}
-                centered
-            >
-                <p>{handleDeleteModalText}</p>
-            </Modal>
+            {isDeleteModalVisible && (
+                <Modal
+                    title={handleDeleteModalTitle}
+                    icon={<DeleteOutlineOutlinedIcon />}
+                    closable={false}
+                    cancelLabelKey="btn.cancel.uppercase"
+                    okLabelKey="btn.ok.uppercase"
+                    onConfirm={() => handleOnDelete()}
+                    onClose={() => handleDeleteModalCancel()}
+                >
+                    <p>{handleDeleteModalText}</p>
+                </Modal>
+            )}
         </>
     );
 };

@@ -1,7 +1,8 @@
-import { Button, Modal, notification } from 'antd';
-import Title from 'antd/lib/typography/Title';
+import { notification } from 'antd';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useTranslation } from 'react-i18next';
 import { useDeleteTenantAdmin } from '../../../../../hooks/useDeleteTenantAdmin';
+import { Modal } from '../../../../../components/Modal';
 import { CounselorData } from '../../../../../types/counselor';
 
 interface DeleteTenantAdminModalProps {
@@ -22,24 +23,13 @@ export const DeleteTenantAdminModal = ({ user, onClose }: DeleteTenantAdminModal
 
     return (
         <Modal
-            title={
-                <Title level={2}>
-                    {t('tenantAdmins.delete.description', { name: `${user.firstname} ${user.lastname}`.trim() })}
-                </Title>
-            }
-            open
-            onCancel={onClose}
-            centered
-            footer={
-                <>
-                    <Button type="default" onClick={() => deleteAdmin(user.id)}>
-                        {t('delete')}
-                    </Button>
-                    <Button type="primary" onClick={onClose}>
-                        {t('btn.cancel.uppercase')}
-                    </Button>
-                </>
-            }
+            titleKey="tenantAdmins.delete.description"
+            titleKeyOptions={{ name: `${user.firstname} ${user.lastname}`.trim() }}
+            icon={<DeleteOutlineOutlinedIcon />}
+            cancelLabelKey="btn.cancel.uppercase"
+            okLabelKey="delete"
+            onConfirm={() => deleteAdmin(user.id)}
+            onClose={onClose}
         />
     );
 };

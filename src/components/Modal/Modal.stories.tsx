@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { ReactComponent as ScheduleIcon } from '../../resources/img/svg/oriso/schedule_24px.svg';
 import { Modal, DialogButton } from './index';
 
@@ -83,6 +84,23 @@ export const OneAction: Story = {
         contentKey: 'subSlogan',
         icon: <ScheduleIcon />,
         okLabelKey: 'save',
+        onConfirm: () => {},
+        onClose: () => {},
+    },
+};
+
+/**
+ * Standard delete/confirm dialog (the shape every migrated antd `Modal.confirm`
+ * and delete modal now uses): hero delete icon, grey cancel + brand-coloured
+ * confirm.
+ */
+export const DeleteConfirmation: Story = {
+    args: {
+        titleKey: 'agency.modal.headline.delete',
+        contentKey: 'agency.modal.text.delete',
+        icon: <DeleteOutlineOutlinedIcon />,
+        cancelLabelKey: 'btn.cancel.uppercase',
+        okLabelKey: 'agency.modal.btn.ok.uppercase',
         onConfirm: () => {},
         onClose: () => {},
     },
