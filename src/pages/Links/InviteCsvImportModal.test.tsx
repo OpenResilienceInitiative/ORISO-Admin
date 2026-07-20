@@ -57,18 +57,16 @@ describe('InviteCsvImportModal', () => {
         // The import summary uses antd's static message API: an own React root with an
         // auto-dismiss timer. Tear it down and drain the scheduler's pending ticks here,
         // or the timer fires after this file's jsdom is gone and react-dom crashes with
-        // "window is not defined" (unhandled error -> vitest exit 1; CI run 29667445994).
+        // "window is not defined" (unhandled error -> vitest exit 1; CI runs 29667445994,
+        // 29694138250). React's scheduler can chain several follow-up ticks depending on
+        // how much work was in flight, so drain generously rather than a fixed small count.
         message.destroy();
-        // Three chained ticks: a drained render may schedule one follow-up each.
-        await new Promise((resolve) => {
-            setImmediate(resolve);
-        });
-        await new Promise((resolve) => {
-            setImmediate(resolve);
-        });
-        await new Promise((resolve) => {
-            setImmediate(resolve);
-        });
+        for (let i = 0; i < 20; i += 1) {
+            // eslint-disable-next-line no-await-in-loop -- sequential drain, not parallelizable
+            await new Promise((resolve) => {
+                setImmediate(resolve);
+            });
+        }
     });
 
     const renderModal = (parseResult: ParseInviteCsvResult, props: Record<string, unknown> = {}) =>
