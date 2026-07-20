@@ -1,0 +1,22 @@
+.createCardGroup {
+    --card-deck-item-min-width: 624px;
+    --card-deck-item-width: 624px;
+
+    gap: 24px;
+
+    > * {
+        min-width: 300px;
+        flex: 1 1 300px;
+    }
+}
+
+@media (max-width: 767px) {
+    .createCardGroup {
+        flex-direction: column;
+
+        > * {
+            min-width: 0;
+            flex-basis: auto;
+        }
+    }
+}
