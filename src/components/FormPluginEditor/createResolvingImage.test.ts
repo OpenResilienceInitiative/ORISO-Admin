@@ -1,10 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
+import { ResolvingImage } from './createResolvingImage';
 
 vi.mock('../../appConfig', () => ({ tenantServiceURL: 'https://api.oriso-dev.site' }));
-
-import { ResolvingImage } from './createResolvingImage';
 
 let editors: Editor[] = [];
 const createEditor = (content: string) => {

@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import { resolveTenantMediaUrl } from './resolveTenantMediaUrl';
 
 vi.mock('../../appConfig', () => ({ tenantServiceURL: 'https://api.oriso-dev.site' }));
-
-import { resolveTenantMediaUrl } from './resolveTenantMediaUrl';
 
 const ORIGIN = 'https://api.oriso-dev.site';
 
