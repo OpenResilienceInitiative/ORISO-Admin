@@ -1,7 +1,8 @@
 import React from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Form } from 'antd';
 import { AgencyPageEdit } from './index';
 import agencyStyles from './styles.module.scss';
 
@@ -28,6 +29,7 @@ const mocks = vi.hoisted(() => ({
     dpaGate: { dpaPublished: true, dpaSigned: true },
     routeId: 'add',
     agencyData: undefined as any,
+    createConsultantProps: undefined as any,
 }));
 
 const translations: Record<string, string> = {
@@ -103,8 +105,14 @@ vi.mock('../../../components/Card', () => ({
 }));
 
 vi.mock('../../../components/CardEditable', () => ({
-    CardEditable: function CardEditable({ children }: { children: React.ReactNode }) {
-        return <div>{children}</div>;
+    CardEditable: function CardEditable({ children, initialValues }: { children: any; initialValues?: object }) {
+        return (
+            <Form initialValues={initialValues}>
+                {typeof children === 'function'
+                    ? children({ editing: true, form: undefined, startEditing: vi.fn() })
+                    : children}
+            </Form>
+        );
     },
 }));
 
@@ -182,7 +190,10 @@ vi.mock('../../../api/tenant/searchTenantData', () => ({
 }));
 
 vi.mock('../../../components/CreateConsultantModal', () => ({
-    CreateConsultantModal: () => <div data-testid="create-consultant-modal" />,
+    CreateConsultantModal: (props: unknown) => {
+        mocks.createConsultantProps = props;
+        return <div data-testid="create-consultant-modal" />;
+    },
 }));
 
 beforeAll(() => {
@@ -231,6 +242,7 @@ describe('AgencyPageEdit create flow', () => {
         mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
         mocks.routeId = 'add';
         mocks.agencyData = undefined;
+        mocks.createConsultantProps = undefined;
     });
 
     it('renders the tenant assignment field for super-admin agency creation', async () => {
@@ -285,6 +297,36 @@ describe('AgencyPageEdit create flow', () => {
 
         expect(screen.getByText('AVV-Unterschrift erforderlich')).toBeInTheDocument();
         expect(screen.queryByLabelText('Name *')).not.toBeInTheDocument();
+    });
+
+    it('requires saving a new agency before quick-creating its consultant', async () => {
+        renderWithClient(<AgencyPageEdit />);
+
+        await waitFor(() => expect(mocks.createConsultantProps).toBeDefined());
+        expect(mocks.createConsultantProps).toMatchObject({
+            disabled: true,
+            disabledReasonKey: 'agency.form.registrationSettings.createConsultant.saveAgencyFirst',
+        });
+    });
+
+    it('passes the persisted agency and its topic into consultant quick-create', async () => {
+        mocks.routeId = '282';
+        mocks.agencyData = {
+            id: 282,
+            name: 'E2E Agency',
+            tenantId: 84,
+            topics: [{ id: 7, name: 'Debt counselling' }],
+        };
+
+        renderWithClient(<AgencyPageEdit />);
+
+        await waitFor(() =>
+            expect(mocks.createConsultantProps).toMatchObject({
+                agencyId: '282',
+                topicIds: ['7'],
+                disabled: false,
+            }),
+        );
     });
 
     it('submits a legal card as a narrow patch so later saves cannot wipe sibling legal data', () => {

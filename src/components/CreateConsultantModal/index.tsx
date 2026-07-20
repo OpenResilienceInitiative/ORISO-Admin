@@ -20,11 +20,38 @@ interface CreateConsultantModalProps {
      * until a tenant is known (superadmins must pick one in the agency form first).
      */
     tenantId?: string | number;
+    agencyId?: string | number;
+    topicIds?: Array<string | number>;
     disabled?: boolean;
+    disabledReasonKey?: string;
     onSuccess: (consultant: CounselorData) => void;
 }
 
-export const CreateConsultantModal = ({ tenantId, disabled, onSuccess }: CreateConsultantModalProps) => {
+const normalizeNumericIds = (values: Array<string | number | undefined>): number[] => [
+    ...new Set(values.map(Number).filter((value) => Number.isFinite(value) && value > 0)),
+];
+
+export const buildQuickCreateConsultantData = (
+    values: Record<string, unknown>,
+    tenantId?: string | number,
+    agencyId?: string | number,
+    topicIds: Array<string | number> = [],
+) => ({
+    ...values,
+    formalLanguage: true,
+    tenantId: `${tenantId}`,
+    agencyIds: normalizeNumericIds([agencyId]),
+    topicIds: normalizeNumericIds(topicIds),
+});
+
+export const CreateConsultantModal = ({
+    tenantId,
+    agencyId,
+    topicIds,
+    disabled,
+    disabledReasonKey,
+    onSuccess,
+}: CreateConsultantModalProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
     const [open, setOpen] = useState(false);
@@ -75,15 +102,11 @@ export const CreateConsultantModal = ({ tenantId, disabled, onSuccess }: CreateC
     const hasTenant = tenantId !== undefined && tenantId !== null && `${tenantId}` !== '' && `${tenantId}` !== '0';
 
     const onFinish = (values: Record<string, unknown>) => {
-        // The create endpoint only needs the form fields plus these defaults;
-        // the mutate signature is typed for the full entity.
-        mutate({
-            ...values,
-            formalLanguage: true,
-            agencies: [],
-            tenantId: `${tenantId}`,
-        } as unknown as CounselorData);
+        mutate(buildQuickCreateConsultantData(values, tenantId, agencyId, topicIds) as unknown as CounselorData);
     };
+
+    const disabledTooltipKey =
+        disabledReasonKey || (!hasTenant ? 'agency.form.registrationSettings.createConsultant.tenantFirst' : undefined);
 
     const button = (
         <Button
@@ -99,8 +122,8 @@ export const CreateConsultantModal = ({ tenantId, disabled, onSuccess }: CreateC
 
     return (
         <>
-            {!hasTenant && !disabled ? (
-                <Tooltip title={t('agency.form.registrationSettings.createConsultant.tenantFirst')}>
+            {disabledTooltipKey ? (
+                <Tooltip title={t(disabledTooltipKey)}>
                     {/* span wrapper so the tooltip also works on the disabled button */}
                     <span style={{ display: 'block' }}>{button}</span>
                 </Tooltip>

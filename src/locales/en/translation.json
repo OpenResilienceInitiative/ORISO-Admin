@@ -441,6 +441,7 @@
     "agency.form.registrationSettings.createConsultant.title": "Create new consultant",
     "agency.form.registrationSettings.createConsultant.confirm": "Create",
     "agency.form.registrationSettings.createConsultant.tenantFirst": "Please select a tenant assignment first to create a new consultant.",
+    "agency.form.registrationSettings.createConsultant.saveAgencyFirst": "Save this advice center offline first, then reopen it to create and assign a consultant.",
     "agency.form.registrationSettings.consultants.placeholder": "Select consultants",
     "agency.form.registrationSettings.newPostCodeLabel": "Postal code areas:",
     "agency.form.registrationSettings.onlineWarning": "So that the advice center can be made visible in the registration, assign a consultant to it. You can find this function under the menu item “Users”.",

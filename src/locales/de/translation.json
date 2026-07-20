@@ -374,6 +374,7 @@
     "agency.form.registrationSettings.createConsultant.title": "Neue:n Berater:in anlegen",
     "agency.form.registrationSettings.createConsultant.confirm": "Anlegen",
     "agency.form.registrationSettings.createConsultant.tenantFirst": "Bitte wählen Sie zuerst die Trägerzuordnung aus, um eine:n neue:n Berater:in anzulegen.",
+    "agency.form.registrationSettings.createConsultant.saveAgencyFirst": "Speichern Sie diese Beratungsstelle zuerst offline und öffnen Sie sie anschließend erneut, um eine:n Berater:in anzulegen und zuzuweisen.",
     "agency.form.registrationSettings.onlineWarning": "Damit die Beratungsstelle in der Registrierung sichtbar gestellt werden kann, weisen Sie dieser eine:n Berater:in zu. Diese Funktion finden Sie unter dem Menüpunkt \"Nutzer\".",
     "agency.form.registrationSettings.onlineDescription": "Die Beratungsstelle in der Registrierung als sichtbar stellen",
     "agency.form.registrationSettings.postCodeTitle": "Für welches Gebiet ist die Beratungsstelle sichtbar in der Registrierung?",
