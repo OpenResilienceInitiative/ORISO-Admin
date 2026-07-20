@@ -180,6 +180,23 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         expect(location.href).toBe('/admin/access-denied');
     });
 
+    it('skips the access-denied redirect on 403 when the caller opts into FORBIDDEN_SILENT', async () => {
+        const location = { href: '' };
+        vi.stubGlobal('window', { location });
+        const fetchMock = vi.fn().mockResolvedValue(response(403));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/agencyadmin/agencies/42',
+                method: FETCH_METHODS.GET,
+                responseHandling: [FETCH_ERRORS.FORBIDDEN_SILENT],
+            }),
+        ).rejects.toThrow(FETCH_ERRORS.NOT_ALLOWED);
+
+        expect(location.href).toBe('');
+    });
+
     it('rejects a 403 locally without redirecting when FORBIDDEN handling is requested', async () => {
         const location = { href: '' };
         vi.stubGlobal('window', { location });
