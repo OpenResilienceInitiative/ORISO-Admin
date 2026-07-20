@@ -31,7 +31,7 @@
     align-items: flex-start;
     padding: 0;
     margin: 0;
-    gap: 24px;
+    gap: var(--card-deck-gap, 24px);
     list-style: none;
 }
 

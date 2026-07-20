@@ -319,12 +319,15 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             >
                 <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
                 <CardDeck
+                    className={agencyStyles.createCardDeck}
                     ariaLabel={t(`agency.edit.settings.general.title`)}
                     previousLabel={t('agency.cardDeck.previous')}
                     nextLabel={t('agency.cardDeck.next')}
                 >
-                    <CardDeck.Item className={agencyStyles.createCardGroup}>
+                    <CardDeck.Item>
                         <AgencyGeneralInformation />
+                    </CardDeck.Item>
+                    <CardDeck.Item>
                         <RegistrationSettings />
                     </CardDeck.Item>
                     <CardDeck.Item>
