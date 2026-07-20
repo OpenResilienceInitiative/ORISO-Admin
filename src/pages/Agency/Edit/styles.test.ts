@@ -12,7 +12,9 @@ describe('agency creation card widths', () => {
     });
 
     it('stacks the grouped cards without a desktop minimum on mobile', () => {
-        expect(styles).toMatch(/@media\s*\(max-width:\s*767px\)[\s\S]*?\.createCardGroup[\s\S]*?flex-direction:\s*column/);
+        expect(styles).toMatch(
+            /@media\s*\(max-width:\s*767px\)[\s\S]*?\.createCardGroup[\s\S]*?flex-direction:\s*column/,
+        );
         expect(styles).toMatch(/@media\s*\(max-width:\s*767px\)[\s\S]*?>\s*\*\s*{[\s\S]*?min-width:\s*0/);
     });
 });
