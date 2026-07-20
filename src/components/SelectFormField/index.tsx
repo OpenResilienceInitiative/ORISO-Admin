@@ -3,9 +3,8 @@ import { Form, Select } from 'antd';
 import { ValidateStatus } from 'antd/es/form/FormItem';
 import classNames from 'classnames';
 import { Rule } from 'antd/es/form';
-import DisabledContext from 'antd/es/config-provider/DisabledContext';
-import { useContext } from 'react';
-import styles from './styles.module.scss';
+import { FloatingLabelSelect } from '../FloatingLabelSelect';
+import formFieldStyles from '../FormBaseInputField/styles.module.scss';
 
 export interface Option {
     label: string;
@@ -32,6 +31,13 @@ export interface SelectFormFieldProps {
     rules?: Rule[];
 }
 
+/**
+ * antd Form.Item wrapper around FloatingLabelSelect — the select counterpart
+ * to FormInputField: same M3 outlined shell, floating label and error
+ * styling, so the two field types render identically inside a form.
+ * `label`/`placeholder` are i18n keys, translated here (matching every
+ * existing call site).
+ */
 export const SelectFormField = ({
     className,
     label,
@@ -53,23 +59,21 @@ export const SelectFormField = ({
 }: SelectFormFieldProps) => {
     const [t] = useTranslation();
     const message = errorMessage || t(`form.errors.required${isMulti ? '.multiSelect' : ''}`);
-    const contextDisabled = useContext(DisabledContext);
+    const labelText = label ? t(label) : undefined;
 
     return (
         <Form.Item
             name={name}
-            label={t(label)}
             rules={[...rules, ...(required ? [{ required: true, message }] : [])]}
             help={help ? t(help) : undefined}
             validateStatus={validateStatus}
-            className={classNames(className, styles.item, { [styles.disabled]: contextDisabled || disabled })}
+            className={classNames(className, formFieldStyles.item)}
             initialValue={initialValue}
         >
-            <Select
-                className={styles.select}
+            <FloatingLabelSelect
+                label={required ? `${labelText} *` : labelText}
                 disabled={disabled}
                 showSearch
-                size="large"
                 labelInValue={labelInValue}
                 loading={loading}
                 allowClear={allowClear}
@@ -84,7 +88,7 @@ export const SelectFormField = ({
                 options={options}
             >
                 {children}
-            </Select>
+            </FloatingLabelSelect>
         </Form.Item>
     );
 };
