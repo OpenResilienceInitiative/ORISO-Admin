@@ -421,6 +421,52 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         </>
     );
 
+    const renderPageBody = () => (
+        <>
+            {isLegalSection && renderLegalSettings()}
+            {isFunctionalitiesSection &&
+                (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
+            {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
+        </>
+    );
+
+    let agencyContent;
+    if (isAgencyInaccessible) {
+        agencyContent = (
+            <DashboardEmptyState
+                icon={<ErrorOutlinedIcon fontSize="large" />}
+                title={t('agency.edit.notFound.title')}
+                description={t('agency.edit.notFound.description')}
+                action={{
+                    label: t('agency.edit.notFound.backToOverview'),
+                    onClick: () => navigate(routePathNames.agency),
+                }}
+            />
+        );
+    } else if (isAgencyCreationDpaBlocked) {
+        agencyContent = (
+            <Alert
+                type="warning"
+                showIcon
+                message={t('agency.dpaGate.title')}
+                description={t('agency.dpaGate.description')}
+                action={
+                    isDpaGateError ? (
+                        <Button size="small" onClick={() => refetchDpaGate()}>
+                            {t('tenants.legal.version.retry')}
+                        </Button>
+                    ) : (
+                        <Button size="small" onClick={() => navigate(`${routePathNames.themeSettings}/legal`)}>
+                            {t('agency.dpaGate.openLegalSettings')}
+                        </Button>
+                    )
+                }
+            />
+        );
+    } else {
+        agencyContent = renderPageBody();
+    }
+
     return (
         <Page isLoading={isLoading || isLoadingPostCodes} stickyHeader>
             <Page.BackWithActions
@@ -433,63 +479,36 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 titleMaxLength={isEditing ? 10 : undefined}
                 tabs={agencySettingsTabs}
             >
-                {!isAgencyInaccessible && !isAgencyCreationDpaBlocked && isReadOnly && !isEditing && !isLegalSection && (
-                    <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
-                        {t('edit')}
-                    </Button>
-                )}
-                {!isAgencyInaccessible && !isAgencyCreationDpaBlocked && !isReadOnly && !isEditing && !isLegalSection && (
-                    <>
-                        <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
-                            {t('btn.cancel')}
+                {!isAgencyInaccessible &&
+                    !isAgencyCreationDpaBlocked &&
+                    isReadOnly &&
+                    !isEditing &&
+                    !isLegalSection && (
+                        <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
+                            {t('edit')}
                         </Button>
-                        <Button
-                            type="text"
-                            className="admin-m3-text-button"
-                            onClick={() => form.submit()}
-                            disabled={submitted}
-                        >
-                            {t('save')}
-                        </Button>
-                    </>
-                )}
+                    )}
+                {!isAgencyInaccessible &&
+                    !isAgencyCreationDpaBlocked &&
+                    !isReadOnly &&
+                    !isEditing &&
+                    !isLegalSection && (
+                        <>
+                            <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
+                                {t('btn.cancel')}
+                            </Button>
+                            <Button
+                                type="text"
+                                className="admin-m3-text-button"
+                                onClick={() => form.submit()}
+                                disabled={submitted}
+                            >
+                                {t('save')}
+                            </Button>
+                        </>
+                    )}
             </Page.BackWithActions>
-            {isAgencyInaccessible ? (
-                <DashboardEmptyState
-                    icon={<ErrorOutlinedIcon fontSize="large" />}
-                    title={t('agency.edit.notFound.title')}
-                    description={t('agency.edit.notFound.description')}
-                    action={{
-                        label: t('agency.edit.notFound.backToOverview'),
-                        onClick: () => navigate(routePathNames.agency),
-                    }}
-                />
-            ) : isAgencyCreationDpaBlocked ? (
-                <Alert
-                    type="warning"
-                    showIcon
-                    message={t('agency.dpaGate.title')}
-                    description={t('agency.dpaGate.description')}
-                    action={
-                        isDpaGateError ? (
-                            <Button size="small" onClick={() => refetchDpaGate()}>
-                                {t('tenants.legal.version.retry')}
-                            </Button>
-                        ) : (
-                            <Button size="small" onClick={() => navigate(`${routePathNames.themeSettings}/legal`)}>
-                                {t('agency.dpaGate.openLegalSettings')}
-                            </Button>
-                        )
-                    }
-                />
-            ) : (
-                <>
-                    {isLegalSection && renderLegalSettings()}
-                    {isFunctionalitiesSection &&
-                        (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
-                    {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
-                </>
-            )}
+            {agencyContent}
         </Page>
     );
 };
