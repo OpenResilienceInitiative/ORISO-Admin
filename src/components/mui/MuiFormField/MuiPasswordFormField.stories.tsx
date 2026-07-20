@@ -72,7 +72,7 @@ const ErrorDemo = () => {
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
-            <Form form={form} layout="vertical" style={{ maxWidth: 360 }}>
+            <Form form={form} layout="vertical" style={{ maxWidth: 360 }} initialValues={{ password: 'short' }}>
                 <MuiPasswordFormField name="password" label="Password" />
             </Form>
         </ThemeProvider>
@@ -80,8 +80,24 @@ const ErrorDemo = () => {
 };
 
 export const Error: Story = {
-    name: 'Error state',
+    name: 'Error state with visibility toggle',
     render: () => <ErrorDemo />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const input = canvas.getByLabelText('Password');
+        const toggle = canvas.getByRole('button', { name: 'toggle password visibility' });
+        const errorIcon = canvas.getByTestId('mui-form-field-error-icon');
+
+        expect(canvas.getByText('Password is required')).toBeVisible();
+        expect(errorIcon).toBeVisible();
+        expect(toggle).toBeVisible();
+        expect(input).toHaveAttribute('type', 'password');
+
+        await userEvent.click(toggle);
+        expect(input).toHaveAttribute('type', 'text');
+        expect(errorIcon).toBeVisible();
+        expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    },
 };
 
 const AllStatesDemo = () => {
@@ -100,12 +116,13 @@ const AllStatesDemo = () => {
                 initialValues={{
                     filled: 'super-secret',
                     disabled: 'super-secret',
+                    error: 'short',
                 }}
             >
                 <MuiPasswordFormField name="empty" label="Default (empty)" />
                 <MuiPasswordFormField name="filled" label="With value" />
                 <MuiPasswordFormField name="disabled" label="Disabled" disabled />
-                <MuiPasswordFormField name="error" label="Error" />
+                <MuiPasswordFormField name="error" label="Error (toggle + error icon)" />
             </Form>
         </ThemeProvider>
     );
@@ -113,4 +130,11 @@ const AllStatesDemo = () => {
 
 export const AllStates: Story = {
     render: () => <AllStatesDemo />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        expect(canvas.getByText('Password is required')).toBeVisible();
+        expect(canvas.getByTestId('mui-form-field-error-icon')).toBeVisible();
+        // Empty, filled, disabled, and error fields each keep a visibility toggle.
+        expect(canvas.getAllByRole('button', { name: 'toggle password visibility' })).toHaveLength(4);
+    },
 };

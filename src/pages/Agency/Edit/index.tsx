@@ -30,7 +30,6 @@ import { DataProcessingAgreementContainer } from '../../../components/Tenants/Le
 import { DepartmentDataProtectionContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentDataProtectionContainer';
 import { DepartmentImprintContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentImprintContainer';
 import styles from '../../../components/Page/styles.module.scss';
-import agencyStyles from './styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';

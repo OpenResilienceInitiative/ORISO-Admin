@@ -80,8 +80,15 @@ const MuiControl = ({
         </InputAdornment>
     ) : null;
 
-    // Error wins the trailing slot: show only the destructive warning icon.
-    const resolvedEndAdornment = isError ? errorAdornment : endAdornment;
+    // Keep an existing trailing control (e.g. password visibility) when showing the error icon.
+    const resolvedEndAdornment = isError ? (
+        <>
+            {errorAdornment}
+            {endAdornment}
+        </>
+    ) : (
+        endAdornment
+    );
 
     const inputSlotProps =
         resolvedEndAdornment || startAdornment

@@ -13,7 +13,6 @@ import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { Page } from '../../../components/Page';
 import { SelectFormField, Option } from '../../../components/SelectFormField';
 import { PermissionAction } from '../../../enums/PermissionAction';
-import { FeatureFlag } from '../../../enums/FeatureFlag';
 import { Resource } from '../../../enums/Resource';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { useAddOrUpdateConsultantOrAdmin } from '../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin';
@@ -36,7 +35,6 @@ import { CreateAgencyModal } from '../../../components/CreateAgencyModal';
 import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
-import { useFeatureContext } from '../../../context/FeatureContext';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
     const seen = new Set(current.map(({ value }) => value));
@@ -50,7 +48,6 @@ export const UserEditOrAdd = () => {
     const { can } = useUserPermissions();
     const { t } = useTranslation();
     const { isSuperAdmin } = useUserRoles();
-    const { isEnabled } = useFeatureContext();
 
     const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
     const isEditing = id !== 'add';

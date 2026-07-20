@@ -69,6 +69,9 @@ export const TenantAdminEditOrAdd = () => {
 
     const title = isEditing ? `${data?.firstname} ${data?.lastname}` : t('tenantAdmins.edit.back');
     const requiredRule = { required: true, message: t('form.errors.required') };
+    // Platform admins stay excluded from the grant mechanism (route is shared).
+    const showGrantConsultantIdentity =
+        !isPlatformAdmin && canGrantConsultantIdentity(isEditing, TypeOfUser.TenantAdmins, data);
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading}>
