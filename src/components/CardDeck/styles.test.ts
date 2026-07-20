@@ -21,4 +21,9 @@ describe('CardDeck responsive contract', () => {
         // The desktop item rule must not force the min-width to 0.
         expect(itemRule).not.toMatch(/min-width:\s*0/);
     });
+
+    it('exposes the distance between cards as a deck token', () => {
+        const listRule = cardDeckStyles.match(/\.list\s*{([^}]*)}/s)?.[1] ?? '';
+        expect(listRule).toMatch(/gap:\s*var\(--card-deck-gap,\s*24px\)/);
+    });
 });
