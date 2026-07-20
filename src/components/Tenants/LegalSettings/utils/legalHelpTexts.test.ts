@@ -32,8 +32,8 @@ describe('resolveLegalHelpKey', () => {
     it.each([
         ['dpa', 'platform', { empty: true, readOnly: false }, 'legal.help.dpa.platform.empty'],
         ['dpa', 'platform', { empty: false, readOnly: false }, 'legal.help.dpa.platform.published'],
-        ['dpa', 'tenant', { empty: false, readOnly: false }, 'legal.help.dpa.tenant.unsigned'],
-        ['dpa', 'tenant', { empty: false, readOnly: true }, 'legal.help.dpa.tenant.signed'],
+        ['dpa', 'tenant', { empty: false, readOnly: true, signed: false }, 'legal.help.dpa.tenant.unsigned'],
+        ['dpa', 'tenant', { empty: false, readOnly: true, signed: true }, 'legal.help.dpa.tenant.signed'],
         ['dpa', 'agency', { empty: false, readOnly: true }, 'legal.help.dpa.agency.published'],
         ['privacy', 'platform', { empty: true, readOnly: false }, 'legal.help.privacy.platform.empty'],
         ['privacy', 'platform', { empty: false, readOnly: false }, 'legal.help.privacy.platform.published'],

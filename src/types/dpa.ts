@@ -11,3 +11,19 @@ export interface DpaGateStatus {
     dpaPublished: boolean;
     dpaSigned: boolean;
 }
+
+/** Single-use public DPA signing invitation. The raw token is deliberately not used by the UI. */
+export interface DpaSignInvite {
+    signLink: string;
+    expiresAt: string;
+}
+
+export interface DpaSignature {
+    status: 'PENDING' | 'SIGNED' | 'DENIED';
+    signerName?: string | null;
+    signerPosition?: string | null;
+    signerEmail?: string | null;
+    signerOrganisation?: string | null;
+    signedAt?: string | null;
+    source?: string | null;
+}

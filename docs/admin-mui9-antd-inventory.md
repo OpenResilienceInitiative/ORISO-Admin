@@ -13,7 +13,7 @@ This branch verifies the current `origin/dev` admin modernization baseline befor
 AntD is still a broad dependency across the admin panel and should not be removed globally in one review. The largest remaining groups are:
 
 -   Layout and shell: `src/components/Layout/**`, `src/App.tsx`, `src/index.tsx`, `.storybook/preview.tsx`.
--   Forms and fields: `src/components/Form*`, `src/components/SelectFormField`, `src/components/SliderFormField`, `src/components/TranslatableFormField`, `src/components/ModalForm`.
+-   Forms and fields: `src/components/Form*`, `src/components/SelectFormField`, `src/components/SliderFormField`, `src/components/TranslatableFormField`.
 -   Data display and editing: `src/components/ListingTable`, `src/components/ResizableTable`, `src/components/EditableTable`, status tags, cards, and modals.
 -   Admin pages: `src/pages/Tenants`, `src/pages/Agency`, `src/pages/users`, `src/pages/Topics`, `src/pages/Links`, `src/pages/Profile`, `src/pages/Logs`.
 -   Legal settings/DPP cards: `DataProcessingAgreementCard`, `DepartmentDataProtectionCard`, and `LegalVersionViewer` still use AntD controls while their stories provide the current regression surface.

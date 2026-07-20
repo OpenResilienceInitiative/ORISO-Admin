@@ -29,6 +29,25 @@ export const SingleCard: Story = {
     ),
 };
 
+/**
+ * A single deck item may hold more than one card (e.g. the agency add form stacks
+ * "Allgemeine Informationen" and "Sichtbarkeit in der Registrierung" in one item).
+ * They must stack vertically and keep full width — never share the row and crush
+ * each other on a narrow screen. Set the viewport to mobile to check.
+ */
+export const MultipleCardsPerItem: Story = {
+    render: (args) => (
+        <div style={{ maxWidth: 400 }}>
+            <CardDeck {...args}>
+                <CardDeck.Item>
+                    <Card titleKey="Allgemeine Informationen">Name, PLZ, Stadt …</Card>
+                    <Card titleKey="Sichtbarkeit in der Registrierung">Berater:innen hinzufügen …</Card>
+                </CardDeck.Item>
+            </CardDeck>
+        </div>
+    ),
+};
+
 /** Several cards overflow the visible width, so the SideScrollerFooter with prev/next arrows appears. */
 export const OverflowingCards: Story = {
     render: (args) => (

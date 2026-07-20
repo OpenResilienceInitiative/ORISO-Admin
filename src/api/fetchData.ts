@@ -26,6 +26,7 @@ export const FETCH_ERRORS = {
     CONFLICT: 'CONFLICT',
     CONFLICT_WITH_RESPONSE: 'CONFLICT_WITH_RESPONSE',
     EMPTY: 'EMPTY',
+    FORBIDDEN: 'FORBIDDEN',
     NO_MATCH: 'NO_MATCH',
     TIMEOUT: 'TIMEOUT',
     UNAUTHORIZED: 'UNAUTHORIZED',
@@ -65,7 +66,7 @@ interface FetchDataProps {
     url: string;
     method: string;
     headersData?: object;
-    bodyData?: string;
+    bodyData?: BodyInit;
     skipAuth?: boolean;
     responseHandling?: string[];
     timeout?: number;
@@ -107,10 +108,11 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
 
         const normalizedLanguage = normalizeLanguage(i18next.resolvedLanguage || i18next.language) || DEFAULT_LANGUAGE;
 
+        const isMultipartBody = typeof FormData !== 'undefined' && props.bodyData instanceof FormData;
         const req = new Request(props.url, {
             method: props.method,
             headers: {
-                'Content-Type': 'application/json',
+                ...(isMultipartBody ? {} : { 'Content-Type': 'application/json' }),
                 'cache-control': 'no-cache',
                 'Accept-Language': normalizedLanguage,
                 ...authorization,
@@ -159,6 +161,10 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                                 ? response
                                 : new Error(FETCH_ERRORS.CONFLICT),
                         );
+                    } else if (response.status === 403 && props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN)) {
+                        // Reject locally so the caller can render an in-place "no access"
+                        // state instead of losing the whole page to the redirect below.
+                        reject(new Error(FETCH_ERRORS.FORBIDDEN));
                     } else if (response.status === 403) {
                         window.location.href = '/admin/access-denied';
                         reject(new Error(FETCH_ERRORS.NOT_ALLOWED));

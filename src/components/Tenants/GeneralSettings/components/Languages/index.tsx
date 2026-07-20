@@ -1,5 +1,6 @@
-import { Button, Checkbox, Form } from 'antd';
+import { Checkbox, Form } from 'antd';
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../../../../../appConfig';
@@ -108,16 +109,11 @@ export const Languages = ({ tenantId, readOnly = false }: { tenantId: string; re
             {modal && (
                 <Modal
                     titleKey="organisations.languageModalTitle"
+                    icon={<InfoOutlinedIcon />}
                     contentKey="organisations.languageModalContent"
+                    okLabelKey="organisations.languageModalConfirm"
+                    onConfirm={() => setModal(false)}
                     onClose={() => setModal(false)}
-                    footer={
-                        <>
-                            <span />
-                            <Button type="primary" onClick={() => setModal(false)}>
-                                {t('organisations.languageModalConfirm')}
-                            </Button>
-                        </>
-                    }
                 />
             )}
         </>
