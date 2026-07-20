@@ -1,5 +1,5 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
-import { agencyAdminsSearchEndpoint, usersConsultantsSearchEndpoint } from '../appConfig';
+import { agencyAdminsSearchEndpoint, tenantAdminsSearchEndpoint, usersConsultantsSearchEndpoint } from '../appConfig';
 import { USER_TABLE_DEFAULT_ORDER, USER_TABLE_DEFAULT_SORT } from '../constants/userTableSort';
 import { TypeOfUser } from '../enums/TypeOfUser';
 import { CounselorData } from '../types/counselor';
@@ -24,7 +24,11 @@ export const useConsultantsOrAdminsData = ({
     typeOfUser = TypeOfUser.Consultants,
     ...options
 }: ConsultantsDataProps) => {
-    const baseUrl = typeOfUser === TypeOfUser.Consultants ? usersConsultantsSearchEndpoint : agencyAdminsSearchEndpoint;
+    const baseUrlByTypeOfUser = {
+        [TypeOfUser.Consultants]: usersConsultantsSearchEndpoint,
+        [TypeOfUser.TenantAdmins]: tenantAdminsSearchEndpoint,
+    };
+    const baseUrl = baseUrlByTypeOfUser[typeOfUser] ?? agencyAdminsSearchEndpoint;
 
     return useQuery({
         queryKey: [typeOfUser.toUpperCase(), search, current, sortBy, order, pageSize],

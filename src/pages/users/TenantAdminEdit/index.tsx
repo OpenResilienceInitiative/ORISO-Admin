@@ -17,6 +17,9 @@ import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
+import { GrantConsultantIdentityModal } from '../../../components/GrantConsultantIdentityModal';
+import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
+import { TypeOfUser } from '../../../enums/TypeOfUser';
 
 export const TenantAdminEditOrAdd = () => {
     const { search, pathname } = useLocation();
@@ -64,10 +67,20 @@ export const TenantAdminEditOrAdd = () => {
     }, [isEditing, listPath]);
 
     const title = isEditing ? `${data?.firstname} ${data?.lastname}` : t('tenantAdmins.edit.back');
+    // Platform admins stay excluded from the grant mechanism (route is shared).
+    const showGrantConsultantIdentity =
+        !isPlatformAdmin && canGrantConsultantIdentity(isEditing, TypeOfUser.TenantAdmins, data);
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading}>
             <Page.BackWithActions path={listPath} title={title}>
+                {showGrantConsultantIdentity && (
+                    <GrantConsultantIdentityModal
+                        adminId={id}
+                        tenantId={data?.tenantId}
+                        onSuccess={() => navigate(listPath)}
+                    />
+                )}
                 {isReadOnly && (
                     <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
                         {t('edit')}
