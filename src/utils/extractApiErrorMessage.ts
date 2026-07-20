@@ -3,6 +3,39 @@ import { FETCH_ERRORS, X_REASON } from '../api/fetchData';
 
 const X_REASON_KEYS = new Set<string>(Object.values(X_REASON));
 
+const extractReasonFromBody = (body: unknown): string | null => {
+    if (!body || typeof body !== 'object') {
+        return null;
+    }
+
+    const record = body as Record<string, unknown>;
+    if (typeof record.reason === 'string') {
+        return record.reason;
+    }
+    if (typeof record.xReason === 'string') {
+        return record.xReason;
+    }
+
+    return null;
+};
+
+export const extractApiErrorReason = async (error: unknown): Promise<string | null> => {
+    if (!(error instanceof Response)) {
+        return null;
+    }
+
+    const headerReason = error.headers.get(FETCH_ERRORS.X_REASON);
+    if (headerReason) {
+        return headerReason;
+    }
+
+    try {
+        return extractReasonFromBody(await error.clone().json());
+    } catch {
+        return null;
+    }
+};
+
 const translateXReason = (reason: string | null): string | null => {
     if (!reason || !X_REASON_KEYS.has(reason)) {
         return null;
@@ -18,12 +51,7 @@ const extractFromBody = (body: unknown): string | null => {
     }
 
     const record = body as Record<string, unknown>;
-    let bodyReason: string | null = null;
-    if (typeof record.reason === 'string') {
-        bodyReason = record.reason;
-    } else if (typeof record.xReason === 'string') {
-        bodyReason = record.xReason;
-    }
+    const bodyReason = extractReasonFromBody(body);
     const translatedBodyReason = translateXReason(bodyReason);
     if (translatedBodyReason) {
         return translatedBodyReason;
@@ -61,7 +89,7 @@ export const extractApiErrorMessage = async (
     fallbackKey = 'message.error.default',
 ): Promise<string> => {
     if (error instanceof Response) {
-        const xReason = translateXReason(error.headers.get(FETCH_ERRORS.X_REASON));
+        const xReason = translateXReason(await extractApiErrorReason(error));
         if (xReason) {
             return xReason;
         }

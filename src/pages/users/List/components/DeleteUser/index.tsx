@@ -7,7 +7,8 @@ import i18next from 'i18next';
 import { useDeleteConsultantOrAgencyAdmin } from '../../../../../hooks/useDeleteConsultantOrAdmin';
 import { Modal } from '../../../../../components/Modal';
 import { Text } from '../../../../../components/text/Text';
-import { FETCH_ERRORS, X_REASON } from '../../../../../api/fetchData';
+import { X_REASON } from '../../../../../api/fetchData';
+import { extractApiErrorReason } from '../../../../../utils/extractApiErrorMessage';
 
 interface DeleteUserModalProps {
     typeOfUser: 'consultants' | 'admins';
@@ -29,9 +30,10 @@ export const DeleteUserModal = ({ typeOfUser, deleteUserId, onClose }: DeleteUse
             });
             onClose();
         },
-        onError: (error: Error | Response) => {
+        onError: async (error: Error | Response) => {
             if (error instanceof Response) {
-                switch (error.headers.get(FETCH_ERRORS.X_REASON)) {
+                const reason = await extractApiErrorReason(error);
+                switch (reason) {
                     case X_REASON.CONSULTANT_HAS_ACTIVE_OR_ARCHIVE_SESSIONS:
                         notification.error({
                             message: t('message.counselor.delete.error.hasSessions'),
@@ -46,10 +48,7 @@ export const DeleteUserModal = ({ typeOfUser, deleteUserId, onClose }: DeleteUse
                         break;
                     default:
                         message.error({
-                            content: i18next.t([
-                                `message.error.${error.headers.get(FETCH_ERRORS.X_REASON)}`,
-                                'message.error.default',
-                            ]) as string,
+                            content: i18next.t([`message.error.${reason}`, 'message.error.default']) as string,
                             duration: 3,
                         });
                 }
