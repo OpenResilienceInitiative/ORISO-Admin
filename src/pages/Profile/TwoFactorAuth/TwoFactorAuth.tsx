@@ -409,7 +409,7 @@ const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
     }, [setOverlayByType]);
 
     useEffect(() => {
-        if (required && userData?.twoFactorAuth && !userData.twoFactorAuth.isActive) {
+        if (required && userData?.twoFactorAuth?.isEnabled === true && userData.twoFactorAuth.isActive !== true) {
             setOverlayActive(true);
         }
     }, [required, userData?.twoFactorAuth]);

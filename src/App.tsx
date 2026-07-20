@@ -1,4 +1,5 @@
 import { Suspense, useEffect } from 'react';
+import i18next from 'i18next';
 import 'antd/dist/reset.css';
 import './styles/App.less';
 import './app.css';
@@ -75,7 +76,7 @@ export const App = () => {
         isFetched: isPublicTenantFetched,
     } = usePublicTenantData();
     const { isLoading, data } = useTenantData();
-    const { isLoading: isUserDataLoading, data: userData } = useUserData();
+    const { isLoading: isUserDataLoading, isError: isUserDataError, data: userData } = useUserData();
     useAdminTheme(publicTenantData?.theming, isPublicTenantFetched || !isPublicTenantLoading);
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
@@ -138,6 +139,24 @@ export const App = () => {
 
     if (isLoading || (isSuperAdmin && isUserDataLoading)) {
         return <Initialization />;
+    }
+
+    if (isSuperAdmin && (isUserDataError || !userData)) {
+        return (
+            <div role="alert" style={{ maxWidth: '480px', margin: '15vh auto 0', padding: '0 24px' }}>
+                <h1 style={{ fontSize: '22px', marginBottom: '8px' }}>
+                    {i18next.t('twoFactorAuth.required.title') as string}
+                </h1>
+                <p style={{ marginBottom: '24px' }}>{i18next.t('error.loading') as string}</p>
+                <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    style={{ padding: '8px 16px', cursor: 'pointer' }}
+                >
+                    {i18next.t('errorBoundary.reload') as string}
+                </button>
+            </div>
+        );
     }
 
     if (requiresTwoFactorSetup) {

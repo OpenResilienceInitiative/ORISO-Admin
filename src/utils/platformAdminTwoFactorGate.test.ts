@@ -16,6 +16,10 @@ describe('platform-admin two-factor gate', () => {
         expect(requiresPlatformAdminTwoFactor(true, userData(true))).toBe(false);
     });
 
+    it('fails closed while platform-admin policy data is unavailable', () => {
+        expect(requiresPlatformAdminTwoFactor(true, undefined)).toBe(true);
+    });
+
     it('does not impose the platform policy on tenant-scoped admins', () => {
         expect(requiresPlatformAdminTwoFactor(false, userData(false))).toBe(false);
     });
