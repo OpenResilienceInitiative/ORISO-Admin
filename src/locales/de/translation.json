@@ -1442,5 +1442,9 @@
     "productTour.overview.status.skipped": "Übersprungen",
     "productTour.overview.action.start": "Starten",
     "productTour.overview.action.continue": "Fortsetzen",
-    "productTour.overview.action.restart": "Neu starten"
+    "productTour.overview.action.restart": "Neu starten",
+    "editor.image.upload.unsupportedType": "Nur PNG-, JPEG- oder WebP-Bilder sind erlaubt.",
+    "editor.image.upload.tooLarge": "Das Bild ist zu groß (max. 2 MB).",
+    "editor.image.upload.failed": "Bild-Upload fehlgeschlagen. Bitte erneut versuchen.",
+    "editor.image.upload.uploading": "Lädt hoch…"
 }

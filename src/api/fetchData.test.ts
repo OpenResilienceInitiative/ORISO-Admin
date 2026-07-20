@@ -32,7 +32,7 @@ vi.mock('antd', () => ({ message: { error: vi.fn() } }));
 vi.mock('i18next', () => ({ default: { resolvedLanguage: 'de', language: 'de', t: (key: unknown) => key } }));
 
 // eslint-disable-next-line import/first
-import { fetchData, FETCH_METHODS, FETCH_ERRORS } from './fetchData';
+import { fetchData, FETCH_METHODS, FETCH_ERRORS, FETCH_SUCCESS } from './fetchData';
 
 const response = (status: number, body: Record<string, unknown> = {}) => ({
     status,
@@ -139,6 +139,27 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
             skipAuth: true,
         });
 
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('preserves FormData bodies without forcing a JSON content type', async () => {
+        const body = new FormData();
+        body.append('file', new Blob(['image'], { type: 'image/png' }), 'image.png');
+        const fetchMock = vi.fn().mockImplementation((request: Request) => {
+            expect(request.body).not.toBeNull();
+            expect(request.headers.get('content-type')).toMatch(/^multipart\/form-data; boundary=/);
+            return Promise.resolve(response(201, { id: 'media-id' }));
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const result = await fetchData({
+            url: 'https://api.test/service/tenantadmin/media',
+            method: FETCH_METHODS.POST,
+            bodyData: body,
+            responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_SUCCESS.CONTENT],
+        });
+
+        expect(result).toEqual({ id: 'media-id' });
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
