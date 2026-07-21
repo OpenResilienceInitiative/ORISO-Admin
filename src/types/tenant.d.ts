@@ -6,6 +6,7 @@ export interface TenantSettings {
     topicsInRegistrationEnabled?: boolean | null;
     featureStatisticsEnabled?: boolean | null;
     featureGroupChatV2Enabled?: boolean | null;
+    featureTeamDiscussionEnabled?: boolean | null;
     featureCentralDataProtectionTemplateEnabled?: boolean | null;
     featureAnonymousChatEnabled?: boolean | null;
     featureCallsEnabled?: boolean | null;

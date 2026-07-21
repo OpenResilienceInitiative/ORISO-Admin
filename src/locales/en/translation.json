@@ -1481,5 +1481,7 @@
     "editor.image.upload.unsupportedType": "Only PNG, JPEG or WebP images are allowed.",
     "editor.image.upload.tooLarge": "The image is too large (max. 2 MB).",
     "editor.image.upload.failed": "Image upload failed. Please try again.",
-    "editor.image.upload.uploading": "Uploading…"
+    "editor.image.upload.uploading": "Uploading…",
+    "tenants.appSettings.otherFunctions.teamDiscussion.title": "Allow team discussion",
+    "tenants.appSettings.otherFunctions.teamDiscussion.description": "Advisors can coordinate on an open request in a team-only room the advice seeker never sees; it closes when the request is accepted."
 }
