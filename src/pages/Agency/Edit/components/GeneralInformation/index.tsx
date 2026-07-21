@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Col, Row } from 'antd';
-import { FormInputField } from '../../../../../components/FormInputField';
-import { FormTextAreaField } from '../../../../../components/FormTextAreaField';
+import { MuiFormField, MuiMultilineFormField } from '../../../../../components/mui/MuiFormField';
 import { Card } from '../../../../../components/Card';
 
 interface AgencyGeneralInformationProps {
@@ -10,96 +9,99 @@ interface AgencyGeneralInformationProps {
 
 export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationProps) => {
     const { t } = useTranslation();
+    const requiredRule = { required: true, message: t('form.errors.required') };
 
     const fields = (
         <>
-            <FormInputField
+            <MuiFormField
                 name="name"
-                labelKey="agency.edit.general.general_information.name"
-                placeholderKey="agency.edit.general.general_information.name"
+                label={t('agency.edit.general.general_information.name')}
+                placeholder={t('agency.edit.general.general_information.name')}
                 required
+                rules={[requiredRule]}
             />
 
             <Row gutter={[20, 10]}>
                 <Col xs={12} sm={4}>
-                    <FormInputField
+                    <MuiFormField
                         name="postcode"
-                        labelKey="agency.edit.general.address.postcode"
-                        placeholderKey="agency.edit.general.address.postcode"
+                        label={t('agency.edit.general.address.postcode')}
+                        placeholder={t('agency.edit.general.address.postcode')}
                         required
-                        maxLength={5}
-                        rules={[{ min: 5, required: true, message: t('agency.postcode.minimum') }]}
+                        inputProps={{ maxLength: 5 }}
+                        rules={[requiredRule, { min: 5, required: true, message: t('agency.postcode.minimum') }]}
                     />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <FormInputField
+                    <MuiFormField
                         name="city"
-                        labelKey="agency.edit.general.address.city"
-                        placeholderKey="agency.edit.general.address.city"
+                        label={t('agency.edit.general.address.city')}
+                        placeholder={t('agency.edit.general.address.city')}
                         required
+                        rules={[requiredRule]}
                     />
                 </Col>
                 <Col xs={16} sm={8}>
-                    <FormInputField
+                    <MuiFormField
                         name="street"
-                        labelKey="agency.edit.general.address.street"
-                        placeholderKey="agency.edit.general.address.street"
-                        maxLength={255}
+                        label={t('agency.edit.general.address.street')}
+                        placeholder={t('agency.edit.general.address.street')}
+                        inputProps={{ maxLength: 255 }}
                     />
                 </Col>
                 <Col xs={8} sm={4}>
-                    <FormInputField
+                    <MuiFormField
                         name="houseNumber"
-                        labelKey="agency.edit.general.address.house_number"
-                        placeholderKey="agency.edit.general.address.house_number"
-                        maxLength={20}
+                        label={t('agency.edit.general.address.house_number')}
+                        placeholder={t('agency.edit.general.address.house_number')}
+                        inputProps={{ maxLength: 20 }}
                     />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <FormInputField
+                    <MuiFormField
                         name="floorBuilding"
-                        labelKey="agency.edit.general.address.floor_building"
-                        placeholderKey="agency.edit.general.address.floor_building"
-                        maxLength={100}
+                        label={t('agency.edit.general.address.floor_building')}
+                        placeholder={t('agency.edit.general.address.floor_building')}
+                        inputProps={{ maxLength: 100 }}
                     />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <FormInputField
+                    <MuiFormField
                         name="country"
-                        labelKey="agency.edit.general.address.country"
-                        placeholderKey="agency.edit.general.address.country"
-                        maxLength={100}
+                        label={t('agency.edit.general.address.country')}
+                        placeholder={t('agency.edit.general.address.country')}
+                        inputProps={{ maxLength: 100 }}
                     />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <FormInputField
+                    <MuiFormField
                         name="phone"
-                        labelKey="agency.edit.general.address.phone"
-                        placeholderKey="agency.edit.general.address.phone"
-                        maxLength={30}
+                        label={t('agency.edit.general.address.phone')}
+                        placeholder={t('agency.edit.general.address.phone')}
+                        inputProps={{ maxLength: 30 }}
                     />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <FormInputField
+                    <MuiFormField
                         name="phoneSecondary"
-                        labelKey="agency.edit.general.address.phone_secondary"
-                        placeholderKey="agency.edit.general.address.phone_secondary"
-                        maxLength={30}
+                        label={t('agency.edit.general.address.phone_secondary')}
+                        placeholder={t('agency.edit.general.address.phone_secondary')}
+                        inputProps={{ maxLength: 30 }}
                     />
                 </Col>
                 <Col xs={24} sm={8}>
-                    <FormInputField
+                    <MuiFormField
                         name="email"
-                        labelKey="agency.edit.general.address.email"
-                        placeholderKey="agency.edit.general.address.email"
-                        maxLength={255}
+                        label={t('agency.edit.general.address.email')}
+                        placeholder={t('agency.edit.general.address.email')}
+                        inputProps={{ maxLength: 255 }}
                     />
                 </Col>
                 <Col xs={24}>
-                    <FormTextAreaField
+                    <MuiMultilineFormField
                         name="description"
-                        labelKey="agency.edit.general.general_information.description"
-                        placeholderKey="agency.edit.general.general_information.description"
+                        label={t('agency.edit.general.general_information.description')}
+                        placeholder={t('agency.edit.general.general_information.description')}
                     />
                 </Col>
             </Row>

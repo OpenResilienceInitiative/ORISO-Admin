@@ -3,6 +3,8 @@ import { Fragment, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
+import { ThemeProvider } from '@mui/material/styles';
+import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { AgencyAccessError } from '../../../api/agency/getAgencyById';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
 import { normalizeTopicIds } from '../../../api/agency/normalizeTopicIds';
@@ -30,7 +32,6 @@ import { DataProcessingAgreementContainer } from '../../../components/Tenants/Le
 import { DepartmentDataProtectionContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentDataProtectionContainer';
 import { DepartmentImprintContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentImprintContainer';
 import styles from '../../../components/Page/styles.module.scss';
-import agencyStyles from './styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
@@ -266,7 +267,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const renderGeneralSettings = () => {
         if (isEditing) {
             return (
-                <>
+                <ThemeProvider theme={orisoMuiTheme}>
                     <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
                     <CardDeck
                         ariaLabel={t(`agency.edit.settings.general.title`)}
@@ -310,39 +311,38 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                             </CardEditable>
                         </CardDeck.Item>
                     </CardDeck>
-                </>
+                </ThemeProvider>
             );
         }
 
         return (
-            <Form
-                initialValues={initialValues}
-                labelAlign="left"
-                labelWrap
-                layout="vertical"
-                form={form}
-                size="large"
-                disabled={isReadOnly}
-                onFinish={onSubmit}
-            >
-                <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
-                <CardDeck
-                    className={agencyStyles.createCardDeck}
-                    ariaLabel={t(`agency.edit.settings.general.title`)}
-                    previousLabel={t('agency.cardDeck.previous')}
-                    nextLabel={t('agency.cardDeck.next')}
+            <ThemeProvider theme={orisoMuiTheme}>
+                <Form
+                    initialValues={initialValues}
+                    labelAlign="left"
+                    labelWrap
+                    layout="vertical"
+                    form={form}
+                    size="large"
+                    disabled={isReadOnly}
+                    onFinish={onSubmit}
                 >
-                    <CardDeck.Item>
-                        <AgencyGeneralInformation />
-                    </CardDeck.Item>
-                    <CardDeck.Item>
-                        <RegistrationSettings />
-                    </CardDeck.Item>
-                    <CardDeck.Item>
-                        <AgencySettings isEditMode={isEditing} />
-                    </CardDeck.Item>
-                </CardDeck>
-            </Form>
+                    <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
+                    <CardDeck
+                        ariaLabel={t(`agency.edit.settings.general.title`)}
+                        previousLabel={t('agency.cardDeck.previous')}
+                        nextLabel={t('agency.cardDeck.next')}
+                    >
+                        <CardDeck.Item>
+                            <AgencyGeneralInformation />
+                            <RegistrationSettings />
+                        </CardDeck.Item>
+                        <CardDeck.Item>
+                            <AgencySettings isEditMode={isEditing} />
+                        </CardDeck.Item>
+                    </CardDeck>
+                </Form>
+            </ThemeProvider>
         );
     };
 

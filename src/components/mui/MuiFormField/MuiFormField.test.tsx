@@ -4,7 +4,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from './MuiFormField';
+import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from './index';
 
 const renderWithForm = (children: React.ReactNode) => render(<Form>{children}</Form>);
 
@@ -86,5 +86,33 @@ describe('MuiFormField', () => {
 
         expect(await screen.findByText('Email is required')).toBeVisible();
         expect(input).toHaveAttribute('aria-invalid', 'true');
+        expect(screen.getByTestId('mui-form-field-error-icon')).toBeVisible();
+    });
+
+    it('keeps the password visibility toggle when the field is in error', async () => {
+        const user = userEvent.setup();
+        renderWithForm(
+            <>
+                <MuiPasswordFormField
+                    name="password"
+                    label="Password"
+                    rules={[{ required: true, message: 'Password is required' }]}
+                />
+                <button type="submit">Submit</button>
+            </>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+        expect(await screen.findByText('Password is required')).toBeVisible();
+        expect(screen.getByTestId('mui-form-field-error-icon')).toBeVisible();
+
+        const passwordInput = screen.getByLabelText('Password');
+        const toggleButton = screen.getByRole('button', { name: 'toggle password visibility' });
+        expect(toggleButton).toBeVisible();
+        expect(passwordInput).toHaveAttribute('type', 'password');
+
+        await user.click(toggleButton);
+        expect(passwordInput).toHaveAttribute('type', 'text');
     });
 });

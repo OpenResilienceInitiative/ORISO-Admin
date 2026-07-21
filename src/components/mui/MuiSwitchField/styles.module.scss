@@ -1,0 +1,163 @@
+.root {
+    width: 100%;
+}
+
+.control {
+    width: 100%;
+}
+
+.formControlLabel {
+    width: 100%;
+    margin: 0;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    font-family: var(--m3-body-font-family);
+
+    :global(.MuiFormControlLabel-label) {
+        flex: 1 1 auto;
+        min-width: 0;
+        color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
+        font-family: var(--m3-body-font-family);
+        font-size: 16px;
+        font-weight: 400;
+        letter-spacing: 0.5px;
+        line-height: 24px;
+        white-space: normal;
+    }
+}
+
+.formControlLabelDisabled {
+    cursor: not-allowed;
+
+    &:hover {
+        cursor: not-allowed;
+    }
+
+    :global(.MuiFormControlLabel-label) {
+        color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
+        opacity: 1;
+    }
+}
+
+.helperText {
+    margin-inline: 0;
+    margin-top: 4px;
+    color: var(--admin-form-muted-text);
+    font-family: var(--m3-body-font-family);
+}
+
+.helperTextError {
+    color: var(--form-error);
+}
+
+/**
+ * iOS-style switch geometry. Colors use ORISO CSS vars.
+ */
+.switch {
+    // Doubled class (0,2,0) so the geometry beats the single-class emotion
+    // defaults on .MuiSwitch-root regardless of style-tag injection order,
+    // which differs between the Vite app and Storybook.
+    &.switch {
+        width: 52.5px;
+        height: 32.5px;
+        padding: 0;
+    }
+
+    :global(.MuiSwitch-switchBase) {
+        padding: 0;
+        margin: 2.5px;
+        transition-duration: 300ms;
+
+        &:global(.Mui-checked) {
+            transform: translateX(20px);
+            color: var(--m3-on-primary, #ffffff);
+
+            & + :global(.MuiSwitch-track) {
+                background-color: var(--admin-control-selected, var(--m3-primary, #a5000a));
+                opacity: 1;
+                border: 0;
+            }
+
+            // Keep checked colors when disabled; root .switchDisabled dims via opacity.
+            &:global(.Mui-disabled) {
+                color: var(--m3-on-primary, #ffffff);
+
+                & + :global(.MuiSwitch-track) {
+                    background-color: var(--admin-control-selected, var(--m3-primary, #a5000a));
+                    opacity: 1;
+                    border: 0;
+                }
+            }
+        }
+
+        // Custom icon thumbs replace .MuiSwitch-thumb, so target the local class.
+        &:global(.Mui-focusVisible) .thumb {
+            box-shadow: 0 0 0 3px var(--admin-control-selected, var(--m3-primary, #a5000a)),
+                0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14), 0 1px 3px 0 rgba(0, 0, 0, 0.12);
+        }
+
+        // Keep off-state colors when disabled; root .switchDisabled dims via opacity.
+        &:global(.Mui-disabled) {
+            color: var(--m3-on-primary, #ffffff);
+            cursor: not-allowed;
+
+            & + :global(.MuiSwitch-track) {
+                background-color: transparent;
+                border: 1px solid var(--input-border-color, var(--m3-outline, #747878));
+                opacity: 1;
+            }
+
+            :global(.MuiSwitch-thumb) {
+                color: var(--m3-on-primary, #ffffff);
+            }
+
+            :global(.MuiSwitch-input) {
+                cursor: not-allowed;
+            }
+        }
+    }
+
+    :global(.MuiSwitch-thumb) {
+        box-sizing: border-box;
+        width: 26px;
+        height: 26px;
+    }
+
+    // Replacement thumb used for the `icon`/`checkedIcon` slots: a white
+    // circle matching the default thumb, with the state glyph centered inside.
+    .thumb {
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background-color: var(--m3-on-primary, #ffffff);
+        box-shadow: 0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14), 0 1px 3px 0 rgba(0, 0, 0, 0.12);
+    }
+
+    :global(.MuiSwitch-track) {
+        border-radius: 16.25px;
+        background-color: transparent;
+        border: 1px solid var(--input-border-color, var(--m3-outline, #747878));
+        box-sizing: border-box;
+        opacity: 1;
+        transition: background-color 500ms, border-color 500ms;
+    }
+}
+
+.switchDisabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: auto;
+
+    &:hover {
+        cursor: not-allowed;
+    }
+
+    :global(.MuiSwitch-input) {
+        cursor: not-allowed;
+    }
+}

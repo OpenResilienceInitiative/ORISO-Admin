@@ -3,7 +3,6 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AgencyPageEdit } from './index';
-import agencyStyles from './styles.module.scss';
 
 // Render AgencyPageEdit inside a QueryClientProvider so child components that use
 // react-query (e.g. RegistrationSettings → useConsultantsOrAdminsData) don't throw
@@ -240,25 +239,18 @@ describe('AgencyPageEdit create flow', () => {
         // convention (a visible " *" appended to the text) instead of antd's
         // CSS-only pseudo-asterisk.
         expect(await screen.findByText('Trägerzuordnung *')).toBeInTheDocument();
-        expect(container.querySelector('[data-admin-card-deck]')).toHaveClass(agencyStyles.createCardDeck);
-        expect(container.querySelectorAll('[data-admin-card-deck-item]')).toHaveLength(3);
+        // Create flow: general+registration share one deck item; settings is the second.
+        expect(container.querySelector('[data-admin-card-deck]')).toBeInTheDocument();
+        expect(container.querySelectorAll('[data-admin-card-deck-item]')).toHaveLength(2);
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
     });
 
     it('does not submit a new agency without a selected tenant', async () => {
         renderWithClient(<AgencyPageEdit />);
 
-        // Wait for the tenant assignment field before interacting — clicking
-        // Speichern earlier races the async tenant-options fetch and the
-        // required rule may not be registered yet when the form validates.
-        // Required field: SelectFormField now mirrors FormInputField's M3 label
-        // convention (a visible " *" appended to the text) instead of antd's
-        // CSS-only pseudo-asterisk.
-        expect(await screen.findByText('Trägerzuordnung *')).toBeInTheDocument();
-
-        fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Neue Beratungsstelle' } });
-        fireEvent.change(screen.getByLabelText('PLZ *'), { target: { value: '86161' } });
-        fireEvent.change(screen.getByLabelText('Stadt *'), { target: { value: 'Augsburg' } });
+        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neue Beratungsstelle' } });
+        fireEvent.change(screen.getByLabelText('PLZ'), { target: { value: '86161' } });
+        fireEvent.change(screen.getByLabelText('Stadt'), { target: { value: 'Augsburg' } });
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
         // Generous timeout: the error surfaces via antd async validation plus a
