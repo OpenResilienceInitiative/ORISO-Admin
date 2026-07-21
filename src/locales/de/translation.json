@@ -1481,5 +1481,7 @@
     "editor.image.upload.unsupportedType": "Nur PNG-, JPEG- oder WebP-Bilder sind erlaubt.",
     "editor.image.upload.tooLarge": "Das Bild ist zu groß (max. 2 MB).",
     "editor.image.upload.failed": "Bild-Upload fehlgeschlagen. Bitte erneut versuchen.",
-    "editor.image.upload.uploading": "Lädt hoch…"
+    "editor.image.upload.uploading": "Lädt hoch…",
+    "tenants.appSettings.otherFunctions.teamDiscussion.title": "Team-Besprechung erlauben",
+    "tenants.appSettings.otherFunctions.teamDiscussion.description": "Berater:innen können sich zu einer offenen Anfrage in einem nur für das Team sichtbaren Raum abstimmen, den die ratsuchende Person nie sieht; er schließt bei Annahme der Anfrage."
 }
