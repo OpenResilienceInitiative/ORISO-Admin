@@ -28,6 +28,8 @@ const LoginForm = () => {
     const [postLoading, setPostLoading] = useState(false);
     const [otpDisabled, setOtpDisabled] = useState(true);
     const [twoFactorType, setTwoFactorType] = useState(TwoFactorType.None);
+    const otpHelpTextKey =
+        twoFactorType === TwoFactorType.None ? 'message.form.login.otp' : `message.form.login.otp.${twoFactorType}`;
 
     // Function gets fired on Form Submit
     const onFinish = async (values: any) => {
@@ -88,7 +90,7 @@ const LoginForm = () => {
                             label={t('otp')}
                             placeholder={t('otp')}
                             startAdornment={startIcon(<VerifiedUserOutlined fontSize="small" />)}
-                            helpText={t(`message.form.login.otp.${twoFactorType}`)}
+                            helpText={t(otpHelpTextKey)}
                             rules={[{ required: !otpDisabled, message: t('message.form.login.otp') }]}
                         />
                     )}

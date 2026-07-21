@@ -203,4 +203,21 @@ describe('LoginForm', () => {
 
         expect(await screen.findByText('Please enter one-time password')).toBeInTheDocument();
     });
+
+    it('shows the generic OTP guidance when the authentication response omits the OTP type', async () => {
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError({
+                message: FETCH_ERRORS.BAD_REQUEST,
+                options: { data: {} },
+            }),
+        );
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        expect(await screen.findByPlaceholderText('One-time password')).toBeInTheDocument();
+        expect(screen.getByText('Please enter one-time password')).toBeInTheDocument();
+        expect(screen.queryByText('message.form.login.otp.')).not.toBeInTheDocument();
+    });
 });
