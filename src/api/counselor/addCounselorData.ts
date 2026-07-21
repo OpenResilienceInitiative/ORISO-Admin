@@ -10,7 +10,9 @@ import { CounselorData } from '../../types/counselor';
 const parseTopicIds = (counselorData: Record<string, any>): number[] | undefined => {
     const topics = counselorData?.topicIds || counselorData?.topics;
     const topicIds = topics
-        ?.map((topic) => (typeof topic === 'string' ? topic : topic?.value || topic?.id))
+        ?.map((topic) =>
+            typeof topic === 'string' || typeof topic === 'number' ? topic : topic?.value || topic?.id,
+        )
         .filter((id) => id != null && !Number.isNaN(Number(id)))
         .map((id) => Number(id));
 

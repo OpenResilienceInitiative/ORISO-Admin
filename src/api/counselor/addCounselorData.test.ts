@@ -46,4 +46,24 @@ describe('addCounselorData', () => {
         });
         expect(putAgenciesForCounselor).not.toHaveBeenCalled();
     });
+
+    it('serializes numeric topicIds from quick create', async () => {
+        await addCounselorData({
+            firstname: 'Ada',
+            lastname: 'Lovelace',
+            email: 'ada@example.org',
+            username: 'ada',
+            password: 'StrongPass1!',
+            tenantId: '3',
+            agencyIds: [282],
+            topicIds: [7, 12],
+        });
+
+        expect(fetchData).toHaveBeenCalledTimes(1);
+        const request = vi.mocked(fetchData).mock.calls[0][0];
+        expect(JSON.parse(request.bodyData as string)).toMatchObject({
+            agencyIds: [282],
+            topicIds: [7, 12],
+        });
+    });
 });
