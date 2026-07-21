@@ -1,7 +1,6 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { counselorEndpoint } from '../../appConfig';
 import { CounselorData } from '../../types/counselor';
-import { putAgenciesForCounselor } from '../agency/putAgenciesForCounselor';
 
 /**
  * add new counselor
@@ -11,11 +10,23 @@ import { putAgenciesForCounselor } from '../agency/putAgenciesForCounselor';
 const parseTopicIds = (counselorData: Record<string, any>): number[] | undefined => {
     const topics = counselorData?.topicIds || counselorData?.topics;
     const topicIds = topics
-        ?.map((topic) => (typeof topic === 'string' ? topic : topic?.value || topic?.id))
+        ?.map((topic) => (typeof topic === 'string' || typeof topic === 'number' ? topic : topic?.value || topic?.id))
         .filter((id) => id != null && !Number.isNaN(Number(id)))
         .map((id) => Number(id));
 
     return topicIds?.length ? topicIds : undefined;
+};
+
+const parseAgencyIds = (counselorData: Record<string, any>): number[] | undefined => {
+    const agencies = counselorData?.agencyIds || counselorData?.agencies;
+    const agencyIds = agencies
+        ?.map((agency) =>
+            typeof agency === 'string' || typeof agency === 'number' ? agency : agency?.value || agency?.id,
+        )
+        .filter((id) => id != null && !Number.isNaN(Number(id)))
+        .map((id) => Number(id));
+
+    return agencyIds?.length ? [...new Set<number>(agencyIds)] : undefined;
 };
 
 export const addCounselorData = (counselorData: Record<string, any>): Promise<CounselorData> => {
@@ -34,6 +45,7 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
     } = counselorData;
 
     const topicIds = parseTopicIds(counselorData);
+    const agencyIds = parseAgencyIds(counselorData);
 
     // just use needed data from whole form data
     const strippedCounselor = {
@@ -49,6 +61,7 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
         tenantId: parseInt(tenantId, 10),
         publicSlug,
         ...(topicIds && { topicIds }),
+        ...(agencyIds && { agencyIds }),
     };
 
     return (
@@ -67,10 +80,5 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
             .then((response) => response.json())
             // eslint-disable-next-line no-underscore-dangle
             .then((data: { _embedded: CounselorData }) => data?._embedded)
-            .then((data) => {
-                return putAgenciesForCounselor(data?.id, counselorData.agencies?.map(({ value }) => value) || []).then(
-                    () => data,
-                );
-            })
     );
 };

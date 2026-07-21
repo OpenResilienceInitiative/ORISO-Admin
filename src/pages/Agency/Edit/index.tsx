@@ -295,7 +295,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                 editButtonPlacement="footer"
                                 onSave={onSaveCard}
                             >
-                                <RegistrationSettings asFields />
+                                {({ editing }) => <RegistrationSettings asFields editing={editing} />}
                             </CardEditable>
                         </CardDeck.Item>
                         <CardDeck.Item>
