@@ -126,7 +126,7 @@ const MuiControl = ({
                     : null),
                 // Story / demo: force hover appearance without a real pointer.
                 '&.pseudo-hover .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--admin-form-field-text, #1b1b1b)',
+                    borderColor: 'var(--input-hover-border-color, var(--admin-form-field-text, #1b1b1b))',
                 },
                 '&.pseudo-hover .MuiFilledInput-root': {
                     backgroundColor: 'var(--input-bg, rgba(0, 0, 0, 0.09))',
@@ -159,13 +159,25 @@ const MuiControl = ({
                     whiteSpace: 'pre-wrap',
                     overflowWrap: 'anywhere',
                 },
+                // Browser autofill: Chrome/Safari force their own (blue/cream)
+                // fill via a UA !important background. Paint the field's own
+                // surface over it with an inset box-shadow and keep the admin
+                // text colour. `--input-autofill-surface` lets transparent
+                // fields (e.g. login) substitute the page surface instead.
+                '& .MuiInputBase-input:-webkit-autofill, & .MuiInputBase-input:-webkit-autofill:hover, & .MuiInputBase-input:-webkit-autofill:focus':
+                    {
+                        WebkitBoxShadow: 'inset 0 0 0 1000px var(--input-autofill-surface, var(--input-bg, #fcf9f9))',
+                        WebkitTextFillColor: 'var(--admin-form-field-text, #1b1b1c)',
+                        caretColor: 'var(--admin-form-field-text, #1b1b1c)',
+                        transition: 'background-color 9999s ease-out 0s',
+                    },
                 '& .MuiInputLabel-root': {
                     maxWidth: 'calc(100% - 24px)',
                     color: 'var(--label-color)',
                     fontFamily: 'var(--m3-body-font-family)',
                 },
                 '& .MuiInputLabel-root.Mui-focused': {
-                    color: 'var(--admin-form-field-text)',
+                    color: 'var(--input-focus-label-color, var(--admin-form-field-text))',
                 },
                 '& .MuiInputLabel-root.Mui-error': {
                     color: 'var(--form-error, #cc0000)',
@@ -180,11 +192,13 @@ const MuiControl = ({
                     fontSize: '0.75em',
                 },
                 '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--admin-form-field-text, #1b1b1b)',
+                    borderColor: 'var(--input-hover-border-color, var(--admin-form-field-text, #1b1b1b))',
                 },
-                // Focus: a clean solid black border (no browser outline / glow).
+                // Focus: a clean solid 2px border (no browser outline / glow).
+                // Colour defaults to the admin black; scopes like the login can
+                // switch it to the M3 primary via `--input-focus-border-color`.
                 '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'var(--admin-form-field-text, #1b1b1b)',
+                    borderColor: 'var(--input-focus-border-color, var(--admin-form-field-text, #1b1b1b))',
                     borderWidth: 2,
                 },
                 '& .MuiOutlinedInput-root.Mui-focused': {
