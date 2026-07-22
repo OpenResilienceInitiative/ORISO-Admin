@@ -1,5 +1,33 @@
 .loginForm {
     /*
+     * M3 outlined-field standard (see FloatingLabelInput /
+     * floatingLabelInput.module.scss): transparent field surface, m3-outline
+     * resting border, primary focus ring, m3-error state. The MuiFormField sx
+     * consumes these custom properties, so scoping them here restyles only the
+     * login fields. The form sits on the white `.publicContent` page surface
+     * (NOT the dark stage panel), so:
+     *  - the floating label blends through the notched-outline gap with no
+     *    chip background needed, and
+     *  - browser autofill gets painted over with the white page surface
+     *    (a transparent box-shadow could not cover the UA blue fill).
+     */
+    --input-bg: transparent;
+    --input-border-color: var(--m3-outline, #747878);
+    --label-color: var(--m3-on-surface-variant, #444748);
+    --input-hover-border-color: var(--m3-on-surface, #1b1b1c);
+    --input-focus-border-color: var(--m3-primary, #a5000a);
+    --input-focus-label-color: var(--m3-primary, #a5000a);
+    --form-error: var(--m3-error, #ba1a1a);
+    --input-autofill-surface: var(--white, #ffffff);
+
+    /* Leading (person/lock) and trailing (visibility) icons: muted
+     * on-surface-variant. The error icon keeps its inline error colour. */
+
+    .MuiInputAdornment-root .MuiSvgIcon-root {
+        color: var(--m3-on-surface-variant, #444748);
+    }
+
+    /*
      * MUI helper/error text is part of the TextField. Keep a token-based gap
      * before the next field so multi-line validation messages never collide
      * with the following floating label on narrow screens.
