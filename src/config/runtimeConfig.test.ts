@@ -76,3 +76,37 @@ describe('runtimeConfig cookie domain', () => {
         );
     });
 });
+
+describe('runtimeConfig observability', () => {
+    it('is disabled without an explicit runtime opt-in', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({});
+
+        expect(runtimeConfig.observabilityEnabled).toBe(false);
+        expect(runtimeConfig.otelMetricsUrl).toBe('');
+        expect(runtimeConfig.otelExportIntervalMillis).toBe(60000);
+    });
+
+    it('accepts a valid runtime endpoint and interval', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({
+            OBSERVABILITY_ENABLED: 'TRUE',
+            OTEL_METRICS_URL: 'https://collector.example.test/v1/metrics',
+            OTEL_EXPORT_INTERVAL_MS: '45000',
+        });
+
+        expect(runtimeConfig.observabilityEnabled).toBe(true);
+        expect(runtimeConfig.otelMetricsUrl).toBe('https://collector.example.test/v1/metrics');
+        expect(runtimeConfig.otelExportIntervalMillis).toBe(45000);
+    });
+
+    it('rejects invalid endpoints and too-frequent intervals', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({
+            OBSERVABILITY_ENABLED: 'yes',
+            OTEL_METRICS_URL: 'file:///tmp/metrics',
+            OTEL_EXPORT_INTERVAL_MS: '1000',
+        });
+
+        expect(runtimeConfig.observabilityEnabled).toBe(false);
+        expect(runtimeConfig.otelMetricsUrl).toBe('');
+        expect(runtimeConfig.otelExportIntervalMillis).toBe(60000);
+    });
+});
