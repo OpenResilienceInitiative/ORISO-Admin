@@ -17,7 +17,7 @@ import styles from './styles.module.scss';
 import { TenantAdminData } from '../../../../types/TenantAdminData';
 import { X_REASON } from '../../../../api/fetchData';
 import { extractApiErrorMessage } from '../../../../utils/extractApiErrorMessage';
-import { Button, BUTTON_TYPES, ButtonItem } from '../../../../components/button/Button';
+import { M3Button } from '../../../../components/M3Button';
 import { orisoMuiTheme } from '../../../../theme/orisoMuiTheme';
 import {
     MuiFormField,
@@ -285,6 +285,14 @@ export const GeneralTenantSettings = () => {
                             variant="dialog"
                             autoHeight
                             className={styles.createCard}
+                            footer={
+                                <>
+                                    <M3Button onClick={() => navigate(routePathNames.tenants)}>
+                                        {t('card.edit.cancel')}
+                                    </M3Button>
+                                    <M3Button onClick={() => form.submit()}>{t('card.edit.save')}</M3Button>
+                                </>
+                            }
                         >
                             <div className={styles.fieldGroup}>
                                 <MuiFormField
@@ -379,26 +387,6 @@ export const GeneralTenantSettings = () => {
                         </Card>
                     </CardDeck.Item>
                 </CardDeck>
-                <div className={styles.buttons}>
-                    <Button
-                        item={
-                            {
-                                type: BUTTON_TYPES.SECONDARY,
-                                label: t('card.edit.cancel'),
-                            } as ButtonItem
-                        }
-                        buttonHandle={() => navigate(routePathNames.tenants)}
-                    />
-                    <Button
-                        item={
-                            {
-                                type: BUTTON_TYPES.PRIMARY,
-                                label: t('card.edit.save'),
-                            } as ButtonItem
-                        }
-                        buttonHandle={() => form.submit()}
-                    />
-                </div>
             </Form>
         </ThemeProvider>
     );
