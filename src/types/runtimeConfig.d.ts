@@ -17,6 +17,9 @@ export interface AppRuntimeConfig {
     HOSTNAMES_WITHOUT_COOKIE_DOMAIN?: string;
     CSRF_WHITELIST_HEADER?: string;
     COOKIES_ALLOWEDLIST?: string;
+    OBSERVABILITY_ENABLED?: string;
+    OTEL_METRICS_URL?: string;
+    OTEL_EXPORT_INTERVAL_MS?: string;
 }
 
 declare global {

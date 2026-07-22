@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const meterProviderCtor = vi.fn();
 const setGlobalMeterProvider = vi.fn();
 const resourceFromAttributes = vi.fn((attributes: Record<string, unknown>) => ({ attributes }));
+const otlpMetricExporterCtor = vi.fn();
+const periodicMetricReaderCtor = vi.fn();
 
 vi.mock('@opentelemetry/sdk-metrics', () => ({
     MeterProvider: vi.fn().mockImplementation(function MeterProvider(...args: unknown[]) {
@@ -12,12 +14,14 @@ vi.mock('@opentelemetry/sdk-metrics', () => ({
     PeriodicExportingMetricReader: vi
         .fn()
         .mockImplementation(function PeriodicExportingMetricReader(...args: unknown[]) {
+            periodicMetricReaderCtor(...args);
             return { args };
         }),
 }));
 
 vi.mock('@opentelemetry/exporter-metrics-otlp-http', () => ({
     OTLPMetricExporter: vi.fn().mockImplementation(function OTLPMetricExporter(...args: unknown[]) {
+        otlpMetricExporterCtor(...args);
         return { args };
     }),
 }));
@@ -36,10 +40,50 @@ describe('initWebVitalsMeterProvider', () => {
         meterProviderCtor.mockClear();
         setGlobalMeterProvider.mockClear();
         resourceFromAttributes.mockClear();
+        otlpMetricExporterCtor.mockClear();
+        periodicMetricReaderCtor.mockClear();
+        window.__APP_CONFIG__ = {
+            OBSERVABILITY_ENABLED: 'true',
+            OTEL_METRICS_URL: 'https://collector.example.test/v1/metrics',
+            OTEL_EXPORT_INTERVAL_MS: '60000',
+        };
     });
 
     afterEach(() => {
         vi.clearAllMocks();
+        window.__APP_CONFIG__ = undefined;
+    });
+
+    it('does not initialize or export when browser telemetry is disabled', async () => {
+        window.__APP_CONFIG__ = { OBSERVABILITY_ENABLED: 'false' };
+        const { initWebVitalsMeterProvider } = await import('./webVitalsMeterProvider');
+
+        initWebVitalsMeterProvider();
+
+        expect(otlpMetricExporterCtor).not.toHaveBeenCalled();
+        expect(meterProviderCtor).not.toHaveBeenCalled();
+        expect(setGlobalMeterProvider).not.toHaveBeenCalled();
+    });
+
+    it('does not initialize when the runtime endpoint is missing', async () => {
+        window.__APP_CONFIG__ = { OBSERVABILITY_ENABLED: 'true' };
+        const { initWebVitalsMeterProvider } = await import('./webVitalsMeterProvider');
+
+        initWebVitalsMeterProvider();
+
+        expect(otlpMetricExporterCtor).not.toHaveBeenCalled();
+        expect(meterProviderCtor).not.toHaveBeenCalled();
+    });
+
+    it('uses the runtime endpoint and export interval', async () => {
+        const { initWebVitalsMeterProvider } = await import('./webVitalsMeterProvider');
+
+        initWebVitalsMeterProvider();
+
+        expect(otlpMetricExporterCtor).toHaveBeenCalledWith({
+            url: 'https://collector.example.test/v1/metrics',
+        });
+        expect(periodicMetricReaderCtor).toHaveBeenCalledWith(expect.objectContaining({ exportIntervalMillis: 60000 }));
     });
 
     it('builds the resource with service.name "admin" (not "frontend")', async () => {
