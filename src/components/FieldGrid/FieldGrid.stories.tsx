@@ -3,6 +3,7 @@ import { ConfigProvider, Input } from 'antd';
 import { buildAdminAntdTheme } from '../../theme/antdM3Theme';
 import { FloatingLabelInput } from '../FloatingLabelInput';
 import { Card } from '../Card';
+import { ReactComponent as PersonIcon } from '../../resources/img/svg/person.svg';
 import { FieldGrid } from './index';
 
 const meta = {
@@ -52,7 +53,14 @@ export const ResponsiveColumns: StoryObj = {
         <ConfigProvider theme={buildAdminAntdTheme()}>
             <div style={{ minHeight: '100vh', padding: 32, background: 'var(--admin-workspace-background, #e4e2e2)' }}>
                 <Stage width={380} label="380px container → 1 column (mobile stacking)">
-                    <Card titleKey="General information" autoHeight dialogContentPadding variant="dialog">
+                    <Card
+                        titleKey="General information"
+                        headerIcon={<PersonIcon />}
+                        subTitle="Name, address and contact details of this counselling centre. Advice seekers see these details during registration."
+                        autoHeight
+                        dialogContentPadding
+                        variant="dialog"
+                    >
                         <FieldGrid>
                             <DemoFields />
                         </FieldGrid>
@@ -60,7 +68,14 @@ export const ResponsiveColumns: StoryObj = {
                 </Stage>
 
                 <Stage width={720} label="720px container → 2 columns">
-                    <Card titleKey="General information" autoHeight dialogContentPadding variant="dialog">
+                    <Card
+                        titleKey="General information"
+                        headerIcon={<PersonIcon />}
+                        subTitle="Name, address and contact details of this counselling centre. Advice seekers see these details during registration."
+                        autoHeight
+                        dialogContentPadding
+                        variant="dialog"
+                    >
                         <FieldGrid>
                             <DemoFields />
                         </FieldGrid>
@@ -68,7 +83,14 @@ export const ResponsiveColumns: StoryObj = {
                 </Stage>
 
                 <Stage width={1080} label="1080px container → 3 columns (tall content spreads out)">
-                    <Card titleKey="General information" autoHeight dialogContentPadding variant="dialog">
+                    <Card
+                        titleKey="General information"
+                        headerIcon={<PersonIcon />}
+                        subTitle="Name, address and contact details of this counselling centre. Advice seekers see these details during registration."
+                        autoHeight
+                        dialogContentPadding
+                        variant="dialog"
+                    >
                         <FieldGrid>
                             <DemoFields />
                         </FieldGrid>
@@ -88,7 +110,14 @@ export const WithWideContent: StoryObj = {
         <ConfigProvider theme={buildAdminAntdTheme()}>
             <div style={{ minHeight: '100vh', padding: 32, background: 'var(--admin-workspace-background, #e4e2e2)' }}>
                 <Stage width={1080} label="Columns + full-width editor row">
-                    <Card titleKey="General information" autoHeight dialogContentPadding variant="dialog">
+                    <Card
+                        titleKey="General information"
+                        headerIcon={<PersonIcon />}
+                        subTitle="Name, address and contact details of this counselling centre. Advice seekers see these details during registration."
+                        autoHeight
+                        dialogContentPadding
+                        variant="dialog"
+                    >
                         <FieldGrid>
                             <FloatingLabelInput label="Name" />
                             <FloatingLabelInput label="Postal code" />

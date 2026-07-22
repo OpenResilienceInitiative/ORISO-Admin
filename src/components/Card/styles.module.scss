@@ -123,6 +123,24 @@
             width: 40px;
             height: 40px;
         }
+
+        /* Header icons are monochrome on-surface-variant by standard (Figma).
+           Source SVGs hardcode fills (white sidebar icons, black glyphs) —
+           remap everything to currentColor, but leave fill="none" outlines
+           intact so stroke-based icons don't get flattened, and never touch
+           <mask> internals: repainting a luminance mask's bounding box would
+           fade the whole icon (case_handover.svg). */
+        svg [fill]:not([fill='none']):not(mask *) {
+            fill: currentcolor;
+        }
+
+        svg :not([fill]):not(mask *) {
+            fill: currentcolor;
+        }
+
+        svg [stroke]:not([stroke='none']):not(mask *) {
+            stroke: currentcolor;
+        }
     }
 }
 

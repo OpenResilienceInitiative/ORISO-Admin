@@ -16,7 +16,9 @@
 .grid {
     display: grid;
     align-items: start;
-    gap: var(--field-grid-row-gap, 12px) var(--field-grid-column-gap, 20px);
+    /* Row gap floor is 12px by design decision (Frank, 2026-07-20) — the
+       default sits comfortably above it. */
+    gap: var(--field-grid-row-gap, 16px) var(--field-grid-column-gap, 20px);
     grid-template-columns: repeat(
         auto-fit,
         minmax(
