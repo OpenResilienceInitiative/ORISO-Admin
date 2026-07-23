@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Card } from './index';
+import { M3Button } from '../M3Button';
 
 const meta = {
     title: 'Molecules/Card',
@@ -81,6 +82,24 @@ export const WizardSkeleton: Story = {
                 >
                     Next
                 </button>
+            </>
+        ),
+    },
+};
+
+/** Dialog variant + footer — the Neu-Träger create card: divider spans the
+ *  card, actions are inset M3 text buttons (no more loose page-bottom buttons). */
+export const DialogWithFooter: Story = {
+    args: {
+        variant: 'dialog',
+        dialogContentPadding: true,
+        autoHeight: true,
+        titleKey: 'Träger-Admin',
+        children: 'Card body — admin credential fields go here.',
+        footer: (
+            <>
+                <M3Button>Abbrechen</M3Button>
+                <M3Button>Speichern</M3Button>
             </>
         ),
     },
