@@ -415,9 +415,6 @@ const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
     }, [required, userData?.twoFactorAuth]);
 
     const handleOverlayClose = useCallback(() => {
-        if (required && !userData.twoFactorAuth.isActive) {
-            return;
-        }
         setOverlayActive(false);
         setOtp('');
         setEmail(userData.email || '');
@@ -427,7 +424,7 @@ const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
         setOtpLabel(defaultOtpLabel);
         setOtpLabelState('invalid');
         setTwoFactorType(userData.twoFactorAuth.type || TwoFactorType.App);
-    }, [defaultOtpLabel, required, userData]);
+    }, [defaultOtpLabel, userData]);
 
     return (
         <>
