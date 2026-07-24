@@ -856,7 +856,7 @@
     "twoFactorAuth.subtitle": "Use an additional app to sign in to your Online Counseling & Help account. This makes your account more secure against unauthorized access.",
     "twoFactorAuth.title": "Two-factor authentication",
     "twoFactorAuth.required.title": "Secure your platform-admin account",
-    "twoFactorAuth.required.subtitle": "Set up two-factor authentication before continuing to the administration area.",
+    "twoFactorAuth.required.subtitle": "Set up two-factor authentication, or continue and enable it later from your profile.",
     "twoFactorAuth.required.unavailable": "Two-factor authentication is required but is not enabled for platform administrators. Please contact operations.",
     "users.sectionPills.counsellorAdmins": "Counsellor Admin",
     "users.sectionPills.counsellors": "Counsellors",
@@ -1484,5 +1484,7 @@
     "editor.image.upload.failed": "Image upload failed. Please try again.",
     "editor.image.upload.uploading": "Uploading…",
     "tenants.appSettings.otherFunctions.teamDiscussion.title": "Allow team discussion",
-    "tenants.appSettings.otherFunctions.teamDiscussion.description": "Advisors can coordinate on an open request in a team-only room the advice seeker never sees; it closes when the request is accepted."
+    "tenants.appSettings.otherFunctions.teamDiscussion.description": "Advisors can coordinate on an open request in a team-only room the advice seeker never sees; it closes when the request is accepted.",
+    "twoFactorAuth.required.skip": "Set up later",
+    "twoFactorAuth.required.skipHint": "You can enable two-factor authentication at any time under Profile."
 }
