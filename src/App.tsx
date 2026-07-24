@@ -61,6 +61,7 @@ import {
 import { LogsTabsLayout } from './pages/Logs/LogsTabsLayout';
 import { useUserData } from './hooks/useUserData.hook';
 import { requiresPlatformAdminTwoFactor } from './utils/platformAdminTwoFactorGate';
+import { useTwoFactorSetupDeferral } from './hooks/useTwoFactorSetupDeferral.hook';
 import { MandatoryTwoFactorSetup } from './pages/Profile/MandatoryTwoFactorSetup';
 
 const AgencyInitialMeetingRedirect = () => {
@@ -82,6 +83,9 @@ export const App = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { hasRole, isSuperAdmin } = useUserRoles();
+    const { isDeferred: isTwoFactorSetupDeferred, deferSetup: deferTwoFactorSetup } = useTwoFactorSetupDeferral(
+        userData?.username,
+    );
     const { can } = useUserPermissions();
     const { isEnabled: isReleaseEnabled } = useReleasesToggle();
 
@@ -135,7 +139,7 @@ export const App = () => {
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, hasRole, can);
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, hasRole, can);
-    const requiresTwoFactorSetup = requiresPlatformAdminTwoFactor(isSuperAdmin, userData);
+    const requiresTwoFactorSetup = requiresPlatformAdminTwoFactor(isSuperAdmin, userData, isTwoFactorSetupDeferred);
 
     if (isLoading || (isSuperAdmin && isUserDataLoading)) {
         return <Initialization />;
@@ -163,7 +167,7 @@ export const App = () => {
         return (
             <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
                 <ProtectedPageLayoutWrapper>
-                    <MandatoryTwoFactorSetup />
+                    <MandatoryTwoFactorSetup onSkip={deferTwoFactorSetup} />
                 </ProtectedPageLayoutWrapper>
             </FeatureProvider>
         );

@@ -1381,7 +1381,7 @@
     "twoFactorAuth.switch.type.label": "Ihr 2. Faktor",
     "twoFactorAuth.title": "Zwei-Faktor-Authentifizierung",
     "twoFactorAuth.required.title": "Plattform-Admin-Konto absichern",
-    "twoFactorAuth.required.subtitle": "Richten Sie die Zwei-Faktor-Authentifizierung ein, bevor Sie den Administrationsbereich weiter nutzen.",
+    "twoFactorAuth.required.subtitle": "Richten Sie die Zwei-Faktor-Authentifizierung ein oder fahren Sie fort und aktivieren Sie sie später in Ihrem Profil.",
     "twoFactorAuth.required.unavailable": "Die Zwei-Faktor-Authentifizierung ist verpflichtend, aber für Plattform-Admins nicht aktiviert. Bitte kontaktieren Sie den Betrieb.",
     "users.allUsers": "Nutzer*innen",
     "agency.cardDeck.next": "Weitere Karte anzeigen",
@@ -1484,5 +1484,7 @@
     "editor.image.upload.failed": "Bild-Upload fehlgeschlagen. Bitte erneut versuchen.",
     "editor.image.upload.uploading": "Lädt hoch…",
     "tenants.appSettings.otherFunctions.teamDiscussion.title": "Team-Besprechung erlauben",
-    "tenants.appSettings.otherFunctions.teamDiscussion.description": "Berater:innen können sich zu einer offenen Anfrage in einem nur für das Team sichtbaren Raum abstimmen, den die ratsuchende Person nie sieht; er schließt bei Annahme der Anfrage."
+    "tenants.appSettings.otherFunctions.teamDiscussion.description": "Berater:innen können sich zu einer offenen Anfrage in einem nur für das Team sichtbaren Raum abstimmen, den die ratsuchende Person nie sieht; er schließt bei Annahme der Anfrage.",
+    "twoFactorAuth.required.skip": "Später einrichten",
+    "twoFactorAuth.required.skipHint": "Sie können die Zwei-Faktor-Authentifizierung jederzeit unter Profil aktivieren."
 }

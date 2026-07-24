@@ -8,7 +8,7 @@ const userData = (isActive: boolean, isToEncourage = true) =>
     } as UserData);
 
 describe('platform-admin two-factor gate', () => {
-    it('blocks a platform admin until 2FA is active', () => {
+    it('prompts a platform admin until 2FA is active', () => {
         expect(requiresPlatformAdminTwoFactor(true, userData(false))).toBe(true);
     });
 
@@ -22,5 +22,17 @@ describe('platform-admin two-factor gate', () => {
 
     it('does not impose the platform policy on tenant-scoped admins', () => {
         expect(requiresPlatformAdminTwoFactor(false, userData(false))).toBe(false);
+    });
+
+    it('lets an admin through once they choose to set 2FA up later', () => {
+        expect(requiresPlatformAdminTwoFactor(true, userData(false), true)).toBe(false);
+    });
+
+    it('keeps prompting an admin who has not skipped', () => {
+        expect(requiresPlatformAdminTwoFactor(true, userData(false), false)).toBe(true);
+    });
+
+    it('still fails closed when data is missing even if setup was skipped', () => {
+        expect(requiresPlatformAdminTwoFactor(true, undefined, true)).toBe(true);
     });
 });
