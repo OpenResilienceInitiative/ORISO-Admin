@@ -49,6 +49,8 @@ const readBooleanConfig = (key: keyof AppRuntimeConfig, defaultValue: boolean): 
     return value !== 'false';
 };
 
+const readExplicitTrueConfig = (key: keyof AppRuntimeConfig): boolean => readConfigValue(key)?.toLowerCase() === 'true';
+
 const stripUrlProtocol = (value: string): string => value.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
 const toAbsoluteUrl = (value: string | undefined, useHttps: boolean): string => {
@@ -68,7 +70,8 @@ const useHttps = readBooleanConfig('USE_HTTPS', true);
 const useApiUrl = readBooleanConfig('USE_API_URL', true);
 const { subdomain, origin } = getLocationVariables();
 
-const apiHost = stripUrlProtocol(readConfigValue('API_URL') ?? '');
+const configuredApiUrl = readConfigValue('API_URL') ?? '';
+const apiHost = stripUrlProtocol(configuredApiUrl);
 const keycloakHost = readConfigValue('KEYCLOAK_URL');
 const keycloakBaseUrl = keycloakHost ? toAbsoluteUrl(keycloakHost, useHttps) : '';
 const configuredAppHost = stripUrlProtocol(readConfigValue('APP_URL') ?? '');
@@ -78,7 +81,7 @@ const matrixHost = stripUrlProtocol(readConfigValue('MATRIX_URL') ?? '');
 let apiBaseUrl = origin;
 
 if (useApiUrl && apiHost) {
-    apiBaseUrl = toAbsoluteUrl(apiHost, useHttps);
+    apiBaseUrl = toAbsoluteUrl(configuredApiUrl, useHttps);
 } else if (origin.includes('localhost') && apiHost) {
     const hostPrefix = subdomain && subdomain !== 'localhost' ? `${subdomain}.` : '';
     apiBaseUrl = toAbsoluteUrl(`${hostPrefix}${apiHost}`, useHttps);
@@ -92,6 +95,23 @@ const hostnamesWithoutCookieDomain = (readConfigValue('HOSTNAMES_WITHOUT_COOKIE_
 const cookieDomain = hostnamesWithoutCookieDomain.includes(window.location.hostname)
     ? ''
     : readConfigValue('COOKIE_DOMAIN') ?? '';
+
+const DEFAULT_OTEL_EXPORT_INTERVAL_MS = 60000;
+const configuredOtelInterval = Number(readConfigValue('OTEL_EXPORT_INTERVAL_MS'));
+const otelExportIntervalMillis =
+    Number.isFinite(configuredOtelInterval) && configuredOtelInterval >= 10000
+        ? configuredOtelInterval
+        : DEFAULT_OTEL_EXPORT_INTERVAL_MS;
+
+const configuredOtelMetricsUrl = readConfigValue('OTEL_METRICS_URL') ?? '';
+const otelMetricsUrl = (() => {
+    try {
+        const url = new URL(configuredOtelMetricsUrl);
+        return url.protocol === 'http:' || url.protocol === 'https:' ? configuredOtelMetricsUrl : '';
+    } catch {
+        return '';
+    }
+})();
 
 export const runtimeConfig = {
     useHttps,
@@ -116,6 +136,9 @@ export const runtimeConfig = {
         .split(',')
         .map((entry) => entry.trim())
         .filter(Boolean),
+    observabilityEnabled: readExplicitTrueConfig('OBSERVABILITY_ENABLED'),
+    otelMetricsUrl,
+    otelExportIntervalMillis,
 };
 
 // Dedicated Keycloak hosts use {KEYCLOAK_URL}/realms/{realm}/...

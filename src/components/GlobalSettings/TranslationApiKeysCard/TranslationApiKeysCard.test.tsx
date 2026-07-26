@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TranslationApiKeysCard } from './index';
@@ -18,22 +18,6 @@ vi.mock('react-i18next', () => ({
     }),
 }));
 
-beforeAll(() => {
-    Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        value: vi.fn().mockImplementation((query: string) => ({
-            matches: false,
-            media: query,
-            onchange: null,
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            dispatchEvent: vi.fn(),
-        })),
-    });
-});
-
 const saveButtonName = 'legal.translation.settings.save';
 
 describe('TranslationApiKeysCard', () => {
@@ -47,7 +31,7 @@ describe('TranslationApiKeysCard', () => {
     });
 
     it('saves a new key for the right provider', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         const onSave = vi.fn();
         render(<TranslationApiKeysCard keys={{}} onSave={onSave} />);
 
@@ -59,7 +43,7 @@ describe('TranslationApiKeysCard', () => {
     });
 
     it('does not save an empty key', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         const onSave = vi.fn();
         render(<TranslationApiKeysCard keys={{}} onSave={onSave} />);
 

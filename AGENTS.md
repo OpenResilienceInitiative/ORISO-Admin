@@ -2,7 +2,7 @@
 
 ## Context First
 
--   Treat `dev` as the normal integration branch for ORISO Admin feature PRs unless the task says otherwise.
+-   Treat `pre-dev` as the normal integration branch for ORISO Admin feature PRs. `dev` is the stable demo environment behind the human promotion gate.
 -   **Follow `GIT.md` for the full Git/GitHub workflow**: parent issue first (Why/What/Goal, assigned to the ORISO project board), PRs linked in the issue comments, branch pruning and board updates after merge.
 -   Before non-trivial changes, skim `.understand-anything/README.md`, `.understand-anything/ARCHITECTURE.md`, and `.understand-anything/knowledge-graph.json` for fast repo context.
 -   Keep admin behavior aligned with ORISO service contracts and role/permission boundaries.
@@ -26,7 +26,7 @@
 
 ## Review Expectations
 
--   Cursor should compare PRs against `origin/dev` for normal ORISO Admin feature work.
+-   Cursor should compare PRs against `origin/pre-dev` for normal ORISO Admin feature work.
 -   CodeRabbit is optional/manual and should not be treated as the primary automated reviewer.
 -   Automated review should flag missing tests, duplicated admin patterns, unsafe auth/API changes, and mergeability risks.
 -   Only auto-fix issues that are clearly scoped and testable. Leave architectural or ambiguous changes as review comments.

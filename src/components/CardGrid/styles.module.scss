@@ -1,0 +1,12 @@
+/* Card-level raster: the exact FieldGrid mechanism (auto-fit, min-width floor,
+   column cap, mobile stacking) retuned for whole cards — wider floor, wider
+   gutters, and cards in a shared row stretch to equal height. */
+
+.cardGrid {
+    composes: grid from '../FieldGrid/styles.module.scss';
+
+    --field-grid-row-gap: 24px;
+    --field-grid-column-gap: 24px;
+
+    align-items: stretch;
+}

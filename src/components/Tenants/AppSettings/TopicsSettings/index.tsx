@@ -1,8 +1,6 @@
-import { List, Modal, Tag, Typography } from 'antd';
-import { useState } from 'react';
+import { List, Space, Tag, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../../Card';
-import { EditButton } from '../../../EditButton';
 import { DEFAULT_TOPICS, DefaultTopic } from './defaultTopics';
 
 const LANGUAGES = ['de', 'en', 'tr'] as const;
@@ -10,7 +8,6 @@ type TopicLanguage = (typeof LANGUAGES)[number];
 
 export const TopicsSettings = () => {
     const { t, i18n } = useTranslation();
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     const uiLanguage: TopicLanguage = i18n.language?.startsWith('de') ? 'de' : 'en';
 
@@ -24,10 +21,11 @@ export const TopicsSettings = () => {
         <Card
             titleKey="tenants.appSettings.topics.title"
             subTitleKey="tenants.appSettings.topics.description"
-            cardTitleChildren={
-                <EditButton labelKey="tenants.appSettings.topics.edit" onClick={() => setIsEditModalOpen(true)} />
-            }
+            cardTitleChildren={<Tag color="default">{t('tenants.appSettings.topics.readOnly')}</Tag>}
         >
+            <Typography.Paragraph type="secondary">
+                {t('tenants.appSettings.topics.visibilityNotice')}
+            </Typography.Paragraph>
             <List
                 size="small"
                 dataSource={DEFAULT_TOPICS}
@@ -35,23 +33,42 @@ export const TopicsSettings = () => {
                 renderItem={(topic) => (
                     <List.Item
                         extra={
-                            <Tag color={topic.status === 'ACTIVE' ? 'green' : 'default'}>
-                                {t(
-                                    topic.status === 'ACTIVE'
-                                        ? 'tenants.appSettings.topics.status.active'
-                                        : 'tenants.appSettings.topics.status.inactive',
-                                )}
-                            </Tag>
+                            <Space direction="vertical" align="end" size={4}>
+                                <Tag color={topic.status === 'ACTIVE' ? 'green' : 'default'}>
+                                    {t(
+                                        topic.status === 'ACTIVE'
+                                            ? 'tenants.appSettings.topics.status.active'
+                                            : 'tenants.appSettings.topics.status.inactive',
+                                    )}
+                                </Tag>
+                                {topic.standardBaseline ? (
+                                    <Tag color="blue">{t('tenants.appSettings.topics.standardBaseline')}</Tag>
+                                ) : null}
+                                {topic.editingDisabled ? (
+                                    <Tag color="default">{t('tenants.appSettings.topics.editingDisabled')}</Tag>
+                                ) : null}
+                            </Space>
                         }
                     >
                         <List.Item.Meta
-                            title={primaryTranslation(topic).title}
+                            title={`${topic.sortOrder}. ${primaryTranslation(topic).title}`}
                             description={
                                 <>
                                     <Typography.Paragraph type="secondary" style={{ marginBottom: 4 }}>
                                         {primaryTranslation(topic).description}
                                     </Typography.Paragraph>
-                                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                                    <Space wrap size={[12, 4]}>
+                                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                                            {t('tenants.appSettings.topics.topicId')}: {topic.id}
+                                        </Typography.Text>
+                                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                                            {t('tenants.appSettings.topics.displayGroup')}: {topic.displayGroup}
+                                        </Typography.Text>
+                                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                                            {t('tenants.appSettings.topics.sortOrder')}: {topic.sortOrder}
+                                        </Typography.Text>
+                                    </Space>
+                                    <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
                                         {otherLanguageTitles(topic)}
                                     </Typography.Text>
                                 </>
@@ -60,14 +77,6 @@ export const TopicsSettings = () => {
                     </List.Item>
                 )}
             />
-            <Modal
-                title={t('tenants.appSettings.topics.comingSoon.title')}
-                open={isEditModalOpen}
-                onCancel={() => setIsEditModalOpen(false)}
-                footer={null}
-            >
-                <Typography.Paragraph>{t('tenants.appSettings.topics.comingSoon.text')}</Typography.Paragraph>
-            </Modal>
         </Card>
     );
 };

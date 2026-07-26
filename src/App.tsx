@@ -1,4 +1,5 @@
 import { Suspense, useEffect } from 'react';
+import i18next from 'i18next';
 import 'antd/dist/reset.css';
 import './styles/App.less';
 import './app.css';
@@ -57,6 +58,11 @@ import {
     LazyUserProfile,
     LazyUsersList,
 } from './pages/lazyPages';
+import { LogsTabsLayout } from './pages/Logs/LogsTabsLayout';
+import { useUserData } from './hooks/useUserData.hook';
+import { requiresPlatformAdminTwoFactor } from './utils/platformAdminTwoFactorGate';
+import { useTwoFactorSetupDeferral } from './hooks/useTwoFactorSetupDeferral.hook';
+import { MandatoryTwoFactorSetup } from './pages/Profile/MandatoryTwoFactorSetup';
 
 const AgencyInitialMeetingRedirect = () => {
     const { id } = useParams();
@@ -71,11 +77,15 @@ export const App = () => {
         isFetched: isPublicTenantFetched,
     } = usePublicTenantData();
     const { isLoading, data } = useTenantData();
+    const { isLoading: isUserDataLoading, isError: isUserDataError, data: userData } = useUserData();
     useAdminTheme(publicTenantData?.theming, isPublicTenantFetched || !isPublicTenantLoading);
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
     const location = useLocation();
     const { hasRole, isSuperAdmin } = useUserRoles();
+    const { isDeferred: isTwoFactorSetupDeferred, deferSetup: deferTwoFactorSetup } = useTwoFactorSetupDeferral(
+        userData?.username,
+    );
     const { can } = useUserPermissions();
     const { isEnabled: isReleaseEnabled } = useReleasesToggle();
 
@@ -129,10 +139,41 @@ export const App = () => {
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, hasRole, can);
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, hasRole, can);
+    const requiresTwoFactorSetup = requiresPlatformAdminTwoFactor(isSuperAdmin, userData, isTwoFactorSetupDeferred);
 
-    return isLoading ? (
-        <Initialization />
-    ) : (
+    if (isLoading || (isSuperAdmin && isUserDataLoading)) {
+        return <Initialization />;
+    }
+
+    if (isSuperAdmin && (isUserDataError || !userData)) {
+        return (
+            <div role="alert" style={{ maxWidth: '480px', margin: '15vh auto 0', padding: '0 24px' }}>
+                <h1 style={{ fontSize: '22px', marginBottom: '8px' }}>
+                    {i18next.t('twoFactorAuth.required.title') as string}
+                </h1>
+                <p style={{ marginBottom: '24px' }}>{i18next.t('error.loading') as string}</p>
+                <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    style={{ padding: '8px 16px', cursor: 'pointer' }}
+                >
+                    {i18next.t('errorBoundary.reload') as string}
+                </button>
+            </div>
+        );
+    }
+
+    if (requiresTwoFactorSetup) {
+        return (
+            <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
+                <ProtectedPageLayoutWrapper>
+                    <MandatoryTwoFactorSetup onSkip={deferTwoFactorSetup} />
+                </ProtectedPageLayoutWrapper>
+            </FeatureProvider>
+        );
+    }
+
+    return (
         <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
             <ProtectedPageLayoutWrapper>
                 {/* Page-level boundary: a crash inside one admin page keeps the
@@ -226,22 +267,28 @@ export const App = () => {
                                     )
                                 }
                             />
+                            {/* Unified "Logs": one page, tabs for Inactive (default) + Case handover. */}
                             <Route
-                                path={routePathNames.caseHandoverLogs}
                                 element={
-                                    showCaseHandoverLogs ? (
-                                        <LazyCaseHandoverLogsPage />
-                                    ) : (
-                                        <Navigate to="/admin/access-denied" replace />
-                                    )
+                                    <LogsTabsLayout
+                                        showInactive={isSuperAdmin}
+                                        showCaseHandover={showCaseHandoverLogs}
+                                    />
                                 }
-                            />
-                            {isSuperAdmin && (
-                                <Route
-                                    path={routePathNames.inactiveAccountAuditLogs}
-                                    element={<LazyInactiveAccountAuditLogsPage />}
-                                />
-                            )}
+                            >
+                                {isSuperAdmin && (
+                                    <Route
+                                        path={routePathNames.inactiveAccountAuditLogs}
+                                        element={<LazyInactiveAccountAuditLogsPage />}
+                                    />
+                                )}
+                                {showCaseHandoverLogs && (
+                                    <Route
+                                        path={routePathNames.caseHandoverLogs}
+                                        element={<LazyCaseHandoverLogsPage />}
+                                    />
+                                )}
+                            </Route>
                             <Route path={routePathNames.userProfile} element={<LazyUserProfile />} />
                             {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
                                 <>

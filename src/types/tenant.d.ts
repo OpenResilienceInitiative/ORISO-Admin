@@ -6,6 +6,7 @@ export interface TenantSettings {
     topicsInRegistrationEnabled?: boolean | null;
     featureStatisticsEnabled?: boolean | null;
     featureGroupChatV2Enabled?: boolean | null;
+    featureTeamDiscussionEnabled?: boolean | null;
     featureCentralDataProtectionTemplateEnabled?: boolean | null;
     featureAnonymousChatEnabled?: boolean | null;
     featureCallsEnabled?: boolean | null;
@@ -32,6 +33,21 @@ export interface TenantSettings {
     featureVoiceMessagesOneOnOneChatsEnabled?: boolean | null;
     featureVoiceMessagesGroupChatsEnabled?: boolean | null;
     featureVoiceMessagesSupervisionChatsEnabled?: boolean | null;
+    featureMediaUploadEnabled?: boolean | null;
+    featureMediaUploadAnonymousChatsEnabled?: boolean | null;
+    featureMediaUploadOneOnOneChatsEnabled?: boolean | null;
+    featureMediaUploadGroupChatsEnabled?: boolean | null;
+    featureMediaUploadSupervisionChatsEnabled?: boolean | null;
+    featureMediaInlineDisplayEnabled?: boolean | null;
+    featureMediaInlineDisplayAnonymousChatsEnabled?: boolean | null;
+    featureMediaInlineDisplayOneOnOneChatsEnabled?: boolean | null;
+    featureMediaInlineDisplayGroupChatsEnabled?: boolean | null;
+    featureMediaInlineDisplaySupervisionChatsEnabled?: boolean | null;
+    featureMediaAiScanEnabled?: boolean | null;
+    featureMediaAiScanAnonymousChatsEnabled?: boolean | null;
+    featureMediaAiScanOneOnOneChatsEnabled?: boolean | null;
+    featureMediaAiScanGroupChatsEnabled?: boolean | null;
+    featureMediaAiScanSupervisionChatsEnabled?: boolean | null;
     featureSystemNotificationEmailsEnabled?: boolean | null;
     smtp?: {
         enabled?: boolean | null;

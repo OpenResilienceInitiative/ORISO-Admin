@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 
 // vitest has no svgr plugin — stub the icons' ReactComponent exports.
 vi.mock('../../../../resources/img/svg/pen.svg', () => ({
@@ -8,6 +7,12 @@ vi.mock('../../../../resources/img/svg/pen.svg', () => ({
 }));
 vi.mock('../../../../resources/img/svg/i.svg', () => ({
     ReactComponent: () => null,
+}));
+vi.mock('react-i18next', () => ({
+    useTranslation: () => ({
+        t: (key: string) => key,
+        i18n: { language: 'en' },
+    }),
 }));
 
 import { TopicsSettings } from './index';
@@ -29,24 +34,30 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 describe('TopicsSettings', () => {
-    it('renders every default topic with its translations', () => {
+    it('renders every default topic with ordering, catalogue metadata, and translations', () => {
         render(<TopicsSettings />);
 
         expect(screen.getAllByRole('listitem')).toHaveLength(DEFAULT_TOPICS.length);
         // Spot checks: primary (non-German UI falls back to English) title and other-language line.
-        expect(screen.getByText('General social counselling')).toBeInTheDocument();
+        expect(screen.getByText('1. General social counselling')).toBeInTheDocument();
         expect(screen.getByText(/DE: Allgemeine Sozialberatung/)).toBeInTheDocument();
         expect(screen.getByText(/TR: Genel sosyal danışmanlık/)).toBeInTheDocument();
+        expect(screen.getAllByText(/^tenants\.appSettings\.topics\.topicId: \d+$/)).toHaveLength(DEFAULT_TOPICS.length);
+        expect(
+            screen.getAllByText('tenants.appSettings.topics.displayGroup: Standard Caritas topic catalogue'),
+        ).toHaveLength(DEFAULT_TOPICS.length);
+        expect(screen.getAllByText(/^tenants\.appSettings\.topics\.sortOrder: \d+$/)).toHaveLength(
+            DEFAULT_TOPICS.length,
+        );
+        expect(screen.getAllByText('tenants.appSettings.topics.standardBaseline')).toHaveLength(DEFAULT_TOPICS.length);
     });
 
-    it('opens the coming-soon modal from the edit button instead of editing', async () => {
-        const user = userEvent.setup();
+    it('shows a read-only state without editing controls and separates catalogue from visibility', () => {
         render(<TopicsSettings />);
 
+        expect(screen.getByText('tenants.appSettings.topics.visibilityNotice')).toBeInTheDocument();
+        expect(screen.getAllByText('tenants.appSettings.topics.editingDisabled')).toHaveLength(DEFAULT_TOPICS.length);
+        expect(screen.queryByRole('button', { name: 'tenants.appSettings.topics.edit' })).not.toBeInTheDocument();
         expect(screen.queryByText('tenants.appSettings.topics.comingSoon.text')).not.toBeInTheDocument();
-
-        await user.click(screen.getByRole('button', { name: 'tenants.appSettings.topics.edit' }));
-
-        expect(await screen.findByText('tenants.appSettings.topics.comingSoon.text')).toBeInTheDocument();
     });
 });

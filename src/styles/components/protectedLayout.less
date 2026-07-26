@@ -4,7 +4,7 @@
     .ant-layout-sider {
         z-index: 80;
         height: @mobileNavHeight;
-        background-color: #141c25;
+        background-color: #281715;
     }
 
     .mainMenu {
@@ -136,7 +136,7 @@
             max-width: 96px !important;
             flex: 0 0 96px !important;
             height: 100vh;
-            background-color: #141c25;
+            background-color: #281715;
         }
 
         .logo {
@@ -262,7 +262,7 @@
                     }
 
                     &:hover:not(.active) {
-                        background: transparent;
+                        background: rgba(255, 226, 222, 0.12);
                         color: #ffffff;
 
                         svg {
@@ -275,21 +275,22 @@
                     }
 
                     &.active {
-                        background: #e7effc;
-                        color: #141c25;
+                        background: #ffe2de;
+                        color: #410001;
                         border-radius: 50px;
                         padding: 32px 4px;
+                        box-shadow: inset 4px 4px 12px rgba(0, 0, 0, 0.25);
 
                         > div {
-                            color: #141c25;
+                            color: #410001;
                         }
 
-                        svg {
-                            color: #141c25;
+                        svg path {
+                            fill: #410001;
                         }
 
                         span {
-                            color: #141c25;
+                            color: #410001;
                             font-weight: 700;
                         }
                     }

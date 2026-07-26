@@ -7,8 +7,13 @@
 }
 
 .tenantCardDeck {
+    --card-deck-min-height: 0;
     --card-deck-item-width: 425px;
     --card-deck-item-max-width: calc(100vw - 176px);
+}
+
+.tenantCardDeckFooter {
+    margin-top: 32px;
 }
 
 .tenantCardDeckScroll {
@@ -70,13 +75,6 @@
     min-width: 0;
     max-width: 100%;
     margin-bottom: 16px;
-}
-
-.buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 16px;
-    margin-top: 24px;
 }
 
 .domainSuffix {

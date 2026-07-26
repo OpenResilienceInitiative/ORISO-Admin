@@ -33,21 +33,7 @@
     margin-top: 40px;
     margin-bottom: 0;
 
-    :global(.ant-form-item-row) {
-        flex-wrap: nowrap;
-        align-items: center;
-        gap: 16px;
-    }
-
-    :global(.ant-form-item-label) {
-        min-width: 0;
-        flex: 1 1 auto;
-        overflow: visible;
-        white-space: normal;
-    }
-
-    :global(.ant-form-item-label > label) {
-        height: auto;
+    :global(.MuiFormControlLabel-label) {
         color: #1b1b1c;
         font-family: var(--m3-body-font-family);
         font-size: 18px;
@@ -55,15 +41,6 @@
         letter-spacing: 0;
         line-height: 28px;
         white-space: normal;
-    }
-
-    :global(.ant-col.ant-form-item-control) {
-        max-width: 72px;
-        flex: 0 0 72px;
-    }
-
-    :global(.formSwitchField__container) {
-        justify-content: flex-end;
     }
 }
 
@@ -102,40 +79,16 @@
 .smtpSwitch {
     margin-bottom: 18px;
 
-    :global(.ant-form-item-row) {
+    :global(.MuiFormControlLabel-root) {
         align-items: flex-start;
-        flex-wrap: nowrap;
-        gap: 16px;
     }
 
-    :global(.ant-form-item-label) {
-        min-width: 0;
+    :global(.MuiFormControlLabel-label) {
         max-width: calc(100% - 76px);
-        flex: 1 1 calc(100% - 76px);
-        overflow: visible;
-        text-align: left;
-        white-space: normal;
     }
 
-    :global(.ant-form-item-label > label) {
-        display: block;
-        width: 100%;
-        padding-bottom: 0;
-        white-space: normal;
-    }
-
-    :global(.ant-col.ant-form-item-control) {
-        max-width: 60px;
-        flex: 0 0 60px;
-        padding-top: 0;
-    }
-
-    :global(.ant-form-item-control-input) {
-        min-height: 48px;
-    }
-
-    :global(.formSwitchField__container) {
-        justify-content: flex-end;
+    :global(.MuiSwitch-root) {
+        margin-top: 0;
     }
 }
 

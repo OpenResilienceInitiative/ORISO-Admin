@@ -21,7 +21,18 @@ const parseTopicIds = (formData: CounselorData): number[] => {
  * @return data
  */
 export const editCounselorData = async (id: string, formData: CounselorData): Promise<CounselorData> => {
-    const { firstname, lastname, formalLanguage, email, absent, absenceMessage, isSupervisor } = formData;
+    const {
+        firstname,
+        lastname,
+        formalLanguage,
+        email,
+        absent,
+        absenceMessage,
+        isGroupchatConsultant,
+        isSupervisor,
+        publicSlug,
+        rejectPendingPublicSlug,
+    } = formData;
 
     const topicIds = parseTopicIds(formData);
 
@@ -31,8 +42,11 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         formalLanguage,
         email,
         absent: !!absent,
+        isGroupchatConsultant: !!isGroupchatConsultant,
         isSupervisor: !!isSupervisor,
         topicIds,
+        publicSlug,
+        rejectPendingPublicSlug: !!rejectPendingPublicSlug,
         ...(absent && absenceMessage ? { absenceMessage } : {}),
     };
 

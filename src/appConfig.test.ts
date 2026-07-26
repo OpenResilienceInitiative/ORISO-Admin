@@ -69,7 +69,6 @@ describe('appConfig service origins', () => {
         expect(config.loginEndpoint).toBe(
             'http://localhost:8080/auth/realms/online-beratung/protocol/openid-connect/token',
         );
-        expect(config.registrationDataEndpoint).toBe('https://api.oriso.org/service/statistics/registration');
     });
 
     it('falls back to the broad API origin when service origins are absent', async () => {
@@ -82,5 +81,13 @@ describe('appConfig service origins', () => {
         expect(config.loginEndpoint).toBe(
             'https://api.oriso.org/auth/realms/online-beratung/protocol/openid-connect/token',
         );
+    });
+
+    it('preserves an explicit API URL protocol when USE_HTTPS is false for local development', async () => {
+        const config = await loadAppConfig({
+            USE_HTTPS: 'false',
+        });
+
+        expect(config.tenantAccessEndpoint).toBe('https://api.oriso.org/service/tenant/access');
     });
 });

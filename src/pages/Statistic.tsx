@@ -1,12 +1,19 @@
-import { ArrowDownward, ArrowUpward, Close, MoreVert, NorthEast, SouthEast } from '@mui/icons-material';
+import { Close } from '@mui/icons-material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { CSVLink } from 'react-csv';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import routePathNames from '../appConfig';
 import { AdminSegmentedTabs } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
+import { DashboardEmptyState } from '../components/DashboardEmptyState/DashboardEmptyState';
 import { Page } from '../components/Page';
-import SearchInput from '../components/SearchInput/SearchInput';
+import { GlobalSearchBar } from '../components/GlobalSearch';
+import Spinner from '../components/Spinner/Spinner';
+import { AnimatedValue, StatisticCard } from '../components/StatisticCard/StatisticCard';
 import { UserRole } from '../enums/UserRole';
 import { useUserRoles } from '../hooks/useUserRoles.hook';
+import { ReactComponent as DownloadIcon } from '../resources/img/svg/download.svg';
 import { ReactComponent as ActiveAgenciesIcon } from '../resources/img/svg/statistics-dashboard/active-agencies.svg';
 import { ReactComponent as CalendarIcon } from '../resources/img/svg/statistics-dashboard/calendar.svg';
 import { ReactComponent as ChevronDownIcon } from '../resources/img/svg/statistics-dashboard/chevron-down.svg';
@@ -43,6 +50,7 @@ import {
     caseChartDayCodes,
     getTodayDayCode,
     NO_DATA_LABEL,
+    SUPPRESSED_DETAIL,
 } from './Statistic/statisticDashboardData';
 import type {
     ConversationValues,
@@ -53,28 +61,26 @@ import type {
     StatisticData,
     TopicStatistic,
 } from './Statistic/statisticDashboardData';
+import { TutorialStatisticsSection } from './Statistic/TutorialStatisticsSection';
 import { useStatisticDashboardData } from './Statistic/useStatisticDashboardData.hook';
 import type {
     CardMenuKey,
     CardMenuOption,
+    CardMenuOptionBlueprint,
     CaseChartBar,
     CasePeriodKey,
     ConversationSegment,
     ConversationPeriodData,
     ConversationPeriodKey,
-    IconTone,
-    ScopeDashboard,
+    ScopeDashboardBlueprint,
     ScopeDefinition,
     ScopeKey,
     SelectedFilterTargetIdsByScope,
     SelectedCardMenuByScope,
+    StatisticCardBlueprint,
     StatisticCardDefinition,
-    SvgIcon,
     TrendBadgeDefinition,
-    TrendDirection,
-    TrendScoreTone,
 } from './Statistic/types';
-import { useAnimatedDisplayValue } from './Statistic/useAnimatedDisplayValue';
 import type { AdminSegmentedTabItem } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 
 const conversationSegmentBlueprint = [
@@ -145,6 +151,9 @@ const dashboardTextKeyByValue: Record<string, string> = {
     Interna: 'statistic.dashboard.text.internal',
     'Kennzahl in diesem Dashboard-Slot auswählen': 'statistic.dashboard.menu.selectDashboardMetric',
     'Keine Daten': 'statistic.dashboard.text.noData',
+    'wird noch nicht erfasst': 'statistic.dashboard.empty.notTracked',
+    'noch keine Daten': 'statistic.dashboard.empty.noDataYet',
+    'zeigt sich ab dem ersten Gespräch': 'statistic.dashboard.empty.topicPending',
     'Aktuell in Beratung': 'statistic.dashboard.text.currentlyInCounselling',
     'Statistik unterdrückt': 'statistic.dashboard.filter.suppressed',
     'Keine Filter verfügbar': 'statistic.dashboard.filter.noFilters',
@@ -294,6 +303,7 @@ const localizeCardMenuOption = (
         ? translateDashboardText(translate, option.description, locale)
         : option.description,
     detail: option.detail ? translateDashboardText(translate, option.detail, locale) : option.detail,
+    emptyHint: option.emptyHint ? translateDashboardText(translate, option.emptyHint, locale) : option.emptyHint,
     label: translateDashboardText(translate, option.label, locale),
     title: option.title ? translateDashboardText(translate, option.title, locale) : option.title,
     value: translateDashboardValue(translate, option.value, locale),
@@ -306,6 +316,7 @@ const localizeStatisticCard = (
 ): StatisticCardDefinition => ({
     ...card,
     detail: card.detail ? translateDashboardText(translate, card.detail, locale) : card.detail,
+    emptyHint: card.emptyHint ? translateDashboardText(translate, card.emptyHint, locale) : card.emptyHint,
     menuAriaLabel: card.menuAriaLabel
         ? translateDashboardText(translate, card.menuAriaLabel, locale)
         : card.menuAriaLabel,
@@ -377,51 +388,36 @@ const scopeDefinitions: Record<ScopeKey, ScopeDefinition> = {
 
 const normalizeFilterSearch = (value: string, locale: string) => value.trim().toLocaleLowerCase(locale);
 
-const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
+const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]> = {
     platform: [
         {
             key: 'all',
             label: 'Anfragen gesamt',
             title: 'Anfragen gesamt',
-            value: '870',
-            detail: 'Vormonat gesamt 1.050',
-            trend: { value: '~ 20%', tone: 'red' },
             icon: RequestsIcon,
         },
         {
             key: 'oneToOne',
             label: 'Nähe (1:1)',
             title: 'Nähe (1:1)',
-            value: '420',
-            detail: '1:1-Anfragen',
-            trend: { value: '~ 18%', tone: 'blue' },
             icon: RequestsIcon,
         },
         {
             key: 'liveChat',
             label: 'Live-Chat',
             title: 'Live-Chat',
-            value: '250',
-            detail: 'Live-Chat-Anfragen',
-            trend: { value: '~ 11%', tone: 'blue' },
             icon: RequestsIcon,
         },
         {
             key: 'groups',
             label: 'Gruppen',
             title: 'Gruppen',
-            value: '200',
-            detail: 'Gruppen-Anfragen',
-            trend: { value: '~ 9%', tone: 'red' },
             icon: RequestsIcon,
         },
         {
             key: 'cases',
             label: 'Anzahl Beratungsfälle',
             title: 'Beratungsfälle',
-            value: '3.150',
-            detail: 'Diese Woche',
-            trend: { value: '~ 18%', tone: 'blue' },
             icon: ConversationsIcon,
             iconTone: 'muted',
         },
@@ -429,16 +425,12 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'conversationsTotal',
             label: 'Gespräche insgesamt',
             title: 'Gespräche insgesamt',
-            value: '420',
-            trend: { value: '~ 20%', tone: 'blue' },
             icon: ConversationsIcon,
         },
         {
             key: 'textMessagesTotal',
             label: 'Textnachrichten',
             title: 'Textnachrichten',
-            value: '320',
-            trend: { value: '~ 26%', tone: 'red' },
             icon: TextMessagesIcon,
             iconTone: 'muted',
         },
@@ -446,9 +438,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'messagesSeekers',
             label: 'Anzahl Nachrichten Ratsuchende',
             title: 'Nachrichten Ratsuchende',
-            value: '5.840',
-            detail: 'Diese Woche',
-            trend: { value: '~ 14%', tone: 'blue' },
             icon: TextMessagesIcon,
             iconTone: 'muted',
         },
@@ -456,9 +445,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'messagesCounselors',
             label: 'Anzahl Nachrichten Beratende',
             title: 'Nachrichten Beratende',
-            value: '4.920',
-            detail: 'Diese Woche',
-            trend: { value: '~ 9%', tone: 'blue' },
             icon: TextMessagesIcon,
             iconTone: 'muted',
         },
@@ -466,8 +452,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'phoneShare',
             label: 'Anruf-Anteil',
             title: 'Anrufe',
-            value: '15%',
-            trend: { value: '~ 4%', tone: 'blue' },
             icon: PhoneCallsIcon,
             iconTone: 'coral',
         },
@@ -475,8 +459,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'videoShare',
             label: 'Videoanruf-Anteil',
             title: 'Videoanrufe',
-            value: '4%',
-            trend: { value: '~ 67%', tone: 'dark' },
             icon: VideoCallsIcon,
             iconTone: 'danger',
         },
@@ -484,9 +466,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'videoCallCount',
             label: 'Anzahl Videoanrufe',
             title: 'Anzahl Videoanrufe',
-            value: '126',
-            detail: 'Diese Woche',
-            trend: { value: '~ 22%', tone: 'blue' },
             icon: VideoCallsIcon,
             iconTone: 'danger',
         },
@@ -494,8 +473,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'voiceShare',
             label: 'Sprachnachrichten',
             title: 'Sprachnachrichten',
-            value: '32%',
-            trend: { value: '~ 20%', tone: 'blue' },
             icon: VoiceMessagesIcon,
             iconTone: 'coral',
         },
@@ -503,27 +480,18 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'activeAgencies',
             label: 'Beratungsstellen',
             title: 'aktive Beratungsstellen',
-            value: '320',
-            detail: 'Durchschnitt pro Monat',
-            trend: { value: '~ 20%', tone: 'blue' },
             icon: ActiveAgenciesIcon,
         },
         {
             key: 'counselors',
             label: 'aktive Beratende',
             title: 'aktive Beratende',
-            value: '1.240',
-            detail: 'Durchschnitt pro Monat',
-            trend: { value: '~ 12%', tone: 'blue' },
             icon: ActiveAgenciesIcon,
         },
         {
             key: 'messagesPerSession',
             label: 'Ø Nachrichten/Gespräch',
             title: 'Nachrichten pro Gespräch',
-            value: '8,4',
-            detail: 'Durchschnitt pro Gespräch',
-            trend: { value: '~ 6%', tone: 'blue' },
             icon: TextMessagesIcon,
             iconTone: 'muted',
         },
@@ -531,9 +499,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'activeConversations',
             label: 'aktive Gespräche',
             title: 'aktive Gespräche',
-            value: '555',
-            detail: 'heute aktiv',
-            trend: { value: '~ 4%', tone: 'blue' },
             icon: ConversationsIcon,
             iconTone: 'muted',
         },
@@ -541,36 +506,24 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'topTopic',
             label: 'Häufigstes Thema',
             title: 'Häufigstes Thema',
-            value: 'Schulden',
-            detail: 'Dieser Monat',
-            trend: { value: '~ 59%', tone: 'dark' },
             icon: TopicIcon,
         },
         {
             key: 'previousMonth',
             label: 'Thema letzter Monat',
             title: 'Häufigstes Thema',
-            value: 'Wohnen',
-            detail: 'Letzter Monat',
-            trend: { value: '~ 44%', tone: 'dark' },
             icon: TopicIcon,
         },
         {
             key: 'twoMonthsAgo',
             label: 'Thema vor 2 Monaten',
             title: 'Häufigstes Thema',
-            value: 'Trennung',
-            detail: 'Vor 2 Monaten',
-            trend: { value: '~ 31%', tone: 'dark' },
             icon: TopicIcon,
         },
         {
             key: 'threeMonthsAgo',
             label: 'Thema vor 3 Monaten',
             title: 'Häufigstes Thema',
-            value: 'Sucht',
-            detail: 'Vor 3 Monaten',
-            trend: { value: '~ 27%', tone: 'dark' },
             icon: TopicIcon,
         },
     ],
@@ -579,45 +532,30 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'all',
             label: 'Anfragen gesamt',
             title: 'Anfragen gesamt',
-            value: '312',
-            detail: 'Vormonat gesamt 386',
-            trend: { value: '~ 12%', tone: 'blue' },
             icon: RequestsIcon,
         },
         {
             key: 'oneToOne',
             label: 'Nähe (1:1)',
             title: 'Nähe (1:1)',
-            value: '142',
-            detail: '1:1-Anfragen',
-            trend: { value: '~ 9%', tone: 'blue' },
             icon: RequestsIcon,
         },
         {
             key: 'liveChat',
             label: 'Live-Chat',
             title: 'Live-Chat',
-            value: '96',
-            detail: 'Live-Chat-Anfragen',
-            trend: { value: '~ 13%', tone: 'blue' },
             icon: RequestsIcon,
         },
         {
             key: 'groups',
             label: 'Gruppen',
             title: 'Gruppen',
-            value: '74',
-            detail: 'Gruppen-Anfragen',
-            trend: { value: '~ 6%', tone: 'red' },
             icon: RequestsIcon,
         },
         {
             key: 'cases',
             label: 'Anzahl Beratungsfälle',
             title: 'Beratungsfälle',
-            value: '1.520',
-            detail: 'Diese Woche',
-            trend: { value: '~ 11%', tone: 'blue' },
             icon: ConversationsIcon,
             iconTone: 'muted',
         },
@@ -625,16 +563,12 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'conversationsTotal',
             label: 'Gespräche insgesamt',
             title: 'Gespräche insgesamt',
-            value: '168',
-            trend: { value: '~ 14%', tone: 'blue' },
             icon: ConversationsIcon,
         },
         {
             key: 'textMessagesTotal',
             label: 'Textnachrichten',
             title: 'Textnachrichten',
-            value: '142',
-            trend: { value: '~ 18%', tone: 'blue' },
             icon: TextMessagesIcon,
             iconTone: 'muted',
         },
@@ -642,9 +576,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'messagesSeekers',
             label: 'Anzahl Nachrichten Ratsuchende',
             title: 'Nachrichten Ratsuchende',
-            value: '2.480',
-            detail: 'Diese Woche',
-            trend: { value: '~ 10%', tone: 'blue' },
             icon: TextMessagesIcon,
             iconTone: 'muted',
         },
@@ -652,9 +583,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'messagesCounselors',
             label: 'Anzahl Nachrichten Beratende',
             title: 'Nachrichten Beratende',
-            value: '2.035',
-            detail: 'Diese Woche',
-            trend: { value: '~ 7%', tone: 'blue' },
             icon: TextMessagesIcon,
             iconTone: 'muted',
         },
@@ -662,8 +590,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'phoneShare',
             label: 'Anruf-Anteil',
             title: 'Anrufe',
-            value: '21%',
-            trend: { value: '~ 6%', tone: 'blue' },
             icon: PhoneCallsIcon,
             iconTone: 'coral',
         },
@@ -671,8 +597,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'videoShare',
             label: 'Videoanruf-Anteil',
             title: 'Videoanrufe',
-            value: '8%',
-            trend: { value: '~ 28%', tone: 'dark' },
             icon: VideoCallsIcon,
             iconTone: 'danger',
         },
@@ -680,9 +604,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'videoCallCount',
             label: 'Anzahl Videoanrufe',
             title: 'Anzahl Videoanrufe',
-            value: '48',
-            detail: 'Diese Woche',
-            trend: { value: '~ 16%', tone: 'blue' },
             icon: VideoCallsIcon,
             iconTone: 'danger',
         },
@@ -690,8 +611,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'voiceShare',
             label: 'Sprachnachrichten',
             title: 'Sprachnachrichten',
-            value: '19%',
-            trend: { value: '~ 11%', tone: 'blue' },
             icon: VoiceMessagesIcon,
             iconTone: 'coral',
         },
@@ -699,27 +618,18 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'activeAgencies',
             label: 'Beratungsstellen',
             title: 'aktive Beratungsstellen',
-            value: '43',
-            detail: 'Durchschnitt pro Monat',
-            trend: { value: '~ 8%', tone: 'blue' },
             icon: ActiveAgenciesIcon,
         },
         {
             key: 'counselors',
             label: 'aktive Beratende',
             title: 'aktive Beratende',
-            value: '186',
-            detail: 'Durchschnitt pro Monat',
-            trend: { value: '~ 7%', tone: 'blue' },
             icon: ActiveAgenciesIcon,
         },
         {
             key: 'messagesPerSession',
             label: 'Ø Nachrichten/Gespräch',
             title: 'Nachrichten pro Gespräch',
-            value: '6,9',
-            detail: 'Durchschnitt pro Gespräch',
-            trend: { value: '~ 5%', tone: 'blue' },
             icon: TextMessagesIcon,
             iconTone: 'muted',
         },
@@ -727,9 +637,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'activeConversations',
             label: 'aktive Gespräche',
             title: 'aktive Gespräche',
-            value: '211',
-            detail: 'heute aktiv',
-            trend: { value: '~ 3%', tone: 'blue' },
             icon: ConversationsIcon,
             iconTone: 'muted',
         },
@@ -737,36 +644,24 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'topTopic',
             label: 'Häufigstes Thema',
             title: 'Häufigstes Thema',
-            value: 'U25',
-            detail: 'Dieser Monat',
-            trend: { value: '~ 41%', tone: 'dark' },
             icon: TopicIcon,
         },
         {
             key: 'previousMonth',
             label: 'Thema letzter Monat',
             title: 'Häufigstes Thema',
-            value: 'Schulden',
-            detail: 'Letzter Monat',
-            trend: { value: '~ 35%', tone: 'dark' },
             icon: TopicIcon,
         },
         {
             key: 'twoMonthsAgo',
             label: 'Thema vor 2 Monaten',
             title: 'Häufigstes Thema',
-            value: 'Familie',
-            detail: 'Vor 2 Monaten',
-            trend: { value: '~ 29%', tone: 'dark' },
             icon: TopicIcon,
         },
         {
             key: 'threeMonthsAgo',
             label: 'Thema vor 3 Monaten',
             title: 'Häufigstes Thema',
-            value: 'Sucht',
-            detail: 'Vor 3 Monaten',
-            trend: { value: '~ 22%', tone: 'dark' },
             icon: TopicIcon,
         },
     ],
@@ -775,45 +670,30 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'all',
             label: 'Anfragen gesamt',
             title: 'Anfragen gesamt',
-            value: '96',
-            detail: 'Vormonat gesamt 112',
-            trend: { value: '~ 7%', tone: 'red' },
             icon: RequestsIcon,
         },
         {
             key: 'oneToOne',
             label: 'Nähe (1:1)',
             title: 'Nähe (1:1)',
-            value: '42',
-            detail: '1:1-Anfragen',
-            trend: { value: '~ 6%', tone: 'blue' },
             icon: RequestsIcon,
         },
         {
             key: 'liveChat',
             label: 'Live-Chat',
             title: 'Live-Chat',
-            value: '31',
-            detail: 'Live-Chat-Anfragen',
-            trend: { value: '~ 4%', tone: 'blue' },
             icon: RequestsIcon,
         },
         {
             key: 'groups',
             label: 'Gruppen',
             title: 'Gruppen',
-            value: '23',
-            detail: 'Gruppen-Anfragen',
-            trend: { value: '~ 3%', tone: 'red' },
             icon: RequestsIcon,
         },
         {
             key: 'cases',
             label: 'Anzahl Beratungsfälle',
             title: 'Beratungsfälle',
-            value: '620',
-            detail: 'Diese Woche',
-            trend: { value: '~ 8%', tone: 'blue' },
             icon: ConversationsIcon,
             iconTone: 'muted',
         },
@@ -821,16 +701,12 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'conversationsTotal',
             label: 'Gespräche insgesamt',
             title: 'Gespräche insgesamt',
-            value: '74',
-            trend: { value: '~ 9%', tone: 'blue' },
             icon: ConversationsIcon,
         },
         {
             key: 'textMessagesTotal',
             label: 'Textnachrichten',
             title: 'Textnachrichten',
-            value: '58',
-            trend: { value: '~ 13%', tone: 'blue' },
             icon: TextMessagesIcon,
             iconTone: 'muted',
         },
@@ -838,9 +714,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'messagesSeekers',
             label: 'Anzahl Nachrichten Ratsuchende',
             title: 'Nachrichten Ratsuchende',
-            value: '940',
-            detail: 'Diese Woche',
-            trend: { value: '~ 7%', tone: 'blue' },
             icon: TextMessagesIcon,
             iconTone: 'muted',
         },
@@ -848,9 +721,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'messagesCounselors',
             label: 'Anzahl Nachrichten Beratende',
             title: 'Nachrichten Beratende',
-            value: '820',
-            detail: 'Diese Woche',
-            trend: { value: '~ 5%', tone: 'blue' },
             icon: TextMessagesIcon,
             iconTone: 'muted',
         },
@@ -858,8 +728,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'phoneShare',
             label: 'Anruf-Anteil',
             title: 'Anrufe',
-            value: '18%',
-            trend: { value: '~ 2%', tone: 'blue' },
             icon: PhoneCallsIcon,
             iconTone: 'coral',
         },
@@ -867,8 +735,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'videoShare',
             label: 'Videoanruf-Anteil',
             title: 'Videoanrufe',
-            value: '11%',
-            trend: { value: '~ 19%', tone: 'dark' },
             icon: VideoCallsIcon,
             iconTone: 'danger',
         },
@@ -876,9 +742,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'videoCallCount',
             label: 'Anzahl Videoanrufe',
             title: 'Anzahl Videoanrufe',
-            value: '18',
-            detail: 'Diese Woche',
-            trend: { value: '~ 9%', tone: 'blue' },
             icon: VideoCallsIcon,
             iconTone: 'danger',
         },
@@ -886,8 +749,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'voiceShare',
             label: 'Sprachnachrichten',
             title: 'Sprachnachrichten',
-            value: '16%',
-            trend: { value: '~ 6%', tone: 'blue' },
             icon: VoiceMessagesIcon,
             iconTone: 'coral',
         },
@@ -895,27 +756,18 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'activeCounselors',
             label: 'aktive Beratende',
             title: 'aktive Beratende',
-            value: '18',
-            detail: 'Durchschnitt pro Monat',
-            trend: { value: '~ 3%', tone: 'blue' },
             icon: ActiveAgenciesIcon,
         },
         {
             key: 'counselors',
             label: 'Beratende im Dienst',
             title: 'Beratende im Dienst',
-            value: '12',
-            detail: 'heute aktiv',
-            trend: { value: '~ 2%', tone: 'blue' },
             icon: ActiveAgenciesIcon,
         },
         {
             key: 'messagesPerSession',
             label: 'Ø Nachrichten/Gespräch',
             title: 'Nachrichten pro Gespräch',
-            value: '5,8',
-            detail: 'Durchschnitt pro Gespräch',
-            trend: { value: '~ 4%', tone: 'blue' },
             icon: TextMessagesIcon,
             iconTone: 'muted',
         },
@@ -923,9 +775,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'activeConversations',
             label: 'aktive Gespräche',
             title: 'aktive Gespräche',
-            value: '93',
-            detail: 'heute aktiv',
-            trend: { value: '~ 3%', tone: 'blue' },
             icon: ConversationsIcon,
             iconTone: 'muted',
         },
@@ -933,36 +782,24 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOption[]> = {
             key: 'topTopic',
             label: 'Häufigstes Thema',
             title: 'Häufigstes Thema',
-            value: 'Trennung',
-            detail: 'Dieser Monat',
-            trend: { value: '~ 34%', tone: 'dark' },
             icon: TopicIcon,
         },
         {
             key: 'previousMonth',
             label: 'Thema letzter Monat',
             title: 'Häufigstes Thema',
-            value: 'Schulden',
-            detail: 'Letzter Monat',
-            trend: { value: '~ 28%', tone: 'dark' },
             icon: TopicIcon,
         },
         {
             key: 'twoMonthsAgo',
             label: 'Thema vor 2 Monaten',
             title: 'Häufigstes Thema',
-            value: 'Familie',
-            detail: 'Vor 2 Monaten',
-            trend: { value: '~ 24%', tone: 'dark' },
             icon: TopicIcon,
         },
         {
             key: 'threeMonthsAgo',
             label: 'Thema vor 3 Monaten',
             title: 'Häufigstes Thema',
-            value: 'Wohnen',
-            detail: 'Vor 3 Monaten',
-            trend: { value: '~ 19%', tone: 'dark' },
             icon: TopicIcon,
         },
     ],
@@ -1167,6 +1004,30 @@ const getEffectiveStatisticTargetIds = (
 
 const formatMetricValue = (value: MetricValue) => (value === null ? NO_DATA_LABEL : formatIntegerMetric(value));
 
+/**
+ * True when the aggregated statistics carry no counselling activity at all — fresh
+ * tenant or agency, nothing happened yet. The dashboard then shows ONE friendly
+ * DashboardEmptyState hero instead of repeating "Keine Daten" on every card.
+ * Structural values (counselors, assigned agencies) don't count as activity: a tenant
+ * with onboarded counsellors but no counselling yet still gets the hero. KDG
+ * suppression is handled separately (notice + per-card hints), never by the hero.
+ */
+const activityMetricKeys = numericFilterMetricKeys.filter(
+    (metricKey) => metricKey !== 'counselors' && metricKey !== 'activeAgencies',
+);
+
+const isFilterStatsEmpty = (stats: FilterTargetStatistics): boolean =>
+    !stats.enquiriesPreviousMonth &&
+    activityMetricKeys.every((metricKey) => !stats.metrics[metricKey]) &&
+    [
+        stats.metrics.topTopic,
+        stats.metrics.previousMonth,
+        stats.metrics.twoMonthsAgo,
+        stats.metrics.threeMonthsAgo,
+    ].every((topic) => topic.share === 0) &&
+    Object.values(stats.caseCharts).every((weekValues) => weekValues.every((value) => value === 0)) &&
+    Object.values(stats.conversation).every((segmentValues) => segmentValues.every((value) => value === 0));
+
 const buildChangeTrend = (current: MetricValue, previous: MetricValue): TrendBadgeDefinition | undefined => {
     if (current === null || previous === null || (previous === 0 && current === 0)) {
         return undefined;
@@ -1185,96 +1046,126 @@ const buildChangeTrend = (current: MetricValue, previous: MetricValue): TrendBad
 const buildTopicTrend = (topic: TopicStatistic): TrendBadgeDefinition | undefined =>
     topic.share > 0 ? { value: `~ ${topic.share}%`, tone: 'dark' } : undefined;
 
+// German seed strings for the calm empty presentation (translated like every other
+// dashboard seed via dashboardTextKeyByValue).
+const NOT_TRACKED_HINT = 'wird noch nicht erfasst';
+const NO_DATA_YET_HINT = 'noch keine Daten';
+const TOPIC_PENDING_HINT = 'zeigt sich ab dem ersten Gespräch';
+
 /**
  * Maps aggregated real statistics onto the dashboard metric slots. Metrics without an
- * application-layer data source are rendered as "Keine Daten"; trends are only shown
- * where a real comparison value exists (requests vs. previous month, topic shares).
+ * application-layer data source keep the "Keine Daten" value (CSV export, screen
+ * readers) but additionally carry an emptyHint so the card renders the calm dash +
+ * hint presentation; trends are only shown where a real comparison value exists
+ * (requests vs. previous month, topic shares).
  */
+// Record (not Partial<Record<...>>) is deliberate: it makes a missing CardMenuKey a
+// compile-time error instead of a silent runtime gap, so every card/menu key added to
+// CardMenuKey is forced to get a real mapping here before it can render anything.
 const buildMetricOverridesFromFilterStats = (
     stats: FilterTargetStatistics,
-): Partial<Record<CardMenuKey, Partial<CardMenuOption>>> => {
+    allTargetsSuppressed = false,
+): Record<CardMenuKey, Partial<CardMenuOption>> => {
     const requestTrend = buildChangeTrend(stats.metrics.oneToOne, stats.enquiriesPreviousMonth);
     const requestDetail =
         stats.enquiriesPreviousMonth !== null
             ? `Vormonat gesamt ${formatIntegerMetric(stats.enquiriesPreviousMonth)}`
             : undefined;
+    // null = withheld (all targets KDG-suppressed) or simply not there yet.
+    const emptyMetricHint = allTargetsSuppressed ? SUPPRESSED_DETAIL : NO_DATA_YET_HINT;
+    const emptyTopicHint = allTargetsSuppressed ? SUPPRESSED_DETAIL : TOPIC_PENDING_HINT;
+    const metricEmptyHint = (value: MetricValue) => (value === null ? emptyMetricHint : undefined);
+    const topicEmptyHint = (topic: TopicStatistic) => (topic.label === NO_DATA_LABEL ? emptyTopicHint : undefined);
 
     return {
         activeAgencies: {
             value: formatMetricValue(stats.metrics.activeAgencies),
+            emptyHint: metricEmptyHint(stats.metrics.activeAgencies),
             detail: 'zugeordnete Beratungsstellen',
             trend: undefined,
         },
         activeConversations: {
             value: formatMetricValue(stats.metrics.activeConversations),
+            emptyHint: metricEmptyHint(stats.metrics.activeConversations),
             detail: 'heute aktiv',
             trend: undefined,
         },
         activeCounselors: {
             value: formatMetricValue(stats.metrics.counselors),
+            emptyHint: metricEmptyHint(stats.metrics.counselors),
             detail: undefined,
             trend: undefined,
         },
         all: {
             value: formatMetricValue(stats.metrics.oneToOne),
+            emptyHint: metricEmptyHint(stats.metrics.oneToOne),
             detail: requestDetail,
             trend: requestTrend,
         },
         cases: {
             value: formatMetricValue(stats.metrics.cases),
+            emptyHint: metricEmptyHint(stats.metrics.cases),
             detail: 'Aktuell in Beratung',
             trend: undefined,
         },
-        consultations: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        consultations: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
         conversationsTotal: {
             value: formatMetricValue(stats.metrics.conversationsTotal),
+            emptyHint: metricEmptyHint(stats.metrics.conversationsTotal),
             detail: 'gesamt',
             trend: undefined,
         },
         counselors: {
             value: formatMetricValue(stats.metrics.counselors),
+            emptyHint: metricEmptyHint(stats.metrics.counselors),
             detail: undefined,
             trend: undefined,
         },
         groups: {
             value: formatMetricValue(stats.metrics.groups),
+            emptyHint: metricEmptyHint(stats.metrics.groups),
             detail: 'gesamt',
             trend: undefined,
         },
-        liveChat: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
-        messagesCounselors: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
-        messagesPerSession: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
-        messagesSeekers: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        liveChat: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        messagesCounselors: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        messagesPerSession: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        messagesSeekers: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
         oneToOne: {
             value: formatMetricValue(stats.metrics.oneToOne),
+            emptyHint: metricEmptyHint(stats.metrics.oneToOne),
             detail: '1:1-Anfragen',
             trend: requestTrend,
         },
-        phoneShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        phoneShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
         previousMonth: {
             value: stats.metrics.previousMonth.label,
+            emptyHint: topicEmptyHint(stats.metrics.previousMonth),
             detail: 'Letzter Monat',
             trend: buildTopicTrend(stats.metrics.previousMonth),
         },
-        textMessagesTotal: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        textMessagesTotal: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
         threeMonthsAgo: {
             value: stats.metrics.threeMonthsAgo.label,
+            emptyHint: topicEmptyHint(stats.metrics.threeMonthsAgo),
             detail: 'Vor 3 Monaten',
             trend: buildTopicTrend(stats.metrics.threeMonthsAgo),
         },
         topTopic: {
             value: stats.metrics.topTopic.label,
+            emptyHint: topicEmptyHint(stats.metrics.topTopic),
             detail: 'Dieser Monat',
             trend: buildTopicTrend(stats.metrics.topTopic),
         },
         twoMonthsAgo: {
             value: stats.metrics.twoMonthsAgo.label,
+            emptyHint: topicEmptyHint(stats.metrics.twoMonthsAgo),
             detail: 'Vor 2 Monaten',
             trend: buildTopicTrend(stats.metrics.twoMonthsAgo),
         },
-        videoCallCount: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
-        videoShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
-        voiceShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined },
+        videoCallCount: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        videoShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        voiceShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
     };
 };
 
@@ -1307,33 +1198,60 @@ const buildConversationByPeriodFromFilterStats = (
         {} as Record<ConversationPeriodKey, ConversationPeriodData>,
     );
 
-const noSourceMetricOverride: Partial<CardMenuOption> = {
+const noSourceMetricOverride: Required<Pick<CardMenuOption, 'value' | 'detail' | 'trend' | 'emptyHint'>> = {
     value: NO_DATA_LABEL,
     detail: undefined,
     trend: undefined,
+    emptyHint: NOT_TRACKED_HINT,
 };
 
-const applyMetricOverride = <Metric extends StatisticCardDefinition | CardMenuOption>(
-    metric: Metric,
+/**
+ * Resolves the value/detail/trend for a card or menu-option blueprint. Every
+ * call always applies an override - real metric data when metricKey maps to
+ * one, otherwise the explicit "Keine Daten" fallback - so an unmapped key can
+ * only ever surface as an honest empty state, never as the (now-removed)
+ * hardcoded blueprint number.
+ */
+const resolveMetricOverride = (
     metricOverrides: Partial<Record<CardMenuKey, Partial<CardMenuOption>>>,
     metricKey?: CardMenuKey,
-): Metric => {
-    if (!metricKey) {
-        return metric;
-    }
+): Partial<CardMenuOption> => (metricKey && metricOverrides[metricKey]) || noSourceMetricOverride;
 
-    const override = metricOverrides[metricKey] ?? noSourceMetricOverride;
+const applyMenuOptionOverride = (
+    option: CardMenuOptionBlueprint,
+    metricOverrides: Partial<Record<CardMenuKey, Partial<CardMenuOption>>>,
+    metricKey?: CardMenuKey,
+): CardMenuOption =>
+    ({
+        ...option,
+        ...resolveMetricOverride(metricOverrides, metricKey),
+    } as CardMenuOption);
 
-    return { ...metric, ...override };
-};
+/**
+ * Also resolves every embedded menuOptions entry through applyMenuOptionOverride
+ * (keyed by each option's own `key`), not just the card's own value/detail/trend.
+ * Top cards get their menuOptions rebuilt again by getPersonalizedMetricCard right
+ * after, but communication cards render their blueprint's menuOptions as-is - those
+ * need real values resolved here or their dropdown would show blank numbers.
+ */
+const applyCardOverride = (
+    card: StatisticCardBlueprint,
+    metricOverrides: Partial<Record<CardMenuKey, Partial<CardMenuOption>>>,
+    metricKey?: CardMenuKey,
+): StatisticCardDefinition =>
+    ({
+        ...card,
+        ...resolveMetricOverride(metricOverrides, metricKey),
+        menuOptions: card.menuOptions?.map((option) => applyMenuOptionOverride(option, metricOverrides, option.key)),
+    } as StatisticCardDefinition);
 
 const getDisplayMetricCard = (
-    card: StatisticCardDefinition,
+    card: StatisticCardBlueprint,
     metricOverrides: Partial<Record<CardMenuKey, Partial<CardMenuOption>>>,
-) => applyMetricOverride(card, metricOverrides, defaultMetricKeyByCardKey[card.key]);
+) => applyCardOverride(card, metricOverrides, defaultMetricKeyByCardKey[card.key]);
 
 const getPersonalizedMetricCard = (
-    card: StatisticCardDefinition,
+    card: StatisticCardBlueprint,
     activeScope: ScopeKey,
     metricOverrides: Partial<Record<CardMenuKey, Partial<CardMenuOption>>>,
 ): StatisticCardDefinition => {
@@ -1346,48 +1264,33 @@ const getPersonalizedMetricCard = (
         menuLabel: 'Meine Kennzahl',
         menuOptions: dashboardMetricOptionsByScope[activeScope]
             .filter((option) => !duplicatedCommunicationMetricKeys.has(option.key))
-            .map((option) => withMetricMenuDescription(applyMetricOverride(option, metricOverrides, option.key))),
+            .map((option) => withMetricMenuDescription(applyMenuOptionOverride(option, metricOverrides, option.key))),
     };
 };
 
-const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
+const dashboardByScope: Record<ScopeKey, ScopeDashboardBlueprint> = {
     platform: {
         topCards: [
             {
                 key: 'requests',
                 title: 'Anfragen',
-                value: '870',
-                detail: 'Vormonat gesamt 1.050',
-                trend: { value: '~ 20%', tone: 'red' },
                 icon: RequestsIcon,
                 menuOptions: [
                     {
                         key: 'all',
                         label: 'Alle Chattypen',
-                        value: '870',
-                        detail: 'Vormonat gesamt 1.050',
-                        trend: { value: '~ 20%', tone: 'red' },
                     },
                     {
                         key: 'oneToOne',
                         label: 'Nähe (1:1)',
-                        value: '420',
-                        detail: 'Nähe / 1:1-Anfragen',
-                        trend: { value: '~ 18%', tone: 'blue' },
                     },
                     {
                         key: 'liveChat',
                         label: 'Live-Chat',
-                        value: '250',
-                        detail: 'Live-Chat-Anfragen',
-                        trend: { value: '~ 11%', tone: 'blue' },
                     },
                     {
                         key: 'groups',
                         label: 'Gruppen',
-                        value: '200',
-                        detail: 'Gruppen-Anfragen',
-                        trend: { value: '~ 9%', tone: 'red' },
                     },
                 ],
                 size: 'large',
@@ -1395,9 +1298,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'active-agencies',
                 title: 'aktive Beratungsstellen',
-                value: '320',
-                detail: 'Durchschnitt pro Monat',
-                trend: { value: '~ 20%', tone: 'blue' },
                 icon: ActiveAgenciesIcon,
                 menuLabel: 'Meine Kennzahl',
                 menuAriaLabel: 'Persönliche Kennzahl auswählen',
@@ -1406,18 +1306,12 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                         key: 'all',
                         label: 'Beratungsstellen',
                         title: 'aktive Beratungsstellen',
-                        value: '320',
-                        detail: 'Durchschnitt pro Monat',
-                        trend: { value: '~ 20%', tone: 'blue' },
                         icon: ActiveAgenciesIcon,
                     },
                     {
                         key: 'consultations',
                         label: 'Beratungsgespräche',
                         title: 'Beratungsgespräche',
-                        value: '3.150',
-                        detail: 'Diese Woche',
-                        trend: { value: '~ 18%', tone: 'blue' },
                         icon: ConversationsIcon,
                         iconTone: 'muted',
                     },
@@ -1425,18 +1319,12 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                         key: 'counselors',
                         label: 'aktive Beratende',
                         title: 'aktive Beratende',
-                        value: '1.240',
-                        detail: 'Durchschnitt pro Monat',
-                        trend: { value: '~ 12%', tone: 'blue' },
                         icon: ActiveAgenciesIcon,
                     },
                     {
                         key: 'messagesPerSession',
                         label: 'Ø Nachrichten/Gespräch',
                         title: 'Nachrichten pro Gespräch',
-                        value: '8,4',
-                        detail: 'Durchschnitt pro Gespräch',
-                        trend: { value: '~ 6%', tone: 'blue' },
                         icon: TextMessagesIcon,
                         iconTone: 'muted',
                     },
@@ -1444,9 +1332,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                         key: 'activeConversations',
                         label: 'aktive Gespräche',
                         title: 'aktive Gespräche',
-                        value: '555',
-                        detail: 'heute aktiv',
-                        trend: { value: '~ 4%', tone: 'blue' },
                         icon: ConversationsIcon,
                         iconTone: 'muted',
                     },
@@ -1456,8 +1341,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'top-topic',
                 title: 'Häufigstes Thema',
-                value: 'Schulden',
-                trend: { value: '~ 59%', tone: 'dark' },
                 icon: TopicIcon,
                 menuLabel: 'Zeitraum',
                 menuAriaLabel: 'Häufigstes Thema nach Zeitraum filtern',
@@ -1465,30 +1348,18 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                     {
                         key: 'all',
                         label: 'Dieser Monat',
-                        value: 'Schulden',
-                        detail: 'Dieser Monat',
-                        trend: { value: '~ 59%', tone: 'dark' },
                     },
                     {
                         key: 'previousMonth',
                         label: 'Letzter Monat',
-                        value: 'Wohnen',
-                        detail: 'Letzter Monat',
-                        trend: { value: '~ 44%', tone: 'dark' },
                     },
                     {
                         key: 'twoMonthsAgo',
                         label: 'Vor 2 Monaten',
-                        value: 'Trennung',
-                        detail: 'Vor 2 Monaten',
-                        trend: { value: '~ 31%', tone: 'dark' },
                     },
                     {
                         key: 'threeMonthsAgo',
                         label: 'Vor 3 Monaten',
-                        value: 'Sucht',
-                        detail: 'Vor 3 Monaten',
-                        trend: { value: '~ 27%', tone: 'dark' },
                     },
                 ],
                 size: 'large',
@@ -1498,16 +1369,12 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'conversations',
                 title: 'Gespräche insgesamt',
-                value: '420',
-                trend: { value: '~ 20%', tone: 'blue' },
                 icon: ConversationsIcon,
                 size: 'medium',
             },
             {
                 key: 'text-messages',
                 title: 'Textnachrichten',
-                value: '320',
-                trend: { value: '~ 26%', tone: 'red' },
                 icon: TextMessagesIcon,
                 iconTone: 'muted',
                 size: 'small',
@@ -1515,8 +1382,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'phone-calls',
                 title: 'Anrufe',
-                value: '15%',
-                trend: { value: '~ 4%', tone: 'blue' },
                 icon: PhoneCallsIcon,
                 iconTone: 'coral',
                 size: 'small',
@@ -1524,8 +1389,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'video-calls',
                 title: 'Videoanrufe',
-                value: '4%',
-                trend: { value: '~ 67%', tone: 'dark' },
                 icon: VideoCallsIcon,
                 iconTone: 'danger',
                 size: 'small',
@@ -1533,8 +1396,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'voice-messages',
                 title: 'Sprachnachrichten',
-                value: '32%',
-                trend: { value: '~ 20%', tone: 'blue' },
                 icon: VoiceMessagesIcon,
                 iconTone: 'coral',
                 size: 'small',
@@ -1546,38 +1407,23 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'requests',
                 title: 'Anfragen',
-                value: '312',
-                detail: 'Vormonat gesamt 386',
-                trend: { value: '~ 12%', tone: 'blue' },
                 icon: RequestsIcon,
                 menuOptions: [
                     {
                         key: 'all',
                         label: 'Alle Chattypen',
-                        value: '312',
-                        detail: 'Vormonat gesamt 386',
-                        trend: { value: '~ 12%', tone: 'blue' },
                     },
                     {
                         key: 'oneToOne',
                         label: 'Nähe (1:1)',
-                        value: '142',
-                        detail: 'Nähe / 1:1-Anfragen',
-                        trend: { value: '~ 9%', tone: 'blue' },
                     },
                     {
                         key: 'liveChat',
                         label: 'Live-Chat',
-                        value: '96',
-                        detail: 'Live-Chat-Anfragen',
-                        trend: { value: '~ 13%', tone: 'blue' },
                     },
                     {
                         key: 'groups',
                         label: 'Gruppen',
-                        value: '74',
-                        detail: 'Gruppen-Anfragen',
-                        trend: { value: '~ 6%', tone: 'red' },
                     },
                 ],
                 size: 'large',
@@ -1585,9 +1431,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'active-agencies',
                 title: 'aktive Beratungsstellen',
-                value: '43',
-                detail: 'Durchschnitt pro Monat',
-                trend: { value: '~ 8%', tone: 'blue' },
                 icon: ActiveAgenciesIcon,
                 menuLabel: 'Meine Kennzahl',
                 menuAriaLabel: 'Persönliche Kennzahl auswählen',
@@ -1596,18 +1439,12 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                         key: 'all',
                         label: 'Beratungsstellen',
                         title: 'aktive Beratungsstellen',
-                        value: '43',
-                        detail: 'Durchschnitt pro Monat',
-                        trend: { value: '~ 8%', tone: 'blue' },
                         icon: ActiveAgenciesIcon,
                     },
                     {
                         key: 'consultations',
                         label: 'Beratungsgespräche',
                         title: 'Beratungsgespräche',
-                        value: '1.520',
-                        detail: 'Diese Woche',
-                        trend: { value: '~ 11%', tone: 'blue' },
                         icon: ConversationsIcon,
                         iconTone: 'muted',
                     },
@@ -1615,18 +1452,12 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                         key: 'counselors',
                         label: 'aktive Beratende',
                         title: 'aktive Beratende',
-                        value: '186',
-                        detail: 'Durchschnitt pro Monat',
-                        trend: { value: '~ 7%', tone: 'blue' },
                         icon: ActiveAgenciesIcon,
                     },
                     {
                         key: 'messagesPerSession',
                         label: 'Ø Nachrichten/Gespräch',
                         title: 'Nachrichten pro Gespräch',
-                        value: '6,9',
-                        detail: 'Durchschnitt pro Gespräch',
-                        trend: { value: '~ 5%', tone: 'blue' },
                         icon: TextMessagesIcon,
                         iconTone: 'muted',
                     },
@@ -1634,9 +1465,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                         key: 'activeConversations',
                         label: 'aktive Gespräche',
                         title: 'aktive Gespräche',
-                        value: '211',
-                        detail: 'heute aktiv',
-                        trend: { value: '~ 3%', tone: 'blue' },
                         icon: ConversationsIcon,
                         iconTone: 'muted',
                     },
@@ -1646,8 +1474,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'top-topic',
                 title: 'Häufigstes Thema',
-                value: 'U25',
-                trend: { value: '~ 41%', tone: 'dark' },
                 icon: TopicIcon,
                 menuLabel: 'Zeitraum',
                 menuAriaLabel: 'Häufigstes Thema nach Zeitraum filtern',
@@ -1655,30 +1481,18 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                     {
                         key: 'all',
                         label: 'Dieser Monat',
-                        value: 'U25',
-                        detail: 'Dieser Monat',
-                        trend: { value: '~ 41%', tone: 'dark' },
                     },
                     {
                         key: 'previousMonth',
                         label: 'Letzter Monat',
-                        value: 'Schulden',
-                        detail: 'Letzter Monat',
-                        trend: { value: '~ 35%', tone: 'dark' },
                     },
                     {
                         key: 'twoMonthsAgo',
                         label: 'Vor 2 Monaten',
-                        value: 'Familie',
-                        detail: 'Vor 2 Monaten',
-                        trend: { value: '~ 29%', tone: 'dark' },
                     },
                     {
                         key: 'threeMonthsAgo',
                         label: 'Vor 3 Monaten',
-                        value: 'Sucht',
-                        detail: 'Vor 3 Monaten',
-                        trend: { value: '~ 22%', tone: 'dark' },
                     },
                 ],
                 size: 'large',
@@ -1688,16 +1502,12 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'conversations',
                 title: 'Gespräche insgesamt',
-                value: '168',
-                trend: { value: '~ 14%', tone: 'blue' },
                 icon: ConversationsIcon,
                 size: 'medium',
             },
             {
                 key: 'text-messages',
                 title: 'Textnachrichten',
-                value: '142',
-                trend: { value: '~ 18%', tone: 'blue' },
                 icon: TextMessagesIcon,
                 iconTone: 'muted',
                 size: 'small',
@@ -1705,8 +1515,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'phone-calls',
                 title: 'Anrufe',
-                value: '21%',
-                trend: { value: '~ 6%', tone: 'blue' },
                 icon: PhoneCallsIcon,
                 iconTone: 'coral',
                 size: 'small',
@@ -1714,8 +1522,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'video-calls',
                 title: 'Videoanrufe',
-                value: '8%',
-                trend: { value: '~ 28%', tone: 'dark' },
                 icon: VideoCallsIcon,
                 iconTone: 'danger',
                 size: 'small',
@@ -1723,8 +1529,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'voice-messages',
                 title: 'Sprachnachrichten',
-                value: '19%',
-                trend: { value: '~ 11%', tone: 'blue' },
                 icon: VoiceMessagesIcon,
                 iconTone: 'coral',
                 size: 'small',
@@ -1736,38 +1540,23 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'requests',
                 title: 'Anfragen',
-                value: '96',
-                detail: 'Vormonat gesamt 112',
-                trend: { value: '~ 7%', tone: 'red' },
                 icon: RequestsIcon,
                 menuOptions: [
                     {
                         key: 'all',
                         label: 'Alle Chattypen',
-                        value: '96',
-                        detail: 'Vormonat gesamt 112',
-                        trend: { value: '~ 7%', tone: 'red' },
                     },
                     {
                         key: 'oneToOne',
                         label: 'Nähe (1:1)',
-                        value: '42',
-                        detail: 'Nähe / 1:1-Anfragen',
-                        trend: { value: '~ 6%', tone: 'blue' },
                     },
                     {
                         key: 'liveChat',
                         label: 'Live-Chat',
-                        value: '31',
-                        detail: 'Live-Chat-Anfragen',
-                        trend: { value: '~ 4%', tone: 'blue' },
                     },
                     {
                         key: 'groups',
                         label: 'Gruppen',
-                        value: '23',
-                        detail: 'Gruppen-Anfragen',
-                        trend: { value: '~ 3%', tone: 'red' },
                     },
                 ],
                 size: 'large',
@@ -1775,9 +1564,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'active-counselors',
                 title: 'aktive Beratende',
-                value: '18',
-                detail: 'Durchschnitt pro Monat',
-                trend: { value: '~ 3%', tone: 'blue' },
                 icon: ActiveAgenciesIcon,
                 menuLabel: 'Meine Kennzahl',
                 menuAriaLabel: 'Persönliche Kennzahl auswählen',
@@ -1786,18 +1572,12 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                         key: 'all',
                         label: 'aktive Beratende',
                         title: 'aktive Beratende',
-                        value: '18',
-                        detail: 'Durchschnitt pro Monat',
-                        trend: { value: '~ 3%', tone: 'blue' },
                         icon: ActiveAgenciesIcon,
                     },
                     {
                         key: 'consultations',
                         label: 'Beratungsgespräche',
                         title: 'Beratungsgespräche',
-                        value: '620',
-                        detail: 'Diese Woche',
-                        trend: { value: '~ 8%', tone: 'blue' },
                         icon: ConversationsIcon,
                         iconTone: 'muted',
                     },
@@ -1805,18 +1585,12 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                         key: 'counselors',
                         label: 'Beratende im Dienst',
                         title: 'Beratende im Dienst',
-                        value: '12',
-                        detail: 'heute aktiv',
-                        trend: { value: '~ 2%', tone: 'blue' },
                         icon: ActiveAgenciesIcon,
                     },
                     {
                         key: 'messagesPerSession',
                         label: 'Ø Nachrichten/Gespräch',
                         title: 'Nachrichten pro Gespräch',
-                        value: '5,8',
-                        detail: 'Durchschnitt pro Gespräch',
-                        trend: { value: '~ 4%', tone: 'blue' },
                         icon: TextMessagesIcon,
                         iconTone: 'muted',
                     },
@@ -1824,9 +1598,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                         key: 'activeConversations',
                         label: 'aktive Gespräche',
                         title: 'aktive Gespräche',
-                        value: '93',
-                        detail: 'heute aktiv',
-                        trend: { value: '~ 3%', tone: 'blue' },
                         icon: ConversationsIcon,
                         iconTone: 'muted',
                     },
@@ -1836,8 +1607,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'top-topic',
                 title: 'Häufigstes Thema',
-                value: 'Trennung',
-                trend: { value: '~ 34%', tone: 'dark' },
                 icon: TopicIcon,
                 menuLabel: 'Zeitraum',
                 menuAriaLabel: 'Häufigstes Thema nach Zeitraum filtern',
@@ -1845,30 +1614,18 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
                     {
                         key: 'all',
                         label: 'Dieser Monat',
-                        value: 'Trennung',
-                        detail: 'Dieser Monat',
-                        trend: { value: '~ 34%', tone: 'dark' },
                     },
                     {
                         key: 'previousMonth',
                         label: 'Letzter Monat',
-                        value: 'Schulden',
-                        detail: 'Letzter Monat',
-                        trend: { value: '~ 28%', tone: 'dark' },
                     },
                     {
                         key: 'twoMonthsAgo',
                         label: 'Vor 2 Monaten',
-                        value: 'Familie',
-                        detail: 'Vor 2 Monaten',
-                        trend: { value: '~ 24%', tone: 'dark' },
                     },
                     {
                         key: 'threeMonthsAgo',
                         label: 'Vor 3 Monaten',
-                        value: 'Wohnen',
-                        detail: 'Vor 3 Monaten',
-                        trend: { value: '~ 19%', tone: 'dark' },
                     },
                 ],
                 size: 'large',
@@ -1878,16 +1635,12 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'conversations',
                 title: 'Gespräche insgesamt',
-                value: '74',
-                trend: { value: '~ 9%', tone: 'blue' },
                 icon: ConversationsIcon,
                 size: 'medium',
             },
             {
                 key: 'text-messages',
                 title: 'Textnachrichten',
-                value: '58',
-                trend: { value: '~ 13%', tone: 'blue' },
                 icon: TextMessagesIcon,
                 iconTone: 'muted',
                 size: 'small',
@@ -1895,8 +1648,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'phone-calls',
                 title: 'Anrufe',
-                value: '18%',
-                trend: { value: '~ 2%', tone: 'blue' },
                 icon: PhoneCallsIcon,
                 iconTone: 'coral',
                 size: 'small',
@@ -1904,8 +1655,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'video-calls',
                 title: 'Videoanrufe',
-                value: '11%',
-                trend: { value: '~ 19%', tone: 'dark' },
                 icon: VideoCallsIcon,
                 iconTone: 'danger',
                 size: 'small',
@@ -1913,8 +1662,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
             {
                 key: 'voice-messages',
                 title: 'Sprachnachrichten',
-                value: '16%',
-                trend: { value: '~ 6%', tone: 'blue' },
                 icon: VoiceMessagesIcon,
                 iconTone: 'coral',
                 size: 'small',
@@ -1922,87 +1669,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboard> = {
         ],
     },
 };
-
-const getCardClassName = (card: StatisticCardDefinition) =>
-    `statisticDashboard__metricCard statisticDashboard__metricCard--${card.size}`;
-
-const getTrendClassName = (tone: TrendScoreTone) => `statisticDashboard__trend statisticDashboard__trend--${tone}`;
-
-const getIconClassName = (tone: IconTone = 'plain') =>
-    `statisticDashboard__metricIcon statisticDashboard__metricIcon--${tone}`;
-
-const getTrendMagnitude = (value: string) => {
-    const match = value.replace(',', '.').match(/-?\d+(\.\d+)?/);
-
-    return match ? Math.abs(Number(match[0])) : 0;
-};
-
-const formatTrendValue = (value: string, isNegative: boolean, locale = 'de-DE') => {
-    const magnitude = getTrendMagnitude(value);
-    const formattedMagnitude = magnitude.toLocaleString(locale, {
-        maximumFractionDigits: 1,
-        minimumFractionDigits: Number.isInteger(magnitude) ? 0 : 1,
-    });
-
-    return `${isNegative ? '-' : '+'} ${formattedMagnitude}%`;
-};
-
-const getTrendDirection = (trend: TrendBadgeDefinition): TrendDirection => {
-    if (trend.direction) {
-        return trend.direction;
-    }
-
-    const magnitude = getTrendMagnitude(trend.value);
-    const isNegative = trend.tone === 'red';
-
-    if (isNegative) {
-        return magnitude >= 15 ? 'down' : 'downRight';
-    }
-
-    return trend.tone === 'dark' || magnitude >= 15 ? 'up' : 'upRight';
-};
-
-const getTrendScoreTone = (trend: TrendBadgeDefinition, direction: TrendDirection): TrendScoreTone => {
-    const magnitude = getTrendMagnitude(trend.value);
-    const isNegative = direction === 'down' || direction === 'downRight';
-
-    if (isNegative) {
-        return magnitude >= 20 ? 'critical' : 'bad';
-    }
-
-    return trend.tone === 'dark' || magnitude >= 50 ? 'great' : 'good';
-};
-
-const getTrendIcon = (direction: TrendDirection) => {
-    switch (direction) {
-        case 'up':
-            return ArrowUpward;
-        case 'down':
-            return ArrowDownward;
-        case 'upRight':
-            return NorthEast;
-        case 'downRight':
-            return SouthEast;
-        default:
-            return NorthEast;
-    }
-};
-
-const getEffectiveIconTone = (icon: SvgIcon, tone?: IconTone) => {
-    if (icon === RequestsIcon) {
-        return tone || 'muted';
-    }
-
-    if (icon === ConversationsIcon && tone === 'muted') {
-        return undefined;
-    }
-
-    return tone;
-};
-
-const AnimatedValue = ({ locale = 'de-DE', value }: { locale?: string; value: string }) => (
-    <>{useAnimatedDisplayValue(value, 2800, locale)}</>
-);
 
 const DonutChart = ({
     animationKey,
@@ -2120,168 +1786,6 @@ const DonutChart = ({
     );
 };
 
-const MetricIcon = ({ icon: Icon, tone }: { icon: SvgIcon; tone?: IconTone }) => (
-    <span className={getIconClassName(getEffectiveIconTone(Icon, tone))} aria-hidden="true">
-        <Icon />
-    </span>
-);
-
-const TrendBadge = ({
-    locale,
-    translate,
-    trend,
-}: {
-    locale: string;
-    translate: DashboardTranslate;
-    trend?: TrendBadgeDefinition;
-}) => {
-    if (!trend) {
-        return null;
-    }
-
-    const direction = getTrendDirection(trend);
-    const scoreTone = getTrendScoreTone(trend, direction);
-    const isNegative = direction === 'down' || direction === 'downRight';
-    const displayValue = formatTrendValue(trend.value, isNegative, locale);
-    const TrendIcon = getTrendIcon(direction);
-
-    return (
-        <span
-            className={getTrendClassName(scoreTone)}
-            aria-label={`${translateDashboardKey(
-                translate,
-                isNegative ? 'statistic.dashboard.trend.decrease' : 'statistic.dashboard.trend.increase',
-                isNegative ? 'Abnahme' : 'Zunahme',
-            )} ${displayValue}`}
-        >
-            <TrendIcon aria-hidden="true" />
-            {displayValue}
-        </span>
-    );
-};
-
-interface StatisticCardProps {
-    card: StatisticCardDefinition;
-    locale: string;
-    menuValue?: CardMenuKey;
-    onMenuChange?: (cardKey: string, menuKey: CardMenuKey) => void;
-    translate: DashboardTranslate;
-}
-
-const StatisticCard = ({ card, locale, menuValue, onMenuChange, translate }: StatisticCardProps) => {
-    const storedMenuOption = card.menuOptions?.find((option) => option.key === menuValue);
-    const defaultMenuOption = card.menuOptions?.find((option) => option.key === card.defaultMenuKey);
-    const selectedMenuOption = storedMenuOption || defaultMenuOption;
-    const activeMenuKey = selectedMenuOption?.key || card.defaultMenuKey;
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const hasMenu = Boolean(card.menuOptions?.length);
-    const displayTitle = selectedMenuOption?.title || card.title;
-    const displayValue = selectedMenuOption?.value || card.value;
-    const displayDetail = selectedMenuOption?.detail ?? card.detail;
-    const displayTrend = selectedMenuOption?.trend || card.trend;
-    const DisplayIcon = selectedMenuOption?.icon || card.icon;
-    const displayIconTone = selectedMenuOption?.iconTone ?? card.iconTone;
-    const menuLabel =
-        card.menuLabel || translateDashboardKey(translate, 'statistic.dashboard.text.chatType', 'Chattyp');
-    const menuAriaLabel =
-        card.menuAriaLabel ||
-        translateDashboardKey(
-            translate,
-            'statistic.dashboard.menu.filterByChatType',
-            `${card.title} nach Chattyp filtern`,
-            {
-                title: card.title,
-            },
-        );
-
-    return (
-        <section
-            className={`${getCardClassName(card)} ${isMenuOpen ? 'statisticDashboard__metricCard--menuOpen' : ''}`}
-            data-card-key={card.key}
-        >
-            <div
-                className={`statisticDashboard__cardHeader ${
-                    hasMenu ? '' : 'statisticDashboard__cardHeader--withoutMenu'
-                }`}
-            >
-                <MetricIcon icon={DisplayIcon} tone={displayIconTone} />
-                <h2>{displayTitle}</h2>
-                {hasMenu && (
-                    <div
-                        className="statisticDashboard__cardMenuWrap"
-                        onBlur={(event) => {
-                            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                                setIsMenuOpen(false);
-                            }
-                        }}
-                    >
-                        <button
-                            type="button"
-                            className="statisticDashboard__cardMenu"
-                            aria-label={menuAriaLabel}
-                            aria-haspopup="menu"
-                            aria-expanded={isMenuOpen}
-                            onClick={() => setIsMenuOpen((currentValue) => !currentValue)}
-                        >
-                            <MoreVert aria-hidden="true" />
-                        </button>
-                        {isMenuOpen && (
-                            <div className="statisticDashboard__cardMenuPanel" role="menu">
-                                <span className="statisticDashboard__cardMenuEyebrow">{menuLabel}</span>
-                                {card.menuOptions.map((option) => {
-                                    const isSelected = option.key === activeMenuKey;
-                                    const OptionIcon = option.icon || DisplayIcon;
-
-                                    return (
-                                        <button
-                                            key={option.key}
-                                            type="button"
-                                            className={`statisticDashboard__cardMenuItem ${
-                                                isSelected ? 'statisticDashboard__cardMenuItem--active' : ''
-                                            }`}
-                                            role="menuitemradio"
-                                            aria-checked={isSelected}
-                                            onClick={() => {
-                                                onMenuChange?.(card.key, option.key);
-                                                setIsMenuOpen(false);
-                                            }}
-                                        >
-                                            <span className="statisticDashboard__cardMenuItemIcon" aria-hidden="true">
-                                                <OptionIcon />
-                                            </span>
-                                            <span className="statisticDashboard__cardMenuItemBody">
-                                                <span className="statisticDashboard__cardMenuItemRow">
-                                                    <span className="statisticDashboard__cardMenuItemTitle">
-                                                        {option.label}
-                                                    </span>
-                                                    <strong>{option.value}</strong>
-                                                </span>
-                                                {option.description && (
-                                                    <small className="statisticDashboard__cardMenuItemDescription">
-                                                        {option.description}
-                                                    </small>
-                                                )}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            <div className="statisticDashboard__cardValueRow">
-                <strong>
-                    <AnimatedValue locale={locale} value={displayValue} />
-                </strong>
-                <TrendBadge locale={locale} translate={translate} trend={displayTrend} />
-                {displayDetail && <span className="statisticDashboard__cardDetail">{displayDetail}</span>}
-            </div>
-        </section>
-    );
-};
-
 interface StatisticFilterBarProps {
     availableTargets: FilterTarget[];
     locale: string;
@@ -2352,28 +1856,32 @@ const StatisticFilterBar = ({
                     }
                 }}
             >
-                <SearchInput
+                <GlobalSearchBar
+                    defaultExpanded
+                    expandedWidth={499}
                     className="statisticDashboard__filterSearch"
-                    placeholder={translateDashboardKey(translate, 'statistic.dashboard.filter.placeholder', 'Suche')}
                     ariaLabel={translateDashboardKey(
                         translate,
                         'statistic.dashboard.filter.searchAria',
                         'Beratungsstellen oder Träger suchen',
                     )}
                     value={searchValue}
-                    searchOnChange={false}
-                    onClick={() => setIsSuggestionMenuOpen(true)}
-                    onFocus={() => setIsSuggestionMenuOpen(true)}
-                    onKeyDown={handleSearchKeyDown}
-                    onValueChange={(value) => {
+                    onInputClick={() => setIsSuggestionMenuOpen(true)}
+                    onInputFocus={() => setIsSuggestionMenuOpen(true)}
+                    onInputKeyDown={handleSearchKeyDown}
+                    onSearchChange={(value) => {
                         setIsSuggestionMenuOpen(true);
                         onSearchChange(value);
                     }}
-                    handleOnSearch={() => {
+                    onSearch={() => {
                         addFirstVisibleSuggestion();
                         setIsSuggestionMenuOpen(false);
                     }}
-                    handleOnSearchClear={() => setIsSuggestionMenuOpen(true)}
+                    searchPlaceholder={translateDashboardKey(
+                        translate,
+                        'statistic.dashboard.filter.placeholder',
+                        'Suche',
+                    )}
                 />
 
                 {isSuggestionMenuOpen && hasSuggestions && (
@@ -2563,7 +2071,12 @@ export const Statistic = () => {
     });
     const [selectedCaseDayByScope, setSelectedCaseDayByScope] =
         useState<Record<ScopeKey, string>>(defaultSelectedCaseDayByScope);
-    const { data: statisticData, isError: hasStatisticLoadError } = useStatisticDashboardData();
+    const {
+        data: statisticData,
+        isError: hasStatisticLoadError,
+        isLoading: isStatisticLoading,
+    } = useStatisticDashboardData();
+    const navigate = useNavigate();
     const caseChartDateLabelsByPeriod = useMemo(() => buildCaseChartDateLabels(new Date()), []);
     const todayDayCode = useMemo(() => getTodayDayCode(new Date()), []);
     const dashboard = dashboardByScope[activeScope];
@@ -2586,7 +2099,31 @@ export const Statistic = () => {
             effectiveStatisticTargetIds.filter((targetId) => statisticData.statisticsById[targetId]?.suppressed).length,
         [effectiveStatisticTargetIds, statisticData.statisticsById],
     );
-    const metricOverrides = useMemo(() => buildMetricOverridesFromFilterStats(filteredStats), [filteredStats]);
+    const allTargetsSuppressed =
+        effectiveStatisticTargetIds.length > 0 && suppressedSelectedTargetCount === effectiveStatisticTargetIds.length;
+    const metricOverrides = useMemo(
+        () => buildMetricOverridesFromFilterStats(filteredStats, allTargetsSuppressed),
+        [allTargetsSuppressed, filteredStats],
+    );
+    const isDashboardEmpty = useMemo(() => isFilterStatsEmpty(filteredStats), [filteredStats]);
+    const showEmptyHero = isDashboardEmpty && !isStatisticLoading && !hasStatisticLoadError && !allTargetsSuppressed;
+    const csvExportRows = useMemo(
+        () => [
+            ...dashboard.topCards.map((card) => {
+                const localized = localizeStatisticCard(
+                    getPersonalizedMetricCard(card, activeScope, metricOverrides),
+                    translate,
+                    locale,
+                );
+                return { title: localized.title, value: localized.value };
+            }),
+            ...dashboard.communicationCards.map((card) => {
+                const localized = localizeStatisticCard(getDisplayMetricCard(card, metricOverrides), translate, locale);
+                return { title: localized.title, value: localized.value };
+            }),
+        ],
+        [activeScope, dashboard, locale, metricOverrides, translate],
+    );
     const filteredCaseCharts = useMemo(
         () => buildCaseChartsFromFilterStats(filteredStats, caseChartDateLabelsByPeriod, todayDayCode),
         [caseChartDateLabelsByPeriod, filteredStats, todayDayCode],
@@ -2765,255 +2302,367 @@ export const Statistic = () => {
                     )}
 
                     <div key={activeScope} className="statisticDashboard__animatedContent">
-                        {hasStatisticLoadError && (
-                            <p className="statisticDashboard__notice statisticDashboard__notice--error" role="alert">
-                                {translateDashboardKey(
-                                    translate,
-                                    'statistic.dashboard.loadError',
-                                    'Statistikdaten konnten nicht geladen werden.',
-                                )}
-                            </p>
-                        )}
-                        {statisticData.suppressionDisabled && (
-                            <p className="statisticDashboard__notice statisticDashboard__notice--warning" role="alert">
-                                {translateDashboardKey(
-                                    translate,
-                                    'statistic.dashboard.suppressionDisabledNotice',
-                                    'Kleinzellen-Schutz deaktiviert – nur für Testumgebungen',
-                                )}
-                            </p>
-                        )}
-                        {suppressedSelectedTargetCount > 0 && (
-                            <p className="statisticDashboard__notice statisticDashboard__notice--info">
-                                {translateDashboardKey(
-                                    translate,
-                                    'statistic.dashboard.suppressedNotice',
-                                    'Für Bereiche mit weniger als zwei Beratenden werden aus Datenschutzgründen keine Statistiken angezeigt.',
-                                )}
-                            </p>
-                        )}
-                        <div className="statisticDashboard__summaryGrid">
-                            {dashboard.topCards.map((card) => (
-                                <StatisticCard
-                                    key={card.key}
-                                    card={localizeStatisticCard(
-                                        getPersonalizedMetricCard(card, activeScope, metricOverrides),
+                        {isStatisticLoading ? (
+                            <div className="statisticDashboard__loading" role="status" aria-live="polite">
+                                <Spinner />
+                                <p>
+                                    {translateDashboardKey(
                                         translate,
-                                        locale,
+                                        'statistic.dashboard.loading',
+                                        'Statistik wird geladen …',
                                     )}
-                                    locale={locale}
-                                    menuValue={selectedCardMenuByScope[activeScope][card.key]}
-                                    onMenuChange={updateCardMenuSelection}
-                                    translate={translate}
-                                />
-                            ))}
-                        </div>
-
-                        <div className="statisticDashboard__communicationGrid">
-                            {dashboard.communicationCards.map((card) => (
-                                <StatisticCard
-                                    key={card.key}
-                                    card={localizeStatisticCard(
-                                        getDisplayMetricCard(card, metricOverrides),
-                                        translate,
-                                        locale,
-                                    )}
-                                    locale={locale}
-                                    translate={translate}
-                                />
-                            ))}
-                        </div>
-
-                        <div className="statisticDashboard__chartGrid">
-                            <section className="statisticDashboard__chartCard statisticDashboard__caseChartCard">
-                                <div className="statisticDashboard__chartHeader">
-                                    <h2>{translateDashboardText(translate, 'Beratungsfälle', locale)}</h2>
-                                    <PeriodSelect<CasePeriodKey>
-                                        ariaLabel={translateDashboardKey(
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                {hasStatisticLoadError && (
+                                    <p
+                                        className="statisticDashboard__notice statisticDashboard__notice--error"
+                                        role="alert"
+                                    >
+                                        {translateDashboardKey(
                                             translate,
-                                            'statistic.dashboard.chart.casePeriodAria',
-                                            'Zeitraum für Beratungsfälle',
+                                            'statistic.dashboard.loadError',
+                                            'Statistikdaten konnten nicht geladen werden.',
                                         )}
-                                        onSelect={(periodKey) =>
-                                            setSelectedCasePeriodByScope((currentPeriods) => ({
-                                                ...currentPeriods,
-                                                [activeScope]: periodKey,
-                                            }))
-                                        }
-                                        options={localizedCasePeriodOptions}
-                                        value={selectedCasePeriod}
+                                    </p>
+                                )}
+                                {statisticData.suppressionDisabled && (
+                                    <p
+                                        className="statisticDashboard__notice statisticDashboard__notice--warning"
+                                        role="alert"
+                                    >
+                                        {translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.suppressionDisabledNotice',
+                                            'Kleinzellen-Schutz deaktiviert – nur für Testumgebungen',
+                                        )}
+                                    </p>
+                                )}
+                                {suppressedSelectedTargetCount > 0 && (
+                                    <p className="statisticDashboard__notice statisticDashboard__notice--info">
+                                        {translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.suppressedNotice',
+                                            'Für Bereiche mit weniger als fünf Beratenden werden aus Datenschutzgründen keine Statistiken angezeigt.',
+                                        )}
+                                    </p>
+                                )}
+                                {showEmptyHero && (
+                                    <DashboardEmptyState
+                                        className="statisticDashboard__emptyHero"
+                                        icon={<ConversationsIcon />}
+                                        title={translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.empty.heroTitle',
+                                            'Ihr Dashboard füllt sich mit der ersten Beratung',
+                                        )}
+                                        description={translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.empty.heroDescription',
+                                            'Sobald Anfragen eingehen, sehen Sie hier Gespräche, Themen und Auslastung auf einen Blick.',
+                                        )}
+                                        action={{
+                                            label: translateDashboardKey(
+                                                translate,
+                                                'statistic.dashboard.empty.heroAction',
+                                                'Beratende verwalten',
+                                            ),
+                                            onClick: () => navigate(routePathNames.consultants),
+                                        }}
                                     />
+                                )}
+                                <div className="statisticDashboard__export">
+                                    <CSVLink
+                                        className="statisticDashboard__exportLink"
+                                        data={csvExportRows}
+                                        filename={`${translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.csvExport.filename',
+                                            'Statistik',
+                                        )} - ${activeScope} - ${new Date().toISOString().slice(0, 10)}.csv`}
+                                        headers={[
+                                            {
+                                                key: 'title',
+                                                label: translateDashboardKey(
+                                                    translate,
+                                                    'statistic.dashboard.csvExport.metricColumn',
+                                                    'Kennzahl',
+                                                ),
+                                            },
+                                            {
+                                                key: 'value',
+                                                label: translateDashboardKey(
+                                                    translate,
+                                                    'statistic.dashboard.csvExport.valueColumn',
+                                                    'Wert',
+                                                ),
+                                            },
+                                        ]}
+                                        separator=";"
+                                    >
+                                        <DownloadIcon aria-hidden="true" focusable="false" />
+                                        {translateDashboardKey(
+                                            translate,
+                                            'statistic.dashboard.csvExport.label',
+                                            'Statistik als CSV herunterladen',
+                                        )}
+                                    </CSVLink>
+                                </div>
+                                <div
+                                    className={`statisticDashboard__summaryGrid${
+                                        showEmptyHero ? ' statisticDashboard__summaryGrid--quiet' : ''
+                                    }`}
+                                >
+                                    {dashboard.topCards.map((card) => (
+                                        <StatisticCard
+                                            key={card.key}
+                                            card={localizeStatisticCard(
+                                                getPersonalizedMetricCard(card, activeScope, metricOverrides),
+                                                translate,
+                                                locale,
+                                            )}
+                                            locale={locale}
+                                            menuValue={selectedCardMenuByScope[activeScope][card.key]}
+                                            onMenuChange={updateCardMenuSelection}
+                                            translate={translate}
+                                        />
+                                    ))}
                                 </div>
 
-                                <div className="statisticDashboard__barChart">
-                                    <div className="statisticDashboard__axisLabels" aria-hidden="true">
-                                        {yAxisLabels.map((label) => (
-                                            <span key={label}>{label}</span>
-                                        ))}
-                                    </div>
-                                    <div className="statisticDashboard__barStage">
-                                        {gridLinePositions.map((position) => (
-                                            <span
-                                                key={position}
-                                                className="statisticDashboard__gridLine"
-                                                style={{ top: `${position}%` }}
+                                <div
+                                    className={`statisticDashboard__communicationGrid${
+                                        showEmptyHero ? ' statisticDashboard__communicationGrid--quiet' : ''
+                                    }`}
+                                >
+                                    {dashboard.communicationCards.map((card) => (
+                                        <StatisticCard
+                                            key={card.key}
+                                            card={localizeStatisticCard(
+                                                getDisplayMetricCard(card, metricOverrides),
+                                                translate,
+                                                locale,
+                                            )}
+                                            locale={locale}
+                                            translate={translate}
+                                        />
+                                    ))}
+                                </div>
+
+                                <div
+                                    className={`statisticDashboard__chartGrid${
+                                        showEmptyHero ? ' statisticDashboard__chartGrid--quiet' : ''
+                                    }`}
+                                >
+                                    <section className="statisticDashboard__chartCard statisticDashboard__caseChartCard">
+                                        <div className="statisticDashboard__chartHeader">
+                                            <h2>{translateDashboardText(translate, 'Beratungsfälle', locale)}</h2>
+                                            <PeriodSelect<CasePeriodKey>
+                                                ariaLabel={translateDashboardKey(
+                                                    translate,
+                                                    'statistic.dashboard.chart.casePeriodAria',
+                                                    'Zeitraum für Beratungsfälle',
+                                                )}
+                                                onSelect={(periodKey) =>
+                                                    setSelectedCasePeriodByScope((currentPeriods) => ({
+                                                        ...currentPeriods,
+                                                        [activeScope]: periodKey,
+                                                    }))
+                                                }
+                                                options={localizedCasePeriodOptions}
+                                                value={selectedCasePeriod}
                                             />
-                                        ))}
-                                        <div className="statisticDashboard__bars">
-                                            {caseChart.map((bar, index) => {
-                                                const height = Math.round((bar.value / caseAxisMax) * 100);
-                                                const isSelected = bar.day === selectedCaseBar.day;
-                                                const barStyle = {
-                                                    '--bar-index': index,
-                                                    height: `${height}%`,
-                                                } as CSSProperties;
-                                                const tooltipLift = height <= 35 ? 48 : 18;
-                                                const tooltipStyle = {
-                                                    '--statistic-dashboard-tooltip-bottom': `calc(${height}% + ${tooltipLift}px)`,
-                                                } as CSSProperties;
-                                                const barValue = bar.value.toLocaleString(locale);
-                                                const dateLabel = translateDashboardDateLabel(translate, bar.dateLabel);
-                                                const dayLabel = translateDashboardWeekday(translate, bar.day);
-
-                                                return (
-                                                    <button
-                                                        key={bar.day}
-                                                        type="button"
-                                                        className={`statisticDashboard__barSlot ${
-                                                            isSelected ? 'statisticDashboard__barSlot--selected' : ''
-                                                        }`}
-                                                        aria-label={translateDashboardKey(
-                                                            translate,
-                                                            'statistic.dashboard.chart.caseBarAria',
-                                                            `${bar.value} Beratungsfälle am ${bar.dateLabel}`,
-                                                            { date: dateLabel, value: barValue },
-                                                        )}
-                                                        aria-current={isSelected ? 'true' : undefined}
-                                                        aria-pressed={isSelected}
-                                                        data-day={bar.day}
-                                                        onClick={() => selectCaseDay(bar.day)}
-                                                        onFocus={() => selectCaseDay(bar.day)}
-                                                        onPointerDown={() => selectCaseDay(bar.day)}
-                                                    >
-                                                        {isSelected && (
-                                                            <div
-                                                                className="statisticDashboard__barTooltip"
-                                                                style={tooltipStyle}
-                                                            >
-                                                                <strong>
-                                                                    <span />
-                                                                    {barValue}
-                                                                </strong>
-                                                                <small>{dateLabel}</small>
-                                                            </div>
-                                                        )}
-                                                        <span
-                                                            key={`${chartAnimationKey}-${bar.day}`}
-                                                            className={`statisticDashboard__bar ${
-                                                                isSelected ? 'statisticDashboard__bar--highlight' : ''
-                                                            } ${
-                                                                bar.value === 0 ? 'statisticDashboard__bar--empty' : ''
-                                                            }`}
-                                                            style={barStyle}
-                                                        />
-                                                        <small className="statisticDashboard__barDayLabel">
-                                                            {dayLabel}
-                                                        </small>
-                                                    </button>
-                                                );
-                                            })}
                                         </div>
-                                    </div>
-                                </div>
-                            </section>
 
-                            <section className="statisticDashboard__chartCard statisticDashboard__donutCard">
-                                <div className="statisticDashboard__chartHeader">
-                                    <h2>{translateDashboardText(translate, 'Gesprächstyp', locale)}</h2>
-                                    <PeriodSelect<ConversationPeriodKey>
-                                        ariaLabel={translateDashboardKey(
-                                            translate,
-                                            'statistic.dashboard.chart.conversationPeriodAria',
-                                            'Zeitraum für Gesprächstyp',
-                                        )}
-                                        onSelect={(periodKey) =>
-                                            setSelectedConversationPeriodByScope((currentPeriods) => ({
-                                                ...currentPeriods,
-                                                [activeScope]: periodKey,
-                                            }))
-                                        }
-                                        options={localizedConversationPeriodOptions}
-                                        value={selectedConversationPeriod}
-                                    />
-                                </div>
-
-                                <div className="statisticDashboard__donutContent">
-                                    <DonutChart
-                                        animationKey={donutAnimationKey}
-                                        data={conversationData}
-                                        locale={locale}
-                                        onSegmentSelect={selectConversationSegment}
-                                        selectedSegmentLabel={selectedConversationSegmentLabel}
-                                        translate={translate}
-                                    />
-
-                                    <div className="statisticDashboard__legend">
-                                        {conversationData.segments.map((segment) => {
-                                            const segmentPercentage = getConversationSegmentPercentage(
-                                                segment,
-                                                conversationData.segments,
-                                            );
-                                            const isSelected = segment.label === selectedConversationSegmentLabel;
-                                            const segmentLabel = translateDashboardText(
-                                                translate,
-                                                segment.displayLabel || segment.label,
-                                                locale,
-                                            );
-                                            const segmentAriaLabel = translateDashboardText(
-                                                translate,
-                                                segment.label,
-                                                locale,
-                                            );
-                                            const segmentValue = formatDashboardNumberText(`${segment.value}`, locale);
-
-                                            return (
-                                                <button
-                                                    key={segment.label}
-                                                    type="button"
-                                                    className={`statisticDashboard__legendItem ${
-                                                        isSelected ? 'statisticDashboard__legendItem--active' : ''
-                                                    }`}
-                                                    aria-pressed={isSelected}
-                                                    onClick={() => selectConversationSegment(segment.label)}
-                                                >
+                                        <div className="statisticDashboard__barChart">
+                                            <div className="statisticDashboard__axisLabels" aria-hidden="true">
+                                                {yAxisLabels.map((label) => (
+                                                    <span key={label}>{label}</span>
+                                                ))}
+                                            </div>
+                                            <div className="statisticDashboard__barStage">
+                                                {gridLinePositions.map((position) => (
                                                     <span
-                                                        className="statisticDashboard__legendDot"
-                                                        style={{ backgroundColor: segment.color }}
+                                                        key={position}
+                                                        className="statisticDashboard__gridLine"
+                                                        style={{ top: `${position}%` }}
                                                     />
-                                                    <p aria-label={segmentAriaLabel}>{segmentLabel}</p>
-                                                    <span
-                                                        className="statisticDashboard__legendMeta"
-                                                        aria-label={translateDashboardKey(
+                                                ))}
+                                                <div className="statisticDashboard__bars">
+                                                    {caseChart.map((bar, index) => {
+                                                        const height = Math.round((bar.value / caseAxisMax) * 100);
+                                                        const isSelected = bar.day === selectedCaseBar.day;
+                                                        const barStyle = {
+                                                            '--bar-index': index,
+                                                            height: `${height}%`,
+                                                        } as CSSProperties;
+                                                        const tooltipLift = height <= 35 ? 48 : 18;
+                                                        const tooltipStyle = {
+                                                            '--statistic-dashboard-tooltip-bottom': `calc(${height}% + ${tooltipLift}px)`,
+                                                        } as CSSProperties;
+                                                        const barValue = bar.value.toLocaleString(locale);
+                                                        const dateLabel = translateDashboardDateLabel(
                                                             translate,
-                                                            'statistic.dashboard.chart.segmentMetaAria',
-                                                            `${segment.value} Gespräche, ${segmentPercentage}%`,
-                                                            {
-                                                                percentage: segmentPercentage,
-                                                                value: segmentValue,
-                                                            },
-                                                        )}
-                                                    >
-                                                        <strong>{segmentValue}</strong>
-                                                        <small>{segmentPercentage}%</small>
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                                            bar.dateLabel,
+                                                        );
+                                                        const dayLabel = translateDashboardWeekday(translate, bar.day);
+
+                                                        return (
+                                                            <button
+                                                                key={bar.day}
+                                                                type="button"
+                                                                className={`statisticDashboard__barSlot ${
+                                                                    isSelected
+                                                                        ? 'statisticDashboard__barSlot--selected'
+                                                                        : ''
+                                                                }`}
+                                                                aria-label={translateDashboardKey(
+                                                                    translate,
+                                                                    'statistic.dashboard.chart.caseBarAria',
+                                                                    `${bar.value} Beratungsfälle am ${bar.dateLabel}`,
+                                                                    { date: dateLabel, value: barValue },
+                                                                )}
+                                                                aria-current={isSelected ? 'true' : undefined}
+                                                                aria-pressed={isSelected}
+                                                                data-day={bar.day}
+                                                                onClick={() => selectCaseDay(bar.day)}
+                                                                onFocus={() => selectCaseDay(bar.day)}
+                                                                onPointerDown={() => selectCaseDay(bar.day)}
+                                                            >
+                                                                {isSelected && (
+                                                                    <div
+                                                                        className="statisticDashboard__barTooltip"
+                                                                        style={tooltipStyle}
+                                                                    >
+                                                                        <strong>
+                                                                            <span />
+                                                                            {barValue}
+                                                                        </strong>
+                                                                        <small>{dateLabel}</small>
+                                                                    </div>
+                                                                )}
+                                                                <span
+                                                                    key={`${chartAnimationKey}-${bar.day}`}
+                                                                    className={`statisticDashboard__bar ${
+                                                                        isSelected
+                                                                            ? 'statisticDashboard__bar--highlight'
+                                                                            : ''
+                                                                    } ${
+                                                                        bar.value === 0
+                                                                            ? 'statisticDashboard__bar--empty'
+                                                                            : ''
+                                                                    }`}
+                                                                    style={barStyle}
+                                                                />
+                                                                <small className="statisticDashboard__barDayLabel">
+                                                                    {dayLabel}
+                                                                </small>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <section className="statisticDashboard__chartCard statisticDashboard__donutCard">
+                                        <div className="statisticDashboard__chartHeader">
+                                            <h2>{translateDashboardText(translate, 'Gesprächstyp', locale)}</h2>
+                                            <PeriodSelect<ConversationPeriodKey>
+                                                ariaLabel={translateDashboardKey(
+                                                    translate,
+                                                    'statistic.dashboard.chart.conversationPeriodAria',
+                                                    'Zeitraum für Gesprächstyp',
+                                                )}
+                                                onSelect={(periodKey) =>
+                                                    setSelectedConversationPeriodByScope((currentPeriods) => ({
+                                                        ...currentPeriods,
+                                                        [activeScope]: periodKey,
+                                                    }))
+                                                }
+                                                options={localizedConversationPeriodOptions}
+                                                value={selectedConversationPeriod}
+                                            />
+                                        </div>
+
+                                        <div className="statisticDashboard__donutContent">
+                                            <DonutChart
+                                                animationKey={donutAnimationKey}
+                                                data={conversationData}
+                                                locale={locale}
+                                                onSegmentSelect={selectConversationSegment}
+                                                selectedSegmentLabel={selectedConversationSegmentLabel}
+                                                translate={translate}
+                                            />
+
+                                            <div className="statisticDashboard__legend">
+                                                {conversationData.segments.map((segment) => {
+                                                    const segmentPercentage = getConversationSegmentPercentage(
+                                                        segment,
+                                                        conversationData.segments,
+                                                    );
+                                                    const isSelected =
+                                                        segment.label === selectedConversationSegmentLabel;
+                                                    const segmentLabel = translateDashboardText(
+                                                        translate,
+                                                        segment.displayLabel || segment.label,
+                                                        locale,
+                                                    );
+                                                    const segmentAriaLabel = translateDashboardText(
+                                                        translate,
+                                                        segment.label,
+                                                        locale,
+                                                    );
+                                                    const segmentValue = formatDashboardNumberText(
+                                                        `${segment.value}`,
+                                                        locale,
+                                                    );
+
+                                                    return (
+                                                        <button
+                                                            key={segment.label}
+                                                            type="button"
+                                                            className={`statisticDashboard__legendItem ${
+                                                                isSelected
+                                                                    ? 'statisticDashboard__legendItem--active'
+                                                                    : ''
+                                                            }`}
+                                                            aria-pressed={isSelected}
+                                                            onClick={() => selectConversationSegment(segment.label)}
+                                                        >
+                                                            <span
+                                                                className="statisticDashboard__legendDot"
+                                                                style={{ backgroundColor: segment.color }}
+                                                            />
+                                                            <p aria-label={segmentAriaLabel}>{segmentLabel}</p>
+                                                            <span
+                                                                className="statisticDashboard__legendMeta"
+                                                                aria-label={translateDashboardKey(
+                                                                    translate,
+                                                                    'statistic.dashboard.chart.segmentMetaAria',
+                                                                    `${segment.value} Gespräche, ${segmentPercentage}%`,
+                                                                    {
+                                                                        percentage: segmentPercentage,
+                                                                        value: segmentValue,
+                                                                    },
+                                                                )}
+                                                            >
+                                                                <strong>{segmentValue}</strong>
+                                                                <small>{segmentPercentage}%</small>
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </section>
                                 </div>
-                            </section>
-                        </div>
+                            </>
+                        )}
                     </div>
+                    {(isSuperAdmin || hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])) && (
+                        <TutorialStatisticsSection />
+                    )}
                 </div>
             </div>
         </Page>

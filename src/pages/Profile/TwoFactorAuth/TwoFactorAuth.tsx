@@ -30,7 +30,11 @@ const { Paragraph } = Typography;
 
 const OTP_LENGTH = 6;
 
-const TwoFactorAuth = () => {
+interface TwoFactorAuthProps {
+    required?: boolean;
+}
+
+const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
     const { t } = useTranslation();
     const { data: userData } = useUserData();
     const { mutate: updateOrSetTwoFactorAuth } = useUserTwoFactorAuth();
@@ -55,10 +59,10 @@ const TwoFactorAuth = () => {
 
         if (!userData.twoFactorAuth.isActive) {
             setOverlayActive(true);
-        } else {
+        } else if (!required) {
             deleteTwoFactorAuth(null);
         }
-    }, [deleteTwoFactorAuth, userData?.twoFactorAuth]);
+    }, [deleteTwoFactorAuth, required, userData?.twoFactorAuth]);
 
     const twoFactorAuthStepsOverlayStart: OverlayItem[] = useMemo(
         () => [
@@ -404,6 +408,12 @@ const TwoFactorAuth = () => {
         setOverlayByType();
     }, [setOverlayByType]);
 
+    useEffect(() => {
+        if (required && userData?.twoFactorAuth?.isEnabled === true && userData.twoFactorAuth.isActive !== true) {
+            setOverlayActive(true);
+        }
+    }, [required, userData?.twoFactorAuth]);
+
     const handleOverlayClose = useCallback(() => {
         setOverlayActive(false);
         setOtp('');
@@ -422,7 +432,7 @@ const TwoFactorAuth = () => {
                 <M3Switch
                     onChange={() => handleSwitchChange()}
                     checked={userData?.twoFactorAuth.isActive || false}
-                    disabled={!userData?.twoFactorAuth}
+                    disabled={!userData?.twoFactorAuth?.isEnabled || (required && userData.twoFactorAuth.isActive)}
                     label={
                         userData?.twoFactorAuth.isActive
                             ? t('twoFactorAuth.switch.active.label')

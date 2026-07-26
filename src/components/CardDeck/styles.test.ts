@@ -11,4 +11,19 @@ describe('CardDeck responsive contract', () => {
         expect(cardDeckStyles).toMatch(/\.deck\s*{[^}]*overflow:\s*visible;/s);
         expect(cardDeckStyles).toMatch(/\.footer\s*{[^}]*display:\s*none;/s);
     });
+
+    // #259: items must respect --card-deck-item-min-width, not collapse to 0.
+    it('honours the configured item minimum width (capped by the responsive max)', () => {
+        const itemRule = cardDeckStyles.match(/\.item\s*{([^}]*)}/s)?.[1] ?? '';
+        expect(itemRule).toMatch(
+            /min-width:\s*min\(\s*var\(--card-deck-item-min-width,\s*320px\)\s*,\s*var\(--card-deck-item-max-width/s,
+        );
+        // The desktop item rule must not force the min-width to 0.
+        expect(itemRule).not.toMatch(/min-width:\s*0/);
+    });
+
+    it('exposes the distance between cards as a deck token', () => {
+        const listRule = cardDeckStyles.match(/\.list\s*{([^}]*)}/s)?.[1] ?? '';
+        expect(listRule).toMatch(/gap:\s*var\(--card-deck-gap,\s*24px\)/);
+    });
 });

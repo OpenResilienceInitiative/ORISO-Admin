@@ -1,11 +1,12 @@
-import { HistoryOutlined } from '@ant-design/icons';
-import { Tag } from 'antd';
+import { CheckOutlined, HistoryOutlined } from '@ant-design/icons';
+
 import { ColumnProps } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import CustomChevronDownIcon from '../../../components/CustomIcons/ChevronDown';
-import CustomChevronUpIcon from '../../../components/CustomIcons/ChevronUp';
+import { ReactComponent as RowExpandIcon } from '../../../resources/img/svg/table-actions/row_expand_200.svg';
+import { ReactComponent as RowExpandHoverIcon } from '../../../resources/img/svg/table-actions/row_expand_400.svg';
+import { ReactComponent as RowExpandSelectedIcon } from '../../../resources/img/svg/table-actions/row_expand_filled.svg';
 import EditButtons from '../../../components/EditableTable/EditButtons';
 import StatusIcons from '../../../components/EditableTable/StatusIcons';
 import { CopyToClipboard } from '../../../components/CopyToClipboard';
@@ -110,9 +111,13 @@ export const useUserTableColumns = ({
 
             return visibleAgencies.filter(Boolean).map((agencyItem) => (
                 <div key={agencyItem.id} className="counselorList__agencies">
-                    <span>{agencyItem.postcode}</span>
-                    <span>{agencyItem.name}</span>
-                    <span>[{agencyItem.city}]</span>
+                    <span className="counselorList__agencyChip counselorList__agencyChip--postcode">
+                        {agencyItem.postcode}
+                    </span>
+                    <span className="counselorList__agencyChip counselorList__agencyChip--name" title={agencyItem.name}>
+                        {agencyItem.name}
+                    </span>
+                    <span className="counselorList__agencyChip counselorList__agencyChip--city">{agencyItem.city}</span>
                 </div>
             ));
         };
@@ -212,15 +217,25 @@ export const useUserTableColumns = ({
                             }
                         },
                     };
-                case 'hasOtherIdentity':
+                case 'hasOtherIdentity': {
+                    // Identity-specific, read-only checkmark for the *other* identity:
+                    // consultants table → "also Träger-Admin"; admin tables → "also Berater*in".
+                    const isConsultantSection = sectionId === TypeOfUser.Consultants;
+                    const titleKey = isConsultantSection ? 'users.table.alsoTenantAdmin' : 'users.table.alsoConsultant';
                     return {
                         ...base,
-                        title: t('users.table.hasOtherIdentity'),
-                        render: (_: unknown, record: TableRow) =>
-                            (record as CounselorData).hasOtherIdentity ? (
-                                <Tag>{t('users.table.hasOtherIdentity.badge')}</Tag>
-                            ) : null,
+                        title: t(titleKey),
+                        render: (_: unknown, record: TableRow) => {
+                            const row = record as CounselorData;
+                            const hasOtherIdentityForSection = isConsultantSection
+                                ? (row.otherIdentityTypes || []).includes('TENANT_ADMIN')
+                                : !!row.hasOtherIdentity;
+                            return hasOtherIdentityForSection ? (
+                                <CheckOutlined data-testid="other-identity-checkmark" aria-label={t(titleKey)} />
+                            ) : null;
+                        },
                     };
+                }
                 case 'agency':
                     return {
                         ...base,
@@ -280,12 +295,18 @@ export const useUserTableColumns = ({
                                     {canExpand && (
                                         <button
                                             type="button"
-                                            className="counselorList__toggle counselorList__toggle--inline"
+                                            className={`counselorList__toggle counselorList__toggle--inline${
+                                                isOpen ? ' counselorList__toggle--expanded' : ''
+                                            }`}
                                             aria-expanded={isOpen}
                                             aria-label={isOpen ? t('users.table.collapse') : t('users.table.expand')}
                                             onClick={() => onToggleRow(user.id)}
                                         >
-                                            {isOpen ? <CustomChevronUpIcon /> : <CustomChevronDownIcon />}
+                                            <span className="counselorList__toggleIconStack" aria-hidden="true">
+                                                <RowExpandIcon className="counselorList__toggleIcon counselorList__toggleIcon--default" />
+                                                <RowExpandHoverIcon className="counselorList__toggleIcon counselorList__toggleIcon--hover" />
+                                                <RowExpandSelectedIcon className="counselorList__toggleIcon counselorList__toggleIcon--selected" />
+                                            </span>
                                         </button>
                                     )}
                                     {canEditOrDelete && (

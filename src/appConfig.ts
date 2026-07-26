@@ -10,7 +10,7 @@ export const appURL = runtimeConfig.appBaseUrl;
 export const matrixURL = runtimeConfig.matrixBaseUrl;
 const userServiceURL = runtimeConfig.userServiceOrigin;
 const agencyServiceURL = runtimeConfig.agencyServiceOrigin;
-const tenantServiceURL = runtimeConfig.tenantServiceOrigin;
+export const tenantServiceURL = runtimeConfig.tenantServiceOrigin;
 const consultingTypeServiceURL = runtimeConfig.consultingTypeServiceOrigin;
 
 export const clusterFeatureFlags = {
@@ -51,6 +51,9 @@ export const twoFactorAuthAppEmail = `${userServiceURL}/service/users/2fa/email`
 export const userDataEndpoint = `${userServiceURL}/service/users/data`;
 export const userAdminDataEndpoint = `${userServiceURL}/service/useradmin/data`;
 export const userPasswordChangeEndpoint = `${userServiceURL}/service/users/password/change`;
+export const tutorialProgressEndpoint = `${userServiceURL}/service/users/tutorials/progress`;
+export const passwordResetRequestEndpoint = `${userServiceURL}/service/users/password-reset/request`;
+export const passwordResetConfirmEndpoint = `${userServiceURL}/service/users/password-reset/confirm`;
 export const globalSmtpTestEmailEndpoint = `${userServiceURL}/service/users/system-notification-emails/test`;
 export const usersConsultantEndpoint = `${userServiceURL}/service/users/consultants`;
 export const usersConsultantsSearchEndpoint = `${userServiceURL}/service/users/consultants/search`;
@@ -59,11 +62,12 @@ export const caseHandoverLogsEndpoint = `${userServiceURL}/service/users/case-ha
 export const caseHandoverReasonPoliciesEndpoint = `${userServiceURL}/service/users/case-handover/reason-policies`;
 export const inactiveAccountAuditLogsEndpoint = `${userServiceURL}/service/users/inactive-accounts/audit-logs`;
 export const agencyAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/agencyadmins/search`;
-export const registrationDataEndpoint = `${mainURL}/service/statistics/registration`;
 export const adminStatisticsDashboardEndpoint = `${userServiceURL}/service/useradmin/statistics/dashboard`;
+export const tutorialStatisticsEndpoint = `${userServiceURL}/service/useradmin/statistics/tutorials`;
 export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/invitelinks`;
 export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;
 export const inviteEmailTemplatesEndpoint = `${userServiceURL}/service/useradmin/invite-email-templates`;
+export const dpaInviteEmailEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/email`;
 export const XHRheader = { AcceptLanguage: 'de' };
 
 /*
@@ -72,6 +76,8 @@ export const XHRheader = { AcceptLanguage: 'de' };
 const routePathNames = {
     root: '/admin',
     login: '/admin/login',
+    passwordReset: '/admin/password-reset',
+    passwordResetConfirm: '/admin/password-reset/confirm',
     themeSettings: '/admin/theme-settings',
     globalSettings: '/admin/global-settings',
     permissionsSettings: '/admin/theme-settings/permissions',
@@ -101,7 +107,6 @@ const routePathNames = {
     linksTenants: '/admin/links/tenants',
     linksCounsellor: '/admin/links/counsellor',
     linksExternalInbounds: '/admin/links/external-inbounds',
-    loginResetPasswordLink: keycloakAuthPath('/login-actions/reset-credentials?client_id=account'),
 };
 
 export default routePathNames;

@@ -1,4 +1,4 @@
-import { Col, Form, notification, Row } from 'antd';
+import { Form, notification } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'antd/lib/form/Form';
@@ -17,7 +17,7 @@ import styles from './styles.module.scss';
 import { TenantAdminData } from '../../../../types/TenantAdminData';
 import { X_REASON } from '../../../../api/fetchData';
 import { extractApiErrorMessage } from '../../../../utils/extractApiErrorMessage';
-import { Button, BUTTON_TYPES, ButtonItem } from '../../../../components/button/Button';
+import { M3Button } from '../../../../components/M3Button';
 import { orisoMuiTheme } from '../../../../theme/orisoMuiTheme';
 import {
     MuiFormField,
@@ -210,8 +210,15 @@ export const GeneralTenantSettings = () => {
     return (
         <ThemeProvider theme={orisoMuiTheme}>
             <Form form={form} onFinish={handleSave} layout="vertical">
-                <Row gutter={[24, 24]} className={styles.createCardsRow}>
-                    <Col xs={24} lg={12}>
+                <CardDeck
+                    ariaLabel={t('tenants.add.mainTenantTitle')}
+                    className={styles.tenantCardDeck}
+                    deckClassName={styles.tenantCardDeckScroll}
+                    footerClassName={styles.tenantCardDeckFooter}
+                    previousLabel={t('tenant.settings.cardDeck.previous')}
+                    nextLabel={t('tenant.settings.cardDeck.next')}
+                >
+                    <CardDeck.Item className={styles.tenantCardDeckItem}>
                         <Card
                             titleKey="tenants.add.mainTenantTitle"
                             fullHeight
@@ -270,14 +277,22 @@ export const GeneralTenantSettings = () => {
                                 />
                             </div>
                         </Card>
-                    </Col>
-                    <Col xs={24} lg={12}>
+                    </CardDeck.Item>
+                    <CardDeck.Item className={styles.tenantCardDeckItem}>
                         <Card
                             titleKey="tenants.add.adminCardTitle"
                             fullHeight
                             variant="dialog"
                             autoHeight
                             className={styles.createCard}
+                            footer={
+                                <>
+                                    <M3Button onClick={() => navigate(routePathNames.tenants)}>
+                                        {t('card.edit.cancel')}
+                                    </M3Button>
+                                    <M3Button onClick={() => form.submit()}>{t('card.edit.save')}</M3Button>
+                                </>
+                            }
                         >
                             <div className={styles.fieldGroup}>
                                 <MuiFormField
@@ -370,28 +385,8 @@ export const GeneralTenantSettings = () => {
                                 />
                             </div>
                         </Card>
-                    </Col>
-                </Row>
-                <div className={styles.buttons}>
-                    <Button
-                        item={
-                            {
-                                type: BUTTON_TYPES.SECONDARY,
-                                label: t('card.edit.cancel'),
-                            } as ButtonItem
-                        }
-                        buttonHandle={() => navigate(routePathNames.tenants)}
-                    />
-                    <Button
-                        item={
-                            {
-                                type: BUTTON_TYPES.PRIMARY,
-                                label: t('card.edit.save'),
-                            } as ButtonItem
-                        }
-                        buttonHandle={() => form.submit()}
-                    />
-                </div>
+                    </CardDeck.Item>
+                </CardDeck>
             </Form>
         </ThemeProvider>
     );

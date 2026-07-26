@@ -5,7 +5,7 @@ import { useEffect, useMemo } from 'react';
 import { Card } from '../../../../../components/Card';
 import { FormRadioGroupField } from '../../../../../components/FormRadioGroupField';
 import { SelectFormField } from '../../../../../components/SelectFormField';
-import { FormSwitchField } from '../../../../../components/FormSwitchField';
+import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
 import { TypeOfUser } from '../../../../../enums/TypeOfUser';
 import { useAgencyHasConsultants } from '../../../../../hooks/useAgencyHasConsultants';
 import { useConsultantsOrAdminsData } from '../../../../../hooks/useConsultantsOrAdminsData';
@@ -16,20 +16,23 @@ import { isActiveRecord } from '../../../../../utils/deleteDate';
 import { CreateConsultantModal } from '../../../../../components/CreateConsultantModal';
 import { parseUserAuthInfo } from '../../../../../utils/parseUserAuthInfo';
 import { resolveAgencyTenantId } from '../../../../../api/agency/addAgencyData';
+import { normalizeTopicIds } from '../../../../../api/agency/normalizeTopicIds';
 
 interface RegistrationSettingsProps {
     asFields?: boolean;
+    editing?: boolean;
 }
 
-export const RegistrationSettings = ({ asFields }: RegistrationSettingsProps) => {
+export const RegistrationSettings = ({ asFields, editing }: RegistrationSettingsProps) => {
     const { t } = useTranslation();
     const { id } = useParams();
     const form = Form.useFormInstance();
     const postCodeRangesActive = Form.useWatch('postCodeRangesActive');
-    const selectedTenantId = Form.useWatch('tenantId');
+    const selectedTenantId = Form.useWatch('tenantId') ?? form.getFieldValue('tenantId');
+    const selectedTopicIds = Form.useWatch('topicIds') ?? form.getFieldValue('topicIds');
     const selectedConsultants = Form.useWatch('consultantIds') || [];
     const hasSelectedConsultants = selectedConsultants.length > 0;
-    const showConsultantAssignment = !asFields;
+    const showConsultantAssignment = !asFields || editing;
     const { data: hasConsultants, isLoading } = useAgencyHasConsultants({ id });
     const { data: consultants, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
         typeOfUser: TypeOfUser.Consultants,
@@ -45,6 +48,7 @@ export const RegistrationSettings = ({ asFields }: RegistrationSettingsProps) =>
     const needsConsultantAssignment = id === 'add' ? !hasSelectedConsultants : !hasConsultants;
     // Superadmins pick the tenant in the form; tenant admins carry it in their token.
     const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
+    const hasPersistedAgency = id !== 'add' && Number.isFinite(Number(id)) && Number(id) > 0;
 
     const onConsultantCreated = (consultant) => {
         const current = form.getFieldValue('consultantIds') || [];
@@ -89,16 +93,24 @@ export const RegistrationSettings = ({ asFields }: RegistrationSettingsProps) =>
                         options={consultantOptions}
                     />
                     <div className={styles.createConsultant}>
-                        <CreateConsultantModal tenantId={consultantTenantId} onSuccess={onConsultantCreated} />
+                        <CreateConsultantModal
+                            tenantId={consultantTenantId}
+                            agencyId={hasPersistedAgency ? id : undefined}
+                            topicIds={normalizeTopicIds(selectedTopicIds)}
+                            disabled={!hasPersistedAgency}
+                            disabledReasonKey={
+                                hasPersistedAgency
+                                    ? undefined
+                                    : 'agency.form.registrationSettings.createConsultant.saveAgencyFirst'
+                            }
+                            onSuccess={onConsultantCreated}
+                        />
                     </div>
                 </>
             )}
-            <FormSwitchField
-                inline
-                className={styles.switch}
-                labelKey="agency.form.registrationSettings.onlineDescription"
+            <MuiSwitchField
+                label={t('agency.form.registrationSettings.onlineDescription')}
                 name="online"
-                disableLabels
                 disabled={needsConsultantAssignment}
             />
             <Divider />

@@ -1,0 +1,44 @@
+/*
+ * Container-driven column raster for card bodies / create flows.
+ *
+ * Track sizing, from the inside out:
+ *   1. Never more than --field-grid-max-columns tracks: each track's minimum is
+ *      at least an equal share of the row (100% minus the gaps, divided by the
+ *      column cap), so auto-fit cannot squeeze in an extra column.
+ *   2. Never narrower than --field-grid-min: below that floor a track no longer
+ *      fits and auto-fit drops to fewer columns instead of squishing content.
+ *   3. Never wider than the container: min(100%, …) keeps single-column mode
+ *      from overflowing on mobile.
+ * The container width alone decides — no media queries, works in any host
+ * (page, dialog, story canvas).
+ */
+
+.grid {
+    display: grid;
+    align-items: start;
+    /* Row gap floor is 12px by design decision (Frank, 2026-07-20) — the
+       default sits comfortably above it. */
+    gap: var(--field-grid-row-gap, 16px) var(--field-grid-column-gap, 20px);
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(
+            min(
+                100%,
+                max(
+                    var(--field-grid-min, 280px),
+                    calc(
+                        (100% - (var(--field-grid-max-columns, 3) - 1) * var(--field-grid-column-gap, 20px)) /
+                            var(--field-grid-max-columns, 3)
+                    )
+                )
+            ),
+            1fr
+        )
+    );
+}
+
+/* Full-row content (rich-text editor, tables, section headings). */
+.wide {
+    grid-column: 1 / -1;
+    min-width: 0;
+}

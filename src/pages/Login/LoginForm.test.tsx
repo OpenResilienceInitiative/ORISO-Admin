@@ -1,5 +1,5 @@
 import React from 'react';
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LoginForm from './LoginForm';
@@ -84,7 +84,7 @@ vi.mock('../../components/CustomIcons/Verified', () => ({
 }));
 
 const fillRequiredFields = async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
 
     await user.type(screen.getByPlaceholderText('Username/Email'), 'admin@example.com');
     await user.type(screen.getByPlaceholderText('Password'), 'correct-password');
@@ -93,22 +93,6 @@ const fillRequiredFields = async () => {
 };
 
 describe('LoginForm', () => {
-    beforeAll(() => {
-        Object.defineProperty(window, 'matchMedia', {
-            writable: true,
-            value: vi.fn().mockImplementation((query: string) => ({
-                addEventListener: vi.fn(),
-                addListener: vi.fn(),
-                dispatchEvent: vi.fn(),
-                matches: false,
-                media: query,
-                onchange: null,
-                removeEventListener: vi.fn(),
-                removeListener: vi.fn(),
-            })),
-        });
-    });
-
     beforeEach(() => {
         mocks.login.mockReset();
         mocks.messageError.mockReset();
@@ -120,8 +104,14 @@ describe('LoginForm', () => {
         consoleWarnSpy.mockRestore();
     });
 
+    it('links password recovery to the admin-owned reset flow', () => {
+        render(<LoginForm />);
+
+        expect(screen.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute('href', '/admin/password-reset');
+    });
+
     it('keeps sign in disabled until username and password are entered', async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ delay: null });
         render(<LoginForm />);
 
         const signInButton = screen.getByRole('button', { name: 'Sign in' });
@@ -212,5 +202,22 @@ describe('LoginForm', () => {
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
         expect(await screen.findByText('Please enter one-time password')).toBeInTheDocument();
+    });
+
+    it('shows the generic OTP guidance when the authentication response omits the OTP type', async () => {
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError({
+                message: FETCH_ERRORS.BAD_REQUEST,
+                options: { data: {} },
+            }),
+        );
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        expect(await screen.findByPlaceholderText('One-time password')).toBeInTheDocument();
+        expect(screen.getByText('Please enter one-time password')).toBeInTheDocument();
+        expect(screen.queryByText('message.form.login.otp.')).not.toBeInTheDocument();
     });
 });

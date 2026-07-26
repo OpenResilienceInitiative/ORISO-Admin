@@ -23,9 +23,14 @@ export const FETCH_ERRORS = {
     BAD_REQUEST_WITH_RESPONSE: 'BAD_REQUEST_WITH_RESPONSE',
     CATCH_ALL: 'CATCH_ALL',
     CATCH_ALL_SILENT: 'CATCH_ALL_SILENT',
+    // Opt-in only: skips the global `/admin/access-denied` redirect for this one call so the
+    // caller can render its own inline access-denied state. Additive — every existing caller
+    // that doesn't pass this flag keeps the redirect exactly as before.
+    FORBIDDEN_SILENT: 'FORBIDDEN_SILENT',
     CONFLICT: 'CONFLICT',
     CONFLICT_WITH_RESPONSE: 'CONFLICT_WITH_RESPONSE',
     EMPTY: 'EMPTY',
+    FORBIDDEN: 'FORBIDDEN',
     NO_MATCH: 'NO_MATCH',
     TIMEOUT: 'TIMEOUT',
     UNAUTHORIZED: 'UNAUTHORIZED',
@@ -65,7 +70,7 @@ interface FetchDataProps {
     url: string;
     method: string;
     headersData?: object;
-    bodyData?: string;
+    bodyData?: BodyInit;
     skipAuth?: boolean;
     responseHandling?: string[];
     timeout?: number;
@@ -107,10 +112,11 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
 
         const normalizedLanguage = normalizeLanguage(i18next.resolvedLanguage || i18next.language) || DEFAULT_LANGUAGE;
 
+        const isMultipartBody = typeof FormData !== 'undefined' && props.bodyData instanceof FormData;
         const req = new Request(props.url, {
             method: props.method,
             headers: {
-                'Content-Type': 'application/json',
+                ...(isMultipartBody ? {} : { 'Content-Type': 'application/json' }),
                 'cache-control': 'no-cache',
                 'Accept-Language': normalizedLanguage,
                 ...authorization,
@@ -159,9 +165,17 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                                 ? response
                                 : new Error(FETCH_ERRORS.CONFLICT),
                         );
+                    } else if (response.status === 403 && props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN)) {
+                        // Reject locally so the caller can render an in-place "no access"
+                        // state instead of losing the whole page to the redirect below.
+                        reject(new Error(FETCH_ERRORS.FORBIDDEN));
                     } else if (response.status === 403) {
-                        window.location.href = '/admin/access-denied';
-                        reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
+                        if (props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN_SILENT)) {
+                            reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
+                        } else {
+                            window.location.href = '/admin/access-denied';
+                            reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
+                        }
                     } else if (response.status === 401) {
                         // Don't force a logout here. fetchData()'s wrapper attempts a single
                         // token refresh + retry before falling back to logout, so a lapsed or

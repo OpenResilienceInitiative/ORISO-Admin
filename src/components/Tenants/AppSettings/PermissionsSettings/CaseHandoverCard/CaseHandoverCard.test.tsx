@@ -118,6 +118,24 @@ describe('CaseHandoverCard', () => {
         });
     });
 
+    it('persists an edited notification template on blur (PUT payload carries the language map)', async () => {
+        const user = userEvent.setup();
+        render(<CaseHandoverCard />);
+
+        await user.click(screen.getByRole('tab', { name: 'Counsellor is ill' }));
+        const input = screen.getByTestId('case-handover-template-input');
+        await user.clear(input);
+        await user.type(input, 'Eigener Uebergabetext.');
+        await user.tab();
+
+        await waitFor(() => {
+            expect(mocks.mutate).toHaveBeenCalled();
+        });
+        const payload = mocks.mutate.mock.calls.at(-1)?.[0];
+        const illPolicy = payload.find((policy: { code: string }) => policy.code === 'COUNSELLOR_IS_ILL');
+        expect(illPolicy.clientNotificationTemplates).toEqual({ de: 'Eigener Uebergabetext.' });
+    });
+
     it('shows the legal-violation placeholder tab with disabled consent controls and no persistence', async () => {
         const user = userEvent.setup();
         render(<CaseHandoverCard />);

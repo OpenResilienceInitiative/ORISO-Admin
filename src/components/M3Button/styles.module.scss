@@ -1,0 +1,88 @@
+/* M3 button atom. Height 40, fully rounded, label-large (Inter 14/500).
+   text: primary label, no container. outlined: 1px outline. filled: primary
+   container. tonal: secondary-container. */
+
+.button {
+    display: inline-flex;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 24px;
+    border: 0;
+    border-radius: 20px;
+    background: transparent;
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
+    cursor: pointer;
+    transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.button:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 2px;
+}
+
+.button:disabled {
+    cursor: not-allowed;
+    opacity: 0.38;
+}
+
+.block {
+    width: 100%;
+}
+
+.icon {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon :global(svg) {
+    width: 18px;
+    height: 18px;
+    fill: currentcolor;
+    color: inherit;
+}
+
+/* text — the admin's default action (footer Back/Next/Cancel/Edit). */
+.text {
+    padding: 0 12px;
+    color: var(--m3-primary, #a5000a);
+}
+
+.text:not(:disabled):hover {
+    background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, transparent);
+}
+
+/* outlined — "+ additional postal code", "Link OTP App". */
+.outlined {
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    color: var(--m3-on-surface, #1b1b1c);
+}
+
+.outlined:not(:disabled):hover {
+    background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+}
+
+/* filled — primary call to action ("Upload", "Send invitation"). */
+.filled {
+    background: var(--m3-primary, #a5000a);
+    color: var(--m3-on-primary, #ffffff);
+}
+
+.filled:not(:disabled):hover {
+    background: color-mix(in srgb, var(--m3-primary, #a5000a) 90%, #000);
+}
+
+/* tonal — secondary emphasis. */
+.tonal {
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
+}
+
+.tonal:not(:disabled):hover {
+    background: color-mix(in srgb, var(--m3-secondary-container, #646d78) 90%, #000);
+}

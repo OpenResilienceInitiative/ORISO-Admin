@@ -28,12 +28,18 @@ export const useUserTwoFactorAuth = () => {
             }
         },
         onSuccess: (_, { twoFactorType }) => {
-            const cache = queryClient.getQueryData(['user-data']) as any;
-            if (cache) {
-                cache.twoFactorAuth.isActive = true;
-                cache.twoFactorAuth.type = twoFactorType;
-                queryClient.getQueryData(['user-data']);
-            }
+            queryClient.setQueryData(['user-data'], (cache: any) =>
+                cache
+                    ? {
+                          ...cache,
+                          twoFactorAuth: {
+                              ...cache.twoFactorAuth,
+                              isActive: true,
+                              type: twoFactorType,
+                          },
+                      }
+                    : cache,
+            );
         },
     });
 };
@@ -44,11 +50,14 @@ export const useUserTwoFactorDelete = () => {
     return useMutation({
         mutationFn: () => apiDeleteTwoFactorAuth(),
         onSuccess: () => {
-            const cache = queryClient.getQueryData(['user-data']) as any;
-            if (cache) {
-                cache.twoFactorAuth.isActive = false;
-                queryClient.getQueryData(['user-data']);
-            }
+            queryClient.setQueryData(['user-data'], (cache: any) =>
+                cache
+                    ? {
+                          ...cache,
+                          twoFactorAuth: { ...cache.twoFactorAuth, isActive: false },
+                      }
+                    : cache,
+            );
         },
     });
 };

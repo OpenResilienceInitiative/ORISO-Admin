@@ -107,3 +107,34 @@ export const NOTIFICATION_TEMPLATE_SAMPLES: Record<string, Partial<Record<Notifi
 
 export const getNotificationTemplateSample = (code: string, language: NotificationLanguage) =>
     NOTIFICATION_TEMPLATE_SAMPLES[code]?.[language] ?? '';
+
+/** Effective template: backend-stored value first, sample copy as fallback. */
+export const getNotificationTemplate = (
+    policy: CaseHandoverReasonPolicy | null,
+    code: string,
+    language: NotificationLanguage,
+) => policy?.clientNotificationTemplates?.[language] ?? getNotificationTemplateSample(code, language);
+
+/** Writes one language's template on the given reason; blank text clears the override. */
+export const applyNotificationTemplate = (
+    policies: CaseHandoverReasonPolicy[],
+    code: string,
+    language: NotificationLanguage,
+    text: string,
+) =>
+    policies.map((policy) => {
+        if (policy.code !== code) {
+            return policy;
+        }
+        const templates = { ...(policy.clientNotificationTemplates ?? {}) };
+        const trimmed = text.trim();
+        if (trimmed) {
+            templates[language] = trimmed;
+        } else {
+            delete templates[language];
+        }
+        return {
+            ...policy,
+            clientNotificationTemplates: Object.keys(templates).length ? templates : null,
+        };
+    });

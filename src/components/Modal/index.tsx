@@ -1,11 +1,16 @@
 import { Modal as AntModal } from 'antd';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import Title from 'antd/lib/typography/Title';
 import { ReactNode } from 'react';
+import styles from './styles.module.scss';
+
+export { DialogButton } from './DialogButton';
 
 export interface ModalProps {
     titleKey?: string;
     titleKeyOptions?: Record<string, unknown>;
+    /** Raw title node for dynamic titles that are not an i18n key. Ignored if `titleKey` is set. */
+    title?: ReactNode;
     cancelLabelKey?: string;
     okLabelKey?: string;
     contentKey?: string;
@@ -13,12 +18,30 @@ export interface ModalProps {
     children?: ReactNode;
     onConfirm?: () => void;
     onClose?: () => void;
+    /** Custom footer content; replaces the standard text-button actions. */
     footer?: ReactNode;
+    width?: number | string;
+    /** Optional 32px hero icon centered above the title (M3 basic dialog). */
+    icon?: ReactNode;
+    /** Full-width divider between content and actions. Defaults to true. */
+    showDivider?: boolean;
+    /** Disables the confirm text button (e.g. while submitting). */
+    confirmDisabled?: boolean;
+    /** Show the top-right close (X) affordance. Defaults to true. */
+    closable?: boolean;
 }
 
+/**
+ * Standard M3 basic dialog (Design-System M3_ORISO, node 60942-12062).
+ * Renders the house anatomy — hero icon, centered headline-small title,
+ * body-medium content, divider and right-aligned M3 text buttons — so every
+ * confirm/delete dialog across the admin looks identical. Pass `footer` only
+ * for genuinely custom action rows.
+ */
 export const Modal = ({
     titleKey,
     titleKeyOptions,
+    title,
     okLabelKey,
     cancelLabelKey,
     children,
@@ -27,22 +50,74 @@ export const Modal = ({
     contentKey,
     contentKeyOptions,
     footer,
+    width,
+    icon,
+    showDivider = true,
+    confirmDisabled = false,
+    closable = true,
 }: ModalProps) => {
     const { t } = useTranslation();
 
+    const hasStandardActions = Boolean(cancelLabelKey || okLabelKey);
+
+    const standardActions = hasStandardActions ? (
+        <div className={styles.actions}>
+            {cancelLabelKey && (
+                <button type="button" className={styles.actionButton} onClick={onClose}>
+                    {t(cancelLabelKey)}
+                </button>
+            )}
+            {okLabelKey && (
+                <button
+                    type="button"
+                    className={classNames(styles.actionButton, styles.actionButtonPrimary)}
+                    disabled={confirmDisabled}
+                    onClick={onConfirm}
+                >
+                    {t(okLabelKey)}
+                </button>
+            )}
+        </div>
+    ) : null;
+
+    const resolvedFooter = footer ?? standardActions;
+
     return (
         <AntModal
-            title={<Title level={2}>{titleKey ? t(titleKey, titleKeyOptions) : null}</Title>}
+            className={styles.modal}
+            styles={{
+                mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
+            }}
+            title={
+                titleKey || title ? (
+                    <div className={styles.titleBlock}>
+                        {icon && (
+                            <span className={styles.heroIcon} aria-hidden>
+                                {icon}
+                            </span>
+                        )}
+                        <div className={styles.title}>{titleKey ? t(titleKey, titleKeyOptions) : title}</div>
+                    </div>
+                ) : null
+            }
             open
             destroyOnClose
             centered
             maskClosable
             keyboard
+            closable={closable}
             onCancel={onClose}
-            onOk={onConfirm}
-            cancelText={cancelLabelKey && t(cancelLabelKey)}
-            okText={okLabelKey && t(okLabelKey)}
-            footer={footer}
+            footer={
+                resolvedFooter ? (
+                    <>
+                        {showDivider && <div className={styles.divider} aria-hidden />}
+                        {/* The Modal owns footer padding so custom footers can never sit
+                            flush against the 28px rounded surface (which used to clip them). */}
+                        <div className={styles.footerBody}>{resolvedFooter}</div>
+                    </>
+                ) : null
+            }
+            width={width}
             afterClose={() => {
                 document.querySelectorAll('.ant-modal-root:empty').forEach((root) => root.remove());
             }}

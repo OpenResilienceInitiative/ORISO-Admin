@@ -1,14 +1,17 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Modal, Space } from 'antd';
+import { Button, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { ColumnProps } from 'antd/lib/table';
 import { InterestsOutlined } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { useDebouncedCallback } from 'use-debounce';
+import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { M3Switch } from '../../../components/M3Switch';
 import { TopicData } from '../../../types/topic';
 import { Status } from '../../../types/status';
 import { TopicDeletionModal } from './TopicDeletionModal';
+import { Modal } from '../../../components/Modal';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useFeatureContext } from '../../../context/FeatureContext';
@@ -19,12 +22,14 @@ import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import routePathNames from '../../../appConfig';
 import { useTenantAdminDataMutation } from '../../../hooks/useTenantAdminDataMutation.hook';
+import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 import StatusIcons from '../../../components/EditableTable/StatusIcons';
 import EditButtons from '../../../components/EditableTable/EditButtons';
 import { Page } from '../../../components/Page';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { ResizeTable } from '../../../components/ResizableTable';
 import { useTopicList } from '../../../hooks/useTopicList';
+import styles from './TopicList.module.scss';
 
 export const TopicList = () => {
     const navigate = useNavigate();
@@ -34,8 +39,11 @@ export const TopicList = () => {
     const { settings } = useAppConfigContext();
     const { isEnabled, toggleFeature } = useFeatureContext();
     const { hasRole } = useUserRoles();
-    const { mutate: updateTenantData } = useTenantAdminDataMutation({ id: `${data.id}` });
+    const { mutate: updateTenantData, isPending: isTopicsSwitchPending } = useTenantAdminDataMutation({
+        id: `${data.id}`,
+    });
     const [topicIdForDelete, setTopicIdForDelete] = useState<number>(null);
+    const [switchConfirmOpen, setSwitchConfirmOpen] = useState(false);
     const [tableState, setTableState] = useState<TableState>({
         current: 1,
         sortBy: undefined,
@@ -44,29 +52,31 @@ export const TopicList = () => {
     });
     const { data: topicsData, isLoading, refetch } = useTopicList({ ...tableState });
     const isTopicsFeatureActive = isEnabled(FeatureFlag.TopicsInRegistration);
+    const updateSearch = useCallback((search: string) => {
+        setTableState((current) => ({ ...current, current: 1, search }));
+    }, []);
+    const setSearchDebounced = useDebouncedCallback(updateSearch, 100);
 
-    const onTopicsSwitch = useCallback(() => {
-        Modal.confirm({
-            title: t(isTopicsFeatureActive ? 'topics.featureToggle.off.title' : 'topics.featureToggle.on.title'),
-            content: t(
-                isTopicsFeatureActive ? 'topics.featureToggle.off.description' : 'topics.featureToggle.on.description',
-            ),
-            width: '768px',
-            icon: <InterestsOutlined />,
-            onOk() {
-                updateTenantData(
-                    {
-                        settings: {
-                            topicsInRegistrationEnabled: !isTopicsFeatureActive,
-                        },
-                    },
-                    {
-                        onSuccess: () => toggleFeature(FeatureFlag.TopicsInRegistration),
-                    },
-                );
+    const onTopicsSwitch = useCallback(() => setSwitchConfirmOpen(true), []);
+
+    const confirmTopicsSwitch = useCallback(() => {
+        updateTenantData(
+            { settings: { topicsInRegistrationEnabled: !isTopicsFeatureActive } },
+            {
+                // Keep the confirmation open until the request actually succeeds — a
+                // failed PUT (network error, 500, ...) must not silently vanish and
+                // leave the user thinking the toggle went through.
+                onSuccess: () => {
+                    toggleFeature(FeatureFlag.TopicsInRegistration);
+                    setSwitchConfirmOpen(false);
+                },
+                onError: async (error) => {
+                    const content = await extractApiErrorMessage(error);
+                    message.error({ content, duration: 8 });
+                },
             },
-        });
-    }, [isTopicsFeatureActive]);
+        );
+    }, [isTopicsFeatureActive, toggleFeature, updateTenantData]);
 
     const onCloseDeleteModal = useCallback(() => {
         setTopicIdForDelete(null);
@@ -171,7 +181,13 @@ export const TopicList = () => {
         <Page isLoading={isLoading}>
             <Page.Title titleKey="topics.title" subTitleKey="topics.title.text" />
 
-            <Space align="baseline">
+            <GlobalSearchBar
+                className={styles.toolbar}
+                expandedWidth={499}
+                onSearch={updateSearch}
+                onSearchChange={setSearchDebounced}
+                searchPlaceholder={t('search-placeholder')}
+            >
                 {can(PermissionAction.Create, Resource.Topic) && (
                     <Button
                         className="mb-m mr-sm"
@@ -184,16 +200,17 @@ export const TopicList = () => {
                 )}
 
                 {canShowTopicSwitch && (
-                    <>
+                    <div className={styles.featureToggle}>
                         <M3Switch
                             checked={isTopicsFeatureActive}
+                            disabled={isTopicsSwitchPending}
                             label={t('topics.featureToggle')}
                             onChange={() => onTopicsSwitch()}
                         />
                         {t('topics.featureToggle')}
-                    </>
+                    </div>
                 )}
-            </Space>
+            </GlobalSearchBar>
 
             <ResizeTable
                 rowKey="id"
@@ -206,6 +223,25 @@ export const TopicList = () => {
             />
 
             {topicIdForDelete && <TopicDeletionModal id={topicIdForDelete} onClose={onCloseDeleteModal} />}
+            {switchConfirmOpen && (
+                <Modal
+                    titleKey={
+                        isTopicsFeatureActive ? 'topics.featureToggle.off.title' : 'topics.featureToggle.on.title'
+                    }
+                    contentKey={
+                        isTopicsFeatureActive
+                            ? 'topics.featureToggle.off.description'
+                            : 'topics.featureToggle.on.description'
+                    }
+                    icon={<InterestsOutlined />}
+                    width={768}
+                    cancelLabelKey="btn.cancel.uppercase"
+                    okLabelKey="btn.ok.uppercase"
+                    confirmDisabled={isTopicsSwitchPending}
+                    onConfirm={confirmTopicsSwitch}
+                    onClose={() => setSwitchConfirmOpen(false)}
+                />
+            )}
         </Page>
     );
 };

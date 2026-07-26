@@ -1,0 +1,13 @@
+.card {
+    width: 320px;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.anotherButton {
+    align-self: flex-start;
+}

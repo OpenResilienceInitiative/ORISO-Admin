@@ -1,0 +1,52 @@
+/* M3 filter chip. Height 32, radius 8, label = M3 label-large (Inter 14/500).
+   Off: outlined, transparent surface, on-surface text.
+   On: filled with the secondary tonal (#4C555F), white text + leading check. */
+
+.chip {
+    display: inline-flex;
+    height: 32px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
+    cursor: pointer;
+    transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.chip:not(:disabled):hover {
+    background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+}
+
+.chip:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 2px;
+}
+
+.selected {
+    padding-left: 12px;
+    border-color: transparent;
+    background: var(--m3-secondary, #4c555f);
+    color: var(--m3-on-secondary, #ffffff);
+}
+
+.selected:not(:disabled):hover {
+    background: color-mix(in srgb, var(--m3-secondary, #4c555f) 88%, #000);
+}
+
+.check {
+    flex-shrink: 0;
+}
+
+.label {
+    white-space: nowrap;
+}
+
+.chip:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}

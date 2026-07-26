@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ColumnType } from 'antd/lib/table';
 import { ListingTable } from '../../../components/ListingTable';
-import { Page } from '../../../components/Page';
 import { useCaseHandoverLogsData } from '../../../hooks/useCaseHandoverLogsData';
 import { CaseHandoverLogEntry } from '../../../types/caseHandoverLogs';
 
@@ -75,21 +74,24 @@ export const CaseHandoverLogsPage = () => {
                 title: t('caseHandoverLogs.table.auditOutcome'),
                 dataIndex: 'auditOutcome',
                 key: 'auditOutcome',
+                // Without an explicit width, Ant Table squeezes this last column into the
+                // leftover scroll budget (~50px) so "Audit outcome" / values wrap badly.
+                width: 280,
+                ellipsis: true,
             },
         ],
         [t],
     );
 
     return (
-        <Page>
-            <Page.Title titleKey="caseHandoverLogs.title" subTitle={String(t('caseHandoverLogs.subTitle'))} />
+        <>
             {isLogsError && <Alert type="error" message={t('error.loading')} showIcon />}
             <ListingTable<CaseHandoverLogEntry>
                 rowKey={(row) => `${row.requestId}`}
                 loading={isLoading}
                 columns={columns}
                 dataSource={data?.data ?? []}
-                scroll={{ x: 1200 }}
+                scroll={{ x: 1500 }}
                 pagination={{
                     current: page,
                     pageSize: perPage,
@@ -104,6 +106,6 @@ export const CaseHandoverLogsPage = () => {
                     },
                 }}
             />
-        </Page>
+        </>
     );
 };

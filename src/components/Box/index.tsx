@@ -1,17 +1,16 @@
 import classNames from 'classnames';
-import { ReactNode } from 'react';
+import { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
 import styles from './styles.module.scss';
 
-type BoxProps = {
-    className?: string;
+type BoxProps = HTMLAttributes<HTMLDivElement> & {
     contentClassName?: string;
     children: ReactNode;
 };
 
-export const Box = ({ className, contentClassName, children }: BoxProps) => {
-    return (
-        <div className={classNames(className, styles.box)}>
-            <div className={classNames(contentClassName, styles.content)}>{children}</div>
-        </div>
-    );
-};
+export const Box = forwardRef<HTMLDivElement, BoxProps>(({ className, contentClassName, children, ...rest }, ref) => (
+    <div ref={ref} className={classNames(className, styles.box)} {...rest}>
+        <div className={classNames(contentClassName, styles.content)}>{children}</div>
+    </div>
+));
+
+Box.displayName = 'Box';

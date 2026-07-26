@@ -57,6 +57,12 @@ export interface CardMenuOption {
     trend?: TrendBadgeDefinition;
     icon?: SvgIcon;
     iconTone?: IconTone;
+    /**
+     * When set, the card renders its calm empty presentation (muted dash + this hint)
+     * instead of the raw value. The value itself stays untouched so the CSV export and
+     * screen readers keep the explicit "Keine Daten" wording.
+     */
+    emptyHint?: string;
 }
 
 export interface StatisticCardDefinition {
@@ -72,6 +78,8 @@ export interface StatisticCardDefinition {
     menuOptions?: CardMenuOption[];
     defaultMenuKey?: CardMenuKey;
     size: CardSize;
+    /** See CardMenuOption.emptyHint — calm empty presentation instead of the raw value. */
+    emptyHint?: string;
 }
 
 export interface CaseChartBar {
@@ -102,6 +110,23 @@ export interface DonutRenderSegment {
 export interface ScopeDashboard {
     topCards: StatisticCardDefinition[];
     communicationCards: StatisticCardDefinition[];
+}
+
+/**
+ * Structural-only shape for the static card/menu blueprints (key, label, icon).
+ * value/detail/trend are always supplied at render time by applyMetricOverride,
+ * so the blueprints deliberately cannot declare them - that keeps a wiring gap
+ * (a card key without an override mapping) a type error instead of a silent
+ * fake-number regression.
+ */
+export type CardMenuOptionBlueprint = Omit<CardMenuOption, 'value' | 'detail' | 'trend'>;
+export type StatisticCardBlueprint = Omit<StatisticCardDefinition, 'value' | 'detail' | 'trend' | 'menuOptions'> & {
+    menuOptions?: CardMenuOptionBlueprint[];
+};
+
+export interface ScopeDashboardBlueprint {
+    topCards: StatisticCardBlueprint[];
+    communicationCards: StatisticCardBlueprint[];
 }
 
 export interface PeriodOption<OptionKey extends string> {

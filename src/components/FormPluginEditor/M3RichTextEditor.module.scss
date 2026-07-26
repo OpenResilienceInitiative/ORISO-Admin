@@ -25,11 +25,50 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     color: $m3-on-surface;
     font-family: 'Inter Variable', Inter, Arial, sans-serif;
 
+    // Desktop: fixed 800×740 card (Figma 1261-48667) — the decks scroll
+    // horizontally, so the card never shrinks; the text surface scrolls
+    // inside instead. Below 600px the card goes fluid (mobile view).
+    @media (min-width: 600px) {
+        &:not(.inDialog) {
+            width: 800px;
+            height: 740px;
+            flex-shrink: 0;
+
+            .editorRegion,
+            .editorWrap {
+                display: flex;
+                min-height: 0;
+                flex: 1;
+                flex-direction: column;
+            }
+
+            .editor {
+                display: flex;
+                flex: 1;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            .editorContentScroll {
+                min-height: 0;
+                flex: 1;
+                overflow-y: auto;
+            }
+        }
+    }
+
     // Inside the fullscreen dialog (Figma 1007-27636) the card fills the
     // viewport minus the scrim margins and the editor surface grows to fit.
     &.inDialog {
         height: calc(100vh - 128px);
         max-width: none;
+
+        .editorRegion {
+            display: flex;
+            min-height: 0;
+            flex: 1;
+            flex-direction: column;
+        }
 
         .editorWrap {
             display: flex;
@@ -39,8 +78,56 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         }
 
         .editor {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .editorContentScroll {
+            min-height: 0;
             flex: 1;
             overflow-y: auto;
+        }
+
+        // Mobile fullscreen (Figma 1276-72139): the toolbar (with the red exit
+        // button) sits at the very top — header + help text are hidden, the
+        // text surface gets the 12px radius (write mode only; read mode has
+        // no box at all).
+        @media (max-width: 599px) {
+            height: 100dvh;
+            border-radius: 0;
+            box-shadow: none;
+
+            .header,
+            .helpRow,
+            .headerDivider {
+                display: none;
+            }
+
+            .editor {
+                border-radius: 12px;
+            }
+        }
+    }
+}
+
+// The fullscreen dialog fills the viewport on mobile (antd sets the width
+// inline, hence the override).
+.dialogModal {
+    @media (max-width: 599px) {
+        top: 0;
+        padding: 0;
+        /* antd injects its own mobile .ant-modal max-width/margin at runtime
+           (cssinjs loads after this sheet) — hence the importants. */
+        /* stylelint-disable declaration-no-important */
+        max-width: 100vw !important;
+        margin: 0 !important;
+        width: 100vw !important;
+        /* stylelint-enable declaration-no-important */
+
+        :global(.ant-modal-content) {
+            padding: 0;
         }
     }
 }
@@ -75,6 +162,11 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         outline: 2px solid $m3-on-surface;
         outline-offset: 2px;
     }
+
+    // Mobile fullscreen: the red toolbar exit button is the only close control.
+    @media (max-width: 599px) {
+        display: none;
+    }
 }
 
 .header {
@@ -90,13 +182,58 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 
     .title {
+        max-width: 100%;
         margin: 0;
         font-size: 24px;
         font-weight: 400;
         line-height: 32px;
+        overflow-wrap: anywhere;
         text-align: center;
         color: $m3-on-surface;
     }
+}
+
+// "Editor Help Texts" (Figma 1227-17235): info icon + role/state description
+// under the header; the CTA tip below it in bold.
+.helpRow {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 0 48px 12px;
+
+    @media (max-width: 599px) {
+        padding: 0 16px 12px;
+    }
+}
+
+.helpIcon {
+    // width/height beat the MUI font-size class (emotion injects later).
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    font-size: 16px;
+    color: #4c555f; // M3/sys/light/secondary
+}
+
+.helpTexts {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 2px;
+}
+
+.helpText,
+.helpHint {
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+    color: #3f4852;
+}
+
+.helpHint {
+    font-weight: 600;
 }
 
 .languageRow {
@@ -151,14 +288,24 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     border: 0;
 }
 
-// Toolbar — a single row that scrolls horizontally instead of wrapping
-// (Figma 1-49824 / 1007-27636: the button row always stays on one line).
+// Toolbar — the maximize/exit button stays pinned at the start (always
+// reachable, especially in mobile fullscreen); only .toolbarScroll scrolls.
 .toolbar {
     display: flex;
     flex-wrap: nowrap;
     gap: 4px;
     align-items: center;
     padding: 8px 16px;
+}
+
+// The scrolling part of the toolbar (everything after the pinned button).
+.toolbarScroll {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-wrap: nowrap;
+    gap: 4px;
+    align-items: center;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
@@ -174,6 +321,36 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     flex-shrink: 0;
     gap: 2px;
     align-items: center;
+}
+
+// Read mode / version look-back: the fieldset natively disables every
+// formatting control inside; display: contents keeps the flex layout intact.
+.toolFieldset {
+    display: contents;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    margin: 0;
+}
+
+// The pinned maximize/minimize button: perfectly round, never squished by the
+// flex row. Doubled class beats the .toolBtn base rule regardless of order.
+.toolBtn.maximizeToolBtn {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 50%;
+}
+
+// Fullscreen exit (Figma 1276-72139): the pinned button turns red while the
+// editor is in the fullscreen dialog — white icon via currentColor.
+.toolBtn.exitFullscreenBtn {
+    background: $m3-publish;
+    color: #fff;
+
+    &:hover:not(:disabled) {
+        background: #8c0009;
+    }
 }
 
 .vDivider {
@@ -246,23 +423,16 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 }
 
 // Editor surface
-// Anchor navigation — horizontal chip row above the editor surface. Same
-// single-line + hidden-scrollbar pattern as the toolbar; base layout comes
-// from the global .RichEditor-anchorNav rules, this only adds M3 chrome.
-.anchorNav {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 4px;
-    align-items: center;
-    padding: 0 16px 8px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-        display: none;
-    }
+// Anchor navigation — chip row at the bottom of the text surface with
+// overflow nav arrows (Figma 1261-48667 / 1280-73048). It stays outside the
+// scrolling text viewport so it never covers document content.
+// Nested under .editor so the M3 chrome wins over the global
+// .RichEditor-anchorNav base rules regardless of bundle order.
+.editor .anchorNav {
+    flex-shrink: 0;
+    padding: 8px 0 0;
+    background: #fff;
+    border-bottom: 0;
 
     :global(.ant-tag) {
         margin-inline-end: 0;
@@ -271,16 +441,99 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 }
 
+// Read mode: the chips sit directly on the card surface.
+.readMode .anchorNav {
+    background: $m3-surface;
+}
+
 .anchorBubbleHost {
     display: contents;
 }
 
 .anchorBubble {
     padding: 4px;
-    background: #fff;
-    border: 1px solid $m3-outline-variant;
+    background: #f6f3f3;
+    border-radius: 12px;
+    box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08);
+}
+
+// "Mit Abschnitt verknüpfen" trigger: dark M3 secondary label, cross-reference
+// icon, arrow flips upwards while the chapter menu is open.
+.crossRefBtn {
+    display: inline-flex;
+    height: 36px;
+    align-items: center;
+    padding: 0 10px 0 12px;
+    border: 0;
+    gap: 8px;
+    background: transparent;
     border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    color: #4c555f; // M3/sys/light/secondary
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+
+    &:hover {
+        background: rgba(76, 85, 95, 0.08);
+    }
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+.crossRefArrow {
+    transition: transform 0.15s ease;
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.crossRefArrowOpen {
+    transform: rotate(180deg);
+}
+
+// Version history menu (Figma 1271-70892): live-since header + per-variant
+// published-from/until ranges.
+.versionMenuHeader {
+    padding: 4px 4px 8px;
+    color: $m3-on-surface;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.versionMenuItem {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 2px 0;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        color: $m3-on-surface-variant;
+    }
+}
+
+.versionMenuName {
+    display: block;
+    color: $m3-on-surface;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+}
+
+.versionMenuRange {
+    display: block;
+    color: rgba(68, 71, 72, 0.8);
+    font-size: 12px;
+    line-height: 16px;
+    white-space: normal;
 }
 
 // Look-back banner shown while viewing an earlier version (read-only).
@@ -304,8 +557,134 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     flex-shrink: 0;
 }
 
+// Hosts the editor surface plus the optional functionality hint.
+.editorRegion {
+    position: relative;
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+}
+
 .editorWrap {
     padding: 0 16px;
+}
+
+// The blocker intentionally floats over the white editor surface. Reserve scrollable
+// space for it so the final legal-text lines can always be brought above the overlay.
+.hasSnackbar .editorContentScroll {
+    padding-bottom: 64px;
+    scroll-padding-bottom: 64px;
+}
+
+.hasAnchors .hasSnackbar .editorContentScroll {
+    padding-bottom: 110px;
+    scroll-padding-bottom: 110px;
+}
+
+// M3 inverse snackbar (Figma 1229-17864). It floats inside the editor surface;
+// .hasSnackbar above reserves matching scroll space so text remains reachable.
+.hintSnackbar {
+    position: absolute;
+    z-index: 5;
+    right: 6px;
+    bottom: 6px;
+    left: 6px;
+    display: flex;
+    align-items: center;
+    padding: 4px 4px 4px 16px;
+    background: #303031;
+    border-radius: 4px;
+    box-shadow: 0 4px 4px rgba(0, 0, 0, 0.15), 0 1px 1.5px rgba(0, 0, 0, 0.3);
+    color: #f3f0f0;
+
+    @media (max-width: 599px) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 40px;
+        padding-left: 16px;
+
+        .hintSnackbarText {
+            grid-column: 1 / -1;
+        }
+
+        .hintSnackbarAction {
+            justify-self: start;
+            padding-left: 0;
+            white-space: normal;
+            text-align: left;
+        }
+
+        .hintSnackbarClose {
+            grid-column: 2;
+        }
+    }
+}
+
+// In read mode the dismiss label may wrap onto two lines.
+// With a chapter chip footer the snackbar floats above it.
+.hasAnchors .hintSnackbar {
+    bottom: 52px;
+}
+
+// Read mode has no white surface: the snackbar flows below the text.
+.readMode .hintSnackbar {
+    position: static;
+    margin: 8px 0 0;
+}
+
+.readMode .hintSnackbarAction {
+    max-width: 130px;
+    line-height: 14px;
+    text-align: center;
+    white-space: normal;
+}
+
+.hintSnackbarText {
+    flex: 1;
+    padding: 6px 4px 6px 0;
+    font-size: 14px;
+    letter-spacing: 0.25px;
+    line-height: 20px;
+}
+
+.hintSnackbarAction {
+    flex-shrink: 0;
+    padding: 10px 12px;
+    border: 0;
+    background: transparent;
+    border-radius: 100px;
+    color: #ffb4aa;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+
+    &:hover {
+        background: rgba(255, 180, 170, 0.12);
+    }
+}
+
+.hintSnackbarClose {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 100px;
+    color: #f3f0f0;
+    cursor: pointer;
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    &:hover {
+        background: rgba(243, 240, 240, 0.12);
+    }
 }
 
 // Horizontal inset for arbitrary editor content (aboveEditorSlot / editorSlot)
@@ -316,6 +695,8 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 }
 
 .editor {
+    // Anchor for the floating blocker snackbar (6px inside the white surface).
+    position: relative;
     min-height: 280px;
     padding: 16px;
     background: #fff;
@@ -332,6 +713,130 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     :global(.ProseMirror) {
         min-height: 248px;
         outline: none;
+    }
+
+    // Inserted images must never blow out the text surface.
+    :global(.ProseMirror img) {
+        max-width: 100%;
+        height: auto;
+    }
+
+    // Inline code = small chip in the text flow; code block = dark panel.
+    // Without this both toggles looked identical in the editor.
+    :global(.ProseMirror code) {
+        padding: 1px 6px;
+        background: rgba(100, 109, 120, 0.15);
+        border-radius: 6px;
+        font-family: 'SF Mono', 'Cascadia Mono', Consolas, Menlo, monospace;
+        font-size: 0.85em;
+    }
+
+    :global(.ProseMirror pre) {
+        padding: 12px 16px;
+        background: #303031;
+        border-radius: 12px;
+        color: #f3f0f0;
+        overflow-x: auto;
+    }
+
+    :global(.ProseMirror pre code) {
+        padding: 0;
+        background: transparent;
+        color: inherit;
+        font-size: 13px;
+    }
+
+    // Blockquote: left bar + inset in the secondary tone — without this the
+    // toggle worked but changed nothing visible.
+    :global(.ProseMirror blockquote) {
+        margin: 12px 0;
+        padding: 4px 16px;
+        border-left: 4px solid #c4c7c8;
+        color: #3f4852;
+
+        p {
+            margin: 0;
+        }
+    }
+
+    // Checklists (TipTap task list): checkbox + content side by side.
+    :global(.ProseMirror ul[data-type='taskList']) {
+        padding-left: 0;
+        list-style: none;
+    }
+
+    :global(.ProseMirror ul[data-type='taskList'] li) {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    :global(.ProseMirror ul[data-type='taskList'] li > label) {
+        flex-shrink: 0;
+        margin-top: 3px;
+    }
+
+    :global(.ProseMirror ul[data-type='taskList'] li > div) {
+        flex: 1;
+        min-width: 0;
+    }
+
+    :global(.ProseMirror ul[data-type='taskList'] input[type='checkbox']) {
+        width: 18px;
+        height: 18px;
+        accent-color: $m3-publish;
+        cursor: pointer;
+    }
+
+    // Heading scale (Figma 1280-73020): M3 display sizes on desktop, headline
+    // sizes on mobile — body text follows body-large / body-medium.
+    :global(.ProseMirror h1) {
+        font-size: 57px;
+        font-weight: 400;
+        letter-spacing: -0.25px;
+        line-height: 64px;
+    }
+
+    :global(.ProseMirror h2) {
+        font-size: 45px;
+        font-weight: 400;
+        line-height: 52px;
+    }
+
+    :global(.ProseMirror h3) {
+        font-size: 36px;
+        font-weight: 400;
+        line-height: 44px;
+    }
+
+    :global(.ProseMirror p) {
+        font-size: 16px;
+        letter-spacing: 0.5px;
+        line-height: 24px;
+    }
+
+    @media (max-width: 599px) {
+        :global(.ProseMirror h1) {
+            font-size: 32px;
+            letter-spacing: 0;
+            line-height: 40px;
+        }
+
+        :global(.ProseMirror h2) {
+            font-size: 28px;
+            line-height: 36px;
+        }
+
+        :global(.ProseMirror h3) {
+            font-size: 24px;
+            line-height: 32px;
+        }
+
+        :global(.ProseMirror p) {
+            font-size: 14px;
+            letter-spacing: 0.25px;
+            line-height: 20px;
+        }
     }
 
     :global(.ProseMirror p.is-editor-empty:first-child::before) {
@@ -375,6 +880,289 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         width: 18px;
         height: 18px;
     }
+}
+
+// Lower function bar (Figma 1261-48667): up to three split buttons in ONE
+// horizontal row — overflow scrolls sideways instead of stacking.
+.functionBar {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 12px 16px 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+
+    > * {
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 599px) {
+        gap: 8px;
+        justify-content: flex-start;
+    }
+}
+
+// M3 split button (Figma 1252-37231): leading segment = icon + label,
+// trailing segment = menu caret; one control, one menu.
+.versionSplit {
+    display: flex;
+    max-width: 100%;
+    min-width: 0;
+    gap: 2px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+
+    &:focus-visible {
+        outline: 2px solid $m3-primary;
+        outline-offset: 1px;
+    }
+}
+
+.versionLeading,
+.versionTrailing {
+    display: inline-flex;
+    height: 36px;
+    align-items: center;
+    border: 1px solid $m3-outline-variant;
+    color: $m3-on-surface-variant;
+    transition: background 0.15s ease;
+
+    .versionSplit:hover & {
+        background: $m3-state-hover;
+    }
+
+    svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+}
+
+.versionLeading {
+    min-width: 0;
+    gap: 4px;
+    padding: 0 10px 0 12px;
+    border-radius: 18px 4px 4px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+
+    // antd Icon wrappers size via font-size (1em) — match the MUI icons.
+    :global(.anticon) {
+        font-size: 18px;
+    }
+
+    > span {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+}
+
+.versionTrailing {
+    justify-content: center;
+    width: 40px;
+    flex-shrink: 0;
+    border-radius: 4px 18px 18px 4px;
+
+    svg {
+        width: 22px;
+        height: 22px;
+    }
+}
+
+// Menu open → elevated state: white segments, shadow, primary-red label
+// (Figma 1280-73042 "Elevated state when menu is opened").
+.splitOpen {
+    .versionLeading,
+    .versionTrailing {
+        background: #fff;
+        border-color: transparent;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+        color: $m3-publish;
+    }
+}
+
+// Read mode (Figma 1261-51137): text without box, outline or padding.
+.readMode {
+    .editor {
+        padding: 8px 0;
+        background: transparent;
+        border-color: transparent;
+
+        &:focus-within {
+            border-color: transparent;
+            box-shadow: none;
+        }
+    }
+}
+
+// Heading-menu rows (Figma 1280-73045): glyph/icon + label + keyboard shortcut.
+.menuItemRow {
+    display: flex;
+    min-width: 230px;
+    gap: 12px;
+    align-items: center;
+}
+
+.menuItemGlyph {
+    display: inline-flex;
+    width: 26px;
+    flex-shrink: 0;
+    justify-content: center;
+    color: $m3-on-surface-variant;
+    font-size: 13px;
+    font-weight: 600;
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+.menuItemLabel {
+    flex: 1;
+
+    small {
+        display: block;
+        max-width: 210px;
+        color: rgba(68, 71, 72, 0.72);
+        font-size: 11px;
+        line-height: 14px;
+        white-space: normal;
+    }
+}
+
+.menuItemHint {
+    margin-left: 12px;
+    color: rgba(68, 71, 72, 0.6);
+    font-size: 12px;
+}
+
+// Colour swatch in the highlight menu.
+.colorSwatch {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 50%;
+}
+
+// Text-format menu panel (Figma 1280-73045): custom dropdown with expandable
+// per-heading rows for the Auto-Chapters toggles.
+.headingMenu {
+    min-width: min(290px, calc(100vw - 12px));
+    max-width: calc(100vw - 12px);
+    padding: 8px 0;
+    background: #f6f3f3;
+    border-radius: 12px;
+    box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+}
+
+.headingMenuRow {
+    display: flex;
+    align-items: center;
+
+    &:hover {
+        background: $m3-state-hover;
+    }
+}
+
+.headingMenuRowActive {
+    background: rgba(165, 0, 10, 0.08);
+    color: $m3-publish;
+
+    .menuItemGlyph {
+        color: $m3-publish;
+    }
+}
+
+.headingMenuItem {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px 10px 16px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 14px;
+    text-align: left;
+}
+
+.headingMenuExpand {
+    display: inline-flex;
+    width: 40px;
+    align-self: stretch;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    color: $m3-on-surface-variant;
+    cursor: pointer;
+
+    svg {
+        width: 20px;
+        height: 20px;
+        transition: transform 0.15s ease;
+    }
+
+    &:hover {
+        background: $m3-state-hover;
+    }
+}
+
+.headingMenuExpandOpen svg {
+    transform: rotate(180deg);
+}
+
+.headingMenuAuto {
+    display: flex;
+    width: 100%;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 8px 16px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    text-align: left;
+
+    &:hover {
+        background: $m3-state-hover;
+    }
+}
+
+.headingMenuDivider {
+    height: 1px;
+    border: 0;
+    margin: 4px 0 0;
+    background: $m3-divider;
+}
+
+// Auto-Chapters toggle row: red while active (Figma 1280-73045).
+.autoChaptersOn {
+    color: $m3-publish !important;
+
+    .menuItemGlyph {
+        color: $m3-publish;
+    }
+}
+
+.autoChaptersOff {
+    color: $m3-on-surface-variant;
 }
 
 .actions {

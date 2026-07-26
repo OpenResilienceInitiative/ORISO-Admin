@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Card } from './index';
+import { M3Button } from '../M3Button';
 
 const meta = {
     title: 'Molecules/Card',
@@ -44,5 +45,62 @@ export const DialogVariant: Story = {
         variant: 'dialog',
         dialogContentPadding: true,
         children: 'Dialog-Variante mit abgerundeter Karten-Oberfläche.',
+    },
+};
+
+/** Wizard skeleton: header icon + Headline Small title (Figma 24/32/400) + body slot
+ *  + footer action row (top divider, right-aligned text buttons). Every Counsellor-
+ *  Setup-Wizard step is this skeleton with a different body. */
+export const WizardSkeleton: Story = {
+    args: {
+        headerIcon: '🛡',
+        titleKey: 'Advisor Account Data',
+        children: 'Body slot — fields, chips, toggles, etc. go here per step.',
+        footer: (
+            <>
+                <button
+                    type="button"
+                    style={{
+                        border: 0,
+                        background: 'transparent',
+                        color: 'var(--m3-primary, #a5000a)',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                    }}
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    style={{
+                        border: 0,
+                        background: 'transparent',
+                        color: 'var(--m3-primary, #a5000a)',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                    }}
+                >
+                    Next
+                </button>
+            </>
+        ),
+    },
+};
+
+/** Dialog variant + footer — the Neu-Träger create card: divider spans the
+ *  card, actions are inset M3 text buttons (no more loose page-bottom buttons). */
+export const DialogWithFooter: Story = {
+    args: {
+        variant: 'dialog',
+        dialogContentPadding: true,
+        autoHeight: true,
+        titleKey: 'Träger-Admin',
+        children: 'Card body — admin credential fields go here.',
+        footer: (
+            <>
+                <M3Button>Abbrechen</M3Button>
+                <M3Button>Speichern</M3Button>
+            </>
+        ),
     },
 };

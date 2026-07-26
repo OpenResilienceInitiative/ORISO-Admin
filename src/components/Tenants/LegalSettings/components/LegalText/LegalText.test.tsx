@@ -1,56 +1,89 @@
 import React from 'react';
-import { describe, expect, it, vi, beforeAll } from 'vitest';
+import { describe, expect, it, vi, beforeAll, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LegalText } from './index';
+import { PermissionAction } from '../../../../../enums/PermissionAction';
+import { Resource } from '../../../../../enums/Resource';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
     Trans: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,
 }));
 
+const DEFAULT_IMPRINT: unknown = { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>', fr: '<p>Imprint FR</p>' };
+
 const mocks = vi.hoisted(() => ({
     updateTenant: vi.fn(),
     canEdit: true,
+    can: vi.fn((): boolean => mocks.canEdit),
+    imprint: undefined as unknown,
+    activeLanguages: ['de', 'en'] as string[],
 }));
 
-vi.mock('../../../../../hooks/useSingleTenantData', () => ({
-    useSingleTenantData: () => ({
-        data: { content: { imprint: { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>' } } },
+vi.mock('../../../../../hooks/useTenantAppearanceFormData', () => ({
+    useTenantAppearanceFormData: () => ({
+        data: {
+            content: {
+                imprint: mocks.imprint,
+            },
+            settings: { activeLanguages: mocks.activeLanguages },
+        },
         isLoading: false,
+        mutate: mocks.updateTenant,
+        isPending: false,
     }),
 }));
-vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({
-    useTenantAdminData: () => ({ data: { settings: { activeLanguages: ['de', 'en'] } } }),
-}));
-vi.mock('../../../../../hooks/useTenantAdminDataMutation.hook', () => ({
-    useTenantAdminDataMutation: () => ({ mutate: mocks.updateTenant, isPending: false }),
-}));
 vi.mock('../../../../../hooks/useUserPermission', () => ({
-    useUserPermissions: () => ({ can: () => mocks.canEdit }),
+    useUserPermissions: () => ({ can: mocks.can }),
 }));
 
-// The M3 shell mock mirrors the real contract: slots render, publish submits.
+vi.mock('../../../../../hooks/useUserData.hook', () => ({
+    useUserData: () => ({ data: { id: 'user-1' } }),
+}));
+
+vi.mock('../../../../../hooks/useUserRoles.hook', () => ({
+    useUserRoles: () => ({
+        roles: [],
+        hasRole: () => false,
+        isSuperAdmin: true,
+        isTechnicalAccount: false,
+        isTenantScopedAdmin: false,
+        tenantId: 0,
+    }),
+}));
+
+// The M3 editor mock mirrors the real contract: echoes the value, renders the
+// slots, emits an edit via onChange and exposes the publish action.
 vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
     M3RichTextEditor: ({
+        value,
+        onChange,
         readOnly,
         onPublish,
-        languageSlot,
+        helpSlot,
+        snackbarSlot,
         aboveEditorSlot,
-        editorSlot,
         belowSlot,
     }: {
+        value?: string;
+        onChange?: (html: string) => void;
         readOnly?: boolean;
         onPublish?: () => void;
-        languageSlot?: React.ReactNode;
+        helpSlot?: React.ReactNode;
+        snackbarSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
-        editorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
     }) => (
-        <div data-testid="m3-shell" data-readonly={readOnly ? 'true' : 'false'}>
-            {languageSlot}
+        <div data-testid="m3-editor" data-value={value} data-readonly={readOnly ? 'true' : 'false'}>
+            {helpSlot}
+            {snackbarSlot}
             {aboveEditorSlot}
-            {editorSlot}
+            {!readOnly && onChange && (
+                <button type="button" onClick={() => onChange('<p>edited</p>')}>
+                    edit
+                </button>
+            )}
             {!readOnly && onPublish && (
                 <button type="button" onClick={() => onPublish()}>
                     legal.m3Editor.publish
@@ -60,18 +93,6 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         </div>
     ),
 }));
-
-vi.mock('../../../../FormPluginEditor/FormPluginEditor', async () => {
-    const { Form } = await import('antd');
-
-    return {
-        default: ({ name }: { name?: string | string[] }) => (
-            <Form.Item name={name} noStyle>
-                <input />
-            </Form.Item>
-        ),
-    };
-});
 
 beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
@@ -92,9 +113,18 @@ beforeAll(() => {
     vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element) => originalGetComputedStyle(el));
 });
 
-describe('LegalText (M3 shell)', () => {
-    it('submits the form values through the tenant mutation on publish', async () => {
+beforeEach(() => {
+    mocks.imprint = DEFAULT_IMPRINT;
+    mocks.activeLanguages = ['de', 'en'];
+    mocks.canEdit = true;
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+});
+
+describe('LegalText (M3 editor)', () => {
+    it('publishes the complete language map — untouched and unknown languages survive an edit', async () => {
         const user = userEvent.setup();
+        mocks.updateTenant.mockClear();
         render(
             <LegalText
                 tenantId="1"
@@ -105,16 +135,19 @@ describe('LegalText (M3 shell)', () => {
             />,
         );
 
-        // The editor slot keeps one registered input per active language, so
-        // publish collects them all.
-        expect(document.querySelector('input#content_imprint_de')).toHaveValue('<p>Impressum DE</p>');
-        expect(document.querySelector('input#content_imprint_en')).toHaveValue('<p>Imprint EN</p>');
+        // The editor shows the active (default: de) language content.
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>');
 
+        // Edit only German, then publish.
+        await user.click(screen.getByRole('button', { name: 'edit' }));
         await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
 
-        await vi.waitFor(() => expect(mocks.updateTenant).toHaveBeenCalledTimes(1));
-        expect(mocks.updateTenant.mock.calls[0][0]).toMatchObject({
-            content: { imprint: { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>' } },
+        expect(mocks.updateTenant).toHaveBeenCalledTimes(1);
+        // en (untouched active language) and fr (stored but not even offered) are kept.
+        expect(mocks.updateTenant.mock.calls[0][0]).toEqual({
+            content: {
+                imprint: { de: '<p>edited</p>', en: '<p>Imprint EN</p>', fr: '<p>Imprint FR</p>' },
+            },
         });
     });
 
@@ -148,7 +181,11 @@ describe('LegalText (M3 shell)', () => {
 
         await vi.waitFor(() => expect(mocks.updateTenant).toHaveBeenCalledTimes(1));
         expect(mocks.updateTenant.mock.calls[0][0]).toMatchObject({
-            content: { confirmPrivacy: false },
+            content: {
+                confirmPrivacy: false,
+                // fr (stored but not even offered) must survive the modal save path too.
+                imprint: { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>', fr: '<p>Imprint FR</p>' },
+            },
         });
     });
 
@@ -164,8 +201,165 @@ describe('LegalText (M3 shell)', () => {
             />,
         );
 
-        expect(screen.getByTestId('m3-shell').dataset.readonly).toBe('true');
+        expect(screen.getByTestId('m3-editor').dataset.readonly).toBe('true');
         expect(screen.queryByRole('button', { name: 'legal.m3Editor.publish' })).toBeNull();
+        // The read-only state must come from the exact legal-text permission contract.
+        expect(mocks.can).toHaveBeenCalledWith(PermissionAction.Update, Resource.LegalText);
         mocks.canEdit = true;
+    });
+
+    it('preserves legacy plain-string content on load and publish (not dropped to {})', async () => {
+        const user = userEvent.setup();
+        mocks.updateTenant.mockClear();
+        // Stored content from before the language-map migration is a bare HTML string.
+        mocks.imprint = '<p>Legacy Impressum</p>';
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                subTitle="imprint.subTitle"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        // The legacy string is shown under the first configured language, not empty.
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Legacy Impressum</p>');
+
+        // Publishing without touching it keeps the content instead of overwriting with {}.
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
+
+        expect(mocks.updateTenant).toHaveBeenCalledTimes(1);
+        expect(mocks.updateTenant.mock.calls[0][0]).toEqual({
+            content: { imprint: { de: '<p>Legacy Impressum</p>' } },
+        });
+    });
+
+    it('falls back to German when activeLanguages is configured as an empty list', () => {
+        mocks.activeLanguages = [];
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                subTitle="imprint.subTitle"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>');
+    });
+
+    it('drops unsaved edits when the tenant identity changes', async () => {
+        const user = userEvent.setup();
+        const { rerender } = render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                subTitle="imprint.subTitle"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
+
+        rerender(
+            <LegalText
+                tenantId="2"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                subTitle="imprint.subTitle"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        await vi.waitFor(() =>
+            expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>'),
+        );
+    });
+});
+
+describe('LegalText hint snackbar (imprint / privacy)', () => {
+    it('shows the imprint hint as a dismissible snackbar (not duplicated inline)', () => {
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                legalType="imprint"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        expect(screen.getByText('legal.help.imprint.platform.published.text')).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent('legal.help.imprint.platform.published.hint');
+        expect(screen.getAllByText('legal.help.imprint.platform.published.hint')).toHaveLength(1);
+    });
+
+    it('shows the privacy hint as a dismissible snackbar (not duplicated inline)', () => {
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="privacy.title"
+                legalType="privacy"
+                placeHolderKey="settings.privacy.placeholder"
+            />,
+        );
+
+        expect(screen.getByText('legal.help.privacy.platform.published.text')).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent('legal.help.privacy.platform.published.hint');
+        expect(screen.getAllByText('legal.help.privacy.platform.published.hint')).toHaveLength(1);
+    });
+
+    it('"nicht mehr anzeigen" hides the snackbar and persists across remounts', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                legalType="imprint"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' }));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(window.localStorage.getItem('oriso-admin.legal.imprint.hint.dismissed.1:user-1')).toBe('true');
+
+        unmount();
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                legalType="imprint"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        // Hint falls back to the inline help row once the snackbar is dismissed.
+        expect(screen.getByText('legal.help.imprint.platform.published.hint')).toBeInTheDocument();
+    });
+
+    it('"X" hides the snackbar for the session only', async () => {
+        const user = userEvent.setup();
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="privacy.title"
+                legalType="privacy"
+                placeHolderKey="settings.privacy.placeholder"
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.close' }));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(window.localStorage.getItem('oriso-admin.legal.privacy.hint.dismissed.1:user-1')).toBeNull();
+        expect(window.sessionStorage.getItem('oriso-admin.legal.privacy.hint.closed.1:user-1')).toBe('true');
     });
 });

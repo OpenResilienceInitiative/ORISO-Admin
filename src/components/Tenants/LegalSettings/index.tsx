@@ -1,5 +1,5 @@
-import { useTranslation, Trans } from 'react-i18next';
-import { PrivacyTip } from '@mui/icons-material';
+import { useTranslation } from 'react-i18next';
+import { GdprIcon, ImprintIcon } from '../../CustomIcons/LegalIcons';
 import { CardDeck } from '../../CardDeck';
 import { CardEditable } from '../../CardEditable';
 import { FormSwitchField } from '../../FormSwitchField';
@@ -30,16 +30,9 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
         <LegalText
             tenantId={finalTenantId}
             fieldName={['content', 'privacy']}
-            icon={PrivacyTip}
+            icon={GdprIcon}
             titleKey="privacy.title"
-            subTitle={
-                <Trans
-                    i18nKey="privacy.subTitle"
-                    components={{
-                        a: <span />,
-                    }}
-                />
-            }
+            legalType="privacy"
             placeHolderKey="settings.privacy.placeholder"
             showConfirmationModal={{
                 titleKey: 'privacy.confirmation.title',
@@ -78,6 +71,9 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                         onSave={mutate}
                     >
                         <div className={styles.checkGroup}>
+                            <p className={styles.checkInfo}>
+                                {t('tenants.legal.singleTenantsManageLegal.setting.description')}
+                            </p>
                             <FormSwitchField
                                 labelKey="tenants.legal.singleTenantsManageLegal.setting.title"
                                 name={['legalContentChangesBySingleTenantAdminsAllowed']}
@@ -85,22 +81,20 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                                 disableLabels
                                 disabled={!isSuperAdmin}
                             />
-                            <p className={styles.checkInfo}>
-                                {t('tenants.legal.singleTenantsManageLegal.setting.description')}
-                            </p>
                         </div>
                     </CardEditable>
                 </CardDeck.Item>
             )}
-            <CardDeck.Item>
+            <CardDeck.Item className={styles.cardDeckItem}>
                 <DataProcessingAgreementContainer tenantId={finalTenantId} />
             </CardDeck.Item>
-            <CardDeck.Item>
+            <CardDeck.Item className={styles.cardDeckItem}>
                 <LegalText
                     tenantId={finalTenantId}
                     fieldName={['content', 'impressum']}
                     titleKey="imprint.title"
-                    subTitle={t<string>('imprint.subTitle')}
+                    legalType="imprint"
+                    icon={ImprintIcon}
                     placeHolderKey="settings.imprint.placeholder"
                 />
             </CardDeck.Item>
@@ -118,7 +112,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                     field: ['content', 'confirmTermsAndConditions'],
                 }}
             /> */}
-            <CardDeck.Item>{LegalTextElement}</CardDeck.Item>
+            <CardDeck.Item className={styles.cardDeckItem}>{LegalTextElement}</CardDeck.Item>
         </CardDeck>
     );
 };

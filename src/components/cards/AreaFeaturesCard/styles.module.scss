@@ -1,0 +1,33 @@
+.card {
+    width: 380px;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.ranges {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.features {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+/* .body is flex-direction:column with default align-items:stretch — pin the
+   pill-shaped "add" button to its natural width instead of stretching full-width. */
+.addRangeButton {
+    align-self: flex-start;
+}

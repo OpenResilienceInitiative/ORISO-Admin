@@ -3,7 +3,6 @@ import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
     FormatBold,
@@ -16,6 +15,8 @@ import {
 } from '@mui/icons-material';
 import { Button, ConfigProvider, Select } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { ResolvingImage } from './createResolvingImage';
+import { createImageDropPasteHandlers, useEditorImageUpload } from './useEditorImageUpload';
 import { HeadingAnchors } from './headingAnchors';
 import AnchorChips from './AnchorChips';
 import { useHeadingAnchorNav } from './useHeadingAnchorNav';
@@ -37,7 +38,7 @@ export type TiptapEditorProps = {
      * attributes, a horizontal chip row above the content jumps to them, and
      * selected text can be linked to any anchor (BubbleMenu). ON by default
      * because every current usage of this editor is a legal text (edit cards
-     * via FormPluginEditor + the read-only LegalVersionViewer); pass `false`
+     * via FormPluginEditor + read-only version look-backs); pass `false`
      * to opt out. Must not change during the editor's lifetime.
      */
     enableAnchors?: boolean;
@@ -50,11 +51,15 @@ const ToolbarButton = ({
     onClick,
     children,
     title,
+    disabled,
+    busy,
 }: {
     active?: boolean;
     onClick: () => void;
     children: React.ReactNode;
     title: string;
+    disabled?: boolean;
+    busy?: boolean;
 }) => (
     <Button
         type={active ? 'primary' : 'text'}
@@ -63,6 +68,8 @@ const ToolbarButton = ({
         onClick={onClick}
         title={title}
         aria-pressed={active}
+        disabled={disabled}
+        aria-busy={busy}
     >
         {children}
     </Button>
@@ -74,10 +81,14 @@ const Toolbar = ({
     editor,
     placeholders,
     showHeadingSelect,
+    onInsertImage,
+    imageUploading,
 }: {
     editor: Editor;
     placeholders?: { [key: string]: string };
     showHeadingSelect?: boolean;
+    onInsertImage: () => void;
+    imageUploading?: boolean;
 }) => {
     const { t } = useTranslation();
 
@@ -90,14 +101,6 @@ const Toolbar = ({
         const url = window.prompt(t('editor.plugin.link.url', 'URL'));
         if (url) {
             editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-        }
-    };
-
-    const insertImage = () => {
-        // eslint-disable-next-line no-alert
-        const url = window.prompt(t('editor.plugin.image.url', 'Image URL'));
-        if (url) {
-            editor.chain().focus().setImage({ src: url }).run();
         }
     };
 
@@ -176,7 +179,13 @@ const Toolbar = ({
                     <ToolbarButton active={editor.isActive('link')} onClick={insertLink} title="Link">
                         <LinkIcon fontSize="small" />
                     </ToolbarButton>
-                    <ToolbarButton onClick={insertImage} title="Image">
+                    <ToolbarButton
+                        onClick={onInsertImage}
+                        title="Image"
+                        active={imageUploading}
+                        disabled={imageUploading}
+                        busy={imageUploading}
+                    >
                         <ImageIcon fontSize="small" />
                     </ToolbarButton>
                 </div>
@@ -214,18 +223,32 @@ const TiptapEditor = ({
     const placeholderRef = useRef(placeholder);
     placeholderRef.current = placeholder;
 
+    // Image upload (WP-3b): refs so the handlers captured at editor creation
+    // always see the current editor/handler instances.
+    const editorRef = useRef<Editor | null>(null);
+    const imageUpload = useEditorImageUpload(() => editorRef.current);
+    const uploadAndInsertRef = useRef(imageUpload.uploadAndInsert);
+    uploadAndInsertRef.current = imageUpload.uploadAndInsert;
+
     const editor = useEditor({
         extensions: [
             StarterKit,
             Underline,
             Link.configure({ openOnClick: false, autolink: false }),
-            Image,
+            ResolvingImage,
             Placeholder.configure({ placeholder: () => placeholderRef.current || '' }),
             ...(enableAnchors ? [HeadingAnchors] : []),
         ],
         content: value,
         editable: !disabled,
-        editorProps: { attributes: { class: 'RichEditor-editor' } },
+        editorProps: {
+            attributes: { class: 'RichEditor-editor' },
+            ...createImageDropPasteHandlers((files) => {
+                if (editorRef.current?.isEditable) {
+                    uploadAndInsertRef.current(files);
+                }
+            }),
+        },
         onUpdate: ({ editor: e }) => {
             onChange?.(e.isEmpty ? '' : e.getHTML());
         },
@@ -243,6 +266,10 @@ const TiptapEditor = ({
             editor.commands.setContent(incoming, false);
         }
     }, [value, editor]);
+
+    useEffect(() => {
+        editorRef.current = editor;
+    }, [editor]);
 
     useEffect(() => {
         editor?.setEditable(!disabled);
@@ -263,7 +290,15 @@ const TiptapEditor = ({
 
     return (
         <>
-            {!disabled && <Toolbar editor={editor} placeholders={placeholders} showHeadingSelect={enableAnchors} />}
+            {!disabled && (
+                <Toolbar
+                    editor={editor}
+                    placeholders={placeholders}
+                    showHeadingSelect={enableAnchors}
+                    onInsertImage={imageUpload.openImagePicker}
+                    imageUploading={imageUpload.uploading}
+                />
+            )}
             {enableAnchors && (
                 <AnchorChips
                     anchors={anchors}

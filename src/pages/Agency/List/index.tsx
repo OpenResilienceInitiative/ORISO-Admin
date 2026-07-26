@@ -21,13 +21,15 @@ import { Resource } from '../../../enums/Resource';
 import { Page } from '../../../components/Page';
 import { useAgenciesData } from '../../../hooks/useAgencysData';
 import { ResizeTable } from '../../../components/ResizableTable';
+import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import styles from './styles.module.scss';
-import SearchInput from '../../../components/SearchInput/SearchInput';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { ReactComponent as RowExpandIcon } from '../../../resources/img/svg/table-actions/row_expand_200.svg';
 import { ReactComponent as RowExpandHoverIcon } from '../../../resources/img/svg/table-actions/row_expand_400.svg';
 import { ReactComponent as RowExpandSelectedIcon } from '../../../resources/img/svg/table-actions/row_expand_filled.svg';
+import { getAgencyColumnSortOrder, getNextAgencyTableState } from './agencySort';
+import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 
 export const AgencyList = () => {
     const screens = Grid.useBreakpoint();
@@ -41,12 +43,19 @@ export const AgencyList = () => {
     const [expandedTopicRows, setExpandedTopicRows] = useState<string[]>([]);
     const { data, isLoading, isError, refetch } = useAgenciesData({ ...tableState });
     const { can } = useUserPermissions();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin, tenantId } = useUserRoles();
+    const {
+        data: dpaGate,
+        isLoading: isDpaGateLoading,
+        isError: isDpaGateError,
+    } = useDpaGate(tenantId ?? 0, isTenantScopedAdmin);
     const { data: tenantsData } = useTenantsData({ perPage: 1000, page: 1, enabled: isSuperAdmin });
     const { isEnabled } = useFeatureContext();
     const [agencyToDelete, setAgencyToDelete] = useState<AgencyData>();
     const isTopicsFeatureActive = isEnabled(FeatureFlag.TopicsInRegistration);
     const isMobile = !screens.md;
+    const isAgencyCreationDpaBlocked =
+        isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || dpaGate?.dpaSigned !== true);
 
     const navigate = useNavigate();
 
@@ -55,10 +64,11 @@ export const AgencyList = () => {
         refetch();
     }, []);
 
-    const setSearchDebounced = useDebouncedCallback((search?: string) => {
+    const updateSearch = useCallback((search?: string) => {
         setExpandedTopicRows([]);
         setTableState((tmpData) => ({ ...tmpData, current: 1, search }));
-    }, 100);
+    }, []);
+    const setSearchDebounced = useDebouncedCallback(updateSearch, 100);
     const tenantNameById = new Map(
         (tenantsData?.data || []).map((tenant) => [Number(tenant.id), String(tenant.name || '')]),
     );
@@ -80,12 +90,9 @@ export const AgencyList = () => {
             title: t('agency.list.id'),
             dataIndex: 'id',
             key: 'id',
-            sorter: (a: AgencyData, b: AgencyData) => {
-                // Frontend sorting by ID (numeric)
-                const idA = a.id ? parseInt(a.id.toString(), 10) : 0;
-                const idB = b.id ? parseInt(b.id.toString(), 10) : 0;
-                return idA - idB;
-            },
+            sorter: true,
+            sortOrder: getAgencyColumnSortOrder('id', tableState),
+            showSorterTooltip: false,
             width: 80,
             ellipsis: true,
             className: 'agencyList__column',
@@ -94,12 +101,9 @@ export const AgencyList = () => {
             title: t('agency.list.createdDate'),
             dataIndex: 'createDate',
             key: 'createDate',
-            sorter: (a: AgencyData, b: AgencyData) => {
-                // Frontend sorting by creation date
-                const dateA = a.createDate ? new Date(a.createDate).getTime() : 0;
-                const dateB = b.createDate ? new Date(b.createDate).getTime() : 0;
-                return dateA - dateB;
-            },
+            sorter: true,
+            sortOrder: getAgencyColumnSortOrder('createDate', tableState),
+            showSorterTooltip: false,
             width: 150,
             ellipsis: true,
             render: (createDate: string) => {
@@ -123,6 +127,8 @@ export const AgencyList = () => {
             dataIndex: 'name',
             key: 'name',
             sorter: true,
+            sortOrder: getAgencyColumnSortOrder('name', tableState),
+            showSorterTooltip: false,
             width: 100,
             ellipsis: true,
             className: 'agencyList__column',
@@ -140,6 +146,8 @@ export const AgencyList = () => {
             dataIndex: 'postcode',
             key: 'postcode',
             sorter: true,
+            sortOrder: getAgencyColumnSortOrder('postcode', tableState),
+            showSorterTooltip: false,
             width: 100,
             ellipsis: true,
             className: 'agencyList__column',
@@ -149,6 +157,8 @@ export const AgencyList = () => {
             dataIndex: 'city',
             key: 'city',
             sorter: true,
+            sortOrder: getAgencyColumnSortOrder('city', tableState),
+            showSorterTooltip: false,
             width: 100,
             ellipsis: true,
             className: 'agencyList__column',
@@ -221,7 +231,9 @@ export const AgencyList = () => {
             title: t('agency.online.title'),
             dataIndex: 'offline',
             key: 'offline',
-            sorter: (a, b) => (a.offline > b.offline ? 1 : -1),
+            sorter: true,
+            sortOrder: getAgencyColumnSortOrder('offline', tableState),
+            showSorterTooltip: false,
             width: 100,
             ellipsis: true,
             render: (offline: Boolean) => {
@@ -299,22 +311,8 @@ export const AgencyList = () => {
     ] as Array<ColumnProps<AgencyData>>;
 
     const tableChangeHandler = (pagination: any, filters: any, sorter: any) => {
-        const { current, pageSize } = pagination;
         setExpandedTopicRows([]);
-        // ID and createDate columns use frontend sorting, so skip backend sort for them
-        if (sorter.field && sorter.field.toLowerCase() !== 'id' && sorter.field.toLowerCase() !== 'createdate') {
-            const sortBy = sorter.field.toUpperCase();
-            const order = sorter.order === 'descend' ? 'DESC' : 'ASC';
-            setTableState({
-                ...tableState,
-                current,
-                pageSize,
-                sortBy,
-                order,
-            });
-        } else {
-            setTableState({ ...tableState, current, pageSize });
-        }
+        setTableState((currentState) => getNextAgencyTableState(currentState, pagination, sorter));
     };
 
     const pagination = {
@@ -331,24 +329,28 @@ export const AgencyList = () => {
                 subTitleKey={`agency.title.text${can(PermissionAction.Create, Resource.Agency) ? '' : '.self'}`}
             >
                 <div className={styles.searchNewContainer}>
-                    <SearchInput
+                    <GlobalSearchBar
                         className={styles.searchField}
-                        placeholder={t('agency.list.searchPlaceholder')}
-                        handleOnSearch={setSearchDebounced}
-                        handleOnSearchClear={() => setSearchDebounced('')}
-                    />
-                    {can(PermissionAction.Create, Resource.Agency) && (
-                        <div className={styles.toolbarActions}>
-                            <Button
-                                className={styles.addButton}
-                                type="primary"
-                                icon={<PlusOutlined className={styles.addButtonIcon} />}
-                                onClick={() => navigate(`${routePathNames.agencyAdd}`)}
-                            >
-                                {t('new')}
-                            </Button>
-                        </div>
-                    )}
+                        expandedWidth={499}
+                        onSearch={updateSearch}
+                        onSearchChange={setSearchDebounced}
+                        searchPlaceholder={t('agency.list.searchPlaceholder')}
+                    >
+                        {can(PermissionAction.Create, Resource.Agency) && (
+                            <div className={styles.toolbarActions}>
+                                <Button
+                                    className={styles.addButton}
+                                    type="primary"
+                                    icon={<PlusOutlined className={styles.addButtonIcon} />}
+                                    disabled={isAgencyCreationDpaBlocked}
+                                    title={isAgencyCreationDpaBlocked ? t('agency.dpaGate.title') : undefined}
+                                    onClick={() => navigate(`${routePathNames.agencyAdd}`)}
+                                >
+                                    {t('new')}
+                                </Button>
+                            </div>
+                        )}
+                    </GlobalSearchBar>
                 </div>
             </Page.Title>
 

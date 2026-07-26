@@ -1,0 +1,27 @@
+/*
+ * CSV import preview modal (#315). Layout only — colours come from the shared
+ * M3 tokens / antd component theme.
+ */
+
+.columnsHint {
+    margin: 0 0 16px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.nameInput {
+    min-width: 120px;
+}
+
+.autoTenantId {
+    // Visually marks ids the batch sequence filled in (vs. explicit file values).
+    color: var(--m3-on-surface-variant, #444748);
+    font-style: italic;
+}
+
+.footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}

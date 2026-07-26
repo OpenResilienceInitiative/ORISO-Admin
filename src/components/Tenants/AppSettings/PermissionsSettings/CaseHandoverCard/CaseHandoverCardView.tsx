@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Skeleton, Tooltip } from 'antd';
 import { ReactComponent as CaseHandoverIcon } from '../../../../../resources/img/svg/permissions/case_handover.svg';
+import { Card } from '../../../../Card';
 import { M3Switch } from '../../../../M3Switch';
 import { M3Checkbox } from '../../../../M3Checkbox';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
 import {
     buildDisplayReasons,
     DisplayReason,
-    getNotificationTemplateSample,
+    getNotificationTemplate,
     isAdvisorConsentImplicit,
     NOTIFICATION_LANGUAGES,
     NotificationLanguage,
@@ -33,6 +34,7 @@ export type CaseHandoverCardViewProps = {
     moduleEnabled: boolean;
     onModuleEnabledChange: (enabled: boolean) => void;
     onClientConsentChange: (code: string, clientConsentRequired: boolean) => void;
+    onNotificationTemplateChange: (code: string, language: NotificationLanguage, text: string) => void;
 };
 
 const ConfigureIcon = () => (
@@ -60,6 +62,7 @@ export const CaseHandoverCardView = ({
     moduleEnabled,
     onModuleEnabledChange,
     onClientConsentChange,
+    onNotificationTemplateChange,
 }: CaseHandoverCardViewProps) => {
     const { t, i18n } = useTranslation();
     const displayReasons = useMemo(() => buildDisplayReasons(policies), [policies]);
@@ -71,6 +74,8 @@ export const CaseHandoverCardView = ({
             ? (baseLanguage as NotificationLanguage)
             : 'de';
     });
+
+    const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({});
 
     const activeReason: DisplayReason | null =
         displayReasons.find((reason) => reason.code === activeReasonCode) ?? displayReasons[0] ?? null;
@@ -85,16 +90,11 @@ export const CaseHandoverCardView = ({
     const comingSoon = t('tenants.permissions.card.caseHandover.comingSoon');
 
     return (
-        <div className={cardStyles.chatTypeCard} data-testid="case-handover-card">
-            <div className={cardStyles.cardHeader}>
-                <span className={cardStyles.cardIcon} aria-hidden>
-                    <CaseHandoverIcon width={40} height={40} />
-                </span>
-                <h3 className={`${cardStyles.cardTitle} ${styles.cardTitleM3}`}>
-                    {t('tenants.permissions.card.caseHandover.title')}
-                </h3>
-            </div>
-
+        <Card
+            dataTestId="case-handover-card"
+            headerIcon={<CaseHandoverIcon width={40} height={40} />}
+            titleKey="tenants.permissions.card.caseHandover.title"
+        >
             {isLoading ? (
                 <Skeleton active paragraph={{ rows: 6 }} />
             ) : (
@@ -244,16 +244,60 @@ export const CaseHandoverCardView = ({
                         })}
                     </div>
 
-                    <Tooltip title={comingSoon}>
-                        <div className={styles.notificationField} aria-disabled tabIndex={0}>
-                            <span className={styles.notificationFieldLabel}>
-                                {t('tenants.permissions.card.caseHandover.systemNotification')}
-                            </span>
-                            <p className={styles.notificationFieldText}>
-                                {activeReason ? getNotificationTemplateSample(activeReason.code, activeLanguage) : ''}
-                            </p>
-                        </div>
-                    </Tooltip>
+                    {activeReason &&
+                        (() => {
+                            const draftKey = `${activeReason.code}|${activeLanguage}`;
+                            const storedTemplate = getNotificationTemplate(
+                                activePolicy,
+                                activeReason.code,
+                                activeLanguage,
+                            );
+                            const value = templateDrafts[draftKey] ?? storedTemplate;
+                            const editable =
+                                canEdit && moduleEnabled && !activeReason.isPlaceholder && Boolean(activePolicy);
+                            const commitDraft = () => {
+                                const draft = templateDrafts[draftKey];
+                                if (draft === undefined || draft.trim() === storedTemplate.trim()) {
+                                    return;
+                                }
+                                onNotificationTemplateChange(activeReason.code, activeLanguage, draft);
+                                setTemplateDrafts((drafts) => {
+                                    const next = { ...drafts };
+                                    delete next[draftKey];
+                                    return next;
+                                });
+                            };
+                            const fieldLabel = `${t('tenants.permissions.card.caseHandover.systemNotification')} (${t(
+                                `tenants.permissions.card.caseHandover.language.${activeLanguage}`,
+                            )})`;
+                            return (
+                                <div className={styles.notificationField}>
+                                    <span className={styles.notificationFieldLabel}>
+                                        {t('tenants.permissions.card.caseHandover.systemNotification')}
+                                    </span>
+                                    <textarea
+                                        className={styles.notificationFieldInput}
+                                        value={value}
+                                        rows={3}
+                                        disabled={!editable}
+                                        aria-label={fieldLabel}
+                                        data-testid="case-handover-template-input"
+                                        onChange={(event) =>
+                                            setTemplateDrafts((drafts) => ({
+                                                ...drafts,
+                                                [draftKey]: event.target.value,
+                                            }))
+                                        }
+                                        onBlur={commitDraft}
+                                    />
+                                    <p className={styles.notificationFieldHint}>
+                                        {t('tenants.permissions.card.caseHandover.templateHint', {
+                                            newAdvisor: '{{newAdvisor}}',
+                                        })}
+                                    </p>
+                                </div>
+                            );
+                        })()}
 
                     <p className={styles.enforceHint}>{t('tenants.permissions.card.caseHandover.enforceHint')}</p>
 
@@ -281,6 +325,6 @@ export const CaseHandoverCardView = ({
                     </div>
                 </>
             )}
-        </div>
+        </Card>
     );
 };
