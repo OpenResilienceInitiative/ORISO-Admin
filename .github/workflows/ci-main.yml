@@ -34,3 +34,34 @@ jobs:
                   push_to_ghcr: true
                   image_name: oriso-admin
                   github_token: ${{ secrets.GITHUB_TOKEN }}
+
+            # Guard against the stale-bundle class of failure (issue #424): the
+            # image we just published must contain exactly the frontend bundle
+            # this run built, not a cache-restored older one. Green CI + a fresh
+            # image timestamp hid this before, so assert it explicitly.
+            - name: Verify the published image contains the freshly built bundle
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  built="$(cd build/assets && ls index-*.js | head -n1)"
+                  if [ -z "$built" ]; then
+                    echo "::error::npm run build produced no build/assets/index-*.js"
+                    exit 1
+                  fi
+                  case "${GITHUB_REF_NAME}" in
+                    main)    tag=latest ;;
+                    dev)     tag=dev ;;
+                    pre-dev) tag=pre-dev ;;
+                    *)       echo "::error::unexpected ref ${GITHUB_REF_NAME}"; exit 1 ;;
+                  esac
+                  image="${REGISTRY}/${ORG}/oriso-admin:${tag}"
+                  docker pull -q "$image"
+                  shipped="$(docker run --rm --entrypoint sh "$image" \
+                    -c 'ls /usr/share/nginx/html/admin/assets/index-*.js' \
+                    | xargs -n1 basename | head -n1)"
+                  echo "built entry bundle:   ${built}"
+                  echo "shipped entry bundle: ${shipped}"
+                  if [ "${built}" != "${shipped}" ]; then
+                    echo "::error::${image} ships '${shipped}' but this run built '${built}' — stale bundle in image (issue #424)."
+                    exit 1
+                  fi
