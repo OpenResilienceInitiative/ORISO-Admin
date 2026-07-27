@@ -15,6 +15,11 @@ inputs:
         type: string
         default: Dockerfile
 
+outputs:
+    digest:
+        description: Immutable digest of the pushed image, for race-proof verification.
+        value: ${{ steps.build.outputs.digest }}
+
 runs:
     using: 'composite'
     steps:

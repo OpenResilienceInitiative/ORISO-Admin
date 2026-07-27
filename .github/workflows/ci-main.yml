@@ -29,6 +29,7 @@ jobs:
                   node_version: '22.12.0'
 
             - name: Create and Publish Docker image
+              id: publish
               uses: ./.github/actions/docker-build-push
               with:
                   push_to_ghcr: true
@@ -38,9 +39,13 @@ jobs:
             # Guard against the stale-bundle class of failure (issue #424): the
             # image we just published must contain exactly the frontend bundle
             # this run built, not a cache-restored older one. Green CI + a fresh
-            # image timestamp hid this before, so assert it explicitly.
+            # image timestamp hid this before, so assert it explicitly. Inspect
+            # the immutable digest, never the mutable :pre-dev tag — a concurrent
+            # push could rewrite the tag between publish and pull.
             - name: Verify the published image contains the freshly built bundle
               shell: bash
+              env:
+                  DIGEST: ${{ steps.publish.outputs.digest }}
               run: |
                   set -euo pipefail
                   built="$(cd build/assets && ls index-*.js | head -n1)"
@@ -48,20 +53,18 @@ jobs:
                     echo "::error::npm run build produced no build/assets/index-*.js"
                     exit 1
                   fi
-                  case "${GITHUB_REF_NAME}" in
-                    main)    tag=latest ;;
-                    dev)     tag=dev ;;
-                    pre-dev) tag=pre-dev ;;
-                    *)       echo "::error::unexpected ref ${GITHUB_REF_NAME}"; exit 1 ;;
-                  esac
-                  image="${REGISTRY}/${ORG}/oriso-admin:${tag}"
-                  docker pull -q "$image"
-                  shipped="$(docker run --rm --entrypoint sh "$image" \
+                  if [ -z "${DIGEST}" ]; then
+                    echo "::error::build step exposed no image digest to verify against"
+                    exit 1
+                  fi
+                  ref="${REGISTRY}/${ORG}/oriso-admin@${DIGEST}"
+                  docker pull -q "$ref"
+                  shipped="$(docker run --rm --entrypoint sh "$ref" \
                     -c 'ls /usr/share/nginx/html/admin/assets/index-*.js' \
                     | xargs -n1 basename | head -n1)"
                   echo "built entry bundle:   ${built}"
                   echo "shipped entry bundle: ${shipped}"
                   if [ "${built}" != "${shipped}" ]; then
-                    echo "::error::${image} ships '${shipped}' but this run built '${built}' — stale bundle in image (issue #424)."
+                    echo "::error::${ref} ships '${shipped}' but this run built '${built}' — stale bundle in image (issue #424)."
                     exit 1
                   fi
