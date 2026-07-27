@@ -16,7 +16,7 @@ const agencyModel: any = { id: '55', consultingType: '1' };
 
 const sentBody = () => JSON.parse(mocks.fetchData.mock.calls[0][0].bodyData);
 
-describe('updateAgencyData — ADR-003 single-select topic', () => {
+describe('updateAgencyData — ADR-014 multi-topic departments', () => {
     beforeEach(() => {
         mocks.fetchData.mockReset();
         mocks.fetchData.mockResolvedValue({ _embedded: {} });
@@ -24,7 +24,18 @@ describe('updateAgencyData — ADR-003 single-select topic', () => {
         mocks.updateAgencyPostCodeRange.mockResolvedValue(undefined);
     });
 
-    it('sends the single-select Option as a one-element topicIds array', async () => {
+    it('sends every selected topic, not just the first', async () => {
+        // ADR-014: one Beratungsstelle carries several Fachbereiche. Dropping any of them here
+        // deletes the corresponding agency_topic row — together with that department's published
+        // Impressum and Datenschutzerklärung (orphanRemoval on Agency.agencyTopics).
+        await updateAgencyData(agencyModel, {
+            ...agencyModel,
+            topicIds: [{ value: '3' }, { value: '9' }, { value: '12' }],
+        } as any);
+        expect(sentBody().topicIds).toEqual(['3', '9', '12']);
+    });
+
+    it('still accepts a lone Option from the former single-select shape', async () => {
         await updateAgencyData(agencyModel, {
             ...agencyModel,
             topicIds: { value: '7', label: 'Debt counselling' },
@@ -32,19 +43,20 @@ describe('updateAgencyData — ADR-003 single-select topic', () => {
         expect(sentBody().topicIds).toEqual(['7']);
     });
 
-    it('sends an empty topicIds array when the picker was cleared', async () => {
-        // Regression guard: with the old `|| topics` fallback a cleared [] fell back to the
-        // backend topics and could not be cleared. `?? topics` + normalize keeps it empty.
+    it('sends an empty topicIds array when the picker was explicitly cleared', async () => {
+        // Explicit clearing must stay possible and distinguishable from "field absent" below.
         await updateAgencyData(agencyModel, { ...agencyModel, topicIds: [] } as any);
         expect(sentBody().topicIds).toEqual([]);
     });
 
-    it('still accepts the legacy Option[] shape', async () => {
-        await updateAgencyData(agencyModel, {
-            ...agencyModel,
-            topicIds: [{ value: '3' }, { value: '9' }],
-        } as any);
-        expect(sentBody().topicIds).toEqual(['3', '9']);
+    it('omits topicIds entirely when the form carries no topic field', async () => {
+        // The picker only renders when the topic list loaded (`topics?.length > 0 &&` in
+        // AgencySettings). If that request failed, the field is absent — and sending [] would tell
+        // the backend to clear every department. Omitting the key makes the backend's
+        // AgencyTopicMergeService keep the existing links (null = keep, [] = clear).
+        const withoutTopics: any = { id: '55', consultingType: '1', name: 'Caritas Neukölln' };
+        await updateAgencyData(agencyModel, withoutTopics);
+        expect(sentBody()).not.toHaveProperty('topicIds');
     });
 });
 
