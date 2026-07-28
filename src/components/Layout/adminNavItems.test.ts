@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildAdminNavItems, type AdminNavLabels } from './adminNavItems';
+import { canFor, hasRoleFor } from './adminNavFixtures';
 import routePathNames from '../../appConfig';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
@@ -16,17 +17,6 @@ const labels: AdminNavLabels = {
     tenants: 'Tenants',
     users: 'Users',
 };
-
-/** `can` stub: allows every action on the listed resources. */
-const canFor =
-    (...allowed: Resource[]) =>
-    (_action: PermissionAction | PermissionAction[], resource: Resource) =>
-        allowed.includes(resource);
-
-const hasRoleFor =
-    (...roles: UserRole[]) =>
-    (role: UserRole | UserRole[]) =>
-        (Array.isArray(role) ? role : [role]).some((candidate) => roles.includes(candidate));
 
 const build = (context: Parameters<typeof buildAdminNavItems>[0]) => buildAdminNavItems(context);
 
@@ -107,5 +97,33 @@ describe('buildAdminNavItems', () => {
             settingsPath: '/admin/theme-settings/general',
         });
         expect(userAdmin.find((item) => item.key === 'counselors')?.to).toBe(routePathNames.consultants);
+
+        const agencyAdmin = build({
+            isSuperAdmin: false,
+            hasRole: hasRoleFor(UserRole.AgencyAdmin),
+            can: canFor(Resource.AgencyAdminUser),
+            labels,
+            settingsPath: '/admin/theme-settings/general',
+        });
+        expect(agencyAdmin.find((item) => item.key === 'counselors')?.to).toBe(routePathNames.agencyAdmins);
+    });
+
+    it('routes a super admin without Update Tenant to the case-handover logs', () => {
+        // `Update Tenant` is what unlocks the inactive-account audit; without it the unified
+        // entry must fall back to the case-handover logs instead of a dead route.
+        const items = build({
+            isSuperAdmin: true,
+            hasRole: hasRoleFor(UserRole.TenantAdmin),
+            can: canFor(
+                { action: PermissionAction.Read, resource: Resource.Tenant },
+                { action: PermissionAction.Read, resource: Resource.Consultant },
+            ),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        const activityLogs = items.find((item) => item.key === 'activity-logs');
+        expect(activityLogs?.to).toBe(routePathNames.caseHandoverLogs);
+        expect(items.some((item) => item.key === 'tenants')).toBe(false);
     });
 });

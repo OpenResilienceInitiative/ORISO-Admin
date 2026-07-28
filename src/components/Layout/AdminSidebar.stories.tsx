@@ -5,6 +5,7 @@ import { Resource } from '../../enums/Resource';
 import { UserRole } from '../../enums/UserRole';
 import { AdminSidebar, type AdminSidebarNavItem } from './AdminSidebar';
 import { buildAdminNavItems } from './adminNavItems';
+import { canFor, hasRoleFor } from './adminNavFixtures';
 
 // Pre-resolved nav items (the wrapper builds these from permissions; the sidebar just renders them).
 const settingsItem: AdminSidebarNavItem = {
@@ -155,19 +156,15 @@ export const TenantAdminWithUserAdmin: Story = {
     args: {
         items: buildAdminNavItems({
             isSuperAdmin: false,
-            hasRole: (role) =>
-                (Array.isArray(role) ? role : [role]).some((candidate) =>
-                    [UserRole.TenantAdmin, UserRole.UserAdmin].includes(candidate),
-                ),
-            can: (_action, resource) =>
-                [
-                    Resource.Tenant,
-                    Resource.LegalText,
-                    Resource.Consultant,
-                    Resource.AgencyAdminUser,
-                    Resource.TenantAdminUser,
-                    Resource.Statistic,
-                ].includes(resource),
+            hasRole: hasRoleFor(UserRole.TenantAdmin, UserRole.UserAdmin),
+            can: canFor(
+                Resource.Tenant,
+                Resource.LegalText,
+                Resource.Consultant,
+                Resource.AgencyAdminUser,
+                Resource.TenantAdminUser,
+                Resource.Statistic,
+            ),
             labels: {
                 account: 'Mein Konto',
                 activityLogs: 'Aktivitäts-Logs',
