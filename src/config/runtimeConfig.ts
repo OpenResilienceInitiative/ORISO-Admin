@@ -139,6 +139,7 @@ export const runtimeConfig = {
     observabilityEnabled: readExplicitTrueConfig('OBSERVABILITY_ENABLED'),
     otelMetricsUrl,
     otelExportIntervalMillis,
+    platformVersion: readConfigValue('PLATFORM_VERSION') ?? '',
 };
 
 // Dedicated Keycloak hosts use {KEYCLOAK_URL}/realms/{realm}/...

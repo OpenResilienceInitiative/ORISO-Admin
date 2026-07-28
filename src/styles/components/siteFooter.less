@@ -1,4 +1,9 @@
 .layoutFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: @spacing-sm;
+
     .footerMenu {
         padding-left: @spacing-sm;
         background-color: @layout-footer-background;
@@ -13,5 +18,11 @@
                 color: @primary-color;
             }
         }
+    }
+
+    .platformVersion {
+        color: @black-60-opacity;
+        font-size: @fontSize-s;
+        white-space: nowrap;
     }
 }
