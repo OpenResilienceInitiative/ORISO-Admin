@@ -1102,7 +1102,7 @@
     "settings.subhead.globalConfig": "Globale Konfigurationen",
     "settings.subhead.view": "Erscheinungsbild",
     "settings.subhead.legal": "Rechtliches",
-    "settings.subhead.smtp": "SMTP-Server",
+    "settings.subhead.smtp": "Email Server",
     "settings.subhead.permissions": "Berechtigungen",
     "settings.subhead.functionAccess": "Funktionszugriff",
     "settings.masterData.editable.title": "Stammdaten des Trägers",
