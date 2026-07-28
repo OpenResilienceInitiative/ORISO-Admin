@@ -1,12 +1,14 @@
 import routePathNames from '../../appConfig';
-import { canReadCaseHandoverAdmin, canSeeSupervisorLogs } from '../../constants/caseHandoverAccess';
+import {
+    canReadCaseHandoverAdmin,
+    canSeeSupervisorLogs,
+    type CanFn,
+    type HasRoleFn,
+} from '../../constants/caseHandoverAccess';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
 import { UserRole } from '../../enums/UserRole';
 import { AdminSidebarNavItem } from './AdminSidebar';
-
-type CanFn = (action: PermissionAction | PermissionAction[], resource: Resource) => boolean;
-type HasRoleFn = (role: UserRole | UserRole[]) => boolean;
 
 /** Resolved sidebar labels. Kept as plain strings so this module stays free of i18n/React. */
 export interface AdminNavLabels {
@@ -109,8 +111,8 @@ export const buildAdminNavItems = ({
             key: 'counselors',
             to: resolveUsersPage(can),
             label: labels.users,
-            iconPath: '/admin/users',
-            activeMatch: { paths: ['/admin/users'], mode: 'includes' },
+            iconPath: routePathNames.users,
+            activeMatch: { paths: [routePathNames.users], mode: 'includes' },
         });
     }
     if (can(PermissionAction.Read, Resource.Statistic)) {

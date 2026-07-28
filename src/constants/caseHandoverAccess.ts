@@ -2,8 +2,9 @@ import { PermissionAction } from '../enums/PermissionAction';
 import { Resource } from '../enums/Resource';
 import { UserRole } from '../enums/UserRole';
 
-type CanFn = (action: PermissionAction | PermissionAction[], resource: Resource) => boolean;
-type HasRoleFn = (role: UserRole | UserRole[]) => boolean;
+/** Shared predicate signatures for admin access checks (permissions + roles). */
+export type CanFn = (action: PermissionAction | PermissionAction[], resource: Resource) => boolean;
+export type HasRoleFn = (role: UserRole | UserRole[]) => boolean;
 
 export const canSeeSupervisorLogs = (isSuperAdmin: boolean, hasRole: HasRoleFn, can: CanFn): boolean =>
     !isSuperAdmin && !hasRole(UserRole.RestrictedAgencyAdmin) && can(PermissionAction.Read, Resource.Consultant);
