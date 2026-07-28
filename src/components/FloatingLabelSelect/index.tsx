@@ -93,6 +93,8 @@ export const FloatingLabelSelect = <
                     [styles.fieldDisabled]: isDisabled,
                     [styles.labelFloating]: floating,
                     [styles.hasLeadingIcon]: Boolean(leadingIcon),
+                    // Tags wrap onto further rows; the 56px outline has to grow with them.
+                    [styles.hasMultiSelect]: mode === 'multiple' || mode === 'tags',
                 },
                 className,
             )}
