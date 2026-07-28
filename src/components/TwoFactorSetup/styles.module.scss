@@ -1,0 +1,20 @@
+/* Inline (onboarding) variant of the canonical 2FA setup. Long content must
+   stay vertically scrollable on 390x844 — the variant adds no fixed heights. */
+
+.fieldStack {
+    display: flex;
+    flex-direction: column;
+    margin-top: 16px;
+    gap: 16px;
+}
+
+.actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+    gap: 12px;
+
+    > * {
+        flex: 1 1 auto;
+    }
+}

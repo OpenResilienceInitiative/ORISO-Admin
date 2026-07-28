@@ -185,6 +185,27 @@
         }
     }
 
+    // Shared connect block without a QR code (e.g. public onboarding when the
+    // backend provides no QR): the key takes the full row.
+    &__connect--keyOnly {
+        .bp-min(@fromMedium, set) {
+            .twoFactorAuth__key {
+                width: 100%;
+                padding-left: 0;
+                border-left: none;
+            }
+        }
+        .bp-min(@fromMedium);
+    }
+
+    // Base32 key with copy affordance (canonical TwoFactorAppConnect).
+    &__keyValue {
+        margin-top: @grid-base;
+        font-family: monospace;
+        text-align: left;
+        word-break: break-all;
+    }
+
     &__selectType {
         margin-top: @grid-base-three;
         width: 100%;
