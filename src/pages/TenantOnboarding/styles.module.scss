@@ -1,0 +1,74 @@
+.loading {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
+}
+
+.fieldStack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Published DPA/AVV text, rendered read-only. Scrolls inside its own box so
+   the step stays usable on 390x844. */
+
+.dpaText {
+    max-height: 320px;
+    padding: 16px;
+    border: 1px solid var(--m3-outline-variant, #dce5df);
+    margin-bottom: 16px;
+    background: var(--m3-surface, #ffffff);
+    border-radius: 12px;
+    overflow-y: auto;
+
+    h1,
+    h2,
+    h3 {
+        margin: 0 0 8px;
+        font-size: 16px;
+    }
+
+    p {
+        margin: 0 0 8px;
+    }
+}
+
+.acceptRow {
+    display: flex;
+    align-items: center;
+    margin-top: 16px;
+    gap: 4px;
+}
+
+.acceptLabel {
+    cursor: pointer;
+    user-select: none;
+}
+
+.actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+    gap: 12px;
+
+    > * {
+        flex: 1 1 auto;
+    }
+}
+
+.qrCode {
+    display: block;
+    width: 160px;
+    height: 160px;
+    margin: 0 auto 16px;
+}
+
+.secretRow {
+    margin-bottom: 16px;
+}
+
+.secret {
+    font-family: monospace;
+    word-break: break-all;
+}

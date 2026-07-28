@@ -84,6 +84,12 @@ const routePathNames = {
     login: '/admin/login',
     passwordReset: '/admin/password-reset',
     passwordResetConfirm: '/admin/password-reset/confirm',
+    /**
+     * Public tenant-admin onboarding (TEN-INV U8, #571). The emailed invite
+     * link is `{acceptBaseUrl}/{rawToken}` (UserService AccountInviteService),
+     * so the route takes the raw token as a path segment.
+     */
+    tenantOnboarding: '/admin/tenant-onboarding',
     themeSettings: '/admin/theme-settings',
     globalSettings: '/admin/global-settings',
     permissionsSettings: '/admin/theme-settings/permissions',
