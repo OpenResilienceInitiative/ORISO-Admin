@@ -1,3 +1,4 @@
+import { Alert, Button } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDepartmentDpp } from '../../../../../hooks/useDepartmentDpp.hook';
@@ -11,6 +12,7 @@ import { AgencyData } from '../../../../../types/agency';
 import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '../DepartmentSelect';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
+import styles from './styles.module.scss';
 
 type LegalField = 'privacy' | 'imprint';
 
@@ -45,7 +47,7 @@ export const AgencyLegalTextContainer = ({
     onSaveAgencyWide,
     saving,
 }: AgencyLegalTextContainerProps) => {
-    const { i18n } = useTranslation();
+    const { i18n, t } = useTranslation();
     const [selected, setSelected] = useState<number | typeof ALL_DEPARTMENTS>(ALL_DEPARTMENTS);
 
     const agencyId = Number(agencyData?.id);
@@ -94,7 +96,13 @@ export const AgencyLegalTextContainer = ({
 
     // The draft copy: a department with no own text yet starts from what it currently shows, which
     // is the inherited agency-wide text. "Alle Fachbereiche" always edits that same agency-wide text.
-    const hasOwnText = isDepartment && Object.keys(departmentContent).length > 0;
+    //
+    // This inference is only safe once the read SUCCEEDED. A failed request also yields an empty
+    // map, and treating that as "has no own text" would seed the editor with the inherited text —
+    // publishing would then overwrite the department's real, existing text with the inherited one.
+    // That is the same silent-overwrite class this whole epic exists to remove, so a failed read
+    // blocks the editor instead (see the isError branch below).
+    const hasOwnText = isDepartment && departmentQuery.isSuccess && Object.keys(departmentContent).length > 0;
     const contentByLanguage = hasOwnText ? departmentContent : agencyWideContent;
 
     const languages = useMemo(
@@ -116,6 +124,31 @@ export const AgencyLegalTextContainer = ({
     }
 
     const selectedDepartment = departments.find(({ id }) => id === topicId);
+
+    // A department whose text could not be read must not be editable: the editor would show the
+    // inherited text and publishing would replace the department's own with it.
+    if (isDepartment && departmentQuery.isError) {
+        return (
+            <div className={styles.errorCard}>
+                <Alert
+                    type="error"
+                    showIcon
+                    message={t('agency.legal.department.loadError.title')}
+                    description={t('agency.legal.department.loadError.text', {
+                        name: selectedDepartment?.name ?? '',
+                    })}
+                    action={
+                        <Button size="small" onClick={() => departmentQuery.refetch()}>
+                            {t('agency.legal.department.loadError.retry')}
+                        </Button>
+                    }
+                />
+                <div className={styles.errorSwitcher}>
+                    <DepartmentSelect departments={departments} value={selected} onChange={setSelected} />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <DepartmentDataProtectionCard

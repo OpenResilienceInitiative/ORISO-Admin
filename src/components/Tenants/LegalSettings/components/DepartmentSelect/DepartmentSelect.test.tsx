@@ -16,7 +16,7 @@ vi.mock('react-i18next', () => ({
 
 const departments = [
     { id: 3, name: 'U25 Suizidprävention' },
-    { id: 12, name: 'Schwangerschaft', hasOwnText: true },
+    { id: 12, name: 'Schwangerschaft' },
 ];
 
 const openMenu = async () => {
@@ -41,15 +41,6 @@ describe('DepartmentSelect', () => {
         const { container } = render(<DepartmentSelect departments={[]} value={ALL_DEPARTMENTS} onChange={vi.fn()} />);
 
         expect(container).toBeEmptyDOMElement();
-    });
-
-    it('marks departments that already left the inherited text', async () => {
-        // An admin editing the agency-wide text must see at a glance who will NOT receive it.
-        render(<DepartmentSelect departments={departments} value={ALL_DEPARTMENTS} onChange={vi.fn()} />);
-        await openMenu();
-
-        expect(await screen.findByText('Schwangerschaft (eigener Text)')).toBeInTheDocument();
-        expect(screen.getByText('U25 Suizidprävention')).toBeInTheDocument();
     });
 
     it('reports a chosen department as a numeric topic id', async () => {

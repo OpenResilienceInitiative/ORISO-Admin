@@ -1489,5 +1489,7 @@
     "twoFactorAuth.required.skipHint": "You can enable two-factor authentication at any time under Profile.",
     "agency.legal.department.all": "All departments",
     "agency.legal.department.choose": "Choose department",
-    "agency.legal.department.ownText": "{{name}} (own text)"
+    "agency.legal.department.loadError.title": "Legal text could not be loaded",
+    "agency.legal.department.loadError.text": "The text for \"{{name}}\" is currently unavailable. Editing is blocked so the existing text is not accidentally replaced by the inherited one.",
+    "agency.legal.department.loadError.retry": "Try again"
 }

@@ -8,8 +8,6 @@ export const ALL_DEPARTMENTS = 'all';
 export interface DepartmentOption {
     id: number;
     name: string;
-    /** True once this department has published its own text and left the inherited one. */
-    hasOwnText?: boolean;
 }
 
 interface DepartmentSelectProps {
@@ -28,8 +26,11 @@ interface DepartmentSelectProps {
  * department currently shows; publishing it breaks the inheritance and the department carries its
  * own text from then on (ADR-014 amendment 2026-07-28).
  *
- * Departments that already left the inherited text are marked, so an admin editing the agency-wide
- * text can see at a glance who will *not* receive the change.
+ * Marking which departments already left the inherited text would be genuinely useful here — an
+ * admin editing the agency-wide text would see who will *not* receive the change. It is deliberately
+ * absent: answering it needs one read per department (or a bulk signal the backend does not offer),
+ * and a marker that only lights up for departments the admin happened to open is worse than none.
+ * Revisit with ORISO-AgencyService#212, which adds publication metadata anyway.
  */
 export const DepartmentSelect = ({ departments, value, onChange }: DepartmentSelectProps) => {
     const { t } = useTranslation();
@@ -53,12 +54,7 @@ export const DepartmentSelect = ({ departments, value, onChange }: DepartmentSel
                 items: [
                     { key: ALL_DEPARTMENTS, label: allLabel },
                     { type: 'divider' as const },
-                    ...departments.map(({ id, name, hasOwnText }) => ({
-                        key: String(id),
-                        label: hasOwnText
-                            ? t('agency.legal.department.ownText', '{{name}} (eigener Text)', { name })
-                            : name,
-                    })),
+                    ...departments.map(({ id, name }) => ({ key: String(id), label: name })),
                 ],
                 onClick: ({ key }) => onChange(key === ALL_DEPARTMENTS ? ALL_DEPARTMENTS : Number(key)),
             }}
