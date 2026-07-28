@@ -30,6 +30,20 @@
     composes: outline from '../FloatingLabelInput/floatingLabelInput.module.scss';
 }
 
+/*
+ * The shared M3 shell fixes `.outline` at 56px, which is right for a single-value
+ * field. A multi-select's tags wrap onto further rows, so the box has to grow with
+ * them — otherwise the tags spill out of their own border and overlap whatever sits
+ * below (reported with all 16 topics selected on an agency).
+ *
+ * Applied on the field root rather than inside `.select`, because the height belongs
+ * to the outline shell, not to the antd painting.
+ */
+.hasMultiSelect .outline {
+    height: auto;
+    min-height: 56px;
+}
+
 .label {
     composes: label from '../FloatingLabelInput/floatingLabelInput.module.scss';
 }
@@ -71,7 +85,9 @@
 
     /* Multi-select: grow with the selected tags instead of clipping them at a
        fixed height. Only reachable once a value exists, at which point the
-       label is already floated — no "resting label on a tall field" case. */
+       label is already floated — no "resting label on a tall field" case.
+       NOTE: this alone is not enough — the shared `.outline` shell is a fixed
+       56px, so a grown selector escapes it. See `.hasMultiSelect` below. */
     &:global(.ant-select-multiple) :global(.ant-select-selector) {
         height: auto !important;
         min-height: 100%;
