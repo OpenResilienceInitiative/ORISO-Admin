@@ -150,7 +150,6 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
                 hover: <LogsHoverIcon />,
                 inactive: <LogsInactiveIcon />,
             });
-        case routePathNames.inviteLinks:
         case routePathNames.links:
             return selectIcon(iconState, {
                 active: <LinksActiveIcon />,
