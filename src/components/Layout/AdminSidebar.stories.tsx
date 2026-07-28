@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Layout } from 'antd';
 import routePathNames from '../../appConfig';
+import { Resource } from '../../enums/Resource';
+import { UserRole } from '../../enums/UserRole';
 import { AdminSidebar, type AdminSidebarNavItem } from './AdminSidebar';
+import { buildAdminNavItems } from './adminNavItems';
 
 // Pre-resolved nav items (the wrapper builds these from permissions; the sidebar just renders them).
 const settingsItem: AdminSidebarNavItem = {
@@ -139,6 +142,46 @@ export const MinimalAccess: Story = {
     args: {
         items: [],
         currentPath: routePathNames.userProfile,
+    },
+};
+
+/**
+ * Träger admin who also holds `user-admin` — the role mix that reported the duplicate "Logs"
+ * menu (ORISO-Admin#84). Unlike the other stories, the items here come from the **real**
+ * `buildAdminNavItems` builder, so this story shows production output and fails visibly if the
+ * two log entries ever share a label again.
+ */
+export const TenantAdminWithUserAdmin: Story = {
+    args: {
+        items: buildAdminNavItems({
+            isSuperAdmin: false,
+            hasRole: (role) =>
+                (Array.isArray(role) ? role : [role]).some((candidate) =>
+                    [UserRole.TenantAdmin, UserRole.UserAdmin].includes(candidate),
+                ),
+            can: (_action, resource) =>
+                [
+                    Resource.Tenant,
+                    Resource.LegalText,
+                    Resource.Consultant,
+                    Resource.AgencyAdminUser,
+                    Resource.TenantAdminUser,
+                    Resource.Statistic,
+                ].includes(resource),
+            labels: {
+                account: 'Mein Konto',
+                activityLogs: 'Aktivitäts-Logs',
+                agency: 'Beratungsstellen',
+                links: 'Links',
+                logs: 'Logs',
+                settings: 'Einstellungen',
+                statistics: 'Statistik',
+                tenants: 'Mandanten',
+                users: 'Benutzer',
+            },
+            settingsPath: `${routePathNames.themeSettings}/general`,
+        }),
+        currentPath: routePathNames.logs,
     },
 };
 

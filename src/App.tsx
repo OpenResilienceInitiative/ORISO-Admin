@@ -35,7 +35,6 @@ import {
     LazyGeneralTenantSettings,
     LazyGlobalLoginSettingsPage,
     LazyInactiveAccountAuditLogsPage,
-    LazyInviteLinksPage,
     LazyLegalSettingsPage,
     LazyLinksIndexRedirect,
     LazyLinksPage,
@@ -347,7 +346,6 @@ export const App = () => {
                             <Route path="/admin/users/tenant-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
                             <Route path="/admin/users/platform-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
                             <Route path="/admin/users/:typeOfUsers/:id" element={<LazyUserEditOrAdd />} />
-                            <Route path="/admin/invite-links" element={<LazyInviteLinksPage />} />
                             <Route path="/admin/links" element={<LazyLinksPage />}>
                                 <Route index element={<LazyLinksIndexRedirect />} />
                                 <Route path="tenants" element={<LazyTenantInvitesTab />} />
