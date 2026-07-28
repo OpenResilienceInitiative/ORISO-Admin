@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FETCH_METHODS } from '../fetchData';
+import { FETCH_ERRORS, FETCH_METHODS } from '../fetchData';
 import {
-    IdReservationConflictError,
-    agencyIdAllocationEndpoint,
-    createIdAllocationClient,
-    tenantIdAllocationEndpoint,
+    IdAllocationServiceError,
+    agencyIdAllocationClient,
+    agencyIdNextFreeEndpoint,
+    idAllocationValidationEndpoint,
+    tenantIdAllocationClient,
+    tenantIdNextFreeEndpoint,
 } from './idAllocation';
 
 const mocks = vi.hoisted(() => ({
@@ -20,93 +22,131 @@ vi.mock('../fetchData', async () => {
     };
 });
 
-const client = createIdAllocationClient('https://tenant.example/service/tenantadmin/id-allocation');
-
 describe('id allocation API client', () => {
     beforeEach(() => {
         mocks.fetchData.mockReset();
     });
 
-    it('exposes tenant and agency endpoints on their owning services', () => {
-        expect(tenantIdAllocationEndpoint).toContain('/service/tenantadmin/id-allocation');
-        expect(agencyIdAllocationEndpoint).toContain('/service/agencyadmin/id-allocation');
+    it('pins the real backend endpoints (U3 aggregation + U1/U2 next-free)', () => {
+        expect(idAllocationValidationEndpoint).toContain('/service/useradmin/id-allocation');
+        expect(tenantIdNextFreeEndpoint).toContain('/service/tenantadmin/tenant-ids/next-free');
+        expect(agencyIdNextFreeEndpoint).toContain('/service/agencyadmin/agencyids/next-free');
     });
 
-    it('checks the availability of a single id', async () => {
-        mocks.fetchData.mockResolvedValueOnce({ id: 30, state: 'ASSIGNED' });
+    describe('checkIdAvailability (aggregated live validation, TEN-INV-U3)', () => {
+        it('validates a tenant id via the aggregated endpoint', async () => {
+            mocks.fetchData.mockResolvedValueOnce({ tenant: { id: 30, status: 'ASSIGNED' } });
 
-        const result = await client.checkIdAvailability(30);
+            const result = await tenantIdAllocationClient.checkIdAvailability(30);
 
-        expect(mocks.fetchData).toHaveBeenCalledWith(
-            expect.objectContaining({
-                method: FETCH_METHODS.GET,
-                url: 'https://tenant.example/service/tenantadmin/id-allocation/30',
-            }),
-        );
-        expect(result).toEqual({ id: 30, state: 'ASSIGNED' });
+            expect(mocks.fetchData).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    method: FETCH_METHODS.GET,
+                    url: `${idAllocationValidationEndpoint}?tenantId=30`,
+                }),
+            );
+            expect(result).toEqual({ id: 30, state: 'ASSIGNED' });
+        });
+
+        it('validates an agency id via the agency entry of the same endpoint', async () => {
+            mocks.fetchData.mockResolvedValueOnce({ agency: { id: 21, status: 'FREE' } });
+
+            const result = await agencyIdAllocationClient.checkIdAvailability(21);
+
+            expect(mocks.fetchData).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    method: FETCH_METHODS.GET,
+                    url: `${idAllocationValidationEndpoint}?agencyId=21`,
+                }),
+            );
+            expect(result).toEqual({ id: 21, state: 'FREE' });
+        });
+
+        it('maps a RESERVED entry', async () => {
+            mocks.fetchData.mockResolvedValueOnce({ tenant: { id: 33, status: 'RESERVED' } });
+
+            await expect(tenantIdAllocationClient.checkIdAvailability(33)).resolves.toEqual({
+                id: 33,
+                state: 'RESERVED',
+            });
+        });
+
+        it('rejects with IdAllocationServiceError when the entry degraded to SERVICE_ERROR', async () => {
+            mocks.fetchData.mockResolvedValueOnce({
+                tenant: { id: 30, status: 'SERVICE_ERROR', upstreamStatus: 503 },
+            });
+
+            const error = await tenantIdAllocationClient.checkIdAvailability(30).catch((e: unknown) => e);
+
+            expect(error).toBeInstanceOf(IdAllocationServiceError);
+            expect((error as IdAllocationServiceError).upstreamStatus).toBe(503);
+        });
+
+        it('rejects with IdAllocationServiceError when the expected entry is missing', async () => {
+            mocks.fetchData.mockResolvedValueOnce({});
+
+            await expect(agencyIdAllocationClient.checkIdAvailability(7)).rejects.toBeInstanceOf(
+                IdAllocationServiceError,
+            );
+        });
     });
 
-    it('requests the next free id from a value in a direction', async () => {
-        mocks.fetchData.mockResolvedValueOnce({ id: 36 });
+    describe('nextFreeId (owning services, TEN-INV-U1/U2)', () => {
+        it('steps tenant ids via TenantService with from/direction (UP)', async () => {
+            mocks.fetchData.mockResolvedValueOnce({ id: 36 });
 
-        const result = await client.nextFreeId({ from: 29, direction: 'up' });
+            const result = await tenantIdAllocationClient.nextFreeId({ from: 29, direction: 'up' });
 
-        expect(mocks.fetchData).toHaveBeenCalledWith(
-            expect.objectContaining({
-                method: FETCH_METHODS.GET,
-                url: 'https://tenant.example/service/tenantadmin/id-allocation/next-free?direction=up&from=29',
-            }),
-        );
-        expect(result).toEqual({ id: 36 });
-    });
+            expect(mocks.fetchData).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    method: FETCH_METHODS.GET,
+                    url: `${tenantIdNextFreeEndpoint}?from=29&direction=UP`,
+                }),
+            );
+            expect(result).toEqual({ id: 36 });
+        });
 
-    it('requests the smallest free id when no start value is given', async () => {
-        mocks.fetchData.mockResolvedValueOnce({ id: 21 });
+        it('anchors at 0 when no start value is given (smallest free id = AUTO candidate)', async () => {
+            mocks.fetchData.mockResolvedValueOnce({ id: 21 });
 
-        const result = await client.nextFreeId({ direction: 'up' });
+            const result = await tenantIdAllocationClient.nextFreeId({ direction: 'up' });
 
-        expect(mocks.fetchData).toHaveBeenCalledWith(
-            expect.objectContaining({
-                method: FETCH_METHODS.GET,
-                url: 'https://tenant.example/service/tenantadmin/id-allocation/next-free?direction=up',
-            }),
-        );
-        expect(result).toEqual({ id: 21 });
-    });
+            expect(mocks.fetchData).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    url: `${tenantIdNextFreeEndpoint}?from=0&direction=UP`,
+                }),
+            );
+            expect(result).toEqual({ id: 21 });
+        });
 
-    it('reserves a specific id', async () => {
-        mocks.fetchData.mockResolvedValueOnce({ json: async () => ({ id: 21 }) });
+        it('steps agency ids via AgencyService with fromId/direction and maps agencyId', async () => {
+            mocks.fetchData.mockResolvedValueOnce({ agencyId: 12 });
 
-        const result = await client.reserveId({ allocationMode: 'MANUAL', id: 21 });
+            const result = await agencyIdAllocationClient.nextFreeId({ from: 9, direction: 'down' });
 
-        expect(mocks.fetchData).toHaveBeenCalledWith(
-            expect.objectContaining({
-                method: FETCH_METHODS.POST,
-                url: 'https://tenant.example/service/tenantadmin/id-allocation/reservations',
-                bodyData: JSON.stringify({ allocationMode: 'MANUAL', id: 21 }),
-            }),
-        );
-        expect(result).toEqual({ id: 21 });
-    });
+            expect(mocks.fetchData).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    method: FETCH_METHODS.GET,
+                    url: `${agencyIdNextFreeEndpoint}?fromId=9&direction=DOWN`,
+                }),
+            );
+            expect(result).toEqual({ id: 12 });
+        });
 
-    it('maps a 409 reservation conflict onto IdReservationConflictError', async () => {
-        mocks.fetchData.mockRejectedValueOnce(new Response(null, { status: 409 }));
+        it('maps a 404 (no free id in that direction) to id null', async () => {
+            mocks.fetchData.mockRejectedValueOnce(new Error(FETCH_ERRORS.NO_MATCH));
 
-        await expect(client.reserveId({ allocationMode: 'MANUAL', id: 30 })).rejects.toBeInstanceOf(
-            IdReservationConflictError,
-        );
-    });
+            await expect(tenantIdAllocationClient.nextFreeId({ from: 99, direction: 'down' })).resolves.toEqual({
+                id: null,
+            });
+        });
 
-    it('releases a reservation', async () => {
-        mocks.fetchData.mockResolvedValueOnce(new Response(null, { status: 204 }));
+        it('passes other transport failures through as rejections', async () => {
+            mocks.fetchData.mockRejectedValueOnce(new Error(FETCH_ERRORS.CATCH_ALL));
 
-        await client.releaseId(21);
-
-        expect(mocks.fetchData).toHaveBeenCalledWith(
-            expect.objectContaining({
-                method: FETCH_METHODS.DELETE,
-                url: 'https://tenant.example/service/tenantadmin/id-allocation/reservations/21',
-            }),
-        );
+            await expect(agencyIdAllocationClient.nextFreeId({ from: 1, direction: 'up' })).rejects.toThrow(
+                FETCH_ERRORS.CATCH_ALL,
+            );
+        });
     });
 });

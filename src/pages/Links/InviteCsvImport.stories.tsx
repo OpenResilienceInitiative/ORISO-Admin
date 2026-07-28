@@ -53,8 +53,6 @@ const stubbedTenantIdAllocation: IdAllocationClient = {
         }
         return { id: null };
     },
-    reserveId: async ({ id }) => ({ id: id ?? 3 }),
-    releaseId: async () => {},
 };
 
 /**

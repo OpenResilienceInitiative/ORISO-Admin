@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Form, Spin } from 'antd';
 import DOMPurify from 'dompurify';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ThemeProvider } from '@mui/material/styles';
 import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
+import { DpaFormSection } from '../DpaLegalForm/DpaFormSection';
 import { M3Button } from '../M3Button';
-import { M3Checkbox } from '../M3Checkbox';
-import { MuiFormField } from '../mui/MuiFormField';
 import { pickLegalContentLanguage } from '../Tenants/LegalSettings/utils/legalContentLanguages';
 import { DpaBlockerReason } from '../../utils/dpaBlockerGate';
 import styles from './styles.module.scss';
@@ -114,7 +114,7 @@ export const DpaBlocker = ({
                 aria-labelledby={TITLE_ID}
                 data-testid="dpa-blocker"
             >
-                <div className={styles.card}>
+                <div className={classNames(styles.card, { [styles.cardWide]: showSignForm })}>
                     <Typography id={TITLE_ID} variant="h5" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
                         {t('dpaBlocker.title')}
                     </Typography>
@@ -147,85 +147,19 @@ export const DpaBlocker = ({
                                 signerOrganisation: '',
                             }}
                         >
-                            <div
-                                className={styles.dpaText}
-                                data-testid="dpa-text"
-                                // eslint-disable-next-line react/no-danger
-                                dangerouslySetInnerHTML={{ __html: dpaHtml }}
+                            <DpaFormSection
+                                dpaHtml={dpaHtml}
+                                textLabel={t('dpaBlocker.title')}
+                                // The overlay is the scroll container (#572):
+                                // the text flows, TOC jumps scroll the overlay.
+                                scrollMode="container"
+                                accepted={dpaAccepted}
+                                acceptTouched={acceptTouched}
+                                onAcceptedChange={(value) => {
+                                    setDpaAccepted(value);
+                                    setAcceptTouched(true);
+                                }}
                             />
-                            <div className={styles.fieldStack}>
-                                <MuiFormField
-                                    name="signerName"
-                                    label={t('tenantOnboarding.dpa.signerName')}
-                                    rules={[
-                                        {
-                                            required: true,
-                                            whitespace: true,
-                                            message: t('tenantOnboarding.validation.required'),
-                                        },
-                                    ]}
-                                />
-                                <MuiFormField
-                                    name="signerPosition"
-                                    label={t('tenantOnboarding.dpa.signerPosition')}
-                                    rules={[
-                                        {
-                                            required: true,
-                                            whitespace: true,
-                                            message: t('tenantOnboarding.validation.required'),
-                                        },
-                                    ]}
-                                />
-                                <MuiFormField
-                                    name="signerEmail"
-                                    label={t('tenantOnboarding.dpa.signerEmail')}
-                                    rules={[
-                                        {
-                                            required: true,
-                                            whitespace: true,
-                                            message: t('tenantOnboarding.validation.required'),
-                                        },
-                                        { type: 'email', message: t('tenantOnboarding.validation.email') },
-                                    ]}
-                                />
-                                <MuiFormField
-                                    name="signerOrganisation"
-                                    label={t('tenantOnboarding.dpa.signerOrganisation')}
-                                    rules={[
-                                        {
-                                            required: true,
-                                            whitespace: true,
-                                            message: t('tenantOnboarding.validation.required'),
-                                        },
-                                    ]}
-                                />
-                            </div>
-
-                            <div className={styles.acceptRow}>
-                                <M3Checkbox
-                                    checked={dpaAccepted}
-                                    label={t('tenantOnboarding.dpa.accept')}
-                                    onChange={(value) => {
-                                        setDpaAccepted(value);
-                                        setAcceptTouched(true);
-                                    }}
-                                />
-                                <Typography
-                                    component="span"
-                                    className={styles.acceptLabel}
-                                    onClick={() => {
-                                        setDpaAccepted((value) => !value);
-                                        setAcceptTouched(true);
-                                    }}
-                                >
-                                    {t('tenantOnboarding.dpa.accept')}
-                                </Typography>
-                            </div>
-                            {acceptTouched && !dpaAccepted && (
-                                <Typography role="alert" color="error" variant="body2" sx={{ mt: 1 }}>
-                                    {t('tenantOnboarding.dpa.acceptRequired')}
-                                </Typography>
-                            )}
 
                             {signFailed && (
                                 <Alert severity="error" sx={{ mt: 2 }} role="alert">

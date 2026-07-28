@@ -12,8 +12,14 @@ import styles from './styles.module.scss';
 export type TwoFactorSetupInlineError = 'invalid-code' | 'service' | null;
 
 export interface OnboardingTwoFactorSetupProps {
-    /** TOTP link data from the injected backend seam (secret already base32). */
-    appLink: TwoFactorAppLink;
+    /**
+     * TOTP link data from the injected backend seam (secret already base32).
+     * `null` = verify-only: a resumed link without re-issued setup material —
+     * the authenticator app was already connected in the original attempt.
+     */
+    appLink: TwoFactorAppLink | null;
+    /** True when the step was re-entered by resuming a 2FA-pending link (#569). */
+    resumed?: boolean;
     busy?: boolean;
     error?: TwoFactorSetupInlineError;
     /** Context copy — defaults to the shared canonical keys. */
@@ -30,6 +36,7 @@ export interface OnboardingTwoFactorSetupProps {
  */
 export const OnboardingTwoFactorSetup = ({
     appLink,
+    resumed = false,
     busy = false,
     error = null,
     titleKey = 'twoFactorSetup.title',
@@ -47,7 +54,12 @@ export const OnboardingTwoFactorSetup = ({
             <Typography sx={{ mb: 2 }} color="text.secondary">
                 {t(descriptionKey)}
             </Typography>
-            <TwoFactorAppConnect appLink={appLink} />
+            {resumed && (
+                <Typography sx={{ mb: 2 }} data-testid="two-factor-resumed-hint">
+                    {t('twoFactorSetup.resumedHint')}
+                </Typography>
+            )}
+            {appLink && <TwoFactorAppConnect appLink={appLink} />}
             <div className={styles.fieldStack}>
                 <MuiFormField
                     name="otp"

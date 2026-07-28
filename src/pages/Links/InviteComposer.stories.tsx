@@ -71,8 +71,6 @@ const stubbedTenantIdAllocation: IdAllocationClient = {
         }
         return { id: null };
     },
-    reserveId: async ({ id }) => ({ id: id ?? 21 }),
-    releaseId: async () => {},
 };
 
 const defaultHandlers = [

@@ -64,6 +64,21 @@ export interface TenantAdminOnboardingInviteDTO {
      * the wording is never authored in this flow.
      */
     dpaContent: string | null;
+    /**
+     * Onboarding phase per the UserService resume contract (#569 hardening):
+     * `PENDING_2FA_ACTIVATION` = the invite was already accepted/registered
+     * but the mandatory 2FA activation is still open — the flow re-enters at
+     * the 2FA step instead of the CONSUMED dead end. Absent/undefined = the
+     * registration has not happened yet (normal step 1 entry).
+     */
+    phase?: 'PENDING_2FA_ACTIVATION';
+    /**
+     * TOTP setup material re-issued for a resumable link (the raw token is
+     * the only credential, so re-showing it to the token holder exposes
+     * nothing new). `null`/absent when the backend does not re-issue it — the
+     * 2FA step then renders the verify-only variant.
+     */
+    twoFactor?: { secret: string; qrCodeBase64: string | null } | null;
 }
 
 export interface OrganisationData {
@@ -164,6 +179,43 @@ const toOnboardingError = async (error: unknown): Promise<unknown> => {
 const onboardingUrl = (inviteToken: string, suffix = '') =>
     `${publicAccountInvitesEndpoint}/${encodeURIComponent(inviteToken)}/onboarding${suffix}`;
 
+/**
+ * Resume probe against the REAL public accept endpoint (UserService #569
+ * hardening contract): re-POSTing `/{token}/accept` while the accepted
+ * invite's 2FA is still PENDING_SETUP answers an idempotent 200 with
+ * `phase: "PENDING_2FA_ACTIVATION"` (no state written); terminal links stay
+ * 410. Only called AFTER the resolve reported CONSUMED — probing an untouched
+ * link here would consume it.
+ */
+const probeTwoFactorResume = async (inviteToken: string): Promise<TenantAdminOnboardingInviteDTO | null> => {
+    try {
+        const accept = await fetchData({
+            url: `${publicAccountInvitesEndpoint}/${encodeURIComponent(inviteToken)}/accept`,
+            method: FETCH_METHODS.POST,
+            skipAuth: true,
+            responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_SILENT, FETCH_SUCCESS.CONTENT],
+            bodyData: JSON.stringify({}),
+        });
+        if (accept?.phase !== 'PENDING_2FA_ACTIVATION') {
+            return null;
+        }
+        return {
+            recipientEmail: accept.recipientEmail ?? '',
+            firstName: accept.firstName ?? null,
+            lastName: accept.lastName ?? null,
+            reservedTenantId: accept.tenantId ?? 0,
+            tenantIdReservationToken: '',
+            expiresAt: accept.expiresAt ?? null,
+            dpaContent: null,
+            phase: 'PENDING_2FA_ACTIVATION',
+            twoFactor: null,
+        };
+    } catch {
+        // The probe is best-effort: any failure keeps the original CONSUMED.
+        return null;
+    }
+};
+
 // CATCH_ALL_SILENT: reject with the raw Response (no global toast) so the flow
 // can map statuses itself. FORBIDDEN_SILENT: never bounce a public visitor to
 // the authenticated /admin/access-denied page.
@@ -184,15 +236,28 @@ export const createHttpTenantAdminOnboardingClient = (): TenantAdminOnboardingCl
     };
 
     return {
-        getOnboardingInvite: (inviteToken) =>
-            run(() =>
-                fetchData({
-                    url: onboardingUrl(inviteToken),
-                    method: FETCH_METHODS.GET,
-                    skipAuth: true,
-                    responseHandling: PUBLIC_RESPONSE_HANDLING,
-                }),
-            ),
+        getOnboardingInvite: async (inviteToken) => {
+            try {
+                return await run(() =>
+                    fetchData({
+                        url: onboardingUrl(inviteToken),
+                        method: FETCH_METHODS.GET,
+                        skipAuth: true,
+                        responseHandling: PUBLIC_RESPONSE_HANDLING,
+                    }),
+                );
+            } catch (error) {
+                // CONSUMED may still be resumable (#569 resume contract):
+                // probe the accept endpoint before declaring the dead end.
+                if (error instanceof InviteLinkError && error.reason === 'CONSUMED') {
+                    const resumable = await probeTwoFactorResume(inviteToken);
+                    if (resumable) {
+                        return resumable;
+                    }
+                }
+                throw error;
+            }
+        },
 
         registerTenantAdmin: (inviteToken, request) =>
             run(() =>
@@ -227,8 +292,13 @@ export const createHttpTenantAdminOnboardingClient = (): TenantAdminOnboardingCl
 };
 
 export interface StubTenantAdminOnboardingOptions {
-    /** Initial link state presented by the stub. Default: 'VALID'. */
-    inviteState?: 'VALID' | InviteLinkErrorReason;
+    /**
+     * Initial link state presented by the stub. Default: 'VALID'.
+     * 'PENDING_2FA_ACTIVATION' = consumed-but-resumable (#569 resume
+     * contract): the registration already happened, only the 2FA activation
+     * is open.
+     */
+    inviteState?: 'VALID' | 'PENDING_2FA_ACTIVATION' | InviteLinkErrorReason;
     /** Simulated network latency. Default: 400ms (0 in tests). */
     latencyMs?: number;
     invite?: Partial<TenantAdminOnboardingInviteDTO>;
@@ -270,13 +340,26 @@ export const createStubTenantAdminOnboardingClient = (
 ): TenantAdminOnboardingClient => {
     const { inviteState = 'VALID', latencyMs = 400 } = options;
     const invite: TenantAdminOnboardingInviteDTO = { ...STUB_INVITE, ...options.invite };
-    let consumed = inviteState === 'CONSUMED';
+    // Registered = the single-use registration happened; the link stays
+    // resumable at the 2FA step until the activation succeeds (#569 resume
+    // contract). Only then is the link terminally consumed.
+    let registered = inviteState === 'PENDING_2FA_ACTIVATION';
+    let twoFactorActivated = inviteState === 'CONSUMED';
 
-    const assertUsable = () => {
-        if (inviteState !== 'VALID') {
+    const STUB_TWO_FACTOR = {
+        secret: 'ORISOSTUBTOTPSECRET234567ABCDEFG',
+        qrCodeBase64: null,
+    };
+
+    const assertLinkAlive = (inviteToken: string) => {
+        if (!inviteToken) {
+            throw new InviteLinkError('INVALID');
+        }
+        if (inviteState === 'REVOKED' || inviteState === 'EXPIRED' || inviteState === 'INVALID') {
             throw new InviteLinkError(inviteState);
         }
-        if (consumed) {
+        if (twoFactorActivated) {
+            // Resume window closed — terminally consumed.
             throw new InviteLinkError('CONSUMED');
         }
     };
@@ -284,19 +367,21 @@ export const createStubTenantAdminOnboardingClient = (
     return {
         getOnboardingInvite: async (inviteToken) => {
             await wait(latencyMs);
-            if (!inviteToken) {
-                throw new InviteLinkError('INVALID');
+            assertLinkAlive(inviteToken);
+            if (registered) {
+                return { ...invite, phase: 'PENDING_2FA_ACTIVATION', twoFactor: STUB_TWO_FACTOR };
             }
-            assertUsable();
             return invite;
         },
 
         registerTenantAdmin: async (inviteToken, request) => {
             await wait(latencyMs);
-            if (!inviteToken) {
-                throw new InviteLinkError('INVALID');
+            assertLinkAlive(inviteToken);
+            if (registered) {
+                // Single-use: a second registration attempt loses; re-entry
+                // happens via getOnboardingInvite's PENDING_2FA_ACTIVATION.
+                throw new InviteLinkError('CONSUMED');
             }
-            assertUsable();
             if (
                 request.tenantIdReservationToken !== invite.tenantIdReservationToken ||
                 request.reservedTenantId !== invite.reservedTenantId
@@ -308,27 +393,20 @@ export const createStubTenantAdminOnboardingClient = (
             if (!request.dpa.accepted) {
                 throw new Error('DPA_NOT_ACCEPTED');
             }
-            consumed = true;
+            registered = true;
             return {
                 tenantId: invite.reservedTenantId,
-                twoFactor: {
-                    secret: 'ORISOSTUBTOTPSECRET234567ABCDEFG',
-                    qrCodeBase64: null,
-                },
+                twoFactor: STUB_TWO_FACTOR,
             };
         },
 
         activateTwoFactor: async (inviteToken, otp) => {
             await wait(latencyMs);
-            if (!inviteToken) {
-                throw new InviteLinkError('INVALID');
-            }
-            if (inviteState !== 'VALID') {
-                throw new InviteLinkError(inviteState);
-            }
+            assertLinkAlive(inviteToken);
             if (!/^\d{6}$/.test(otp) || otp === STUB_REJECTED_OTP) {
                 throw new TwoFactorCodeInvalidError();
             }
+            twoFactorActivated = true;
         },
     };
 };

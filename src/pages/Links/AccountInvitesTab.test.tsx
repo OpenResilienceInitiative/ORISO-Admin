@@ -70,14 +70,10 @@ vi.mock('../../api/idAllocation/idAllocation', () => ({
     tenantIdAllocationClient: {
         checkIdAvailability: vi.fn(),
         nextFreeId: vi.fn(),
-        reserveId: vi.fn(),
-        releaseId: vi.fn(),
     },
     agencyIdAllocationClient: {
         checkIdAvailability: vi.fn(),
         nextFreeId: vi.fn(),
-        reserveId: vi.fn(),
-        releaseId: vi.fn(),
     },
 }));
 

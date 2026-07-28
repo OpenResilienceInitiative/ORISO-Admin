@@ -9,14 +9,22 @@ export const useUserRoles = (): {
     isTechnicalAccount: boolean;
     isTenantScopedAdmin: boolean;
     tenantId: number | null;
+    /**
+     * An access token exists but could not be decoded (malformed JWT). Roles
+     * and tenantId are unknown in that case — security gates (e.g. the DPA
+     * blocker) must fail closed instead of treating this as "no roles".
+     */
+    tokenUnreadable: boolean;
 } => {
     let payload;
     let tokenRoles: UserRole[] = [];
+    let tokenUnreadable = false;
 
     const accessToken = getAccessTokenForRequests();
 
     if (accessToken) {
         payload = parseJwt(accessToken);
+        tokenUnreadable = payload === null;
         // A token without realm_access (misconfigured account) must degrade to
         // "no roles", not crash the render tree.
         tokenRoles = payload?.realm_access?.roles ?? [];
@@ -48,5 +56,6 @@ export const useUserRoles = (): {
         isTechnicalAccount,
         isTenantScopedAdmin,
         tenantId,
+        tokenUnreadable,
     };
 };

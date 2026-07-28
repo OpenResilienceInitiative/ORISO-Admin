@@ -27,8 +27,6 @@ const nextFreeFromExample = ({ from, direction }: NextFreeIdParams): number | nu
 const createClient = (): IdAllocationClient => ({
     checkIdAvailability: vi.fn(async (id: number) => ({ id, state: stateOf(id) })),
     nextFreeId: vi.fn(async (params: NextFreeIdParams) => ({ id: nextFreeFromExample(params) })),
-    reserveId: vi.fn(),
-    releaseId: vi.fn(),
 });
 
 const flushPromises = async () => {
