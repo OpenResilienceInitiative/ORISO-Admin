@@ -10,8 +10,9 @@ import { TwoFactorStep } from './TwoFactorStep';
  * Public tenant-admin onboarding flow (TEN-INV U8, #571): the invite link
  * reserved the tenant ID, this flow creates the inactive tenant + admin
  * account (consuming the reservation atomically) and ends with the 2FA setup.
- * All backend calls run against the typed stub client until the U3/U6
- * endpoints are wired. In the OrganisationAndDpa story, walk through: fill the
+ * Every story injects the typed stub client explicitly — in production the
+ * page defaults to the real public UserService client (U3/U6 endpoints).
+ * In the OrganisationAndDpa story, walk through: fill the
  * fields → Continue → passwords → Create account → code 123456 (000000 shows
  * the invalid-code state).
  */

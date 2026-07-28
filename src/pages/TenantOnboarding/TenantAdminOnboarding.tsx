@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import routePathNames from '../../appConfig';
 import {
-    createStubTenantAdminOnboardingClient,
+    createHttpTenantAdminOnboardingClient,
     TenantAdminOnboardingClient,
 } from '../../api/tenantOnboarding/tenantOnboarding';
 import { useTenantAdminOnboardingFlow } from './useTenantAdminOnboardingFlow';
@@ -18,8 +18,9 @@ import styles from './styles.module.scss';
 interface TenantAdminOnboardingProps {
     inviteToken: string;
     /**
-     * Backend seam — defaults to the stub until the U3/U6 UserService
-     * endpoints are wired in the hardening pass (see the client module docs).
+     * Backend seam — defaults to the real public UserService client
+     * ({@link createHttpTenantAdminOnboardingClient}); tests and Storybook
+     * inject the stub here.
      */
     client?: TenantAdminOnboardingClient;
 }
@@ -34,7 +35,7 @@ const STEP_ORDER = { organisation: 1, account: 2, 'two-factor': 3 } as const;
  */
 export const TenantAdminOnboarding = ({ inviteToken, client }: TenantAdminOnboardingProps) => {
     const { t } = useTranslation();
-    const resolvedClient = useMemo(() => client ?? createStubTenantAdminOnboardingClient(), [client]);
+    const resolvedClient = useMemo(() => client ?? createHttpTenantAdminOnboardingClient(), [client]);
     const {
         state,
         invite,

@@ -9,17 +9,21 @@
  * in the TenantService API: a reserved ID without the matching token is
  * rejected with a conflict).
  *
- * The aggregated public endpoints live in UserService (U3/U6) and are wired in
- * the hardening pass; until then the page runs against
- * {@link createStubTenantAdminOnboardingClient}. The request/response shapes
- * below are pinned to the TenantService avv-fix contract so the wiring is
- * mechanical:
+ * The aggregated public endpoints live in UserService (U3/U6) under
+ * {@link publicAccountInvitesEndpoint} (`…/{token}/onboarding[...]`, same
+ * convention as the existing public `{token}/accept` endpoint); the page runs
+ * against {@link createHttpTenantAdminOnboardingClient} in production.
+ * {@link createStubTenantAdminOnboardingClient} exists for tests and Storybook
+ * only and must never be the default on the public route. The request/response
+ * shapes are pinned to the TenantService avv-fix contract:
  *  - `reservedTenantId`  ↔ `TenantIdReservationDTO.tenantId`
  *  - `tenantIdReservationToken` ↔ `TenantIdReservationDTO.token` (max 36 chars),
  *    passed through into the tenant-creating call as
  *    `MultilingualTenantDTO.tenantIdReservationToken`.
  */
 
+import { publicAccountInvitesEndpoint } from '../../appConfig';
+import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 import { TwoFactorCodeInvalidError } from './TwoFactorCodeInvalidError';
 
 /** Why an invite link cannot (or can no longer) be used. */
@@ -121,6 +125,107 @@ export interface TenantAdminOnboardingClient {
     activateTwoFactor(inviteToken: string, otp: string): Promise<void>;
 }
 
+/** Status → link-error mapping of the public onboarding endpoints (U3/U6). */
+const LINK_ERROR_BY_STATUS: Record<number, InviteLinkErrorReason> = {
+    404: 'INVALID',
+    409: 'CONSUMED',
+    410: 'EXPIRED',
+    423: 'REVOKED',
+};
+
+const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
+    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'INVALID';
+
+/**
+ * Translates a rejected public-endpoint call into the typed client errors: an
+ * explicit `reason` in the JSON error body wins, then the status mapping, and
+ * everything else stays a generic (retryable) error — never a fake success.
+ */
+const toOnboardingError = async (error: unknown): Promise<unknown> => {
+    if (!(error instanceof Response)) {
+        return error;
+    }
+    let bodyReason: unknown;
+    try {
+        bodyReason = (await error.clone().json())?.reason;
+    } catch {
+        // No JSON error body — fall back to the status mapping.
+    }
+    if (isInviteLinkErrorReason(bodyReason)) {
+        return new InviteLinkError(bodyReason);
+    }
+    const mapped = LINK_ERROR_BY_STATUS[error.status];
+    if (mapped) {
+        return new InviteLinkError(mapped);
+    }
+    return new Error(`TENANT_ONBOARDING_HTTP_${error.status}`);
+};
+
+const onboardingUrl = (inviteToken: string, suffix = '') =>
+    `${publicAccountInvitesEndpoint}/${encodeURIComponent(inviteToken)}/onboarding${suffix}`;
+
+// CATCH_ALL_SILENT: reject with the raw Response (no global toast) so the flow
+// can map statuses itself. FORBIDDEN_SILENT: never bounce a public visitor to
+// the authenticated /admin/access-denied page.
+const PUBLIC_RESPONSE_HANDLING = [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_SILENT];
+
+/**
+ * Production client for the public tenant-admin onboarding endpoints
+ * (UserService U3/U6). All calls are unauthenticated (`skipAuth`) — the whole
+ * point of the flow is that the invitee has no account yet.
+ */
+export const createHttpTenantAdminOnboardingClient = (): TenantAdminOnboardingClient => {
+    const run = async <T>(request: () => Promise<T>): Promise<T> => {
+        try {
+            return await request();
+        } catch (error) {
+            throw await toOnboardingError(error);
+        }
+    };
+
+    return {
+        getOnboardingInvite: (inviteToken) =>
+            run(() =>
+                fetchData({
+                    url: onboardingUrl(inviteToken),
+                    method: FETCH_METHODS.GET,
+                    skipAuth: true,
+                    responseHandling: PUBLIC_RESPONSE_HANDLING,
+                }),
+            ),
+
+        registerTenantAdmin: (inviteToken, request) =>
+            run(() =>
+                fetchData({
+                    url: onboardingUrl(inviteToken, '/register'),
+                    method: FETCH_METHODS.POST,
+                    skipAuth: true,
+                    responseHandling: [...PUBLIC_RESPONSE_HANDLING, FETCH_SUCCESS.CONTENT],
+                    bodyData: JSON.stringify(request),
+                }),
+            ),
+
+        activateTwoFactor: async (inviteToken, otp) => {
+            try {
+                await fetchData({
+                    url: onboardingUrl(inviteToken, '/two-factor'),
+                    method: FETCH_METHODS.POST,
+                    skipAuth: true,
+                    responseHandling: PUBLIC_RESPONSE_HANDLING,
+                    bodyData: JSON.stringify({ otp }),
+                });
+            } catch (error) {
+                // 400/422 = the entered one-time password was rejected;
+                // link-death statuses keep their InviteLinkError mapping.
+                if (error instanceof Response && (error.status === 400 || error.status === 422)) {
+                    throw new TwoFactorCodeInvalidError();
+                }
+                throw await toOnboardingError(error);
+            }
+        },
+    };
+};
+
 export interface StubTenantAdminOnboardingOptions {
     /** Initial link state presented by the stub. Default: 'VALID'. */
     inviteState?: 'VALID' | InviteLinkErrorReason;
@@ -153,10 +258,12 @@ const wait = (ms: number) =>
         : Promise.resolve();
 
 /**
- * In-memory stand-in for the U3/U6 UserService endpoints. Behaves like the
- * real contract where it matters for the UI: single-use links, atomic
- * consumption (a second registration attempt gets CONSUMED), reservation-token
- * echo validation, and a deterministic invalid OTP ({@link STUB_REJECTED_OTP}).
+ * In-memory stand-in for the U3/U6 UserService endpoints — for unit tests and
+ * Storybook ONLY, never the production default (the public route uses
+ * {@link createHttpTenantAdminOnboardingClient}). Behaves like the real
+ * contract where it matters for the UI: single-use links, atomic consumption
+ * (a second registration attempt gets CONSUMED), reservation-token echo
+ * validation, and a deterministic invalid OTP ({@link STUB_REJECTED_OTP}).
  */
 export const createStubTenantAdminOnboardingClient = (
     options: StubTenantAdminOnboardingOptions = {},

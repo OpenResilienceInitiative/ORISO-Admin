@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import {
-    accountInviteAcceptBaseUrl,
+    acceptBaseUrlForRole,
     AccountInviteDTO,
     AccountInviteStatus,
     AccountInviteTargetRole,
@@ -276,7 +276,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             setSubmitting(true);
             try {
                 const created = await createAccountInvite({
-                    acceptBaseUrl: accountInviteAcceptBaseUrl,
+                    // Role-aware target (TEN-INV U6/U8): tenant admins land on the
+                    // public Admin onboarding route, everyone else on the app layer.
+                    acceptBaseUrl: acceptBaseUrlForRole(targetRole),
                     agencyId: values.agencyId,
                     // Allocation contract (#569/#570): AUTO = backend assigns the
                     // smallest free id; MANUAL ids were pre-validated in the field
@@ -326,7 +328,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         async (row: InviteCsvCreateRow) => {
             if (!csvImport) return;
             await createAccountInvite({
-                acceptBaseUrl: accountInviteAcceptBaseUrl,
+                acceptBaseUrl: acceptBaseUrlForRole(targetRole),
                 expiresInDays: 30,
                 firstName: row.firstName,
                 lastName: row.lastName,
@@ -348,7 +350,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             }
             try {
                 const resent = await resendAccountInvite(invite.id, {
-                    acceptBaseUrl: accountInviteAcceptBaseUrl,
+                    acceptBaseUrl: acceptBaseUrlForRole(invite.targetRole),
                     templateId,
                 });
                 rememberGeneratedLink(resent);
@@ -450,7 +452,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             try {
                 // eslint-disable-next-line no-await-in-loop -- sequential on purpose: per-row attribution, no mail burst
                 const resent = await resendAccountInvite(targets[i].id, {
-                    acceptBaseUrl: accountInviteAcceptBaseUrl,
+                    acceptBaseUrl: acceptBaseUrlForRole(targets[i].targetRole),
                     templateId,
                 });
                 rememberGeneratedLink(resent);

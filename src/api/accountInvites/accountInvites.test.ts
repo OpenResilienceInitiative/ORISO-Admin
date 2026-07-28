@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FETCH_ERRORS, FETCH_METHODS } from '../fetchData';
-import { inviteEmailTemplatesEndpoint } from '../../appConfig';
+import routePathNames, { appURL, inviteEmailTemplatesEndpoint } from '../../appConfig';
 import {
+    acceptBaseUrlForRole,
+    accountInviteAcceptBaseUrl,
     accountInvitesEndpoint,
     createAccountInvite,
     createInviteEmailTemplate,
     listAccountInvites,
     listInviteEmailTemplates,
     resendAccountInvite,
+    tenantAdminOnboardingAcceptBaseUrl,
     updateInviteEmailTemplate,
 } from './accountInvites';
 
@@ -107,6 +110,23 @@ describe('account invite API', () => {
             }),
         );
     });
+});
+
+describe('acceptBaseUrlForRole', () => {
+    it('routes tenant-admin invites to the public Admin onboarding page (TEN-INV U6/U8)', () => {
+        expect(acceptBaseUrlForRole('TENANT_ADMIN')).toBe(tenantAdminOnboardingAcceptBaseUrl);
+        expect(tenantAdminOnboardingAcceptBaseUrl).toBe(
+            `${appURL.replace(/\/$/, '')}${routePathNames.tenantOnboarding}`,
+        );
+        expect(tenantAdminOnboardingAcceptBaseUrl.endsWith('/admin/tenant-onboarding')).toBe(true);
+    });
+
+    it.each(['AGENCY_ADMIN', 'COUNSELLOR', 'PLATFORM_ADMIN', 'ADVICE_SEEKER'] as const)(
+        'keeps %s invites on the app-layer accept route',
+        (role) => {
+            expect(acceptBaseUrlForRole(role)).toBe(accountInviteAcceptBaseUrl);
+        },
+    );
 });
 
 describe('invite email template API', () => {

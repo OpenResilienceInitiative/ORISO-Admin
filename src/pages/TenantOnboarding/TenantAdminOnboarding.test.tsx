@@ -16,6 +16,19 @@ vi.mock('react-i18next', () => ({
     }),
 }));
 
+const mocks = vi.hoisted(() => ({
+    fetchData: vi.fn(),
+}));
+
+vi.mock('../../api/fetchData', async () => {
+    const actual = await vi.importActual<typeof import('../../api/fetchData')>('../../api/fetchData');
+
+    return {
+        ...actual,
+        fetchData: mocks.fetchData,
+    };
+});
+
 const INVITE: TenantAdminOnboardingInviteDTO = {
     recipientEmail: 'admin@tenant.example',
     firstName: 'Erika',
@@ -152,5 +165,25 @@ describe('TenantAdminOnboarding', () => {
 
         expect(await screen.findByTestId('link-error-invalid')).toBeInTheDocument();
         expect(client.getOnboardingInvite).not.toHaveBeenCalled();
+    });
+
+    it('talks to the real public onboarding API by default — never a stub in production', async () => {
+        mocks.fetchData.mockRejectedValue(new Response(null, { status: 404 }));
+
+        render(
+            <MemoryRouter>
+                <TenantAdminOnboarding inviteToken="raw-token" />
+            </MemoryRouter>,
+        );
+
+        // An unknown token gets an honest terminal error from the backend —
+        // not a fake happy path with hardcoded demo data.
+        expect(await screen.findByTestId('link-error-invalid')).toBeInTheDocument();
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                url: expect.stringContaining('/service/users/account-invites/raw-token/onboarding'),
+                skipAuth: true,
+            }),
+        );
     });
 });
