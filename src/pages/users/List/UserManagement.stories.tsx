@@ -71,6 +71,59 @@ export const Filled: Story = {
     parameters: { msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))] } },
 };
 
+/**
+ * Real Pre-Dev data shapes: long agency and city names plus a consultant assigned to several
+ * agencies. Guards the agency chips against mid-word clipping and the trailing identity columns
+ * against being pushed out of sight (ORISO-Admin#99).
+ */
+export const LongAgencyNames: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(CONSULTANTS_ENDPOINT, () =>
+                    consultantsResponse([
+                        {
+                            ...CONSULTANTS[0],
+                            id: 'c-long',
+                            key: 'c-long',
+                            firstname: 'Shanzae',
+                            lastname: 'Imran',
+                            email: 'shanzaeimran2@example.org',
+                            username: 'shanzae-consultant',
+                            agencies: [
+                                {
+                                    id: '201',
+                                    name: 'Codex PreDev E2E 20260625222629',
+                                    postcode: '10115',
+                                    city: 'Berlin-Charlottenburg-Wilmersdorf',
+                                },
+                            ],
+                            agencyIds: ['201'],
+                        },
+                        {
+                            ...CONSULTANTS[1],
+                            id: 'c-multi',
+                            key: 'c-multi',
+                            firstname: 'Nikunj',
+                            lastname: 'Consultant',
+                            agencies: [
+                                { id: '202', name: 'Caritas Agency 2', postcode: '13055', city: 'Berlin' },
+                                {
+                                    id: '203',
+                                    name: 'Beratungsstelle für Familien und Alleinerziehende',
+                                    postcode: '12345',
+                                    city: 'Frankfurt am Main',
+                                },
+                            ],
+                            agencyIds: ['202', '203'],
+                        },
+                    ]),
+                ),
+            ],
+        },
+    },
+};
+
 /** No consultants yet — the table shows its empty state. */
 export const Empty: Story = {
     parameters: { msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse([]))] } },
