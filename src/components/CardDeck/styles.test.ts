@@ -22,6 +22,24 @@ describe('CardDeck responsive contract', () => {
         expect(itemRule).not.toMatch(/min-width:\s*0/);
     });
 
+    // #568: a growable deck item contributes its content max-content width
+    // under the list's `min-width: max-content`, letting a wide editor toolbar
+    // blow a card up to ~780px and push sibling cards off-screen.
+    it('caps the item width so card content can never widen the deck', () => {
+        const itemRule = cardDeckStyles.match(/\.item\s*{([^}]*)}/s)?.[1] ?? '';
+        expect(itemRule).toMatch(
+            /max-width:\s*min\(\s*var\(--card-deck-item-width,\s*392px\)\s*,\s*var\(--card-deck-item-max-width/s,
+        );
+    });
+
+    it('releases the item width cap when the deck stacks vertically', () => {
+        const mobileBlock = cardDeckStyles.match(/@media \(max-width: 767px\)\s*{(.*)}/s)?.[1] ?? '';
+        expect(mobileBlock).toMatch(/\.item\s*{[^}]*max-width:\s*none;/s);
+        const stackedBlock = cardDeckStyles.match(/\.stacked\s*{(.*)/s)?.[1] ?? '';
+        expect(stackedBlock).toMatch(/flex-direction:\s*column/);
+        expect(stackedBlock).toMatch(/max-width:\s*none/);
+    });
+
     it('exposes the distance between cards as a deck token', () => {
         const listRule = cardDeckStyles.match(/\.list\s*{([^}]*)}/s)?.[1] ?? '';
         expect(listRule).toMatch(/gap:\s*var\(--card-deck-gap,\s*24px\)/);

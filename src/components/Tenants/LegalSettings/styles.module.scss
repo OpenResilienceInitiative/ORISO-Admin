@@ -9,6 +9,10 @@
     color: var(--black-60);
 }
 
-.cardDeckItem {
-    flex-grow: 1;
+// #568: cap the legal cards like the other settings decks. Without the cap a
+// legal card inherits its content's max-content width (the non-wrapping editor
+// toolbar, ~750px) and pushes the imprint and privacy cards off-screen.
+.cardDeck {
+    --card-deck-item-width: 425px;
+    --card-deck-item-max-width: 425px;
 }

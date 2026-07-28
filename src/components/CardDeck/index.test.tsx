@@ -84,6 +84,50 @@ describe('CardDeck', () => {
         expect(nextButton).toHaveAttribute('aria-controls', scrollGroup.id);
     });
 
+    // #568: off-screen cards must be discoverable without knowing what the
+    // corner arrows do — the footer shows one position dot per card.
+    it('renders a position dot per card and marks the visible ones active', async () => {
+        const { container } = renderDeck(['One', 'Two', 'Three', 'Four']);
+        const deck = container.querySelector('[data-admin-card-deck-scroll]');
+        const firstCard = deck?.querySelector('[data-admin-card-deck-item]');
+
+        setElementMetric(deck!, 'clientWidth', 900);
+        setElementMetric(deck!, 'scrollWidth', 1868);
+        setElementMetric(firstCard!, 'offsetWidth', 425);
+
+        act(() => {
+            fireEvent.scroll(deck!);
+        });
+
+        await waitFor(() => {
+            expect(container.querySelectorAll('[data-admin-card-deck-dot]')).toHaveLength(4);
+        });
+        expect(container.querySelectorAll('[data-admin-card-deck-dot="active"]')).toHaveLength(2);
+        expect(
+            Array.from(container.querySelectorAll('[data-admin-card-deck-dot]')).map((dot) =>
+                dot.getAttribute('data-admin-card-deck-dot'),
+            ),
+        ).toEqual(['active', 'active', 'inactive', 'inactive']);
+    });
+
+    // #568: with room for less than two cards a horizontal scroller hides
+    // everything but the first card — fall back to the vertical stack.
+    it('stacks vertically and drops the scroll footer when fewer than two cards fit', async () => {
+        const { container } = renderDeck();
+        const deck = container.querySelector('[data-admin-card-deck-scroll]');
+
+        setElementMetric(deck!, 'clientWidth', 500);
+
+        act(() => {
+            fireEvent(window, new Event('resize'));
+        });
+
+        await waitFor(() => {
+            expect(container.querySelector('[data-admin-card-deck-stacked]')).toBeInTheDocument();
+        });
+        expect(container.querySelector('[data-admin-card-deck-footer]')).not.toBeInTheDocument();
+    });
+
     it.each([
         { gap: '48px', expectedStep: 473 },
         { gap: '0px', expectedStep: 425 },

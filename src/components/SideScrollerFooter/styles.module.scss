@@ -1,6 +1,25 @@
 .footer {
     display: flex;
+    align-items: center;
     justify-content: space-between;
+}
+
+.positions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #bec7d4;
+    transition: background 0.2s ease;
+}
+
+.dotActive {
+    background: #111923;
 }
 
 .button {
