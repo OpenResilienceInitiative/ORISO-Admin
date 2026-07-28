@@ -13,13 +13,15 @@
 .dot {
     width: 8px;
     height: 8px;
-    border-radius: 50%;
-    background: #bec7d4;
-    transition: background 0.2s ease;
+    border-radius: 4px;
+    background: var(--m3-outline, #747878);
+    transition: background 0.2s ease, width 0.2s ease;
 }
 
+// Active dots widen to a pill so the state is not conveyed by color alone.
 .dotActive {
-    background: #111923;
+    width: 20px;
+    background: var(--m3-on-surface, #1b1b1c);
 }
 
 .button {

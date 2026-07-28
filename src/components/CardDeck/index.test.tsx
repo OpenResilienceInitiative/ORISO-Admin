@@ -102,12 +102,25 @@ describe('CardDeck', () => {
         await waitFor(() => {
             expect(container.querySelectorAll('[data-admin-card-deck-dot]')).toHaveLength(4);
         });
-        expect(container.querySelectorAll('[data-admin-card-deck-dot="active"]')).toHaveLength(2);
         expect(
             Array.from(container.querySelectorAll('[data-admin-card-deck-dot]')).map((dot) =>
                 dot.getAttribute('data-admin-card-deck-dot'),
             ),
         ).toEqual(['active', 'active', 'inactive', 'inactive']);
+
+        // Scrolled one card step (425px card + 48px gap): the window shifts.
+        Object.defineProperty(deck, 'scrollLeft', { configurable: true, value: 473 });
+        act(() => {
+            fireEvent.scroll(deck!);
+        });
+
+        await waitFor(() => {
+            expect(
+                Array.from(container.querySelectorAll('[data-admin-card-deck-dot]')).map((dot) =>
+                    dot.getAttribute('data-admin-card-deck-dot'),
+                ),
+            ).toEqual(['inactive', 'active', 'active', 'inactive']);
+        });
     });
 
     // #568: with room for less than two cards a horizontal scroller hides

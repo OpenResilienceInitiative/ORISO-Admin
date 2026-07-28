@@ -35,9 +35,10 @@ describe('CardDeck responsive contract', () => {
     it('releases the item width cap when the deck stacks vertically', () => {
         const mobileBlock = cardDeckStyles.match(/@media \(max-width: 767px\)\s*{(.*)}/s)?.[1] ?? '';
         expect(mobileBlock).toMatch(/\.item\s*{[^}]*max-width:\s*none;/s);
-        const stackedBlock = cardDeckStyles.match(/\.stacked\s*{(.*)/s)?.[1] ?? '';
-        expect(stackedBlock).toMatch(/flex-direction:\s*column/);
-        expect(stackedBlock).toMatch(/max-width:\s*none/);
+        // The .stacked block ends where the next top-level rule begins.
+        const stackedBlock = cardDeckStyles.match(/\n\.stacked\s*{(.*?)\n}/s)?.[1] ?? '';
+        expect(stackedBlock).toMatch(/\.list\s*{[^}]*flex-direction:\s*column/s);
+        expect(stackedBlock).toMatch(/\.item\s*{[^}]*max-width:\s*none/s);
     });
 
     it('exposes the distance between cards as a deck token', () => {
