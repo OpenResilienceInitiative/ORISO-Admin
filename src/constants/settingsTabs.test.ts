@@ -26,11 +26,36 @@ describe('settings tabs', () => {
 
         expect(tabs.map((tab) => tab.to)).toEqual([
             '/settings/global-config',
+            '/settings/master-data',
             '/settings/general',
             '/settings/legal',
             '/settings/smtp',
             '/settings/permissions',
         ]);
+    });
+
+    // Figma Admin.ORISO node 465-27854 ("Subsection Translations German"), level 2:
+    // Stammdaten & Mehr · Erscheinungsbild · Rechtliches · Email Server · Funktionszugriff.
+    it('gives the tenant level the designed tab order including Erscheinungsbild', () => {
+        const tabs = getSettingsTabs(baseContext);
+
+        expect(tabs.map((tab) => ({ to: tab.to, titleKey: tab.titleKey }))).toEqual([
+            { to: '/settings/master-data', titleKey: 'settings.subhead.masterData' },
+            { to: '/settings/general', titleKey: 'settings.subhead.view' },
+            { to: '/settings/legal', titleKey: 'settings.subhead.legal' },
+            { to: '/settings/smtp', titleKey: 'settings.subhead.smtp' },
+            { to: '/settings/permissions', titleKey: 'settings.subhead.functionAccess' },
+            // Not part of the design; kept because it is the only entry point for the
+            // tenant feature toggles. Tracked in #58.
+            { to: '/settings/app-settings', titleKey: 'tenants.edit.tabs.appSettings' },
+        ]);
+    });
+
+    it('keeps master data and appearance on separate routes', () => {
+        const tabs = getSettingsTabs(baseContext);
+        const routes = tabs.map((tab) => tab.to);
+
+        expect(new Set(routes).size, `duplicate settings routes in ${routes.join(', ')}`).toBe(routes.length);
     });
 
     it('hides tenant tabs when the related permission or feature flag is disabled', () => {

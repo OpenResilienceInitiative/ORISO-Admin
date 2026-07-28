@@ -25,14 +25,21 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
     const consultingTypeId =
         formInput.consultingType !== null ? parseInt(formInput.consultingType, 10) : await getConsultingType4Tenant();
 
-    // ADR-003: topicIds may arrive as a single-select Option, a legacy Option[]/string[], or the
+    // ADR-014: topicIds may arrive as a multi-select Option[], a lone Option, a string[], or the
     // backend `topics` shape — normalise all of them to the string[] the API expects.
-    const topicIds = normalizeTopicIds(formInput?.topicIds ?? formInput?.topics);
+    //
+    // Absent is NOT the same as empty. The picker only renders once the topic list loaded
+    // (`topics?.length > 0 &&` in AgencySettings), and narrow card patches carry no topic data at
+    // all. Sending [] in those cases tells the backend to clear every department — which deletes
+    // the agency_topic rows and, with them, each department's published Impressum and
+    // Datenschutzerklärung. Omitting the key makes AgencyTopicMergeService keep the existing links.
+    const hasTopicField = formInput?.topicIds !== undefined || formInput?.topics !== undefined;
+    const topicIds = hasTopicField ? normalizeTopicIds(formInput.topicIds ?? formInput.topics) : undefined;
 
     const agencyDataRequestBody = withLegacyDioceseId({
         name: formInput.name,
         description: formInput.description,
-        topicIds,
+        ...(hasTopicField ? { topicIds } : {}),
         postcode: formInput.postcode,
         city: formInput.city,
         street: formInput.street,

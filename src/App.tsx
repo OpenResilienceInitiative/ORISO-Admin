@@ -35,7 +35,6 @@ import {
     LazyGeneralTenantSettings,
     LazyGlobalLoginSettingsPage,
     LazyInactiveAccountAuditLogsPage,
-    LazyInviteLinksPage,
     LazyLegalSettingsPage,
     LazyLinksIndexRedirect,
     LazyLinksPage,
@@ -191,8 +190,14 @@ export const App = () => {
                                     )}
                                     {can(PermissionAction.Read, Resource.Tenant) && (
                                         <Route
+                                            path={`${routePathNames.themeSettings}/master-data`}
+                                            element={<LazyGeneralSettingsPage section="masterData" />}
+                                        />
+                                    )}
+                                    {can(PermissionAction.Read, Resource.Tenant) && (
+                                        <Route
                                             path={`${routePathNames.themeSettings}/general`}
-                                            element={<LazyGeneralSettingsPage />}
+                                            element={<LazyGeneralSettingsPage section="appearance" />}
                                         />
                                     )}
                                     {can(PermissionAction.Read, Resource.LegalText) && (
@@ -347,7 +352,6 @@ export const App = () => {
                             <Route path="/admin/users/tenant-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
                             <Route path="/admin/users/platform-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
                             <Route path="/admin/users/:typeOfUsers/:id" element={<LazyUserEditOrAdd />} />
-                            <Route path="/admin/invite-links" element={<LazyInviteLinksPage />} />
                             <Route path="/admin/links" element={<LazyLinksPage />}>
                                 <Route index element={<LazyLinksIndexRedirect />} />
                                 <Route path="tenants" element={<LazyTenantInvitesTab />} />

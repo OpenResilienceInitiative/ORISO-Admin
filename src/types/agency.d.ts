@@ -44,8 +44,9 @@ export interface AgencyData {
     city: string;
     counsellingRelations: CounsellingRelation[];
     topics: TopicData[];
-    // ADR-003: single-select topic picker — the form field holds a single labelInValue Option
-    // (or undefined when cleared); legacy array shapes stay accepted for backwards compatibility.
+    // ADR-014: multi-select topic picker — the form field holds the agency's departments as
+    // labelInValue Options (or undefined when the field never rendered, which is distinct from an
+    // empty array). The lone-Option shape from the former single-select stays accepted.
     topicIds?: { value: string; label: string } | Array<{ value: string; label: string }> | string[];
     consultantIds?: Array<{ value: string; label: string }> | string[];
     consultantAssignmentFailed?: boolean;

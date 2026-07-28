@@ -181,6 +181,9 @@
     .counselorList__agencyChip {
         display: inline-flex;
         flex: 0 1 auto;
+        // Flex items refuse to shrink below their content width by default, which pushed long
+        // chips past the column edge and clipped them mid-word.
+        min-width: 0;
         max-width: 100%;
         min-height: 26px;
         overflow: hidden;
@@ -196,6 +199,14 @@
         font-weight: 500;
         line-height: 18px;
         text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .counselorList__agencyChipLabel {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }

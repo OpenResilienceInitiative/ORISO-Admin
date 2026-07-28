@@ -20,6 +20,7 @@ export interface AppRuntimeConfig {
     OBSERVABILITY_ENABLED?: string;
     OTEL_METRICS_URL?: string;
     OTEL_EXPORT_INTERVAL_MS?: string;
+    PLATFORM_VERSION?: string;
 }
 
 declare global {

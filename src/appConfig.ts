@@ -102,7 +102,6 @@ const routePathNames = {
     usersTenants: '/admin/users/tenants',
     tenantAdmins: '/admin/users/tenant-admins',
     platformAdmins: '/admin/users/platform-admins',
-    inviteLinks: '/admin/invite-links',
     links: '/admin/links',
     linksTenants: '/admin/links/tenants',
     linksCounsellor: '/admin/links/counsellor',

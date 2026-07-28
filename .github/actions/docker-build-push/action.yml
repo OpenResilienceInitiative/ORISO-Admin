@@ -15,6 +15,11 @@ inputs:
         type: string
         default: Dockerfile
 
+outputs:
+    digest:
+        description: Immutable digest of the pushed image, for race-proof verification.
+        value: ${{ steps.build.outputs.digest }}
+
 runs:
     using: 'composite'
     steps:
@@ -48,5 +53,12 @@ runs:
               push: ${{ inputs.push_to_ghcr }}
               tags: ${{ steps.meta.outputs.tags }}
               labels: ${{ steps.meta.outputs.labels }}
-              cache-from: type=gha
-              cache-to: type=gha,mode=max
+              # Scope the GHA cache per image. `oriso-admin` (Dockerfile) and
+              # `oriso-admin-storybook` (Dockerfile.storybook) build from this same
+              # action on every push to pre-dev/dev/main. Without a scope they share
+              # one GHA cache namespace and race, which let one image restore the
+              # other's (or an older) `COPY build` layer — shipping a stale bundle
+              # under a fresh :pre-dev tag (issue #424). image_name is distinct per
+              # image, so this isolates them while keeping push+PR cache reuse.
+              cache-from: type=gha,scope=${{ inputs.image_name }}
+              cache-to: type=gha,mode=max,scope=${{ inputs.image_name }}
