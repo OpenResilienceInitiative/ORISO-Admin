@@ -22,6 +22,27 @@ interface M3NumberFieldProps {
     className?: string;
     /** Accessible name for the input; falls back to `label`. */
     'aria-label'?: string;
+    /**
+     * Non-numeric text shown in the value slot instead of `value` (e.g. "Auto"
+     * while an id is allocated automatically). Typing digits into it reports
+     * just those digits via `onChange`; clearing it reports `undefined`.
+     */
+    displayText?: string;
+    /**
+     * External stepping override: when set, the chevron buttons and the
+     * ArrowUp/ArrowDown keys call this instead of the internal ±`step` math
+     * (used for free-ID navigation that skips taken ids, #570).
+     */
+    onStep?: (direction: 1 | -1) => void;
+    /** Disable one stepper direction independently of min/max (e.g. no free id upwards). */
+    stepUpDisabled?: boolean;
+    stepDownDisabled?: boolean;
+    /** Renders the field in the M3 error state (error-coloured content) and sets `aria-invalid`. */
+    error?: boolean;
+    /** Supporting text below the field; shown in the error colour while `error` is set. */
+    supportingText?: ReactNode;
+    /** Trailing slot inside the main segment (e.g. an Auto toggle chip). */
+    trailing?: ReactNode;
 }
 
 /** Integers only (optional leading minus); everything else is ignored while typing. */
@@ -60,20 +81,33 @@ export const M3NumberField = ({
     disabled = false,
     className,
     'aria-label': ariaLabel,
+    displayText,
+    onStep,
+    stepUpDisabled = false,
+    stepDownDisabled = false,
+    error = false,
+    supportingText,
+    trailing,
 }: M3NumberFieldProps) => {
     const { t } = useTranslation();
     const inputId = useId();
+    const supportingTextId = `${inputId}-supporting-text`;
     const [draft, setDraft] = useState(value === undefined ? '' : String(value));
 
     useEffect(() => {
         setDraft(value === undefined ? '' : String(value));
     }, [value]);
 
+    const displayMode = displayText !== undefined;
     const parsedDraft = NUMERIC_PATTERN.test(draft) && draft !== '' && draft !== '-' ? Number(draft) : undefined;
     const currentValue = value ?? parsedDraft;
-    const hasValue = draft !== '';
+    const hasValue = displayMode || draft !== '';
     const atMin = typeof min === 'number' && currentValue !== undefined && currentValue <= min;
     const atMax = typeof max === 'number' && currentValue !== undefined && currentValue >= max;
+    // With an external stepper the min/max short-circuit does not apply — the
+    // parent decides reachability (e.g. "no free id in that direction").
+    const downDisabled = disabled || stepDownDisabled || (!onStep && atMin);
+    const upDisabled = disabled || stepUpDisabled || (!onStep && atMax);
 
     const commit = (next: number) => {
         setDraft(String(next));
@@ -88,6 +122,11 @@ export const M3NumberField = ({
             return;
         }
 
+        if (onStep) {
+            onStep(direction);
+            return;
+        }
+
         const base = currentValue ?? (typeof min === 'number' ? min : 0);
         const next = clamp(currentValue === undefined ? base : base + direction * step, min, max);
         commit(next);
@@ -95,6 +134,14 @@ export const M3NumberField = ({
 
     const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
         const raw = event.target.value;
+
+        if (displayMode) {
+            // The user typed into (or cleared) the display text: only the digits
+            // count — "Auto3" → 3 — and the parent decides what mode that means.
+            const digits = raw.replace(/\D/g, '');
+            onChange?.(digits === '' ? undefined : Number(digits));
+            return;
+        }
 
         if (!NUMERIC_PATTERN.test(raw)) {
             return;
@@ -111,7 +158,7 @@ export const M3NumberField = ({
     };
 
     const handleInputBlur = () => {
-        if (parsedDraft === undefined) {
+        if (displayMode || parsedDraft === undefined) {
             return;
         }
 
@@ -132,48 +179,63 @@ export const M3NumberField = ({
     };
 
     return (
-        <div className={classNames(styles.field, styles[variant], { [styles.fieldDisabled]: disabled }, className)}>
-            <label className={styles.main} htmlFor={inputId}>
-                {icon && (
-                    <span className={styles.icon} aria-hidden>
-                        {icon}
+        <div className={classNames(styles.root, className)}>
+            <div
+                className={classNames(styles.field, styles[variant], {
+                    [styles.fieldDisabled]: disabled,
+                    [styles.fieldError]: error,
+                })}
+            >
+                <label className={styles.main} htmlFor={inputId}>
+                    {icon && (
+                        <span className={styles.icon} aria-hidden>
+                            {icon}
+                        </span>
+                    )}
+                    <span className={styles.textStack}>
+                        {hasValue && <span className={styles.miniLabel}>{label}</span>}
+                        <input
+                            id={inputId}
+                            className={styles.input}
+                            type="text"
+                            inputMode="numeric"
+                            value={displayMode ? displayText : draft}
+                            placeholder={label}
+                            aria-label={ariaLabel ?? label}
+                            aria-invalid={error || undefined}
+                            aria-describedby={supportingText != null ? supportingTextId : undefined}
+                            disabled={disabled}
+                            onChange={handleInputChange}
+                            onBlur={handleInputBlur}
+                            onKeyDown={handleInputKeyDown}
+                        />
                     </span>
-                )}
-                <span className={styles.textStack}>
-                    {hasValue && <span className={styles.miniLabel}>{label}</span>}
-                    <input
-                        id={inputId}
-                        className={styles.input}
-                        type="text"
-                        inputMode="numeric"
-                        value={draft}
-                        placeholder={label}
-                        aria-label={ariaLabel ?? label}
-                        disabled={disabled}
-                        onChange={handleInputChange}
-                        onBlur={handleInputBlur}
-                        onKeyDown={handleInputKeyDown}
-                    />
+                    {trailing && <span className={styles.trailing}>{trailing}</span>}
+                </label>
+                <button
+                    type="button"
+                    className={styles.stepper}
+                    aria-label={t('m3NumberField.decrease', 'Wert verringern')}
+                    disabled={downDisabled}
+                    onClick={() => adjust(-1)}
+                >
+                    <ChevronDownIcon className={styles.chevronIcon} aria-hidden />
+                </button>
+                <button
+                    type="button"
+                    className={classNames(styles.stepper, styles.stepperUp)}
+                    aria-label={t('m3NumberField.increase', 'Wert erhöhen')}
+                    disabled={upDisabled}
+                    onClick={() => adjust(1)}
+                >
+                    <ChevronUpIcon className={styles.chevronIcon} aria-hidden />
+                </button>
+            </div>
+            {supportingText != null && (
+                <span className={styles.supportingText} id={supportingTextId} role={error ? 'alert' : undefined}>
+                    {supportingText}
                 </span>
-            </label>
-            <button
-                type="button"
-                className={styles.stepper}
-                aria-label={t('m3NumberField.decrease', 'Wert verringern')}
-                disabled={disabled || atMin}
-                onClick={() => adjust(-1)}
-            >
-                <ChevronDownIcon className={styles.chevronIcon} aria-hidden />
-            </button>
-            <button
-                type="button"
-                className={classNames(styles.stepper, styles.stepperUp)}
-                aria-label={t('m3NumberField.increase', 'Wert erhöhen')}
-                disabled={disabled || atMax}
-                onClick={() => adjust(1)}
-            >
-                <ChevronUpIcon className={styles.chevronIcon} aria-hidden />
-            </button>
+            )}
         </div>
     );
 };

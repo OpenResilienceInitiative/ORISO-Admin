@@ -99,8 +99,9 @@ const INVITES: AccountInviteDTO[] = [
 const invitesResponse = (content: AccountInviteDTO[]) =>
     HttpResponse.json({ content, totalElements: content.length, totalPages: 1, page: 0, size: 20 });
 
-// Worked example for the auto-suggested Träger-ID: tenants occupy 1 and 3, the active
-// (EMAIL_SENT) invite holds 2, the ACCEPTED invite on 3 is terminal → suggestion = 4.
+// Tenants occupy 1 and 3, the active (EMAIL_SENT) invite holds 2, the ACCEPTED
+// invite on 3 is terminal. The composer's Träger-ID field starts on Auto (#570)
+// and only talks to the allocation endpoints below when the admin goes manual.
 const TENANTS = {
     total: 2,
     _embedded: [
@@ -114,10 +115,32 @@ const templatesByKind = http.get(TEMPLATES_ENDPOINT, ({ request }) => {
     return HttpResponse.json(TEMPLATES.filter((template) => !kind || template.kind === kind));
 });
 
+// Stubbed allocation endpoints (#570): ids 1–3 are taken (see TENANTS/INVITES),
+// everything else is free. Register `next-free` before the `:id` catch-all.
+const TAKEN_IDS = new Set([1, 2, 3]);
+const idAllocationHandlers = [
+    http.get('*/service/tenantadmin/id-allocation/next-free', ({ request }) => {
+        const url = new URL(request.url);
+        const direction = url.searchParams.get('direction') === 'down' ? -1 : 1;
+        const fromParam = url.searchParams.get('from');
+        let candidate = fromParam == null ? 1 : Number(fromParam) + direction;
+        while (candidate >= 1 && candidate <= 999) {
+            if (!TAKEN_IDS.has(candidate)) return HttpResponse.json({ id: candidate });
+            candidate += direction;
+        }
+        return HttpResponse.json({ id: null });
+    }),
+    http.get('*/service/tenantadmin/id-allocation/:id', ({ params }) => {
+        const id = Number(params.id);
+        return HttpResponse.json({ id, state: TAKEN_IDS.has(id) ? 'ASSIGNED' : 'FREE' });
+    }),
+];
+
 const defaultHandlers = [
     http.get(INVITES_ENDPOINT, () => invitesResponse(INVITES)),
     templatesByKind,
     http.get(TENANT_SEARCH_ENDPOINT, () => HttpResponse.json(TENANTS)),
+    ...idAllocationHandlers,
     http.post(TEMPLATES_ENDPOINT, async ({ request }) => {
         const body = (await request.json()) as Partial<InviteEmailTemplateDTO>;
         return HttpResponse.json(
