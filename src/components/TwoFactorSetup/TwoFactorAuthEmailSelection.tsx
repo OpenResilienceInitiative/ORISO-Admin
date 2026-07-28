@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { Text } from '../../../components/text/Text';
-import { InputField, InputFieldItem } from '../../../components/inputField/InputField';
-import { UserData } from '../../../types/user';
+import { Text } from '../text/Text';
+import { InputField, InputFieldItem } from '../inputField/InputField';
+import { UserData } from '../../types/user';
 
 interface TwoFactorAuthEmailSelectionProps {
     userData: UserData;

@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import { RadioButton } from '../../../components/radioButton/RadioButton';
-import { Tooltip } from '../../../components/tooltip/Tooltip';
-import { ReactComponent as InfoIcon } from '../../../resources/img/svg/i.svg';
-import { TwoFactorType } from '../../../enums/TwoFactorType';
+import { RadioButton } from '../radioButton/RadioButton';
+import { Tooltip } from '../tooltip/Tooltip';
+import { ReactComponent as InfoIcon } from '../../resources/img/svg/i.svg';
+import { TwoFactorType } from '../../enums/TwoFactorType';
 
 interface TwoFactorAuthTypeButtonsProps {
     twoFactorType: TwoFactorType;

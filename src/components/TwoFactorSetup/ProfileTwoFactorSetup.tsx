@@ -1,40 +1,47 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { M3Switch } from '../../../components/M3Switch';
-import { FETCH_ERRORS } from '../../../api/fetchData';
-import { OVERLAY_FUNCTIONS, OverlayItem, OverlayWrapper, Overlay } from '../../../components/overlay/Overlay';
-import { BUTTON_TYPES } from '../../../components/button/Button';
-import { InputField, InputFieldItem, InputFieldLabelState } from '../../../components/inputField/InputField';
-import { ReactComponent as LockIcon } from '../../../resources/img/svg/lock.svg';
-import { ReactComponent as AddIcon } from '../../../resources/img/svg/add.svg';
-import { ReactComponent as UrlIcon } from '../../../resources/img/svg/url.svg';
-import { ReactComponent as CheckIcon } from '../../../resources/img/svg/checkmark.svg';
-import { ReactComponent as PenIcon } from '../../../resources/img/svg/pen.svg';
-import { useUserData } from '../../../hooks/useUserData.hook';
-import { TwoFactorType } from '../../../enums/TwoFactorType';
+import { encode } from 'hi-base32';
+import { M3Switch } from '../M3Switch';
+import { FETCH_ERRORS } from '../../api/fetchData';
+import { OVERLAY_FUNCTIONS, OverlayItem, OverlayWrapper, Overlay } from '../overlay/Overlay';
+import { BUTTON_TYPES } from '../button/Button';
+import { InputField, InputFieldItem, InputFieldLabelState } from '../inputField/InputField';
+import { ReactComponent as LockIcon } from '../../resources/img/svg/lock.svg';
+import { ReactComponent as AddIcon } from '../../resources/img/svg/add.svg';
+import { ReactComponent as UrlIcon } from '../../resources/img/svg/url.svg';
+import { ReactComponent as CheckIcon } from '../../resources/img/svg/checkmark.svg';
+import { ReactComponent as PenIcon } from '../../resources/img/svg/pen.svg';
+import { useUserData } from '../../hooks/useUserData.hook';
+import { TwoFactorType } from '../../enums/TwoFactorType';
 import {
     useUserTwoFactorAuth,
     useUserTwoFactorDelete,
     useUserTwoFactorSendEmailCode,
-} from '../../../hooks/useUserTwoFactorAuth.hook';
+} from '../../hooks/useUserTwoFactorAuth.hook';
 import { TwoFactorAuthTypeButtons } from './TwoFactorAuthTypeButtons';
 import { AuthenticatorTools } from './TwoFactorAuthTools';
-import { TwoFactorAuthAppActivate } from './TwoFactorAuthAppActivate';
+import { TwoFactorAppConnect } from './TwoFactorAppConnect';
 import { TwoFactorAuthEmailSelection } from './TwoFactorAuthEmailSelection';
-import { isStringValidEmail } from '../../../utils/validateEmailString';
+import { isStringValidEmail } from '../../utils/validateEmailString';
 import { TwoFactorAuthEmailCodeInput } from './TwoFactorAuthEmailCodeInput';
 import { TwoFactorAuthEmailConfirmation } from './TwoFactorAuthEmailConfirmation';
+import { OTP_LENGTH, isOtpValid } from './twoFactorSetupFlow';
 
 const { Paragraph } = Typography;
 
-const OTP_LENGTH = 6;
-
-interface TwoFactorAuthProps {
+export interface ProfileTwoFactorSetupProps {
     required?: boolean;
 }
 
-const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
+/**
+ * Profile variant of the canonical 2FA setup (see `TwoFactorSetup.tsx`):
+ * activation switch + the stepped overlay wizard, backed by the real
+ * user-service hooks. Flow semantics follow the shared step contract in
+ * `twoFactorSetupFlow.ts` (decision → app-install → app-connect → app-verify /
+ * decision → email-select → email-connect → email-success).
+ */
+export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetupProps) => {
     const { t } = useTranslation();
     const { data: userData } = useUserData();
     const { mutate: updateOrSetTwoFactorAuth } = useUserTwoFactorAuth();
@@ -91,20 +98,15 @@ const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
 
     const [overlayItems, setOverlayItems] = useState<OverlayItem[]>([...twoFactorAuthStepsOverlayStart]);
 
-    const validateOtp = (totp: any): { validity: InputFieldLabelState; label: string } => {
-        if (totp.length === OTP_LENGTH) {
+    // OTP validity is defined by the shared flow contract (six digits).
+    const validateOtp = (totp: string): { validity: InputFieldLabelState; label: string } => {
+        if (isOtpValid(totp)) {
             return {
                 validity: 'valid',
                 label: t('twoFactorAuth.activate.otp.input.label'),
             };
         }
-        if (totp.lenght === 0) {
-            return {
-                validity: 'invalid',
-                label: t('twoFactorAuth.activate.otp.input.label'),
-            };
-        }
-        if (totp.length < OTP_LENGTH) {
+        if (totp.length > 0 && totp.length < OTP_LENGTH) {
             return {
                 validity: 'invalid',
                 label: t('twoFactorAuth.activate.otp.input.label.short'),
@@ -112,7 +114,7 @@ const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
         }
         return {
             validity: 'invalid',
-            label: '',
+            label: t('twoFactorAuth.activate.otp.input.label'),
         };
     };
 
@@ -321,6 +323,18 @@ const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
         ],
     );
 
+    // Shared app-connect block (flow step 'app-connect'): the user service
+    // stores the raw secret; the canonical component expects it base32-encoded.
+    const appLink = useMemo(
+        () => ({
+            secretBase32: userData?.twoFactorAuth?.secret
+                ? encode(userData.twoFactorAuth.secret).replace(/={1,8}$/, '')
+                : '',
+            qrCodeBase64: userData?.twoFactorAuth?.qrCode || null,
+        }),
+        [userData?.twoFactorAuth?.secret, userData?.twoFactorAuth?.qrCode],
+    );
+
     const twoFactorAuthStepsOverlayApp: OverlayItem[] = useMemo(
         () => [
             {
@@ -347,7 +361,7 @@ const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
             {
                 headline: t('twoFactorAuth.activate.app.step3.title'),
                 copy: t('twoFactorAuth.activate.app.step3.copy'),
-                nestedComponent: <TwoFactorAuthAppActivate userData={userData} />,
+                nestedComponent: <TwoFactorAppConnect appLink={appLink} />,
                 buttonSet: [
                     {
                         label: t('twoFactorAuth.overlayButton.back'),
@@ -388,7 +402,7 @@ const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
                 },
             },
         ],
-        [userData, handleOtpChange, otpInputItem, otpLabelState],
+        [appLink, handleOtpChange, otpInputItem, otpLabelState],
     );
 
     const setOverlayByType = useCallback(() => {
@@ -464,5 +478,3 @@ const TwoFactorAuth = ({ required = false }: TwoFactorAuthProps) => {
         </>
     );
 };
-
-export default TwoFactorAuth;

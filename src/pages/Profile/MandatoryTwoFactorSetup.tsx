@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Card } from '../../components/Card';
 import { Page } from '../../components/Page';
 import { useUserData } from '../../hooks/useUserData.hook';
-import TwoFactorAuth from './TwoFactorAuth/TwoFactorAuth';
+import { TwoFactorSetup } from '../../components/TwoFactorSetup/TwoFactorSetup';
 
 const { Paragraph } = Typography;
 
@@ -31,7 +31,7 @@ export const MandatoryTwoFactorSetup = ({ onSkip }: MandatoryTwoFactorSetupProps
                         />
                     )}
                     <Card titleKey="twoFactorAuth.title" subTitleKey="twoFactorAuth.subtitle">
-                        <TwoFactorAuth required />
+                        <TwoFactorSetup context="profile" required />
                     </Card>
                     {onSkip && (
                         <div className="mt-m">

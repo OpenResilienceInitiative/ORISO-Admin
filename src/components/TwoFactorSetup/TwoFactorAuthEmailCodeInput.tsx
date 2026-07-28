@@ -1,4 +1,4 @@
-import { InputField, InputFieldItem } from '../../../components/inputField/InputField';
+import { InputField, InputFieldItem } from '../inputField/InputField';
 import { TwoFactorAuthResendMail } from './TwoFactorAuthResendMail';
 
 interface TwoFactorAuthEmailCodeInputProps {
