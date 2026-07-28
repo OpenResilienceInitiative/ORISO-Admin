@@ -18,8 +18,16 @@ import { TypeOfLanguage } from './components/TypeOfLanguage';
 import { AppConfigInterface } from '../../../types/AppConfigInterface';
 import styles from './styles.module.scss';
 
+/**
+ * Which card group the page renders. The settings tab bar splits master data and appearance
+ * into two tabs (Figma Admin.ORISO node 465-27854), so the page must be able to render either
+ * half; `all` keeps the combined deck for embedders like the per-tenant theme-settings page.
+ */
+export type GeneralSettingsSection = 'all' | 'appearance' | 'masterData';
+
 interface GeneralSettingsProps {
     tenantId?: string;
+    section?: GeneralSettingsSection;
 }
 
 const APPEARANCE_ALLOWED_STORAGE_KEY = 'oriso:tenantAdminControls.allowedPermissionToggles.appearance';
@@ -41,12 +49,14 @@ const setStoredAppearanceAllowed = (value: boolean) => {
     }
 };
 
-export const GeneralSettings = ({ tenantId }: GeneralSettingsProps) => {
+export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsProps) => {
     const { t } = useTranslation();
     const { data } = useTenantData();
     const finalTenantId = tenantId || `${data?.id || ''}`;
     const { can } = useUserPermissions();
     const { isSuperAdmin } = useUserRoles();
+    const showAppearance = section === 'all' || section === 'appearance';
+    const showMasterData = section === 'all' || section === 'masterData';
     const { settings, setManualSettings } = useAppConfigContext();
     const { mutate: updateSettings } = useSettingsAdminMutation();
     const appearanceAllowed =
@@ -78,54 +88,62 @@ export const GeneralSettings = ({ tenantId }: GeneralSettingsProps) => {
                 previousLabel={t('tenant.settings.cardDeck.previous')}
                 nextLabel={t('tenant.settings.cardDeck.next')}
             >
-                <CardDeck.Item className={styles.cardSlotImages}>
-                    <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                </CardDeck.Item>
-                {can(PermissionAction.Update, Resource.Language) && (
+                {showAppearance && (
+                    <CardDeck.Item className={styles.cardSlotImages}>
+                        <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                    </CardDeck.Item>
+                )}
+                {showAppearance && can(PermissionAction.Update, Resource.Language) && (
                     <CardDeck.Item>
                         <Languages tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
                     </CardDeck.Item>
                 )}
-                <CardDeck.Item className={styles.cardSlotTheme}>
-                    <ThemeBuilder tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                </CardDeck.Item>
-                <CardDeck.Item>
-                    <CardEditable
-                        key={`tenant-master-data-editable-${appearanceEditable}`}
-                        allowEdit={isSuperAdmin}
-                        initialValues={tenantAdminControlsInitialValues}
-                        titleKey="settings.masterData.editable.title"
-                        subTitle={t<string>('settings.masterData.editable.subtitle')}
-                        onSave={onSaveTenantAdminControls}
-                        variant="dialog"
-                        editButtonPlacement="footer"
-                        headerIcon={<ManageAccountsOutlinedIcon />}
-                    >
-                        <FormSwitchField
-                            label={
-                                <span className={styles.masterDataToggleCopy}>
-                                    <span className={styles.masterDataToggleTitle}>
-                                        {t('settings.masterData.editable.toggle')}
+                {showAppearance && (
+                    <CardDeck.Item className={styles.cardSlotTheme}>
+                        <ThemeBuilder tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                    </CardDeck.Item>
+                )}
+                {showAppearance && (
+                    <CardDeck.Item>
+                        <CardEditable
+                            key={`tenant-master-data-editable-${appearanceEditable}`}
+                            allowEdit={isSuperAdmin}
+                            initialValues={tenantAdminControlsInitialValues}
+                            titleKey="settings.masterData.editable.title"
+                            subTitle={t<string>('settings.masterData.editable.subtitle')}
+                            onSave={onSaveTenantAdminControls}
+                            variant="dialog"
+                            editButtonPlacement="footer"
+                            headerIcon={<ManageAccountsOutlinedIcon />}
+                        >
+                            <FormSwitchField
+                                label={
+                                    <span className={styles.masterDataToggleCopy}>
+                                        <span className={styles.masterDataToggleTitle}>
+                                            {t('settings.masterData.editable.toggle')}
+                                        </span>
+                                        <span className={styles.masterDataToggleDescription}>
+                                            {t('settings.masterData.editable.toggle.description')}
+                                        </span>
                                     </span>
-                                    <span className={styles.masterDataToggleDescription}>
-                                        {t('settings.masterData.editable.toggle.description')}
-                                    </span>
-                                </span>
-                            }
-                            name={['tenantAdminControls', 'allowedPermissionToggles', 'appearance']}
-                            inline
-                            disableLabels
-                            disabled={!isSuperAdmin}
-                            className={styles.masterDataToggle}
-                            switchLabel={t('settings.masterData.editable.toggle')}
-                            switchVariant="m3"
-                        />
-                    </CardEditable>
-                </CardDeck.Item>
-                <CardDeck.Item>
-                    <NameAndSlogan tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                </CardDeck.Item>
-                {can(PermissionAction.Update, Resource.Language) && (
+                                }
+                                name={['tenantAdminControls', 'allowedPermissionToggles', 'appearance']}
+                                inline
+                                disableLabels
+                                disabled={!isSuperAdmin}
+                                className={styles.masterDataToggle}
+                                switchLabel={t('settings.masterData.editable.toggle')}
+                                switchVariant="m3"
+                            />
+                        </CardEditable>
+                    </CardDeck.Item>
+                )}
+                {showMasterData && (
+                    <CardDeck.Item>
+                        <NameAndSlogan tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                    </CardDeck.Item>
+                )}
+                {showMasterData && can(PermissionAction.Update, Resource.Language) && (
                     <CardDeck.Item>
                         <TypeOfLanguage tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
                     </CardDeck.Item>

@@ -190,8 +190,14 @@ export const App = () => {
                                     )}
                                     {can(PermissionAction.Read, Resource.Tenant) && (
                                         <Route
+                                            path={`${routePathNames.themeSettings}/master-data`}
+                                            element={<LazyGeneralSettingsPage section="masterData" />}
+                                        />
+                                    )}
+                                    {can(PermissionAction.Read, Resource.Tenant) && (
+                                        <Route
                                             path={`${routePathNames.themeSettings}/general`}
-                                            element={<LazyGeneralSettingsPage />}
+                                            element={<LazyGeneralSettingsPage section="appearance" />}
                                         />
                                     )}
                                     {can(PermissionAction.Read, Resource.LegalText) && (

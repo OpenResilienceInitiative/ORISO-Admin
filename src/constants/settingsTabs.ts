@@ -36,6 +36,11 @@ export const getSettingsTabs = ({
                 iconName: 'global_config',
             },
             can(PermissionAction.Update, Resource.Tenant) && {
+                to: `${base}/master-data`,
+                titleKey: 'settings.subhead.masterData',
+                iconName: 'master_data',
+            },
+            can(PermissionAction.Update, Resource.Tenant) && {
                 to: `${base}/general`,
                 titleKey: 'settings.subhead.view',
                 iconName: 'appearance',
@@ -58,18 +63,23 @@ export const getSettingsTabs = ({
         ]);
     }
 
-    // Tenant / Träger settings tab order (P1). Appearance shares the general route until split.
+    // Tenant / Träger tab order per Figma Admin.ORISO node 465-27854, level 2:
+    // Stammdaten & Mehr · Erscheinungsbild · Rechtliches · Email Server · Funktionszugriff.
+    // `app-settings` is not in the design but is the only entry point for the tenant feature
+    // toggles, so it trails the designed set until that is decided (#58).
     return compactTabs([
         shouldShowThemeSettings &&
             can(PermissionAction.Update, Resource.Tenant) && {
-                to: `${base}/general`,
+                to: `${base}/master-data`,
                 titleKey: 'settings.subhead.masterData',
                 iconName: 'master_data',
             },
-        // can(PermissionAction.Update, Resource.Tenant) && {
-        //     to: `${base}/general`,
-        //     titleKey: 'settings.subhead.view',
-        // },
+        shouldShowThemeSettings &&
+            can(PermissionAction.Update, Resource.Tenant) && {
+                to: `${base}/general`,
+                titleKey: 'settings.subhead.view',
+                iconName: 'appearance',
+            },
         (can(PermissionAction.Read, Resource.LegalText) || can(PermissionAction.Update, Resource.LegalText)) && {
             to: `${base}/legal`,
             titleKey: 'settings.subhead.legal',
@@ -80,17 +90,17 @@ export const getSettingsTabs = ({
             titleKey: 'settings.subhead.smtp',
             iconName: 'email_server',
         },
+        can(PermissionAction.Update, Resource.Tenant) && {
+            to: `${base}/permissions`,
+            titleKey: 'settings.subhead.functionAccess',
+            iconName: 'functionality_access',
+        },
         can(PermissionAction.Update, Resource.Tenant) &&
             isTenantSettingsEditEnabled && {
                 to: `${base}/app-settings`,
                 titleKey: `tenants.edit.tabs.${multitenancyWithSingleDomainEnabled ? 'globalSettings' : 'appSettings'}`,
                 iconName: multitenancyWithSingleDomainEnabled ? 'global_settings' : 'functionalities',
             },
-        can(PermissionAction.Update, Resource.Tenant) && {
-            to: `${base}/permissions`,
-            titleKey: 'settings.subhead.functionAccess',
-            iconName: 'functionality_access',
-        },
     ]);
 };
 
