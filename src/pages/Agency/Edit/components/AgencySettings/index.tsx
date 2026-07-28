@@ -61,11 +61,13 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
             )}
 
             {topics?.length > 0 && (
-                // ADR-003: a department is the unique (agency × topic) pairing, so an agency maps to
-                // at most one topic — single-select replaces the former multi-select.
+                // ADR-014: one Beratungsstelle hosts several Fachbereiche. A department is still the
+                // unique (agency × topic) pairing — an agency simply carries more than one of them,
+                // each with its own Impressum and Datenschutzerklärung.
                 <SelectFormField
                     label="topics.title"
                     name="topicIds"
+                    isMulti
                     labelInValue
                     allowClear
                     placeholder="plsSelect"
