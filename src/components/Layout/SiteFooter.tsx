@@ -21,9 +21,7 @@ const SiteFooter = () => {
     return (
         <Footer className="layoutFooter">
             <Menu mode="horizontal" className="footerMenu" items={items} />
-            {runtimeConfig.platformVersion && (
-                <span className="platformVersion">{runtimeConfig.platformVersion}</span>
-            )}
+            {runtimeConfig.platformVersion && <span className="platformVersion">{runtimeConfig.platformVersion}</span>}
         </Footer>
     );
 };
