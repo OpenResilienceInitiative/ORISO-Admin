@@ -100,8 +100,11 @@ describe('TenantAdminOnboarding', () => {
             ),
         );
 
-        // Step 3: 2FA.
-        expect(await screen.findByTestId('totp-secret')).toHaveTextContent('SECRET234567ABCDEFG');
+        // Step 3: 2FA. The screen must show the base32 form of the stored
+        // secret — the raw value would produce codes Keycloak rejects.
+        // The shared helper intentionally emits unpadded Base32.
+        const shown = await screen.findByTestId('totp-secret');
+        expect(shown.textContent).toBe('KNCUGUSFKQZDGNBVGY3UCQSDIRCUMRY');
         await user.type(screen.getByLabelText('twoFactorSetup.otp.label'), '123456');
         await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
 
