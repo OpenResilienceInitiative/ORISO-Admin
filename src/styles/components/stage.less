@@ -109,3 +109,23 @@
         }
     }
 }
+
+/*
+ * Non-overlay variant (#569): pages hosting a tall public form use the stage as
+ * pure desktop decoration. The animated variant covers the whole small-screen
+ * viewport for the length of its intro, and even the base panel would sit on
+ * the left 40vw — on the tenant-admin onboarding page that painted over the
+ * form the invitee has to fill in. Below xl there is no room for a side panel,
+ * so it is not shown at all — the same end state the animated stage settles
+ * into once its intro has played.
+ */
+.stage--panel {
+    display: none;
+    animation: none;
+
+    @media screen and (min-width: @screen-xl) {
+        left: 0;
+        display: flex;
+        width: 40vw;
+    }
+}

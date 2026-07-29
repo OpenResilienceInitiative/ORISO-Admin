@@ -13,6 +13,13 @@ export interface StageProps {
     // Tenant branding — falls back to the brand animation when not configured or broken
     logo?: string | null;
     claim?: string | null;
+    /**
+     * `true` (default): branding intro that covers the whole small-screen
+     * viewport before sliding away — right for a short login form.
+     * `false`: desktop-only side panel that never covers the content (#569),
+     * for public pages hosting a tall form.
+     */
+    overlay?: boolean;
 }
 
 /**
@@ -21,7 +28,7 @@ export interface StageProps {
  * configured logo URL fails to load — the ORISO brand Lottie animation plays once
  * (half speed) in its place.
  */
-const Stage = ({ className, hasAnimation, isReady = true, logo, claim }: StageProps) => {
+const Stage = ({ className, hasAnimation, isReady = true, logo, claim, overlay = true }: StageProps) => {
     const { t } = useTranslation();
     const [logoFailed, setLogoFailed] = useState(false);
     const showTenantLogo = Boolean(logo) && !logoFailed;
@@ -29,8 +36,10 @@ const Stage = ({ className, hasAnimation, isReady = true, logo, claim }: StagePr
     return (
         <div
             id="loginLogoWrapper"
-            className={clsx(className, 'stage stage--animated', {
-                'stage--ready': isReady,
+            className={clsx(className, 'stage', {
+                'stage--animated': overlay,
+                'stage--ready': overlay && isReady,
+                'stage--panel': !overlay,
             })}
         >
             {showTenantLogo ? (
