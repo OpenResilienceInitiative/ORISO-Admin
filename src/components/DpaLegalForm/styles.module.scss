@@ -68,13 +68,12 @@
     background: var(--m3-surface-container);
 }
 
-/* `--form-error`, not `--m3-error`: the latter is still Material's magenta
-   (#b1005e in src/app.css), which is not an ORISO tone. The signer fields
-   right above already flag their errors in the product's red, and a consent
-   box in a different error colour reads as a different kind of problem. */
+/* `--m3-error` (#b1005e) IS the ORISO error tone — the scheme's error role,
+   not a Material leftover. Owner-confirmed 2026-07-29 along with
+   error-container #de0077, on-error #fff. */
 
 .consentError {
-    border-color: var(--form-error, #cc0000);
+    border-color: var(--m3-error, #b1005e);
 }
 
 .consentCheckbox {

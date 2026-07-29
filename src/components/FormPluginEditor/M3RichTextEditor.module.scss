@@ -441,18 +441,38 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 
 // The pinned maximize/minimize button: perfectly round, never squished by the
 // flex row. Doubled class beats the .toolBtn base rule regardless of order.
+//
+// Owner call 2026-07-29: the glyph carries this control, not a button shell —
+// so the 36px pill loses its padding and the icon grows to 22px, which gives
+// the text next to it real width back. 24px is the floor, not padding: it is
+// the minimum pointer target, and at 22px the icon all but fills it.
 .toolBtn.maximizeToolBtn {
-    width: 36px;
-    height: 36px;
+    width: 24px;
+    height: 24px;
     flex-shrink: 0;
     border-radius: 50%;
+    color: var(--m3-primary, #a5000a);
+
+    svg {
+        width: 22px;
+        height: 22px;
+    }
 }
 
 // Fullscreen exit (Figma 1276-72139): the pinned button turns red while the
-// editor is in the fullscreen dialog — white icon via currentColor.
+// editor is in the fullscreen dialog — white icon via currentColor. This one
+// IS a filled shell, so it keeps the padded 36px circle the bare maximize
+// glyph gave up.
 .toolBtn.exitFullscreenBtn {
+    width: 36px;
+    height: 36px;
     background: $m3-publish;
     color: #fff;
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
 
     &:hover:not(:disabled) {
         background: #8c0009;
