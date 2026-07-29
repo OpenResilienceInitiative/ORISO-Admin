@@ -1,14 +1,14 @@
 /*
- * Shown instead of the editor when a department's legal text could not be read. The switcher stays
- * available so the admin can move to another Fachbereich (or back to "Alle Fachbereiche") without
- * leaving the page.
+ * Shown instead of the editor while a department's legal text is loading, or when it could not be
+ * read at all. The switcher stays available in both cases so the admin can move to another
+ * Fachbereich (or back to "Alle Fachbereiche") without leaving the page.
  */
-.errorCard {
+.fallbackCard {
     display: flex;
     flex-direction: column;
     gap: 16px;
 }
 
-.errorSwitcher {
+.fallbackSwitcher {
     display: flex;
 }

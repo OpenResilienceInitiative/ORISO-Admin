@@ -1,4 +1,4 @@
-import { Alert, Button } from 'antd';
+import { Alert, Button, Skeleton } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDepartmentDpp } from '../../../../../hooks/useDepartmentDpp.hook';
@@ -119,17 +119,28 @@ export const AgencyLegalTextContainer = ({
         onSaveAgencyWide({ content: { [agencyContentKey]: content } });
     };
 
-    if (isDepartment && departmentQuery.isLoading) {
-        return null;
-    }
-
     const selectedDepartment = departments.find(({ id }) => id === topicId);
+
+    // The editor cannot open before the department's own text is known — seeding it with the
+    // inherited text would let a publish overwrite the real one. Blanking the whole card would
+    // take the switcher with it and strand the admin on a Fachbereich they cannot leave, so only
+    // the editor waits.
+    if (isDepartment && departmentQuery.isLoading) {
+        return (
+            <div className={styles.fallbackCard}>
+                <Skeleton active title={false} paragraph={{ rows: 4 }} />
+                <div className={styles.fallbackSwitcher}>
+                    <DepartmentSelect departments={departments} value={selected} onChange={setSelected} />
+                </div>
+            </div>
+        );
+    }
 
     // A department whose text could not be read must not be editable: the editor would show the
     // inherited text and publishing would replace the department's own with it.
     if (isDepartment && departmentQuery.isError) {
         return (
-            <div className={styles.errorCard}>
+            <div className={styles.fallbackCard}>
                 <Alert
                     type="error"
                     showIcon
@@ -143,7 +154,7 @@ export const AgencyLegalTextContainer = ({
                         </Button>
                     }
                 />
-                <div className={styles.errorSwitcher}>
+                <div className={styles.fallbackSwitcher}>
                     <DepartmentSelect departments={departments} value={selected} onChange={setSelected} />
                 </div>
             </div>

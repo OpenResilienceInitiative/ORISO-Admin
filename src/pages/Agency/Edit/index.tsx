@@ -87,7 +87,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         refetch: refetchDpaGate,
     } = useDpaGate(tenantId ?? 0, !isEditing && isTenantScopedAdmin);
     const [form] = Form.useForm();
-    const { mutate } = useAgencyUpdate(id);
+    const { mutate, isPending: isAgencySaving } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
     const agencySettingsTabs = isAgencyInaccessible
@@ -405,10 +405,20 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     {/* ADR-014: one editor per legal-text kind for the whole Beratungsstelle; the
                         Fachbereich is chosen in the editor's lower function bar (Figma 1261:52149),
                         with "Alle Fachbereiche" editing the inheritable agency-wide text. */}
-                    <AgencyLegalTextContainer agencyData={agencyData} field="imprint" onSaveAgencyWide={onSaveCard} />
+                    <AgencyLegalTextContainer
+                        agencyData={agencyData}
+                        field="imprint"
+                        onSaveAgencyWide={onSaveCard}
+                        saving={isAgencySaving}
+                    />
                 </CardDeck.Item>
                 <CardDeck.Item className={styles.cardDeckItem}>
-                    <AgencyLegalTextContainer agencyData={agencyData} field="privacy" onSaveAgencyWide={onSaveCard} />
+                    <AgencyLegalTextContainer
+                        agencyData={agencyData}
+                        field="privacy"
+                        onSaveAgencyWide={onSaveCard}
+                        saving={isAgencySaving}
+                    />
                 </CardDeck.Item>
             </CardDeck>
         </>

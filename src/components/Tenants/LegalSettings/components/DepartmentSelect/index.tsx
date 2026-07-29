@@ -27,10 +27,11 @@ interface DepartmentSelectProps {
  * own text from then on (ADR-014 amendment 2026-07-28).
  *
  * Marking which departments already left the inherited text would be genuinely useful here — an
- * admin editing the agency-wide text would see who will *not* receive the change. It is deliberately
- * absent: answering it needs one read per department (or a bulk signal the backend does not offer),
- * and a marker that only lights up for departments the admin happened to open is worse than none.
- * Revisit with ORISO-AgencyService#212, which adds publication metadata anyway.
+ * admin editing the agency-wide text would see who will *not* receive the change. It is not built
+ * yet, but the earlier reason given for that ("the backend offers no bulk signal") is wrong: the
+ * public agency read has carried `departments[].hasPublishedDpp` / `hasPublishedImprint` since
+ * ORISO-AgencyService 8bb7578. What is missing is the same list on the *admin* read, which this
+ * page uses. Tracked in ORISO-Admin#583.
  */
 export const DepartmentSelect = ({ departments, value, onChange }: DepartmentSelectProps) => {
     const { t } = useTranslation();

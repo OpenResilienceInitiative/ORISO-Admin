@@ -70,6 +70,23 @@ describe('AgencyLegalTextContainer', () => {
         expect(h.card.mock.calls[0][0].publicationStatus).toBeUndefined();
     });
 
+    it('keeps the switcher available while the department text is still loading', async () => {
+        // The editor must not open before the department's own text is known, but blanking the
+        // whole card would strand the admin on a Fachbereich they cannot leave.
+        h.useDepartmentDpp.mockReturnValue({
+            data: undefined,
+            isLoading: true,
+            isError: false,
+            isSuccess: false,
+        });
+
+        renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+
+        expect(screen.queryByTestId('legal-editor')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /agency.legal.department.choose/i })).toBeInTheDocument();
+    });
+
     it('blocks editing instead of seeding the inherited text when the department read fails', async () => {
         // The dangerous case: an errored read yields an empty content map exactly like a department
         // that genuinely has none. Seeding the editor with the inherited text would let a publish
