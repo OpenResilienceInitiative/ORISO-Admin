@@ -1,0 +1,85 @@
+/* Global DPA blocker (TEN-INV-U10, #572). The overlay itself is the scroll
+   container: no fixed height with hidden overflow, so the full DPA text and
+   the sign form stay reachable on 390x844 while the app behind is
+   scroll-locked (body overflow lock in DpaBlocker.tsx). */
+
+.overlay {
+    position: fixed;
+    z-index: 1300;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+    background: var(--m3-surface, #fbf9f8);
+    inset: 0;
+    overflow-y: auto;
+}
+
+.card {
+    width: min(560px, 100%);
+    height: fit-content;
+    padding: 24px;
+    border: 1px solid var(--m3-outline-variant, #dce5df);
+
+    /* margin auto centers a short card and keeps a tall one scrollable from
+       its very first line (no clipped top). */
+    margin: auto;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    border-radius: 16px;
+}
+
+.fieldStack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Full published DPA/AVV text — intentionally NOT height-capped: the overlay
+   scrolls, the text flows (issue #572 scroll-behaviour acceptance). */
+
+.dpaText {
+    padding: 16px;
+    border: 1px solid var(--m3-outline-variant, #dce5df);
+    margin-bottom: 16px;
+    background: var(--m3-surface, #fbf9f8);
+    border-radius: 12px;
+
+    h1,
+    h2,
+    h3 {
+        margin: 0 0 8px;
+        font-size: 16px;
+    }
+
+    p {
+        margin: 0 0 8px;
+    }
+}
+
+.acceptRow {
+    display: flex;
+    align-items: center;
+    margin-top: 16px;
+    gap: 4px;
+}
+
+.acceptLabel {
+    cursor: pointer;
+    user-select: none;
+}
+
+.actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+    gap: 12px;
+
+    > * {
+        flex: 1 1 auto;
+    }
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    padding: 32px 0;
+}
