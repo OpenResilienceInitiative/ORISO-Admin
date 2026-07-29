@@ -1,4 +1,5 @@
 import classNames from 'classnames';
+import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 import FormHelperText from '@mui/material/FormHelperText';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +10,9 @@ import styles from './styles.module.scss';
 
 /** Wrapper id of the consent control — hosts jump here on an incomplete submit. */
 export const DPA_CONSENT_ANCHOR_ID = 'dpa-consent';
+
+/** Id of the sentence that explains what ticking the box actually does. */
+const DPA_CONSENT_HINT_ID = 'dpa-consent-hint';
 
 /**
  * Brings the deliberate legal act into view and onto the keyboard after a
@@ -21,7 +25,12 @@ export const focusDpaConsent = () => {
 };
 
 export interface DpaFormSectionProps {
-    /** Sanitized HTML of the published legal text (host applies DOMPurify + language pick). */
+    /**
+     * Sanitized HTML of the published legal text (host applies DOMPurify +
+     * language pick). EMPTY means the agreement is unavailable: the block then
+     * renders the explanatory state only — no reader, no signer fields and no
+     * consent control — so nothing can be confirmed that was never shown.
+     */
     dpaHtml: string;
     /** Accessible name / card title of the legal-text reader. */
     textLabel: string;
@@ -56,9 +65,27 @@ export const DpaFormSection = ({
     const { t } = useTranslation();
     const showAcceptError = acceptTouched && !accepted;
 
+    // No text, no consent. Confirming is a legal act ON THE AGREEMENT SHOWN
+    // ABOVE, so when the published content is missing, empty for every
+    // language or sanitised away, the whole signing block is withheld: the
+    // consent control cannot be reached and `accepted: true` cannot be
+    // produced. Warning the user and leaving the box tickable would have the
+    // backend record acceptance of a contract that was never displayed — the
+    // same class of defect as ORISO-UserService#914 (`dpaContent = null`).
+    // The hosts additionally refuse to submit (see their `dpa` submit
+    // blocker); this is the structural half of the guard, so the rule holds
+    // for every surface that reuses the block.
+    if (!dpaHtml) {
+        return (
+            <Alert severity="error" role="alert" data-testid="dpa-content-unavailable" sx={{ mb: 2 }}>
+                {t('tenantOnboarding.dpa.unavailable')}
+            </Alert>
+        );
+    }
+
     return (
         <>
-            {dpaHtml && <DpaLegalReader html={dpaHtml} label={textLabel} description={textDescription} />}
+            <DpaLegalReader html={dpaHtml} label={textLabel} description={textDescription} />
             <div className={classNames(styles.fieldStack, styles.fieldStackPaired)}>
                 <MuiFormField
                     name="signerName"
@@ -96,23 +123,34 @@ export const DpaFormSection = ({
                 <M3Checkbox
                     checked={accepted}
                     label={t('tenantOnboarding.dpa.accept')}
+                    describedById={DPA_CONSENT_HINT_ID}
                     className={styles.consentCheckbox}
                     onChange={onAcceptedChange}
                 />
-                {/* The visible wording duplicates the checkbox's accessible
-                    name, so it is hidden from assistive tech (announced once)
-                    and only serves as a large pointer target. */}
-                <div className={styles.consentBody} aria-hidden="true" onClick={() => onAcceptedChange(!accepted)}>
+                {/* The block is the pointer target. Only the TITLE is hidden
+                    from assistive tech — it repeats the checkbox's accessible
+                    name verbatim and would be announced twice. The hint says
+                    something the name does not, so it stays exposed and is
+                    wired to the box via `aria-describedby` (#596 review): a
+                    binding consent must be understandable by ear as well.
+
+                    `role="presentation"` on the wrapper, not `aria-hidden`:
+                    the div is a redundant POINTER surface for the adjacent
+                    checkbox, which already carries the keyboard path, and a
+                    presentational generic container leaves its text content in
+                    the accessibility tree. */}
+                <div role="presentation" className={styles.consentBody} onClick={() => onAcceptedChange(!accepted)}>
                     {/* The emphasis must be declared through `sx` as well as
                         the class: MUI Typography's own emotion class beats a
                         plain CSS-module selector, so the class alone rendered
                         the legal act in flat body text (#594 review). */}
                     <Typography
                         component="p"
+                        aria-hidden="true"
                         className={styles.consentTitle}
                         sx={{
                             m: 0,
-                            color: 'var(--m3-on-surface, #1b1b1c)',
+                            color: 'var(--m3-on-surface)',
                             fontSize: 16,
                             fontWeight: 600,
                             lineHeight: '24px',
@@ -122,11 +160,12 @@ export const DpaFormSection = ({
                     </Typography>
                     <Typography
                         component="p"
+                        id={DPA_CONSENT_HINT_ID}
                         className={styles.consentHint}
                         sx={{
                             mt: '4px',
                             mb: 0,
-                            color: 'var(--m3-on-surface-variant, #444748)',
+                            color: 'var(--m3-on-surface-variant)',
                             fontSize: 13,
                             lineHeight: '18px',
                         }}
@@ -147,7 +186,7 @@ export const DpaFormSection = ({
                     // MUI's default error red misses WCAG AA at 12px on the
                     // public page surface; the ORISO error tone clears it.
                     // Scoped to `.Mui-error` so MUI's own rule does not win.
-                    sx={{ '&.Mui-error': { color: 'var(--m3-error, #cc0000)' } }}
+                    sx={{ '&.Mui-error': { color: 'var(--m3-error)' } }}
                 >
                     {t('tenantOnboarding.dpa.acceptRequiredShort')}
                 </FormHelperText>

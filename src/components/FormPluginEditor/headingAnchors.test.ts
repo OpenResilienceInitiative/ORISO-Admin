@@ -159,6 +159,28 @@ describe('ensureHeadingAnchorIds (read-only hosts)', () => {
         expect(html).toContain('id="kapitel-2"');
     });
 
+    it('never steals an id an earlier heading already owns', () => {
+        const html = ensureHeadingAnchorIds('<h2 id="kapitel">Anderer Titel</h2><p>a</p><h2>Kapitel</h2>');
+
+        expect(html).toContain('<h2 id="kapitel">Anderer Titel</h2>');
+        expect(html).toContain('id="kapitel-2"');
+    });
+
+    /**
+     * The riskier collision: stored legal HTML carries hand-written ids on
+     * NON-heading elements (`<p id="kapitel">` targeted by an in-text
+     * `#kapitel` cross-reference). Slugging a later heading onto the same id
+     * would make both the chapter chip and the link resolve to whichever
+     * element the browser finds first.
+     */
+    it('never steals an id a non-heading element already owns', () => {
+        const html = ensureHeadingAnchorIds('<p id="kapitel">Querverweis-Ziel</p><h2>Kapitel</h2>');
+
+        expect(html).toContain('<p id="kapitel">Querverweis-Ziel</p>');
+        expect(html).toContain('id="kapitel-2"');
+        expect(html).not.toContain('<h2 id="kapitel"');
+    });
+
     it('respects an author-removed anchor (the chapter stays out of the navigation)', () => {
         const html = ensureHeadingAnchorIds('<h2 data-anchor-removed="true">Intro</h2><p>a</p>');
 

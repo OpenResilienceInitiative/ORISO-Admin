@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 /* Public tenant-admin onboarding (#571).
  *
  * Surface language (#594.8, extended by #594.12/#594.17) — taken from
@@ -20,11 +22,11 @@
 
     /* Fields are tonal with the page instead of white cut-outs. `--input-bg`
        is the single surface knob MuiFormField reads (src/app.css). */
-    --input-bg: var(--m3-surface-container-highest, #e4e2e2);
-    --input-autofill-surface: var(--m3-surface-container-highest, #e4e2e2);
-    --input-border-color: var(--m3-outline-variant, #c4c7c8);
-    --input-hover-border-color: var(--m3-on-surface, #1b1b1c);
-    --input-focus-border-color: var(--m3-primary, #a5000a);
+    --input-bg: var(--m3-surface-container-highest);
+    --input-autofill-surface: var(--m3-surface-container-highest);
+    --input-border-color: var(--m3-outline-variant);
+    --input-hover-border-color: var(--m3-on-surface);
+    --input-focus-border-color: var(--m3-primary);
 
     @media (max-width: 599px) {
         padding: 20px 0;
@@ -45,7 +47,7 @@
  * at 390x844, and there is again exactly one scroller (the page).
  */
 
-@media screen and (min-width: 1200px) {
+@media screen and (min-width: bp.$from-xl) {
     .sheet {
         display: flex;
         max-height: calc(100vh - 96px);
@@ -152,18 +154,18 @@
     justify-content: center;
     padding: 12px 0;
     margin: 0;
-    border-block: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-block: 1px solid var(--m3-outline-variant);
     gap: 12px;
 
     dt {
-        color: var(--m3-on-surface-variant, #444748);
+        color: var(--m3-on-surface-variant);
         font: 500 14px/20px var(--m3-body-font-family);
         letter-spacing: 0.1px;
     }
 
     dd {
         margin: 0;
-        color: var(--m3-on-surface, #1b1b1c);
+        color: var(--m3-on-surface);
         font: 700 20px/28px var(--m3-body-font-family);
     }
 }
@@ -183,7 +185,7 @@
     li {
         display: flex;
         align-items: flex-start;
-        color: var(--m3-on-surface-variant, #444748);
+        color: var(--m3-on-surface-variant);
         font: 400 14px/20px var(--m3-body-font-family);
         gap: 12px;
     }
@@ -191,6 +193,6 @@
     svg {
         flex: 0 0 auto;
         margin-top: 1px;
-        color: var(--m3-outline, #747878);
+        color: var(--m3-outline);
     }
 }

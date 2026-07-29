@@ -36,6 +36,20 @@ const anchored = '<h2 id="intro">Intro</h2><p>Hello</p><h2 id="details">Details<
  * surfaces) benefits.
  */
 describe('M3RichTextEditor — read-only mode hides the editing affordances', () => {
+    /**
+     * The positive control for the test below. `queryByTitle(...)` proves
+     * nothing on its own: `t` is mocked to return the English fallback, so if
+     * the toolbar ever stopped passing exactly these strings the "not in the
+     * document" assertions would pass for the wrong reason. This pins the
+     * titles the toolbar really renders, so that failure mode is loud.
+     */
+    it('renders those very controls on an EDITABLE card (pins the titles below)', async () => {
+        render(<M3RichTextEditor title="AVV" value={anchored} />);
+
+        expect(await screen.findByTitle('Bold')).toBeInTheDocument();
+        expect(screen.getByTitle('Add image')).toBeInTheDocument();
+    });
+
     it('renders no formatting toolbar at all when readOnly', async () => {
         render(<M3RichTextEditor title="AVV" value={anchored} readOnly />);
 

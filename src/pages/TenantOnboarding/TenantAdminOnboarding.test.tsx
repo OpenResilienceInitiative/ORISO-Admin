@@ -215,6 +215,8 @@ describe('TenantAdminOnboarding — incomplete submit is answered at the action'
 
         const summary = await screen.findByTestId('onboarding-submit-error');
         expect(summary).toHaveTextContent('tenantOnboarding.validation.incomplete');
+        // Announced, not just visible — a silent div leaves SR users stranded.
+        expect(summary).toHaveAttribute('role', 'alert');
         // ... and it sits between the form and the button the user just pressed.
         const button = screen.getByRole('button', { name: 'tenantOnboarding.continue' });
         // eslint-disable-next-line no-bitwise
@@ -246,5 +248,48 @@ describe('TenantAdminOnboarding — incomplete submit is answered at the action'
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
 
         await waitFor(() => expect(screen.queryByTestId('onboarding-submit-error')).not.toBeInTheDocument());
+    });
+});
+
+/**
+ * #596 review — the acceptance the backend stores must be an acceptance of a
+ * text this user actually saw. When the published agreement is empty (no
+ * content for any language, or a sanitiser that strips everything), the step
+ * previously only warned and still let the user tick the box and submit
+ * `accepted: true`. ORISO-UserService#914 was the mirror image of this bug on
+ * the server side; it does not come back through the UI.
+ */
+describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () => {
+    const inviteWithoutDpa = { ...INVITE, dpaContent: null };
+
+    const fillOrganisation = async (user: ReturnType<typeof userEvent.setup>) => {
+        await screen.findByLabelText('tenantOnboarding.organisation.name');
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
+    };
+
+    it('offers no consent control and explains why', async () => {
+        renderFlow(createClient({ getOnboardingInvite: vi.fn().mockResolvedValue(inviteWithoutDpa) }));
+
+        expect(await screen.findByTestId('dpa-content-unavailable')).toBeInTheDocument();
+        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('dpa-consent')).not.toBeInTheDocument();
+    });
+
+    it('refuses to continue and names the reason at the button', async () => {
+        const user = userEvent.setup();
+        const client = createClient({ getOnboardingInvite: vi.fn().mockResolvedValue(inviteWithoutDpa) });
+        renderFlow(client);
+
+        await fillOrganisation(user);
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
+
+        const summary = await screen.findByTestId('onboarding-submit-error');
+        expect(summary).toHaveAttribute('role', 'alert');
+        expect(summary).toHaveTextContent('tenantOnboarding.dpa.unavailableBlocked');
+        // Still on step 1 — the account step never opens.
+        expect(screen.queryByLabelText('tenantOnboarding.account.password')).not.toBeInTheDocument();
+        expect(client.registerTenantAdmin).not.toHaveBeenCalled();
     });
 });

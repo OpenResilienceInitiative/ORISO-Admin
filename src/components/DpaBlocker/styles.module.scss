@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 /* Global DPA blocker (TEN-INV-U10, #572).
  *
  * Surface language (#594.8) — same sheet as Organisms/Modal and the public
@@ -58,7 +60,7 @@
     width: min(820px, 100%);
 }
 
-@media screen and (min-width: 1200px) {
+@media screen and (min-width: bp.$from-xl) {
     .card {
         max-height: calc(100vh - 48px);
     }

@@ -32,7 +32,7 @@ beforeAll(() => {
 
 const HTML = '<h2>§ 1 Gegenstand</h2><p>Text</p><h2>§ 2 Pflichten</h2><p>Text</p>';
 
-const Host = ({ acceptTouched = false }: { acceptTouched?: boolean }) => {
+const Host = ({ acceptTouched = false, dpaHtml = HTML }: { acceptTouched?: boolean; dpaHtml?: string }) => {
     const [accepted, setAccepted] = useState(false);
     const [touched, setTouched] = useState(acceptTouched);
     return (
@@ -41,7 +41,7 @@ const Host = ({ acceptTouched = false }: { acceptTouched?: boolean }) => {
             initialValues={{ signerName: '', signerPosition: '', signerEmail: '', signerOrganisation: '' }}
         >
             <DpaFormSection
-                dpaHtml={HTML}
+                dpaHtml={dpaHtml}
                 textLabel="AVV"
                 accepted={accepted}
                 acceptTouched={touched}
@@ -112,6 +112,46 @@ describe('DpaFormSection — consent is the deliberate act (#594.5)', () => {
         expect(screen.getByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' })).toHaveAttribute(
             'aria-checked',
             'true',
+        );
+    });
+
+    it('reads the explanation out to screen readers, not just the bare label', async () => {
+        render(<Host />);
+
+        const checkbox = await screen.findByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' });
+        const describedBy = checkbox.getAttribute('aria-describedby');
+        expect(describedBy).toBeTruthy();
+
+        const hint = document.getElementById(describedBy!);
+        expect(hint).toHaveTextContent('tenantOnboarding.dpa.acceptHint');
+        // Announceable: neither the hint nor any ancestor may be aria-hidden.
+        expect(hint?.closest('[aria-hidden="true"]')).toBeNull();
+    });
+});
+
+/**
+ * Consent is a legal act ON A TEXT THE USER WAS SHOWN. If the agreement did
+ * not load, there is nothing to consent to — the backend must never record an
+ * acceptance of a contract that was never rendered. (ORISO-UserService#914
+ * shipped exactly this class of bug once already, with a resolve endpoint
+ * hardcoding `dpaContent = null`.)
+ */
+describe('DpaFormSection — no text, no consent (#596 review)', () => {
+    it('offers no consent act at all while the agreement is unavailable', async () => {
+        render(<Host dpaHtml="" />);
+
+        expect(await screen.findByTestId('dpa-content-unavailable')).toHaveAttribute('role', 'alert');
+        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('dpa-consent')).not.toBeInTheDocument();
+        // The signature fields go with it — there is nothing to sign.
+        expect(screen.queryByLabelText('tenantOnboarding.dpa.signerName')).not.toBeInTheDocument();
+    });
+
+    it('says WHY, so the state is not a silent dead end', async () => {
+        render(<Host dpaHtml="" />);
+
+        expect(await screen.findByTestId('dpa-content-unavailable')).toHaveTextContent(
+            'tenantOnboarding.dpa.unavailable',
         );
     });
 });
