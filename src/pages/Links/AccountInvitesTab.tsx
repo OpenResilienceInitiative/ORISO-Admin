@@ -32,39 +32,20 @@ interface AccountInvitesTabProps {
     includeAgencyField?: boolean;
 }
 
-const statusColor = (value?: string | null) => {
-    switch (value) {
-        case 'EMAIL_SENT':
-        case 'PENDING':
-        case 'PENDING_SETUP':
-        case 'BLOCKED_EMAIL':
-        case 'BLOCKED_TWO_FACTOR':
-            return 'gold';
-        case 'ACCEPTED':
-        case 'VERIFIED':
-        case 'ACTIVE':
-        case 'WAIVED':
-        case 'READY':
-        case 'SENT':
-            return 'green';
-        case 'EXPIRED':
-        case 'REVOKED':
-        case 'SUPERSEDED':
-        case 'FAILED':
-            return 'red';
-        case 'DRAFT':
-            return 'default';
-        default:
-            return 'default';
-    }
-};
+/*
+ * Chips are tonal, not traffic lights (owner call 2026-07-29): the antd colour
+ * names this used to map to — green/gold/red — are antd's palette, not the
+ * ORISO scheme, and in a table meant to be scanned they shouted louder than
+ * the data. The state is in the chip's own label.
+ */
+const statusTagClass = `${listingTableStyles.statusTag} ${listingTableStyles.statusTagDefault}`;
 
-const StatusValue = ({ value }: { value?: string | null }) => <Tag color={statusColor(value)}>{value || '—'}</Tag>;
+const StatusValue = ({ value }: { value?: string | null }) => <Tag className={statusTagClass}>{value || '—'}</Tag>;
 
 /**
  * Send-state column (#316, Figma 1165:17005 red annotation "2nd: send state,
  * draft, sent, declined etc."): the raw enum is translated into the German
- * labels the owner asked for; colors keep the existing statusColor mapping.
+ * labels the owner asked for; every chip uses the one tonal style.
  * Fallbacks double as the i18n defaults for both locales' JSON files.
  */
 const INVITE_STATUS_FALLBACK_LABELS: Record<AccountInviteStatus, string> = {
@@ -509,7 +490,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 dataIndex: 'inviteStatus',
                 key: 'inviteStatus',
                 render: (value: AccountInviteStatus) => (
-                    <Tag color={statusColor(value)}>
+                    <Tag className={statusTagClass}>
                         {t(`links.accountInvites.status.${value}`, INVITE_STATUS_FALLBACK_LABELS[value] ?? value)}
                     </Tag>
                 ),

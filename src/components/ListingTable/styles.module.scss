@@ -186,35 +186,39 @@
     }
 }
 
+/* M3 filled and outlined buttons. Both used to carry hard-coded hexes that
+   belong to no ORISO palette — black #1f1f1f and navy #273270 — plus uppercase
+   at weight 900, which is not a type style this product has anywhere else. */
+
 .createButton {
-    background: #1f1f1f !important;
-    border-color: #1f1f1f !important;
-    text-transform: uppercase;
-    font-weight: 900;
-    letter-spacing: 0.02em;
     height: 40px;
-    padding-inline: 16px;
+    padding-inline: 24px;
+    border-color: transparent !important;
+    background: var(--m3-primary, #a5000a) !important;
+    color: var(--m3-on-primary, #ffffff) !important;
+    font-weight: 500;
+    letter-spacing: 0.1px;
 
     &:hover,
     &:focus {
-        background: #3a3a3a !important;
-        border-color: #3a3a3a !important;
+        border-color: transparent !important;
+        background: color-mix(in srgb, var(--m3-on-primary, #fff) 8%, var(--m3-primary, #a5000a)) !important;
+        color: var(--m3-on-primary, #ffffff) !important;
     }
 }
 
 .copyButton {
-    border-color: #273270 !important;
-    color: #273270 !important;
-    text-transform: uppercase;
-    font-weight: 900;
-    letter-spacing: 0.02em;
-    background: #fff !important;
+    border-color: var(--m3-outline, #74777b) !important;
+    background: transparent !important;
+    color: var(--m3-primary, #a5000a) !important;
+    font-weight: 500;
+    letter-spacing: 0.1px;
 
     &:hover,
     &:focus {
-        border-color: #273270 !important;
-        color: #273270 !important;
-        background: rgba(39, 50, 112, 0.04) !important;
+        border-color: var(--m3-primary, #a5000a) !important;
+        background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, transparent) !important;
+        color: var(--m3-primary, #a5000a) !important;
     }
 }
 
@@ -231,10 +235,14 @@
     text-transform: capitalize;
 }
 
+/* Owner call 2026-07-29: chips are tonal, not traffic lights. The green came
+   from antd's defaults and was the loudest thing in a table whose job is to be
+   scanned; the state is in the chip's own text. */
+
 .statusTagActive {
-    background: var(--admin-status-success-container, #f6ffed);
-    border-color: var(--admin-status-success-border, #b7eb8f);
-    color: var(--admin-status-success, #0a882f);
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }
 
 .statusTagDefault {
@@ -250,25 +258,25 @@
 }
 
 .statusTagExpired {
-    background: var(--admin-status-error-container, #fff2f0);
-    border-color: var(--admin-status-error-border, #ffccc7);
-    color: var(--admin-status-error, #cc0000);
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }
 
 .anonymityTagFull {
-    background: var(--admin-status-success-container, #f6ffed);
-    border-color: var(--admin-status-success-border, #b7eb8f);
-    color: var(--admin-status-success, #0a882f);
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }
 
 .anonymityTagCustomize {
-    background: color-mix(in srgb, var(--admin-status-warning, #ff9f00) 14%, var(--m3-surface-container-low));
-    border-color: color-mix(in srgb, var(--admin-status-warning, #ff9f00) 42%, transparent);
-    color: color-mix(in srgb, var(--admin-status-warning, #ff9f00) 82%, #432000);
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }
 
 .anonymityTagNameEmail {
-    background: var(--admin-status-error-container, #fff2f0);
-    border-color: var(--admin-status-error-border, #ffccc7);
-    color: var(--admin-status-error, #cc0000);
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }
