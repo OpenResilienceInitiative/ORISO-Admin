@@ -16,7 +16,15 @@ vi.mock('../../components/ListingTable', () => ({
     ListingTable: ({ columns = [], dataSource = [], onRow }: any) => (
         <div data-testid="listing-table">
             {dataSource.map((row: any, rowIndex: number) => (
-                <div key={row.id ?? rowIndex} data-testid="template-row" onDoubleClick={onRow?.(row)?.onDoubleClick}>
+                // Stand-in for antd's <tr>, which carries the same handlers — the a11y
+                // rules for real interactive markup do not apply to this test double.
+                // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                <div
+                    key={row.id ?? rowIndex}
+                    data-testid="template-row"
+                    onClick={onRow?.(row)?.onClick}
+                    onDoubleClick={onRow?.(row)?.onDoubleClick}
+                >
                     {columns.map((column: any, columnIndex: number) => {
                         const value = column.dataIndex ? row[column.dataIndex] : undefined;
                         const cell = column.render ? column.render(value, row, rowIndex) : value;
@@ -189,6 +197,46 @@ describe('EmailTemplatesDialog', () => {
                 expect.objectContaining({ subject: 'Servus' }),
             ),
         );
+    });
+
+    it('selects a template when its name is clicked in picker mode', async () => {
+        const user = userEvent.setup();
+        const onSelect = vi.fn();
+        renderDialog({ onSelect });
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+
+        await user.click(screen.getByRole('button', { name: 'Default tenant template' }));
+
+        expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+    });
+
+    it('leaves templates of another kind or inactive ones unselectable', async () => {
+        const user = userEvent.setup();
+        const onSelect = vi.fn();
+        renderDialog({ onSelect });
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+
+        // Inactive COUNSELLOR_INVITE template in a TENANT_INVITE tab: plain text, and a
+        // row click must not hand it to the composer either.
+        expect(screen.queryByRole('button', { name: 'Default counsellor template' })).not.toBeInTheDocument();
+        await user.click(screen.getAllByTestId('template-row')[1]);
+
+        expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it('keeps the edit button working in picker mode instead of selecting', async () => {
+        const user = userEvent.setup();
+        const onSelect = vi.fn();
+        renderDialog({ onSelect });
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+
+        await user.click(within(screen.getAllByTestId('template-row')[0]).getByRole('button', { name: 'Edit' }));
+
+        expect(onSelect).not.toHaveBeenCalled();
+        expect(within(screen.getByRole('dialog')).getByLabelText('Name')).toHaveValue('Default tenant template');
     });
 
     it('shows the translated error message (not raw server text) when create fails', async () => {

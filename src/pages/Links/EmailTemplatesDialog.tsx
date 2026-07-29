@@ -1,6 +1,8 @@
 import { Button, Form, Input, message, Select, Switch, Tag, Tooltip } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import {
     createInviteEmailTemplate,
@@ -27,6 +29,15 @@ interface EmailTemplatesDialogProps {
     onClose: () => void;
     /** Fired after any successful create/update so the opener can refetch its template select. */
     onChanged?: (template: InviteEmailTemplateDTO) => void;
+    /**
+     * Picker mode: passing `onSelect` turns the overview list into the second way
+     * of choosing a template — clicking a row's name hands it back to the opener,
+     * which keeps owning the selection (the split-button menu still changes it).
+     * Without it the dialog stays a pure manager (double-click a row to edit).
+     */
+    onSelect?: (template: InviteEmailTemplateDTO) => void;
+    /** Template currently chosen in the composer — marked in the list. */
+    selectedTemplateId?: number;
 }
 
 interface TemplateFormValues {
@@ -40,15 +51,20 @@ interface TemplateFormValues {
 
 /**
  * Manage-templates dialog opened from the invite tabs' template select. Two views in
- * one dialog: the template list (double-click a row or hit edit to inspect it) and the
- * create/edit form. Deliberately NOT a separate admin section — templates are only
- * ever needed right where invites are sent.
+ * one dialog: the template list and the create/edit form. Deliberately NOT a separate
+ * admin section — templates are only ever needed right where invites are sent.
+ *
+ * With `onSelect` the list doubles as a picker: clicking a template's name selects it
+ * for the composer. Editing then only happens through the row's "Bearbeiten" button —
+ * double-click-to-edit stays for the manager-only mode, where no click means "choose".
  */
 export const EmailTemplatesDialog = ({
     templateKind,
     initialView = 'list',
     onClose,
     onChanged,
+    onSelect,
+    selectedTemplateId,
 }: EmailTemplatesDialogProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm<TemplateFormValues>();
@@ -119,6 +135,14 @@ export const EmailTemplatesDialog = ({
         [form],
     );
 
+    // The composer only offers active templates of its own tab's kind, so those are the
+    // only rows that can be picked — selecting anything else would put a name on the
+    // split button that the send call cannot use.
+    const isSelectable = useCallback(
+        (template: InviteEmailTemplateDTO) => onSelect != null && template.active && template.kind === templateKind,
+        [onSelect, templateKind],
+    );
+
     const backToList = useCallback(() => {
         setEditingTemplate(null);
         form.resetFields();
@@ -173,6 +197,46 @@ export const EmailTemplatesDialog = ({
                 title: t('links.templates.col.name', 'Name'),
                 dataIndex: 'name',
                 key: 'name',
+                render: (value: string, template: InviteEmailTemplateDTO) => {
+                    const selected = template.id === selectedTemplateId;
+                    const mark = selected ? (
+                        <CheckRoundedIcon className={styles.selectedMark} fontSize="small" aria-hidden />
+                    ) : null;
+
+                    if (!isSelectable(template)) {
+                        return (
+                            <Tooltip
+                                title={
+                                    onSelect
+                                        ? t(
+                                              'links.templates.notSelectable',
+                                              'Nur aktive Vorlagen dieser Art können ausgewählt werden.',
+                                          )
+                                        : undefined
+                                }
+                            >
+                                <span className={styles.templateName}>
+                                    {mark}
+                                    {value}
+                                </span>
+                            </Tooltip>
+                        );
+                    }
+
+                    return (
+                        <button
+                            aria-current={selected ? 'true' : undefined}
+                            className={classNames(styles.templateName, styles.selectButton, {
+                                [styles.selectedName]: selected,
+                            })}
+                            type="button"
+                            onClick={() => onSelect?.(template)}
+                        >
+                            {mark}
+                            {value}
+                        </button>
+                    );
+                },
             },
             {
                 title: t('links.templates.col.language', 'Language'),
@@ -218,7 +282,7 @@ export const EmailTemplatesDialog = ({
                 ),
             },
         ],
-        [kindLabel, openEditForm, t],
+        [isSelectable, kindLabel, onSelect, openEditForm, selectedTemplateId, t],
     );
 
     const listFooter = (
@@ -255,17 +319,39 @@ export const EmailTemplatesDialog = ({
             width={860}
         >
             {view === 'list' ? (
-                <ListingTable
-                    rowKey="id"
-                    loading={loading}
-                    columns={columns}
-                    dataSource={sortedTemplates}
-                    pagination={false}
-                    scroll={{ y: 'auto' }}
-                    onRow={(template: InviteEmailTemplateDTO) => ({
-                        onDoubleClick: () => openEditForm(template),
-                    })}
-                />
+                <>
+                    {onSelect && (
+                        <p className={styles.pickHint}>
+                            {t('links.templates.pickHint', 'Vorlage anklicken, um sie für den Versand zu übernehmen.')}
+                        </p>
+                    )}
+                    <ListingTable
+                        rowKey="id"
+                        loading={loading}
+                        columns={columns}
+                        dataSource={sortedTemplates}
+                        pagination={false}
+                        scroll={{ y: 'auto' }}
+                        onRow={(template: InviteEmailTemplateDTO) => ({
+                            className: classNames({
+                                [styles.pickableRow]: isSelectable(template),
+                                [styles.selectedRow]: template.id === selectedTemplateId,
+                            }),
+                            // The whole row is a hit area for picking, but its own
+                            // buttons (name, edit) keep their meaning.
+                            onClick: isSelectable(template)
+                                ? (event: MouseEvent<HTMLElement>) => {
+                                      if (!(event.target as HTMLElement).closest('button')) {
+                                          onSelect?.(template);
+                                      }
+                                  }
+                                : undefined,
+                            // Manager-only mode: without picking, a row click is free
+                            // for the edit shortcut.
+                            onDoubleClick: onSelect ? undefined : () => openEditForm(template),
+                        })}
+                    />
+                </>
             ) : (
                 <Form form={form} layout="vertical" onFinish={onSubmit} initialValues={{ active: true }}>
                     <Form.Item

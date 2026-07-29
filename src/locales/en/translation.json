@@ -435,6 +435,8 @@
     "links.templates.editTitle": "Edit template",
     "links.templates.edit": "Edit",
     "links.templates.delete": "Delete",
+    "links.templates.pickHint": "Click a template to use it for sending.",
+    "links.templates.notSelectable": "Only active templates of this kind can be selected.",
     "links.templates.deleteUnavailable": "Backend endpoint missing (#314)",
     "links.templates.loadFailed": "Could not load templates",
     "links.templates.created": "Template created",

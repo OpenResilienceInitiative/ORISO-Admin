@@ -376,6 +376,8 @@
     "links.templates.editTitle": "Vorlage bearbeiten",
     "links.templates.edit": "Bearbeiten",
     "links.templates.delete": "Löschen",
+    "links.templates.pickHint": "Vorlage anklicken, um sie für den Versand zu übernehmen.",
+    "links.templates.notSelectable": "Nur aktive Vorlagen dieser Art können ausgewählt werden.",
     "links.templates.deleteUnavailable": "Backend-Endpoint fehlt (#314)",
     "links.templates.loadFailed": "Vorlagen konnten nicht geladen werden",
     "links.templates.created": "Vorlage erstellt",

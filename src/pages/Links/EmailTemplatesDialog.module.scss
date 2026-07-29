@@ -7,3 +7,67 @@
     justify-content: flex-end;
     gap: 8px;
 }
+
+/* Picker mode only: one line telling the admin what a click on a row does. */
+.pickHint {
+    margin: 0 0 12px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+/* Shared name-cell box so picked and non-pickable rows keep the same metrics. */
+.templateName {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+}
+
+.selectButton {
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration-color: transparent;
+    text-decoration-line: underline;
+    text-underline-offset: 3px;
+    transition: color 150ms ease, text-decoration-color 150ms ease;
+
+    &:hover {
+        color: var(--m3-primary, #a5000a);
+        text-decoration-color: currentcolor;
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
+        outline-offset: 2px;
+    }
+}
+
+/* The chosen template stays legible as the row's answer, not as an extra badge. */
+.selectedName {
+    color: var(--m3-primary, #a5000a);
+    font-weight: 500;
+}
+
+.selectedMark {
+    flex: none;
+    color: var(--m3-primary, #a5000a);
+}
+
+/* antd applies these on <tr>; the cell background comes from the row itself. */
+.pickableRow {
+    cursor: pointer;
+}
+
+/* A leading accent bar, not a row fill: ListingTable owns every row background with
+   `!important`, and out-bidding it would only trade one override war for another. The
+   bar plus the red name and check is enough to say "this one is chosen". */
+.selectedRow > td:first-child {
+    box-shadow: inset 3px 0 0 var(--m3-primary, #a5000a);
+}

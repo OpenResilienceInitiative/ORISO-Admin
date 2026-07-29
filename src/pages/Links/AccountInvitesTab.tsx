@@ -643,9 +643,16 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             {templatesDialogView && (
                 <EmailTemplatesDialog
                     initialView={templatesDialogView}
+                    selectedTemplateId={selectedTemplateId}
                     templateKind={templateKind}
                     onClose={() => setTemplatesDialogView(null)}
                     onChanged={onTemplateChanged}
+                    // Picking in the overview is the shortcut; the split-button menu
+                    // stays the way to change the choice afterwards.
+                    onSelect={(template) => {
+                        setSelectedTemplateId(template.id);
+                        setTemplatesDialogView(null);
+                    }}
                 />
             )}
         </>
