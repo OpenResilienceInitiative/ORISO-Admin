@@ -55,6 +55,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
     // visible in every view; editing stays restricted by permissions.
     return (
         <CardDeck
+            className={styles.cardDeck}
             ariaLabel={t('settings.subhead.legal')}
             previousLabel={t('legal.cardDeck.previous')}
             nextLabel={t('legal.cardDeck.next')}
@@ -85,10 +86,10 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                     </CardEditable>
                 </CardDeck.Item>
             )}
-            <CardDeck.Item className={styles.cardDeckItem}>
+            <CardDeck.Item>
                 <DataProcessingAgreementContainer tenantId={finalTenantId} />
             </CardDeck.Item>
-            <CardDeck.Item className={styles.cardDeckItem}>
+            <CardDeck.Item>
                 <LegalText
                     tenantId={finalTenantId}
                     fieldName={['content', 'impressum']}
@@ -112,7 +113,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                     field: ['content', 'confirmTermsAndConditions'],
                 }}
             /> */}
-            <CardDeck.Item className={styles.cardDeckItem}>{LegalTextElement}</CardDeck.Item>
+            <CardDeck.Item>{LegalTextElement}</CardDeck.Item>
         </CardDeck>
     );
 };
