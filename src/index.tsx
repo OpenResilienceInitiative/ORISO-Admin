@@ -30,6 +30,7 @@ import { buildAdminAntdTheme } from './theme/antdM3Theme';
 import { initObservability } from './observability/initObservability';
 import { PasswordResetRequestPage } from './pages/PasswordReset/PasswordResetRequestPage';
 import { PasswordResetConfirmPage } from './pages/PasswordReset/PasswordResetConfirmPage';
+import { TenantAdminOnboardingPage } from './pages/TenantOnboarding/TenantAdminOnboardingPage';
 
 // OBS-P8 (ORISO-Helm#62): start Real User Monitoring (Core Web Vitals) export
 // to SigNoz as early as possible, before the app renders.
@@ -119,6 +120,13 @@ root.render(
                                     path={routePathNames.passwordResetConfirm}
                                     element={<PasswordResetConfirmPage />}
                                 />
+                                {/* Public tenant-admin onboarding (TEN-INV U8, #571): reached
+                                    from the emailed invite link {base}/{rawToken}. */}
+                                <Route
+                                    path={`${routePathNames.tenantOnboarding}/:token`}
+                                    element={<TenantAdminOnboardingPage />}
+                                />
+                                <Route path={routePathNames.tenantOnboarding} element={<TenantAdminOnboardingPage />} />
                                 <Route path="/admin/404" element={<Error404 />} />
                                 <Route path="/admin/access-denied" element={<AccessDenied />} />
 

@@ -1,4 +1,4 @@
-import { accountInvitesEndpoint, appURL, inviteEmailTemplatesEndpoint } from '../../appConfig';
+import routePathNames, { accountInvitesEndpoint, appURL, inviteEmailTemplatesEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import type { AllocationMode } from '../idAllocation/idAllocation';
 
@@ -107,6 +107,18 @@ export interface TemplateRequestDTO {
 }
 
 export const accountInviteAcceptBaseUrl = `${appURL.replace(/\/$/, '')}/account-invite`;
+/** Public Admin onboarding page — the accept target for tenant-admin invites (TEN-INV U8, #571). */
+export const tenantAdminOnboardingAcceptBaseUrl = `${appURL.replace(/\/$/, '')}${routePathNames.tenantOnboarding}`;
+
+/**
+ * Accept base URL by invited role (TEN-INV U6/U8, #569/#571/UserService#890):
+ * the emailed link is `{acceptBaseUrl}/{rawToken}`. A tenant admin completes
+ * the invite on the PUBLIC ADMIN onboarding route (the tenant is an
+ * organisation, not an app user); every other role keeps the app-layer
+ * `/account-invite` route.
+ */
+export const acceptBaseUrlForRole = (targetRole: AccountInviteTargetRole): string =>
+    targetRole === 'TENANT_ADMIN' ? tenantAdminOnboardingAcceptBaseUrl : accountInviteAcceptBaseUrl;
 export { accountInvitesEndpoint };
 
 const normalizeAllocatedId = (

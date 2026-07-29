@@ -60,6 +60,11 @@ export const userPasswordChangeEndpoint = `${userServiceURL}/service/users/passw
 export const tutorialProgressEndpoint = `${userServiceURL}/service/users/tutorials/progress`;
 export const passwordResetRequestEndpoint = `${userServiceURL}/service/users/password-reset/request`;
 export const passwordResetConfirmEndpoint = `${userServiceURL}/service/users/password-reset/confirm`;
+// Public (unauthenticated) account-invite base (TEN-INV, #569/#571). The accept
+// endpoint `{token}/accept` already lives here (UserService AccountInviteController);
+// the U3/U6 onboarding endpoints (`{token}/onboarding[...]`) follow the same
+// convention and get verified against the UserService wiring chunks.
+export const publicAccountInvitesEndpoint = `${userServiceURL}/service/users/account-invites`;
 export const globalSmtpTestEmailEndpoint = `${userServiceURL}/service/users/system-notification-emails/test`;
 export const usersConsultantEndpoint = `${userServiceURL}/service/users/consultants`;
 export const usersConsultantsSearchEndpoint = `${userServiceURL}/service/users/consultants/search`;
@@ -84,6 +89,12 @@ const routePathNames = {
     login: '/admin/login',
     passwordReset: '/admin/password-reset',
     passwordResetConfirm: '/admin/password-reset/confirm',
+    /**
+     * Public tenant-admin onboarding (TEN-INV U8, #571). The emailed invite
+     * link is `{acceptBaseUrl}/{rawToken}` (UserService AccountInviteService),
+     * so the route takes the raw token as a path segment.
+     */
+    tenantOnboarding: '/admin/tenant-onboarding',
     themeSettings: '/admin/theme-settings',
     globalSettings: '/admin/global-settings',
     permissionsSettings: '/admin/theme-settings/permissions',

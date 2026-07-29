@@ -43,10 +43,12 @@ const mocks = vi.hoisted(() => ({
     listInviteEmailTemplates: vi.fn(),
     searchTenantData: vi.fn(),
     parseUserAuthInfo: vi.fn(),
+    acceptBaseUrlForRole: vi.fn(),
 }));
 
 vi.mock('../../api/accountInvites/accountInvites', () => ({
     accountInviteAcceptBaseUrl: 'https://admin.example/account-invite',
+    acceptBaseUrlForRole: mocks.acceptBaseUrlForRole,
     listAccountInvites: mocks.listAccountInvites,
     createAccountInvite: mocks.createAccountInvite,
     resendAccountInvite: mocks.resendAccountInvite,
@@ -135,6 +137,32 @@ describe('TenantInvitesTab Träger-ID field', () => {
         window.localStorage.clear();
         mocks.parseUserAuthInfo.mockReturnValue({});
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
+    });
+
+    it('sends tenant-admin invites with the role-derived accept base URL (TEN-INV U6/U8, #890)', async () => {
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+        mocks.createAccountInvite.mockResolvedValue(invite(1, 21, 'EMAIL_SENT'));
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/admin/tenant-onboarding');
+
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        await waitFor(() =>
+            expect(mocks.createAccountInvite).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    targetRole: 'TENANT_ADMIN',
+                    acceptBaseUrl: 'https://admin.example/admin/tenant-onboarding',
+                }),
+            ),
+        );
+        expect(mocks.acceptBaseUrlForRole).toHaveBeenCalledWith('TENANT_ADMIN');
     });
 
     it('starts visibly on Auto instead of a client-side suggestion (#570)', async () => {
