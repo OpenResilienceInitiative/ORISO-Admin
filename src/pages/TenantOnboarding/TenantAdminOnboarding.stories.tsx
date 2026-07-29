@@ -8,6 +8,7 @@ import { createStubTenantAdminOnboardingClient } from '../../api/tenantOnboardin
 import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 import { AccountStep } from './AccountStep';
 import { TwoFactorStep } from './TwoFactorStep';
+import { DoneStep } from './DoneStep';
 
 /**
  * Public tenant-admin onboarding flow (TEN-INV U8, #571): the invite link
@@ -156,6 +157,28 @@ export const AccountStepStory: StoryObj = {
             onSubmit={() => {}}
         />
     ),
+};
+
+/**
+ * #594.7 — the terminal success state: shared status confirmation, the two
+ * facts that matter spelled out separately, the assigned Träger-ID as a
+ * labelled detail, and a real M3 primary button instead of a bare text link.
+ */
+export const Done: StoryObj = {
+    render: () => <DoneStep tenantId={21} />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getByTestId('onboarding-done-success-icon')).toBeVisible();
+        await expect(canvas.getByTestId('onboarding-done-tenant-id')).toHaveTextContent('21');
+        await expect(canvas.getAllByTestId('onboarding-done-next-step')).toHaveLength(2);
+        await expect(canvas.getByRole('button', { name: /login/i })).toBeVisible();
+    },
+};
+
+/** The same success state at 390x844 — icon, detail row and action stay stacked. */
+export const DoneMobile: StoryObj = {
+    render: () => <DoneStep tenantId={21} />,
+    ...PHONE_390,
 };
 
 /** Step 3 in isolation: TOTP linking + first one-time code. */

@@ -1,9 +1,7 @@
 import { useMemo } from 'react';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import routePathNames from '../../appConfig';
 import {
     createHttpTenantAdminOnboardingClient,
     TenantAdminOnboardingClient,
@@ -11,6 +9,7 @@ import {
 import { M3Button } from '../../components/M3Button';
 import { useTenantAdminOnboardingFlow } from './useTenantAdminOnboardingFlow';
 import { LinkErrorState } from './LinkErrorState';
+import { DoneStep } from './DoneStep';
 import { OrganisationDpaStep } from './OrganisationDpaStep';
 import { AccountStep } from './AccountStep';
 import { TwoFactorStep } from './TwoFactorStep';
@@ -82,19 +81,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client }: TenantAdminOnboar
     }
 
     if (state.phase === 'done') {
-        return (
-            <div data-testid="onboarding-done">
-                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
-                    {t('tenantOnboarding.done.title')}
-                </Typography>
-                <Typography sx={{ mb: 4 }}>
-                    {t('tenantOnboarding.done.description', { tenantId: state.tenantId })}
-                </Typography>
-                <Link to={routePathNames.login} className="forgotPW">
-                    {t('tenantOnboarding.done.toLogin')}
-                </Link>
-            </div>
-        );
+        return <DoneStep tenantId={state.tenantId} />;
     }
 
     const step = STEP_ORDER[state.phase];
