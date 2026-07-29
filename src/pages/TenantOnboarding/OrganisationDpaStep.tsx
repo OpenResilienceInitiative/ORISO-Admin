@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Form } from 'antd';
+import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
 import DOMPurify from 'dompurify';
+import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
-import { DpaFormSection } from '../../components/DpaLegalForm/DpaFormSection';
+import { DpaFormSection, focusDpaConsent } from '../../components/DpaLegalForm/DpaFormSection';
 import { M3Button } from '../../components/M3Button';
 import { MuiFormField } from '../../components/mui/MuiFormField';
 import { pickLegalContentLanguage } from '../../components/Tenants/LegalSettings/utils/legalContentLanguages';
@@ -32,12 +34,19 @@ interface OrganisationDpaFormValues {
     signerOrganisation: string;
 }
 
+/** Why the last submit did not go through — surfaced AT the button (#594.6). */
+type SubmitBlocker = 'fields' | 'consent';
+
 /**
  * Step 1 (#571): organisation master data plus the EXISTING DPA/AVV form —
  * the published DPA text (language -> HTML map, same storage format the legal
- * settings use) is rendered read-only via the shared legal-content helpers,
- * and the signer fields mirror the established `DpaSignature` shape
- * (src/types/dpa.ts). No legal wording is authored here.
+ * settings use) is rendered read-only through the canonical rich-text reader
+ * with its chapter chips, and the signer fields mirror the established
+ * `DpaSignature` shape (src/types/dpa.ts). No legal wording is authored here.
+ *
+ * A failed submit never dead-ends (#594.6): the reason appears next to the
+ * button that was just pressed, and the flow jumps to whatever is missing —
+ * the first invalid field, or the consent act.
  */
 export const OrganisationDpaStep = ({
     invite,
@@ -49,6 +58,7 @@ export const OrganisationDpaStep = ({
     const [form] = Form.useForm<OrganisationDpaFormValues>();
     const [dpaAccepted, setDpaAccepted] = useState(initialDpa?.accepted ?? false);
     const [acceptTouched, setAcceptTouched] = useState(false);
+    const [submitBlocker, setSubmitBlocker] = useState<SubmitBlocker | null>(null);
 
     const dpaHtml = useMemo(
         () => DOMPurify.sanitize(pickLegalContentLanguage(invite.dpaContent, i18n.language)),
@@ -58,8 +68,11 @@ export const OrganisationDpaStep = ({
     const onFinish = (values: OrganisationDpaFormValues) => {
         if (!dpaAccepted) {
             setAcceptTouched(true);
+            setSubmitBlocker('consent');
+            focusDpaConsent();
             return;
         }
+        setSubmitBlocker(null);
         onSubmit(
             { name: values.name.trim(), subdomain: values.subdomain.trim(), address: values.address.trim() },
             {
@@ -72,12 +85,25 @@ export const OrganisationDpaStep = ({
         );
     };
 
+    const onFinishFailed = ({ errorFields }: ValidateErrorEntity<OrganisationDpaFormValues>) => {
+        // The consent state is part of "incomplete" as well — show its own
+        // inline error from now on, whatever else is missing.
+        setAcceptTouched(true);
+        setSubmitBlocker('fields');
+        const first = errorFields[0]?.name;
+        if (first) {
+            form.scrollToField(first, { block: 'center' });
+        }
+    };
+
     return (
         <Form
             form={form}
             layout="vertical"
             requiredMark={false}
             onFinish={onFinish}
+            onFinishFailed={onFinishFailed}
+            onValuesChange={() => setSubmitBlocker(null)}
             initialValues={{
                 name: initialOrganisation?.name ?? '',
                 subdomain: initialOrganisation?.subdomain ?? '',
@@ -118,24 +144,35 @@ export const OrganisationDpaStep = ({
                 />
             </div>
 
-            <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mt: 4, mb: 1 }}>
-                {t('tenantOnboarding.dpa.title')}
-            </Typography>
-            <Typography sx={{ mb: 2 }} color="text.secondary">
-                {t('tenantOnboarding.dpa.description')}
-            </Typography>
-            {!dpaHtml && <Typography sx={{ mb: 2 }}>{t('tenantOnboarding.dpa.missing')}</Typography>}
-            <DpaFormSection
-                dpaHtml={dpaHtml}
-                textLabel={t('tenantOnboarding.dpa.title')}
-                scrollMode="inner"
-                accepted={dpaAccepted}
-                acceptTouched={acceptTouched}
-                onAcceptedChange={(value) => {
-                    setDpaAccepted(value);
-                    setAcceptTouched(true);
-                }}
-            />
+            <div className={styles.dpaBlock}>
+                {!dpaHtml && (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                        {t('tenantOnboarding.dpa.missing')}
+                    </Alert>
+                )}
+                <DpaFormSection
+                    dpaHtml={dpaHtml}
+                    textLabel={t('tenantOnboarding.dpa.title')}
+                    textDescription={t('tenantOnboarding.dpa.description')}
+                    accepted={dpaAccepted}
+                    acceptTouched={acceptTouched}
+                    onAcceptedChange={(value) => {
+                        setDpaAccepted(value);
+                        setAcceptTouched(true);
+                        if (value) setSubmitBlocker(null);
+                    }}
+                />
+            </div>
+
+            {submitBlocker && (
+                <Alert severity="error" role="alert" data-testid="onboarding-submit-error" sx={{ mt: 3 }}>
+                    {t(
+                        submitBlocker === 'consent'
+                            ? 'tenantOnboarding.dpa.acceptRequired'
+                            : 'tenantOnboarding.validation.incomplete',
+                    )}
+                </Alert>
+            )}
 
             <div className={styles.actions}>
                 <M3Button type="submit" variant="filled" block>

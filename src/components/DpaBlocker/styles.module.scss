@@ -28,11 +28,13 @@
 }
 
 /* The DPA text + signer form block itself is shared — see
-   src/components/DpaLegalForm (text NOT height-capped here: the overlay
-   scrolls, issue #572 scroll-behaviour acceptance). */
+   src/components/DpaLegalForm. Since #594 the legal text is rendered by the
+   canonical read-only reader, which caps and scrolls the text itself so its
+   chapter chips stay in view; the overlay still scrolls the form around it
+   (#572 scroll-behaviour acceptance). */
 
-/* Wider card while the sign form (long legal text + side TOC) is shown so
-   the anchor navigation gets its side placement on desktop. */
+/* Wider card while the sign form is shown, so the reader gets a real reading
+   measure instead of the narrow status-card width. */
 
 .cardWide {
     width: min(820px, 100%);

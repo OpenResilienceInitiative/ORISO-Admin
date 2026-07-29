@@ -10,7 +10,14 @@
     gap: 16px;
 }
 
-/* The DPA text + signer form block is shared — see src/components/DpaLegalForm. */
+/* The DPA text + signer form block is shared — see src/components/DpaLegalForm.
+   The reader card carries its own title/help text, so this only separates it
+   from the organisation fields above. */
+
+.dpaBlock {
+    margin-top: 32px;
+}
+
 .actions {
     display: flex;
     justify-content: space-between;

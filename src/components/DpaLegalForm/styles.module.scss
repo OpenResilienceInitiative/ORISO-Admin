@@ -1,143 +1,12 @@
-/* Shared DPA/AVV form block (#569 hardening): legal text with TOC anchor
-   navigation + signer fields + confirmation. The TOC switches by CONTAINER
-   width (not viewport): side placement when the host column is wide enough,
-   compact jump-to-section dropdown on narrow layouts (e.g. 390x844). */
+/* Shared DPA/AVV form block (#569 hardening, reworked in #594): the canonical
+   read-only rich-text reader (chapter chips live in the card itself — this
+   file must never grow a second table of contents), the signer fields and the
+   consent act. */
 
-.legalContainer {
-    margin-bottom: 16px;
-    container-type: inline-size;
-}
-
-.legalLayout {
-    display: block;
-}
-
-.tocSide {
-    display: none;
-}
-
-.tocTitle {
-    margin: 0 0 8px;
-    color: var(--m3-on-surface-variant, #414942);
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.tocList {
-    padding: 0;
-    margin: 0;
-    list-style: none;
-
-    li {
-        margin: 0 0 4px;
-    }
-
-    li[data-level='3'] {
-        padding-left: 12px;
-    }
-
-    li[data-level='4'] {
-        padding-left: 24px;
-    }
-}
-
-.tocLink {
-    padding: 4px 8px;
-    border: 0;
-    background: none;
-    border-radius: 8px;
-    color: var(--m3-primary, #006c51);
-    cursor: pointer;
-    font: inherit;
-    font-size: 14px;
-    text-align: left;
-
-    &:hover {
-        background: var(--m3-surface-container, #eff1ec);
-    }
-
-    &:focus-visible {
-        outline: 2px solid var(--m3-primary, #006c51);
-        outline-offset: 1px;
-    }
-}
-
-.tocCompact {
-    margin-bottom: 8px;
-}
-
-.tocSelect {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--m3-outline-variant, #dce5df);
-    background: var(--m3-surface, #ffffff);
-    border-radius: 8px;
-    color: var(--m3-on-surface, #191c1a);
-    font: inherit;
-    font-size: 14px;
-}
-
-/* Published DPA/AVV text, rendered read-only. */
-.dpaText {
-    padding: 16px;
-    border: 1px solid var(--m3-outline-variant, #dce5df);
-    background: var(--m3-surface, #ffffff);
-    border-radius: 12px;
-
-    h1,
-    h2,
-    h3,
-    h4 {
-        margin: 0 0 8px;
-        font-size: 16px;
-    }
-
-    h1:focus,
-    h2:focus,
-    h3:focus,
-    h4:focus {
-        outline: 2px solid var(--m3-primary, #006c51);
-        outline-offset: 2px;
-    }
-
-    p {
-        margin: 0 0 8px;
-    }
-}
-
-/* `inner` scroll mode (onboarding step): the region itself is the capped
-   scroll box so the step stays usable on 390x844. The blocker overlay
-   variant (`container`) deliberately has NO height cap — the overlay
-   scrolls (#572 scroll-behaviour acceptance). */
-
-/* Smoothness comes from the scrollTo/scrollIntoView `behavior` option in
-   DpaLegalText (which respects prefers-reduced-motion) — no CSS
-   scroll-behavior here, it would double-apply. */
-
-.dpaTextInner {
-    max-height: 320px;
-    overflow-y: auto;
-}
-
-@container (min-width: 600px) {
-    .legalLayout.withToc {
-        display: grid;
-        align-items: start;
-        gap: 16px;
-        grid-template-columns: 200px minmax(0, 1fr);
-    }
-
-    .tocSide {
-        position: sticky;
-        top: 16px;
-        display: block;
-        max-height: 320px;
-        overflow-y: auto;
-    }
-
-    .tocCompact {
-        display: none;
-    }
+.reader {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
 }
 
 .fieldStack {
@@ -146,14 +15,56 @@
     gap: 16px;
 }
 
-.acceptRow {
+/* Consent (#594.5): ticking the box IS the signature, so it reads as its own
+   deliberate act — an outlined block with a large hit area, not a footnote
+   beside the name fields. Same treatment on desktop and at 390x844. */
+
+.consent {
     display: flex;
-    align-items: center;
-    margin-top: 16px;
-    gap: 4px;
+    align-items: flex-start;
+    padding: 16px;
+    border: 2px solid var(--m3-outline, #747878);
+    margin-top: 24px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    border-radius: 16px;
+    gap: 8px;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.acceptLabel {
+.consentChecked {
+    border-color: var(--m3-primary, #a5000a);
+    background: var(--m3-primary-container, #ffdad5);
+}
+
+.consentError {
+    border-color: var(--m3-error, #ba1a1a);
+}
+
+.consentCheckbox {
+    margin-top: -8px;
+}
+
+.consentBody {
+    flex: 1;
     cursor: pointer;
     user-select: none;
+}
+
+.consentTitle {
+    margin: 0;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+}
+
+.consentHint {
+    margin: 4px 0 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    line-height: 18px;
+}
+
+.consentErrorText {
+    margin-top: 8px;
 }

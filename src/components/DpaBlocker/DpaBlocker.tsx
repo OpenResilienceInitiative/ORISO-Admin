@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Form, Spin } from 'antd';
+import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
 import DOMPurify from 'dompurify';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ThemeProvider } from '@mui/material/styles';
 import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
+import Draw from '@mui/icons-material/Draw';
+import Logout from '@mui/icons-material/Logout';
+import Refresh from '@mui/icons-material/Refresh';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
-import { DpaFormSection } from '../DpaLegalForm/DpaFormSection';
+import { DpaFormSection, focusDpaConsent } from '../DpaLegalForm/DpaFormSection';
 import { M3Button } from '../M3Button';
 import { pickLegalContentLanguage } from '../Tenants/LegalSettings/utils/legalContentLanguages';
 import { DpaBlockerReason } from '../../utils/dpaBlockerGate';
@@ -53,8 +57,10 @@ const TITLE_ID = 'dpa-blocker-title';
  * to any admin page renders this screen and no mutating UI action is
  * reachable. Only viewing/signing the existing DPA form, retrying the status
  * check and logging out are possible. The overlay is the scroll container
- * (no fixed height with hidden overflow) so the full DPA text plus form stay
- * usable at 390x844 while the app behind stays scroll-locked.
+ * (no fixed height with hidden overflow) so the full form stays usable at
+ * 390x844 while the app behind stays scroll-locked; since #594 the legal text
+ * itself is the canonical read-only reader, which scrolls inside its own
+ * capped region so its chapter chips never leave the screen.
  */
 export const DpaBlocker = ({
     reason,
@@ -72,6 +78,8 @@ export const DpaBlocker = ({
     const [form] = Form.useForm<DpaBlockerFormValues>();
     const [dpaAccepted, setDpaAccepted] = useState(false);
     const [acceptTouched, setAcceptTouched] = useState(false);
+    // Why the last submit did not go through — surfaced AT the button (#594.6).
+    const [submitBlocker, setSubmitBlocker] = useState<'fields' | 'consent' | null>(null);
 
     // Scroll-lock the app behind the overlay for as long as the blocker exists.
     useEffect(() => {
@@ -90,8 +98,11 @@ export const DpaBlocker = ({
     const onFinish = (values: DpaBlockerFormValues) => {
         if (!dpaAccepted) {
             setAcceptTouched(true);
+            setSubmitBlocker('consent');
+            focusDpaConsent();
             return;
         }
+        setSubmitBlocker(null);
         onSign?.({
             signerName: values.signerName.trim(),
             signerPosition: values.signerPosition.trim(),
@@ -100,6 +111,15 @@ export const DpaBlocker = ({
             accepted: true,
             language: i18n.language,
         });
+    };
+
+    const onFinishFailed = ({ errorFields }: ValidateErrorEntity<DpaBlockerFormValues>) => {
+        setAcceptTouched(true);
+        setSubmitBlocker('fields');
+        const first = errorFields[0]?.name;
+        if (first) {
+            form.scrollToField(first, { block: 'center' });
+        }
     };
 
     const showSignForm = signable && !dpaContentLoading && !!dpaHtml;
@@ -140,6 +160,8 @@ export const DpaBlocker = ({
                             layout="vertical"
                             requiredMark={false}
                             onFinish={onFinish}
+                            onFinishFailed={onFinishFailed}
+                            onValuesChange={() => setSubmitBlocker(null)}
                             initialValues={{
                                 signerName: '',
                                 signerPosition: '',
@@ -150,14 +172,12 @@ export const DpaBlocker = ({
                             <DpaFormSection
                                 dpaHtml={dpaHtml}
                                 textLabel={t('dpaBlocker.title')}
-                                // The overlay is the scroll container (#572):
-                                // the text flows, TOC jumps scroll the overlay.
-                                scrollMode="container"
                                 accepted={dpaAccepted}
                                 acceptTouched={acceptTouched}
                                 onAcceptedChange={(value) => {
                                     setDpaAccepted(value);
                                     setAcceptTouched(true);
+                                    if (value) setSubmitBlocker(null);
                                 }}
                             />
 
@@ -167,8 +187,29 @@ export const DpaBlocker = ({
                                 </Alert>
                             )}
 
+                            {submitBlocker && (
+                                <Alert
+                                    severity="error"
+                                    role="alert"
+                                    data-testid="dpa-blocker-submit-error"
+                                    sx={{ mt: 2 }}
+                                >
+                                    {t(
+                                        submitBlocker === 'consent'
+                                            ? 'tenantOnboarding.dpa.acceptRequired'
+                                            : 'tenantOnboarding.validation.incomplete',
+                                    )}
+                                </Alert>
+                            )}
+
                             <div className={styles.actions}>
-                                <M3Button type="submit" variant="filled" block disabled={signPending}>
+                                <M3Button
+                                    type="submit"
+                                    variant="filled"
+                                    block
+                                    disabled={signPending}
+                                    icon={<Draw fontSize="small" />}
+                                >
                                     {t('dpaBlocker.sign.submit')}
                                 </M3Button>
                             </div>
@@ -176,10 +217,15 @@ export const DpaBlocker = ({
                     )}
 
                     <div className={styles.actions}>
-                        <M3Button variant="outlined" onClick={onRetry} disabled={retryPending}>
+                        <M3Button
+                            variant="outlined"
+                            onClick={onRetry}
+                            disabled={retryPending}
+                            icon={<Refresh fontSize="small" />}
+                        >
                             {t('dpaBlocker.retry')}
                         </M3Button>
-                        <M3Button variant="text" onClick={onLogout}>
+                        <M3Button variant="text" onClick={onLogout} icon={<Logout fontSize="small" />}>
                             {t('dpaBlocker.logout')}
                         </M3Button>
                     </div>

@@ -1,35 +1,16 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { Form } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { DpaFormSection } from './DpaFormSection';
+import { LONG_DPA_HTML, PHONE_390 } from './dpaStoryText';
 
-const section = (index: number, title: string) =>
-    `<h2>§ ${index} ${title}</h2>${Array.from(
-        { length: 4 },
-        () =>
-            `<p>Die Vertragsparteien vereinbaren, dass sämtliche personenbezogenen Daten ausschließlich zur Erfüllung des vereinbarten Zwecks verarbeitet werden. Technische und organisatorische Maßnahmen sind nach Art. 32 DSGVO zu treffen, regelmäßig zu prüfen und zu dokumentieren.</p>`,
-    ).join('')}`;
-
-const LONG_MULTI_SECTION_HTML = `<h1>Auftragsverarbeitungsvertrag</h1><p>Zwischen dem Plattformbetreiber und Ihrer Organisation wird der folgende Vertrag geschlossen.</p>${[
-    'Gegenstand und Dauer',
-    'Art und Zweck der Verarbeitung',
-    'Kategorien betroffener Personen',
-    'Pflichten des Auftragnehmers',
-    'Technische und organisatorische Maßnahmen',
-    'Unterauftragsverhältnisse',
-    'Rechte der betroffenen Personen',
-    'Löschung und Rückgabe',
-    'Nachweise und Kontrollen',
-    'Haftung und Schlussbestimmungen',
-]
-    .map((title, i) => section(i + 1, title))
-    .join('')}`;
-
-const InteractiveSection = ({ scrollMode }: { scrollMode: 'inner' | 'container' }) => {
+const InteractiveSection = ({ initiallyTouched = false }: { initiallyTouched?: boolean }) => {
     const [accepted, setAccepted] = useState(false);
-    const [touched, setTouched] = useState(false);
+    const [touched, setTouched] = useState(initiallyTouched);
     const [form] = Form.useForm();
 
     return (
@@ -41,9 +22,9 @@ const InteractiveSection = ({ scrollMode }: { scrollMode: 'inner' | 'container' 
                 initialValues={{ signerName: '', signerPosition: '', signerEmail: '', signerOrganisation: '' }}
             >
                 <DpaFormSection
-                    dpaHtml={LONG_MULTI_SECTION_HTML}
+                    dpaHtml={LONG_DPA_HTML}
                     textLabel="Auftragsverarbeitungsvertrag"
-                    scrollMode={scrollMode}
+                    textDescription="Bitte prüfen Sie den Vertrag und bestätigen Sie ihn für Ihre Organisation."
                     accepted={accepted}
                     acceptTouched={touched}
                     onAcceptedChange={(value) => {
@@ -57,12 +38,10 @@ const InteractiveSection = ({ scrollMode }: { scrollMode: 'inner' | 'container' 
 };
 
 /**
- * The ONE shared DPA/AVV form block (#569 hardening) used by the U8 tenant
- * onboarding DPA step and the U10 global DPA blocker. Long legal texts get
- * in-document anchor navigation generated from the section headings: a side
- * TOC when the host column is wide enough (container query), a compact
- * jump-to-section dropdown on narrow layouts (390x844). Jumps smooth-scroll
- * inside the scrollable text region and move keyboard focus to the section.
+ * The ONE shared DPA/AVV form block (#569 hardening, reworked in #594): the
+ * canonical read-only reader with its chapter chips, the signer fields, and
+ * the consent act. Ticking "I confirm" IS the signature, so it is an outlined
+ * block of its own with a large hit area — not a footnote beside the fields.
  */
 const meta = {
     title: 'Molecules/DpaLegalForm',
@@ -74,31 +53,49 @@ export default meta;
 // render-only stories (interactive local state) — no meta-typed args needed
 type Story = StoryObj;
 
-/** Desktop, wide host column: sticky side TOC next to the capped scroll box. */
-export const DesktopLongTextSideToc: Story = {
+/** Desktop reading column: chapter chips, signer fields, consent block. */
+export const Desktop: Story = {
     render: () => (
-        <div style={{ width: 'min(820px, 94vw)', padding: '16px 0' }}>
-            <InteractiveSection scrollMode="inner" />
+        <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
+            <InteractiveSection />
         </div>
     ),
 };
 
-/**
- * Narrow host column at 390x844: the TOC collapses to the compact
- * jump-to-section dropdown; the text keeps its own scroll region.
- */
-export const MobileLongTextCompactToc: Story = {
+/** The signed state: consent given — the block switches to the primary tone. */
+export const ConsentGiven: Story = {
     render: () => (
-        <div style={{ width: 'min(520px, 94vw)', padding: '16px 0' }}>
-            <InteractiveSection scrollMode="inner" />
+        <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
+            <InteractiveSection />
         </div>
     ),
-    parameters: {
-        viewport: {
-            options: {
-                phone390: { name: 'Phone 390×844', styles: { width: '390px', height: '844px' } },
-            },
-        },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('checkbox'));
+        await waitFor(() => expect(canvas.getByRole('checkbox')).toHaveAttribute('aria-checked', 'true'));
     },
-    globals: { viewport: { value: 'phone390', isRotated: false } },
+};
+
+/** Submit was pressed without the confirmation: the block is marked. */
+export const ConsentMissing: Story = {
+    render: () => (
+        <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
+            <InteractiveSection initiallyTouched />
+        </div>
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByTestId('dpa-consent-error')).toBeVisible();
+    },
+};
+
+/** 390x844: same block, same prominence — nothing collapses into a footnote. */
+export const Mobile: Story = {
+    render: () => (
+        <div style={{ width: '100%', padding: '16px 0' }}>
+            <InteractiveSection />
+        </div>
+    ),
+    ...PHONE_390,
+    parameters: { ...PHONE_390.parameters, layout: 'padded' },
 };

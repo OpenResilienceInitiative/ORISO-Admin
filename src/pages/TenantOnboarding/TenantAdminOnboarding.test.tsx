@@ -187,3 +187,64 @@ describe('TenantAdminOnboarding', () => {
         );
     });
 });
+
+/**
+ * #594.6 — a submit that does nothing leaves the user stranded. Whatever is
+ * missing, the reason appears AT the button that was just pressed, and the
+ * flow points at what has to be fixed.
+ */
+describe('TenantAdminOnboarding — incomplete submit is answered at the action', () => {
+    const fillEverythingBut = async (user: ReturnType<typeof userEvent.setup>, skip: 'address' | 'nothing') => {
+        await screen.findByLabelText('tenantOnboarding.organisation.name');
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
+        if (skip !== 'address') {
+            await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
+        }
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerOrganisation'), 'Beispiel e.V.');
+    };
+
+    it('reports a missing field next to the submit button, not only far above it', async () => {
+        const user = userEvent.setup();
+        renderFlow(createClient());
+
+        await fillEverythingBut(user, 'address');
+        await user.click(screen.getByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' }));
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
+
+        const summary = await screen.findByTestId('onboarding-submit-error');
+        expect(summary).toHaveTextContent('tenantOnboarding.validation.incomplete');
+        // ... and it sits between the form and the button the user just pressed.
+        const button = screen.getByRole('button', { name: 'tenantOnboarding.continue' });
+        // eslint-disable-next-line no-bitwise
+        expect(summary.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        // The offending field keeps its own inline message as well.
+        expect(screen.getAllByText('tenantOnboarding.validation.required').length).toBeGreaterThan(0);
+    });
+
+    it('names the missing consent at the button and marks the consent block', async () => {
+        const user = userEvent.setup();
+        renderFlow(createClient());
+
+        await fillEverythingBut(user, 'nothing');
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
+
+        const summary = await screen.findByTestId('onboarding-submit-error');
+        expect(summary).toHaveTextContent('tenantOnboarding.dpa.acceptRequired');
+        expect(screen.getByTestId('dpa-consent-error')).toBeInTheDocument();
+    });
+
+    it('clears the summary as soon as the user starts fixing the form', async () => {
+        const user = userEvent.setup();
+        renderFlow(createClient());
+
+        await fillEverythingBut(user, 'address');
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
+        expect(await screen.findByTestId('onboarding-submit-error')).toBeInTheDocument();
+
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
+
+        await waitFor(() => expect(screen.queryByTestId('onboarding-submit-error')).not.toBeInTheDocument());
+    });
+});

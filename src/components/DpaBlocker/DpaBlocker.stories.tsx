@@ -9,7 +9,7 @@ const SHORT_DPA = JSON.stringify({
 });
 
 // 10 sections x 4 paragraphs: long enough for the #572 scroll acceptance AND
-// multi-section, so the shared legal-text TOC (anchor navigation) kicks in.
+// multi-section, so the canonical chapter chips (AnchorChips) kick in.
 const longSections = Array.from(
     { length: 10 },
     (_, i) =>
@@ -83,19 +83,19 @@ export const ContentUnavailable: Story = {
 };
 
 /**
- * Long multi-section DPA on desktop: the sticky side TOC (shared
- * DpaLegalForm anchor navigation) sits next to the flowing text; the wider
- * card makes room for it. Jumps scroll the overlay and move focus.
+ * Long multi-section DPA on desktop (#594.1): the canonical read-only reader
+ * carries the chapter chips; picking one scrolls inside the text region and
+ * moves keyboard focus to that section.
  */
-export const DesktopLongDpaTextWithToc: Story = {
+export const DesktopLongDpaTextWithChapters: Story = {
     args: { reason: 'UNSIGNED', signable: true, dpaContent: LONG_DPA },
 };
 
 /**
  * #572 scroll-behaviour acceptance: extra-long DPA text at 390x844 — the
  * overlay scrolls the full text + form while sign/retry/logout stay
- * reachable; the app behind is scroll-locked (body overflow). The TOC
- * collapses to the compact jump-to-section dropdown at this width.
+ * reachable; the app behind is scroll-locked (body overflow). The chapter
+ * chip row scrolls sideways with its own arrows at this width.
  */
 export const MobileLongDpaText: Story = {
     args: { reason: 'UNSIGNED', signable: true, dpaContent: LONG_DPA },
