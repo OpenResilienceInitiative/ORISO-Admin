@@ -59,7 +59,7 @@ export const DpaFormSection = ({
     return (
         <>
             {dpaHtml && <DpaLegalReader html={dpaHtml} label={textLabel} description={textDescription} />}
-            <div className={styles.fieldStack}>
+            <div className={classNames(styles.fieldStack, styles.fieldStackPaired)}>
                 <MuiFormField
                     name="signerName"
                     label={t('tenantOnboarding.dpa.signerName')}
@@ -103,10 +103,34 @@ export const DpaFormSection = ({
                     name, so it is hidden from assistive tech (announced once)
                     and only serves as a large pointer target. */}
                 <div className={styles.consentBody} aria-hidden="true" onClick={() => onAcceptedChange(!accepted)}>
-                    <Typography component="p" className={styles.consentTitle}>
+                    {/* The emphasis must be declared through `sx` as well as
+                        the class: MUI Typography's own emotion class beats a
+                        plain CSS-module selector, so the class alone rendered
+                        the legal act in flat body text (#594 review). */}
+                    <Typography
+                        component="p"
+                        className={styles.consentTitle}
+                        sx={{
+                            m: 0,
+                            color: 'var(--m3-on-surface, #1b1b1c)',
+                            fontSize: 16,
+                            fontWeight: 600,
+                            lineHeight: '24px',
+                        }}
+                    >
                         {t('tenantOnboarding.dpa.accept')}
                     </Typography>
-                    <Typography component="p" className={styles.consentHint}>
+                    <Typography
+                        component="p"
+                        className={styles.consentHint}
+                        sx={{
+                            mt: '4px',
+                            mb: 0,
+                            color: 'var(--m3-on-surface-variant, #444748)',
+                            fontSize: 13,
+                            lineHeight: '18px',
+                        }}
+                    >
                         {t('tenantOnboarding.dpa.acceptHint')}
                     </Typography>
                 </div>
@@ -121,9 +145,9 @@ export const DpaFormSection = ({
                     className={styles.consentErrorText}
                     data-testid="dpa-consent-error"
                     // MUI's default error red misses WCAG AA at 12px on the
-                    // public page surface; the M3 error tone clears it (5:1).
+                    // public page surface; the ORISO error tone clears it.
                     // Scoped to `.Mui-error` so MUI's own rule does not win.
-                    sx={{ '&.Mui-error': { color: 'var(--m3-error, #ba1a1a)' } }}
+                    sx={{ '&.Mui-error': { color: 'var(--m3-error, #cc0000)' } }}
                 >
                     {t('tenantOnboarding.dpa.acceptRequiredShort')}
                 </FormHelperText>

@@ -110,8 +110,10 @@ export type M3RichTextEditorProps = {
     readOnly?: boolean;
     /**
      * Fluid sizing: the card fills its host column instead of the fixed
-     * 800x740 admin deck card, and the text surface scrolls inside a capped
-     * region. For hosts that are not the settings deck — e.g. the public
+     * 800x740 admin deck card, and it does NOT bring a scroll container of its
+     * own — the host surface scrolls (the bounded sheet on desktop, the page on
+     * a phone) and the chapter chips stay reachable by sticking to the bottom
+     * of the card. For hosts that are not the settings deck — e.g. the public
      * tenant-onboarding DPA step and the DPA blocker (#594).
      */
     fluid?: boolean;
@@ -156,6 +158,19 @@ export type M3RichTextEditorProps = {
 };
 
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
+
+/**
+ * Stacking level of the fullscreen reading dialog (#594.9).
+ *
+ * antd renders every Modal at z-index 1000. Application-level overlays that
+ * must outrank *every* popup sit above that — the global DPA blocker
+ * (`DpaBlocker/styles.module.scss`, #572) owns 1300 — so a fullscreen dialog
+ * opened from inside such an overlay was painted BEHIND an opaque surface and
+ * the agreement text simply vanished. The dialog therefore declares a level
+ * above every app overlay. This is a property of the shared component, so
+ * every consumer is fixed at once, not just the DPA reader.
+ */
+export const EDITOR_FULLSCREEN_Z_INDEX = 1400;
 
 /**
  * Editing surface: the ProseMirror contenteditable exposes role="textbox"
@@ -725,6 +740,11 @@ export const M3RichTextEditor = ({
     // or padding (Figma 1261-51137). Only the built-in editor is restyled — an
     // editorSlot owns its own surface.
     const readMode = !editorEditable && !editorSlot;
+    // Whether the text viewport is a scroll container of its own. The fixed
+    // deck card and the fullscreen dialog cap the text and scroll it inside;
+    // the fluid public reader hands scrolling to its host so the screen has
+    // exactly one scroller (#572 criterion, #594.3).
+    const scrollsInternally = !fluid || maximized;
 
     // Maximize lives as the first toolbar control (Figma 1261-48667); in
     // fullscreen it becomes the red round exit button (Figma 1276-72139).
@@ -825,19 +845,19 @@ export const M3RichTextEditor = ({
                 ) : (
                     <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
                         <div className={`${styles.editor} ${snackbarSlot ? styles.hasSnackbar : ''}`}>
-                            {/* Reading mode: the scroll viewport is the named
-                                landmark and must be keyboard-reachable so the
-                                text can be scrolled without a pointer (axe:
-                                scrollable-region-focusable). */}
+                            {/* Reading mode: the text viewport is the named
+                                landmark. It only becomes a tab stop when it
+                                actually scrolls — a keyboard user must be able
+                                to scroll it without a pointer (axe:
+                                scrollable-region-focusable), but the fluid
+                                reader delegates scrolling to its host (#594.3)
+                                and an extra tab stop there would be noise. */}
                             <div
                                 className={styles.editorContentScroll}
-                                {...(readOnly
-                                    ? {
-                                          role: 'region',
-                                          'aria-label': title,
-                                          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-                                          tabIndex: 0,
-                                      }
+                                {...(readOnly ? { role: 'region', 'aria-label': title } : {})}
+                                {...(readOnly && scrollsInternally
+                                    ? // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+                                      { tabIndex: 0 }
                                     : {})}
                             >
                                 <EditorContent editor={editor} />
@@ -1040,6 +1060,8 @@ export const M3RichTextEditor = ({
                 centered
                 width="min(1512px, calc(100vw - 96px))"
                 className={styles.dialogModal}
+                // Above every application overlay — see EDITOR_FULLSCREEN_Z_INDEX.
+                zIndex={EDITOR_FULLSCREEN_Z_INDEX}
                 onCancel={() => setMaximized(false)}
                 styles={{
                     mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },

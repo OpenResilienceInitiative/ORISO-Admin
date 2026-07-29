@@ -4,6 +4,7 @@ import { createStubTenantAdminOnboardingClient } from '../../api/tenantOnboardin
 import { PasswordResetPageLayout } from '../PasswordReset/PasswordResetPageLayout';
 import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 import { DoneStep } from './DoneStep';
+import { OnboardingSheet } from './OnboardingSheet';
 
 const longDpaClient = () =>
     createStubTenantAdminOnboardingClient({
@@ -19,7 +20,11 @@ const page = () => (
 
 const donePage = () => (
     <PasswordResetPageLayout variant="longForm">
-        <DoneStep tenantId={21} />
+        {/* Same wrapper the real flow renders it in, so the story shows the
+            actual surface (#594.8) and not a bare fragment. */}
+        <OnboardingSheet>
+            <DoneStep tenantId={21} />
+        </OnboardingSheet>
     </PasswordResetPageLayout>
 );
 

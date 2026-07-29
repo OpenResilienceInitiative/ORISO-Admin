@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react';
 import { Form } from 'antd';
+import classNames from 'classnames';
 import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
 import DOMPurify from 'dompurify';
 import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
+import ArrowForward from '@mui/icons-material/ArrowForward';
 import { useTranslation } from 'react-i18next';
 import { DpaFormSection, focusDpaConsent } from '../../components/DpaLegalForm/DpaFormSection';
 import { M3Button } from '../../components/M3Button';
 import { MuiFormField } from '../../components/mui/MuiFormField';
+import { focusFirstInvalidField } from '../../utils/formErrorNavigation';
 import { pickLegalContentLanguage } from '../../components/Tenants/LegalSettings/utils/legalContentLanguages';
 import {
     DpaAcceptanceData,
@@ -36,6 +39,14 @@ interface OrganisationDpaFormValues {
 
 /** Why the last submit did not go through — surfaced AT the button (#594.6). */
 type SubmitBlocker = 'fields' | 'consent';
+
+/**
+ * antd prefixes the id of every bound control with the form name, and the
+ * jump-to-the-invalid-field lookup resolves exactly that id — so the two must
+ * agree. A name also keeps generic ids like `name`/`address` out of the public
+ * page's global id space.
+ */
+const FORM_NAME = 'tenantOnboarding';
 
 /**
  * Step 1 (#571): organisation master data plus the EXISTING DPA/AVV form —
@@ -90,15 +101,17 @@ export const OrganisationDpaStep = ({
         // inline error from now on, whatever else is missing.
         setAcceptTouched(true);
         setSubmitBlocker('fields');
-        const first = errorFields[0]?.name;
-        if (first) {
-            form.scrollToField(first, { block: 'center' });
+        // Actually move the viewport AND the caret to what is missing. antd's
+        // own `scrollToField` silently did nothing here (#594.6 review).
+        if (!focusFirstInvalidField(errorFields, FORM_NAME) && !dpaAccepted) {
+            focusDpaConsent();
         }
     };
 
     return (
         <Form
             form={form}
+            name={FORM_NAME}
             layout="vertical"
             requiredMark={false}
             onFinish={onFinish}
@@ -120,7 +133,7 @@ export const OrganisationDpaStep = ({
             <Typography sx={{ mb: 2 }} color="text.secondary">
                 {t('tenantOnboarding.organisation.description', { tenantId: invite.reservedTenantId })}
             </Typography>
-            <div className={styles.fieldStack}>
+            <div className={classNames(styles.fieldStack, styles.fieldStackPaired)}>
                 <MuiFormField
                     name="name"
                     label={t('tenantOnboarding.organisation.name')}
@@ -175,7 +188,9 @@ export const OrganisationDpaStep = ({
             )}
 
             <div className={styles.actions}>
-                <M3Button type="submit" variant="filled" block>
+                {/* Every action on these surfaces carries its icon — the
+                    blocker's do, so the primary here must too (#594 review). */}
+                <M3Button type="submit" variant="filled" block icon={<ArrowForward fontSize="small" />}>
                     {t('tenantOnboarding.continue')}
                 </M3Button>
             </div>

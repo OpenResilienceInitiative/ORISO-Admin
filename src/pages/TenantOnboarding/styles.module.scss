@@ -1,3 +1,67 @@
+/* Public tenant-admin onboarding (#571).
+ *
+ * Surface language (#594.8) — copied from Organisms/Modal, the product's
+ * reference sheet: a NEUTRAL `--m3-surface-container-high` sheet with a 28px
+ * radius, everything on it tonal with it (fields included — no white boxes
+ * punched into a tinted page), and the accent left to the actions. Every
+ * colour here resolves to an ORISO token from src/app.css.
+ */
+
+.sheet {
+    padding: 32px;
+    background: var(--m3-surface-container-high, #eae7e8);
+    border-radius: 28px;
+    box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%));
+
+    /* Fields are tonal with the sheet instead of white cut-outs. `--input-bg`
+       is the single surface knob MuiFormField reads (src/app.css). */
+    --input-bg: var(--m3-surface-container-highest, #e4e2e2);
+    --input-autofill-surface: var(--m3-surface-container-highest, #e4e2e2);
+    --input-border-color: var(--m3-outline-variant, #c4c7c8);
+    --input-hover-border-color: var(--m3-on-surface, #1b1b1c);
+    --input-focus-border-color: var(--m3-primary, #a5000a);
+
+    @media (max-width: 599px) {
+        padding: 20px;
+        border-radius: 24px;
+    }
+}
+
+/* Desktop centring (#594.3, reopened in review).
+ *
+ * `margin-block: auto` on the column only absorbs FREE space, so on the DPA
+ * step — ~1871px tall — it collapsed to zero and the content still hugged the
+ * top edge. The sheet is therefore BOUNDED to the viewport from the desktop
+ * breakpoint up: it can never be taller than the space it is centred in, so
+ * the centring genuinely engages. The agreement absorbs the slack, because
+ * the reader has no scroll container of its own any more (see
+ * M3RichTextEditor `fluid`) — the sheet body is the ONLY scroller on screen.
+ *
+ * Below 1200px nothing is bounded: the page scrolls exactly as #569 requires
+ * at 390x844, and there is again exactly one scroller (the page).
+ */
+
+@media screen and (min-width: 1200px) {
+    .sheet {
+        display: flex;
+        max-height: calc(100vh - 96px);
+        flex-direction: column;
+    }
+
+    .sheetBody {
+        min-height: 0;
+        flex: 1 1 auto;
+
+        /* Horizontal room for the focus ring of the fields inside the
+           scroller. Vertical padding is deliberately 0 so the sticky chapter
+           bar lands exactly on the scrollport edge. */
+        padding: 0 4px;
+        margin: 0 -4px;
+        overflow-y: auto;
+        scrollbar-gutter: stable;
+    }
+}
+
 .loading {
     display: flex;
     justify-content: center;
@@ -8,6 +72,21 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+/* The two short organisation identifiers pair up once there is a reading
+   measure — same reason as the signer fields: height the bounded sheet needs. */
+
+@media (min-width: 720px) {
+    .fieldStackPaired {
+        display: grid;
+        gap: 0 16px;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .fieldStackPaired > :last-child {
+        grid-column: 1 / -1;
+    }
 }
 
 /* The DPA text + signer form block is shared — see src/components/DpaLegalForm.

@@ -11,8 +11,14 @@ import { LONG_DPA_HTML, PHONE_390, PLAIN_DPA_HTML } from './dpaStoryText';
  * step and the DPA blocker). It has NO navigation of its own: the canonical
  * read-only rich-text card provides the "Chapter Navbar" chip row
  * (`AnchorChips`, Figma 1299-81676), the fullscreen reading mode and the
- * in-text cross references. Picking a chapter scrolls inside the text region
- * and moves keyboard focus to that heading.
+ * in-text cross references. Picking a chapter scrolls the host surface to that
+ * heading and moves keyboard focus to it.
+ *
+ * The card brings NO scroll container of its own (#594.3): its host scrolls —
+ * the viewport-bounded sheet on the desktop, the page on a phone — so the
+ * screen never stacks two scrollbars (#572) and a step containing a 60-page
+ * agreement can still be bounded and centred. The chapter chips stay usable by
+ * sticking to the bottom of whichever scrollport is active.
  */
 const meta = {
     title: 'Molecules/DpaLegalReader',

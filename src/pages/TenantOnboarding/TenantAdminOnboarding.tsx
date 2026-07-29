@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
+import Refresh from '@mui/icons-material/Refresh';
 import { useTranslation } from 'react-i18next';
 import {
     createHttpTenantAdminOnboardingClient,
     TenantAdminOnboardingClient,
 } from '../../api/tenantOnboarding/tenantOnboarding';
 import { M3Button } from '../../components/M3Button';
+import { OnboardingSheet as Sheet } from './OnboardingSheet';
 import { useTenantAdminOnboardingFlow } from './useTenantAdminOnboardingFlow';
 import { LinkErrorState } from './LinkErrorState';
 import { DoneStep } from './DoneStep';
@@ -52,9 +54,11 @@ export const TenantAdminOnboarding = ({ inviteToken, client }: TenantAdminOnboar
 
     if (state.phase === 'loading') {
         return (
-            <div className={styles.loading} role="status" aria-label={t('tenantOnboarding.loading')}>
-                <CircularProgress />
-            </div>
+            <Sheet>
+                <div className={styles.loading} role="status" aria-label={t('tenantOnboarding.loading')}>
+                    <CircularProgress />
+                </div>
+            </Sheet>
         );
     }
 
@@ -62,32 +66,42 @@ export const TenantAdminOnboarding = ({ inviteToken, client }: TenantAdminOnboar
         // Transient resolve failure (#569 hardening): NOT a dead link — offer
         // a retry instead of the terminal error states.
         return (
-            <div data-testid="onboarding-load-error">
-                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
-                    {t('tenantOnboarding.loadError.title')}
-                </Typography>
-                <Typography role="alert" sx={{ mb: 3 }}>
-                    {t('tenantOnboarding.loadError.description')}
-                </Typography>
-                <M3Button variant="filled" onClick={retryLoad}>
-                    {t('tenantOnboarding.loadError.retry')}
-                </M3Button>
-            </div>
+            <Sheet>
+                <div data-testid="onboarding-load-error">
+                    <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
+                        {t('tenantOnboarding.loadError.title')}
+                    </Typography>
+                    <Typography role="alert" sx={{ mb: 3 }}>
+                        {t('tenantOnboarding.loadError.description')}
+                    </Typography>
+                    <M3Button variant="filled" icon={<Refresh fontSize="small" />} onClick={retryLoad}>
+                        {t('tenantOnboarding.loadError.retry')}
+                    </M3Button>
+                </div>
+            </Sheet>
         );
     }
 
     if (state.phase === 'link-error') {
-        return <LinkErrorState reason={state.reason} />;
+        return (
+            <Sheet>
+                <LinkErrorState reason={state.reason} />
+            </Sheet>
+        );
     }
 
     if (state.phase === 'done') {
-        return <DoneStep tenantId={state.tenantId} />;
+        return (
+            <Sheet>
+                <DoneStep tenantId={state.tenantId} />
+            </Sheet>
+        );
     }
 
     const step = STEP_ORDER[state.phase];
 
     return (
-        <div>
+        <Sheet>
             <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
                 {t('tenantOnboarding.title')}
             </Typography>
@@ -120,6 +134,6 @@ export const TenantAdminOnboarding = ({ inviteToken, client }: TenantAdminOnboar
                     onSubmit={submitTwoFactorCode}
                 />
             )}
-        </div>
+        </Sheet>
     );
 };

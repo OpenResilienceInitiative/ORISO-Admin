@@ -70,14 +70,23 @@ describe('DpaLegalReader', () => {
         expect(document.activeElement).toBe(heading);
     });
 
-    it('scrolls the capped text region, so the chapter row stays reachable', async () => {
+    /**
+     * #594.3 / #572: the reader brings NO scroll container of its own — the
+     * host surface scrolls (the viewport-bounded sheet on the desktop, the
+     * page on a phone) so there is exactly one scroller on screen and the step
+     * can be bounded and centred. Consequently the text region must not be a
+     * tab stop either: `scrollable-region-focusable` only asks for one when
+     * the region actually scrolls, and an extra stop in front of a 60-page
+     * agreement is pure noise.
+     */
+    it('delegates scrolling to its host and keeps the chapter row outside the text region', async () => {
         const { container } = render(<DpaLegalReader html={LEGAL_HTML} label="AVV" />);
         await waitFor(() => expect(chips(container)).toHaveLength(3));
 
         const region = screen.getByRole('region', { name: 'AVV' });
-        // The chip row is a SIBLING of the scroll viewport, never inside it.
+        // The chip row is a SIBLING of the text viewport, never inside it.
         expect(region.contains(screen.getByRole('navigation'))).toBe(false);
-        expect(region).toHaveAttribute('tabindex', '0');
+        expect(region).not.toHaveAttribute('tabindex');
     });
 
     it('renders text without headings without a chapter row (no empty navigation)', async () => {

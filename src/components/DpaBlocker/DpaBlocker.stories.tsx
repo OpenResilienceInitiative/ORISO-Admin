@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { fn } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { DpaBlocker } from './DpaBlocker';
 
 const SHORT_DPA = JSON.stringify({
@@ -30,8 +30,13 @@ const LONG_DPA = JSON.stringify({
  * Rendered by `DpaBlockerGate` INSTEAD of every admin route after a
  * successful login while the tenant's DPA is unsigned/outdated: only
  * viewing/signing the DPA, retrying the status check and logging out are
- * possible. The overlay itself scrolls (no fixed height with hidden
- * overflow) — check the MobileLongDpaText story at 390x844.
+ * possible.
+ *
+ * Surfaces follow the reference sheet (Organisms/Modal, #594.8): a neutral
+ * `--m3-surface-container-high` card, fields tonal with it, accent only on the
+ * actions. Exactly ONE scroller — the card body from 1200px up (so the card is
+ * genuinely centred), the overlay below that; check MobileLongDpaText at
+ * 390x844.
  */
 const meta = {
     title: 'Organisms/DpaBlocker',
@@ -93,9 +98,10 @@ export const DesktopLongDpaTextWithChapters: Story = {
 
 /**
  * #572 scroll-behaviour acceptance: extra-long DPA text at 390x844 — the
- * overlay scrolls the full text + form while sign/retry/logout stay
- * reachable; the app behind is scroll-locked (body overflow). The chapter
- * chip row scrolls sideways with its own arrows at this width.
+ * overlay is the single scroller for the full text + form while
+ * sign/retry/logout stay reachable; the app behind is scroll-locked (body
+ * overflow). The chapter chips pin themselves to the bottom of the viewport
+ * while the agreement is on screen and scroll sideways with their own arrows.
  */
 export const MobileLongDpaText: Story = {
     args: { reason: 'UNSIGNED', signable: true, dpaContent: LONG_DPA },
@@ -107,4 +113,28 @@ export const MobileLongDpaText: Story = {
         },
     },
     globals: { viewport: { value: 'phone390', isRotated: false } },
+};
+
+/**
+ * #594.9 regression: opening the reader's fullscreen mode from INSIDE the
+ * blocker used to make the agreement disappear — antd paints modals at
+ * z-index 1000 while this overlay owns 1300, so the dialog was drawn behind an
+ * opaque surface and even its close button was unclickable. The dialog now
+ * declares a level above every application overlay
+ * (`EDITOR_FULLSCREEN_Z_INDEX`), which fixes it for every consumer at once.
+ */
+export const FullscreenReaderOverTheBlocker: Story = {
+    args: { reason: 'UNSIGNED', signable: true, dpaContent: LONG_DPA },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: /maximi/i }));
+        const dialog = await waitFor(() => {
+            const node = document.querySelector('.ant-modal-wrap');
+            if (!node) throw new Error('fullscreen dialog did not open');
+            return node as HTMLElement;
+        });
+        // Visible means: above the blocker overlay, not merely mounted.
+        await expect(Number(dialog.style.zIndex)).toBeGreaterThan(1300);
+        await expect(dialog.querySelector('.ProseMirror')?.textContent ?? '').toContain('Abschnitt 1');
+    },
 };
