@@ -16,7 +16,7 @@ const FIELD_TOKENS = [
     ['--admin-field-surface', '#fcf9f9', 'field surface (lighter than workspace)'],
     ['--admin-field-outline', '#c4c7c8', 'resting outline (outline-variant tier)'],
     ['--admin-field-surface-hover', '#f6f3f3', 'hover surface'],
-    ['--admin-field-selected-surface', '#ffdad5', 'selected/active tonal surface'],
+    ['--admin-field-selected-surface', '#ffe2de', 'selected/active tonal surface'],
     ['--admin-field-selected-text', '#930008', 'selected/active text'],
 ] as const;
 

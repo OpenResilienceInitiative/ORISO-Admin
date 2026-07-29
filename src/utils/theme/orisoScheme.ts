@@ -56,9 +56,28 @@ const saturation = (hex: string) => {
 };
 
 const DEFAULT_ACCENT_DARK = '#a5000a';
-const DEFAULT_ACCENT_LIGHT = '#ffdad5';
+/**
+ * The rose SURFACE of the active pill — Figma's `M3/sys/light/on-primary-container`
+ * value (#594.13b: "Figma hat Vorrang"). It lands on `--m3-primary-container`
+ * (and its `primary-fixed`/`admin-field-selected-surface` mirrors), never on
+ * `--m3-on-primary-container`: `on-*` is the readable FOREGROUND here, computed
+ * by {@link readableOn}. Must stay identical to `--m3-primary-container` in
+ * src/app.css, which is the static fallback for exactly this seed.
+ */
+const DEFAULT_ACCENT_LIGHT = '#ffe2de';
 const DEFAULT_ACCENT_DIM = '#ffb4aa';
 const DEFAULT_ACCENT_ACTION = '#cc1e1c';
+/**
+ * The dark stage surface: the desktop sidebar AND the public sign-in stage
+ * panel (#594.13a). Figma calls the style `M3/sys/light/on-background`, so the
+ * token keeps that name although this palette then uses an M3 *system* name in
+ * an INVERTED way (a surface, not a foreground) — the same deliberate stopgap
+ * as the mail palette, because there is no real dark-mode token set yet. It is
+ * seed-independent on purpose: both surfaces must resolve to the identical
+ * value in every scheme. See the block comment on `--m3-on-background` in
+ * src/app.css before renaming or re-valuing this.
+ */
+const STAGE_SURFACE = '#281715';
 const SYSTEM_ALERT = '#410001';
 const SYSTEM_ERROR = '#b1005e';
 const DARK_TEXT = '#141c25';
@@ -160,7 +179,7 @@ const invertedTokens = (accentDark: string, accentLight: string, accentDim: stri
         '--m3-outline': '#9a9295',
         '--m3-outline-variant': '#4d484a',
         '--m3-background': '#303030',
-        '--m3-on-background': '#f4eff0',
+        '--m3-on-background': STAGE_SURFACE,
         '--m3-inverse-surface': '#fcf9f9',
         '--m3-inverse-on-surface': '#1a1c1e',
         '--oriso-app-accent': primary,
@@ -222,6 +241,7 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
             '--m3-on-surface-variant': '#444748',
             '--m3-outline': '#747878',
             '--m3-outline-variant': '#c4c7c8',
+            '--m3-on-background': STAGE_SURFACE,
             '--oriso-app-accent': accentDark,
             '--oriso-app-accent-dark': accentDark,
             '--oriso-app-accent-light': accentLight,

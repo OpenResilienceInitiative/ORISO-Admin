@@ -102,6 +102,11 @@
     --m3-surface-container: #f0edee;
     --m3-surface-container-high: #eae7e8;
     --m3-surface-container-highest: #e4e2e2;
+    /* `M3/sys/light/secondary` — the product's quiet accent. It was only ever
+       produced at runtime by computeOrisoPalette, so components that wanted it
+       hardcoded the value (editor help icon, success glyph — #594.11). Static
+       now, so nothing has to. */
+    --m3-secondary: #4c555f;
     /* M3 container/fixed roles (OrisoScheme, seed #A5000A). secondary-container is
        the mid slate (#646D78) from the runtime OrisoScheme (light) and Figma; the
        previous #e8ebee drifted and left the light on-colour text unreadable. */
@@ -109,11 +114,38 @@
     --m3-on-secondary-container: #e7effc;
     --m3-primary: #a5000a;
     --m3-on-primary: #ffffff;
-    --m3-primary-container: #ffdad5;
+    /* The rose SURFACE of the active sidebar pill. Figma calls that style
+       `M3/sys/light/on-primary-container` because it was applied as the pill's
+       FILL — see the `--m3-on-background` note below for why this palette's
+       `on-*` names are read inverted. Figma's value (#FFE2DE) wins (#594.13b);
+       the role stays `primary-container`, because in this codebase `on-*` is
+       the readable FOREGROUND produced by readableOn() in
+       utils/theme/orisoScheme.ts. Putting the rose on `--m3-on-primary-container`
+       would render rose text on rose surfaces and silently defeat that contrast
+       guard. Keep in sync with DEFAULT_ACCENT_LIGHT in orisoScheme.ts. */
+    --m3-primary-container: #ffe2de;
     --m3-on-primary-container: #141c25;
-    --m3-primary-fixed: #ffdad5;
+    --m3-primary-fixed: #ffe2de;
     --m3-tertiary-container: #ffdad6;
     --m3-on-tertiary-container: #410005;
+    /*
+     * THE DARK STAGE SURFACE — read this before "fixing" the name (#594.13a).
+     *
+     * #281715 is the deliberately dark, elegant tone of the desktop sidebar and
+     * of the public sign-in/sign-up stage panel. Figma names the style
+     * `M3/sys/light/on-background`, so the name is kept 1:1 with Figma even
+     * though M3's own semantics would make `on-background` a FOREGROUND colour.
+     *
+     * This palette therefore uses some M3 *system* names in an INVERTED way —
+     * exactly the same deliberate stopgap as the mail palette — because the
+     * product has no real dark-mode token set yet. It has no other consumer, so
+     * nothing reads it as a text colour. Do NOT "correct" it into
+     * `--m3-background`/`--m3-surface-dim` or swap the value: the sidebar
+     * (styles/components/protectedLayout.less) and the public stage
+     * (styles/components/stage.less) must provably resolve to the SAME token,
+     * which is the whole point of naming it.
+     */
+    --m3-on-background: #281715;
     --oriso-app-accent-dark: #a5000a;
     --admin-control-selected: var(--oriso-app-accent-dark, var(--m3-primary, #a5000a));
     --admin-workspace-background: #e4e2e2;
@@ -141,7 +173,7 @@
     --admin-field-surface: #fcf9f9;
     --admin-field-outline: #c4c7c8;
     --admin-field-surface-hover: #f6f3f3;
-    --admin-field-selected-surface: #ffdad5;
+    --admin-field-selected-surface: #ffe2de;
     --admin-field-selected-text: #930008;
     --admin-status-success: var(--tag-success, #0a882f);
     --admin-status-success-container: color-mix(
@@ -155,14 +187,6 @@
     --admin-status-error-border: color-mix(in srgb, var(--admin-status-error) 42%, transparent);
     --admin-status-warning: var(--warning-dark, #ff9f00);
     --admin-status-muted: var(--m3-outline, #747878);
-
-    /*
-     * Lottie recolor roles. The login stage has a dark (#1f1f1f) background, so
-     * the animation is recolored to bright tones: figures use on-secondary-
-     * container (light blue), accents use primary-fixed (coral).
-     */
-    --oriso-lottie-secondary-color: var(--m3-on-secondary-container, #e7effc);
-    --oriso-lottie-accent-color: var(--m3-primary-fixed, #ffdad5);
 
     /* YELLOW THEME */
     --yellow-1: #ffeed2;

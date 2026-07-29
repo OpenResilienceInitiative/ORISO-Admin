@@ -1,10 +1,16 @@
+/* The sidebar surface is the shared `--m3-on-background` token (#594.13a) — the
+   same one the public sign-in/sign-up stage panel uses (styles/components/
+   stage.less), so app and public surface are provably one colour instead of two
+   values that merely look alike. The name mirrors Figma and is used inverted on
+   purpose; see the block comment in src/app.css. */
+
 .protectedLayout {
     padding-bottom: @mobileNavHeight;
 
     .ant-layout-sider {
         z-index: 80;
         height: @mobileNavHeight;
-        background-color: #281715;
+        background-color: var(--m3-on-background, #281715);
     }
 
     .mainMenu {
@@ -136,7 +142,7 @@
             max-width: 96px !important;
             flex: 0 0 96px !important;
             height: 100vh;
-            background-color: #281715;
+            background-color: var(--m3-on-background, #281715);
         }
 
         .logo {
@@ -275,7 +281,9 @@
                     }
 
                     &.active {
-                        background: #ffe2de;
+                        /* The rose pill surface — the token, not a copy of its
+                           value (#594.13b). */
+                        background: var(--m3-primary-container, #ffe2de);
                         color: #410001;
                         border-radius: 50px;
                         padding: 32px 4px;
