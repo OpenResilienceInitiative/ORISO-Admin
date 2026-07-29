@@ -14,7 +14,18 @@ export interface EmailBrandingTheming {
     associationLogo?: string | null;
 }
 
-/** Same acceptance test as `EmailBrandingResolver#firstAbsoluteUrl`. */
+/**
+ * Same acceptance test as `EmailBrandingResolver#firstAbsoluteUrl` — a scheme prefix plus the
+ * space/quote guard, deliberately not a `new URL()` parse.
+ *
+ * The point of this helper is to predict what the backend will do, not to judge the URL. A
+ * hostless value such as `https://` therefore counts as "usable" here **because the backend
+ * accepts it too** and emails an `<img src="https://">`; the mail does not fall back to the
+ * wordmark, so the wordmark hint would be the wrong thing to show. Tightening this check alone
+ * would make the Admin describe a state the mail is not in — the exact drift ORISO-UserService#914
+ * removes. If that acceptance rule should reject hostless URLs, it has to change in
+ * `EmailBrandingResolver` first and be mirrored here afterwards.
+ */
 export const isRemoteLogoUrl = (value?: string | null): boolean => {
     if (!value) {
         return false;

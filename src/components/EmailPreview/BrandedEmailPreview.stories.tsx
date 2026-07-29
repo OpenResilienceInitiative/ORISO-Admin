@@ -53,7 +53,15 @@ type Story = StoryObj<typeof meta>;
 /** Platform branding (super-admin view): no tenant is selected, so no branding hint is shown. */
 export const PlatformBranding: Story = {};
 
-/** A tenant with a usable remote logo — the mail shows the logo, the panel stays quiet. */
+/**
+ * A tenant whose logo the mail can use (`theming.logo` is an absolute https URL), so
+ * `logoFallbackReason` is `null` and **the panel stays quiet** — that is what this story pins.
+ *
+ * The fixture's sample host `cdn.example.org` does not resolve, so the frame renders the image's
+ * `alt` text rather than a picture; the header slot and its alt fallback are documented in
+ * `Organisms/EmailPreview/BrandedEmailLayout` → `TenantLogo`. For a real logo, use the live
+ * preview on `/admin/theme-settings/smtp`.
+ */
 export const TenantBranding: Story = {
     args: { preview: TENANT, logoFallbackReason: null },
 };
@@ -95,6 +103,11 @@ const PREVIEW_ENDPOINT = '*/service/useradmin/invite-email-templates/preview';
 /**
  * The wired container against a mocked backend — proves the query, the parameters and the frame
  * work end to end, not just the presentational shell.
+ *
+ * The handler answers only a request that carries the parameters this scenario claims to cover:
+ * the frame `language`, and no `tenant_id` (this is the platform/super-admin scope). Anything else
+ * gets a 400, so the story turns into the error state the moment the container stops sending them
+ * — a handler that returned `PLATFORM` unconditionally would have proven nothing.
  */
 export const Connected: StoryObj<typeof BrandedEmailPreview> = {
     render: () => <BrandedEmailPreview />,
@@ -102,7 +115,15 @@ export const Connected: StoryObj<typeof BrandedEmailPreview> = {
         a11y: { options: { iframes: false } },
         msw: {
             handlers: [
-                http.get(PREVIEW_ENDPOINT, async () => {
+                http.get(PREVIEW_ENDPOINT, async ({ request }) => {
+                    const params = new URL(request.url).searchParams;
+                    const language = params.get('language');
+                    if (!language || !['de', 'en'].includes(language) || params.has('tenant_id')) {
+                        return HttpResponse.json(
+                            { error: `unexpected preview parameters: ${params.toString() || '<none>'}` },
+                            { status: 400 },
+                        );
+                    }
                     await delay(300);
                     return HttpResponse.json(PLATFORM);
                 }),

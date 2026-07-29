@@ -43,11 +43,11 @@
     width: 100%;
     justify-content: center;
     padding: 8px;
-    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border: 1px solid var(--admin-field-outline);
 
     /* The mail defines its own page background; this neutral surround keeps the
        Admin's own surface from being mistaken for part of the mail. */
-    background: var(--m3-surface-container-low, #f2f3f4);
+    background: var(--m3-surface-container-low);
     border-radius: 12px;
     overflow-x: auto;
 }
@@ -55,8 +55,10 @@
 .frame {
     border: 0;
 
-    /* Emails are authored on white; keep the frame opaque so a dark Admin theme
-       never bleeds through a transparent document background. */
+    /* Deliberately a literal, not an Admin surface token: this is the MAIL's paper,
+       and the mail renders light-only (`color-scheme: light only` in the backend
+       layout). A themeable token would darken here and bleed through the document's
+       transparent background, showing the admin a mail no recipient will ever see. */
     background: #ffffff;
     border-radius: 8px;
 }

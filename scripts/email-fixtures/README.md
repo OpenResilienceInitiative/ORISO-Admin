@@ -14,17 +14,50 @@ The endpoint needs `AUTHORIZATION_TENANT_ADMIN`, `AUTHORIZATION_USER_ADMIN` or
 `AUTHORIZATION_RESTRICTED_AGENCY_ADMIN`, i.e. the same token that reaches the other
 `/useradmin/invite-email-templates` endpoints.
 
+Run the whole set at once. Every fixture is a **pair** (`.html` + `.txt`) and `MANIFEST.txt` has to
+agree with both, so the recipe stages everything in a temporary directory and only replaces the
+checked-in files once every response has arrived and validated. A half-refreshed directory — new
+HTML next to a stale text part, or a manifest describing files that no longer exist — is worse than
+an untouched one.
+
 ```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
 BASE="$USERSERVICE/service/useradmin/invite-email-templates/preview"
 OUT=src/components/EmailPreview/fixtures
-GET() { curl -sS -H "Authorization: Bearer $TOKEN" -H "X-Tenant-Id: 1" "$1"; }
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
 
-GET "$BASE?language=de"                | jq -r .html      > $OUT/invite-platform-de.html
-GET "$BASE?language=de"                | jq -r .plainText > $OUT/invite-platform-de.txt
-GET "$BASE?language=en"                | jq -r .html      > $OUT/invite-platform-en.html
-GET "$BASE?tenant_id=7&language=de"    | jq -r .html      > $OUT/invite-tenant-logo-de.html
-GET "$BASE?templateId=5"               | jq -r .html      > $OUT/invite-long-content-de.html
-GET "$BASE?templateId=6"               | jq -r .html      > $OUT/invite-short-content-de.html
+# One response -> both parts + one manifest line. `--fail` turns a 401/403/404 into a non-zero
+# exit instead of writing an error body, and `jq -e` rejects a missing/empty/non-string field
+# instead of writing the literal "null".
+fetch() { # fetch <fixture-name> <query-string>
+  curl -sS --fail -H "Authorization: Bearer $TOKEN" -H "X-Tenant-Id: 1" \
+    "$BASE$2" > "$TMP/$1.json"
+  jq -er '.html      | strings | select(length > 0)' "$TMP/$1.json" > "$TMP/$1.html"
+  jq -er '.plainText | strings | select(length > 0)' "$TMP/$1.json" > "$TMP/$1.txt"
+  printf '%s — subject: %s | acceptUrl: %s\n' "$1" \
+    "$(jq -er '.subject         | strings | select(length > 0)' "$TMP/$1.json")" \
+    "$(jq -er '.sampleAcceptUrl | strings | select(length > 0)' "$TMP/$1.json")" \
+    >> "$TMP/manifest-body"
+}
+
+fetch invite-platform-de      "?language=de"
+fetch invite-platform-en      "?language=en"
+fetch invite-tenant-logo-de   "?tenant_id=7&language=de"
+fetch invite-long-content-de  "?templateId=5"
+fetch invite-short-content-de "?templateId=6"
+
+# notification-no-cta-de has no endpoint equivalent (see below); carry the checked-in pair and its
+# manifest line over unchanged so the manifest still describes the full directory.
+cp "$OUT/notification-no-cta-de.html" "$OUT/notification-no-cta-de.txt" "$TMP/"
+grep '^notification-no-cta-de ' "$OUT/MANIFEST.txt" >> "$TMP/manifest-body"
+
+{ head -2 "$OUT/MANIFEST.txt"; echo; cat "$TMP/manifest-body"; } > "$TMP/MANIFEST.txt"
+
+# Nothing above touched $OUT — everything is replaced together or not at all.
+mv "$TMP"/*.html "$TMP"/*.txt "$TMP/MANIFEST.txt" "$OUT/"
 ```
 
 Substitute ids that exist in the environment you query: `tenant_id` must be a tenant whose
@@ -60,3 +93,10 @@ rm src/test/java/de/caritas/cob/userservice/api/service/email/layout/BrandedEmai
 
 The generator writes `MANIFEST.txt` alongside the fixtures. It is deliberately **not** part of the
 UserService test suite: it asserts nothing, it only writes files.
+
+It has no palette of its own, and must not grow one. Since the colour fix on ORISO-UserService#914
+the mail accent resolves as `theming.primaryColor` → `EmailColors.PLATFORM_ACCENT_DARK` (`#a5000a`)
+and the neutrals are literals in `email/layout/*.html` taken from this repo's `src/app.css`; the
+SMTP setting `globalSmtpEmailThemeColor` is deliberately not read. The checked-in fixtures were last
+regenerated against that backend state — a fixture still showing the old navy `#0f3b8f` accent or a
+grey `#111827`/`#374151` ramp is stale and must be regenerated, never recoloured here.

@@ -36,7 +36,8 @@ import notificationNoCtaDe from './fixtures/notification-no-cta-de.html?raw';
  *   | jq -r .html > src/components/EmailPreview/fixtures/invite-platform-de.html
  * ```
  *
- * Vary the state with `&tenant_id=<id with a logo>`, `&language=en`, `&templateId=<long body>`.
+ * Vary the state by appending a query string — `?tenant_id=<id with a logo>`, `?language=en`,
+ * `?templateId=<long body>` — and `&` for any further parameter.
  * Full recipe, including how the fixtures in this branch were produced before the endpoint was
  * deployed anywhere, in `scripts/email-fixtures/README.md`.
  *

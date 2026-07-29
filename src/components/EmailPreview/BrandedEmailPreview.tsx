@@ -24,6 +24,12 @@ export const BrandedEmailPreview = ({ tenantId }: BrandedEmailPreviewProps) => {
     // Cached by `useSingleTenantData`'s query key — the SMTP form on the same page already loaded it.
     const { data: tenant } = useSingleTenantData({ id: tenantId ?? '', enabled: tenantId != null });
 
+    // Only a tenant we actually loaded can be said to have no usable logo. While the lookup is in
+    // flight or has failed the branding is UNKNOWN, and `undefined` (= no hint) is the only honest
+    // answer — claiming "no logo" there would accuse the admin of a misconfiguration that may not
+    // exist.
+    const logoFallbackReason = tenantId == null || !tenant ? undefined : resolveEmailLogoFallbackReason(tenant.theming);
+
     return (
         <BrandedEmailPreviewView
             preview={data}
@@ -32,7 +38,7 @@ export const BrandedEmailPreview = ({ tenantId }: BrandedEmailPreviewProps) => {
             onRetry={() => {
                 refetch();
             }}
-            logoFallbackReason={tenantId == null ? undefined : resolveEmailLogoFallbackReason(tenant?.theming)}
+            logoFallbackReason={logoFallbackReason}
         />
     );
 };

@@ -13,10 +13,17 @@ export const UnifiedSmtpSettingsPage = () => {
     // as SmtpSettingsPage.
     const resolvedTenantId = isSuperAdmin ? null : (tenantId && tenantId > 0 ? tenantId : data?.id) ?? null;
 
+    // `BrandedEmailPreview` reads "no tenant id" as "platform branding", which is only true for a
+    // super admin. For everyone else an unresolved tenant means UNKNOWN scope — while
+    // `useTenantData` is still loading, and after it degraded to its id-less fallback body. Showing
+    // the platform mail there would tell a tenant admin their branding looks like something it does
+    // not, so the panel is withheld until the scope is known.
+    const canPreview = isSuperAdmin || resolvedTenantId != null;
+
     return (
         <div className={styles.smtpSurface}>
             {isSuperAdmin ? <GlobalSmtpSettingsPage /> : <SmtpSettingsPage />}
-            <BrandedEmailPreview tenantId={resolvedTenantId ?? undefined} />
+            {canPreview && <BrandedEmailPreview tenantId={resolvedTenantId ?? undefined} />}
         </div>
     );
 };

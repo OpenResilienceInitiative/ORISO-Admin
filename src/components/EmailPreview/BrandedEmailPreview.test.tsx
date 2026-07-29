@@ -84,6 +84,29 @@ describe('BrandedEmailPreview', () => {
         expect(await screen.findByText('tenants.appSettings.emailPreview.branding.logoNotRemote')).toBeInTheDocument();
     });
 
+    it('stays silent about branding while the tenant is still loading', async () => {
+        mocks.useSingleTenantData.mockReturnValue({ data: undefined, isPending: true, isError: false });
+        renderPreview(7);
+
+        await screen.findByTestId('branded-email-preview-frame');
+        expect(screen.queryByText(/emailPreview\.branding/)).not.toBeInTheDocument();
+    });
+
+    it('stays silent about branding when the tenant lookup failed — unknown is not "no logo"', async () => {
+        mocks.useSingleTenantData.mockReturnValue({ data: undefined, isPending: false, isError: true });
+        renderPreview(7);
+
+        await screen.findByTestId('branded-email-preview-frame');
+        expect(screen.queryByText(/emailPreview\.branding/)).not.toBeInTheDocument();
+    });
+
+    it('reports the missing logo once the tenant really has none', async () => {
+        mocks.useSingleTenantData.mockReturnValue({ data: { theming: {} }, isPending: false, isError: false });
+        renderPreview(7);
+
+        expect(await screen.findByText('tenants.appSettings.emailPreview.branding.noLogo')).toBeInTheDocument();
+    });
+
     it('shows no branding hint for a platform preview, even without tenant data', async () => {
         renderPreview();
 

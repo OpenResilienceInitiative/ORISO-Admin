@@ -56,7 +56,6 @@ import org.springframework.web.client.RestTemplate;
 class BrandedEmailFixtureGenerator {
 
   private static final String OUT_DIR_PROPERTY = "oriso.email.fixtures.out";
-  private static final String THEME_COLOR = "#0f3b8f";
   private static final long BRANDED_TENANT_ID = 7L;
   private static final long LONG_TEMPLATE_ID = 5L;
   private static final long SHORT_TEMPLATE_ID = 6L;
@@ -146,14 +145,13 @@ class BrandedEmailFixtureGenerator {
                 """
                 Hallo Erika Musterfrau,
 
-                Ihr Konto auf der ORISO-Plattform ist ab sofort aktiv. Sie koennen sich wie
+                Ihr Konto auf der ORISO-Plattform ist ab sofort aktiv. Sie können sich wie
                 gewohnt anmelden.
 
-                Diese Nachricht dient nur zu Ihrer Information und enthaelt keine Aktion.""",
+                Diese Nachricht dient nur zu Ihrer Information und enthält keine Aktion.""",
                 null,
                 null,
-                "de",
-                THEME_COLOR)));
+                "de")));
 
     Files.writeString(
         target.resolve("MANIFEST.txt"),
@@ -200,6 +198,9 @@ class BrandedEmailFixtureGenerator {
   }
 
   private void stubBackends() {
+    // No `globalSmtpEmailThemeColor`: since the colour fix on ORISO-UserService#914 the mail palette
+    // comes from `theming.primaryColor` -> EmailColors.PLATFORM_ACCENT_DARK only, and the SMTP
+    // transport setting is deliberately not read. Stubbing it here would suggest otherwise.
     when(restTemplate.getForObject(anyString(), any()))
         .thenReturn(
             Map.of(
@@ -208,8 +209,7 @@ class BrandedEmailFixtureGenerator {
                 "globalSmtpHost", Map.of("value", "smtp.example.org"),
                 "globalSmtpPort", Map.of("value", "587"),
                 "globalSmtpSecure", Map.of("value", false),
-                "globalSmtpFrom", Map.of("value", "noreply@example.org"),
-                "globalSmtpEmailThemeColor", Map.of("value", THEME_COLOR)));
+                "globalSmtpFrom", Map.of("value", "noreply@example.org")));
     when(inviteMailTransport.send(any(), any(), any(), any(), any()))
         .thenReturn(new InviteMailSendReceipt("to@example.org", Instant.now()));
     when(tenantTemplateSupplier.getTemplateAttributes()).thenReturn(List.of());
@@ -229,35 +229,36 @@ class BrandedEmailFixtureGenerator {
                 InviteEmailTemplate.builder()
                     .id(LONG_TEMPLATE_ID)
                     .kind(InviteEmailTemplateKind.COUNSELLOR_INVITE)
-                    .name("Berater-Onboarding (ausfuehrlich)")
+                    .name("Berater-Onboarding (ausführlich)")
                     .language("de")
                     .subject("Willkommen im Beratungsteam, {{firstName}}")
                     .body(
                         """
                         <h2>Herzlich willkommen, {{firstName}} {{lastName}}</h2>
-                        <p>Sie wurden als Beraterin oder Berater fuer die ORISO-Plattform
-                        freigeschaltet. Damit Sie gut starten koennen, haben wir die wichtigsten
+                        <p>Sie wurden als Beraterin oder Berater für die ORISO-Plattform
+                        freigeschaltet. Damit Sie gut starten können, haben wir die wichtigsten
                         Schritte zusammengefasst.</p>
                         <h3>Was Sie zuerst tun sollten</h3>
                         <ol>
-                        <li>Konto ueber den Button unten einrichten und ein Passwort vergeben.</li>
-                        <li>Zwei-Faktor-Authentisierung aktivieren — sie ist fuer alle beratenden
+                        <li>Konto über die Einladung unten einrichten und ein Passwort
+                        vergeben.</li>
+                        <li>Zwei-Faktor-Authentisierung aktivieren — sie ist für alle beratenden
                         Rollen verpflichtend.</li>
-                        <li>Profilangaben und Beratungsthemen pruefen und ergaenzen.</li>
+                        <li>Profilangaben und Beratungsthemen prüfen und ergänzen.</li>
                         <li>Die Hinweise zur Schweigepflicht und zum Datenschutz lesen.</li>
                         </ol>
                         <h3>Ihre Ansprechpersonen</h3>
                         <p>Fachliche Fragen beantwortet Ihre Teamleitung. Technische Fragen richten
-                        Sie bitte an den Support Ihrer Einrichtung. Eine Uebersicht finden Sie im
+                        Sie bitte an den Support Ihrer Einrichtung. Eine Übersicht finden Sie im
                         Handbuch unter https://handbuch.example.org/beratung/erste-schritte</p>
                         <h3>Gut zu wissen</h3>
                         <ul>
                         <li>Ratsuchende sehen nur Ihren Vornamen und Ihr Beratungsthema.</li>
-                        <li>Nachrichten sind Ende-zu-Ende verschluesselt; ein verlorenes Passwort
+                        <li>Nachrichten sind Ende-zu-Ende verschlüsselt; ein verlorenes Passwort
                         kann alte Nachrichten unwiederbringlich unlesbar machen.</li>
                         <li>Abwesenheiten hinterlegen Sie im Profil, damit keine Anfrage liegen
                         bleibt.</li>
-                        <li>Der Einladungslink ist 30 Tage gueltig.</li>
+                        <li>Der Einladungslink ist 30 Tage gültig.</li>
                         </ul>
                         <blockquote>Bitte antworten Sie nicht auf diese E-Mail. Sie wurde
                         automatisch erzeugt.</blockquote>
@@ -271,7 +272,7 @@ class BrandedEmailFixtureGenerator {
                 InviteEmailTemplate.builder()
                     .id(SHORT_TEMPLATE_ID)
                     .kind(InviteEmailTemplateKind.TENANT_INVITE)
-                    .name("Traeger-Einladung (kurz)")
+                    .name("Träger-Einladung (kurz)")
                     .language("de")
                     .subject("Ihre Einladung")
                     .body("Hallo {{firstName}}, bitte richten Sie Ihren Zugang ein.")

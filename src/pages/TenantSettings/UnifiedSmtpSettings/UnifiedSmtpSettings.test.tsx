@@ -59,11 +59,25 @@ describe('UnifiedSmtpSettingsPage', () => {
         expect(mocks.previewProps).toHaveBeenCalledWith({ tenantId: 3 });
     });
 
-    it('previews platform branding when no tenant can be resolved at all', () => {
+    it('waits for the tenant instead of previewing platform branding to a tenant admin', () => {
         mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: null });
+        mocks.useTenantData.mockReturnValue({ data: undefined, isPending: true });
 
         render(<UnifiedSmtpSettingsPage />);
 
-        expect(mocks.previewProps).toHaveBeenCalledWith({ tenantId: undefined });
+        expect(screen.getByTestId('tenant-smtp-settings')).toBeInTheDocument();
+        expect(screen.queryByTestId('branded-email-preview')).not.toBeInTheDocument();
+        expect(mocks.previewProps).not.toHaveBeenCalled();
+    });
+
+    it('never falls back to the platform preview when tenant resolution failed', () => {
+        mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: null });
+        // `useTenantData` swallows its own errors and settles on a body without an id.
+        mocks.useTenantData.mockReturnValue({ data: { settings: {} }, isPending: false });
+
+        render(<UnifiedSmtpSettingsPage />);
+
+        expect(screen.queryByTestId('branded-email-preview')).not.toBeInTheDocument();
+        expect(mocks.previewProps).not.toHaveBeenCalled();
     });
 });

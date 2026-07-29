@@ -10,10 +10,25 @@ describe('isRemoteLogoUrl', () => {
         ['/admin/images/logo.png', false],
         ['https://cdn.example.org/my logo.png', false],
         ['https://cdn.example.org/"logo".png', false],
+        ['ftp://cdn.example.org/logo.png', false],
+        ['httpsx://cdn.example.org/logo.png', false],
         ['', false],
+        ['   ', false],
         [null, false],
+        [undefined, false],
     ])('%s -> %s', (value, expected) => {
         expect(isRemoteLogoUrl(value as string | null)).toBe(expected);
+    });
+
+    // Pinned mirror behaviour, not an oversight: `EmailBrandingResolver#firstAbsoluteUrl` accepts
+    // these too and mails an <img> with them, so the wordmark hint must stay hidden. If the backend
+    // ever rejects hostless URLs, change it there and flip these cases in the same pass.
+    it.each([
+        ['https://', true],
+        ['http://', true],
+        ['https:///logo.png', true],
+    ])('mirrors the backend and accepts the hostless value %s -> %s', (value, expected) => {
+        expect(isRemoteLogoUrl(value as string)).toBe(expected);
     });
 });
 
