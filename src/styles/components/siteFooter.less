@@ -26,3 +26,85 @@
         white-space: nowrap;
     }
 }
+
+/*
+ * Public sign-in/sign-up surface (#594.15b): the SAME footer menu, moved into
+ * the bottom left of the dark stage panel and rendered in white — Imprint,
+ * Privacy and the language entry in one menu instead of a footer plus a
+ * selector floating in the top-right corner of the form column. Getting the
+ * selector out of the light column is what frees the space that lets the form
+ * centre with equal left/right spacing (#594.16a).
+ *
+ * Below @screen-xl the stage panel has slid off-canvas, so this stays the
+ * ordinary in-flow footer on the light surface — the menu is never lost on a
+ * phone, and the 390x844 scroll behaviour from #569 is untouched.
+ */
+
+.layoutFooter.stageFooter {
+    /* antd paints `.ant-layout-footer` white; on the public surface the footer
+       has to be part of the ONE background tone (#594.12), never a white block
+       under a grey page. */
+    padding: @spacing-sm;
+    background: transparent;
+
+    .footerMenu {
+        padding-left: 0;
+        border-bottom: 0;
+        background-color: transparent;
+    }
+}
+
+@media screen and (min-width: @screen-xl) {
+    .layoutFooter.stageFooter {
+        position: fixed;
+
+        /* Above the stage panel (z-index 20), below any dialog. */
+        z-index: 21;
+        bottom: 0;
+        left: 0;
+        width: 40vw;
+        justify-content: flex-start;
+        padding: @spacing-m @spacing-2xl;
+        background: transparent;
+        gap: @spacing-m;
+
+        .footerMenu {
+            padding-left: 0;
+            line-height: 1.4;
+
+            .ant-menu-item,
+            .ant-menu-submenu-title {
+                padding: 0;
+                margin-right: @spacing-m;
+                color: @white;
+                font-size: @fontSize-m;
+                font-weight: 700;
+                text-transform: uppercase;
+
+                &:hover {
+                    /* The only affordance available on a dark panel where the
+                       brand red would disappear. */
+                    color: @white;
+                    text-decoration: underline;
+                }
+            }
+
+            .ant-menu-submenu-arrow,
+            .ant-menu-submenu-expand-icon {
+                color: @white;
+            }
+
+            a {
+                color: @white;
+
+                &:hover {
+                    color: @white;
+                }
+            }
+        }
+
+        .platformVersion {
+            color: rgb(255 255 255 / 70%);
+        }
+    }
+}

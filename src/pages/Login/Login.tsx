@@ -4,7 +4,6 @@ import { Navigate } from 'react-router-dom';
 import { Col, Row } from 'antd';
 import Stage from './Stage';
 import PublicPageLayoutWrapper from '../../components/Layout/PublicPageLayoutWrapper';
-import { LanguageSelector } from '../../components/LanguageSelector';
 import LoginForm from './LoginForm';
 import routePathNames from '../../appConfig';
 import { bootstrapAuthSession, getAccessTokenForRequests } from '../../api/auth/auth';
@@ -13,6 +12,32 @@ import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 import { UserRole } from '../../enums/UserRole';
 import { useAppConfigContext } from '../../context/useAppConfig';
+
+export interface LoginSurfaceProps {
+    /** Platform logo from Theme settings → Appearance (#594.14). */
+    logo?: string | null;
+    claim?: string | null;
+}
+
+/**
+ * The public sign-in SURFACE, without any session logic: dark stage panel on
+ * the left, form column on the right, and the footer menu (Imprint, Privacy,
+ * language) in the bottom left of that panel (#594.15b).
+ *
+ * Extracted from {@link Login} so a story can show the very same markup the
+ * route renders — #594 asks for the login and the onboarding page to be
+ * comparable side by side, and a story that rebuilds the markup would drift.
+ */
+export const LoginSurface = ({ logo, claim }: LoginSurfaceProps) => (
+    <PublicPageLayoutWrapper className="login flex-col flex" footerVariant="stage">
+        <Stage logo={logo} claim={claim} />
+        <Row align="middle" style={{ flex: '1 0 auto' }}>
+            <Col xs={{ span: 22, offset: 1 }} md={{ span: 6, offset: 3 }} xl={{ span: 4, offset: 6 }}>
+                <LoginForm />
+            </Col>
+        </Row>
+    </PublicPageLayoutWrapper>
+);
 
 /**
  * login component
@@ -26,6 +51,8 @@ export const Login = () => {
     const currentTime = Date.now();
     const tokenExpiry = getTokenExpiryFromLocalStorage();
     const { data: tenantData } = usePublicTenantData();
+    const logo = tenantData?.theming?.logo;
+    const claim = tenantData?.content?.claim;
     const { hasRole, isTechnicalAccount } = useUserRoles();
     const accessTokenValidInMs = tokenExpiry.accessTokenValidUntilTime - currentTime;
 
@@ -87,19 +114,5 @@ export const Login = () => {
         settings.mainTenantSubdomainForSingleDomainMultitenancy,
     ]);
 
-    return redirectUrl ? (
-        <Navigate to={redirectUrl} />
-    ) : (
-        <PublicPageLayoutWrapper className="login flex-col flex">
-            <div className="loginLanguageSelector">
-                <LanguageSelector variant="login" ariaLabelKey="language.loginSelectAriaLabel" />
-            </div>
-            <Stage logo={tenantData?.theming?.logo} claim={tenantData?.content?.claim} />
-            <Row align="middle" style={{ flex: '1 0 auto' }}>
-                <Col xs={{ span: 22, offset: 1 }} md={{ span: 6, offset: 3 }} xl={{ span: 4, offset: 6 }}>
-                    <LoginForm />
-                </Col>
-            </Row>
-        </PublicPageLayoutWrapper>
-    );
+    return redirectUrl ? <Navigate to={redirectUrl} /> : <LoginSurface logo={logo} claim={claim} />;
 };
