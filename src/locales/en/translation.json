@@ -344,6 +344,7 @@
     "links.bulk.sendSummaryPartial": "{{sent}} sent, {{failed}} failed: {{emails}}",
     "links.templates.manage": "Manage templates",
     "links.templates.dialogTitle": "Email templates",
+    "links.templates.previewLabel": "Email preview",
     "links.templates.close": "Close",
     "links.templates.back": "Back",
     "links.templates.save": "Save",

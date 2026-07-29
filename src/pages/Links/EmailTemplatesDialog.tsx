@@ -10,6 +10,7 @@ import {
     TemplateRequestDTO,
     updateInviteEmailTemplate,
 } from '../../api/accountInvites/accountInvites';
+import { EmailTemplatePreview } from '../../components/EmailTemplatePreview';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { Modal, DialogButton } from '../../components/Modal';
 import styles from './EmailTemplatesDialog.module.scss';
@@ -57,6 +58,8 @@ export const EmailTemplatesDialog = ({
     const [submitting, setSubmitting] = useState(false);
     const [view, setView] = useState<'list' | 'form'>('list');
     const [editingTemplate, setEditingTemplate] = useState<InviteEmailTemplateDTO | null>(null);
+    const previewSubject = Form.useWatch('subject', form) ?? '';
+    const previewBody = Form.useWatch('body', form) ?? '';
 
     const kindLabel = useCallback((kind: InviteEmailTemplateKind) => t(`links.templates.kind.${kind}`, kind), [t]);
 
@@ -252,7 +255,7 @@ export const EmailTemplatesDialog = ({
             icon={<EmailOutlinedIcon />}
             onClose={onClose}
             footer={view === 'list' ? listFooter : formFooter}
-            width={860}
+            width={1180}
         >
             {view === 'list' ? (
                 <ListingTable
@@ -268,70 +271,83 @@ export const EmailTemplatesDialog = ({
                 />
             ) : (
                 <Form form={form} layout="vertical" onFinish={onSubmit} initialValues={{ active: true }}>
-                    <Form.Item
-                        name="kind"
-                        label={t('links.templates.field.kind', 'Kind')}
-                        rules={[{ required: true, message: t('plsSelect') }]}
-                    >
-                        <Select options={TEMPLATE_KINDS.map((kind) => ({ value: kind, label: kindLabel(kind) }))} />
-                    </Form.Item>
-                    <Form.Item
-                        name="name"
-                        label={t('links.templates.field.name', 'Name')}
-                        rules={[
-                            {
-                                required: true,
-                                whitespace: true,
-                                message: t('links.templates.field.nameRequired', 'Name is required'),
-                            },
-                        ]}
-                    >
-                        <Input />
-                    </Form.Item>
-                    <Form.Item name="language" label={t('links.templates.field.language', 'Language')}>
-                        <Input placeholder="de" />
-                    </Form.Item>
-                    <Form.Item
-                        name="subject"
-                        label={t('links.templates.field.subject', 'Subject')}
-                        rules={[
-                            {
-                                required: true,
-                                whitespace: true,
-                                message: t('links.templates.field.subjectRequired', 'Subject is required'),
-                            },
-                        ]}
-                    >
-                        <Input />
-                    </Form.Item>
-                    <Form.Item
-                        name="body"
-                        label={t('links.templates.field.body', 'Body')}
-                        rules={[
-                            {
-                                required: true,
-                                whitespace: true,
-                                message: t('links.templates.field.bodyRequired', 'Body is required'),
-                            },
-                        ]}
-                        extra={
-                            <>
-                                {t('links.templates.field.bodyHelp', 'Available placeholders:')}{' '}
-                                {/* Placeholder tokens are literal template syntax, not prose — kept out of
+                    <div className={styles.formAndPreview}>
+                        <div className={styles.formFields}>
+                            <Form.Item
+                                name="kind"
+                                label={t('links.templates.field.kind', 'Kind')}
+                                rules={[{ required: true, message: t('plsSelect') }]}
+                            >
+                                <Select
+                                    options={TEMPLATE_KINDS.map((kind) => ({ value: kind, label: kindLabel(kind) }))}
+                                />
+                            </Form.Item>
+                            <Form.Item
+                                name="name"
+                                label={t('links.templates.field.name', 'Name')}
+                                rules={[
+                                    {
+                                        required: true,
+                                        whitespace: true,
+                                        message: t('links.templates.field.nameRequired', 'Name is required'),
+                                    },
+                                ]}
+                            >
+                                <Input />
+                            </Form.Item>
+                            <Form.Item name="language" label={t('links.templates.field.language', 'Language')}>
+                                <Input placeholder="de" />
+                            </Form.Item>
+                            <Form.Item
+                                name="subject"
+                                label={t('links.templates.field.subject', 'Subject')}
+                                rules={[
+                                    {
+                                        required: true,
+                                        whitespace: true,
+                                        message: t('links.templates.field.subjectRequired', 'Subject is required'),
+                                    },
+                                ]}
+                            >
+                                <Input />
+                            </Form.Item>
+                            <Form.Item
+                                name="body"
+                                label={t('links.templates.field.body', 'Body')}
+                                rules={[
+                                    {
+                                        required: true,
+                                        whitespace: true,
+                                        message: t('links.templates.field.bodyRequired', 'Body is required'),
+                                    },
+                                ]}
+                                extra={
+                                    <>
+                                        {t('links.templates.field.bodyHelp', 'Available placeholders:')}{' '}
+                                        {/* Placeholder tokens are literal template syntax, not prose — kept out of
                                     i18next's t() so its {{var}} interpolation does not try to substitute them. */}
-                                <code>{'{{inviteLink}}, {{email}}, {{firstName}}, {{lastName}}, {{tenantId}}'}</code>
-                            </>
-                        }
-                    >
-                        <Input.TextArea rows={8} />
-                    </Form.Item>
-                    <Form.Item
-                        name="active"
-                        label={t('links.templates.field.active', 'Active')}
-                        valuePropName="checked"
-                    >
-                        <Switch />
-                    </Form.Item>
+                                        <code>
+                                            {'{{inviteLink}}, {{email}}, {{firstName}}, {{lastName}}, {{tenantId}}'}
+                                        </code>
+                                    </>
+                                }
+                            >
+                                <Input.TextArea rows={8} />
+                            </Form.Item>
+                            <Form.Item
+                                name="active"
+                                label={t('links.templates.field.active', 'Active')}
+                                valuePropName="checked"
+                            >
+                                <Switch />
+                            </Form.Item>
+                        </div>
+                        <EmailTemplatePreview
+                            subject={previewSubject}
+                            body={previewBody}
+                            previewLabel={t('links.templates.previewLabel', 'Email preview')}
+                        />
+                    </div>
                 </Form>
             )}
         </Modal>
