@@ -1,0 +1,21 @@
+/* Body of the footer's Imprint/Privacy dialog (#594.15b). The dialog chrome is
+   the shared M3 Modal; only the reading rhythm of the text lives here. When the
+   stored legal texts replace the placeholder copy (see legalNoticeContent.ts)
+   this block is what the read-only reader takes over. */
+
+.body {
+    max-height: min(60vh, 520px);
+    overflow-y: auto;
+
+    p {
+        margin: 0 0 12px;
+        color: var(--m3-on-surface-variant, #444748);
+        font-size: 14px;
+        letter-spacing: 0.25px;
+        line-height: 20px;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+}

@@ -2,7 +2,6 @@ import { Col, Row } from 'antd';
 import clsx from 'clsx';
 import { ThemeProvider } from '@mui/material/styles';
 import PublicPageLayoutWrapper from '../../components/Layout/PublicPageLayoutWrapper';
-import { LanguageSelector } from '../../components/LanguageSelector';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import Stage from '../Login/Stage';
@@ -32,10 +31,14 @@ export const PasswordResetPageLayout = ({ children, variant = 'login' }: Passwor
         // `publicLongForm` opts out of the 320px sign-in column cap that
         // loginForm.less applies to every public page from md up (#594.3): a
         // 60-page agreement needs a reading measure, a login form does not.
-        <PublicPageLayoutWrapper className={clsx('login flex-col flex', isLongForm && 'publicLongForm')}>
-            <div className="loginLanguageSelector">
-                <LanguageSelector variant="login" ariaLabelKey="language.loginSelectAriaLabel" />
-            </div>
+        <PublicPageLayoutWrapper
+            className={clsx('login flex-col flex', isLongForm && 'publicLongForm')}
+            // The language switcher is the third entry of the stage footer menu
+            // now (#594.15b). Taking it out of the light column is what frees
+            // the space the form needs to centre with equal side spacing
+            // (#594.16a) — it used to reserve a ~200px strip on the right.
+            footerVariant="stage"
+        >
             {/* The Admin panel's branding fade plays once on EVERY public page
                 (#594.3). It is fixed-position and settles off-canvas below xl,
                 so it never covers a long form after its intro. */}

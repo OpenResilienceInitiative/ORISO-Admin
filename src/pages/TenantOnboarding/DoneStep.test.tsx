@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -52,6 +54,25 @@ describe('DoneStep', () => {
         expect(steps).toHaveLength(2);
         expect(steps[0]).toHaveTextContent('tenantOnboarding.done.next.activation');
         expect(steps[1]).toHaveTextContent('tenantOnboarding.done.next.login');
+    });
+
+    /**
+     * #594.11 — the check used to be MUI's CheckCircle painted with
+     * `--admin-status-success`, i.e. GREEN. Green is a table-row status colour
+     * and not part of this surface's palette. The glyph is now the `Verified`
+     * icon from the admin's own gallery (Atoms/CustomIcons), coloured with the
+     * product's secondary token.
+     */
+    it('draws the confirmation with the product icon, not with a foreign green check', () => {
+        renderDone();
+
+        const icon = screen.getByTestId('onboarding-done-success-icon');
+        const styles = readFileSync(resolve(__dirname, 'styles.module.scss'), 'utf8');
+        const doneIcon = styles.match(/\.doneIcon \{([\s\S]*?)\n\}/)?.[1] ?? '';
+
+        expect(icon).toHaveClass('anticon');
+        expect(doneIcon).toMatch(/color:\s*var\(--m3-secondary/);
+        expect(doneIcon).not.toMatch(/admin-status-success/);
     });
 
     it('makes the single primary action a real M3 button that goes to the login', async () => {

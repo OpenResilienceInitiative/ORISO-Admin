@@ -2,22 +2,25 @@
 
 /* Public tenant-admin onboarding (#571).
  *
- * Surface language (#594.8) — copied from Organisms/Modal, the product's
- * reference sheet: a NEUTRAL `--m3-surface-container-high` sheet with a 28px
- * radius, everything on it tonal with it (fields included — no white boxes
- * punched into a tinted page), and the accent left to the actions. Every
- * colour here resolves to an ORISO token from src/app.css — and to nothing
- * else: no local hex fallbacks, which would be a second palette free to drift
- * away from the tokens.
+ * Surface language (#594.8, extended by #594.12/#594.17) — taken from
+ * Organisms/Modal, the product's reference sheet: the NEUTRAL
+ * `--m3-surface-container-high` tone, everything on it tonal with it (fields
+ * included — no white boxes punched into a tinted page), and the accent left
+ * to the actions. Since #594.12 that tone is the PAGE background of the whole
+ * public surface, so nothing here paints a sheet of its own any more. Every
+ * colour resolves to an ORISO token from src/app.css.
  */
 
 .sheet {
-    padding: 32px;
-    background: var(--m3-surface-container-high);
-    border-radius: 28px;
-    box-shadow: var(--admin-card-elevation);
+    padding: 32px 0;
 
-    /* Fields are tonal with the sheet instead of white cut-outs. `--input-bg`
+    /* No box (#594.12 / #594.17). The neutral `--m3-surface-container-high`
+       tone the sheet used to paint is now the PAGE background of the whole
+       public surface, so painting it again — plus a radius and a drop shadow —
+       would only draw a box around content that is already on that surface.
+       The element stays as the layout and scroll container of the step. */
+
+    /* Fields are tonal with the page instead of white cut-outs. `--input-bg`
        is the single surface knob MuiFormField reads (src/app.css). */
     --input-bg: var(--m3-surface-container-highest);
     --input-autofill-surface: var(--m3-surface-container-highest);
@@ -26,8 +29,7 @@
     --input-focus-border-color: var(--m3-primary);
 
     @media (max-width: 599px) {
-        padding: 20px;
-        border-radius: 24px;
+        padding: 20px 0;
     }
 }
 
@@ -124,10 +126,22 @@
     text-align: center;
 }
 
+/* The confirmation glyph is the product's own `Verified` icon (Atoms/CustomIcons
+   gallery), in the product's own SECONDARY colour (#594.11). It used to be MUI's
+   CheckCircle in `--admin-status-success` — a GREEN that belongs to table row
+   states, not to this surface, and the same class of defect as the Material
+   default-green fallbacks and the invented navy: a foreign palette entering
+   through a component written from scratch. Comparable elements in the gallery
+   carry primary or secondary; secondary is the quieter and here the better one. */
+
 .doneIcon {
-    width: 56px !important;
-    height: 56px !important;
-    color: var(--admin-status-success);
+    color: var(--m3-secondary, #4c555f);
+    font-size: 56px;
+
+    svg {
+        width: 56px;
+        height: 56px;
+    }
 }
 
 /* The assigned ID as a labelled detail, not inline in the prose. A hairline

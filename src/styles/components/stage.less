@@ -12,22 +12,24 @@
     align-items: flex-start;
     justify-content: flex-start;
     padding: @spacing-2xl;
-    background-color: #1f1f1f !important;
+    /* The desktop sidebar's own token (#594.13a) — the panel and the app shell
+       must provably resolve to the SAME colour, not to two values that merely
+       look alike. See the block comment on `--m3-on-background` in app.css for
+       why the M3 system name is used inverted here. */
+    background-color: var(--m3-on-background, #281715) !important;
     color: #ffffff;
+
+    /* The platform logo from Theme settings → Appearance (#594.14). It is the
+       only artwork on the panel; the hardcoded Lottie fallback is gone. */
 
     .logo {
         width: 200px;
         height: 80px;
-    }
 
-    .stage__lottie {
-        width: 200px;
-        height: 200px;
-        margin-left: -12px;
-
-        svg {
-            width: 100% !important;
-            height: 100% !important;
+        img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
         }
     }
 
@@ -80,6 +82,11 @@
 @media screen and (min-width: @screen-xl) {
     .stage {
         display: flex;
+
+        /* Room for the footer menu that now sits in the bottom left of this
+           panel (#594.15b) — the claim is pushed up by `margin-top: auto` and
+           would otherwise land underneath it. */
+        padding-bottom: calc(@spacing-2xl + 40px);
 
         &--animated {
             @media (prefers-reduced-motion: reduce) {

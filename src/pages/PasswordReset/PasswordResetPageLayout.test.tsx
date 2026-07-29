@@ -4,15 +4,10 @@ import { render, screen } from '@testing-library/react';
 import { PasswordResetPageLayout } from './PasswordResetPageLayout';
 
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
-}));
-
-vi.mock('../../components/LanguageSelector', () => ({
-    LanguageSelector: () => <div data-testid="language-selector" />,
-}));
-
-vi.mock('../../components/LottieAnimation', () => ({
-    LottieAnimation: () => <div data-testid="stage-animation" />,
+    useTranslation: () => ({
+        t: (key: string) => key,
+        i18n: { language: 'de', on: vi.fn(), off: vi.fn(), changeLanguage: vi.fn() },
+    }),
 }));
 
 vi.mock('../../hooks/usePublicTenantData.hook', () => ({
@@ -124,5 +119,32 @@ describe('PasswordResetPageLayout', () => {
         );
 
         expect(screen.getByTestId('content').closest('.publicContent')).not.toHaveClass('publicLongForm');
+    });
+
+    /**
+     * #594.15b / #594.16a: the language switcher used to be a fixed control in
+     * the top-right corner of the LIGHT column. It reserved horizontal space
+     * there, which is why every attempt to centre the form column produced
+     * "centred, but only on the short steps". It is an entry of the stage
+     * footer menu now, so nothing occupies the light column any more.
+     */
+    it('no longer floats a language selector over the form column', () => {
+        render(
+            <PasswordResetPageLayout variant="longForm">
+                <div data-testid="content" />
+            </PasswordResetPageLayout>,
+        );
+
+        expect(document.querySelector('.loginLanguageSelector')).toBeNull();
+    });
+
+    it('renders the footer menu in its stage variant on every public page', () => {
+        render(
+            <PasswordResetPageLayout variant="longForm">
+                <div data-testid="content" />
+            </PasswordResetPageLayout>,
+        );
+
+        expect(document.querySelector('.layoutFooter')).toHaveClass('stageFooter');
     });
 });
