@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FETCH_METHODS } from '../fetchData';
+import { tenantServiceURL } from '../../appConfig';
+import { runtimeConfig } from '../../config/runtimeConfig';
 import {
     IdReservationConflictError,
     agencyIdAllocationEndpoint,
@@ -28,8 +30,10 @@ describe('id allocation API client', () => {
     });
 
     it('exposes tenant and agency endpoints on their owning services', () => {
-        expect(tenantIdAllocationEndpoint).toContain('/service/tenantadmin/id-allocation');
-        expect(agencyIdAllocationEndpoint).toContain('/service/agencyadmin/id-allocation');
+        expect(tenantIdAllocationEndpoint).toBe(`${tenantServiceURL}/service/tenantadmin/id-allocation`);
+        expect(agencyIdAllocationEndpoint).toBe(
+            `${runtimeConfig.agencyServiceOrigin}/service/agencyadmin/id-allocation`,
+        );
     });
 
     it('checks the availability of a single id', async () => {

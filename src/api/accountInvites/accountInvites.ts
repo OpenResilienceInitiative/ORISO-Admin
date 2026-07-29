@@ -109,6 +109,18 @@ export interface TemplateRequestDTO {
 export const accountInviteAcceptBaseUrl = `${appURL.replace(/\/$/, '')}/account-invite`;
 export { accountInvitesEndpoint };
 
+const normalizeAllocatedId = (
+    field: 'tenantId' | 'agencyId',
+    mode: AllocationMode | undefined,
+    id: number | undefined,
+): number | undefined => {
+    if (mode === 'AUTO') return undefined;
+    if (mode === 'MANUAL' && id == null) {
+        throw new TypeError(`${field} is required when allocation mode is MANUAL`);
+    }
+    return id;
+};
+
 export const listAccountInvites = async (
     params: ListAccountInvitesParams = {},
 ): Promise<PagedAccountInviteResponse> => {
@@ -128,6 +140,8 @@ export const listAccountInvites = async (
 };
 
 export const createAccountInvite = async (body: CreateAccountInviteRequest): Promise<AccountInviteDTO> => {
+    const tenantId = normalizeAllocatedId('tenantId', body.tenantIdAllocationMode, body.tenantId);
+    const agencyId = normalizeAllocatedId('agencyId', body.agencyIdAllocationMode, body.agencyId);
     const response = await fetchData({
         url: accountInvitesEndpoint,
         method: FETCH_METHODS.POST,
@@ -138,7 +152,7 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
         responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.CONFLICT_WITH_RESPONSE],
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
-            agencyId: body.agencyId,
+            agencyId,
             agencyIdAllocationMode: body.agencyIdAllocationMode,
             departmentId: body.departmentId,
             expiresInDays: body.expiresInDays,
@@ -147,7 +161,7 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
             recipientEmail: body.recipientEmail,
             targetRole: body.targetRole,
             templateId: body.templateId,
-            tenantId: body.tenantId,
+            tenantId,
             tenantIdAllocationMode: body.tenantIdAllocationMode,
         }),
     });

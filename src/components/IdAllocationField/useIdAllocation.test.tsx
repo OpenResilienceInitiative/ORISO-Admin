@@ -27,8 +27,8 @@ const nextFreeFromExample = ({ from, direction }: NextFreeIdParams): number | nu
 const createClient = (): IdAllocationClient => ({
     checkIdAvailability: vi.fn(async (id: number) => ({ id, state: stateOf(id) })),
     nextFreeId: vi.fn(async (params: NextFreeIdParams) => ({ id: nextFreeFromExample(params) })),
-    reserveId: vi.fn(),
-    releaseId: vi.fn(),
+    reserveId: vi.fn(async ({ id }) => ({ id: id ?? 21 })),
+    releaseId: vi.fn(async () => {}),
 });
 
 const flushPromises = async () => {
@@ -123,6 +123,33 @@ describe('useIdAllocation', () => {
         await flushPromises();
         expect(result.current.value).toBe(22);
         expect(result.current.stepDownDisabled).toBe(false);
+    });
+
+    it('uses the queried up direction when stepping from an empty manual field fails', async () => {
+        const client = createClient();
+        (client.nextFreeId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ id: null });
+        const { result } = renderHook(() => useIdAllocation({ client }));
+
+        act(() => result.current.setManualValue(undefined));
+        act(() => result.current.step(-1));
+        await flushPromises();
+
+        expect(client.nextFreeId).toHaveBeenCalledWith({ direction: 'up' });
+        expect(result.current.stepUpDisabled).toBe(true);
+        expect(result.current.stepDownDisabled).toBe(false);
+    });
+
+    it('keeps manual-empty visibly invalid when next-free lookup rejects', async () => {
+        const client = createClient();
+        (client.nextFreeId as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('boom'));
+        const { result } = renderHook(() => useIdAllocation({ client }));
+
+        act(() => result.current.setManualValue(undefined));
+        act(() => result.current.step(1));
+        await flushPromises();
+
+        expect(result.current.mode).toBe('manual');
+        expect(result.current.validation).toBe('error');
     });
 
     it('ignores further step requests while one is in flight', async () => {
@@ -269,5 +296,39 @@ describe('useIdAllocation', () => {
         });
         expect(result.current.validation).toBe('auto');
         expect(result.current.canSubmit).toBe(true);
+    });
+
+    it('ignores a pending next-free response after unmount', async () => {
+        const client = createClient();
+        let resolveNextFree: (value: { id: number | null }) => void = () => {};
+        (client.nextFreeId as ReturnType<typeof vi.fn>).mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    resolveNextFree = resolve;
+                }),
+        );
+        const { result, unmount } = renderHook(() => useIdAllocation({ client }));
+
+        act(() => result.current.step(1));
+        unmount();
+        await act(async () => {
+            resolveNextFree({ id: 21 });
+            await Promise.resolve();
+        });
+
+        expect(client.nextFreeId).toHaveBeenCalledTimes(1);
+    });
+
+    it('reserves a confirmed manual id and releases it after a failed submit', async () => {
+        const client = createClient();
+        const { result } = renderHook(() => useIdAllocation({ client }));
+
+        act(() => result.current.setManualValue(21));
+        await advance(300);
+        await act(() => result.current.reserveForSubmit());
+        expect(client.reserveId).toHaveBeenCalledWith({ allocationMode: 'MANUAL', id: 21 });
+
+        await act(() => result.current.releaseReservation());
+        expect(client.releaseId).toHaveBeenCalledWith(21);
     });
 });

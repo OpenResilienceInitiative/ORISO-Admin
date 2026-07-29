@@ -72,6 +72,35 @@ describe('account invite API', () => {
         expect(result).toEqual(responseBody);
     });
 
+    it('omits browser-pinned ids in AUTO allocation mode', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ json: async () => ({ id: 1 }) });
+
+        await createAccountInvite({
+            agencyId: 9,
+            agencyIdAllocationMode: 'AUTO',
+            recipientEmail: 'person@example.org',
+            targetRole: 'TENANT_ADMIN',
+            tenantId: 7,
+            tenantIdAllocationMode: 'AUTO',
+        });
+
+        const payload = JSON.parse(mocks.fetchData.mock.calls[0][0].bodyData);
+        expect(payload.tenantId).toBeUndefined();
+        expect(payload.agencyId).toBeUndefined();
+    });
+
+    it('rejects MANUAL allocation without the required id before transport', async () => {
+        await expect(
+            createAccountInvite({
+                recipientEmail: 'person@example.org',
+                targetRole: 'TENANT_ADMIN',
+                tenantIdAllocationMode: 'MANUAL',
+            }),
+        ).rejects.toThrow('tenantId is required when allocation mode is MANUAL');
+
+        expect(mocks.fetchData).not.toHaveBeenCalled();
+    });
+
     it('resends an invite through the account-invite endpoint', async () => {
         mocks.fetchData.mockResolvedValueOnce({ json: async () => ({ id: 2 }) });
 

@@ -35,11 +35,17 @@ export interface NextFreeIdDTO {
     id: number | null;
 }
 
-export interface ReserveIdRequest {
-    allocationMode: AllocationMode;
-    /** Required in MANUAL mode; must be omitted in AUTO mode (the backend picks the smallest free id). */
-    id?: number;
-}
+export type ReserveIdRequest =
+    | {
+          allocationMode: 'AUTO';
+          /** AUTO is resolved atomically by the owning service and must never pin a browser-selected id. */
+          id?: never;
+      }
+    | {
+          allocationMode: 'MANUAL';
+          /** The explicitly selected id to reserve before invite submission. */
+          id: number;
+      };
 
 export interface ReservedIdDTO {
     id: number;

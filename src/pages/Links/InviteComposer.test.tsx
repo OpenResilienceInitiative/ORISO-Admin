@@ -123,6 +123,10 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         mocks.listAccountInvites.mockResolvedValue(emptyInvitesPage);
         mocks.tenantIdAllocationClient.checkIdAvailability.mockResolvedValue({ id: 21, state: 'FREE' });
         mocks.tenantIdAllocationClient.nextFreeId.mockResolvedValue({ id: 21 });
+        mocks.tenantIdAllocationClient.reserveId.mockResolvedValue({ id: 21 });
+        mocks.tenantIdAllocationClient.releaseId.mockResolvedValue(undefined);
+        mocks.agencyIdAllocationClient.reserveId.mockResolvedValue({ id: 21 });
+        mocks.agencyIdAllocationClient.releaseId.mockResolvedValue(undefined);
     });
 
     it('keeps the send action outlined + disabled until valid, then flips to primary', async () => {
@@ -219,7 +223,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(await screen.findByText('Diese ID ist durch eine offene Einladung reserviert.')).toBeInTheDocument();
         await waitFor(() => expect(sendButton).toBeDisabled());
 
-        await user.click(screen.getByRole('button', { name: 'Automatische ID-Vergabe' }));
+        await user.click(screen.getByRole('button', { name: 'Auto – Automatische ID-Vergabe' }));
         expect(screen.getByRole('textbox', { name: 'Träger-ID' })).toHaveValue('Auto');
         await waitFor(() => expect(sendButton).toBeEnabled());
     });
@@ -247,6 +251,10 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         const payload = mocks.createAccountInvite.mock.calls[0][0];
         expect(payload.tenantIdAllocationMode).toBe('MANUAL');
         expect(payload.tenantId).toBe(21);
+        expect(mocks.tenantIdAllocationClient.reserveId).toHaveBeenCalledWith({
+            allocationMode: 'MANUAL',
+            id: 21,
+        });
     });
 
     it('parses a picked CSV client-side and opens the preview modal (#315)', async () => {

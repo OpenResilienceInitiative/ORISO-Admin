@@ -118,7 +118,7 @@ export const M3NumberField = ({
     };
 
     const adjust = (direction: 1 | -1) => {
-        if (disabled) {
+        if (disabled || (direction === 1 ? upDisabled : downDisabled)) {
             return;
         }
 
@@ -139,7 +139,11 @@ export const M3NumberField = ({
             // The user typed into (or cleared) the display text: only the digits
             // count — "Auto3" → 3 — and the parent decides what mode that means.
             const digits = raw.replace(/\D/g, '');
-            onChange?.(digits === '' ? undefined : Number(digits));
+            if (digits === '') {
+                if (raw === '') onChange?.(undefined);
+                return;
+            }
+            onChange?.(Number(digits));
             return;
         }
 
@@ -210,8 +214,8 @@ export const M3NumberField = ({
                             onKeyDown={handleInputKeyDown}
                         />
                     </span>
-                    {trailing && <span className={styles.trailing}>{trailing}</span>}
                 </label>
+                {trailing && <span className={styles.trailing}>{trailing}</span>}
                 <button
                     type="button"
                     className={styles.stepper}
@@ -232,7 +236,12 @@ export const M3NumberField = ({
                 </button>
             </div>
             {supportingText != null && (
-                <span className={styles.supportingText} id={supportingTextId} role={error ? 'alert' : undefined}>
+                <span
+                    aria-live={error ? 'assertive' : 'polite'}
+                    className={styles.supportingText}
+                    id={supportingTextId}
+                    role={error ? 'alert' : undefined}
+                >
                     {supportingText}
                 </span>
             )}

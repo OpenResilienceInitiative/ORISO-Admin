@@ -209,20 +209,31 @@ export const InviteComposer = ({
             return;
         }
 
-        const succeeded = await onSubmit({
-            recipientEmail: recipientEmail.trim(),
-            firstName: firstName.trim() || undefined,
-            lastName: lastName.trim() || undefined,
-            // AUTO pins no id in the browser — the backend assigns the smallest free one.
-            tenantId,
-            tenantIdAllocationMode: requireTenantId ? toAllocationMode(tenantAllocation.mode) : undefined,
-            agencyId: includeAgencyField ? agencyAllocation.value : undefined,
-            agencyIdAllocationMode: includeAgencyField ? toAllocationMode(agencyAllocation.mode) : undefined,
-            templateId: sendMode === 'direct' ? templateId : undefined,
-            sendMode,
-        });
+        const activeAllocations = [
+            ...(requireTenantId ? [tenantAllocation] : []),
+            ...(includeAgencyField ? [agencyAllocation] : []),
+        ];
+        let succeeded = false;
+        try {
+            await Promise.all(activeAllocations.map((allocation) => allocation.reserveForSubmit()));
+            succeeded = await onSubmit({
+                recipientEmail: recipientEmail.trim(),
+                firstName: firstName.trim() || undefined,
+                lastName: lastName.trim() || undefined,
+                // AUTO pins no id in the browser — the backend assigns the smallest free one.
+                tenantId,
+                tenantIdAllocationMode: requireTenantId ? toAllocationMode(tenantAllocation.mode) : undefined,
+                agencyId: includeAgencyField ? agencyAllocation.value : undefined,
+                agencyIdAllocationMode: includeAgencyField ? toAllocationMode(agencyAllocation.mode) : undefined,
+                templateId: sendMode === 'direct' ? templateId : undefined,
+                sendMode,
+            });
+        } catch {
+            succeeded = false;
+        }
 
         if (succeeded) {
+            activeAllocations.forEach((allocation) => allocation.consumeReservation());
             setRecipientEmail('');
             setEmailTouched(false);
             setFirstName('');
@@ -231,6 +242,8 @@ export const InviteComposer = ({
             // The next invite starts with no deliberate number choice again.
             tenantAllocation.resetToAuto();
             agencyAllocation.resetToAuto();
+        } else {
+            await Promise.allSettled(activeAllocations.map((allocation) => allocation.releaseReservation()));
         }
     };
 

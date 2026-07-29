@@ -47,13 +47,15 @@ export const IdAllocationField = ({ label, allocation, disabled = false, classNa
             displayText={isAuto ? t('idAllocationField.auto', 'Auto') : undefined}
             error={isError}
             label={label}
-            min={1}
             stepDownDisabled={stepDownDisabled}
             stepUpDisabled={stepUpDisabled}
             supportingText={supportingText[validation]}
             trailing={
                 <button
-                    aria-label={t('idAllocationField.autoToggle', 'Automatische ID-Vergabe')}
+                    aria-label={`${t('idAllocationField.auto', 'Auto')} – ${t(
+                        'idAllocationField.autoToggle',
+                        'Automatische ID-Vergabe',
+                    )}`}
                     aria-pressed={isAuto}
                     className={styles.autoToggle}
                     disabled={disabled}

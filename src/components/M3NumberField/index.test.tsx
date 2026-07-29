@@ -99,6 +99,19 @@ describe('M3NumberField', () => {
         expect(onChange).toHaveBeenLastCalledWith(undefined);
     });
 
+    it('keeps display text mode when non-numeric text is only partially edited', async () => {
+        const onChange = vi.fn();
+        const user = userEvent.setup();
+        render(<M3NumberField label="Träger-ID" displayText="Auto" onChange={onChange} />);
+        const input = screen.getByRole('textbox', { name: 'Träger-ID' });
+
+        await user.click(input);
+        await user.keyboard('{Backspace}');
+
+        expect(onChange).not.toHaveBeenCalled();
+        expect(input).toHaveValue('Auto');
+    });
+
     it('routes steppers and arrow keys through onStep when provided', async () => {
         const onChange = vi.fn();
         const onStep = vi.fn();
@@ -118,10 +131,24 @@ describe('M3NumberField', () => {
         expect(onChange).not.toHaveBeenCalled();
     });
 
-    it('disables individual steppers via stepUpDisabled/stepDownDisabled', () => {
-        render(<M3NumberField label="Träger-ID" value={4} stepUpDisabled onStep={() => {}} />);
+    it('disables individual step buttons and matching arrow keys', async () => {
+        const onStep = vi.fn();
+        const user = userEvent.setup();
+        const { rerender } = render(<M3NumberField label="Träger-ID" value={4} stepUpDisabled onStep={onStep} />);
         expect(screen.getByRole('button', { name: 'Wert erhöhen' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Wert verringern' })).toBeEnabled();
+
+        const input = screen.getByRole('textbox', { name: 'Träger-ID' });
+        await user.click(input);
+        await user.keyboard('{ArrowUp}{ArrowDown}');
+        expect(onStep).toHaveBeenCalledTimes(1);
+        expect(onStep).toHaveBeenLastCalledWith(-1);
+
+        onStep.mockClear();
+        rerender(<M3NumberField label="Träger-ID" value={4} stepDownDisabled onStep={onStep} />);
+        await user.keyboard('{ArrowDown}{ArrowUp}');
+        expect(onStep).toHaveBeenCalledTimes(1);
+        expect(onStep).toHaveBeenLastCalledWith(1);
     });
 
     it('links supporting text accessibly and flags the error state', () => {
