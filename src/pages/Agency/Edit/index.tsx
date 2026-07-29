@@ -1,5 +1,5 @@
 import { Alert, Button, Form, notification } from 'antd';
-import { Fragment, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
@@ -29,8 +29,7 @@ import { useAgencyLegalDataMissing } from '../../../hooks/useAgencyLegalDataMiss
 import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
 import { DataProcessingAgreementContainer } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer';
-import { DepartmentDataProtectionContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentDataProtectionContainer';
-import { DepartmentImprintContainer } from '../../../components/Tenants/LegalSettings/components/DepartmentImprintContainer';
+import { AgencyLegalTextContainer } from '../../../components/Tenants/LegalSettings/components/AgencyLegalTextContainer';
 import styles from '../../../components/Page/styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
@@ -88,7 +87,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         refetch: refetchDpaGate,
     } = useDpaGate(tenantId ?? 0, !isEditing && isTenantScopedAdmin);
     const [form] = Form.useForm();
-    const { mutate } = useAgencyUpdate(id);
+    const { mutate, isPending: isAgencySaving } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
     const agencySettingsTabs = isAgencyInaccessible
@@ -402,27 +401,25 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
                     <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />
                 </CardDeck.Item>
-                {agencyData?.id &&
-                    (agencyData.topics || [])
-                        .filter((topic) => topic.id != null)
-                        .map((topic) => (
-                            <Fragment key={`legal-${topic.id}`}>
-                                <CardDeck.Item className={styles.cardDeckItem}>
-                                    <DepartmentImprintContainer
-                                        agencyId={Number(agencyData.id)}
-                                        topicId={topic.id as number}
-                                        departmentName={topic.name}
-                                    />
-                                </CardDeck.Item>
-                                <CardDeck.Item className={styles.cardDeckItem}>
-                                    <DepartmentDataProtectionContainer
-                                        agencyId={Number(agencyData.id)}
-                                        topicId={topic.id as number}
-                                        departmentName={topic.name}
-                                    />
-                                </CardDeck.Item>
-                            </Fragment>
-                        ))}
+                <CardDeck.Item className={styles.cardDeckItem}>
+                    {/* ADR-014: one editor per legal-text kind for the whole Beratungsstelle; the
+                        Fachbereich is chosen in the editor's lower function bar (Figma 1261:52149),
+                        with "Alle Fachbereiche" editing the inheritable agency-wide text. */}
+                    <AgencyLegalTextContainer
+                        agencyData={agencyData}
+                        field="imprint"
+                        onSaveAgencyWide={onSaveCard}
+                        saving={isAgencySaving}
+                    />
+                </CardDeck.Item>
+                <CardDeck.Item className={styles.cardDeckItem}>
+                    <AgencyLegalTextContainer
+                        agencyData={agencyData}
+                        field="privacy"
+                        onSaveAgencyWide={onSaveCard}
+                        saving={isAgencySaving}
+                    />
+                </CardDeck.Item>
             </CardDeck>
         </>
     );

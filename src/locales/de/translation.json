@@ -1486,5 +1486,10 @@
     "tenants.appSettings.otherFunctions.teamDiscussion.title": "Team-Besprechung erlauben",
     "tenants.appSettings.otherFunctions.teamDiscussion.description": "Berater:innen können sich zu einer offenen Anfrage in einem nur für das Team sichtbaren Raum abstimmen, den die ratsuchende Person nie sieht; er schließt bei Annahme der Anfrage.",
     "twoFactorAuth.required.skip": "Später einrichten",
-    "twoFactorAuth.required.skipHint": "Sie können die Zwei-Faktor-Authentifizierung jederzeit unter Profil aktivieren."
+    "twoFactorAuth.required.skipHint": "Sie können die Zwei-Faktor-Authentifizierung jederzeit unter Profil aktivieren.",
+    "agency.legal.department.all": "Alle Fachbereiche",
+    "agency.legal.department.choose": "Fachbereich wählen",
+    "agency.legal.department.loadError.title": "Rechtstext konnte nicht geladen werden",
+    "agency.legal.department.loadError.text": "Der Text für „{{name}}“ ist gerade nicht abrufbar. Bearbeiten ist gesperrt, damit der vorhandene Text nicht versehentlich durch den geerbten ersetzt wird.",
+    "agency.legal.department.loadError.retry": "Erneut versuchen"
 }
