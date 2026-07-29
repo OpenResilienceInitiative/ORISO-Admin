@@ -36,6 +36,11 @@ interface DepartmentDataProtectionCardProps {
     onTranslate?: (request: TranslateRequest) => Promise<TranslateResponse>;
     /** Selects the legal document presentation while retaining the shared publication workflow. */
     documentType?: 'privacy' | 'imprint';
+    /**
+     * Fachbereich switcher for the editor's lower function bar, between language and version
+     * (Figma 1261:52149). Absent when the card edits a single fixed department.
+     */
+    departmentSlot?: React.ReactNode;
 }
 
 /**
@@ -55,6 +60,7 @@ export const DepartmentDataProtectionCard = ({
     saving,
     onTranslate,
     documentType = 'privacy',
+    departmentSlot,
 }: DepartmentDataProtectionCardProps) => {
     const { t } = useTranslation();
     const published = publicationStatus === 'PUBLISHED';
@@ -109,6 +115,7 @@ export const DepartmentDataProtectionCard = ({
                         contentMap={contentMapWithEdits}
                     />
                 }
+                topicSlot={departmentSlot}
                 helpSlot={
                     <>
                         <div className={styles.header}>
