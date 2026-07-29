@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
-import { HeadingAnchors, collectAnchors, slugifyAnchorId } from './headingAnchors';
+import { HeadingAnchors, collectAnchors, ensureHeadingAnchorIds, slugifyAnchorId } from './headingAnchors';
 
 let editors: Editor[] = [];
 
@@ -128,5 +128,49 @@ describe('HeadingAnchors — anchor removal (chip "x")', () => {
     it('returns false for unknown anchor ids', () => {
         const editor = createEditor('<h2 id="intro">Intro</h2>');
         expect(editor.commands.removeHeadingAnchor('nope')).toBe(false);
+    });
+});
+
+/**
+ * #594.1 — published legal texts are rendered by the READ-ONLY editor, which
+ * never mutates the document (it must not rewrite stored legal HTML). Content
+ * that predates the anchor feature therefore has no ids and would show no
+ * chapter chips at all. This pure helper stamps the missing ids on the way IN,
+ * using the very same slug vocabulary as the editor.
+ */
+describe('ensureHeadingAnchorIds (read-only hosts)', () => {
+    it('stamps readable slug ids onto headings that have none', () => {
+        const html = ensureHeadingAnchorIds('<h1>Präambel</h1><p>x</p><h2>§ 1 Gegenstand</h2>');
+
+        expect(html).toContain('id="praambel"');
+        expect(html).toContain('id="1-gegenstand"');
+    });
+
+    it('keeps ids the editor already assigned so in-text #cross-references survive', () => {
+        const html = ensureHeadingAnchorIds('<h2 id="geltungsbereich">Geltungsbereich</h2><p>x</p>');
+
+        expect(html).toContain('id="geltungsbereich"');
+    });
+
+    it('de-duplicates repeated heading texts exactly like the editor does', () => {
+        const html = ensureHeadingAnchorIds('<h2>Kapitel</h2><p>a</p><h2>Kapitel</h2><p>b</p>');
+
+        expect(html).toContain('id="kapitel"');
+        expect(html).toContain('id="kapitel-2"');
+    });
+
+    it('respects an author-removed anchor (the chapter stays out of the navigation)', () => {
+        const html = ensureHeadingAnchorIds('<h2 data-anchor-removed="true">Intro</h2><p>a</p>');
+
+        expect(html).not.toContain('id="intro"');
+    });
+
+    it('leaves heading-less or empty content untouched', () => {
+        expect(ensureHeadingAnchorIds('<p>Nur Fließtext</p>')).toBe('<p>Nur Fließtext</p>');
+        expect(ensureHeadingAnchorIds('')).toBe('');
+    });
+
+    it('ignores empty headings (no text to slugify)', () => {
+        expect(ensureHeadingAnchorIds('<h2></h2><p>a</p>')).not.toContain('id=');
     });
 });

@@ -112,6 +112,51 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 }
 
+// Fluid card (#594): hosts that are not the settings deck — the public
+// tenant-onboarding DPA step and the DPA blocker — give the card their own
+// column width. The desktop rule above pins the deck card to 800x740, which
+// would overflow a sign-in-sized column; here the card follows its host and
+// only the text surface is height-capped, so the chapter chips underneath
+// stay in view and a chip jump scrolls INSIDE the text region.
+.module.fluid:not(.inDialog) {
+    width: 100%;
+    max-width: 100%;
+
+    .editorContentScroll {
+        max-height: 46vh;
+        overflow-y: auto;
+    }
+
+    @media (min-width: 600px) {
+        height: auto;
+
+        .editorContentScroll {
+            max-height: 420px;
+        }
+    }
+
+    // The display-size heading scale is made for the 800px deck card. In a
+    // sign-in-sized column it swallows the surface, so the fluid reader keeps
+    // the compact headline scale at every width.
+    .editor {
+        :global(.ProseMirror h1) {
+            font-size: 32px;
+            letter-spacing: 0;
+            line-height: 40px;
+        }
+
+        :global(.ProseMirror h2) {
+            font-size: 26px;
+            line-height: 34px;
+        }
+
+        :global(.ProseMirror h3) {
+            font-size: 22px;
+            line-height: 30px;
+        }
+    }
+}
+
 // The fullscreen dialog fills the viewport on mobile (antd sets the width
 // inline, hence the override).
 .dialogModal {

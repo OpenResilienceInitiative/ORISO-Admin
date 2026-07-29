@@ -99,8 +99,22 @@ export type M3RichTextEditorProps = {
     versionLabel?: string;
     /** Disables the publish action while a publish request is in flight. */
     publishing?: boolean;
-    /** View-only mode: editor content is not editable, toolbar and actions are hidden. */
+    /**
+     * View-only mode: the card is a READER — the content is not editable and
+     * the editing affordances (formatting toolbar, publish/draft actions, and
+     * a version control with nothing to look back at) are not rendered at all.
+     * The fullscreen control stays: reading a long text full-screen is not
+     * editing. Note this is NOT the same as the version look-back, which
+     * deliberately keeps the toolbar visible but inert (Figma 1261-51137).
+     */
     readOnly?: boolean;
+    /**
+     * Fluid sizing: the card fills its host column instead of the fixed
+     * 800x740 admin deck card, and the text surface scrolls inside a capped
+     * region. For hosts that are not the settings deck — e.g. the public
+     * tenant-onboarding DPA step and the DPA blocker (#594).
+     */
+    fluid?: boolean;
     /** Replaces the built-in language split button (e.g. the legal MT-aware language select). */
     languageSlot?: React.ReactNode;
     /**
@@ -142,6 +156,19 @@ export type M3RichTextEditorProps = {
 };
 
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
+
+/**
+ * Editing surface: the ProseMirror contenteditable exposes role="textbox"
+ * (browser-only) but no accessible name (axe: aria-input-field-name, WCAG
+ * 4.1.2) — pin the role and label it with the card title.
+ *
+ * Reading surface (`readOnly`): there is no contenteditable and therefore no
+ * implicit role. Announcing a 60-page contract as a text INPUT would drop
+ * screen readers into forms mode, so the element stays plain — the scroll
+ * viewport around it carries the labelled `region` instead.
+ */
+const editorSurfaceAttributes = (readOnly: boolean | undefined, title: string) =>
+    readOnly ? {} : { 'aria-label': title, role: 'textbox' };
 
 /** Version ids are ISO activation dates (DPA container) — null when they aren't parseable. */
 export const parseVersionDate = (id: string): Date | null => {
@@ -563,6 +590,7 @@ export const M3RichTextEditor = ({
     versionLabel = 'Latest Version',
     publishing,
     readOnly,
+    fluid,
     languageSlot,
     topicSlot,
     helpSlot,
@@ -628,11 +656,8 @@ export const M3RichTextEditor = ({
         ],
         content: value,
         editable: !readOnly,
-        // The ProseMirror contenteditable exposes role="textbox" (browser-only) but
-        // no accessible name (axe: aria-input-field-name, WCAG 4.1.2) — pin the role
-        // and label it with the card title.
         editorProps: {
-            attributes: { 'aria-label': title, role: 'textbox' },
+            attributes: editorSurfaceAttributes(readOnly, title),
             ...createImageDropPasteHandlers((files) => {
                 if (editorRef.current?.isEditable) {
                     uploadAndInsertRef.current(files);
@@ -663,7 +688,7 @@ export const M3RichTextEditor = ({
         // replaces editorProps wholesale.
         editor?.setOptions({
             editorProps: {
-                attributes: { 'aria-label': title, role: 'textbox' },
+                attributes: editorSurfaceAttributes(readOnly, title),
                 ...createImageDropPasteHandlers((files) => {
                     if (editorRef.current?.isEditable) {
                         uploadAndInsertRef.current(files);
@@ -671,7 +696,7 @@ export const M3RichTextEditor = ({
                 }),
             },
         });
-    }, [editor, title]);
+    }, [editor, title, readOnly]);
 
     useEffect(() => {
         if (editor && anchorsEnabled) {
@@ -715,9 +740,31 @@ export const M3RichTextEditor = ({
         </button>
     );
 
+    // Reader: no formatting bar at all. The version control only earns its
+    // place when there is something to look back at.
+    const showToolbar = !editorSlot && !readOnly;
+    const languageControl =
+        languageSlot ??
+        (languages.length > 1 ? (
+            <SplitDropdown
+                icon={<Language />}
+                label={language.toUpperCase()}
+                title={t('legal.m3Editor.chooseLanguage', 'Sprache wählen')}
+                menu={{
+                    selectable: true,
+                    selectedKeys: [language],
+                    items: languages.map((l) => ({ key: l.value, label: l.label })),
+                    onClick: ({ key }) => onLanguageChange?.(key),
+                }}
+            />
+        ) : null);
+    const showVersionControl = !readOnly || versions.length > 0;
+
     const card = (
         <div
-            className={`${styles.module} ${maximized ? styles.inDialog : ''} ${readMode ? styles.readMode : ''}`}
+            className={`${styles.module} ${maximized ? styles.inDialog : ''} ${readMode ? styles.readMode : ''} ${
+                fluid ? styles.fluid : ''
+            }`}
             data-testid="m3-editor"
         >
             <div className={styles.header}>
@@ -729,7 +776,7 @@ export const M3RichTextEditor = ({
 
             <hr className={`${styles.divider} ${styles.headerDivider}`} />
 
-            {!editorSlot ? (
+            {showToolbar ? (
                 <Toolbar
                     editor={editor}
                     disabled={!editorEditable}
@@ -778,7 +825,21 @@ export const M3RichTextEditor = ({
                 ) : (
                     <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
                         <div className={`${styles.editor} ${snackbarSlot ? styles.hasSnackbar : ''}`}>
-                            <div className={styles.editorContentScroll}>
+                            {/* Reading mode: the scroll viewport is the named
+                                landmark and must be keyboard-reachable so the
+                                text can be scrolled without a pointer (axe:
+                                scrollable-region-focusable). */}
+                            <div
+                                className={styles.editorContentScroll}
+                                {...(readOnly
+                                    ? {
+                                          role: 'region',
+                                          'aria-label': title,
+                                          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+                                          tabIndex: 0,
+                                      }
+                                    : {})}
+                            >
                                 <EditorContent editor={editor} />
                             </div>
                             {/* Blocker snackbar floats OVER the text area (Figma 1229-17864),
@@ -848,93 +909,87 @@ export const M3RichTextEditor = ({
 
             {/* Lower function bar (Figma 1261-48667): up to three split buttons —
                 language, topic/department (slot), version history. */}
-            <div className={styles.functionBar}>
-                {languageSlot ??
-                    (languages.length > 1 && (
+            {(languageControl || topicSlot || showVersionControl) && (
+                <div className={styles.functionBar}>
+                    {languageControl}
+                    {topicSlot}
+                    {showVersionControl && (
                         <SplitDropdown
-                            icon={<Language />}
-                            label={language.toUpperCase()}
-                            title={t('legal.m3Editor.chooseLanguage', 'Sprache wählen')}
+                            icon={<Schedule />}
+                            title={t('legal.m3Editor.versionHistory')}
+                            label={
+                                viewingVersion
+                                    ? viewingVersion.label
+                                    : [versionLabel, versions[0]?.label].filter(Boolean).join(' ')
+                            }
                             menu={{
                                 selectable: true,
-                                selectedKeys: [language],
-                                items: languages.map((l) => ({ key: l.value, label: l.label })),
-                                onClick: ({ key }) => onLanguageChange?.(key),
+                                selectedKeys: [viewingVersionId ?? 'current'],
+                                items:
+                                    versions.length > 0
+                                        ? [
+                                              {
+                                                  key: 'current',
+                                                  label: t('legal.m3Editor.versionCurrentDraft'),
+                                              },
+                                              { type: 'divider' as const },
+                                              ...(onlineSinceDate
+                                                  ? [
+                                                        {
+                                                            key: 'onlineSince',
+                                                            disabled: true,
+                                                            label: (
+                                                                <span className={styles.versionMenuHeader}>
+                                                                    {t('legal.m3Editor.versionOnlineSince', {
+                                                                        date: formatVersionDate(onlineSinceDate),
+                                                                    })}
+                                                                </span>
+                                                            ),
+                                                        },
+                                                    ]
+                                                  : []),
+                                              ...versions.map((v, index) => {
+                                                  const from = parseVersionDate(v.id);
+                                                  const until =
+                                                      index > 0 ? parseVersionDate(versions[index - 1].id) : null;
+                                                  let range = v.label;
+                                                  if (from && until) {
+                                                      range = t('legal.m3Editor.versionRangePublished', {
+                                                          from: formatVersionDate(from),
+                                                          until: formatVersionDate(until),
+                                                      });
+                                                  } else if (from) {
+                                                      range = t('legal.m3Editor.versionRangeOnline', {
+                                                          from: formatVersionDate(from),
+                                                      });
+                                                  }
+                                                  return {
+                                                      key: v.id,
+                                                      label: (
+                                                          <span className={styles.versionMenuItem}>
+                                                              <Restore />
+                                                              <span>
+                                                                  <span className={styles.versionMenuName}>
+                                                                      {t('legal.m3Editor.versionVariant', {
+                                                                          n: versions.length - index,
+                                                                      })}
+                                                                  </span>
+                                                                  <span className={styles.versionMenuRange}>
+                                                                      {range}
+                                                                  </span>
+                                                              </span>
+                                                          </span>
+                                                      ),
+                                                  };
+                                              }),
+                                          ]
+                                        : [{ key: 'latest', label: t('legal.m3Editor.versionLatest') }],
+                                onClick: ({ key }) => setViewingVersionId(key === 'current' ? null : key),
                             }}
                         />
-                    ))}
-                {topicSlot}
-                <SplitDropdown
-                    icon={<Schedule />}
-                    title={t('legal.m3Editor.versionHistory')}
-                    label={
-                        viewingVersion
-                            ? viewingVersion.label
-                            : [versionLabel, versions[0]?.label].filter(Boolean).join(' ')
-                    }
-                    menu={{
-                        selectable: true,
-                        selectedKeys: [viewingVersionId ?? 'current'],
-                        items:
-                            versions.length > 0
-                                ? [
-                                      {
-                                          key: 'current',
-                                          label: t('legal.m3Editor.versionCurrentDraft'),
-                                      },
-                                      { type: 'divider' as const },
-                                      ...(onlineSinceDate
-                                          ? [
-                                                {
-                                                    key: 'onlineSince',
-                                                    disabled: true,
-                                                    label: (
-                                                        <span className={styles.versionMenuHeader}>
-                                                            {t('legal.m3Editor.versionOnlineSince', {
-                                                                date: formatVersionDate(onlineSinceDate),
-                                                            })}
-                                                        </span>
-                                                    ),
-                                                },
-                                            ]
-                                          : []),
-                                      ...versions.map((v, index) => {
-                                          const from = parseVersionDate(v.id);
-                                          const until = index > 0 ? parseVersionDate(versions[index - 1].id) : null;
-                                          let range = v.label;
-                                          if (from && until) {
-                                              range = t('legal.m3Editor.versionRangePublished', {
-                                                  from: formatVersionDate(from),
-                                                  until: formatVersionDate(until),
-                                              });
-                                          } else if (from) {
-                                              range = t('legal.m3Editor.versionRangeOnline', {
-                                                  from: formatVersionDate(from),
-                                              });
-                                          }
-                                          return {
-                                              key: v.id,
-                                              label: (
-                                                  <span className={styles.versionMenuItem}>
-                                                      <Restore />
-                                                      <span>
-                                                          <span className={styles.versionMenuName}>
-                                                              {t('legal.m3Editor.versionVariant', {
-                                                                  n: versions.length - index,
-                                                              })}
-                                                          </span>
-                                                          <span className={styles.versionMenuRange}>{range}</span>
-                                                      </span>
-                                                  </span>
-                                              ),
-                                          };
-                                      }),
-                                  ]
-                                : [{ key: 'latest', label: t('legal.m3Editor.versionLatest') }],
-                        onClick: ({ key }) => setViewingVersionId(key === 'current' ? null : key),
-                    }}
-                />
-            </div>
+                    )}
+                </div>
+            )}
 
             {editorEditable && (onPublish || onSaveDraft) && (
                 <>
