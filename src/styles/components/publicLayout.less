@@ -1,3 +1,37 @@
+/*
+ * The app shell locks document scrolling (`html, body { overflow: hidden }` in
+ * App.less) because the protected layout brings its own inner scroll area.
+ * Public pages had none, which was invisible as long as they were short login
+ * forms: a tall one (tenant-admin onboarding, #569) lost everything below the
+ * fold at 390x844 — the organisation/DPA fields and the "Continue" button could
+ * not be reached at all. Bounding the layout to the viewport turns it into the
+ * missing scroll container (the fixed branding stage and language selector are
+ * viewport-anchored and stay put while it scrolls).
+ */
+
+.publicLayout {
+    min-height: 100vh;
+    max-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    /*
+     * antd gives the content `flex: auto; min-height: 0`. Inside a
+     * viewport-bounded layout that lets a tall page shrink back to the
+     * viewport and spill its content over the footer instead of scrolling —
+     * so grow it on a short page (login keeps its white full-height surface),
+     * but never shrink it.
+     */
+
+    > .publicContent {
+        flex: 1 0 auto;
+    }
+
+    > .layoutFooter {
+        flex-shrink: 0;
+    }
+}
+
 .publicContent {
     background-color: @white;
 

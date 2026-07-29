@@ -16,7 +16,11 @@ export const TenantAdminOnboardingPage = () => {
     const { token } = useParams<{ token: string }>();
 
     return (
-        <PasswordResetPageLayout>
+        // `longForm` (#569 chain fix): the onboarding form is ~1270px tall, far
+        // beyond a 390x844 phone viewport. The login-style layout centred it
+        // and let the branding stage cover it, which made the whole flow
+        // unreachable on mobile.
+        <PasswordResetPageLayout variant="longForm">
             <TenantAdminOnboarding inviteToken={token?.trim() ?? ''} />
         </PasswordResetPageLayout>
     );
