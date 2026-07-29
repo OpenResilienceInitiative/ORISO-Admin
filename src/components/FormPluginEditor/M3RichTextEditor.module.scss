@@ -112,6 +112,89 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 }
 
+// Fluid card (#594): hosts that are not the settings deck — the public
+// tenant-onboarding DPA step and the DPA blocker — give the card their own
+// column width. The desktop rule above pins the deck card to 800x740, which
+// would overflow a sign-in-sized column.
+//
+// Scrolling (#594.3, decided against #572's "no nested scroller" criterion):
+// the fluid card is NOT a scroll container. Its host scrolls — the
+// viewport-bounded sheet on the desktop, the page on a phone — so there is
+// exactly ONE scroller on screen, and a step that contains a 60-page agreement
+// can still be bounded and centred. The chapter chips keep working because
+// they stick to the bottom of the card while the agreement is on screen.
+.module.fluid:not(.inDialog) {
+    width: 100%;
+    max-width: 100%;
+
+    /* `clip` still clips to the 28px radius but — unlike `hidden` — does not
+       make the card a scroll container, which would trap the sticky chip row. */
+    overflow: clip;
+
+    /* Neutral sheet tone from the ORISO tokens (#594.8) instead of the deck
+       card's hardcoded value; no drop shadow, because in the public hosts the
+       reader is a region OF the sheet, not a dialog floating above it. */
+    background: var(--m3-surface-container-high, #eae7e8);
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    box-shadow: none;
+
+    .editorRegion,
+    .editorWrap,
+    .editor {
+        min-height: 0;
+        flex: none;
+        overflow: visible;
+    }
+
+    .editorContentScroll {
+        max-height: none;
+        /* Clearance so the last lines can always be brought above the pinned
+           chapter bar, and so a chip jump does not park a heading under it. */
+        padding-bottom: 56px;
+        overflow: visible;
+        scroll-margin-bottom: 56px;
+    }
+
+    /* Chapter navigation follows the reading position: pinned to the bottom of
+       the host's scrollport for as long as the agreement is on screen. An
+       opaque bar with a hairline, so text scrolling underneath reads as
+       "behind the bar" rather than as clipped. */
+
+    .editor .anchorNav {
+        position: sticky;
+        z-index: 2;
+        bottom: 0;
+        padding: 8px 0;
+        border-top: 1px solid var(--m3-outline-variant, #c4c7c8);
+        background: var(--m3-surface-container-high, #eae7e8);
+    }
+
+    @media (min-width: 600px) {
+        height: auto;
+    }
+
+    // The display-size heading scale is made for the 800px deck card. In a
+    // sign-in-sized column it swallows the surface, so the fluid reader keeps
+    // the compact headline scale at every width.
+    .editor {
+        :global(.ProseMirror h1) {
+            font-size: 32px;
+            letter-spacing: 0;
+            line-height: 40px;
+        }
+
+        :global(.ProseMirror h2) {
+            font-size: 26px;
+            line-height: 34px;
+        }
+
+        :global(.ProseMirror h3) {
+            font-size: 22px;
+            line-height: 30px;
+        }
+    }
+}
+
 // The fullscreen dialog fills the viewport on mobile (antd sets the width
 // inline, hence the override).
 .dialogModal {

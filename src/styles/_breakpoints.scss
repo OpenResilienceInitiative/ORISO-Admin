@@ -1,0 +1,16 @@
+/* Shared breakpoints for the CSS modules.
+ *
+ * Media-query conditions cannot read CSS custom properties, so the `--*`
+ * tokens in src/app.css are no help here, and the LESS variables in
+ * Settings.less belong to a different pipeline. This partial is the one place
+ * a module-side breakpoint is written down.
+ *
+ * `$from-xl` mirrors `@fromXLarge` / `@screen-xl` (src/styles/Settings.less,
+ * src/styles/variables/_antd_defaults.less). The public long-form surfaces —
+ * the column, the onboarding sheet and the DPA blocker card — must switch at
+ * the SAME width: the column only centres what the sheet has bounded, so a
+ * drift between them silently breaks the centring rather than merely looking
+ * slightly off.
+ */
+
+$from-xl: 1200px;

@@ -17,6 +17,14 @@ interface MuiControlProps {
     value?: any;
     onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
     onBlur?: React.FocusEventHandler<HTMLInputElement | HTMLTextAreaElement>;
+    /**
+     * Injected by `Form.Item` (antd `getFieldId`) unless the caller sets it.
+     * It MUST reach the native input: `form.scrollToField` and our own
+     * `focusFirstInvalidField` resolve the field with `getElementById`, so
+     * swallowing it turned every jump-to-the-invalid-field into a silent
+     * no-op (#594.6). It also gives the MUI label its `for` target.
+     */
+    id?: string;
     /** The field name, used to look up the active error message. */
     fieldName: FieldName;
     label?: React.ReactNode;
@@ -41,6 +49,7 @@ interface MuiControlProps {
  * `status`, not the message text, so we look the message up by field name.
  */
 const MuiControl = ({
+    id,
     value,
     onChange,
     onBlur,
@@ -107,6 +116,7 @@ const MuiControl = ({
 
     return (
         <TextField
+            id={id}
             className={className}
             variant={variant}
             fullWidth
@@ -272,6 +282,8 @@ const MuiControl = ({
 
 export interface MuiFormFieldProps {
     name: FieldName;
+    /** Overrides the id antd derives from `name` (rarely needed). */
+    id?: string;
     label?: React.ReactNode;
     rules?: Rule[];
     required?: boolean;

@@ -6,6 +6,12 @@ interface M3CheckboxProps {
     disabled?: boolean;
     /** Accessible name; the visible label is rendered by the caller. */
     label: string;
+    /**
+     * Id of the element that EXPLAINS the box (rendered by the caller, like the
+     * label). Announced after the accessible name, so a consent whose meaning
+     * lives in a hint next to it is not read out as a bare sentence.
+     */
+    describedById?: string;
     className?: string;
     onChange?: (value: boolean) => void;
 }
@@ -15,7 +21,14 @@ interface M3CheckboxProps {
  * built to match the Figma design system alongside {@link M3Switch}. Colours are
  * driven by the M3/OrisoScheme CSS variables so it inherits the admin theme.
  */
-export const M3Checkbox = ({ checked = false, disabled = false, label, className, onChange }: M3CheckboxProps) => {
+export const M3Checkbox = ({
+    checked = false,
+    disabled = false,
+    label,
+    describedById,
+    className,
+    onChange,
+}: M3CheckboxProps) => {
     const handleToggle = () => {
         if (disabled) {
             return;
@@ -30,6 +43,7 @@ export const M3Checkbox = ({ checked = false, disabled = false, label, className
             role="checkbox"
             aria-checked={checked}
             aria-label={label}
+            aria-describedby={describedById}
             disabled={disabled}
             onClick={handleToggle}
             className={classNames(styles.checkbox, className)}

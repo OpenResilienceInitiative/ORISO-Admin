@@ -1,10 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
+import { LONG_DPA_CHAPTER_COUNT, LONG_DPA_HTML, PHONE_390 } from '../../components/DpaLegalForm/dpaStoryText';
 import { createStubTenantAdminOnboardingClient } from '../../api/tenantOnboarding/tenantOnboarding';
 import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 import { AccountStep } from './AccountStep';
 import { TwoFactorStep } from './TwoFactorStep';
+import { DoneStep } from './DoneStep';
 
 /**
  * Public tenant-admin onboarding flow (TEN-INV U8, #571): the invite link
@@ -24,7 +28,7 @@ const meta = {
         // The preview decorator already provides a MemoryRouter (Link in the done state).
         (Story) => (
             <ThemeProvider theme={orisoMuiTheme}>
-                <div style={{ width: 'min(520px, 92vw)', padding: '16px 0' }}>
+                <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
                     <Story />
                 </div>
             </ThemeProvider>
@@ -44,14 +48,48 @@ export const OrganisationAndDpa: Story = {
 /** Step 1 on a phone (390x844, #571 acceptance) — the DPA text scrolls in its own region. */
 export const OrganisationAndDpaMobile: Story = {
     args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0 }) },
-    parameters: {
-        viewport: {
-            options: {
-                phone390: { name: 'Phone 390×844', styles: { width: '390px', height: '844px' } },
-            },
-        },
+    ...PHONE_390,
+};
+
+const longDpaClient = () =>
+    createStubTenantAdminOnboardingClient({
+        latencyMs: 0,
+        invite: { dpaContent: JSON.stringify({ de: LONG_DPA_HTML, en: LONG_DPA_HTML }) },
+    });
+
+/**
+ * A realistic 10-chapter agreement: the canonical chapter chips carry the
+ * navigation, the text scrolls inside the reader (#594.1).
+ */
+export const OrganisationAndDpaLongText: Story = {
+    args: { client: longDpaClient() },
+    play: async ({ canvasElement }) => {
+        await waitFor(() =>
+            expect(canvasElement.querySelectorAll('[data-anchor-chip]').length).toBe(LONG_DPA_CHAPTER_COUNT),
+        );
     },
-    globals: { viewport: { value: 'phone390', isRotated: false } },
+};
+
+/**
+ * #594.6 — pressing Continue with an incomplete form must never do nothing:
+ * the reason shows up right next to the button that was pressed.
+ */
+export const OrganisationAndDpaIncompleteSubmit: Story = {
+    args: { client: longDpaClient() },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        // Language-agnostic: the step has exactly one submit control.
+        await waitFor(() => expect(canvasElement.querySelector('button[type="submit"]')).not.toBeNull());
+        await userEvent.click(canvasElement.querySelector<HTMLButtonElement>('button[type="submit"]')!);
+        await expect(await canvas.findByTestId('onboarding-submit-error')).toBeVisible();
+    },
+};
+
+/** Same failure state at 390x844 — the message stays at the action. */
+export const OrganisationAndDpaIncompleteSubmitMobile: Story = {
+    args: { client: longDpaClient() },
+    ...PHONE_390,
+    play: OrganisationAndDpaIncompleteSubmit.play,
 };
 
 /** A consumed link: distinct terminal state, no form, nothing resubmittable. */
@@ -121,6 +159,28 @@ export const AccountStepStory: StoryObj = {
             onSubmit={() => {}}
         />
     ),
+};
+
+/**
+ * #594.7 — the terminal success state: shared status confirmation, the two
+ * facts that matter spelled out separately, the assigned Träger-ID as a
+ * labelled detail, and a real M3 primary button instead of a bare text link.
+ */
+export const Done: StoryObj = {
+    render: () => <DoneStep tenantId={21} />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getByTestId('onboarding-done-success-icon')).toBeVisible();
+        await expect(canvas.getByTestId('onboarding-done-tenant-id')).toHaveTextContent('21');
+        await expect(canvas.getAllByTestId('onboarding-done-next-step')).toHaveLength(2);
+        await expect(canvas.getByRole('button', { name: /login/i })).toBeVisible();
+    },
+};
+
+/** The same success state at 390x844 — icon, detail row and action stay stacked. */
+export const DoneMobile: StoryObj = {
+    render: () => <DoneStep tenantId={21} />,
+    ...PHONE_390,
 };
 
 /** Step 3 in isolation: TOTP linking + first one-time code. */

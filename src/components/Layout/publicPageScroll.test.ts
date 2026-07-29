@@ -37,12 +37,20 @@ describe('public page scrolling', () => {
         expect(rule).toMatch(/>\s*\.layoutFooter\s*{[\s\S]*?flex-shrink:\s*0/);
     });
 
-    it('keeps the branding stage off small screens when it is rendered as a side panel', () => {
-        const rule = stage.match(/\n\.stage--panel\s*{([\s\S]*?)\n}\n/)?.[1] ?? '';
+    /**
+     * #594.3 brought the Admin fade back to the long-form public pages. It may
+     * play its intro, but it must END off-canvas below xl — otherwise it sits
+     * over the left 40vw of the very form the invitee has to fill in (#569).
+     */
+    it('settles the branding stage off-canvas below xl once the intro has played', () => {
+        const animated = stage.match(/\n {4}&--animated\s*{([\s\S]*?)\n {4}}/)?.[1] ?? '';
 
-        expect(rule).toMatch(/display:\s*none/);
-        expect(rule).toMatch(/animation:\s*none/);
-        // Only from xl up, where the form column sits clear of the 40vw panel.
-        expect(rule).toMatch(/@media screen and \(min-width: @screen-xl\)[\s\S]*display:\s*flex/);
+        expect(animated).toMatch(/@keyframes overlayAnimation[\s\S]*to\s*{[\s\S]*left:\s*-100vw/);
+        // prefers-reduced-motion: no animation, but the same end state.
+        expect(animated).toMatch(/prefers-reduced-motion[\s\S]*left:\s*-100vw/);
+        // It is fixed to the viewport, so it never consumes layout space.
+        expect(stage).toMatch(/\.stage\s*{[\s\S]*?position:\s*fixed/);
+        // The side panel that replaced the fade on long forms is gone.
+        expect(stage).not.toContain('stage--panel');
     });
 });

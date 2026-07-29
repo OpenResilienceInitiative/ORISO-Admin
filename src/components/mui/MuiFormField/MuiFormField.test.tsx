@@ -115,4 +115,30 @@ describe('MuiFormField', () => {
         await user.click(toggleButton);
         expect(passwordInput).toHaveAttribute('type', 'text');
     });
+
+    /**
+     * antd injects the field id into the bound control and every
+     * "jump to the invalid field" mechanism (`form.scrollToField`, and ours in
+     * utils/formErrorNavigation) resolves it with `getElementById`. Dropping
+     * the prop turned those jumps into silent no-ops (#594 review).
+     */
+    it('carries the antd field id onto the native input', () => {
+        render(
+            <Form name="onboarding">
+                <MuiFormField name="address" label="Address" />
+            </Form>,
+        );
+
+        expect(screen.getByLabelText('Address')).toHaveAttribute('id', 'onboarding_address');
+    });
+
+    it('keeps an explicitly passed id', () => {
+        render(
+            <Form name="onboarding">
+                <MuiFormField name="address" label="Address" id="custom-address" />
+            </Form>,
+        );
+
+        expect(screen.getByLabelText('Address')).toHaveAttribute('id', 'custom-address');
+    });
 });

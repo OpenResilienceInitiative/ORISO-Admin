@@ -43,6 +43,51 @@ export const slugifyAnchorId = (text: string): string => {
     return slug || 'section';
 };
 
+const HEADING_SELECTOR = 'h1, h2, h3, h4, h5, h6';
+
+/**
+ * Stamps anchor ids onto published HTML for READ-ONLY hosts (the public DPA
+ * reader, #594): the read-only editor deliberately never mutates its document,
+ * so legal texts saved before the anchor feature carry no ids and would render
+ * without any chapter navigation. This pure helper adds the missing ones on the
+ * way IN, reusing {@link slugifyAnchorId} and the editor's de-duplication rule,
+ * so the vocabulary is identical in both directions. Ids the editor already
+ * assigned are kept (in-text `#cross-references` keep resolving) and headings
+ * the author un-anchored (`data-anchor-removed`) stay out of the navigation.
+ */
+export const ensureHeadingAnchorIds = (html: string): string => {
+    if (!html || typeof DOMParser === 'undefined') return html;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const headings = Array.from(doc.body.querySelectorAll(HEADING_SELECTOR));
+    // EVERY id in the document is taken, not just the headings' own: stored
+    // legal texts carry hand-written ids on ordinary elements
+    // (`<p id="kapitel">` targeted by an in-text `#kapitel` cross-reference).
+    // Seeding only from headings let a later `<h2>Kapitel</h2>` be slugged onto
+    // the very same id, and the chip then jumped to the paragraph.
+    const used = new Set(Array.from(doc.body.querySelectorAll<HTMLElement>('[id]'), ({ id }) => id).filter(Boolean));
+
+    let changed = false;
+    headings.forEach((heading) => {
+        if (heading.getAttribute('id')) return;
+        if (heading.getAttribute('data-anchor-removed') === 'true') return;
+        const text = heading.textContent?.trim() ?? '';
+        if (!text) return;
+
+        const base = slugifyAnchorId(text);
+        let candidate = base;
+        let counter = 2;
+        while (used.has(candidate)) {
+            candidate = `${base}-${counter}`;
+            counter += 1;
+        }
+        used.add(candidate);
+        heading.setAttribute('id', candidate);
+        changed = true;
+    });
+
+    return changed ? doc.body.innerHTML : html;
+};
+
 /** All headings that currently have an anchor — the source for the chip row (ToC). */
 export const collectAnchors = (doc: ProseMirrorNode): HeadingAnchor[] => {
     const anchors: HeadingAnchor[] = [];
