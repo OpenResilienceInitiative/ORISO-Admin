@@ -97,6 +97,37 @@ export interface InviteEmailTemplateDTO {
     updateDate: string | null;
 }
 
+/**
+ * Rendered branded invite mail (ORISO-UserService#914).
+ *
+ * `html` is a COMPLETE standalone document (doctype, head, inline styles) produced by the
+ * backend's single canonical layout renderer — the very markup the dispatcher hands to SMTP.
+ * Render it as-is inside an isolated frame; never re-style, rewrite or otherwise post-process it,
+ * or the Admin re-introduces exactly the drift the issue removes.
+ */
+export interface InviteEmailPreviewDTO {
+    templateId: number | null;
+    templateName: string | null;
+    kind: InviteEmailTemplateKind;
+    language: string | null;
+    subject: string;
+    html: string;
+    plainText: string;
+    /** Always contains the literal token `SAMPLE-PREVIEW-TOKEN`, never a usable invite link. */
+    sampleAcceptUrl: string;
+}
+
+export interface InviteEmailPreviewParams {
+    /** Render a stored template (404 if unknown). */
+    templateId?: number;
+    /** Pick the sample content for a template kind (400 if unknown). */
+    kind?: InviteEmailTemplateKind;
+    /** Preview a specific tenant's branding; omit for platform branding. */
+    tenantId?: number;
+    /** Frame wording (`de` | `en`); the backend defaults to `de`. */
+    language?: string;
+}
+
 export interface TemplateRequestDTO {
     kind: InviteEmailTemplateKind;
     name: string;
@@ -214,6 +245,31 @@ export const listInviteEmailTemplates = async (kind?: InviteEmailTemplateKind): 
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
     });
+
+export const inviteEmailPreviewEndpoint = `${inviteEmailTemplatesEndpoint}/preview`;
+
+/**
+ * Renders the branded invite mail exactly as the dispatcher would send it (UserService#914).
+ *
+ * Without parameters the backend renders its built-in sample invite with platform branding.
+ * Failures reject silently (`CATCH_ALL_SILENT`) because the preview panel shows its own inline
+ * error with a retry, rather than a global toast on a settings page.
+ */
+export const getInviteEmailPreview = async (params: InviteEmailPreviewParams = {}): Promise<InviteEmailPreviewDTO> => {
+    const search = new URLSearchParams();
+    if (params.templateId != null) search.set('templateId', String(params.templateId));
+    if (params.kind) search.set('kind', params.kind);
+    if (params.tenantId != null) search.set('tenant_id', String(params.tenantId));
+    if (params.language) search.set('language', params.language);
+    const query = search.toString();
+
+    return fetchData({
+        url: query ? `${inviteEmailPreviewEndpoint}?${query}` : inviteEmailPreviewEndpoint,
+        method: FETCH_METHODS.GET,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+    });
+};
 
 export const createInviteEmailTemplate = async (body: TemplateRequestDTO): Promise<InviteEmailTemplateDTO> => {
     const response = await fetchData({

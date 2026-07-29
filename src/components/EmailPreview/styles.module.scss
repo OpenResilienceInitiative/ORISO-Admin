@@ -1,0 +1,71 @@
+.previewCard {
+    --dialog-card-height: auto;
+
+    width: 100%;
+}
+
+.previewBody {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.metaList {
+    display: grid;
+    margin: 0;
+    gap: 4px 16px;
+    grid-template-columns: auto 1fr;
+
+    dt {
+        color: var(--m3-on-surface-variant, #444748);
+        font-family: var(--m3-body-font-family);
+        font-size: 12px;
+        letter-spacing: 0.4px;
+        line-height: 16px;
+    }
+
+    dd {
+        margin: 0;
+        color: var(--m3-on-surface, #1b1b1c);
+        font-family: var(--m3-body-font-family);
+        font-size: 14px;
+        line-height: 20px;
+    }
+}
+
+.metaUrl {
+    overflow-wrap: anywhere;
+}
+
+.frameWrapper {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    padding: 8px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+
+    /* The mail defines its own page background; this neutral surround keeps the
+       Admin's own surface from being mistaken for part of the mail. */
+    background: var(--m3-surface-container-low, #f2f3f4);
+    border-radius: 12px;
+    overflow-x: auto;
+}
+
+.frame {
+    border: 0;
+
+    /* Emails are authored on white; keep the frame opaque so a dark Admin theme
+       never bleeds through a transparent document background. */
+    background: #ffffff;
+    border-radius: 8px;
+}
+
+.footnote {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}
