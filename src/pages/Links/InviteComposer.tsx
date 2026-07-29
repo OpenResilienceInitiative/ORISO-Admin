@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { DeleteOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownloadOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
 import { message, Upload, type MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
@@ -15,6 +15,7 @@ import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { M3NumberField } from '../../components/M3NumberField';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
+import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
 import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
 import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
@@ -280,6 +281,12 @@ export const InviteComposer = ({
         return Upload.LIST_IGNORE;
     };
 
+    // The id column is the Träger-ID on the Träger tab and the agency id
+    // everywhere else — the template header has to say which one.
+    const csvIdLabel = requireTenantId
+        ? t('links.accountInvites.tenantId', 'Träger-ID')
+        : t('links.accountInvites.agencyId', 'Beratungsstellen-ID');
+
     const moreMenuItems: NonNullable<MenuProps['items']> = [];
     if (onCsvParsed) {
         moreMenuItems.push({
@@ -288,10 +295,30 @@ export const InviteComposer = ({
                 <Upload accept=".csv,text/csv" beforeUpload={handleCsvFile} showUploadList={false}>
                     <span className={styles.csvImportEntry}>
                         <UploadOutlined aria-hidden />
-                        {t('links.csvImport.menuEntry', 'CSV-Datei importieren')}
+                        <span className={styles.csvImportLabel}>
+                            {t('links.csvImport.menuEntry', 'CSV-Datei importieren')}
+                            {/* The import expects a fixed column ORDER, and an
+                                admin standing in this menu has no other way to
+                                learn it (#315 follow-up). */}
+                            <span className={styles.csvImportHint}>
+                                {t('links.csvImport.columns', 'Spalten: {{columns}}', {
+                                    columns: [
+                                        t('links.accountInvites.email', 'E-Mail'),
+                                        t('links.accountInvites.firstName', 'Vorname'),
+                                        t('links.composer.lastName', 'Name'),
+                                        `${csvIdLabel} ${t('links.csvImport.optional', '(optional)')}`,
+                                    ].join(', '),
+                                })}
+                            </span>
+                        </span>
                     </span>
                 </Upload>
             ),
+        });
+        moreMenuItems.push({
+            key: 'csv-template',
+            icon: <DownloadOutlined aria-hidden />,
+            label: t('links.csvImport.downloadTemplate', 'CSV-Vorlage herunterladen'),
         });
     }
     if (onDeleteSelected) {
@@ -311,6 +338,18 @@ export const InviteComposer = ({
         onClick: ({ key }) => {
             if (key === 'delete-selected') {
                 onDeleteSelected?.();
+                return;
+            }
+            if (key === 'csv-template') {
+                downloadInviteCsvTemplate(
+                    {
+                        email: t('links.accountInvites.email', 'E-Mail'),
+                        firstName: t('links.accountInvites.firstName', 'Vorname'),
+                        lastName: t('links.composer.lastName', 'Name'),
+                        id: csvIdLabel,
+                    },
+                    t('links.csvImport.templateFileName', 'oriso-einladungen-vorlage.csv'),
+                );
             }
         },
     };

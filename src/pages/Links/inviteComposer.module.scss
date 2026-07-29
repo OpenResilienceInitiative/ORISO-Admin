@@ -48,11 +48,27 @@
 
 .csvImportEntry {
     display: inline-flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
 
     :global(.anticon) {
+        margin-top: 3px;
         font-size: 18px;
         line-height: 1;
     }
+}
+
+.csvImportLabel {
+    display: flex;
+    flex-direction: column;
+}
+
+/* The column order is the one thing an admin cannot guess, so it is said in
+   the menu itself rather than only inside the file (#315 follow-up). */
+
+.csvImportHint {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+    white-space: normal;
 }
