@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
-import { LONG_DPA_HTML, PHONE_390 } from '../../components/DpaLegalForm/dpaStoryText';
+import { LONG_DPA_CHAPTER_COUNT, LONG_DPA_HTML, PHONE_390 } from '../../components/DpaLegalForm/dpaStoryText';
 import { createStubTenantAdminOnboardingClient } from '../../api/tenantOnboarding/tenantOnboarding';
 import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 import { AccountStep } from './AccountStep';
@@ -64,7 +64,9 @@ const longDpaClient = () =>
 export const OrganisationAndDpaLongText: Story = {
     args: { client: longDpaClient() },
     play: async ({ canvasElement }) => {
-        await waitFor(() => expect(canvasElement.querySelectorAll('[data-anchor-chip]').length).toBe(11));
+        await waitFor(() =>
+            expect(canvasElement.querySelectorAll('[data-anchor-chip]').length).toBe(LONG_DPA_CHAPTER_COUNT),
+        );
     },
 };
 

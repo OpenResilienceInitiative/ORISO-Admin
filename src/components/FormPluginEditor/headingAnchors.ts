@@ -59,11 +59,12 @@ export const ensureHeadingAnchorIds = (html: string): string => {
     if (!html || typeof DOMParser === 'undefined') return html;
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const headings = Array.from(doc.body.querySelectorAll(HEADING_SELECTOR));
-    const used = new Set<string>();
-    headings.forEach((heading) => {
-        const id = heading.getAttribute('id');
-        if (id) used.add(id);
-    });
+    // EVERY id in the document is taken, not just the headings' own: stored
+    // legal texts carry hand-written ids on ordinary elements
+    // (`<p id="kapitel">` targeted by an in-text `#kapitel` cross-reference).
+    // Seeding only from headings let a later `<h2>Kapitel</h2>` be slugged onto
+    // the very same id, and the chip then jumped to the paragraph.
+    const used = new Set(Array.from(doc.body.querySelectorAll<HTMLElement>('[id]'), ({ id }) => id).filter(Boolean));
 
     let changed = false;
     headings.forEach((heading) => {

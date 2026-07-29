@@ -4,7 +4,7 @@ import { expect, waitFor, userEvent, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { DpaLegalReader } from './DpaLegalReader';
-import { LONG_DPA_HTML, PHONE_390, PLAIN_DPA_HTML } from './dpaStoryText';
+import { LONG_DPA_CHAPTER_COUNT, LONG_DPA_HTML, PHONE_390, PLAIN_DPA_HTML } from './dpaStoryText';
 
 /**
  * The DPA/AVV reader used by both public surfaces (tenant-admin onboarding
@@ -43,19 +43,28 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * The desktop reading measure, written down once: both desktop stories show
+ * the SAME surface, so two copies of the wrapper would be two responsive
+ * definitions free to drift apart.
+ */
+const desktopReader: NonNullable<Story['decorators']> = [
+    (Story) => (
+        <div style={{ width: 'min(700px, 94vw)' }}>
+            <Story />
+        </div>
+    ),
+];
+
 /** Desktop: long contract, one chip per chapter, no editing affordances. */
 export const DesktopWithChapters: Story = {
     args: { html: LONG_DPA_HTML, description: 'Bitte prüfen Sie den Vertrag und bestätigen Sie ihn anschließend.' },
-    decorators: [
-        (Story) => (
-            <div style={{ width: 'min(700px, 94vw)' }}>
-                <Story />
-            </div>
-        ),
-    ],
+    decorators: desktopReader,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await waitFor(() => expect(canvasElement.querySelectorAll('[data-anchor-chip]').length).toBe(11));
+        await waitFor(() =>
+            expect(canvasElement.querySelectorAll('[data-anchor-chip]').length).toBe(LONG_DPA_CHAPTER_COUNT),
+        );
         // Reader, not editor.
         await expect(canvas.queryByTestId('m3-toolbar')).not.toBeInTheDocument();
 
@@ -72,13 +81,7 @@ export const DesktopWithChapters: Story = {
 /** Text without headings: no empty chapter row is rendered. */
 export const DesktopWithoutChapters: Story = {
     args: { html: PLAIN_DPA_HTML },
-    decorators: [
-        (Story) => (
-            <div style={{ width: 'min(700px, 94vw)' }}>
-                <Story />
-            </div>
-        ),
-    ],
+    decorators: desktopReader,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await waitFor(() => expect(canvas.getByTestId('dpa-text')).toBeVisible());

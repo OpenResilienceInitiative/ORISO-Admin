@@ -22,6 +22,13 @@ export const LONG_DPA_HTML = `<h1>Auftragsverarbeitungsvertrag</h1><p>Zwischen d
     .map((title, index) => section(index + 1, title))
     .join('')}`;
 
+/**
+ * How many chapter chips {@link LONG_DPA_HTML} must produce — derived from the
+ * fixture itself, so adding a section or changing `section()`'s heading level
+ * cannot leave a story asserting a stale number.
+ */
+export const LONG_DPA_CHAPTER_COUNT = (LONG_DPA_HTML.match(/<h[1-6]\b/g) ?? []).length;
+
 /** A short text without headings — the reader must show no empty chapter row. */
 export const PLAIN_DPA_HTML = `<p>${paragraph}</p><p>${paragraph}</p>`;
 

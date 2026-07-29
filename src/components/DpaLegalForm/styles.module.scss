@@ -6,8 +6,9 @@
    Colour language (#594.8) — taken from Organisms/Modal, the product's
    reference sheet: the surface is a NEUTRAL `--m3-surface-container-*` tone,
    everything sitting on it is tonal with it (no white boxes punched into a
-   tinted page), and the accent is reserved for actions. Only ORISO tokens
-   from src/app.css are used, fallbacks included. */
+   tinted page), and the accent is reserved for actions. Colours come from the
+   ORISO tokens in src/app.css and from NOTHING else — no local hex fallbacks,
+   which would be a second palette drifting away from the first. */
 
 .reader {
     display: flex;
@@ -47,9 +48,9 @@
     display: flex;
     align-items: flex-start;
     padding: 16px;
-    border: 2px solid var(--m3-outline, #747878);
+    border: 2px solid var(--m3-outline);
     margin-top: 24px;
-    background: var(--m3-surface-container-highest, #e4e2e2);
+    background: var(--m3-surface-container-highest);
     border-radius: 16px;
     gap: 8px;
     transition: border-color 0.15s ease, background-color 0.15s ease;
@@ -59,12 +60,12 @@
    one tonal step. */
 
 .consentChecked {
-    border-color: var(--m3-primary, #a5000a);
-    background: var(--m3-surface-container, #f0edee);
+    border-color: var(--m3-primary);
+    background: var(--m3-surface-container);
 }
 
 .consentError {
-    border-color: var(--m3-error, #cc0000);
+    border-color: var(--m3-error);
 }
 
 .consentCheckbox {
@@ -84,7 +85,7 @@
 
 .consentTitle {
     margin: 0;
-    color: var(--m3-on-surface, #1b1b1c);
+    color: var(--m3-on-surface);
     font-size: 16px;
     font-weight: 600;
     line-height: 24px;
@@ -92,7 +93,7 @@
 
 .consentHint {
     margin: 4px 0 0;
-    color: var(--m3-on-surface-variant, #444748);
+    color: var(--m3-on-surface-variant);
     font-size: 13px;
     line-height: 18px;
 }

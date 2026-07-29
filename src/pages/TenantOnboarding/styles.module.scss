@@ -1,25 +1,29 @@
+@use '../../styles/breakpoints' as bp;
+
 /* Public tenant-admin onboarding (#571).
  *
  * Surface language (#594.8) — copied from Organisms/Modal, the product's
  * reference sheet: a NEUTRAL `--m3-surface-container-high` sheet with a 28px
  * radius, everything on it tonal with it (fields included — no white boxes
  * punched into a tinted page), and the accent left to the actions. Every
- * colour here resolves to an ORISO token from src/app.css.
+ * colour here resolves to an ORISO token from src/app.css — and to nothing
+ * else: no local hex fallbacks, which would be a second palette free to drift
+ * away from the tokens.
  */
 
 .sheet {
     padding: 32px;
-    background: var(--m3-surface-container-high, #eae7e8);
+    background: var(--m3-surface-container-high);
     border-radius: 28px;
-    box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%));
+    box-shadow: var(--admin-card-elevation);
 
     /* Fields are tonal with the sheet instead of white cut-outs. `--input-bg`
        is the single surface knob MuiFormField reads (src/app.css). */
-    --input-bg: var(--m3-surface-container-highest, #e4e2e2);
-    --input-autofill-surface: var(--m3-surface-container-highest, #e4e2e2);
-    --input-border-color: var(--m3-outline-variant, #c4c7c8);
-    --input-hover-border-color: var(--m3-on-surface, #1b1b1c);
-    --input-focus-border-color: var(--m3-primary, #a5000a);
+    --input-bg: var(--m3-surface-container-highest);
+    --input-autofill-surface: var(--m3-surface-container-highest);
+    --input-border-color: var(--m3-outline-variant);
+    --input-hover-border-color: var(--m3-on-surface);
+    --input-focus-border-color: var(--m3-primary);
 
     @media (max-width: 599px) {
         padding: 20px;
@@ -41,7 +45,7 @@
  * at 390x844, and there is again exactly one scroller (the page).
  */
 
-@media screen and (min-width: 1200px) {
+@media screen and (min-width: bp.$from-xl) {
     .sheet {
         display: flex;
         max-height: calc(100vh - 96px);
@@ -123,7 +127,7 @@
 .doneIcon {
     width: 56px !important;
     height: 56px !important;
-    color: var(--admin-status-success, #0a882f);
+    color: var(--admin-status-success);
 }
 
 /* The assigned ID as a labelled detail, not inline in the prose. A hairline
@@ -136,18 +140,18 @@
     justify-content: center;
     padding: 12px 0;
     margin: 0;
-    border-block: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-block: 1px solid var(--m3-outline-variant);
     gap: 12px;
 
     dt {
-        color: var(--m3-on-surface-variant, #444748);
+        color: var(--m3-on-surface-variant);
         font: 500 14px/20px var(--m3-body-font-family);
         letter-spacing: 0.1px;
     }
 
     dd {
         margin: 0;
-        color: var(--m3-on-surface, #1b1b1c);
+        color: var(--m3-on-surface);
         font: 700 20px/28px var(--m3-body-font-family);
     }
 }
@@ -167,7 +171,7 @@
     li {
         display: flex;
         align-items: flex-start;
-        color: var(--m3-on-surface-variant, #444748);
+        color: var(--m3-on-surface-variant);
         font: 400 14px/20px var(--m3-body-font-family);
         gap: 12px;
     }
@@ -175,6 +179,6 @@
     svg {
         flex: 0 0 auto;
         margin-top: 1px;
-        color: var(--m3-outline, #747878);
+        color: var(--m3-outline);
     }
 }

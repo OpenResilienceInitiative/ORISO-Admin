@@ -38,7 +38,13 @@ interface OrganisationDpaFormValues {
 }
 
 /** Why the last submit did not go through — surfaced AT the button (#594.6). */
-type SubmitBlocker = 'fields' | 'consent';
+type SubmitBlocker = 'fields' | 'consent' | 'dpa';
+
+const BLOCKER_MESSAGE: Record<SubmitBlocker, string> = {
+    fields: 'tenantOnboarding.validation.incomplete',
+    consent: 'tenantOnboarding.dpa.acceptRequired',
+    dpa: 'tenantOnboarding.dpa.unavailableBlocked',
+};
 
 /**
  * antd prefixes the id of every bound control with the form name, and the
@@ -76,7 +82,21 @@ export const OrganisationDpaStep = ({
         [invite.dpaContent, i18n.language],
     );
 
+    /**
+     * The agreement did not load (no published content, no content for any
+     * language, or everything stripped by the sanitiser). There is then no
+     * text for the user to agree to, so the step cannot be completed at all —
+     * `DpaFormSection` withholds the consent control and this refuses the
+     * submit, mirroring `DpaBlocker`, which never offers a signature without
+     * content either.
+     */
+    const dpaUnavailable = !dpaHtml;
+
     const onFinish = (values: OrganisationDpaFormValues) => {
+        if (dpaUnavailable) {
+            setSubmitBlocker('dpa');
+            return;
+        }
         if (!dpaAccepted) {
             setAcceptTouched(true);
             setSubmitBlocker('consent');
@@ -100,7 +120,7 @@ export const OrganisationDpaStep = ({
         // The consent state is part of "incomplete" as well — show its own
         // inline error from now on, whatever else is missing.
         setAcceptTouched(true);
-        setSubmitBlocker('fields');
+        setSubmitBlocker(dpaUnavailable ? 'dpa' : 'fields');
         // Actually move the viewport AND the caret to what is missing. antd's
         // own `scrollToField` silently did nothing here (#594.6 review).
         if (!focusFirstInvalidField(errorFields, FORM_NAME) && !dpaAccepted) {
@@ -158,11 +178,6 @@ export const OrganisationDpaStep = ({
             </div>
 
             <div className={styles.dpaBlock}>
-                {!dpaHtml && (
-                    <Alert severity="warning" sx={{ mb: 2 }}>
-                        {t('tenantOnboarding.dpa.missing')}
-                    </Alert>
-                )}
                 <DpaFormSection
                     dpaHtml={dpaHtml}
                     textLabel={t('tenantOnboarding.dpa.title')}
@@ -170,6 +185,10 @@ export const OrganisationDpaStep = ({
                     accepted={dpaAccepted}
                     acceptTouched={acceptTouched}
                     onAcceptedChange={(value) => {
+                        // Belt and braces: the control is not rendered without
+                        // an agreement, so this cannot fire — and if a future
+                        // host ever renders one, it still cannot set consent.
+                        if (dpaUnavailable) return;
                         setDpaAccepted(value);
                         setAcceptTouched(true);
                         if (value) setSubmitBlocker(null);
@@ -179,11 +198,7 @@ export const OrganisationDpaStep = ({
 
             {submitBlocker && (
                 <Alert severity="error" role="alert" data-testid="onboarding-submit-error" sx={{ mt: 3 }}>
-                    {t(
-                        submitBlocker === 'consent'
-                            ? 'tenantOnboarding.dpa.acceptRequired'
-                            : 'tenantOnboarding.validation.incomplete',
-                    )}
+                    {t(BLOCKER_MESSAGE[submitBlocker])}
                 </Alert>
             )}
 

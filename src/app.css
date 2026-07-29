@@ -102,6 +102,17 @@
     --m3-surface-container: #f0edee;
     --m3-surface-container-high: #eae7e8;
     --m3-surface-container-highest: #e4e2e2;
+
+    /* Static defaults for two roles that until now only existed at runtime
+       (applyAdminTheme writes the OrisoScheme light values as inline
+       properties). Without them every consumer had to carry its own literal
+       fallback, and those fallbacks had already drifted: the error tone was
+       written as #cc0000 in several places while the scheme resolves it to
+       #b1005e. Values below are copied from OrisoScheme light
+       (src/utils/theme/orisoScheme.ts) so the token is the single source and
+       the fallbacks can go. */
+    --m3-error: #b1005e;
+    --m3-outline-variant: #c4c7c8;
     /* M3 container/fixed roles (OrisoScheme, seed #A5000A). secondary-container is
        the mid slate (#646D78) from the runtime OrisoScheme (light) and Figma; the
        previous #e8ebee drifted and left the light on-colour text unreadable. */
