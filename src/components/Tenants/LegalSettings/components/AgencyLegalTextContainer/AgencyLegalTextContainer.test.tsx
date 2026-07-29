@@ -70,9 +70,10 @@ describe('AgencyLegalTextContainer', () => {
         expect(h.card.mock.calls[0][0].publicationStatus).toBeUndefined();
     });
 
-    it('keeps the switcher available while the department text is still loading', async () => {
+    it('lets the admin leave a department that is still loading', async () => {
         // The editor must not open before the department's own text is known, but blanking the
-        // whole card would strand the admin on a Fachbereich they cannot leave.
+        // whole card would strand the admin on a Fachbereich they cannot leave. A switcher that
+        // merely renders is not enough — it has to still work, so the test drives it back out.
         h.useDepartmentDpp.mockReturnValue({
             data: undefined,
             isLoading: true,
@@ -84,7 +85,13 @@ describe('AgencyLegalTextContainer', () => {
         await selectDepartment('U25 Suizidprävention');
 
         expect(screen.queryByTestId('legal-editor')).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /agency.legal.department.choose/i })).toBeInTheDocument();
+
+        await selectDepartment('agency.legal.department.all');
+
+        // Back on the agency-wide text, which needs no department read — the editor returns even
+        // though the department query is still loading.
+        expect(screen.getByTestId('legal-editor')).toBeInTheDocument();
+        expect(h.card.mock.calls.at(-1)?.[0].initialContentByLanguage).toEqual({ de: '<p>agency wide</p>' });
     });
 
     it('blocks editing instead of seeding the inherited text when the department read fails', async () => {
