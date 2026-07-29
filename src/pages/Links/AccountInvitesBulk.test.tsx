@@ -53,6 +53,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../api/accountInvites/accountInvites', () => ({
     accountInviteAcceptBaseUrl: 'https://admin.example/account-invite',
+    acceptBaseUrlForRole: () => 'https://admin.example/account-invite',
     listAccountInvites: mocks.listAccountInvites,
     createAccountInvite: mocks.createAccountInvite,
     resendAccountInvite: mocks.resendAccountInvite,

@@ -1,5 +1,6 @@
-import { accountInvitesEndpoint, appURL, inviteEmailTemplatesEndpoint } from '../../appConfig';
+import routePathNames, { accountInvitesEndpoint, appURL, inviteEmailTemplatesEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
+import type { AllocationMode } from '../idAllocation/idAllocation';
 
 export type AccountInviteTargetRole =
     | 'TENANT_ADMIN'
@@ -52,10 +53,19 @@ export interface PagedAccountInviteResponse {
 export interface CreateAccountInviteRequest {
     targetRole: AccountInviteTargetRole;
     tenantId?: number;
+    /**
+     * ID allocation contract (#569/#570): `AUTO` = the backend assigns the
+     * smallest free tenant id atomically and `tenantId` must be omitted;
+     * `MANUAL` = `tenantId` is pinned and re-validated authoritatively (409 on
+     * a collision). Omitted entirely on tabs without an allocation field.
+     */
+    tenantIdAllocationMode?: AllocationMode;
     recipientEmail: string;
     firstName?: string;
     lastName?: string;
     agencyId?: number;
+    /** Same contract for the agency id space (AgencyService, U2). */
+    agencyIdAllocationMode?: AllocationMode;
     departmentId?: number;
     expiresInDays?: number;
     templateId?: number;
@@ -97,7 +107,31 @@ export interface TemplateRequestDTO {
 }
 
 export const accountInviteAcceptBaseUrl = `${appURL.replace(/\/$/, '')}/account-invite`;
+/** Public Admin onboarding page — the accept target for tenant-admin invites (TEN-INV U8, #571). */
+export const tenantAdminOnboardingAcceptBaseUrl = `${appURL.replace(/\/$/, '')}${routePathNames.tenantOnboarding}`;
+
+/**
+ * Accept base URL by invited role (TEN-INV U6/U8, #569/#571/UserService#890):
+ * the emailed link is `{acceptBaseUrl}/{rawToken}`. A tenant admin completes
+ * the invite on the PUBLIC ADMIN onboarding route (the tenant is an
+ * organisation, not an app user); every other role keeps the app-layer
+ * `/account-invite` route.
+ */
+export const acceptBaseUrlForRole = (targetRole: AccountInviteTargetRole): string =>
+    targetRole === 'TENANT_ADMIN' ? tenantAdminOnboardingAcceptBaseUrl : accountInviteAcceptBaseUrl;
 export { accountInvitesEndpoint };
+
+const normalizeAllocatedId = (
+    field: 'tenantId' | 'agencyId',
+    mode: AllocationMode | undefined,
+    id: number | undefined,
+): number | undefined => {
+    if (mode === 'AUTO') return undefined;
+    if (mode === 'MANUAL' && id == null) {
+        throw new TypeError(`${field} is required when allocation mode is MANUAL`);
+    }
+    return id;
+};
 
 export const listAccountInvites = async (
     params: ListAccountInvitesParams = {},
@@ -118,6 +152,8 @@ export const listAccountInvites = async (
 };
 
 export const createAccountInvite = async (body: CreateAccountInviteRequest): Promise<AccountInviteDTO> => {
+    const tenantId = normalizeAllocatedId('tenantId', body.tenantIdAllocationMode, body.tenantId);
+    const agencyId = normalizeAllocatedId('agencyId', body.agencyIdAllocationMode, body.agencyId);
     const response = await fetchData({
         url: accountInvitesEndpoint,
         method: FETCH_METHODS.POST,
@@ -128,7 +164,8 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
         responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.CONFLICT_WITH_RESPONSE],
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
-            agencyId: body.agencyId,
+            agencyId,
+            agencyIdAllocationMode: body.agencyIdAllocationMode,
             departmentId: body.departmentId,
             expiresInDays: body.expiresInDays,
             firstName: body.firstName,
@@ -136,7 +173,8 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
             recipientEmail: body.recipientEmail,
             targetRole: body.targetRole,
             templateId: body.templateId,
-            tenantId: body.tenantId,
+            tenantId,
+            tenantIdAllocationMode: body.tenantIdAllocationMode,
         }),
     });
     return response.json();

@@ -1,17 +1,75 @@
-.publicContent {
-    background-color: @white;
+/*
+ * The app shell locks document scrolling (`html, body { overflow: hidden }` in
+ * App.less) because the protected layout brings its own inner scroll area.
+ * Public pages had none, which was invisible as long as they were short login
+ * forms: a tall one (tenant-admin onboarding, #569) lost everything below the
+ * fold at 390x844 — the organisation/DPA fields and the "Continue" button could
+ * not be reached at all. Bounding the layout to the viewport turns it into the
+ * missing scroll container (the fixed branding stage and language selector are
+ * viewport-anchored and stay put while it scrolls).
+ */
 
-    + .layoutFooter {
+.publicLayout {
+    min-height: 100vh;
+    max-height: 100vh;
+
+    /* antd's Layout default (`colorBgLayout`, #f5f5f5) is a different grey and
+       showed as a lighter band behind the footer once the content surface moved
+       to the product's tone (#594.12). One tone means the shell too. */
+    background-color: var(--m3-surface-container-high, #eae7e8);
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    /*
+     * antd gives the content `flex: auto; min-height: 0`. Inside a
+     * viewport-bounded layout that lets a tall page shrink back to the
+     * viewport and spill its content over the footer instead of scrolling —
+     * so grow it on a short page (login keeps its white full-height surface),
+     * but never shrink it.
+     */
+
+    > .publicContent {
+        flex: 1 0 auto;
+    }
+
+    > .layoutFooter {
+        flex-shrink: 0;
+    }
+}
+
+/*
+ * ONE background tone for the whole public surface (#594.12).
+ *
+ * The restrained light grey the completion screen already used IS the product's
+ * background colour — the neutral `--m3-surface-container-high` that
+ * `Organisms/Modal` uses for its sheet. The login screen was white, which is
+ * the inconsistency that made the public surface look unfinished next to the
+ * rest of the admin.
+ *
+ * ⚠️ Blast radius: this is not scoped to the onboarding page. Login, password
+ * reset, 404 and every other page rendered through PublicPageLayoutWrapper
+ * change with it — that is the point of the ticket, but the login is what a
+ * reviewer should look at first.
+ */
+
+.publicContent {
+    background-color: var(--m3-surface-container-high, #eae7e8);
+
+    + .layoutFooter:not(.stageFooter) {
         .footerMenu {
             justify-content: flex-start;
-            background-color: @white;
+            background-color: var(--m3-surface-container-high, #eae7e8);
         }
     }
 }
 
+/* Only the legacy in-flow footer has to dodge the 40vw stage panel. The stage
+   variant (#594.15b) lives INSIDE that panel, so it must not be pushed out of
+   it. */
+
 @media screen and (min-width: @screen-xl) {
     .publicContent {
-        + .layoutFooter {
+        + .layoutFooter:not(.stageFooter) {
             .footerMenu {
                 padding-left: calc(40vw + @spacing-m);
             }

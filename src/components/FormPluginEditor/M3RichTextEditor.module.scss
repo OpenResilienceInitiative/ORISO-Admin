@@ -112,6 +112,111 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 }
 
+// Fluid card (#594): hosts that are not the settings deck — the public
+// tenant-onboarding DPA step and the DPA blocker — give the card their own
+// column width. The desktop rule above pins the deck card to 800x740, which
+// would overflow a sign-in-sized column.
+//
+// Scrolling (#594.3, decided against #572's "no nested scroller" criterion):
+// the fluid card is NOT a scroll container. Its host scrolls — the
+// viewport-bounded sheet on the desktop, the page on a phone — so there is
+// exactly ONE scroller on screen, and a step that contains a 60-page agreement
+// can still be bounded and centred. The chapter chips keep working because
+// they stick to the bottom of the card while the agreement is on screen.
+.module.fluid:not(.inDialog) {
+    width: 100%;
+    max-width: 100%;
+
+    /* `clip` still clips to the 28px radius but — unlike `hidden` — does not
+       make the card a scroll container, which would trap the sticky chip row. */
+    overflow: clip;
+
+    /* No box at all (#594.17). The public reader is not a card floating above
+       the page — it IS the page. Once the surface tone is right the agreement
+       needs neither a grey fill, nor an outline, nor the header rule: they only
+       made the screen look cluttered. `background: none` deliberately leaves the
+       page surface showing through; the only remaining opaque element is the
+       sticky chapter bar below, which has to mask the text scrolling under it. */
+    background: none;
+    border: 0;
+    box-shadow: none;
+
+    /* The rules that framed the removed box go with it. */
+
+    .headerDivider {
+        display: none;
+    }
+
+    /* The fullscreen control has no card corner to sit in any more, so it moves
+       to the end of the row where it reads as an action on the text below
+       rather than as a stray button in empty space. */
+
+    .toolbar {
+        justify-content: flex-end;
+        padding: 0 0 8px;
+    }
+
+    .editorRegion,
+    .editorWrap,
+    .editor {
+        min-height: 0;
+        flex: none;
+        overflow: visible;
+    }
+
+    .editorContentScroll {
+        max-height: none;
+        /* Clearance so the last lines can always be brought above the pinned
+           chapter bar, and so a chip jump does not park a heading under it. */
+        padding-bottom: 56px;
+        overflow: visible;
+        scroll-margin-bottom: 56px;
+    }
+
+    /* Chapter navigation follows the reading position: pinned to the bottom of
+       the host's scrollport for as long as the agreement is on screen. An
+       opaque bar with a hairline, so text scrolling underneath reads as
+       "behind the bar" rather than as clipped. */
+
+    .editor .anchorNav {
+        position: sticky;
+        z-index: 2;
+        bottom: 0;
+        padding: 8px 0;
+        border-top: 1px solid var(--m3-outline-variant, #c4c7c8);
+        /* The ONE surface tone of the public page (#594.12) — the bar has to be
+           opaque so text scrolling underneath reads as "behind the bar" instead
+           of clipped. It is not a box around the text; it is the page showing
+           through a fixed strip. */
+        background: var(--m3-surface-container-high, #eae7e8);
+    }
+
+    @media (min-width: 600px) {
+        height: auto;
+    }
+
+    // The display-size heading scale is made for the 800px deck card. In a
+    // sign-in-sized column it swallows the surface, so the fluid reader keeps
+    // the compact headline scale at every width.
+    .editor {
+        :global(.ProseMirror h1) {
+            font-size: 32px;
+            letter-spacing: 0;
+            line-height: 40px;
+        }
+
+        :global(.ProseMirror h2) {
+            font-size: 26px;
+            line-height: 34px;
+        }
+
+        :global(.ProseMirror h3) {
+            font-size: 22px;
+            line-height: 30px;
+        }
+    }
+}
+
 // The fullscreen dialog fills the viewport on mobile (antd sets the width
 // inline, hence the override).
 .dialogModal {
@@ -178,7 +283,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 
     .headerIcon {
         font-size: 40px;
-        color: $m3-on-surface-variant;
+        color: var(--m3-on-surface-variant, #444748);
     }
 
     .title {
@@ -189,7 +294,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         line-height: 32px;
         overflow-wrap: anywhere;
         text-align: center;
-        color: $m3-on-surface;
+        color: var(--m3-on-surface, #1b1b1c);
     }
 }
 
@@ -212,7 +317,8 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     height: 16px;
     flex-shrink: 0;
     font-size: 16px;
-    color: #4c555f; // M3/sys/light/secondary
+    // The ORISO token, not a copy of its value (#594.11).
+    color: var(--m3-secondary, #4c555f);
 }
 
 .helpTexts {
@@ -229,7 +335,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     font-size: 12px;
     letter-spacing: 0.4px;
     line-height: 16px;
-    color: #3f4852;
+    color: var(--m3-on-surface-variant, #444748);
 }
 
 .helpHint {
@@ -468,7 +574,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     gap: 8px;
     background: transparent;
     border-radius: 10px;
-    color: #4c555f; // M3/sys/light/secondary
+    color: var(--m3-secondary, #4c555f);
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
@@ -751,8 +857,8 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     :global(.ProseMirror blockquote) {
         margin: 12px 0;
         padding: 4px 16px;
-        border-left: 4px solid #c4c7c8;
-        color: #3f4852;
+        border-left: 4px solid var(--m3-outline-variant, #c4c7c8);
+        color: var(--m3-on-surface-variant, #444748);
 
         p {
             margin: 0;

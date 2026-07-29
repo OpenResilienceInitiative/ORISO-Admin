@@ -77,10 +77,19 @@ export const useHeadingAnchorNav = (
 
     const scrollToAnchor = (anchorId: string) => {
         if (!editor) return;
-        const target = editor.view.dom.querySelector(`[id="${escapeCssId(anchorId)}"]`);
+        const target = editor.view.dom.querySelector<HTMLElement>(`[id="${escapeCssId(anchorId)}"]`);
         // Instant (non-smooth) scrolling: smooth programmatic scrolling is a
         // silent no-op in several embedded/headless browsers.
         target?.scrollIntoView({ block: 'start' });
+        // Reading mode: focus follows the jump, so keyboard and screen-reader
+        // users actually land in the chapter they picked instead of only
+        // seeing it move (WCAG 2.4.3). Headings are not focusable by default,
+        // hence the programmatic-only tabindex. Never in edit mode — that
+        // would pull the caret out of the document the author is writing in.
+        if (target && !editor.isEditable) {
+            target.setAttribute('tabindex', '-1');
+            target.focus?.({ preventScroll: true });
+        }
         setActiveAnchorId(anchorId);
     };
 

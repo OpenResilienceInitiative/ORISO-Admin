@@ -28,6 +28,8 @@ const translations: Record<string, string> = {
     'message.form.login.otp.APP': 'Please enter the code from your app for two-factor authentication.',
     'message.error.auth.adminOnly': 'This account cannot access the admin portal. Please use an admin account.',
     'message.error.auth.login': 'Login failed. Please check username/email and password.',
+    'message.error.auth.credentialsOrInvite':
+        'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
 };
 
 const t = (key: string) => translations[key] || key;
@@ -156,15 +158,49 @@ describe('LoginForm', () => {
         });
     });
 
-    it('shows a login error message for invalid credentials', async () => {
-        mocks.login.mockImplementation((_values, options) => options.onError(new Error('invalid-login')));
+    // TEN-INV-U10 (#572): invalid credentials and a not-yet-registered invitee get ONE
+    // combined, privacy-preserving inline hint — the form must not reveal whether the
+    // account exists (no user enumeration), and no generic toast fires for this case.
+    it('shows the combined credentials-or-invite hint for invalid credentials', async () => {
+        mocks.login.mockImplementation((_values, options) => options.onError(new Error(FETCH_ERRORS.UNAUTHORIZED)));
         render(<LoginForm />);
         const user = await fillRequiredFields();
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
+        );
+        expect(mocks.messageError).not.toHaveBeenCalled();
+    });
+
+    it('shows the exact same hint for a not-yet-registered account (no user enumeration)', async () => {
+        mocks.login.mockImplementation((_values, options) => options.onError(new Error('some-unknown-auth-failure')));
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
+        );
+        expect(mocks.messageError).not.toHaveBeenCalled();
+    });
+
+    it('clears the credentials hint when the login is retried', async () => {
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(new Error(FETCH_ERRORS.UNAUTHORIZED)));
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+        expect(await screen.findByTestId('login-credentials-hint')).toBeInTheDocument();
+
+        // Second submit: mutation stays pending — the stale hint must disappear.
+        mocks.login.mockImplementationOnce(() => {});
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
         await waitFor(() => {
-            expect(mocks.messageError).toHaveBeenCalledWith('Login failed. Please check username/email and password.');
+            expect(screen.queryByTestId('login-credentials-hint')).not.toBeInTheDocument();
         });
     });
 

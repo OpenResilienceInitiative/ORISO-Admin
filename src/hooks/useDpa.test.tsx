@@ -98,6 +98,6 @@ describe('useDpaVersions', () => {
         const { wrapper } = renderWithClient();
         const { result } = renderHook(() => useDpaVersions(42), { wrapper });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(versionsMock).toHaveBeenCalledWith(42);
+        expect(versionsMock).toHaveBeenCalledWith(42, {});
     });
 });

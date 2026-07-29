@@ -48,16 +48,36 @@ export const MultipleCardsPerItem: Story = {
     ),
 };
 
-/** Several cards overflow the visible width, so the SideScrollerFooter with prev/next arrows appears. */
+/**
+ * Several cards overflow the visible width, so the SideScrollerFooter appears with
+ * prev/next arrows and one position dot per card (#568): the active dots mark the
+ * visible cards, so off-screen cards stay discoverable.
+ */
 export const OverflowingCards: Story = {
     render: (args) => (
-        <div style={{ maxWidth: 480 }}>
+        <div style={{ maxWidth: 900 }}>
             <CardDeck {...args}>
                 {[1, 2, 3, 4].map((n) => (
                     <CardDeck.Item key={n}>
-                        <div style={{ width: 260 }}>
-                            <Card titleKey={`Karte ${n}`}>Inhalt der Karte {n}.</Card>
-                        </div>
+                        <Card titleKey={`Karte ${n}`}>Inhalt der Karte {n}.</Card>
+                    </CardDeck.Item>
+                ))}
+            </CardDeck>
+        </div>
+    ),
+};
+
+/**
+ * With room for less than two cards the deck falls back to the vertical stack
+ * instead of hiding every card but the first behind a horizontal scroller (#568).
+ */
+export const StackedFallback: Story = {
+    render: (args) => (
+        <div style={{ maxWidth: 480 }}>
+            <CardDeck {...args}>
+                {[1, 2, 3].map((n) => (
+                    <CardDeck.Item key={n}>
+                        <Card titleKey={`Karte ${n}`}>Inhalt der Karte {n}.</Card>
                     </CardDeck.Item>
                 ))}
             </CardDeck>

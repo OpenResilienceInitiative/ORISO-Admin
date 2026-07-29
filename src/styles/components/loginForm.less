@@ -4,12 +4,14 @@
      * floatingLabelInput.module.scss): transparent field surface, m3-outline
      * resting border, primary focus ring, m3-error state. The MuiFormField sx
      * consumes these custom properties, so scoping them here restyles only the
-     * login fields. The form sits on the white `.publicContent` page surface
-     * (NOT the dark stage panel), so:
-     *  - the floating label blends through the notched-outline gap with no
-     *    chip background needed, and
-     *  - browser autofill gets painted over with the white page surface
-     *    (a transparent box-shadow could not cover the UA blue fill).
+     * login fields. The form sits on the `.publicContent` page surface (NOT the
+     * dark stage panel), which is the product's one background tone since
+     * #594.12 — `--m3-surface-container-high`, no longer white. So:
+     *  - the field stays tonal with the page it sits on (M3 outlined field:
+     *    transparent fill, the outline carries the shape), and
+     *  - browser autofill gets painted over with that same page surface
+     *    (a transparent box-shadow could not cover the UA blue fill), which is
+     *    why this token must track `.publicContent` and not `@white`.
      */
     --input-bg: transparent;
     --input-border-color: var(--m3-outline, #747878);
@@ -18,7 +20,7 @@
     --input-focus-border-color: var(--m3-primary, #a5000a);
     --input-focus-label-color: var(--m3-primary, #a5000a);
     --form-error: var(--m3-error, #ba1a1a);
-    --input-autofill-surface: var(--white, #ffffff);
+    --input-autofill-surface: var(--m3-surface-container-high, #eae7e8);
 
     /* Leading (person/lock) and trailing (visibility) icons: muted
      * on-surface-variant. The error icon keeps its inline error colour. */
@@ -72,64 +74,6 @@
 
     .passwordResetForm .MuiTextField-root {
         margin-bottom: @spacing-s;
-    }
-}
-
-.loginLanguageSelector {
-    position: fixed;
-    z-index: 25;
-    top: @spacing-sm;
-    right: @spacing-sm;
-    display: inline-flex;
-    align-items: center;
-    gap: @spacing-xs;
-
-    .loginLanguageSelector__select.ant-select {
-        width: auto;
-        min-width: 0;
-    }
-
-    .loginLanguageSelector__select .ant-select-selector {
-        display: flex;
-        align-items: center;
-        padding: 0 !important;
-        padding-right: 22px !important;
-        border: none !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        transition: color 0.15s ease;
-    }
-
-    .loginLanguageSelector__select.ant-select:hover .ant-select-selector,
-    .loginLanguageSelector__select.ant-select-focused .ant-select-selector,
-    .loginLanguageSelector__select.ant-select-open .ant-select-selector {
-        border: none !important;
-        background: transparent !important;
-        box-shadow: none !important;
-    }
-
-    .loginLanguageSelector__select .ant-select-selection-item {
-        padding-right: 0;
-        margin-right: 0;
-        color: @primary-color;
-        font-size: @fontSize-m;
-        font-weight: 700;
-        line-height: 1.2;
-    }
-
-    .loginLanguageSelector__select .ant-select-arrow {
-        right: 2px;
-        color: @primary-color;
-    }
-
-    .loginLanguageSelector__select.ant-select:hover .ant-select-selection-item,
-    .loginLanguageSelector__select.ant-select:hover .ant-select-arrow,
-    .loginLanguageSelector__select.ant-select-open .ant-select-selection-item,
-    .loginLanguageSelector__select.ant-select-open .ant-select-arrow {
-        background: transparent !important;
-        box-shadow: none !important;
-        color: @primary-color-dark;
-        transition: color 0.15s ease;
     }
 }
 
@@ -195,13 +139,6 @@
     }
 }
 
-@media screen and (min-width: @screen-xl) {
-    .loginLanguageSelector {
-        top: @spacing-ml;
-        right: @spacing-ml;
-    }
-}
-
 @media screen and (min-width: @screen-sm) and (max-width: @screen-md) {
     .loginForm {
         .ant-form-item-label {
@@ -217,17 +154,62 @@
 // row in the remaining right 60vw and centre it. (antd v5 regression: the
 // previous antd.less grid happened to position it clear of the stage.)
 @media screen and (min-width: @screen-md) {
-    .publicContent.login > .ant-row {
+    .publicContent.login:not(.publicLongForm) > .ant-row {
         width: 60vw;
         align-self: flex-end;
         justify-content: center;
     }
 
-    .publicContent.login > .ant-row > .ant-col {
+    .publicContent.login:not(.publicLongForm) > .ant-row > .ant-col {
         width: auto;
         min-width: 280px;
         max-width: 320px;
         flex: 0 0 auto;
         margin-inline-start: 0 !important;
+    }
+}
+
+/*
+ * Gutter of the public form column. Symmetric on purpose (#594.16): the column
+ * is centred by `justify-content: center` inside its row, and an EQUAL inline
+ * padding on both sides is what makes "centred" measurable rather than
+ * approximate.
+ *
+ * It replaces the 200px one-sided reserve #594.3 had to keep for the fixed
+ * language selector in the top-right corner. That control is gone from the
+ * light column — it is an entry of the stage footer menu now (#594.15b) — and
+ * with it the asymmetry that made the tall DPA step sit off-centre no matter
+ * what was tried (#594.16a: "das Sprachfeld ist der Grund").
+ */
+@public-form-gutter: 40px;
+
+/*
+ * Long public forms (#594.3). The 320px sign-in column is right for a login
+ * form and wrong for an Auftragsverarbeitungsvertrag: on the desktop — where
+ * a 60-page agreement is actually read — the column gets a real reading
+ * measure instead. Below xl the branding stage has slid off-canvas, so the
+ * whole width is available; from xl up the form keeps clear of the 40vw panel,
+ * exactly like the login row. Nothing reserves space on either side any more,
+ * so the free width splits evenly left and right at every viewport.
+ */
+@media screen and (min-width: @screen-md) {
+    .publicContent.publicLongForm > .ant-row {
+        justify-content: center;
+        padding-inline: @public-form-gutter;
+    }
+
+    .publicContent.publicLongForm > .ant-row > .ant-col {
+        width: auto;
+        min-width: 280px;
+        max-width: 640px;
+        flex: 1 1 auto;
+        margin-inline-start: 0 !important;
+    }
+}
+
+@media screen and (min-width: @screen-xl) {
+    .publicContent.publicLongForm > .ant-row {
+        width: 60vw;
+        align-self: flex-end;
     }
 }

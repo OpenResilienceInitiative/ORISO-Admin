@@ -1,0 +1,38 @@
+/*
+ * IdAllocationField — Auto toggle chip inside the canonical M3NumberField's
+ * trailing slot (ORISO-Admin#570). Colours come from the M3/OrisoScheme CSS
+ * variables only; the field states themselves live in M3NumberField.
+ */
+
+.autoToggle {
+    display: inline-flex;
+    height: 32px;
+    align-items: center;
+    padding: 0 12px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: transparent;
+    border-radius: 16px;
+    color: inherit;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    line-height: 16px;
+
+    &:focus-visible {
+        outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
+        outline-offset: 2px;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.38;
+    }
+
+    &[aria-pressed='true'] {
+        border-color: transparent;
+        background: var(--m3-secondary-container, #646d78);
+        color: var(--m3-on-secondary-container, #e7effc);
+    }
+}

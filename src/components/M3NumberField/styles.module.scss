@@ -5,11 +5,17 @@
  * (radius 4/28). All colours come from the M3/OrisoScheme CSS variables.
  */
 
+.root {
+    display: inline-flex;
+    flex-direction: column;
+    font-family: var(--m3-body-font-family, 'Inter Variable', Inter, Arial, sans-serif);
+    gap: 4px;
+}
+
 .field {
     display: inline-flex;
     height: 56px;
     gap: 2px;
-    font-family: var(--m3-body-font-family, 'Inter Variable', Inter, Arial, sans-serif);
 }
 
 .main,
@@ -23,10 +29,10 @@
     color: inherit;
 
     /* M3 state layer: subtle wash of the segment's content colour on hover. */
-    &::after {
+    &:after {
         position: absolute;
-        border-radius: inherit;
         background: transparent;
+        border-radius: inherit;
         content: '';
         inset: 0;
         pointer-events: none;
@@ -55,8 +61,8 @@
     flex-shrink: 0;
     justify-content: center;
     padding: 0;
-    border-radius: 4px;
     appearance: none;
+    border-radius: 4px;
     cursor: pointer;
 
     &:focus-visible {
@@ -81,9 +87,9 @@
     height: 20px;
 }
 
-.field:not(.fieldDisabled) .main:hover::after,
-.field:not(.fieldDisabled) .stepper:not(:disabled):hover::after {
-    background: color-mix(in srgb, currentColor 8%, transparent);
+.field:not(.fieldDisabled) .main:hover:after,
+.field:not(.fieldDisabled) .stepper:not(:disabled):hover:after {
+    background: color-mix(in srgb, currentcolor 8%, transparent);
 }
 
 .icon {
@@ -130,7 +136,7 @@
     outline: none;
 
     &::placeholder {
-        color: currentColor;
+        color: currentcolor;
         opacity: 1;
     }
 
@@ -145,6 +151,24 @@
     .main {
         cursor: not-allowed;
     }
+}
+
+.trailing {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+/* M3 supporting text below the pill: body-small, error-coloured while invalid. */
+.supportingText {
+    padding: 0 24px;
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}
+
+.root:has(.fieldError) .supportingText {
+    color: var(--m3-error, #ba1a1a);
 }
 
 /* Variant: outlined — transparent pill, outline-variant border, on-surface-variant content. */
@@ -186,5 +210,20 @@
     .main,
     .stepper {
         background: var(--m3-primary, #a5000a);
+    }
+}
+
+/*
+ * Error state: error-coloured content and outline on every segment (M3 error
+ * tokens). Declared after the variants so it wins the equal-specificity tie
+ * regardless of which variant the field currently renders.
+ */
+
+.fieldError {
+    color: var(--m3-error, #ba1a1a);
+
+    .main,
+    .stepper {
+        border-color: var(--m3-error, #ba1a1a);
     }
 }

@@ -22,6 +22,12 @@ export const supportedLanguages = ['de', 'en', 'fr', 'ru', 'tr', 'uk', 'ti'];
 export const agencyDataAgencyId = (agencyId: string) => `${agencyServiceURL}/service/agencyadmin/agencies/${agencyId}`;
 export const agencyEndpointBase = `${agencyServiceURL}/service/agencyadmin/agencies`;
 export const agencyPostcodeRangeEndpointBase = `${agencyServiceURL}/service/agencyadmin/postcoderanges`;
+// TEN-INV ID allocation (#569/#570), wired to the REAL backend contracts:
+// live validation is aggregated in UserService (U3), next-free stepping goes
+// to the owning services (TenantService U1 / AgencyService U2). Reservation
+// itself is server-side on invite creation (allocation modes on
+// POST /useradmin/account-invites) — the Admin UI never reserves directly.
+export const agencyIdNextFreeEndpoint = `${agencyServiceURL}/service/agencyadmin/agencyids/next-free`;
 export const consultantsHasAgencyEndpoint = (agencyId: string) =>
     `${userServiceURL}/service/useradmin/agencies/${agencyId}/consultants`;
 export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consultingtypes`;
@@ -37,6 +43,11 @@ export const logoutEndpoint = keycloakAuthPath('/protocol/openid-connect/logout'
 export const tenantEndpoint = `${tenantServiceURL}/service/tenant/`;
 export const tenantAccessEndpoint = `${tenantServiceURL}/service/tenant/access`;
 export const tenantAdminEndpoint = `${tenantServiceURL}/service/tenantadmin`;
+// See agencyIdNextFreeEndpoint above — tenant-ID space (U1).
+export const tenantIdNextFreeEndpoint = `${tenantServiceURL}/service/tenantadmin/tenant-ids/next-free`;
+// Aggregated tenant/agency ID live validation (UserService U3):
+// GET ?tenantId=&agencyId= -> per-ID FREE/RESERVED/ASSIGNED or SERVICE_ERROR.
+export const idAllocationValidationEndpoint = `${userServiceURL}/service/useradmin/id-allocation`;
 export const serverSettingsEndpoint = `${consultingTypeServiceURL}/service/settings`;
 export const serverSettingsAdminEndpoint = `${consultingTypeServiceURL}/service/settingsadmin`;
 export const baseTenantPublicEndpoint = `${tenantServiceURL}/service/tenant/public`;
@@ -54,6 +65,11 @@ export const userPasswordChangeEndpoint = `${userServiceURL}/service/users/passw
 export const tutorialProgressEndpoint = `${userServiceURL}/service/users/tutorials/progress`;
 export const passwordResetRequestEndpoint = `${userServiceURL}/service/users/password-reset/request`;
 export const passwordResetConfirmEndpoint = `${userServiceURL}/service/users/password-reset/confirm`;
+// Public (unauthenticated) account-invite base (TEN-INV, #569/#571). The accept
+// endpoint `{token}/accept` already lives here (UserService AccountInviteController);
+// the U3/U6 onboarding endpoints (`{token}/onboarding[...]`) follow the same
+// convention and get verified against the UserService wiring chunks.
+export const publicAccountInvitesEndpoint = `${userServiceURL}/service/users/account-invites`;
 export const globalSmtpTestEmailEndpoint = `${userServiceURL}/service/users/system-notification-emails/test`;
 export const usersConsultantEndpoint = `${userServiceURL}/service/users/consultants`;
 export const usersConsultantsSearchEndpoint = `${userServiceURL}/service/users/consultants/search`;
@@ -78,6 +94,12 @@ const routePathNames = {
     login: '/admin/login',
     passwordReset: '/admin/password-reset',
     passwordResetConfirm: '/admin/password-reset/confirm',
+    /**
+     * Public tenant-admin onboarding (TEN-INV U8, #571). The emailed invite
+     * link is `{acceptBaseUrl}/{rawToken}` (UserService AccountInviteService),
+     * so the route takes the raw token as a path segment.
+     */
+    tenantOnboarding: '/admin/tenant-onboarding',
     themeSettings: '/admin/theme-settings',
     globalSettings: '/admin/global-settings',
     permissionsSettings: '/admin/theme-settings/permissions',

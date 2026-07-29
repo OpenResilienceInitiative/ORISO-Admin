@@ -1,9 +1,4 @@
-import { ComponentType, lazy } from 'react';
-
-const lazyNamed = <TModule extends Record<string, ComponentType<any>>>(
-    factory: () => Promise<TModule>,
-    exportName: keyof TModule,
-) => lazy(() => factory().then((module) => ({ default: module[exportName] })));
+import { lazyNamed } from './lazyNamed';
 
 export const LazyTenantSettingsLayout = lazyNamed(() => import('./TenantSettings'), 'TenantSettingsLayout');
 export const LazyTopicList = lazyNamed(() => import('./Topics/List/TopicList'), 'TopicList');

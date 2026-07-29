@@ -18,6 +18,35 @@ export interface DpaSignInvite {
     expiresAt: string;
 }
 
+/**
+ * Authoritative per-tenant DPA state (TEN-INV-U9, TenantService
+ * GET /tenantadmin/{id}/dpa/status — see api/tenantservice.yaml DpaStatusDTO).
+ */
+export type TenantDpaStatus = 'MISSING' | 'UNSIGNED' | 'OUTDATED' | 'VALID' | 'INCONSISTENT';
+
+/** Response of the U9 status endpoint (DpaStatusDTO). */
+export interface TenantDpaStatusInfo {
+    tenantId: number;
+    status: TenantDpaStatus;
+    /** Activation timestamp of the currently published DPA version, if any. */
+    currentDpaVersion?: string | null;
+    /** Newest DPA version a signature exists for, if any. */
+    signedDpaVersion?: string | null;
+    signedAt?: string | null;
+    signedBy?: string | null;
+}
+
+/** Request body of the U9 sign endpoint (DpaAdminSignRequestDTO). */
+export interface DpaAdminSignRequest {
+    signerName: string;
+    signerPosition?: string;
+    signerEmail?: string;
+    signerOrganisation?: string;
+    /** Must be true — the signer explicitly accepted the current DPA version. */
+    accepted: boolean;
+    language?: string;
+}
+
 export interface DpaSignature {
     status: 'PENDING' | 'SIGNED' | 'DENIED';
     signerName?: string | null;

@@ -48,10 +48,24 @@ const mocks = vi.hoisted(() => ({
     listInviteEmailTemplates: vi.fn(),
     searchTenantData: vi.fn(),
     parseUserAuthInfo: vi.fn(),
+    tenantIdAllocationClient: {
+        checkIdAvailability: vi.fn(),
+        nextFreeId: vi.fn(),
+    },
+    agencyIdAllocationClient: {
+        checkIdAvailability: vi.fn(),
+        nextFreeId: vi.fn(),
+    },
+}));
+
+vi.mock('../../api/idAllocation/idAllocation', () => ({
+    tenantIdAllocationClient: mocks.tenantIdAllocationClient,
+    agencyIdAllocationClient: mocks.agencyIdAllocationClient,
 }));
 
 vi.mock('../../api/accountInvites/accountInvites', () => ({
     accountInviteAcceptBaseUrl: 'https://admin.example/account-invite',
+    acceptBaseUrlForRole: () => 'https://admin.example/account-invite',
     listAccountInvites: mocks.listAccountInvites,
     createAccountInvite: mocks.createAccountInvite,
     resendAccountInvite: mocks.resendAccountInvite,
@@ -104,6 +118,8 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
         mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
         mocks.listAccountInvites.mockResolvedValue(emptyInvitesPage);
+        mocks.tenantIdAllocationClient.checkIdAvailability.mockResolvedValue({ id: 21, state: 'FREE' });
+        mocks.tenantIdAllocationClient.nextFreeId.mockResolvedValue({ id: 21 });
     });
 
     it('keeps the send action outlined + disabled until valid, then flips to primary', async () => {
@@ -161,6 +177,73 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(await screen.findByText('Recipient created without sending an email')).toBeInTheDocument();
         // Successful submit clears the recipient fields for the next invite.
         expect(screen.getByLabelText('E-Mail')).toHaveValue('');
+    });
+
+    it('starts visibly on Auto and posts allocationMode AUTO without a browser-pinned id (#570)', async () => {
+        mocks.createAccountInvite.mockResolvedValue({ id: 99 });
+
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        const idInput = await screen.findByRole('textbox', { name: 'Träger-ID' });
+        expect(idInput).toHaveValue('Auto');
+        expect(screen.getByText('Die nächste freie ID wird automatisch vergeben.')).toBeInTheDocument();
+
+        await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = await findSendButton('Direkt Versenden');
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        const payload = mocks.createAccountInvite.mock.calls[0][0];
+        expect(payload.tenantIdAllocationMode).toBe('AUTO');
+        expect(payload.tenantId).toBeUndefined();
+        // After a successful submit the field rests on Auto again.
+        expect(screen.getByRole('textbox', { name: 'Träger-ID' })).toHaveValue('Auto');
+    });
+
+    it('blocks sending on a reserved id and unblocks via the Auto toggle (#570)', async () => {
+        mocks.tenantIdAllocationClient.checkIdAvailability.mockResolvedValue({ id: 30, state: 'RESERVED' });
+
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = await findSendButton('Direkt Versenden');
+        await waitFor(() => expect(sendButton).toBeEnabled());
+
+        await user.type(screen.getByRole('textbox', { name: 'Träger-ID' }), '30');
+        expect(await screen.findByText('Diese ID ist durch eine offene Einladung reserviert.')).toBeInTheDocument();
+        await waitFor(() => expect(sendButton).toBeDisabled());
+
+        await user.click(screen.getByRole('button', { name: 'Automatische ID-Vergabe' }));
+        expect(screen.getByRole('textbox', { name: 'Träger-ID' })).toHaveValue('Auto');
+        await waitFor(() => expect(sendButton).toBeEnabled());
+    });
+
+    it('adopts the current next free id on the first arrow click and posts MANUAL (#570)', async () => {
+        mocks.createAccountInvite.mockResolvedValue({ id: 99 });
+
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        await screen.findByRole('textbox', { name: 'Träger-ID' });
+        await user.click(screen.getByRole('button', { name: 'Wert erhöhen' }));
+
+        await waitFor(() => expect(screen.getByRole('textbox', { name: 'Träger-ID' })).toHaveValue('21'));
+        expect(mocks.tenantIdAllocationClient.nextFreeId).toHaveBeenCalledWith({ direction: 'up' });
+        // The tab-level `t` mock does not interpolate — the raw fallback is fine here.
+        expect(await screen.findByText('ID {{id}} ist frei.')).toBeInTheDocument();
+
+        await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = await findSendButton('Direkt Versenden');
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        const payload = mocks.createAccountInvite.mock.calls[0][0];
+        expect(payload.tenantIdAllocationMode).toBe('MANUAL');
+        expect(payload.tenantId).toBe(21);
     });
 
     it('parses a picked CSV client-side and opens the preview modal (#315)', async () => {

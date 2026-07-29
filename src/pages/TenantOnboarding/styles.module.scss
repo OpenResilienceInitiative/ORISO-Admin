@@ -1,0 +1,198 @@
+@use '../../styles/breakpoints' as bp;
+
+/* Public tenant-admin onboarding (#571).
+ *
+ * Surface language (#594.8, extended by #594.12/#594.17) — taken from
+ * Organisms/Modal, the product's reference sheet: the NEUTRAL
+ * `--m3-surface-container-high` tone, everything on it tonal with it (fields
+ * included — no white boxes punched into a tinted page), and the accent left
+ * to the actions. Since #594.12 that tone is the PAGE background of the whole
+ * public surface, so nothing here paints a sheet of its own any more. Every
+ * colour resolves to an ORISO token from src/app.css.
+ */
+
+.sheet {
+    padding: 32px 0;
+
+    /* No box (#594.12 / #594.17). The neutral `--m3-surface-container-high`
+       tone the sheet used to paint is now the PAGE background of the whole
+       public surface, so painting it again — plus a radius and a drop shadow —
+       would only draw a box around content that is already on that surface.
+       The element stays as the layout and scroll container of the step. */
+
+    /* Fields are tonal with the page instead of white cut-outs. `--input-bg`
+       is the single surface knob MuiFormField reads (src/app.css). */
+    --input-bg: var(--m3-surface-container-highest);
+    --input-autofill-surface: var(--m3-surface-container-highest);
+    --input-border-color: var(--m3-outline-variant);
+    --input-hover-border-color: var(--m3-on-surface);
+    --input-focus-border-color: var(--m3-primary);
+
+    @media (max-width: 599px) {
+        padding: 20px 0;
+    }
+}
+
+/* Desktop centring (#594.3, reopened in review).
+ *
+ * `margin-block: auto` on the column only absorbs FREE space, so on the DPA
+ * step — ~1871px tall — it collapsed to zero and the content still hugged the
+ * top edge. The sheet is therefore BOUNDED to the viewport from the desktop
+ * breakpoint up: it can never be taller than the space it is centred in, so
+ * the centring genuinely engages. The agreement absorbs the slack, because
+ * the reader has no scroll container of its own any more (see
+ * M3RichTextEditor `fluid`) — the sheet body is the ONLY scroller on screen.
+ *
+ * Below 1200px nothing is bounded: the page scrolls exactly as #569 requires
+ * at 390x844, and there is again exactly one scroller (the page).
+ */
+
+@media screen and (min-width: bp.$from-xl) {
+    .sheet {
+        display: flex;
+        max-height: calc(100vh - 96px);
+        flex-direction: column;
+    }
+
+    .sheetBody {
+        min-height: 0;
+        flex: 1 1 auto;
+
+        /* Horizontal room for the focus ring of the fields inside the
+           scroller. Vertical padding is deliberately 0 so the sticky chapter
+           bar lands exactly on the scrollport edge. */
+        padding: 0 4px;
+        margin: 0 -4px;
+        overflow-y: auto;
+        scrollbar-gutter: stable;
+    }
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
+}
+
+.fieldStack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* The two short organisation identifiers pair up once there is a reading
+   measure — same reason as the signer fields: height the bounded sheet needs. */
+
+@media (min-width: 720px) {
+    .fieldStackPaired {
+        display: grid;
+        gap: 0 16px;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .fieldStackPaired > :last-child {
+        grid-column: 1 / -1;
+    }
+}
+
+/* The DPA text + signer form block is shared — see src/components/DpaLegalForm.
+   The reader card carries its own title/help text, so this only separates it
+   from the organisation fields above. */
+
+.dpaBlock {
+    margin-top: 32px;
+}
+
+.actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+    gap: 12px;
+
+    > * {
+        flex: 1 1 auto;
+    }
+}
+
+/* Success screen (#594.7). Centred on every viewport — the page layout centres
+   the column, this centres the content inside it — with the shared status
+   colours carrying the confirmation. */
+
+.done {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+}
+
+/* The confirmation glyph is the product's own `Verified` icon (Atoms/CustomIcons
+   gallery), in the product's own SECONDARY colour (#594.11). It used to be MUI's
+   CheckCircle in `--admin-status-success` — a GREEN that belongs to table row
+   states, not to this surface, and the same class of defect as the Material
+   default-green fallbacks and the invented navy: a foreign palette entering
+   through a component written from scratch. Comparable elements in the gallery
+   carry primary or secondary; secondary is the quieter and here the better one. */
+
+.doneIcon {
+    color: var(--m3-secondary, #4c555f);
+    font-size: 56px;
+
+    svg {
+        width: 56px;
+        height: 56px;
+    }
+}
+
+/* The assigned ID as a labelled detail, not inline in the prose. A hairline
+   rule instead of a filled block — #594.4 rejected the ad-hoc grey boxes. */
+
+.doneDetail {
+    display: flex;
+    align-items: baseline;
+    align-self: stretch;
+    justify-content: center;
+    padding: 12px 0;
+    margin: 0;
+    border-block: 1px solid var(--m3-outline-variant);
+    gap: 12px;
+
+    dt {
+        color: var(--m3-on-surface-variant);
+        font: 500 14px/20px var(--m3-body-font-family);
+        letter-spacing: 0.1px;
+    }
+
+    dd {
+        margin: 0;
+        color: var(--m3-on-surface);
+        font: 700 20px/28px var(--m3-body-font-family);
+    }
+}
+
+/* What happens next: the two facts that matter, each on its own row so both
+   are readable at a glance instead of buried in one run-on sentence. */
+
+.doneNext {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    gap: 12px;
+    list-style: none;
+    text-align: start;
+
+    li {
+        display: flex;
+        align-items: flex-start;
+        color: var(--m3-on-surface-variant);
+        font: 400 14px/20px var(--m3-body-font-family);
+        gap: 12px;
+    }
+
+    svg {
+        flex: 0 0 auto;
+        margin-top: 1px;
+        color: var(--m3-outline);
+    }
+}

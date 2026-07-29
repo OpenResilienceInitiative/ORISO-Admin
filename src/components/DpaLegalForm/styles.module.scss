@@ -1,0 +1,103 @@
+/* Shared DPA/AVV form block (#569 hardening, reworked in #594): the canonical
+   read-only rich-text reader (chapter chips live in the card itself — this
+   file must never grow a second table of contents), the signer fields and the
+   consent act.
+
+   Colour language (#594.8) — taken from Organisms/Modal, the product's
+   reference sheet: the surface is a NEUTRAL `--m3-surface-container-*` tone,
+   everything sitting on it is tonal with it (no white boxes punched into a
+   tinted page), and the accent is reserved for actions. Colours come from the
+   ORISO tokens in src/app.css and from NOTHING else — no local hex fallbacks,
+   which would be a second palette drifting away from the first. */
+
+.reader {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+.fieldStack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* From the reading measure upwards the short signer fields pair up. That is
+   not cosmetic: it takes ~190px off the step, which is part of what lets the
+   whole step fit inside a viewport-bounded sheet and actually centre
+   (#594.3). Below that width they stay stacked. */
+
+@media (min-width: 720px) {
+    .fieldStackPaired {
+        display: grid;
+        gap: 0 16px;
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Consent (#594.5): ticking the box IS the signature, so it reads as its own
+   deliberate act — an outlined block with a large hit area, not a footnote
+   beside the name fields. Same treatment on desktop and at 390x844.
+
+   It is tonal with the fields above it (#594.8). Prominence comes from the
+   2px outline, the emphasised label and the state change — NOT from an
+   accent-coloured fill: the accent belongs on actions, and a rose block was
+   exactly the "that is not our background colour" defect. */
+
+.consent {
+    display: flex;
+    align-items: flex-start;
+    padding: 16px;
+    border: 2px solid var(--m3-outline);
+    margin-top: 24px;
+    background: var(--m3-surface-container-highest);
+    border-radius: 16px;
+    gap: 8px;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+/* Signed: the outline and the tick carry the accent, the surface only lifts
+   one tonal step. */
+
+.consentChecked {
+    border-color: var(--m3-primary);
+    background: var(--m3-surface-container);
+}
+
+.consentError {
+    border-color: var(--m3-error);
+}
+
+.consentCheckbox {
+    margin-top: -8px;
+}
+
+.consentBody {
+    flex: 1;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* The emphasis is declared here AND pinned via `sx` in DpaFormSection: MUI
+   Typography's emotion class beats a plain class selector, so the class alone
+   silently lost weight and size (#594 review). Both are kept so the block
+   still renders correctly if the element ever stops being a Typography. */
+
+.consentTitle {
+    margin: 0;
+    color: var(--m3-on-surface);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+}
+
+.consentHint {
+    margin: 4px 0 0;
+    color: var(--m3-on-surface-variant);
+    font-size: 13px;
+    line-height: 18px;
+}
+
+.consentErrorText {
+    margin-top: 8px;
+}

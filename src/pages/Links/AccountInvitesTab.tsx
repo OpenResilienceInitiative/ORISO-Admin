@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import {
-    accountInviteAcceptBaseUrl,
+    acceptBaseUrlForRole,
     AccountInviteDTO,
     AccountInviteStatus,
     AccountInviteTargetRole,
@@ -104,17 +104,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
 
     const currentTenantId = parseUserAuthInfo().tenantId || undefined;
 
-    // Auto-suggested, non-colliding Träger-ID (Träger-Invites/TENANT_ADMIN only): the
-    // smallest positive integer not already used by an existing tenant or by another
-    // still-active (DRAFT/EMAIL_SENT) TENANT_ADMIN invite. Both sources load
-    // asynchronously, so a `*Loaded` flag distinguishes "not loaded yet" from
-    // "loaded and genuinely empty" — otherwise the suggestion would briefly compute
-    // as 1 before the real taken-id data arrives.
+    // Client-side taken-id knowledge (existing tenants + still-active
+    // DRAFT/EMAIL_SENT TENANT_ADMIN invites). The composer's ID field itself now
+    // validates against the authoritative allocation endpoints (#570); this set
+    // only pre-flags collisions in the CSV import preview.
     const isTenantInvite = targetRole === 'TENANT_ADMIN';
     const [existingTenantIds, setExistingTenantIds] = useState<Set<number>>(new Set());
-    const [existingTenantIdsLoaded, setExistingTenantIdsLoaded] = useState(false);
     const [activeInviteTenantIds, setActiveInviteTenantIds] = useState<Set<number>>(new Set());
-    const [activeInviteTenantIdsLoaded, setActiveInviteTenantIdsLoaded] = useState(false);
 
     useEffect(() => {
         if (!isTenantInvite) return undefined;
@@ -138,12 +134,10 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             }
             if (!cancelled) {
                 setExistingTenantIds(new Set(ids));
-                setExistingTenantIdsLoaded(true);
             }
         };
-        setExistingTenantIdsLoaded(false);
         loadAllTenantIds().catch(() => {
-            if (!cancelled) setExistingTenantIdsLoaded(false);
+            // Best-effort pre-flagging only — the CSV preview falls back to the backend's 409.
         });
         return () => {
             cancelled = true;
@@ -173,12 +167,10 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     .map((invite) => invite.tenantId)
                     .filter((id): id is number => id != null);
                 setActiveInviteTenantIds(new Set(ids));
-                setActiveInviteTenantIdsLoaded(true);
             }
         };
-        setActiveInviteTenantIdsLoaded(false);
         loadAllActiveInviteTenantIds().catch(() => {
-            if (!cancelled) setActiveInviteTenantIdsLoaded(false);
+            // Best-effort pre-flagging only — the CSV preview falls back to the backend's 409.
         });
         // Recomputed whenever the visible (paginated) invite list reloads — e.g. right
         // after this component creates a new invite — so the just-taken id is reflected
@@ -192,17 +184,6 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         () => new Set<number>([...existingTenantIds, ...activeInviteTenantIds]),
         [existingTenantIds, activeInviteTenantIds],
     );
-
-    const suggestedTenantId = useMemo(() => {
-        if (!isTenantInvite || !existingTenantIdsLoaded || !activeInviteTenantIdsLoaded) {
-            return undefined;
-        }
-        let candidate = 1;
-        while (takenTenantIds.has(candidate)) {
-            candidate += 1;
-        }
-        return candidate;
-    }, [isTenantInvite, existingTenantIdsLoaded, activeInviteTenantIdsLoaded, takenTenantIds]);
 
     const activeTemplates = useMemo(() => templates.filter((template) => template.active), [templates]);
 
@@ -295,8 +276,15 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             setSubmitting(true);
             try {
                 const created = await createAccountInvite({
-                    acceptBaseUrl: accountInviteAcceptBaseUrl,
+                    // Role-aware target (TEN-INV U6/U8): tenant admins land on the
+                    // public Admin onboarding route, everyone else on the app layer.
+                    acceptBaseUrl: acceptBaseUrlForRole(targetRole),
                     agencyId: values.agencyId,
+                    // Allocation contract (#569/#570): AUTO = backend assigns the
+                    // smallest free id; MANUAL ids were pre-validated in the field
+                    // and are re-checked authoritatively on create.
+                    agencyIdAllocationMode: values.agencyIdAllocationMode,
+                    tenantIdAllocationMode: values.tenantIdAllocationMode,
                     expiresInDays: 30,
                     firstName: values.firstName,
                     lastName: values.lastName,
@@ -340,7 +328,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         async (row: InviteCsvCreateRow) => {
             if (!csvImport) return;
             await createAccountInvite({
-                acceptBaseUrl: accountInviteAcceptBaseUrl,
+                acceptBaseUrl: acceptBaseUrlForRole(targetRole),
                 expiresInDays: 30,
                 firstName: row.firstName,
                 lastName: row.lastName,
@@ -362,7 +350,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             }
             try {
                 const resent = await resendAccountInvite(invite.id, {
-                    acceptBaseUrl: accountInviteAcceptBaseUrl,
+                    acceptBaseUrl: acceptBaseUrlForRole(invite.targetRole),
                     templateId,
                 });
                 rememberGeneratedLink(resent);
@@ -464,7 +452,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             try {
                 // eslint-disable-next-line no-await-in-loop -- sequential on purpose: per-row attribution, no mail burst
                 const resent = await resendAccountInvite(targets[i].id, {
-                    acceptBaseUrl: accountInviteAcceptBaseUrl,
+                    acceptBaseUrl: acceptBaseUrlForRole(targets[i].targetRole),
                     templateId,
                 });
                 rememberGeneratedLink(resent);
@@ -596,8 +584,6 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 requireTenantId={isTenantInvite}
                 selectionCount={selectedInvites.length}
                 submitting={submitting || bulkRunning}
-                suggestedTenantId={suggestedTenantId}
-                takenTenantIds={takenTenantIds}
                 templateId={selectedTemplateId}
                 templates={templates}
                 onBulkSend={onBulkSend}

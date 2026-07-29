@@ -1,0 +1,12 @@
+/* Shared MUI spacing unit for the CSS modules (PR #596 review).
+ *
+ * `orisoMuiTheme` (src/theme/orisoMuiTheme.ts) does not override `spacing`,
+ * so MUI's default 8px unit is the scale already governing every MUI
+ * primitive on these surfaces. The legacy `--spacing-*` custom properties in
+ * src/app.css are a separate, 5px-based scale with no step at 32 or 48 — it
+ * belongs to the older antd-era screens, not this one. `$mui-unit` makes the
+ * 8px grid the surfaces are actually built on explicit instead of leaving
+ * `32px` / `48px` as unexplained literals.
+ */
+
+$mui-unit: 8px;

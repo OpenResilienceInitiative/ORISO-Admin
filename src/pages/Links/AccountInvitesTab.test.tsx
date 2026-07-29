@@ -43,10 +43,12 @@ const mocks = vi.hoisted(() => ({
     listInviteEmailTemplates: vi.fn(),
     searchTenantData: vi.fn(),
     parseUserAuthInfo: vi.fn(),
+    acceptBaseUrlForRole: vi.fn(),
 }));
 
 vi.mock('../../api/accountInvites/accountInvites', () => ({
     accountInviteAcceptBaseUrl: 'https://admin.example/account-invite',
+    acceptBaseUrlForRole: mocks.acceptBaseUrlForRole,
     listAccountInvites: mocks.listAccountInvites,
     createAccountInvite: mocks.createAccountInvite,
     resendAccountInvite: mocks.resendAccountInvite,
@@ -60,6 +62,19 @@ vi.mock('../../api/tenant/searchTenantData', () => ({
 
 vi.mock('../../utils/parseUserAuthInfo', () => ({
     parseUserAuthInfo: mocks.parseUserAuthInfo,
+}));
+
+// The composer's ID fields talk to the allocation endpoints (#570); keep them
+// inert here — the field behaviour has its own test files.
+vi.mock('../../api/idAllocation/idAllocation', () => ({
+    tenantIdAllocationClient: {
+        checkIdAvailability: vi.fn(),
+        nextFreeId: vi.fn(),
+    },
+    agencyIdAllocationClient: {
+        checkIdAvailability: vi.fn(),
+        nextFreeId: vi.fn(),
+    },
 }));
 
 const invitesPage = (content: any[]) => ({
@@ -112,23 +127,51 @@ const renderTenantTab = async () => {
     return render(<TenantInvitesTab />);
 };
 
-describe('TenantInvitesTab Träger-ID suggestion', () => {
+describe('TenantInvitesTab Träger-ID field', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         window.localStorage.clear();
         mocks.parseUserAuthInfo.mockReturnValue({});
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
     });
 
-    it('suggests the smallest free id, skipping tenants and active invites but not terminal ones', async () => {
-        // Tenants occupy 1, 2, 4; an active invite holds 3; a revoked invite on 5 must NOT block.
+    it('sends tenant-admin invites with the role-derived accept base URL (TEN-INV U6/U8, #890)', async () => {
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+        mocks.createAccountInvite.mockResolvedValue(invite(1, 21, 'EMAIL_SENT'));
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/admin/tenant-onboarding');
+
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        await waitFor(() =>
+            expect(mocks.createAccountInvite).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    targetRole: 'TENANT_ADMIN',
+                    acceptBaseUrl: 'https://admin.example/admin/tenant-onboarding',
+                }),
+            ),
+        );
+        expect(mocks.acceptBaseUrlForRole).toHaveBeenCalledWith('TENANT_ADMIN');
+    });
+
+    it('starts visibly on Auto instead of a client-side suggestion (#570)', async () => {
+        // Even with taken ids around, the field pins nothing in the browser —
+        // the backend assigns the smallest free id atomically in AUTO mode.
         mocks.searchTenantData.mockResolvedValue({ data: [{ id: 1 }, { id: 2 }, { id: 4 }], total: 3 });
         mocks.listAccountInvites.mockResolvedValue(invitesPage([invite(11, 3, 'DRAFT'), invite(12, 5, 'REVOKED')]));
 
         await renderTenantTab();
 
         const field = await screen.findByLabelText('Träger-ID');
-        await waitFor(() => expect(field).toHaveValue('5'));
+        await waitFor(() => expect(field).toHaveValue('Auto'));
+        expect(screen.getByText('Die nächste freie ID wird automatisch vergeben.')).toBeInTheDocument();
     });
 
     it('shows the dedicated collision message when the backend answers 409', async () => {

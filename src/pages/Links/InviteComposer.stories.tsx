@@ -9,6 +9,7 @@ import {
     listInviteEmailTemplates,
     type InviteEmailTemplateDTO,
 } from '../../api/accountInvites/accountInvites';
+import type { IdAllocationClient, IdAllocationState } from '../../api/idAllocation/idAllocation';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
@@ -47,6 +48,31 @@ const templatesByKind = http.get(TEMPLATES_ENDPOINT, ({ request }) => {
     return HttpResponse.json(TEMPLATES.filter((template) => !kind || template.kind === kind));
 });
 
+/**
+ * Stubbed allocation client (#570 worked example): ids 1–20 assigned, 30–35
+ * reserved. Auto adopts 21, stepping skips the taken ranges, typing 30 blocks.
+ * The real endpoints are built in parallel (TenantService U1); the wiring
+ * chunk (U3/U6) replaces this stub with MSW handlers on the real paths.
+ */
+const TAKEN_IDS = new Set<number>([...Array.from({ length: 20 }, (_, i) => i + 1), 30, 31, 32, 33, 34, 35]);
+
+const idStateOf = (id: number): IdAllocationState => {
+    if (!TAKEN_IDS.has(id)) return 'FREE';
+    return id >= 30 && id <= 35 ? 'RESERVED' : 'ASSIGNED';
+};
+
+const stubbedTenantIdAllocation: IdAllocationClient = {
+    checkIdAvailability: async (id) => ({ id, state: idStateOf(id) }),
+    nextFreeId: async ({ from, direction }) => {
+        let candidate = from == null ? 1 : from + (direction === 'up' ? 1 : -1);
+        while (candidate >= 1 && candidate <= 999) {
+            if (!TAKEN_IDS.has(candidate)) return { id: candidate };
+            candidate += direction === 'up' ? 1 : -1;
+        }
+        return { id: null };
+    },
+};
+
 const defaultHandlers = [
     templatesByKind,
     http.post(INVITES_ENDPOINT, () =>
@@ -78,9 +104,8 @@ const ComposerHarness = () => {
                 persistKey="TENANT_ADMIN"
                 requireTenantId
                 submitting={submitting}
-                suggestedTenantId={4}
-                takenTenantIds={new Set([1, 2, 3])}
                 templateId={templateId}
+                tenantIdAllocation={stubbedTenantIdAllocation}
                 templates={templates}
                 onManageTemplates={(intent) => setDialogView(intent === 'create' ? 'create' : 'list')}
                 onSubmit={async (values) => {
@@ -133,10 +158,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * Nothing filled yet: template preselected, Träger-ID auto-suggested (4 — the ids
- * 1–3 are taken), but the missing recipient e-mail keeps the send split button in
- * its outlined, disabled resting state. Its chevron menu stays reachable so the
- * send mode can be switched at any time.
+ * Nothing filled yet: template preselected, Träger-ID visibly on `Auto` (#570 —
+ * no browser-pinned id, the backend assigns the smallest free one), but the
+ * missing recipient e-mail keeps the send split button in its outlined,
+ * disabled resting state. Its chevron menu stays reachable so the send mode
+ * can be switched at any time.
  */
 export const Empty: Story = {
     decorators: [
@@ -188,5 +214,21 @@ export const TemplateMenuOpen: Story = {
         const canvas = within(canvasElement);
         await canvas.findByRole('button', { name: /Träger-Willkommen/ });
         await userEvent.click(canvas.getByRole('button', { name: 'E-Mail-Vorlage wählen' }));
+    },
+};
+
+/**
+ * Manual mode with a blocking state (#570): typing 30 hits an id reserved by an
+ * open invite — error state on the field, helper text explains, sending stays
+ * blocked until the id is free or the visible Auto toggle resets the field.
+ */
+export const ReservedIdBlocksSending: Story = {
+    decorators: Empty.decorators,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        // Locale-agnostic queries: the Storybook i18n may resolve de or en.
+        await userEvent.type(await canvas.findByLabelText(/E-Mail/i), 'maria.huber@example.org');
+        await userEvent.type(canvas.getByRole('textbox', { name: /Träger-ID|Tenant ID/ }), '30');
+        await canvas.findByText(/durch eine offene Einladung reserviert|reserved by an open invite/);
     },
 };

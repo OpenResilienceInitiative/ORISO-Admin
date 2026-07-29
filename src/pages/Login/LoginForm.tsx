@@ -17,6 +17,7 @@ import { FETCH_ERRORS } from '../../api/fetchData';
 import { ADMIN_PORTAL_ACCESS_DENIED, TENANT_ACCESS_DENIED, useLoginMutation } from '../../hooks/useLoginMutation.hook';
 import { TwoFactorType } from '../../enums/TwoFactorType';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
+import { LoginCredentialsHint } from './LoginCredentialsHint';
 
 const startIcon = (icon: React.ReactNode) => <InputAdornment position="start">{icon}</InputAdornment>;
 
@@ -26,6 +27,7 @@ const LoginForm = () => {
     const { t } = useTranslation();
     const { mutate: login } = useLoginMutation(tenantData?.id != null ? `${tenantData.id}` : '');
     const [postLoading, setPostLoading] = useState(false);
+    const [showCredentialsHint, setShowCredentialsHint] = useState(false);
     const [otpDisabled, setOtpDisabled] = useState(true);
     const [twoFactorType, setTwoFactorType] = useState(TwoFactorType.None);
     const otpHelpTextKey =
@@ -34,6 +36,7 @@ const LoginForm = () => {
     // Function gets fired on Form Submit
     const onFinish = async (values: any) => {
         setPostLoading(true);
+        setShowCredentialsHint(false);
 
         login(values, {
             onSuccess: () => {
@@ -51,7 +54,12 @@ const LoginForm = () => {
                 } else if (error.message === FETCH_ERRORS.TIMEOUT) {
                     message.error(t('message.error.auth.network'));
                 } else {
-                    message.error(t('message.error.auth.login'));
+                    // TEN-INV-U10 (#572): invalid credentials and a not-yet-registered
+                    // invitee get ONE combined, privacy-preserving hint — deliberately
+                    // not distinguishable, so the form cannot be used to enumerate
+                    // whether an account exists. (A successful login with a missing DPA
+                    // never lands here: it authenticates and hits the global blocker.)
+                    setShowCredentialsHint(true);
                 }
                 setPostLoading(false);
             },
@@ -94,6 +102,8 @@ const LoginForm = () => {
                             rules={[{ required: !otpDisabled, message: t('message.form.login.otp') }]}
                         />
                     )}
+
+                    {showCredentialsHint && <LoginCredentialsHint />}
 
                     <a href={routePathNames.passwordReset} className="forgotPW">
                         {t('password.forgot')}

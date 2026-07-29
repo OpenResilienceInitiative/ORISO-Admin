@@ -68,7 +68,7 @@ describe('applyAdminTheme', () => {
         expect(root.style.getPropertyValue('--admin-field-surface')).toBe('#fcf9f9');
         expect(root.style.getPropertyValue('--admin-field-outline')).toBe('#c4c7c8');
         expect(root.style.getPropertyValue('--admin-field-surface-hover')).toBe('#f6f3f3');
-        expect(root.style.getPropertyValue('--admin-field-selected-surface')).toBe('#ffdad5');
+        expect(root.style.getPropertyValue('--admin-field-selected-surface')).toBe('#ffe2de');
         expect(root.style.getPropertyValue('--admin-field-selected-text')).toBe('#930008');
         // Legacy alias consumed by --input-bg/--input-label-bg must not drift.
         expect(root.style.getPropertyValue('--admin-form-field-surface')).toBe(
