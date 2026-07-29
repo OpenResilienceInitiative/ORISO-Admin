@@ -3,7 +3,14 @@ import { DeleteOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons'
 import { message, Upload, type MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
+import {
+    agencyIdAllocationClient,
+    tenantIdAllocationClient,
+    type AllocationMode,
+    type IdAllocationClient,
+} from '../../api/idAllocation/idAllocation';
 import { FloatingLabelInput } from '../../components/FloatingLabelInput';
+import { IdAllocationField, useIdAllocation } from '../../components/IdAllocationField';
 import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { M3NumberField } from '../../components/M3NumberField';
@@ -26,6 +33,14 @@ export interface InviteComposerValues {
     lastName?: string;
     tenantId?: number;
     agencyId?: number;
+    /**
+     * Träger tab only (#570): `AUTO` = the backend assigns the smallest free
+     * tenant id atomically — `tenantId` is then deliberately undefined (no
+     * browser-pinned id). `MANUAL` = the admin pinned `tenantId` explicitly.
+     */
+    tenantIdAllocationMode?: AllocationMode;
+    /** Same contract for the agency id space (AgencyService, U2). */
+    agencyIdAllocationMode?: AllocationMode;
     /** Only set in `direct` mode — `createOnly` posts without a template. */
     templateId?: number;
     sendMode: InviteSendMode;
@@ -37,18 +52,17 @@ export interface InviteComposerProps {
     /** Currently selected template (lifted so the tab can reuse it, e.g. for resend). */
     templateId?: number;
     onTemplateIdChange: (templateId: number) => void;
-    /** Träger tab: the Träger-ID is required, auto-suggested and collision-checked. */
+    /** Träger tab: the Träger-ID is an allocation field — Auto by default, collision-checked in manual mode (#570). */
     requireTenantId?: boolean;
-    /**
-     * Auto-suggested free Träger-ID. The field tracks this suggestion until the
-     * admin edits the field; a successful submit re-arms the tracking so the
-     * next free id flows in for the following invite.
-     */
-    suggestedTenantId?: number;
-    /** Ids that must be rejected client-side (existing tenants + active invites). */
-    takenTenantIds?: Set<number>;
     /** Non-Träger tabs: prefill with the admin's own tenant. */
     initialTenantId?: number;
+    /**
+     * Allocation clients for the tenant / agency id spaces. Default to the real
+     * TenantService/AgencyService clients; tests and stories inject stubs
+     * (the backend endpoints are built in parallel, U1/U2).
+     */
+    tenantIdAllocation?: IdAllocationClient;
+    agencyIdAllocation?: IdAllocationClient;
     includeAgencyField?: boolean;
     submitting?: boolean;
     /** Discriminator for the persisted send mode (one per tab), e.g. the target role. */
@@ -87,6 +101,8 @@ export interface InviteComposerProps {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const toAllocationMode = (mode: 'auto' | 'manual'): AllocationMode => (mode === 'auto' ? 'AUTO' : 'MANUAL');
+
 export const sendModeStorageKey = (persistKey: string) => `oriso-admin.invite-composer.send-mode.${persistKey}`;
 
 // `File.text()` with a FileReader fallback — jsdom (tests) implements only the latter.
@@ -123,9 +139,9 @@ export const InviteComposer = ({
     templateId,
     onTemplateIdChange,
     requireTenantId = false,
-    suggestedTenantId,
-    takenTenantIds,
     initialTenantId,
+    tenantIdAllocation,
+    agencyIdAllocation,
     includeAgencyField = false,
     submitting = false,
     persistKey,
@@ -143,23 +159,32 @@ export const InviteComposer = ({
     const [emailTouched, setEmailTouched] = useState(false);
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
-    const [agencyId, setAgencyId] = useState<number | undefined>();
-    // `null` = untouched → the field renders (and tracks) the suggestion / initial
-    // tenant. Any admin edit (including clearing) becomes an override that is never
-    // clobbered; a successful submit resets to `null` so the next suggestion flows in.
+    // `null` = untouched → the field renders the admin's own tenant (non-Träger
+    // tabs). Any admin edit (including clearing) becomes an override; a
+    // successful submit resets to `null`.
     const [tenantIdOverride, setTenantIdOverride] = useState<number | undefined | null>(null);
     const [sendMode, setSendMode] = useState<InviteSendMode>(() => readPersistedSendMode(persistKey));
 
-    const defaultTenantId = requireTenantId ? suggestedTenantId : initialTenantId;
-    const tenantId = tenantIdOverride !== null ? tenantIdOverride : defaultTenantId;
+    // Träger tab (#570): the Träger-ID is allocated, not guessed — visible Auto
+    // default, deliberate manual mode with authoritative availability states.
+    // The counsellor tab's Beratungsstellen-ID follows the same contract in the
+    // agency id space. Both hooks always run (rules of hooks); an unused one
+    // stays idle and never issues a request.
+    const tenantAllocation = useIdAllocation({ client: tenantIdAllocation ?? tenantIdAllocationClient });
+    const agencyAllocation = useIdAllocation({ client: agencyIdAllocation ?? agencyIdAllocationClient });
+
+    const fallbackTenantId = tenantIdOverride !== null ? tenantIdOverride : initialTenantId;
+    const tenantId = requireTenantId ? tenantAllocation.value : fallbackTenantId;
 
     const activeTemplates = useMemo(() => templates.filter((template) => template.active), [templates]);
     const selectedTemplate = activeTemplates.find((template) => template.id === templateId);
 
     const emailValid = EMAIL_PATTERN.test(recipientEmail.trim());
-    const tenantIdValid = !requireTenantId || (tenantId != null && !takenTenantIds?.has(tenantId));
+    // Auto is always sendable; a manual id only once the check confirmed it free.
+    const tenantIdValid = !requireTenantId || tenantAllocation.canSubmit;
+    const agencyIdValid = !includeAgencyField || agencyAllocation.canSubmit;
     const templateValid = sendMode === 'createOnly' || selectedTemplate != null;
-    const isValid = emailValid && tenantIdValid && templateValid;
+    const isValid = emailValid && tenantIdValid && agencyIdValid && templateValid;
     const showEmailError = emailTouched && recipientEmail.length > 0 && !emailValid;
 
     // Bulk mode (#316): while rows are checked, sending acts on the selection
@@ -184,23 +209,41 @@ export const InviteComposer = ({
             return;
         }
 
-        const succeeded = await onSubmit({
-            recipientEmail: recipientEmail.trim(),
-            firstName: firstName.trim() || undefined,
-            lastName: lastName.trim() || undefined,
-            tenantId,
-            agencyId: includeAgencyField ? agencyId : undefined,
-            templateId: sendMode === 'direct' ? templateId : undefined,
-            sendMode,
-        });
+        const activeAllocations = [
+            ...(requireTenantId ? [tenantAllocation] : []),
+            ...(includeAgencyField ? [agencyAllocation] : []),
+        ];
+        let succeeded = false;
+        try {
+            await Promise.all(activeAllocations.map((allocation) => allocation.reserveForSubmit()));
+            succeeded = await onSubmit({
+                recipientEmail: recipientEmail.trim(),
+                firstName: firstName.trim() || undefined,
+                lastName: lastName.trim() || undefined,
+                // AUTO pins no id in the browser — the backend assigns the smallest free one.
+                tenantId,
+                tenantIdAllocationMode: requireTenantId ? toAllocationMode(tenantAllocation.mode) : undefined,
+                agencyId: includeAgencyField ? agencyAllocation.value : undefined,
+                agencyIdAllocationMode: includeAgencyField ? toAllocationMode(agencyAllocation.mode) : undefined,
+                templateId: sendMode === 'direct' ? templateId : undefined,
+                sendMode,
+            });
+        } catch {
+            succeeded = false;
+        }
 
         if (succeeded) {
+            activeAllocations.forEach((allocation) => allocation.consumeReservation());
             setRecipientEmail('');
             setEmailTouched(false);
             setFirstName('');
             setLastName('');
-            setAgencyId(undefined);
             setTenantIdOverride(null);
+            // The next invite starts with no deliberate number choice again.
+            tenantAllocation.resetToAuto();
+            agencyAllocation.resetToAuto();
+        } else {
+            await Promise.allSettled(activeAllocations.map((allocation) => allocation.releaseReservation()));
         }
     };
 
@@ -349,18 +392,23 @@ export const InviteComposer = ({
                 value={lastName}
                 onChange={(event) => setLastName(event.target.value)}
             />
-            <M3NumberField
-                label={t('links.accountInvites.tenantId', 'Träger-ID')}
-                min={1}
-                value={tenantId}
-                onChange={setTenantIdOverride}
-            />
-            {includeAgencyField && (
+            {requireTenantId ? (
+                <IdAllocationField
+                    allocation={tenantAllocation}
+                    label={t('links.accountInvites.tenantId', 'Träger-ID')}
+                />
+            ) : (
                 <M3NumberField
-                    label={t('links.accountInvites.agencyId', 'Beratungsstellen-ID')}
+                    label={t('links.accountInvites.tenantId', 'Träger-ID')}
                     min={1}
-                    value={agencyId}
-                    onChange={setAgencyId}
+                    value={tenantId}
+                    onChange={setTenantIdOverride}
+                />
+            )}
+            {includeAgencyField && (
+                <IdAllocationField
+                    allocation={agencyAllocation}
+                    label={t('links.accountInvites.agencyId', 'Beratungsstellen-ID')}
                 />
             )}
             <SplitButton

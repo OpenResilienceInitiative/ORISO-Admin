@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { userEvent, within } from 'storybook/test';
+import type { IdAllocationClient } from '../../api/idAllocation/idAllocation';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
@@ -35,6 +36,28 @@ const MIXED_PARSE_RESULT: ParseInviteCsvResult = {
 };
 
 /**
+ * Allocation stub for the composer's Träger-ID field (the composer talks to an
+ * `IdAllocationClient` since U4; stories inject a stub instead of the real
+ * TenantService client). Ids 1, 2 and 4 are taken — matching the modal's
+ * `takenTenantIds` below.
+ */
+const TAKEN_IDS = new Set<number>([1, 2, 4]);
+
+const stubbedTenantIdAllocation: IdAllocationClient = {
+    checkIdAvailability: async (id) => ({ id, state: TAKEN_IDS.has(id) ? 'ASSIGNED' : 'FREE' }),
+    nextFreeId: async ({ from, direction }) => {
+        let candidate = from == null ? 1 : from + (direction === 'up' ? 1 : -1);
+        while (candidate >= 1 && candidate <= 999) {
+            if (!TAKEN_IDS.has(candidate)) return { id: candidate };
+            candidate += direction === 'up' ? 1 : -1;
+        }
+        return { id: null };
+    },
+    reserveId: async ({ id }) => ({ id: id ?? 3 }),
+    releaseId: async () => {},
+};
+
+/**
  * Composer wired like AccountInvitesTab: picking a CSV via the "⋮" more-menu
  * parses it client-side and opens the preview modal; confirming "creates" the
  * rows against a fake backend that rejects Träger-ID 7 with 409 so the per-row
@@ -48,9 +71,8 @@ const CsvImportHarness = () => {
             <InviteComposer
                 persistKey="TENANT_ADMIN"
                 requireTenantId
-                suggestedTenantId={3}
-                takenTenantIds={new Set([1, 2, 4])}
                 templates={[]}
+                tenantIdAllocation={stubbedTenantIdAllocation}
                 onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
                 onManageTemplates={() => {}}
                 onSubmit={() => true}

@@ -22,6 +22,10 @@ export const supportedLanguages = ['de', 'en', 'fr', 'ru', 'tr', 'uk', 'ti'];
 export const agencyDataAgencyId = (agencyId: string) => `${agencyServiceURL}/service/agencyadmin/agencies/${agencyId}`;
 export const agencyEndpointBase = `${agencyServiceURL}/service/agencyadmin/agencies`;
 export const agencyPostcodeRangeEndpointBase = `${agencyServiceURL}/service/agencyadmin/postcoderanges`;
+// Shared tenant/agency ID allocation contract (TEN-INV, #569/#570). The backend
+// endpoints are built in parallel (TenantService U1 / AgencyService U2); these
+// paths are the agreed convention and get verified in the wiring chunks (U3/U6).
+export const agencyIdAllocationEndpoint = `${agencyServiceURL}/service/agencyadmin/id-allocation`;
 export const consultantsHasAgencyEndpoint = (agencyId: string) =>
     `${userServiceURL}/service/useradmin/agencies/${agencyId}/consultants`;
 export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consultingtypes`;
@@ -37,6 +41,8 @@ export const logoutEndpoint = keycloakAuthPath('/protocol/openid-connect/logout'
 export const tenantEndpoint = `${tenantServiceURL}/service/tenant/`;
 export const tenantAccessEndpoint = `${tenantServiceURL}/service/tenant/access`;
 export const tenantAdminEndpoint = `${tenantServiceURL}/service/tenantadmin`;
+// See agencyIdAllocationEndpoint above — same contract, tenant-ID space (U1).
+export const tenantIdAllocationEndpoint = `${tenantServiceURL}/service/tenantadmin/id-allocation`;
 export const serverSettingsEndpoint = `${consultingTypeServiceURL}/service/settings`;
 export const serverSettingsAdminEndpoint = `${consultingTypeServiceURL}/service/settingsadmin`;
 export const baseTenantPublicEndpoint = `${tenantServiceURL}/service/tenant/public`;

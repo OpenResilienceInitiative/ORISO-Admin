@@ -62,6 +62,23 @@ vi.mock('../../utils/parseUserAuthInfo', () => ({
     parseUserAuthInfo: mocks.parseUserAuthInfo,
 }));
 
+// The composer's ID fields talk to the allocation endpoints (#570); keep them
+// inert here — the field behaviour has its own test files.
+vi.mock('../../api/idAllocation/idAllocation', () => ({
+    tenantIdAllocationClient: {
+        checkIdAvailability: vi.fn().mockResolvedValue({ id: 0, state: 'FREE' }),
+        nextFreeId: vi.fn().mockResolvedValue({ id: null }),
+        reserveId: vi.fn().mockResolvedValue({ id: 0 }),
+        releaseId: vi.fn().mockResolvedValue(undefined),
+    },
+    agencyIdAllocationClient: {
+        checkIdAvailability: vi.fn().mockResolvedValue({ id: 0, state: 'FREE' }),
+        nextFreeId: vi.fn().mockResolvedValue({ id: null }),
+        reserveId: vi.fn().mockResolvedValue({ id: 0 }),
+        releaseId: vi.fn().mockResolvedValue(undefined),
+    },
+}));
+
 const invitesPage = (content: any[]) => ({
     content,
     totalElements: content.length,
@@ -112,7 +129,7 @@ const renderTenantTab = async () => {
     return render(<TenantInvitesTab />);
 };
 
-describe('TenantInvitesTab Träger-ID suggestion', () => {
+describe('TenantInvitesTab Träger-ID field', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         window.localStorage.clear();
@@ -120,15 +137,17 @@ describe('TenantInvitesTab Träger-ID suggestion', () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
     });
 
-    it('suggests the smallest free id, skipping tenants and active invites but not terminal ones', async () => {
-        // Tenants occupy 1, 2, 4; an active invite holds 3; a revoked invite on 5 must NOT block.
+    it('starts visibly on Auto instead of a client-side suggestion (#570)', async () => {
+        // Even with taken ids around, the field pins nothing in the browser —
+        // the backend assigns the smallest free id atomically in AUTO mode.
         mocks.searchTenantData.mockResolvedValue({ data: [{ id: 1 }, { id: 2 }, { id: 4 }], total: 3 });
         mocks.listAccountInvites.mockResolvedValue(invitesPage([invite(11, 3, 'DRAFT'), invite(12, 5, 'REVOKED')]));
 
         await renderTenantTab();
 
         const field = await screen.findByLabelText('Träger-ID');
-        await waitFor(() => expect(field).toHaveValue('5'));
+        await waitFor(() => expect(field).toHaveValue('Auto'));
+        expect(screen.getByText('Die nächste freie ID wird automatisch vergeben.')).toBeInTheDocument();
     });
 
     it('shows the dedicated collision message when the backend answers 409', async () => {
