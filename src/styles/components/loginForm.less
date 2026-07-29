@@ -233,16 +233,29 @@
 }
 
 /*
+ * Footprint of the fixed `.loginLanguageSelector` plus a visible gap. The
+ * control is 145px wide at its longest label ("(EN) English", measured at
+ * 1440x900) and sits @spacing-ml from the right edge from xl up. It is
+ * `position: fixed` with a transparent background and z-index 25, so page
+ * content scrolls *underneath* it and it also swallows pointer events over its
+ * own box. The 320px sign-in column never reached that corner; the wide
+ * reading column below would, so it reserves the strip.
+ */
+@public-selector-safe-area: 200px;
+
+/*
  * Long public forms (#594.3). The 320px sign-in column is right for a login
  * form and wrong for an Auftragsverarbeitungsvertrag: on the desktop — where
  * a 60-page agreement is actually read — the column gets a real reading
  * measure instead. Below xl the branding stage has slid off-canvas, so the
  * whole width is available; from xl up the form keeps clear of the 40vw panel,
- * exactly like the login row.
+ * exactly like the login row. Either way the row keeps the language selector's
+ * safe area free, so the legal text never renders through the control.
  */
 @media screen and (min-width: @screen-md) {
     .publicContent.publicLongForm > .ant-row {
         justify-content: center;
+        padding-inline: @public-selector-safe-area;
     }
 
     .publicContent.publicLongForm > .ant-row > .ant-col {
@@ -258,5 +271,9 @@
     .publicContent.publicLongForm > .ant-row {
         width: 60vw;
         align-self: flex-end;
+
+        /* The stage already owns the left 40vw — only the selector, which sits
+           in the right corner, still needs its reserve here. */
+        padding-inline-start: 0;
     }
 }
