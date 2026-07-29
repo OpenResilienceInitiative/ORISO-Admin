@@ -9,7 +9,7 @@ import { LanguageSettings } from './LanguageSettings';
 import { PasswordChange } from './PassswordChange';
 import { PrivateData } from './PrivateData';
 import { Card } from '../../components/Card';
-import TwoFactorAuth from './TwoFactorAuth/TwoFactorAuth';
+import { TwoFactorSetup } from '../../components/TwoFactorSetup/TwoFactorSetup';
 
 export const UserProfile = () => {
     const { settings } = useAppConfigContext();
@@ -33,7 +33,7 @@ export const UserProfile = () => {
 
                 <Col xs={24} sm={24} md={12} lg={8} xl={6}>
                     <Card titleKey="twoFactorAuth.title" subTitleKey="twoFactorAuth.subtitle">
-                        <TwoFactorAuth />
+                        <TwoFactorSetup context="profile" />
                     </Card>
                 </Col>
             </Row>

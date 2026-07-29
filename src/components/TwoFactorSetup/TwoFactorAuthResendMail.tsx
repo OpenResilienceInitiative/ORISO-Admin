@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CheckmarkIcon } from '../../../resources/img/svg/checkmark.svg';
-import { Text } from '../../../components/text/Text';
+import { ReactComponent as CheckmarkIcon } from '../../resources/img/svg/checkmark.svg';
+import { Text } from '../text/Text';
 
 interface TwoFactorAuthResendMailProps {
     resendHandler: (callback: Function) => void;

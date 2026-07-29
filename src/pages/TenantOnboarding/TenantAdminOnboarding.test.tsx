@@ -102,8 +102,8 @@ describe('TenantAdminOnboarding', () => {
 
         // Step 3: 2FA.
         expect(await screen.findByTestId('totp-secret')).toHaveTextContent('SECRET234567ABCDEFG');
-        await user.type(screen.getByLabelText('tenantOnboarding.twoFactor.codeLabel'), '123456');
-        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.twoFactor.activate' }));
+        await user.type(screen.getByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
 
         expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
         expect(client.activateTwoFactor).toHaveBeenCalledWith('raw-token', '123456');

@@ -2,9 +2,9 @@ import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import TwoFactorAuth from './TwoFactorAuth';
-import { TwoFactorType } from '../../../enums/TwoFactorType';
-import { UserData } from '../../../types/user';
+import { TwoFactorSetup } from './TwoFactorSetup';
+import { TwoFactorType } from '../../enums/TwoFactorType';
+import { UserData } from '../../types/user';
 
 const mocks = vi.hoisted(() => ({
     updateOrSetTwoFactorAuth: vi.fn(),
@@ -30,24 +30,24 @@ vi.mock('react-i18next', () => ({
     }),
 }));
 
-vi.mock('../../../hooks/useUserData.hook', () => ({
+vi.mock('../../hooks/useUserData.hook', () => ({
     useUserData: () => ({ data: userData }),
 }));
 
-vi.mock('../../../hooks/useUserTwoFactorAuth.hook', () => ({
+vi.mock('../../hooks/useUserTwoFactorAuth.hook', () => ({
     useUserTwoFactorAuth: () => ({ mutate: mocks.updateOrSetTwoFactorAuth }),
     useUserTwoFactorDelete: () => ({ mutate: mocks.deleteTwoFactorAuth }),
     useUserTwoFactorSendEmailCode: () => ({ mutate: mocks.setEmailForActivationCode }),
 }));
 
-describe('TwoFactorAuth', () => {
+describe('TwoFactorSetup (profile context)', () => {
     beforeEach(() => {
         document.body.innerHTML = '<div id="overlay"></div><div id="root"></div>';
     });
 
     it('closes the setup overlay from the close icon during mandatory 2FA setup', async () => {
         const user = userEvent.setup({ delay: null });
-        render(<TwoFactorAuth required />);
+        render(<TwoFactorSetup context="profile" required />);
 
         expect(await screen.findByText('twoFactorAuth.activate.step1.title')).toBeInTheDocument();
 
