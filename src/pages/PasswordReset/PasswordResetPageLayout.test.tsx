@@ -59,15 +59,20 @@ describe('PasswordResetPageLayout', () => {
         expect(stage()).not.toHaveClass('stage--panel');
     });
 
-    it('renders the stage as a side panel for long forms so it can never cover them on mobile', () => {
+    /**
+     * #594.3: the reviewer wants the Admin fade to play on the onboarding page
+     * too. It is fixed-position and its keyframes settle it off-canvas below
+     * xl (stage.less), so it plays once and then never covers the form.
+     */
+    it('plays the branding fade on the long-form variant as well', () => {
         render(
             <PasswordResetPageLayout variant="longForm">
                 <div data-testid="content" />
             </PasswordResetPageLayout>,
         );
 
-        expect(stage()).toHaveClass('stage--panel');
-        expect(stage()).not.toHaveClass('stage--animated');
+        expect(stage()).toHaveClass('stage--animated');
+        expect(stage()).toHaveClass('stage--ready');
     });
 
     it('aligns a long form to the top of the column so its first field is the first thing in view', () => {
@@ -78,5 +83,46 @@ describe('PasswordResetPageLayout', () => {
         );
 
         expect(document.querySelector('.ant-row')).toHaveClass('ant-row-top');
+    });
+
+    /**
+     * Desktop centring (#594.3) is done with auto block margins on the column,
+     * NOT with a centred row: a form taller than the viewport would otherwise
+     * lose its first line above the top of the scroll container (#569).
+     */
+    it('centres the long form via the column, not by centring the row', () => {
+        render(
+            <PasswordResetPageLayout variant="longForm">
+                <div data-testid="content" />
+            </PasswordResetPageLayout>,
+        );
+
+        expect(screen.getByTestId('content').closest('.ant-col')?.className).toMatch(/longFormColumn/);
+        expect(document.querySelector('.ant-row')).not.toHaveClass('ant-row-middle');
+    });
+
+    /**
+     * loginForm.less caps EVERY public column at the 320px sign-in width from
+     * md up. That is right for a login form and unreadable for a 60-page
+     * agreement, so the long-form variant opts out by class (#594.3).
+     */
+    it('opts a long form out of the 320px sign-in column cap', () => {
+        render(
+            <PasswordResetPageLayout variant="longForm">
+                <div data-testid="content" />
+            </PasswordResetPageLayout>,
+        );
+
+        expect(screen.getByTestId('content').closest('.publicContent')).toHaveClass('publicLongForm');
+    });
+
+    it('keeps the sign-in column for the default login variant', () => {
+        render(
+            <PasswordResetPageLayout>
+                <div data-testid="content" />
+            </PasswordResetPageLayout>,
+        );
+
+        expect(screen.getByTestId('content').closest('.publicContent')).not.toHaveClass('publicLongForm');
     });
 });

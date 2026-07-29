@@ -217,17 +217,46 @@
 // row in the remaining right 60vw and centre it. (antd v5 regression: the
 // previous antd.less grid happened to position it clear of the stage.)
 @media screen and (min-width: @screen-md) {
-    .publicContent.login > .ant-row {
+    .publicContent.login:not(.publicLongForm) > .ant-row {
         width: 60vw;
         align-self: flex-end;
         justify-content: center;
     }
 
-    .publicContent.login > .ant-row > .ant-col {
+    .publicContent.login:not(.publicLongForm) > .ant-row > .ant-col {
         width: auto;
         min-width: 280px;
         max-width: 320px;
         flex: 0 0 auto;
         margin-inline-start: 0 !important;
+    }
+}
+
+/*
+ * Long public forms (#594.3). The 320px sign-in column is right for a login
+ * form and wrong for an Auftragsverarbeitungsvertrag: on the desktop — where
+ * a 60-page agreement is actually read — the column gets a real reading
+ * measure instead. Below xl the branding stage has slid off-canvas, so the
+ * whole width is available; from xl up the form keeps clear of the 40vw panel,
+ * exactly like the login row.
+ */
+@media screen and (min-width: @screen-md) {
+    .publicContent.publicLongForm > .ant-row {
+        justify-content: center;
+    }
+
+    .publicContent.publicLongForm > .ant-row > .ant-col {
+        width: auto;
+        min-width: 280px;
+        max-width: 640px;
+        flex: 1 1 auto;
+        margin-inline-start: 0 !important;
+    }
+}
+
+@media screen and (min-width: @screen-xl) {
+    .publicContent.publicLongForm > .ant-row {
+        width: 60vw;
+        align-self: flex-end;
     }
 }
