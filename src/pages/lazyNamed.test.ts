@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CHUNK_RELOAD_FLAG, isChunkLoadError, loadChunk } from './lazyNamed';
+import { CHUNK_RELOAD_FLAG, RELOAD_FALLBACK_MS, isChunkLoadError, loadChunk } from './lazyNamed';
 
 const chunkError = () => new Error('Failed to fetch dynamically imported module: /admin/assets/Edit-BFwFo16b.js');
 
@@ -96,6 +96,34 @@ describe('loadChunk', () => {
         await loadChunk(factory);
 
         expect(window.sessionStorage.getItem(CHUNK_RELOAD_FLAG)).toBeNull();
+    });
+
+    it('does not reload when sessionStorage is unavailable — Safari private mode', async () => {
+        vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+            throw new Error('SecurityError');
+        });
+        const factory = vi.fn().mockRejectedValue(chunkError());
+
+        // Without storage there is no loop protection, so reloading at all would risk a loop.
+        await expect(loadChunk(factory)).rejects.toThrow(/Failed to fetch dynamically imported module/);
+        expect(reload).not.toHaveBeenCalled();
+    });
+
+    it('gives up after the fallback timeout if the reload silently did nothing', async () => {
+        vi.useFakeTimers();
+        try {
+            const factory = vi.fn().mockRejectedValue(chunkError());
+            // Attach the rejection handler before advancing, or the rejection lands unhandled.
+            const settled = expect(loadChunk(factory)).rejects.toThrow(/Failed to fetch dynamically imported module/);
+
+            await vi.advanceTimersByTimeAsync(RELOAD_FALLBACK_MS);
+            await settled;
+            expect(reload).toHaveBeenCalledTimes(1);
+            // Guard released, so the user's own retry is allowed to reload again.
+            expect(window.sessionStorage.getItem(CHUNK_RELOAD_FLAG)).toBeNull();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('rethrows a genuine error from inside the module instead of reloading', async () => {

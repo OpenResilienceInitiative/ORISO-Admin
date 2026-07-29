@@ -6,6 +6,13 @@ import { ComponentType, lazy } from 'react';
  */
 export const CHUNK_RELOAD_FLAG = 'oriso-admin:chunk-reloaded';
 
+/**
+ * How long to wait for `location.reload()` to actually navigate before giving up. A reload can be
+ * blocked by an embedding context or a browser extension without throwing; without this the
+ * Suspense fallback would spin forever with no way out.
+ */
+export const RELOAD_FALLBACK_MS = 10_000;
+
 const CHUNK_ERROR_PATTERNS = [
     // Chrome / Vite
     'failed to fetch dynamically imported module',
@@ -75,9 +82,17 @@ export const loadChunk = async <TModule>(factory: () => Promise<TModule>): Promi
             if (isChunkLoadError(retryError) && !readFlag()) {
                 writeFlag(true);
                 window.location.reload();
-                // Never settles: the page is going away, and resolving here would flash the
-                // ErrorBoundary in the moment before the reload takes effect.
-                return new Promise<TModule>(() => {});
+                // Normally never settles: the page is going away, and resolving here would flash
+                // the ErrorBoundary in the moment before the reload takes effect. The timeout only
+                // fires if the reload silently did nothing — then the ErrorBoundary, with its
+                // "Seite neu laden" button, beats an endless spinner.
+                return new Promise<TModule>((_, reject) => {
+                    window.setTimeout(() => {
+                        // Release the guard so the user's own retry can reload again.
+                        writeFlag(false);
+                        reject(retryError);
+                    }, RELOAD_FALLBACK_MS);
+                });
             }
             throw retryError;
         }
