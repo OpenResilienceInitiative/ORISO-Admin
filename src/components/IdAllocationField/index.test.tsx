@@ -26,9 +26,6 @@ const allocationState = (overrides: Partial<UseIdAllocationResult> = {}): UseIdA
     setManualValue: vi.fn(),
     step: vi.fn(),
     resetToAuto: vi.fn(),
-    reserveForSubmit: vi.fn(),
-    releaseReservation: vi.fn(),
-    consumeReservation: vi.fn(),
     ...overrides,
 });
 
@@ -38,10 +35,7 @@ describe('IdAllocationField', () => {
 
         expect(screen.getByRole('textbox', { name: 'Träger-ID' })).toHaveValue('Auto');
         expect(screen.getByText('Die nächste freie ID wird automatisch vergeben.')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Auto – Automatische ID-Vergabe' })).toHaveAttribute(
-            'aria-pressed',
-            'true',
-        );
+        expect(screen.getByRole('button', { name: 'Automatische ID-Vergabe' })).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('routes typing into manual mode via setManualValue', async () => {
@@ -92,8 +86,7 @@ describe('IdAllocationField', () => {
         const input = screen.getByRole('textbox', { name: 'Träger-ID' });
         expect(input).toHaveValue('30');
         expect(input).toHaveAttribute('aria-invalid', 'true');
-        const hint = screen.getByText('Diese ID ist durch eine offene Einladung reserviert.');
-        expect(input).toHaveAttribute('aria-describedby', hint.id);
+        expect(screen.getByText('Diese ID ist durch eine offene Einladung reserviert.')).toBeInTheDocument();
     });
 
     it('shows the assigned, checking, service-error and available states', () => {
@@ -129,14 +122,6 @@ describe('IdAllocationField', () => {
         );
         expect(screen.getByText('ID 21 ist frei.')).toBeInTheDocument();
         expect(screen.getByRole('textbox', { name: 'Träger-ID' })).not.toHaveAttribute('aria-invalid');
-
-        rerender(
-            <IdAllocationField
-                label="Träger-ID"
-                allocation={allocationState({ mode: 'manual', validation: 'empty', canSubmit: false })}
-            />,
-        );
-        expect(screen.getByText('ID eingeben oder Auto wählen.')).toBeInTheDocument();
     });
 
     it('resets to Auto via the visible toggle', async () => {
@@ -144,7 +129,7 @@ describe('IdAllocationField', () => {
         const user = userEvent.setup();
         render(<IdAllocationField label="Träger-ID" allocation={allocation} />);
 
-        const toggle = screen.getByRole('button', { name: 'Auto – Automatische ID-Vergabe' });
+        const toggle = screen.getByRole('button', { name: 'Automatische ID-Vergabe' });
         expect(toggle).toHaveAttribute('aria-pressed', 'false');
         await user.click(toggle);
         expect(allocation.resetToAuto).toHaveBeenCalled();

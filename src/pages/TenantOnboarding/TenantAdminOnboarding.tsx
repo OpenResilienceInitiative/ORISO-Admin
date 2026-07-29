@@ -8,6 +8,7 @@ import {
     createHttpTenantAdminOnboardingClient,
     TenantAdminOnboardingClient,
 } from '../../api/tenantOnboarding/tenantOnboarding';
+import { M3Button } from '../../components/M3Button';
 import { useTenantAdminOnboardingFlow } from './useTenantAdminOnboardingFlow';
 import { LinkErrorState } from './LinkErrorState';
 import { OrganisationDpaStep } from './OrganisationDpaStep';
@@ -43,6 +44,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client }: TenantAdminOnboar
         dpa,
         submitError,
         busy,
+        retryLoad,
         submitOrganisationDpa,
         goBackToOrganisation,
         submitAccount,
@@ -53,6 +55,24 @@ export const TenantAdminOnboarding = ({ inviteToken, client }: TenantAdminOnboar
         return (
             <div className={styles.loading} role="status" aria-label={t('tenantOnboarding.loading')}>
                 <CircularProgress />
+            </div>
+        );
+    }
+
+    if (state.phase === 'load-error') {
+        // Transient resolve failure (#569 hardening): NOT a dead link — offer
+        // a retry instead of the terminal error states.
+        return (
+            <div data-testid="onboarding-load-error">
+                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
+                    {t('tenantOnboarding.loadError.title')}
+                </Typography>
+                <Typography role="alert" sx={{ mb: 3 }}>
+                    {t('tenantOnboarding.loadError.description')}
+                </Typography>
+                <M3Button variant="filled" onClick={retryLoad}>
+                    {t('tenantOnboarding.loadError.retry')}
+                </M3Button>
             </div>
         );
     }

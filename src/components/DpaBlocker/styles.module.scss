@@ -27,44 +27,15 @@
     border-radius: 16px;
 }
 
-.fieldStack {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
+/* The DPA text + signer form block itself is shared — see
+   src/components/DpaLegalForm (text NOT height-capped here: the overlay
+   scrolls, issue #572 scroll-behaviour acceptance). */
 
-/* Full published DPA/AVV text — intentionally NOT height-capped: the overlay
-   scrolls, the text flows (issue #572 scroll-behaviour acceptance). */
+/* Wider card while the sign form (long legal text + side TOC) is shown so
+   the anchor navigation gets its side placement on desktop. */
 
-.dpaText {
-    padding: 16px;
-    border: 1px solid var(--m3-outline-variant, #dce5df);
-    margin-bottom: 16px;
-    background: var(--m3-surface, #fbf9f8);
-    border-radius: 12px;
-
-    h1,
-    h2,
-    h3 {
-        margin: 0 0 8px;
-        font-size: 16px;
-    }
-
-    p {
-        margin: 0 0 8px;
-    }
-}
-
-.acceptRow {
-    display: flex;
-    align-items: center;
-    margin-top: 16px;
-    gap: 4px;
-}
-
-.acceptLabel {
-    cursor: pointer;
-    user-select: none;
+.cardWide {
+    width: min(820px, 100%);
 }
 
 .actions {

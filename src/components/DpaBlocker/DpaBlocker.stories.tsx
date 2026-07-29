@@ -8,17 +8,21 @@ const SHORT_DPA = JSON.stringify({
     en: '<h2>Data processing agreement</h2><p>The platform operator and your organisation conclude the following agreement on the processing of personal data.</p><p>Section 1 Subject: the operator processes personal data exclusively on behalf of and under the instructions of the organisation.</p>',
 });
 
-const longParagraphs = Array.from(
-    { length: 40 },
+// 10 sections x 4 paragraphs: long enough for the #572 scroll acceptance AND
+// multi-section, so the shared legal-text TOC (anchor navigation) kicks in.
+const longSections = Array.from(
+    { length: 10 },
     (_, i) =>
-        `<p>§ ${
-            i + 1
-        } Die Vertragsparteien vereinbaren, dass sämtliche personenbezogenen Daten ausschließlich zur Erfüllung des vereinbarten Zwecks verarbeitet werden. Technische und organisatorische Maßnahmen sind nach Art. 32 DSGVO zu treffen, regelmäßig zu prüfen und zu dokumentieren. Unterauftragsverhältnisse bedürfen der vorherigen Zustimmung.</p>`,
+        `<h2>§ ${i + 1} Abschnitt ${i + 1}</h2>${Array.from(
+            { length: 4 },
+            () =>
+                `<p>Die Vertragsparteien vereinbaren, dass sämtliche personenbezogenen Daten ausschließlich zur Erfüllung des vereinbarten Zwecks verarbeitet werden. Technische und organisatorische Maßnahmen sind nach Art. 32 DSGVO zu treffen, regelmäßig zu prüfen und zu dokumentieren. Unterauftragsverhältnisse bedürfen der vorherigen Zustimmung.</p>`,
+        ).join('')}`,
 ).join('');
 
 const LONG_DPA = JSON.stringify({
-    de: `<h2>Auftragsverarbeitungsvertrag (Langfassung)</h2>${longParagraphs}`,
-    en: `<h2>Data processing agreement (long version)</h2>${longParagraphs}`,
+    de: `<h1>Auftragsverarbeitungsvertrag (Langfassung)</h1>${longSections}`,
+    en: `<h1>Data processing agreement (long version)</h1>${longSections}`,
 });
 
 /**
@@ -79,9 +83,19 @@ export const ContentUnavailable: Story = {
 };
 
 /**
+ * Long multi-section DPA on desktop: the sticky side TOC (shared
+ * DpaLegalForm anchor navigation) sits next to the flowing text; the wider
+ * card makes room for it. Jumps scroll the overlay and move focus.
+ */
+export const DesktopLongDpaTextWithToc: Story = {
+    args: { reason: 'UNSIGNED', signable: true, dpaContent: LONG_DPA },
+};
+
+/**
  * #572 scroll-behaviour acceptance: extra-long DPA text at 390x844 — the
  * overlay scrolls the full text + form while sign/retry/logout stay
- * reachable; the app behind is scroll-locked (body overflow).
+ * reachable; the app behind is scroll-locked (body overflow). The TOC
+ * collapses to the compact jump-to-section dropdown at this width.
  */
 export const MobileLongDpaText: Story = {
     args: { reason: 'UNSIGNED', signable: true, dpaContent: LONG_DPA },

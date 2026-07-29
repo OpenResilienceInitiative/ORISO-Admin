@@ -10,42 +10,7 @@
     gap: 16px;
 }
 
-/* Published DPA/AVV text, rendered read-only. Scrolls inside its own box so
-   the step stays usable on 390x844. */
-
-.dpaText {
-    max-height: 320px;
-    padding: 16px;
-    border: 1px solid var(--m3-outline-variant, #dce5df);
-    margin-bottom: 16px;
-    background: var(--m3-surface, #ffffff);
-    border-radius: 12px;
-    overflow-y: auto;
-
-    h1,
-    h2,
-    h3 {
-        margin: 0 0 8px;
-        font-size: 16px;
-    }
-
-    p {
-        margin: 0 0 8px;
-    }
-}
-
-.acceptRow {
-    display: flex;
-    align-items: center;
-    margin-top: 16px;
-    gap: 4px;
-}
-
-.acceptLabel {
-    cursor: pointer;
-    user-select: none;
-}
-
+/* The DPA text + signer form block is shared — see src/components/DpaLegalForm. */
 .actions {
     display: flex;
     justify-content: space-between;

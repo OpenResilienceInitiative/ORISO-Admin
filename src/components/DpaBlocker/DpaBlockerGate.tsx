@@ -8,7 +8,7 @@ import { DPA_STATUS_KEY, useDpaStatus } from '../../hooks/useDpaStatus.hook';
 import { useDpaVersions } from '../../hooks/useDpaVersions.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { DpaAdminSignRequest } from '../../types/dpa';
-import { deriveDpaGateDecision, isDpaGateSubject } from '../../utils/dpaBlockerGate';
+import { deriveDpaGateDecision, resolveDpaGateSubject } from '../../utils/dpaBlockerGate';
 import { DpaBlocker, DpaBlockerSignData } from './DpaBlocker';
 
 /**
@@ -26,26 +26,32 @@ import { DpaBlocker, DpaBlockerSignData } from './DpaBlocker';
  * Frontend-only lock: the backend write enforcement stays U9/U3 scope.
  */
 export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
-    const { hasRole, isSuperAdmin, tenantId } = useUserRoles();
+    const { hasRole, isSuperAdmin, tenantId, tokenUnreadable } = useUserRoles();
     const queryClient = useQueryClient();
 
-    const isSubject = isDpaGateSubject({
+    // FAIL-CLOSED (#569 hardening): 'indeterminate' (malformed token /
+    // tenant-admin without a usable tenantId claim) blocks instead of
+    // granting full access.
+    const subjectKind = resolveDpaGateSubject({
         hasTenantAdminRole: hasRole(UserRole.TenantAdmin),
         hasSingleTenantAdminRole: hasRole(UserRole.SingleTenantAdmin),
         isSuperAdmin,
         tenantId,
+        tokenUnreadable,
     });
 
-    const statusQuery = useDpaStatus(tenantId ?? 0, isSubject);
+    const statusQuery = useDpaStatus(tenantId ?? 0, subjectKind === 'subject');
     const decision = deriveDpaGateDecision({
-        isSubject,
+        subjectKind,
         status: statusQuery.data?.status,
         isLoading: statusQuery.isLoading,
         isError: statusQuery.isError,
     });
 
     const blockedSignable = decision.kind === 'blocked' && decision.signable;
-    const versionsQuery = useDpaVersions(tenantId ?? 0, blockedSignable);
+    // silent: a versions failure renders the blocker's inline error — never
+    // the global toast or the /admin/access-denied redirect (#569 hardening).
+    const versionsQuery = useDpaVersions(tenantId ?? 0, blockedSignable, { silent: true });
 
     const signMutation = useMutation({
         mutationFn: (body: DpaAdminSignRequest) => signDpaAdmin(tenantId ?? 0, body),

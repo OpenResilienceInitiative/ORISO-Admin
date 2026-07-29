@@ -74,6 +74,31 @@ export const LinkInvalid: Story = {
     args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0, inviteState: 'INVALID' }) },
 };
 
+/**
+ * Resume (#569 hardening): the link was already used for registration but the
+ * mandatory 2FA activation is still open — reopening it re-enters directly at
+ * the 2FA step (code 123456 completes, 000000 shows the invalid-code state)
+ * instead of the CONSUMED dead end.
+ */
+export const ResumedAtTwoFactor: Story = {
+    args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0, inviteState: 'PENDING_2FA_ACTIVATION' }) },
+};
+
+/**
+ * Transient resolve failure (#569 hardening): network/5xx while checking the
+ * link renders a RETRYABLE error — deliberately distinct from the terminal
+ * "link invalid" state.
+ */
+export const LoadError: Story = {
+    args: {
+        client: {
+            getOnboardingInvite: () => Promise.reject(new Error('TENANT_ONBOARDING_HTTP_503')),
+            registerTenantAdmin: () => Promise.reject(new Error('TENANT_ONBOARDING_HTTP_503')),
+            activateTwoFactor: () => Promise.reject(new Error('TENANT_ONBOARDING_HTTP_503')),
+        },
+    },
+};
+
 const STUB_INVITE_PROPS = {
     recipientEmail: 'tenant.admin@example.org',
     firstName: 'Erika',
@@ -106,6 +131,7 @@ export const TwoFactorStepStory: StoryObj = {
             result={{
                 tenantId: 21,
                 twoFactor: { secret: 'ORISOSTUBTOTPSECRET234567ABCDEFG', qrCodeBase64: null },
+                resumed: false,
             }}
             busy={false}
             showCodeError={false}

@@ -68,16 +68,12 @@ vi.mock('../../utils/parseUserAuthInfo', () => ({
 // inert here — the field behaviour has its own test files.
 vi.mock('../../api/idAllocation/idAllocation', () => ({
     tenantIdAllocationClient: {
-        checkIdAvailability: vi.fn().mockResolvedValue({ id: 0, state: 'FREE' }),
-        nextFreeId: vi.fn().mockResolvedValue({ id: null }),
-        reserveId: vi.fn().mockResolvedValue({ id: 0 }),
-        releaseId: vi.fn().mockResolvedValue(undefined),
+        checkIdAvailability: vi.fn(),
+        nextFreeId: vi.fn(),
     },
     agencyIdAllocationClient: {
-        checkIdAvailability: vi.fn().mockResolvedValue({ id: 0, state: 'FREE' }),
-        nextFreeId: vi.fn().mockResolvedValue({ id: null }),
-        reserveId: vi.fn().mockResolvedValue({ id: 0 }),
-        releaseId: vi.fn().mockResolvedValue(undefined),
+        checkIdAvailability: vi.fn(),
+        nextFreeId: vi.fn(),
     },
 }));
 

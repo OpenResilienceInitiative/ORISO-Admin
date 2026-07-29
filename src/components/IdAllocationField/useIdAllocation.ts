@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-    IdReservationConflictError,
-    type IdAllocationClient,
-    type IdAllocationState,
-} from '../../api/idAllocation/idAllocation';
+import type { IdAllocationClient, IdAllocationState } from '../../api/idAllocation/idAllocation';
 
 export type IdFieldMode = 'auto' | 'manual';
 
@@ -37,12 +33,6 @@ export interface UseIdAllocationResult {
     step: (direction: 1 | -1) => void;
     /** The visible Auto toggle: back to no deliberate number choice. */
     resetToAuto: () => void;
-    /** Atomically reserve the current manual id immediately before submitting. */
-    reserveForSubmit: () => Promise<void>;
-    /** Release a reservation when the surrounding submit is cancelled or fails. */
-    releaseReservation: () => Promise<void>;
-    /** Mark a successful reservation as consumed by the created invite. */
-    consumeReservation: () => void;
 }
 
 const DEFAULT_DEBOUNCE_MS = 300;
@@ -73,7 +63,6 @@ export const useIdAllocation = ({
     const requestToken = useRef(0);
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const stepInFlight = useRef(false);
-    const reservedId = useRef<number | undefined>(undefined);
 
     const cancelPendingCheck = () => {
         requestToken.current += 1;
@@ -131,13 +120,10 @@ export const useIdAllocation = ({
 
             // First arrow interaction from Auto (or an empty manual field) adopts
             // the current next free id — the same candidate Auto would assign.
-            const fromAuto = mode === 'auto';
-            let queriedDirection: 'up' | 'down' = direction === 1 ? 'up' : 'down';
-            if (value === undefined) queriedDirection = 'up';
-            const params =
-                value === undefined
-                    ? ({ direction: 'up' } as const)
-                    : ({ from: value, direction: queriedDirection } as const);
+            const fromAuto = value === undefined;
+            const params = fromAuto
+                ? ({ direction: 'up' } as const)
+                : ({ from: value, direction: direction === 1 ? 'up' : 'down' } as const);
 
             client
                 .nextFreeId(params)
@@ -146,7 +132,7 @@ export const useIdAllocation = ({
                     if (id == null) {
                         // No free id in that direction: value unchanged, arrow disabled
                         // until the anchor moves again.
-                        if (queriedDirection === 'up') setStepUpDisabled(true);
+                        if (direction === 1) setStepUpDisabled(true);
                         else setStepDownDisabled(true);
                         return;
                     }
@@ -165,32 +151,8 @@ export const useIdAllocation = ({
                     stepInFlight.current = false;
                 });
         },
-        [client, mode, value],
+        [client, value],
     );
-
-    const reserveForSubmit = useCallback(async () => {
-        if (mode === 'auto') return;
-        if (value == null || validation !== 'available') {
-            throw new Error('A confirmed free manual id is required before submission');
-        }
-        try {
-            const reservation = await client.reserveId({ allocationMode: 'MANUAL', id: value });
-            reservedId.current = reservation.id;
-        } catch (error) {
-            setValidation(error instanceof IdReservationConflictError ? 'reserved' : 'error');
-            throw error;
-        }
-    }, [client, mode, validation, value]);
-
-    const releaseReservation = useCallback(async () => {
-        const id = reservedId.current;
-        reservedId.current = undefined;
-        if (id != null) await client.releaseId(id);
-    }, [client]);
-
-    const consumeReservation = useCallback(() => {
-        reservedId.current = undefined;
-    }, []);
 
     const resetToAuto = useCallback(() => {
         cancelPendingCheck();
@@ -212,8 +174,5 @@ export const useIdAllocation = ({
         setManualValue,
         step,
         resetToAuto,
-        reserveForSubmit,
-        releaseReservation,
-        consumeReservation,
     };
 };

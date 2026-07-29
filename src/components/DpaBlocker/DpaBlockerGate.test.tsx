@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
         roles: ['tenant-admin'],
         isSuperAdmin: false,
         tenantId: 21 as number | null,
+        tokenUnreadable: false,
     },
 }));
 
@@ -56,6 +57,7 @@ vi.mock('../../hooks/useUserRoles.hook', () => ({
             mocks.roleState.tenantId !== null &&
             mocks.roleState.tenantId > 0,
         tenantId: mocks.roleState.tenantId,
+        tokenUnreadable: mocks.roleState.tokenUnreadable,
     }),
 }));
 
@@ -99,7 +101,31 @@ describe('DpaBlockerGate', () => {
         mocks.roleState.roles = ['tenant-admin'];
         mocks.roleState.isSuperAdmin = false;
         mocks.roleState.tenantId = 21;
+        mocks.roleState.tokenUnreadable = false;
         mocks.getDpaVersions.mockResolvedValue([PUBLISHED_VERSION]);
+    });
+
+    it('FAILS CLOSED for a tenant admin without a usable tenantId claim (#569 hardening)', async () => {
+        mocks.roleState.tenantId = null;
+
+        renderGate();
+
+        expect(await screen.findByTestId('dpa-blocker')).toBeInTheDocument();
+        expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+        // No tenant to ask about — the block comes from the indeterminate token.
+        expect(mocks.getDpaStatus).not.toHaveBeenCalled();
+    });
+
+    it('FAILS CLOSED when the access token is malformed/undecodable', async () => {
+        mocks.roleState.roles = [];
+        mocks.roleState.tenantId = null;
+        mocks.roleState.tokenUnreadable = true;
+
+        renderGate();
+
+        expect(await screen.findByTestId('dpa-blocker')).toBeInTheDocument();
+        expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+        expect(mocks.getDpaStatus).not.toHaveBeenCalled();
     });
 
     it.each(ADMIN_ROUTES)('blocker wins over the route %s while the DPA is unsigned', async (route) => {

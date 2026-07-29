@@ -177,6 +177,133 @@ describe('useTenantAdminOnboardingFlow', () => {
         expect(result.current.state.phase === 'link-error' && result.current.state.reason).toBe('REVOKED');
     });
 
+    it('maps a transient load failure to the retryable load-error state, and retry re-resolves', async () => {
+        const getOnboardingInvite = vi
+            .fn()
+            .mockRejectedValueOnce(new Error('TENANT_ONBOARDING_HTTP_503'))
+            .mockResolvedValueOnce(INVITE);
+        const client = createClient({ getOnboardingInvite });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+
+        // NOT the terminal INVALID link error — a network hiccup is retryable.
+        await waitFor(() => expect(result.current.state.phase).toBe('load-error'));
+
+        act(() => result.current.retryLoad());
+        await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+        expect(getOnboardingInvite).toHaveBeenCalledTimes(2);
+    });
+
+    it('ignores retryLoad outside the load-error state', async () => {
+        const client = createClient();
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+
+        act(() => result.current.retryLoad());
+
+        expect(result.current.state.phase).toBe('organisation');
+        expect(client.getOnboardingInvite).toHaveBeenCalledTimes(1);
+    });
+
+    it('guards against double-submits while the registration is in flight', async () => {
+        let resolveRegistration!: (value: unknown) => void;
+        const registerTenantAdmin = vi.fn().mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    resolveRegistration = resolve;
+                }),
+        );
+        const client = createClient({ registerTenantAdmin });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+        act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
+
+        let first!: Promise<void>;
+        act(() => {
+            first = result.current.submitAccount('SecurePass1!');
+        });
+        // Second click while the first request is still running: must be a no-op.
+        await act(async () => {
+            await result.current.submitAccount('SecurePass1!');
+        });
+        expect(registerTenantAdmin).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+            resolveRegistration({ tenantId: 21, twoFactor: { secret: 'S', qrCodeBase64: null } });
+            await first;
+        });
+        expect(result.current.state.phase).toBe('two-factor');
+    });
+
+    it('guards against double-submits while the 2FA activation is in flight', async () => {
+        let resolveActivation!: () => void;
+        const activateTwoFactor = vi.fn().mockImplementation(
+            () =>
+                new Promise<void>((resolve) => {
+                    resolveActivation = resolve;
+                }),
+        );
+        const client = createClient({ activateTwoFactor });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+        act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
+        await act(async () => {
+            await result.current.submitAccount('SecurePass1!');
+        });
+
+        let first!: Promise<void>;
+        act(() => {
+            first = result.current.submitTwoFactorCode('123456');
+        });
+        await act(async () => {
+            await result.current.submitTwoFactorCode('123456');
+        });
+        expect(activateTwoFactor).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+            resolveActivation();
+            await first;
+        });
+        expect(result.current.state.phase).toBe('done');
+    });
+
+    it('resumes a consumed-but-2FA-pending link directly at the 2FA step (#569 resume contract)', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: { secret: 'RESUMESECRET234567', qrCodeBase64: null },
+            }),
+        });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        const { state } = result.current;
+        expect(state.phase === 'two-factor' && state.result).toEqual({
+            tenantId: 21,
+            twoFactor: { secret: 'RESUMESECRET234567', qrCodeBase64: null },
+            resumed: true,
+        });
+
+        // The resumed step completes like the normal one.
+        await act(async () => {
+            await result.current.submitTwoFactorCode('123456');
+        });
+        expect(result.current.state.phase).toBe('done');
+        expect(client.registerTenantAdmin).not.toHaveBeenCalled();
+    });
+
+    it('resumes without re-issued setup material as verify-only (twoFactor null)', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, phase: 'PENDING_2FA_ACTIVATION' }),
+        });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        const { state } = result.current;
+        expect(state.phase === 'two-factor' && state.result.twoFactor).toBeNull();
+        expect(state.phase === 'two-factor' && state.result.resumed).toBe(true);
+    });
+
     it('ignores organisation/account submits before the invite is loaded', async () => {
         const client = createClient({
             getOnboardingInvite: vi.fn().mockReturnValue(new Promise(() => {})),

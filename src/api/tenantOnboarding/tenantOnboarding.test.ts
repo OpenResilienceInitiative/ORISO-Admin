@@ -59,7 +59,33 @@ describe('createStubTenantAdminOnboardingClient', () => {
         await expect(client.registerTenantAdmin('raw-token', registrationFor(invite))).rejects.toMatchObject({
             reason: 'CONSUMED',
         });
-        await expect(client.getOnboardingInvite('raw-token')).rejects.toBeInstanceOf(InviteLinkError);
+    });
+
+    it('keeps a registered-but-2FA-pending link resumable at the 2FA step (#569 resume contract)', async () => {
+        const client = createStubTenantAdminOnboardingClient({ latencyMs: 0 });
+        const invite = await client.getOnboardingInvite('raw-token');
+        await client.registerTenantAdmin('raw-token', registrationFor(invite));
+
+        // Reopening the link resumes instead of the CONSUMED dead end.
+        const reopened = await client.getOnboardingInvite('raw-token');
+        expect(reopened.phase).toBe('PENDING_2FA_ACTIVATION');
+        expect(reopened.twoFactor?.secret).toBeTruthy();
+
+        // Once the 2FA activation succeeded the link is terminally consumed.
+        await client.activateTwoFactor('raw-token', '123456');
+        await expect(client.getOnboardingInvite('raw-token')).rejects.toMatchObject({ reason: 'CONSUMED' });
+    });
+
+    it('starts directly in the resumable state with inviteState PENDING_2FA_ACTIVATION', async () => {
+        const client = createStubTenantAdminOnboardingClient({ latencyMs: 0, inviteState: 'PENDING_2FA_ACTIVATION' });
+
+        const invite = await client.getOnboardingInvite('raw-token');
+
+        expect(invite.phase).toBe('PENDING_2FA_ACTIVATION');
+        expect(invite.twoFactor?.secret).toBeTruthy();
+        await expect(client.registerTenantAdmin('raw-token', registrationFor(invite))).rejects.toMatchObject({
+            reason: 'CONSUMED',
+        });
     });
 
     it('rejects a registration whose reservation token does not match (TenantService conflict semantics)', async () => {
@@ -151,6 +177,42 @@ describe('createHttpTenantAdminOnboardingClient', () => {
 
         expect(error).toBeInstanceOf(InviteLinkError);
         expect((error as InviteLinkError).reason).toBe(reason);
+    });
+
+    it('resumes a CONSUMED link at the 2FA step when the accept endpoint reports PENDING_2FA_ACTIVATION', async () => {
+        mocks.fetchData.mockRejectedValueOnce(new Response(null, { status: 409 })).mockResolvedValueOnce({
+            recipientEmail: 'admin@tenant.example',
+            firstName: 'Erika',
+            lastName: 'Beispiel',
+            tenantId: 21,
+            expiresAt: '2026-08-01T00:00:00',
+            phase: 'PENDING_2FA_ACTIVATION',
+        });
+        const client = createHttpTenantAdminOnboardingClient();
+
+        const invite = await client.getOnboardingInvite('raw-token');
+
+        expect(invite.phase).toBe('PENDING_2FA_ACTIVATION');
+        expect(invite.reservedTenantId).toBe(21);
+        expect(invite.twoFactor ?? null).toBeNull();
+        // The probe hits the REAL public accept endpoint (idempotent resume).
+        expect(mocks.fetchData).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                url: `${publicAccountInvitesEndpoint}/raw-token/accept`,
+                method: FETCH_METHODS.POST,
+                skipAuth: true,
+            }),
+        );
+    });
+
+    it('keeps the terminal CONSUMED error when the accept probe answers 410 (resume window closed)', async () => {
+        mocks.fetchData
+            .mockRejectedValueOnce(new Response(null, { status: 409 }))
+            .mockRejectedValueOnce(new Response(JSON.stringify({ reason: 'CONSUMED' }), { status: 410 }));
+        const client = createHttpTenantAdminOnboardingClient();
+
+        await expect(client.getOnboardingInvite('raw-token')).rejects.toMatchObject({ reason: 'CONSUMED' });
+        expect(mocks.fetchData).toHaveBeenCalledTimes(2);
     });
 
     it('prefers the reason from the response body over the status mapping', async () => {

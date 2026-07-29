@@ -22,27 +22,45 @@ export interface DpaGateSubjectInput {
     hasSingleTenantAdminRole: boolean;
     isSuperAdmin: boolean;
     tenantId: number | null;
+    /** An access token exists but could not be decoded at all (malformed JWT). */
+    tokenUnreadable?: boolean;
 }
 
 /**
- * Only tenant-scoped admins are gated: they act for the tenant that has to
- * sign the DPA. The platform super admin (tenant 0) publishes DPA versions
- * and must never be locked out by their own gate; non-tenant-admin roles
- * (agency admins, topic admins, …) cannot sign for the tenant.
+ * Gate scope of the current account:
+ *
+ * - `subject` — a tenant-scoped admin: acts for the tenant that has to sign
+ *   the DPA, so the authoritative status decides.
+ * - `exempt` — the platform super admin (tenant 0) publishes DPA versions
+ *   and must never be locked out by their own gate; non-tenant-admin roles
+ *   (agency admins, topic admins, …) cannot sign for the tenant.
+ * - `indeterminate` — the token cannot prove the account is exempt (#569
+ *   hardening): a malformed/undecodable token, or a tenant-admin role whose
+ *   tenantId claim is missing or unparseable. FAIL-CLOSED: the gate blocks
+ *   with the retry state instead of granting full access.
  */
-export const isDpaGateSubject = ({
+export type DpaGateSubjectKind = 'subject' | 'exempt' | 'indeterminate';
+
+export const resolveDpaGateSubject = ({
     hasTenantAdminRole,
     hasSingleTenantAdminRole,
     isSuperAdmin,
     tenantId,
-}: DpaGateSubjectInput): boolean => {
-    if (isSuperAdmin) return false;
-    if (!hasTenantAdminRole && !hasSingleTenantAdminRole) return false;
-    return tenantId !== null && Number.isFinite(tenantId) && tenantId > 0;
+    tokenUnreadable = false,
+}: DpaGateSubjectInput): DpaGateSubjectKind => {
+    if (tokenUnreadable) return 'indeterminate';
+    if (isSuperAdmin) return 'exempt';
+    if (!hasTenantAdminRole && !hasSingleTenantAdminRole) return 'exempt';
+    if (tenantId === null || !Number.isFinite(tenantId)) return 'indeterminate';
+    // Tenant 0 = platform scope (not a signable tenant).
+    return tenantId > 0 ? 'subject' : 'exempt';
 };
 
+/** Convenience wrapper kept for callers that only need the boolean. */
+export const isDpaGateSubject = (input: DpaGateSubjectInput): boolean => resolveDpaGateSubject(input) === 'subject';
+
 export interface DpaGateDecisionInput {
-    isSubject: boolean;
+    subjectKind: DpaGateSubjectKind;
     status: TenantDpaStatus | undefined;
     isLoading: boolean;
     isError: boolean;
@@ -50,17 +68,21 @@ export interface DpaGateDecisionInput {
 
 /**
  * Derives what the app shell may render. Fails closed: while the status is
- * unknown nothing but the initialization screen renders, and a failed or
+ * unknown nothing but the initialization screen renders, a failed or
  * unrecognized status answer blocks with a retry state instead of letting
- * the admin area through.
+ * the admin area through, and an account whose token cannot prove exemption
+ * (`indeterminate`) is blocked the same way instead of fail-open.
  */
 export const deriveDpaGateDecision = ({
-    isSubject,
+    subjectKind,
     status,
     isLoading,
     isError,
 }: DpaGateDecisionInput): DpaGateDecision => {
-    if (!isSubject) return { kind: 'inactive' };
+    if (subjectKind === 'exempt') return { kind: 'inactive' };
+    if (subjectKind === 'indeterminate') {
+        return { kind: 'blocked', reason: 'STATUS_UNAVAILABLE', signable: false };
+    }
     if (isLoading) return { kind: 'pending' };
     if (isError || status === undefined) {
         return { kind: 'blocked', reason: 'STATUS_UNAVAILABLE', signable: false };

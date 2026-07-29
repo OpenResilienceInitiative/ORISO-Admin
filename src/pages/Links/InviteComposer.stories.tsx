@@ -9,7 +9,7 @@ import {
     listInviteEmailTemplates,
     type InviteEmailTemplateDTO,
 } from '../../api/accountInvites/accountInvites';
-import { workedExampleIdAllocationClient } from '../../components/IdAllocationField/workedExampleFixture';
+import type { IdAllocationClient, IdAllocationState } from '../../api/idAllocation/idAllocation';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
@@ -54,6 +54,25 @@ const templatesByKind = http.get(TEMPLATES_ENDPOINT, ({ request }) => {
  * The real endpoints are built in parallel (TenantService U1); the wiring
  * chunk (U3/U6) replaces this stub with MSW handlers on the real paths.
  */
+const TAKEN_IDS = new Set<number>([...Array.from({ length: 20 }, (_, i) => i + 1), 30, 31, 32, 33, 34, 35]);
+
+const idStateOf = (id: number): IdAllocationState => {
+    if (!TAKEN_IDS.has(id)) return 'FREE';
+    return id >= 30 && id <= 35 ? 'RESERVED' : 'ASSIGNED';
+};
+
+const stubbedTenantIdAllocation: IdAllocationClient = {
+    checkIdAvailability: async (id) => ({ id, state: idStateOf(id) }),
+    nextFreeId: async ({ from, direction }) => {
+        let candidate = from == null ? 1 : from + (direction === 'up' ? 1 : -1);
+        while (candidate >= 1 && candidate <= 999) {
+            if (!TAKEN_IDS.has(candidate)) return { id: candidate };
+            candidate += direction === 'up' ? 1 : -1;
+        }
+        return { id: null };
+    },
+};
+
 const defaultHandlers = [
     templatesByKind,
     http.post(INVITES_ENDPOINT, () =>
@@ -86,7 +105,7 @@ const ComposerHarness = () => {
                 requireTenantId
                 submitting={submitting}
                 templateId={templateId}
-                tenantIdAllocation={workedExampleIdAllocationClient}
+                tenantIdAllocation={stubbedTenantIdAllocation}
                 templates={templates}
                 onManageTemplates={(intent) => setDialogView(intent === 'create' ? 'create' : 'list')}
                 onSubmit={async (values) => {

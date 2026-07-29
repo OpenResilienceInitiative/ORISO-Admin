@@ -1,15 +1,28 @@
-import { agencyIdAllocationEndpoint, tenantIdAllocationEndpoint } from '../../appConfig';
+import { agencyIdNextFreeEndpoint, idAllocationValidationEndpoint, tenantIdNextFreeEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 
-export { agencyIdAllocationEndpoint, tenantIdAllocationEndpoint };
+export { agencyIdNextFreeEndpoint, idAllocationValidationEndpoint, tenantIdNextFreeEndpoint };
 
 /**
- * Shared tenant/agency ID allocation contract (TEN-INV, ORISO-Admin#569).
+ * Tenant/agency ID allocation client (TEN-INV, ORISO-Admin#569), wired to the
+ * REAL backend contracts:
  *
- * The backend counterparts are built in parallel (TenantService U1 /
- * AgencyService U2); this module pins the agreed request/response shapes so
- * the composer can already be exercised against stubbed responses. The final
- * endpoint wiring is verified in the later wiring chunks (U3/U6).
+ *  - Live validation: UserService's aggregated endpoint (TEN-INV-U3, US#889)
+ *    `GET /useradmin/id-allocation?tenantId=&agencyId=` — each entry answers
+ *    `FREE` / `RESERVED` / `ASSIGNED`, or `SERVICE_ERROR` when the owning
+ *    service could not be reached (surfaced here as a rejection so the field
+ *    renders its inline service-error state).
+ *  - Next-free stepping: the owning services directly —
+ *    TenantService `GET /tenantadmin/tenant-ids/next-free?from=&direction=`
+ *    (U1) and AgencyService `GET /agencyadmin/agencyids/next-free?fromId=&direction=`
+ *    (U2). Both answer 404 when no free ID exists in the direction, which maps
+ *    to `{ id: null }` (the composer disables the arrow).
+ *
+ * Reservation is NOT a client concern: it happens server-side during invite
+ * creation (UserService U3 reserves via the owning services when the composer
+ * sends `tenantIdAllocationMode` / `agencyIdAllocationMode` on
+ * `POST /useradmin/account-invites`). The validation here is advisory for the
+ * UI only — a stale green state never produces a duplicate ID.
  */
 
 /** FREE = assignable · RESERVED = held by an open invite · ASSIGNED = consumed by a real entity. */
@@ -35,27 +48,15 @@ export interface NextFreeIdDTO {
     id: number | null;
 }
 
-export type ReserveIdRequest =
-    | {
-          allocationMode: 'AUTO';
-          /** AUTO is resolved atomically by the owning service and must never pin a browser-selected id. */
-          id?: never;
-      }
-    | {
-          allocationMode: 'MANUAL';
-          /** The explicitly selected id to reserve before invite submission. */
-          id: number;
-      };
+/** The aggregated validation could not resolve the id (entry SERVICE_ERROR or missing). */
+export class IdAllocationServiceError extends Error {
+    /** Upstream HTTP status passed through by the aggregation, when known. */
+    readonly upstreamStatus?: number;
 
-export interface ReservedIdDTO {
-    id: number;
-}
-
-/** A reservation attempt lost the race: the id is already assigned or reserved (HTTP 409). */
-export class IdReservationConflictError extends Error {
-    constructor() {
-        super(FETCH_ERRORS.CONFLICT);
-        Object.setPrototypeOf(this, IdReservationConflictError.prototype);
+    constructor(upstreamStatus?: number) {
+        super('ID_ALLOCATION_SERVICE_ERROR');
+        this.upstreamStatus = upstreamStatus;
+        Object.setPrototypeOf(this, IdAllocationServiceError.prototype);
     }
 }
 
@@ -64,10 +65,18 @@ export interface IdAllocationClient {
     checkIdAvailability(id: number): Promise<IdAvailabilityDTO>;
     /** Next free id from `from` in `direction`, skipping RESERVED and ASSIGNED ids. */
     nextFreeId(params: NextFreeIdParams): Promise<NextFreeIdDTO>;
-    /** Reserve a specific id (MANUAL) or the smallest free one (AUTO); rejects with {@link IdReservationConflictError} on a lost race. */
-    reserveId(request: ReserveIdRequest): Promise<ReservedIdDTO>;
-    /** Release an unconsumed reservation so the id becomes assignable again. */
-    releaseId(id: number): Promise<void>;
+}
+
+/** One entry of the aggregated U3 validation response. */
+interface IdAllocationEntryDTO {
+    id: number;
+    status: IdAllocationState | 'SERVICE_ERROR';
+    upstreamStatus?: number;
+}
+
+interface IdAllocationValidationResponseDTO {
+    tenant?: IdAllocationEntryDTO;
+    agency?: IdAllocationEntryDTO;
 }
 
 /**
@@ -75,62 +84,68 @@ export interface IdAllocationClient {
  * they run on every debounced keystroke and the field renders its own inline
  * "service error" state instead.
  */
-export const createIdAllocationClient = (endpointBase: string): IdAllocationClient => ({
-    checkIdAvailability: (id) =>
-        fetchData({
-            url: `${endpointBase}/${id}`,
-            method: FETCH_METHODS.GET,
-            skipAuth: false,
-            responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
-        }),
-
-    nextFreeId: ({ from, direction }) => {
-        const search = new URLSearchParams();
-        search.set('direction', direction);
-        if (from != null) search.set('from', String(from));
-
-        return fetchData({
-            url: `${endpointBase}/next-free?${search.toString()}`,
+const checkIdAvailabilityVia =
+    (queryParam: 'tenantId' | 'agencyId', entryKey: 'tenant' | 'agency') =>
+    async (id: number): Promise<IdAvailabilityDTO> => {
+        const response: IdAllocationValidationResponseDTO = await fetchData({
+            url: `${idAllocationValidationEndpoint}?${queryParam}=${encodeURIComponent(id)}`,
             method: FETCH_METHODS.GET,
             skipAuth: false,
             responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
         });
-    },
 
-    reserveId: async (request) => {
-        let response;
+        const entry = response?.[entryKey];
+        if (!entry || entry.status === 'SERVICE_ERROR') {
+            throw new IdAllocationServiceError(entry?.upstreamStatus);
+        }
+        return { id: entry.id, state: entry.status };
+    };
+
+interface NextFreeEndpointShape {
+    url: string;
+    /** Query parameter name for the anchor value (`from` tenant / `fromId` agency). */
+    fromParam: string;
+    /** Response field carrying the found id (`id` tenant / `agencyId` agency). */
+    idField: string;
+}
+
+/**
+ * Both next-free endpoints require an anchor: `from` is EXCLUSIVE, so anchor 0
+ * yields the smallest free id — exactly the AUTO candidate the composer adopts
+ * on the first arrow interaction. 404 = no free id in that direction.
+ */
+const nextFreeIdVia =
+    ({ url, fromParam, idField }: NextFreeEndpointShape) =>
+    async ({ from, direction }: NextFreeIdParams): Promise<NextFreeIdDTO> => {
+        const search = new URLSearchParams();
+        search.set(fromParam, String(from ?? 0));
+        search.set('direction', direction === 'up' ? 'UP' : 'DOWN');
+
+        let response: Record<string, number | null>;
         try {
             response = await fetchData({
-                url: `${endpointBase}/reservations`,
-                method: FETCH_METHODS.POST,
+                url: `${url}?${search.toString()}`,
+                method: FETCH_METHODS.GET,
                 skipAuth: false,
-                responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.CONFLICT_WITH_RESPONSE],
-                bodyData: JSON.stringify({
-                    allocationMode: request.allocationMode,
-                    id: request.id,
-                }),
+                responseHandling: [FETCH_ERRORS.NO_MATCH, FETCH_ERRORS.CATCH_ALL_SILENT],
             });
         } catch (error) {
-            if (error instanceof Response && error.status === 409) {
-                throw new IdReservationConflictError();
+            if (error instanceof Error && error.message === FETCH_ERRORS.NO_MATCH) {
+                return { id: null };
             }
             throw error;
         }
-        return response.json();
-    },
+        return { id: response?.[idField] ?? null };
+    };
 
-    releaseId: async (id) => {
-        await fetchData({
-            url: `${endpointBase}/reservations/${id}`,
-            method: FETCH_METHODS.DELETE,
-            skipAuth: false,
-            responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
-        });
-    },
-});
+/** Tenant-ID space — validation via UserService U3, stepping via TenantService U1. */
+export const tenantIdAllocationClient: IdAllocationClient = {
+    checkIdAvailability: checkIdAvailabilityVia('tenantId', 'tenant'),
+    nextFreeId: nextFreeIdVia({ url: tenantIdNextFreeEndpoint, fromParam: 'from', idField: 'id' }),
+};
 
-/** Tenant-ID space — owned by TenantService (U1). */
-export const tenantIdAllocationClient = createIdAllocationClient(tenantIdAllocationEndpoint);
-
-/** Agency-ID space — owned by AgencyService (U2); tenant ids are never reserved here. */
-export const agencyIdAllocationClient = createIdAllocationClient(agencyIdAllocationEndpoint);
+/** Agency-ID space — validation via UserService U3, stepping via AgencyService U2. */
+export const agencyIdAllocationClient: IdAllocationClient = {
+    checkIdAvailability: checkIdAvailabilityVia('agencyId', 'agency'),
+    nextFreeId: nextFreeIdVia({ url: agencyIdNextFreeEndpoint, fromParam: 'fromId', idField: 'agencyId' }),
+};

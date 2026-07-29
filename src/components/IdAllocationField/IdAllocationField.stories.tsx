@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { IdAllocationClient, IdAllocationState, NextFreeIdParams } from '../../api/idAllocation/idAllocation';
 import { IdAllocationField, useIdAllocation, type UseIdAllocationResult } from './index';
-import { workedExampleIdAllocationClient } from './workedExampleFixture';
 
 /**
  * Stubbed allocation client with the worked example from ORISO-Admin#570:
@@ -9,8 +9,27 @@ import { workedExampleIdAllocationClient } from './workedExampleFixture';
  * 29, typing 30 blocks sending. The real backend endpoints are built in
  * parallel (U1/U2) — this story exercises the exact same client contract.
  */
+const TAKEN = new Set<number>([...Array.from({ length: 20 }, (_, i) => i + 1), 30, 31, 32, 33, 34, 35]);
+
+const stateOf = (id: number): IdAllocationState => {
+    if (!TAKEN.has(id)) return 'FREE';
+    return id >= 30 && id <= 35 ? 'RESERVED' : 'ASSIGNED';
+};
+
+const workedExampleClient: IdAllocationClient = {
+    checkIdAvailability: async (id) => ({ id, state: stateOf(id) }),
+    nextFreeId: async ({ from, direction }: NextFreeIdParams) => {
+        let candidate = from == null ? 1 : from + (direction === 'up' ? 1 : -1);
+        while (candidate >= 1 && candidate <= 999) {
+            if (!TAKEN.has(candidate)) return { id: candidate };
+            candidate += direction === 'up' ? 1 : -1;
+        }
+        return { id: null };
+    },
+};
+
 const InteractiveExample = () => {
-    const allocation = useIdAllocation({ client: workedExampleIdAllocationClient });
+    const allocation = useIdAllocation({ client: workedExampleClient });
 
     return (
         <div style={{ maxWidth: 360 }}>
@@ -29,9 +48,6 @@ const staticAllocation = (overrides: Partial<UseIdAllocationResult>): UseIdAlloc
     setManualValue: () => {},
     step: () => {},
     resetToAuto: () => {},
-    reserveForSubmit: async () => {},
-    releaseReservation: async () => {},
-    consumeReservation: () => {},
     ...overrides,
 });
 
