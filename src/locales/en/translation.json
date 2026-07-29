@@ -65,7 +65,7 @@
     "tenantOnboarding.dpa.acceptHint": "Ticking this box is the binding confirmation of the agreement above.",
     "tenantOnboarding.dpa.acceptRequired": "Please confirm the data processing agreement to continue.",
     "tenantOnboarding.dpa.acceptRequiredShort": "Confirmation required",
-    "dpaBlocker.title": "Data processing agreement required",
+    "dpaBlocker.title": "Data processing agreement",
     "dpaBlocker.intro.UNSIGNED": "Your organisation has not yet signed the data processing agreement (DPA). The admin area stays locked until the agreement is signed.",
     "dpaBlocker.intro.OUTDATED": "The data processing agreement (DPA) has been updated. The admin area stays locked until the current version is signed.",
     "dpaBlocker.intro.MISSING": "No data processing agreement has been published for your organisation yet. Please try again later or contact the platform operator.",

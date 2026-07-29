@@ -25,12 +25,16 @@
 /* From the reading measure upwards the short signer fields pair up. That is
    not cosmetic: it takes ~190px off the step, which is part of what lets the
    whole step fit inside a viewport-bounded sheet and actually centre
-   (#594.3). Below that width they stay stacked. */
+   (#594.3). Below that width they stay stacked.
+
+   The 24px row gap (Figma 1611-27868) is what a field with an error needs:
+   the message sits directly under its own input, so with the previous zero
+   row gap it ran straight into the input of the row below. */
 
 @media (min-width: 720px) {
     .fieldStackPaired {
         display: grid;
-        gap: 0 16px;
+        gap: 24px;
         grid-template-columns: 1fr 1fr;
     }
 }
@@ -64,8 +68,13 @@
     background: var(--m3-surface-container);
 }
 
+/* `--form-error`, not `--m3-error`: the latter is still Material's magenta
+   (#b1005e in src/app.css), which is not an ORISO tone. The signer fields
+   right above already flag their errors in the product's red, and a consent
+   box in a different error colour reads as a different kind of problem. */
+
 .consentError {
-    border-color: var(--m3-error);
+    border-color: var(--form-error, #cc0000);
 }
 
 .consentCheckbox {

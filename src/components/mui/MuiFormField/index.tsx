@@ -186,6 +186,18 @@ const MuiControl = ({
                     color: 'var(--label-color)',
                     fontFamily: 'var(--m3-body-font-family)',
                 },
+                // A resting label shares the input row with any trailing
+                // control, so it has to stop before it — otherwise a long label
+                // runs underneath the error icon and both become unreadable
+                // (seen on the DPA signer e-mail field). Floated labels sit in
+                // the notch above and keep the full width.
+                ...(resolvedEndAdornment
+                    ? {
+                          '& .MuiInputLabel-root:not(.MuiInputLabel-shrink)': {
+                              maxWidth: 'calc(100% - 60px)',
+                          },
+                      }
+                    : null),
                 '& .MuiInputLabel-root.Mui-focused': {
                     color: 'var(--input-focus-label-color, var(--admin-form-field-text))',
                 },

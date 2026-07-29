@@ -36,6 +36,11 @@ export interface DpaFormSectionProps {
     textLabel: string;
     /** Optional intro line shown in the reader's help-text block. */
     textDescription?: React.ReactNode;
+    /**
+     * Drops the reader card's own icon + title — for hosts that already state
+     * the agreement's name above it (the DPA blocker, Figma 1611-27868).
+     */
+    hideTextHeader?: boolean;
     accepted: boolean;
     acceptTouched: boolean;
     /** Toggle handler — the host owns the accepted/touched state (it gates its own submit). */
@@ -58,6 +63,7 @@ export const DpaFormSection = ({
     dpaHtml,
     textLabel,
     textDescription,
+    hideTextHeader,
     accepted,
     acceptTouched,
     onAcceptedChange,
@@ -85,7 +91,12 @@ export const DpaFormSection = ({
 
     return (
         <>
-            <DpaLegalReader html={dpaHtml} label={textLabel} description={textDescription} />
+            <DpaLegalReader
+                html={dpaHtml}
+                label={textLabel}
+                description={textDescription}
+                hideHeader={hideTextHeader}
+            />
             <div className={classNames(styles.fieldStack, styles.fieldStackPaired)}>
                 <MuiFormField
                     name="signerName"

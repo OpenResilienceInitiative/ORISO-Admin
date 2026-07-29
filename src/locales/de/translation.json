@@ -60,7 +60,7 @@
     "tenantOnboarding.dpa.acceptHint": "Das Setzen dieses Hakens ist die verbindliche Bestätigung des Vertrags oben.",
     "tenantOnboarding.dpa.acceptRequired": "Bitte bestätigen Sie den Auftragsverarbeitungsvertrag, um fortzufahren.",
     "tenantOnboarding.dpa.acceptRequiredShort": "Bestätigung erforderlich",
-    "dpaBlocker.title": "Auftragsverarbeitungsvertrag erforderlich",
+    "dpaBlocker.title": "Auftragsdatenverarbeitungsvereinbarung",
     "dpaBlocker.intro.UNSIGNED": "Ihre Organisation hat den Auftragsverarbeitungsvertrag (AVV) noch nicht unterzeichnet. Der Verwaltungsbereich bleibt gesperrt, bis der Vertrag unterzeichnet ist.",
     "dpaBlocker.intro.OUTDATED": "Der Auftragsverarbeitungsvertrag (AVV) wurde aktualisiert. Der Verwaltungsbereich bleibt gesperrt, bis die aktuelle Version unterzeichnet ist.",
     "dpaBlocker.intro.MISSING": "Für Ihre Organisation wurde noch kein Auftragsverarbeitungsvertrag veröffentlicht. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Plattformbetreiber.",
