@@ -224,9 +224,24 @@ describe('TenantInvitesTab Träger-ID field', () => {
  */
 describe('CSV import payload per tab', () => {
     const importCsv = async (user: ReturnType<typeof userEvent.setup>, content: string) => {
-        await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }));
+        // In direct send mode the composer refuses a CSV while no template is
+        // selected (`links.accountInvites.templateRequired`) and never reports the
+        // parse result, so the preview modal never opens. Waiting for the fetch
+        // call alone is not enough — wait for the auto-selected template to reach
+        // the pill, otherwise the upload races the selection (green locally, red
+        // on a loaded runner).
+        // findBy's 1s default is the tight budget here: a loaded runner needs
+        // longer for the fetch, the menu and the file read than a warm laptop.
+        const slow = { timeout: 10_000 };
+        await screen.findByRole('button', { name: /Standard/ }, slow);
+        await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }, slow));
+        // The hidden file input sits inside the lazily rendered more-menu.
+        await screen.findByText('CSV-Datei importieren', undefined, slow);
         const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
         await user.upload(fileInput, new File([content], 'invites.csv', { type: 'text/csv' }));
+        // The file is read asynchronously (File.text / FileReader) and parsed
+        // before the preview modal mounts.
+        await screen.findByRole('dialog', undefined, slow);
     };
 
     beforeEach(() => {
