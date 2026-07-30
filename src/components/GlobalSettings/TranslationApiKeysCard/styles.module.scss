@@ -1,4 +1,7 @@
 .card {
+    --input-bg: transparent;
+    --input-autofill-surface: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
+
     width: 100%;
     min-height: 0;
     overflow: visible;
@@ -85,12 +88,4 @@
 .provider :global(.ant-form-item) {
     width: 100%;
     margin-bottom: 8px;
-}
-
-.provider :global(.ant-btn) {
-    min-width: 120px;
-    height: 40px;
-    border-radius: 4px;
-    font-family: var(--m3-body-font-family);
-    font-weight: 700;
 }
