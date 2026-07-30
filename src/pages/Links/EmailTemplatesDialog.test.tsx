@@ -168,6 +168,26 @@ describe('EmailTemplatesDialog', () => {
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalledTimes(6));
     });
 
+    it('renders a live email preview from the subject and body fields', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+
+        const dialog = screen.getByRole('dialog');
+        const withinDialog = within(dialog);
+        await user.type(withinDialog.getByLabelText('Subject'), 'Welcome to ORISO');
+        fireEvent.change(withinDialog.getByLabelText('Body'), {
+            target: { value: 'Hello Hugo,\n\nUse {{inviteLink}} to finish setup.' },
+        });
+
+        const preview = withinDialog.getByRole('region', { name: 'Email preview' });
+        expect(within(preview).getByRole('heading', { name: 'Welcome to ORISO' })).toBeInTheDocument();
+        expect(within(preview).getByText(/Hello Hugo/)).toBeInTheDocument();
+        expect(within(preview).getByText('{{inviteLink}}')).toBeInTheDocument();
+    });
+
     it('opens a prefilled edit form on row double-click and updates the template', async () => {
         const user = userEvent.setup();
         mocks.updateInviteEmailTemplate.mockResolvedValue({ ...tenantTemplate, subject: 'Servus' });

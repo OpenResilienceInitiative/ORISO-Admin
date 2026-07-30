@@ -368,6 +368,7 @@
     "links.bulk.sendSummaryPartial": "{{sent}} gesendet, {{failed}} fehlgeschlagen: {{emails}}",
     "links.templates.manage": "Vorlagen verwalten",
     "links.templates.dialogTitle": "E-Mail-Vorlagen",
+    "links.templates.previewLabel": "E-Mail-Vorschau",
     "links.templates.close": "Schließen",
     "links.templates.back": "Zurück",
     "links.templates.save": "Speichern",

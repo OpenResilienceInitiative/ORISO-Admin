@@ -1,9 +1,27 @@
 /* Right-aligned action row; the shared Modal supplies the surrounding padding.
    `listingTableStyles.actionGroup` isn't used here — it's inline-flex without
    right-alignment (fine for a table-row action cell, wrong for a dialog footer). */
+
 .footerActions {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 8px;
+}
+
+.formAndPreview {
+    display: grid;
+    align-items: start;
+    gap: 24px;
+    grid-template-columns: minmax(320px, 0.9fr) minmax(360px, 1.1fr);
+}
+
+.formFields {
+    min-width: 0;
+}
+
+@media (max-width: 920px) {
+    .formAndPreview {
+        grid-template-columns: 1fr;
+    }
 }
