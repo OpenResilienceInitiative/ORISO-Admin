@@ -62,7 +62,7 @@ const completeOrganisationStep = async (user: ReturnType<typeof userEvent.setup>
     await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
     await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
     await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
-    await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerOrganisation'), 'Beispiel e.V.');
+    await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
     await user.click(screen.getByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' }));
     await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
 };
@@ -122,7 +122,7 @@ describe('TenantAdminOnboarding', () => {
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
-        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerOrganisation'), 'Beispiel e.V.');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
 
         expect(await screen.findByRole('alert')).toHaveTextContent('tenantOnboarding.dpa.acceptRequired');
@@ -205,7 +205,7 @@ describe('TenantAdminOnboarding — incomplete submit is answered at the action'
             await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
         }
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
-        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerOrganisation'), 'Beispiel e.V.');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
     };
 
     it('reports a missing field next to the submit button, not only far above it', async () => {

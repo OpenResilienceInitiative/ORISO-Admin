@@ -60,7 +60,7 @@
     "tenantOnboarding.dpa.signerName": "Name of the signer",
     "tenantOnboarding.dpa.signerPosition": "Position",
     "tenantOnboarding.dpa.signerEmail": "Email address of the signer",
-    "tenantOnboarding.dpa.signerOrganisation": "Organisation of the signer",
+    "tenantOnboarding.dpa.signerNote": "Note (optional)",
     "tenantOnboarding.dpa.accept": "I confirm the data processing agreement on behalf of my organisation.",
     "tenantOnboarding.dpa.acceptHint": "Ticking this box is the binding confirmation of the agreement above.",
     "tenantOnboarding.dpa.acceptRequired": "Please confirm the data processing agreement to continue.",

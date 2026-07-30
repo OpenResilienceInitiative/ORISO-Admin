@@ -120,11 +120,14 @@ export const DpaFormSection = ({
                         { type: 'email', message: t('tenantOnboarding.validation.email') },
                     ]}
                 />
-                <MuiFormField
-                    name="signerOrganisation"
-                    label={t('tenantOnboarding.dpa.signerOrganisation')}
-                    rules={[{ required: true, whitespace: true, message: t('tenantOnboarding.validation.required') }]}
-                />
+                {/* The organisation was asked for already — on the onboarding
+                    step right above, and for an existing Träger the platform
+                    knows it anyway. Asking a second time was pure retyping, so
+                    the slot carries a free, optional note instead (owner call
+                    2026-07-30). It still travels as `signerOrganisation`: that
+                    is the append-only signature record's own field, and no
+                    signature loses a column over a relabel. */}
+                <MuiFormField name="signerOrganisation" label={t('tenantOnboarding.dpa.signerNote')} />
             </div>
 
             <div

@@ -55,7 +55,7 @@
     "tenantOnboarding.dpa.signerName": "Name der unterzeichnenden Person",
     "tenantOnboarding.dpa.signerPosition": "Position",
     "tenantOnboarding.dpa.signerEmail": "E-Mail-Adresse der unterzeichnenden Person",
-    "tenantOnboarding.dpa.signerOrganisation": "Organisation der unterzeichnenden Person",
+    "tenantOnboarding.dpa.signerNote": "Anmerkung (optional)",
     "tenantOnboarding.dpa.accept": "Ich bestätige den Auftragsverarbeitungsvertrag im Namen meiner Organisation.",
     "tenantOnboarding.dpa.acceptHint": "Das Setzen dieses Hakens ist die verbindliche Bestätigung des Vertrags oben.",
     "tenantOnboarding.dpa.acceptRequired": "Bitte bestätigen Sie den Auftragsverarbeitungsvertrag, um fortzufahren.",
