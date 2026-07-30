@@ -3,15 +3,31 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const legalSettingsStyles = readFileSync(resolve(__dirname, './styles.module.scss'), 'utf8');
+const legalSettingsSource = readFileSync(resolve(__dirname, './index.tsx'), 'utf8');
 
-// #568: without a width cap the legal cards inherit their content's
-// max-content width (the ~750px editor toolbar) and push the imprint and
-// privacy cards off-screen, where nothing marks them as reachable.
+// #605: #582 made every legal card compact. Only the settings card belongs to
+// that contract; the three M3 document editors use their Figma desktop width.
 describe('LegalSettings card deck contract', () => {
-    it('pins the deck item width tokens like the other settings decks', () => {
+    it('keeps the default legal settings card compact', () => {
         const cardDeckRule = legalSettingsStyles.match(/\.cardDeck\s*{([^}]*)}/s)?.[1] ?? '';
         expect(cardDeckRule).toMatch(/--card-deck-item-width:\s*425px/);
         expect(cardDeckRule).toMatch(/--card-deck-item-max-width:\s*425px/);
+    });
+
+    it('gives M3 document editor items their 800px desktop width', () => {
+        const desktopRule = legalSettingsStyles.match(/@media \(min-width:\s*768px\)\s*{([\s\S]*?)\n}/)?.[1] ?? '';
+        const documentItemRule = desktopRule.match(/\.documentEditorItem\s*{([^}]*)}/s)?.[1] ?? '';
+
+        expect(documentItemRule).toMatch(/--card-deck-item-min-width:\s*800px/);
+        expect(documentItemRule).toMatch(/--card-deck-item-width:\s*800px/);
+        expect(documentItemRule).toMatch(/--card-deck-item-max-width:\s*800px/);
+    });
+
+    it('applies the wider item only to DPA, imprint and privacy', () => {
+        expect(legalSettingsSource.match(/className={styles\.documentEditorItem}/g) ?? []).toHaveLength(3);
+        expect(legalSettingsSource).toMatch(
+            /multitenancyWithSingleDomainEnabled[\s\S]*?<CardDeck\.Item>\s*<CardEditable/,
+        );
     });
 
     // Deliberately file-wide: any grow rule on this page's deck items would
