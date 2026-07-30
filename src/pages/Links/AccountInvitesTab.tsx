@@ -37,10 +37,23 @@ interface AccountInvitesTabProps {
  * names this used to map to — green/gold/red — are antd's palette, not the
  * ORISO scheme, and in a table meant to be scanned they shouted louder than
  * the data. The state is in the chip's own label.
+ *
+ * The single exception is a state that means the invite is DEAD. Those carry
+ * the scheme's error role, because "expired" and "accepted" reading identically
+ * is what the tonal pass cost us — the point of the column is to spot them.
  */
-const statusTagClass = `${listingTableStyles.statusTag} ${listingTableStyles.statusTagDefault}`;
+const DEAD_INVITE_STATES = new Set(['EXPIRED', 'REVOKED', 'FAILED', 'BLOCKED_EMAIL', 'BLOCKED_TWO_FACTOR']);
 
-const StatusValue = ({ value }: { value?: string | null }) => <Tag className={statusTagClass}>{value || '—'}</Tag>;
+const statusTagClass = (value?: string | null) =>
+    `${listingTableStyles.statusTag} ${
+        value && DEAD_INVITE_STATES.has(value)
+            ? listingTableStyles.statusTagExpired
+            : listingTableStyles.statusTagDefault
+    }`;
+
+const StatusValue = ({ value }: { value?: string | null }) => (
+    <Tag className={statusTagClass(value)}>{value || '—'}</Tag>
+);
 
 /**
  * Send-state column (#316, Figma 1165:17005 red annotation "2nd: send state,
@@ -512,7 +525,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 dataIndex: 'inviteStatus',
                 key: 'inviteStatus',
                 render: (value: AccountInviteStatus) => (
-                    <Tag className={statusTagClass}>
+                    <Tag className={statusTagClass(value)}>
                         {t(`links.accountInvites.status.${value}`, INVITE_STATUS_FALLBACK_LABELS[value] ?? value)}
                     </Tag>
                 ),

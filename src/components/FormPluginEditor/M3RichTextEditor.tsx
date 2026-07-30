@@ -118,6 +118,12 @@ export type M3RichTextEditorProps = {
      */
     fluid?: boolean;
     /**
+     * Language of the CONTENT (not the UI), e.g. the legal text's own language.
+     * Sets `lang` on the text region so hyphenation works; falls back to the
+     * editor's `language` (the language switcher's value).
+     */
+    contentLanguage?: string;
+    /**
      * Drops the card's own icon + title row. For hosts that already carry the
      * same heading right above the card — the DPA blocker states the agreement's
      * name once, centred, and repeating it inside the card was the duplicate
@@ -614,6 +620,7 @@ export const M3RichTextEditor = ({
     publishing,
     readOnly,
     fluid,
+    contentLanguage,
     hideHeader,
     languageSlot,
     topicSlot,
@@ -863,8 +870,13 @@ export const M3RichTextEditor = ({
                                 scrollable-region-focusable), but the fluid
                                 reader delegates scrolling to its host (#594.3)
                                 and an extra tab stop there would be noise. */}
+                            {/* `lang` on the text itself: long German compounds
+                                ("Auftragsverarbeitungsvertrag") otherwise break
+                                mid-word on a phone, because `hyphens: auto` has
+                                no dictionary without it. */}
                             <div
                                 className={styles.editorContentScroll}
+                                lang={contentLanguage ?? language}
                                 {...(readOnly ? { role: 'region', 'aria-label': title } : {})}
                                 {...(readOnly && scrollsInternally
                                     ? // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex

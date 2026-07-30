@@ -199,6 +199,7 @@ export const DpaBlocker = ({
                                     dpaHtml={dpaHtml}
                                     hideTextHeader
                                     textLabel={t('dpaBlocker.title')}
+                                    textLanguage={i18n.language}
                                     accepted={dpaAccepted}
                                     acceptTouched={acceptTouched}
                                     onAcceptedChange={(value) => {

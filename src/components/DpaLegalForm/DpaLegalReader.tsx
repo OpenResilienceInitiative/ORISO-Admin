@@ -18,6 +18,8 @@ export interface DpaLegalReaderProps {
      * accessible name of the reading region either way.
      */
     hideHeader?: boolean;
+    /** Language the legal text is written in — drives hyphenation of long compounds. */
+    contentLanguage?: string;
     testId?: string;
 }
 
@@ -41,7 +43,14 @@ export interface DpaLegalReaderProps {
  * deliberately never mutates its document, so legal texts published before the
  * anchor feature would otherwise render without any chapters.
  */
-export const DpaLegalReader = ({ html, label, description, hideHeader, testId = 'dpa-text' }: DpaLegalReaderProps) => {
+export const DpaLegalReader = ({
+    html,
+    label,
+    description,
+    hideHeader,
+    contentLanguage,
+    testId = 'dpa-text',
+}: DpaLegalReaderProps) => {
     const anchoredHtml = useMemo(() => ensureHeadingAnchorIds(html), [html]);
 
     return (
@@ -50,6 +59,7 @@ export const DpaLegalReader = ({ html, label, description, hideHeader, testId = 
                 readOnly
                 fluid
                 enableAnchors
+                contentLanguage={contentLanguage}
                 hideHeader={hideHeader}
                 title={label}
                 icon={GavelOutlined}

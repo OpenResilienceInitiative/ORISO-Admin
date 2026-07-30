@@ -257,10 +257,14 @@
     color: var(--admin-table-chip-text, #444748);
 }
 
+/* The one exception to "chips are tonal": a state that means something went
+   wrong or ran out carries the scheme's ERROR role. That is not a traffic
+   light — it is the role M3 has for exactly this, and without it an expired
+   invite was indistinguishable from a live one in a table you scan. */
 .statusTagExpired {
-    background: var(--admin-table-chip-surface, #e4e2e2);
-    border-color: var(--admin-table-chip-border, #c4c7c8);
-    color: var(--admin-table-chip-text, #444748);
+    background: color-mix(in srgb, var(--m3-error, #b1005e) 10%, var(--m3-surface-container-low, #f6f3f3));
+    border-color: color-mix(in srgb, var(--m3-error, #b1005e) 35%, transparent);
+    color: var(--m3-error, #b1005e);
 }
 
 .anonymityTagFull {

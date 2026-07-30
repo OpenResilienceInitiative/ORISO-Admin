@@ -41,6 +41,8 @@ export interface DpaFormSectionProps {
      * the agreement's name above it (the DPA blocker, Figma 1611-27868).
      */
     hideTextHeader?: boolean;
+    /** Language of the shown agreement — passed to the reader for hyphenation. */
+    textLanguage?: string;
     accepted: boolean;
     acceptTouched: boolean;
     /** Toggle handler — the host owns the accepted/touched state (it gates its own submit). */
@@ -64,6 +66,7 @@ export const DpaFormSection = ({
     textLabel,
     textDescription,
     hideTextHeader,
+    textLanguage,
     accepted,
     acceptTouched,
     onAcceptedChange,
@@ -95,6 +98,7 @@ export const DpaFormSection = ({
                 html={dpaHtml}
                 label={textLabel}
                 description={textDescription}
+                contentLanguage={textLanguage}
                 hideHeader={hideTextHeader}
             />
             <div className={classNames(styles.fieldStack, styles.fieldStackPaired)}>

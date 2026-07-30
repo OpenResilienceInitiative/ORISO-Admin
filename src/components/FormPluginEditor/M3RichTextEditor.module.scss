@@ -845,6 +845,14 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     :global(.ProseMirror) {
         min-height: 248px;
         outline: none;
+
+        // German legal prose is full of 25+ character compounds. `hyphens: auto`
+        // breaks them where the language allows (the text region carries `lang`);
+        // `break-word` only steps in for words that fit on no line at all. The
+        // previous `anywhere` short-circuited hyphenation and split headings
+        // mid-word ("Auftragsverarbeitun / gsvertrag").
+        hyphens: auto;
+        overflow-wrap: break-word;
     }
 
     // Inserted images must never blow out the text surface.
