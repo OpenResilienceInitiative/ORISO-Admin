@@ -86,13 +86,8 @@ const getIconState = (isActive: boolean, hover: boolean): IconState => {
     return 'inactive';
 };
 
-const isCurrentPathActive = (currentPath: string, path: string): boolean => {
-    if (path === routePathNames.logs) {
-        return currentPath === routePathNames.logs;
-    }
-
-    return currentPath === path || currentPath.startsWith(`${path}/`);
-};
+const isCurrentPathActive = (currentPath: string, path: string): boolean =>
+    currentPath === path || currentPath.startsWith(`${path}/`);
 
 const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
     const currentPath = useLocation().pathname;
