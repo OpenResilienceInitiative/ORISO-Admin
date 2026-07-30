@@ -99,6 +99,13 @@
     font-size: 40px;
 }
 
+/* "Auftragsdatenverarbeitungsvereinbarung" is one 38-character compound, so on a
+   phone it has to break somewhere. `hyphens: auto` breaks it where German
+   allows and sets a hyphen; `anywhere` stays only as the fallback for browsers
+   without hyphenation data, and the smaller mobile size means it rarely comes
+   to that. Without this the title split as "Auftragsdatenverarbeitu /
+   ngsvereinbarung". */
+
 .heroTitle {
     max-width: 100%;
     margin: 0;
@@ -106,7 +113,13 @@
     font-size: 22px;
     font-weight: 400;
     line-height: 28px;
+    hyphens: auto;
     overflow-wrap: anywhere;
+
+    @media (max-width: 599px) {
+        font-size: 19px;
+        line-height: 26px;
+    }
 }
 
 .heroIntro {

@@ -158,7 +158,10 @@ export const DpaBlocker = ({
                             documented in DpaFormSection). */}
                         <div className={styles.hero}>
                             <DpaIcon className={styles.heroIcon} />
-                            <h1 id={TITLE_ID} className={styles.heroTitle}>
+                            {/* `lang` is what makes `hyphens: auto` work — without
+                                it the browser has no dictionary to break the long
+                                German compound with. */}
+                            <h1 id={TITLE_ID} className={styles.heroTitle} lang={i18n.language}>
                                 {t('dpaBlocker.title')}
                             </h1>
                             <p className={styles.heroIntro}>{t(`dpaBlocker.intro.${reason}`)}</p>

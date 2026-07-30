@@ -16,9 +16,15 @@
     margin-bottom: 24px;
 }
 
+/* The signer fields keep a 12px side inset (owner call 2026-07-30) while the
+   legal text above them runs edge to edge: the text is the document, the fields
+   are a form on top of it, and the inset is what keeps their outlines and focus
+   rings off the card edge. */
+
 .fieldStack {
     display: flex;
     flex-direction: column;
+    padding-inline: 12px;
     gap: 16px;
 }
 
