@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LabeledValue } from 'antd/lib/select';
 import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
-import { SelectFormField } from '../SelectFormField';
+import { MuiSelectField } from '../mui/MuiSelectField';
 import { Modal, DialogButton } from '../Modal';
 import { useAgenciesData } from '../../hooks/useAgencysData';
 import { convertToOptions } from '../../utils/convertToOptions';
@@ -95,7 +95,7 @@ export const GrantConsultantIdentityModal = ({
                     onClose={closeModal}
                 >
                     <Form form={form} layout="vertical">
-                        <SelectFormField
+                        <MuiSelectField
                             name="agencies"
                             label="grantConsultantIdentity.modal.agencyLabel"
                             labelInValue

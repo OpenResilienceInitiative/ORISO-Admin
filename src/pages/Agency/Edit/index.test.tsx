@@ -247,10 +247,12 @@ describe('AgencyPageEdit create flow', () => {
     it('renders the tenant assignment field for super-admin agency creation', async () => {
         const { container } = renderWithClient(<AgencyPageEdit />);
 
-        // Required field: SelectFormField now mirrors FormInputField's M3 label
+        // Required field: MuiSelectField mirrors MuiFormField's M3 label
         // convention (a visible " *" appended to the text) instead of antd's
-        // CSS-only pseudo-asterisk.
-        expect(await screen.findByText('Trägerzuordnung *')).toBeInTheDocument();
+        // CSS-only pseudo-asterisk. Assert the *accessible* label — MUI paints
+        // the text twice (the <label>, plus the aria-hidden notched-outline
+        // <legend>), so a plain text query matches both.
+        expect(await screen.findByLabelText('Trägerzuordnung *')).toBeInTheDocument();
         // Create flow: general+registration share one deck item; settings is the second.
         expect(container.querySelector('[data-admin-card-deck]')).toBeInTheDocument();
         expect(container.querySelectorAll('[data-admin-card-deck-item]')).toHaveLength(2);

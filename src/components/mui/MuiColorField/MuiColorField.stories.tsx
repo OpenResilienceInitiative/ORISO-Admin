@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Form } from 'antd';
-import { FormColorSelectorField } from './index';
+import { MuiColorField } from './index';
 
 const meta = {
-    title: 'Atoms/FormColorSelectorField',
-    component: FormColorSelectorField,
+    title: 'Atoms/MuiColorField',
+    component: MuiColorField,
     parameters: { layout: 'padded' },
     decorators: [
         (Story) => (
@@ -17,7 +17,7 @@ const meta = {
         name: 'primaryColor',
         labelKey: 'Primärfarbe',
     },
-} satisfies Meta<typeof FormColorSelectorField>;
+} satisfies Meta<typeof MuiColorField>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

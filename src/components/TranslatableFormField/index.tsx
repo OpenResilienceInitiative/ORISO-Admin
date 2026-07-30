@@ -1,8 +1,8 @@
-import { Form, Select } from 'antd';
+import { Form } from 'antd';
 import { cloneElement, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
-import { SelectFormField } from '../SelectFormField';
+import { MuiSelectField } from '../mui/MuiSelectField';
 import { useTenantAdminData } from '../../hooks/useTenantAdminData.hook';
 import styles from './styles.module.scss';
 
@@ -28,18 +28,18 @@ export const TranslatableFormField = ({ name, children }: TranslatableFormFieldP
     return (
         <>
             {languages.length > 1 && (
-                <SelectFormField
+                <MuiSelectField
                     initialValue="de"
                     label="languages"
                     name={[...namePath, 'translate']}
                     className={styles.translateField}
                 >
                     {languages.map((language) => (
-                        <Select.Option value={language} key={language}>
+                        <MuiSelectField.Option value={language} key={language}>
                             {t(`language.${language}`)}
-                        </Select.Option>
+                        </MuiSelectField.Option>
                     ))}
-                </SelectFormField>
+                </MuiSelectField>
             )}
 
             {languages.map((language) =>

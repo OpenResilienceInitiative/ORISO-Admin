@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Form } from 'antd';
-import { SelectFormField } from './index';
+import { MuiSelectField } from './index';
 
 const options = [
     { label: 'Berlin', value: 'berlin' },
@@ -9,8 +9,8 @@ const options = [
 ];
 
 const meta = {
-    title: 'Atoms/SelectFormField',
-    component: SelectFormField,
+    title: 'Atoms/MuiSelectField',
+    component: MuiSelectField,
     parameters: { layout: 'padded' },
     decorators: [
         (Story) => (
@@ -25,7 +25,7 @@ const meta = {
         options,
         placeholder: 'Stadt auswählen',
     },
-} satisfies Meta<typeof SelectFormField>;
+} satisfies Meta<typeof MuiSelectField>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

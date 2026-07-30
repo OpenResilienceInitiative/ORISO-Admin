@@ -10,7 +10,7 @@ import { Page } from '../../components/Page';
 import { CardDeck } from '../../components/CardDeck';
 import { CardEditable } from '../../components/CardEditable';
 import { Card } from '../../components/Card';
-import { FormColorSelectorField } from '../../components/FormColorSelectorField';
+import { MuiColorField } from '../../components/mui/MuiColorField';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { MuiSwitchField } from '../../components/mui/MuiSwitchField/index';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
@@ -212,9 +212,7 @@ export const GlobalSmtpSettingsPage = () => {
                                 autoComplete="current-password"
                             />
                             <MuiFormField label={t('globalSettings.smtp.from')} name={['globalSmtpFrom']} />
-                            {/* TODO(mui-migration): FormColorSelectorField still uses AntD + react-colorful
-                                (ColorSelector). No MUI color-picker adapter yet — migrate in a follow-up. */}
-                            <FormColorSelectorField
+                            <MuiColorField
                                 className={styles.colorField}
                                 labelKey="globalSettings.smtp.emailThemeColor"
                                 name={['globalSmtpEmailThemeColor']}

@@ -528,6 +528,7 @@
     "agency.form.registrationSettings.createConsultant.saveAgencyFirst": "Save this advice center offline first, then reopen it to create and assign a consultant.",
     "agency.form.registrationSettings.consultants.placeholder": "Select consultants",
     "agency.form.registrationSettings.newPostCodeLabel": "Postal code areas:",
+    "agency.form.registrationSettings.removePostCode": "Remove postal code range",
     "agency.form.registrationSettings.onlineWarning": "So that the advice center can be made visible in the registration, assign a consultant to it. You can find this function under the menu item “Users”.",
     "agency.form.registrationSettings.onlySelectedPostCodes": "Define postal code areas",
     "agency.postcode.minimum": "The postal code must consist of 5 numbers.",

@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { Card } from '../../../../../components/Card';
 import { FormInputField } from '../../../../../components/FormInputField';
 import styles from '../RegistrationSettings/styles.module.scss';
-import { FormRadioGroupField } from '../../../../../components/FormRadioGroupField';
+import { MuiRadioGroupField } from '../../../../../components/mui/MuiRadioGroupField';
 import { CardEditable } from '../../../../../components/CardEditable';
 
 interface ContactSettingsProps {
@@ -31,23 +31,23 @@ const ContactSettingsFields = ({ form, type }: { form?: FormInstance; type?: any
         <>
             <Paragraph className="text desc">{t('agency.edit.settings.legal.contact.text')}</Paragraph>
 
-            <FormRadioGroupField
+            <MuiRadioGroupField
                 required
                 className={styles.radioGroup}
                 vertical
                 name={['dataProtection', 'dataProtectionResponsibleEntity']}
                 labelKey="agency.edit.settings.legal.contact.type.title"
             >
-                <FormRadioGroupField.Radio value="DATA_PROTECTION_OFFICER">
+                <MuiRadioGroupField.Radio value="DATA_PROTECTION_OFFICER">
                     {t('agency.edit.settings.legal.contact.type.data_protection_officer')}
-                </FormRadioGroupField.Radio>
-                <FormRadioGroupField.Radio value="ALTERNATIVE_REPRESENTATIVE">
+                </MuiRadioGroupField.Radio>
+                <MuiRadioGroupField.Radio value="ALTERNATIVE_REPRESENTATIVE">
                     {t('agency.edit.settings.legal.contact.type.alternative_representative')}
-                </FormRadioGroupField.Radio>
-                <FormRadioGroupField.Radio value="AGENCY_RESPONSIBLE">
+                </MuiRadioGroupField.Radio>
+                <MuiRadioGroupField.Radio value="AGENCY_RESPONSIBLE">
                     {t('agency.edit.settings.legal.contact.type.agency_responsible')}
-                </FormRadioGroupField.Radio>
-            </FormRadioGroupField>
+                </MuiRadioGroupField.Radio>
+            </MuiRadioGroupField>
 
             {contactKey && (
                 <Row gutter={[20, 10]}>

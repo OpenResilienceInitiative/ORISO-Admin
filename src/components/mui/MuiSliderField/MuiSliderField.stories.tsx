@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Form } from 'antd';
-import { SliderFormField } from './index';
+import { MuiSliderField } from './index';
 
 const meta = {
-    title: 'Molecules/SliderFormField',
-    component: SliderFormField,
+    title: 'Molecules/MuiSliderField',
+    component: MuiSliderField,
     parameters: { layout: 'padded' },
     decorators: [
         (Story) => (
@@ -19,7 +19,7 @@ const meta = {
         min: 0,
         max: 100,
     },
-} satisfies Meta<typeof SliderFormField>;
+} satisfies Meta<typeof MuiSliderField>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

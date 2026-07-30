@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { useEffect, useMemo } from 'react';
 import { Card } from '../../../../../components/Card';
-import { FormRadioGroupField } from '../../../../../components/FormRadioGroupField';
-import { SelectFormField } from '../../../../../components/SelectFormField';
+import { MuiRadioGroupField } from '../../../../../components/mui/MuiRadioGroupField';
+import { MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
 import { TypeOfUser } from '../../../../../enums/TypeOfUser';
 import { useAgencyHasConsultants } from '../../../../../hooks/useAgencyHasConsultants';
@@ -82,7 +82,7 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
             )}
             {showConsultantAssignment && (
                 <>
-                    <SelectFormField
+                    <MuiSelectField
                         name="consultantIds"
                         label="agency.form.registrationSettings.consultants.label"
                         labelInValue
@@ -115,19 +115,19 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
             />
             <Divider />
 
-            <FormRadioGroupField
+            <MuiRadioGroupField
                 className={styles.radioGroup}
                 vertical
                 labelKey="agency.form.registrationSettings.postCodeTitle"
                 name="postCodeRangesActive"
             >
-                <FormRadioGroupField.Radio value={false}>
+                <MuiRadioGroupField.Radio value={false}>
                     {t('agency.form.registrationSettings.allPostCode')}
-                </FormRadioGroupField.Radio>
-                <FormRadioGroupField.Radio value>
+                </MuiRadioGroupField.Radio>
+                <MuiRadioGroupField.Radio value>
                     {t('agency.form.registrationSettings.onlySelectedPostCodes')}
-                </FormRadioGroupField.Radio>
-            </FormRadioGroupField>
+                </MuiRadioGroupField.Radio>
+            </MuiRadioGroupField>
 
             {postCodeRangesActive && <PostCodeRanges />}
         </>
