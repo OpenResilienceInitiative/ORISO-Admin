@@ -311,53 +311,51 @@ export const EmailTemplatesDialog = ({
         </div>
     );
 
+    // Title AND description follow the view: each of the three states is a
+    // different job, so a single sentence would be wrong in two of them.
     let titleKey = 'links.templates.dialogTitle';
+    let descriptionKey = onSelect ? 'links.templates.pickHint' : 'links.templates.dialogDescription';
     if (view !== 'list') {
         titleKey = editingTemplate ? 'links.templates.editTitle' : 'links.templates.newTitle';
+        descriptionKey = editingTemplate ? 'links.templates.editDescription' : 'links.templates.newDescription';
     }
 
     return (
         <Modal
             titleKey={titleKey}
+            descriptionKey={descriptionKey}
             icon={<EmailOutlinedIcon />}
             onClose={onClose}
             footer={view === 'list' ? listFooter : formFooter}
             width={860}
         >
             {view === 'list' ? (
-                <>
-                    {onSelect && (
-                        <p className={styles.pickHint}>
-                            {t('links.templates.pickHint', 'Vorlage anklicken, um sie für den Versand zu übernehmen.')}
-                        </p>
-                    )}
-                    <ListingTable
-                        rowKey="id"
-                        loading={loading}
-                        columns={columns}
-                        dataSource={sortedTemplates}
-                        pagination={false}
-                        scroll={{ y: 'auto' }}
-                        onRow={(template: InviteEmailTemplateDTO) => ({
-                            className: classNames({
-                                [styles.pickableRow]: isSelectable(template),
-                                [styles.selectedRow]: template.id === selectedTemplateId,
-                            }),
-                            // The whole row is a hit area for picking, but its own
-                            // buttons (name, edit) keep their meaning.
-                            onClick: isSelectable(template)
-                                ? (event: MouseEvent<HTMLElement>) => {
-                                      if (!(event.target as HTMLElement).closest('button')) {
-                                          onSelect?.(template);
-                                      }
+                <ListingTable
+                    rowKey="id"
+                    loading={loading}
+                    columns={columns}
+                    dataSource={sortedTemplates}
+                    pagination={false}
+                    scroll={{ y: 'auto' }}
+                    onRow={(template: InviteEmailTemplateDTO) => ({
+                        className: classNames({
+                            [styles.pickableRow]: isSelectable(template),
+                            [styles.selectedRow]: template.id === selectedTemplateId,
+                        }),
+                        // The whole row is a hit area for picking, but its own
+                        // buttons (name, edit) keep their meaning.
+                        onClick: isSelectable(template)
+                            ? (event: MouseEvent<HTMLElement>) => {
+                                  if (!(event.target as HTMLElement).closest('button')) {
+                                      onSelect?.(template);
                                   }
-                                : undefined,
-                            // Manager-only mode: without picking, a row click is free
-                            // for the edit shortcut.
-                            onDoubleClick: onSelect ? undefined : () => openEditForm(template),
-                        })}
-                    />
-                </>
+                              }
+                            : undefined,
+                        // Manager-only mode: without picking, a row click is free
+                        // for the edit shortcut.
+                        onDoubleClick: onSelect ? undefined : () => openEditForm(template),
+                    })}
+                />
             ) : (
                 <Form form={form} layout="vertical" onFinish={onSubmit} initialValues={{ active: true }}>
                     {/* Form on the left, live preview on the right — below 920px the

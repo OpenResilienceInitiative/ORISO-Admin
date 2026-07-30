@@ -11,6 +11,17 @@ export interface ModalProps {
     titleKeyOptions?: Record<string, unknown>;
     /** Raw title node for dynamic titles that are not an i18n key. Ignored if `titleKey` is set. */
     title?: ReactNode;
+    /**
+     * One sentence under the title saying what the dialog is FOR — part of the
+     * house card-box anatomy (icon → title → description), not decoration. A
+     * title alone names the thing; it does not tell an admin why they are here.
+     * Optional so the short confirm dialogs, whose `contentKey` IS the sentence,
+     * stay unchanged.
+     */
+    descriptionKey?: string;
+    descriptionKeyOptions?: Record<string, unknown>;
+    /** Raw description node when the text is not an i18n key. Ignored if `descriptionKey` is set. */
+    description?: ReactNode;
     cancelLabelKey?: string;
     okLabelKey?: string;
     contentKey?: string;
@@ -42,6 +53,9 @@ export const Modal = ({
     titleKey,
     titleKeyOptions,
     title,
+    descriptionKey,
+    descriptionKeyOptions,
+    description,
     okLabelKey,
     cancelLabelKey,
     children,
@@ -97,6 +111,11 @@ export const Modal = ({
                             </span>
                         )}
                         <div className={styles.title}>{titleKey ? t(titleKey, titleKeyOptions) : title}</div>
+                        {(descriptionKey || description) && (
+                            <p className={styles.description}>
+                                {descriptionKey ? t(descriptionKey, descriptionKeyOptions) : description}
+                            </p>
+                        )}
                     </div>
                 ) : null
             }

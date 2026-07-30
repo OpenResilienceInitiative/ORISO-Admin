@@ -8,14 +8,6 @@
     gap: 8px;
 }
 
-/* Picker mode only: one line telling the admin what a click on a row does. */
-.pickHint {
-    margin: 0 0 12px;
-    color: var(--m3-on-surface-variant, #444748);
-    font-size: 14px;
-    line-height: 20px;
-}
-
 /* Shared name-cell box so picked and non-pickable rows keep the same metrics. */
 .templateName {
     display: inline-flex;
