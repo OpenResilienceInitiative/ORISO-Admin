@@ -49,6 +49,11 @@
     white-space: nowrap;
 }
 
+/* No chevron: a single-action pill (e.g. template opener) stays fully rounded. */
+.splitButton:not(:has(.chevron)) .main {
+    border-radius: 28px;
+}
+
 /* Menu selections become the main label; long user-defined names truncate. */
 .label {
     overflow: hidden;
@@ -86,8 +91,41 @@
 .tonal .segment {
     border-color: transparent;
     background: var(--m3-surface-container-low, #f6f3f3);
-    box-shadow: 0 1px 2px color-mix(in srgb, var(--m3-shadow, #000) 20%, transparent);
     color: var(--m3-primary, #a5000a);
+}
+
+/* Elevation is a STATE, not a skin (owner call, twice): a split button lifts
+   only while its menu is open, and the menu carries the matching, higher
+   shadow so button and sheet read as one surface. A permanently raised button
+   claimed a state it was not in. */
+.open .segment {
+    box-shadow: 0 1px 3px 1px color-mix(in srgb, var(--m3-shadow, #000) 15%, transparent),
+        0 1px 2px color-mix(in srgb, var(--m3-shadow, #000) 30%, transparent);
+}
+
+/* Secondary tonal: the M3 secondary container. Everything that is NOT the
+   selected item / main CTA rests here — the send button before the form is
+   valid, and the bulk-selection counter. */
+.secondary .segment {
+    border-color: transparent;
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
+}
+
+/* Not-ready is still the secondary container (owner call), so the disabled
+   treatment dims the CONTENT instead of fading the whole pill — at 38% opacity
+   on a slate fill the label and the send glyph vanished altogether. */
+.secondary .segment:disabled {
+    opacity: 1;
+    color: color-mix(in srgb, var(--m3-on-secondary-container, #e7effc) 78%, var(--m3-secondary-container, #646d78));
+}
+
+.secondary:not(.disabled) .segment:not(:disabled):hover {
+    background: color-mix(
+        in srgb,
+        var(--m3-on-secondary-container, #e7effc) 10%,
+        var(--m3-secondary-container, #646d78)
+    );
 }
 
 .tonal:not(.disabled) .segment:not(:disabled):hover {
@@ -108,4 +146,85 @@
 .disabled .segment {
     cursor: not-allowed;
     opacity: 0.38;
+}
+
+/* The dropdown sheet. antd renders it in a portal, so everything below is
+   scoped through the overlay class the SplitButton hands to `Dropdown`. */
+.menuOverlay {
+    :global(.ant-dropdown-menu) {
+        padding: 8px;
+        border-radius: 16px;
+        background: var(--m3-surface-container-low, #f6f3f3);
+        box-shadow: 0 4px 8px 3px color-mix(in srgb, var(--m3-shadow, #000) 15%, transparent),
+            0 1px 3px color-mix(in srgb, var(--m3-shadow, #000) 30%, transparent);
+    }
+
+    /* Two-line group header: what the list is for, then what it lists. */
+    :global(.ant-dropdown-menu-item-group-title) {
+        padding: 8px 12px 4px;
+        color: var(--m3-on-surface-variant, #444748);
+        font-size: 12px;
+        line-height: 16px;
+    }
+
+    :global(.ant-dropdown-menu-item) {
+        border-radius: 12px;
+    }
+
+    /* Item labels wrap: a template name is user input and runs long. */
+    :global(.ant-dropdown-menu-title-content) {
+        white-space: normal;
+    }
+}
+
+/* Ordinal badge before each selectable entry, so a list of user-named
+   templates can still be referred to by position. */
+.menuIndex {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    background: var(--m3-secondary-container, #646d78);
+    border-radius: 50%;
+    color: var(--m3-on-secondary-container, #e7effc);
+    font-size: 11px;
+    font-weight: 500;
+    vertical-align: middle;
+}
+
+/* "Create new …" is the one entry that adds something, so it is the one entry
+   that carries a container instead of sitting flush like the rest. */
+.menuCreate {
+    /* Derived from the secondary container rather than a new hex: the light
+       slate-blue of the Figma sheet without adding a token the scheme has no
+       role for. */
+    background: color-mix(in srgb, var(--m3-secondary-container, #646d78) 18%, #fff) !important;
+    color: var(--m3-primary, #a5000a) !important;
+    font-weight: 500;
+}
+
+.menuEntry {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Third segment: the pill's right end moves to it, so the middle chevron
+   becomes a straight-sided divider between the two. */
+.splitButton .collapse {
+    border-radius: 4px 28px 28px 4px;
+}
+
+.splitButton .collapse ~ * {
+    border-radius: 4px;
+}
+
+.splitButton:has(.collapse) .chevron:not(.collapse) {
+    border-radius: 4px;
+}
+
+.chevronUp {
+    transform: rotate(180deg);
 }

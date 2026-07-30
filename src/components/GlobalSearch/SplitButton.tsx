@@ -16,7 +16,7 @@ export interface SplitButtonProps {
      * (e.g. send). Use `outlined` for the resting/not-ready state — the caller
      * flips to `primary` once the form is validly filled.
      */
-    variant?: 'outlined' | 'tonal' | 'primary';
+    variant?: 'outlined' | 'tonal' | 'secondary' | 'primary';
     disabled?: boolean;
     /**
      * Disables only the main (action) segment while the chevron menu stays
@@ -30,6 +30,20 @@ export interface SplitButtonProps {
     menu?: MenuProps;
     /** Accessible label for the chevron segment. */
     menuLabel?: string;
+    /**
+     * Accessible name / tooltip of the main segment when the visible label is a
+     * bare value (e.g. the selection count "23", where the label alone does not
+     * say what pressing it does).
+     */
+    title?: string;
+    /**
+     * Adds a third, up-chevron segment that undoes the state the button shows —
+     * used by the bulk-selection counter to clear the selection. Omit it and the
+     * button keeps its two segments.
+     */
+    onCollapse?: () => void;
+    /** Accessible name of the up-chevron segment. Required whenever `onCollapse` is set. */
+    collapseLabel?: string;
     className?: string;
 }
 
@@ -48,6 +62,9 @@ export const SplitButton = ({
     onClick,
     menu,
     menuLabel,
+    title,
+    onCollapse,
+    collapseLabel,
     className,
 }: SplitButtonProps) => {
     const { t } = useTranslation();
@@ -61,6 +78,7 @@ export const SplitButton = ({
                 styles.splitButton,
                 {
                     [styles.tonal]: variant === 'tonal',
+                    [styles.secondary]: variant === 'secondary',
                     [styles.primary]: variant === 'primary',
                     [styles.disabled]: disabled,
                     [styles.open]: open && !disabled,
@@ -70,8 +88,10 @@ export const SplitButton = ({
         >
             <button
                 type="button"
+                aria-label={title}
                 className={classNames(styles.segment, styles.main)}
                 disabled={disabled || mainDisabled}
+                title={title}
                 onClick={onClick}
             >
                 {icon && (
@@ -88,6 +108,9 @@ export const SplitButton = ({
                     open={!disabled && open}
                     onOpenChange={handleOpenChange}
                     menu={menu}
+                    // The sheet carries the same, one step higher shadow as the
+                    // button it grew out of, so the two read as one surface.
+                    overlayClassName={styles.menuOverlay}
                 >
                     <button
                         type="button"
@@ -100,6 +123,22 @@ export const SplitButton = ({
                         <ChevronDownIcon className={styles.chevronIcon} aria-hidden />
                     </button>
                 </Dropdown>
+            )}
+            {/* Third segment (Figma 1165:16407 selection variant): the counter
+                pairs its menu chevron with an up-chevron that undoes the state
+                the counter represents. A segment without a purpose we can name
+                does not ship, so it is opt-in via `onCollapse`. */}
+            {onCollapse && (
+                <button
+                    type="button"
+                    aria-label={collapseLabel}
+                    className={classNames(styles.segment, styles.chevron, styles.collapse)}
+                    disabled={disabled}
+                    title={collapseLabel}
+                    onClick={onCollapse}
+                >
+                    <ChevronDownIcon className={classNames(styles.chevronIcon, styles.chevronUp)} aria-hidden />
+                </button>
             )}
         </span>
     );

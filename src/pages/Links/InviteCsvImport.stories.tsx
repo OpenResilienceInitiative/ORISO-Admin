@@ -22,14 +22,14 @@ const MIXED_PARSE_RESULT: ParseInviteCsvResult = {
             email: 'peter.maier@example.org',
             firstName: 'Peter',
             lastName: 'Maier',
-            tenantId: 7,
+            id: 7,
             missingName: false,
         },
         { line: 4, email: 'ohne.namen@example.org', firstName: '', lastName: '', missingName: true },
     ],
     rejected: [
         { line: 5, cells: ['keine-email', 'Ida', 'Klein'], reason: 'invalidEmail' },
-        { line: 6, cells: ['jan.beck@example.org', 'Jan', 'Beck', 'abc'], reason: 'invalidTenantId' },
+        { line: 6, cells: ['jan.beck@example.org', 'Jan', 'Beck', 'abc'], reason: 'invalidId' },
     ],
     delimiter: ',',
     headerSkipped: true,
@@ -74,16 +74,15 @@ const CsvImportHarness = () => {
                 onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
                 onManageTemplates={() => {}}
                 onSubmit={() => true}
-                onTemplateIdChange={() => {}}
             />
             {csvImport && (
                 <InviteCsvImportModal
-                    autoAssignTenantIds
+                    idKind="tenant"
                     createInvite={async (row) => {
                         await new Promise((resolve) => {
                             setTimeout(resolve, 400);
                         });
-                        if (row.tenantId === 7) {
+                        if (row.id === 7) {
                             // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's CONFLICT_WITH_RESPONSE rejection (a raw Response)
                             throw new Response(null, { status: 409 });
                         }
@@ -131,18 +130,43 @@ export const MoreMenuOpen: Story = {
 export const PreviewModalMixedRows: Story = {
     render: () => (
         <InviteCsvImportModal
-            autoAssignTenantIds
+            idKind="tenant"
             createInvite={async (row) => {
                 await new Promise((resolve) => {
                     setTimeout(resolve, 400);
                 });
-                if (row.tenantId === 7) {
+                if (row.id === 7) {
                     // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's CONFLICT_WITH_RESPONSE rejection (a raw Response)
                     throw new Response(null, { status: 409 });
                 }
             }}
             parseResult={MIXED_PARSE_RESULT}
             takenTenantIds={new Set([1, 2, 4])}
+            onClose={() => {}}
+            onCreated={() => {}}
+        />
+    ),
+};
+
+/**
+ * Berater tab: the same file, read against the agency id space. The explicit 7 is
+ * pinned (and rejected with 409 here, as a taken agency id would be), while the
+ * empty cells stay "Automatisch" — AgencyService picks the free id on create.
+ */
+export const PreviewModalAgencyIds: Story = {
+    render: () => (
+        <InviteCsvImportModal
+            idKind="agency"
+            createInvite={async (row) => {
+                await new Promise((resolve) => {
+                    setTimeout(resolve, 400);
+                });
+                if (row.id === 7) {
+                    // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's CONFLICT_WITH_RESPONSE rejection (a raw Response)
+                    throw new Response(null, { status: 409 });
+                }
+            }}
+            parseResult={MIXED_PARSE_RESULT}
             onClose={() => {}}
             onCreated={() => {}}
         />

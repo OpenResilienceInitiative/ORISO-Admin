@@ -19,7 +19,14 @@ window.matchMedia ??= ((query: string) => ({
     dispatchEvent: () => false,
 })) as typeof window.matchMedia;
 
-const t = (key: string, fallback?: string) => fallback ?? key;
+// Interpolating t-mock so counts land in the asserted button labels.
+const t = (key: string, fallback?: string, options?: Record<string, unknown>) => {
+    let text = fallback ?? key;
+    Object.entries(options ?? {}).forEach(([name, value]) => {
+        text = text.replaceAll(`{{${name}}}`, String(value));
+    });
+    return text;
+};
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t }),
@@ -206,5 +213,82 @@ describe('TenantInvitesTab Träger-ID field', () => {
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
         expect(field).toHaveValue('');
         expect(mocks.searchTenantData).not.toHaveBeenCalled();
+    });
+});
+
+/*
+ * The CSV's 4th column addresses whichever id space the tab owns: the Träger-ID on
+ * the Träger tab, the Beratungsstellen-ID everywhere else. Agency ids only exist as
+ * a reservation (AgencyService FREE/RESERVED/ASSIGNED, TEN-INV-U2), so an explicit
+ * id is pinned MANUAL — 409 when it is taken — and an empty cell asks for AUTO.
+ */
+describe('CSV import payload per tab', () => {
+    const importCsv = async (user: ReturnType<typeof userEvent.setup>, content: string) => {
+        await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }));
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        await user.upload(fileInput, new File([content], 'invites.csv', { type: 'text/csv' }));
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: 7 });
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+        mocks.createAccountInvite.mockResolvedValue(invite(1, 7, 'EMAIL_SENT'));
+    });
+
+    it('sends the counsellor id column as a pinned agency reservation, auto for empty cells', async () => {
+        mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
+        const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+
+        await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
+        await importCsv(
+            user,
+            'E-Mail;Vorname;Name;Beratungsstellen-ID\r\npinned@example.org;Anna;Beispiel;42\r\nauto@example.org;Bernd;Muster;\r\n',
+        );
+
+        await user.click(await screen.findByRole('button', { name: '2 Empfänger anlegen' }));
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(2));
+
+        // The admin's own tenant scopes both rows; the file only says which agency.
+        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+            targetRole: 'COUNSELLOR',
+            recipientEmail: 'pinned@example.org',
+            tenantId: 7,
+            agencyId: 42,
+            agencyIdAllocationMode: 'MANUAL',
+        });
+        expect(mocks.createAccountInvite.mock.calls[1][0]).toMatchObject({
+            recipientEmail: 'auto@example.org',
+            tenantId: 7,
+            agencyIdAllocationMode: 'AUTO',
+        });
+        expect(mocks.createAccountInvite.mock.calls[1][0].agencyId).toBeUndefined();
+        // A tenant allocation mode on a non-Träger invite is a 400 (UserService).
+        expect(mocks.createAccountInvite.mock.calls[0][0].tenantIdAllocationMode).toBeUndefined();
+    });
+
+    it('keeps the Träger id column a tenant id, without touching the agency space', async () => {
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
+        await importCsv(user, 'E-Mail;Vorname;Name;Träger-ID\r\ntenant@example.org;Anna;Beispiel;42\r\n');
+
+        await user.click(await screen.findByRole('button', { name: '1 Empfänger anlegen' }));
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+
+        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+            targetRole: 'TENANT_ADMIN',
+            recipientEmail: 'tenant@example.org',
+            tenantId: 42,
+        });
+        expect(mocks.createAccountInvite.mock.calls[0][0].agencyId).toBeUndefined();
+        expect(mocks.createAccountInvite.mock.calls[0][0].agencyIdAllocationMode).toBeUndefined();
     });
 });

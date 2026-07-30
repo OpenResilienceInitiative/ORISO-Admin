@@ -1,6 +1,8 @@
 import { Button, Form, Input, message, Select, Switch, Tag, Tooltip } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import {
     createInviteEmailTemplate,
@@ -28,6 +30,15 @@ interface EmailTemplatesDialogProps {
     onClose: () => void;
     /** Fired after any successful create/update so the opener can refetch its template select. */
     onChanged?: (template: InviteEmailTemplateDTO) => void;
+    /**
+     * Picker mode: passing `onSelect` turns the overview list into the way
+     * of choosing a template — clicking a row's name hands it back to the opener,
+     * which keeps owning the selection (the composer pill reopens this dialog).
+     * Without it the dialog stays a pure manager (double-click a row to edit).
+     */
+    onSelect?: (template: InviteEmailTemplateDTO) => void;
+    /** Template currently chosen in the composer — marked in the list. */
+    selectedTemplateId?: number;
 }
 
 interface TemplateFormValues {
@@ -41,15 +52,20 @@ interface TemplateFormValues {
 
 /**
  * Manage-templates dialog opened from the invite tabs' template select. Two views in
- * one dialog: the template list (double-click a row or hit edit to inspect it) and the
- * create/edit form. Deliberately NOT a separate admin section — templates are only
- * ever needed right where invites are sent.
+ * one dialog: the template list and the create/edit form. Deliberately NOT a separate
+ * admin section — templates are only ever needed right where invites are sent.
+ *
+ * With `onSelect` the list doubles as a picker: clicking a template's name selects it
+ * for the composer. Editing then only happens through the row's "Bearbeiten" button —
+ * double-click-to-edit stays for the manager-only mode, where no click means "choose".
  */
 export const EmailTemplatesDialog = ({
     templateKind,
     initialView = 'list',
     onClose,
     onChanged,
+    onSelect,
+    selectedTemplateId,
 }: EmailTemplatesDialogProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm<TemplateFormValues>();
@@ -58,6 +74,9 @@ export const EmailTemplatesDialog = ({
     const [submitting, setSubmitting] = useState(false);
     const [view, setView] = useState<'list' | 'form'>('list');
     const [editingTemplate, setEditingTemplate] = useState<InviteEmailTemplateDTO | null>(null);
+
+    // The preview follows what is typed, not what is saved — `useWatch` is the
+    // only way to read a live antd form value without controlling every field.
     const previewSubject = Form.useWatch('subject', form) ?? '';
     const previewBody = Form.useWatch('body', form) ?? '';
 
@@ -122,6 +141,14 @@ export const EmailTemplatesDialog = ({
         [form],
     );
 
+    // The composer only offers active templates of its own tab's kind, so those are the
+    // only rows that can be picked — selecting anything else would put a name on the
+    // split button that the send call cannot use.
+    const isSelectable = useCallback(
+        (template: InviteEmailTemplateDTO) => onSelect != null && template.active && template.kind === templateKind,
+        [onSelect, templateKind],
+    );
+
     const backToList = useCallback(() => {
         setEditingTemplate(null);
         form.resetFields();
@@ -176,6 +203,46 @@ export const EmailTemplatesDialog = ({
                 title: t('links.templates.col.name', 'Name'),
                 dataIndex: 'name',
                 key: 'name',
+                render: (value: string, template: InviteEmailTemplateDTO) => {
+                    const selected = template.id === selectedTemplateId;
+                    const mark = selected ? (
+                        <CheckRoundedIcon className={styles.selectedMark} fontSize="small" aria-hidden />
+                    ) : null;
+
+                    if (!isSelectable(template)) {
+                        return (
+                            <Tooltip
+                                title={
+                                    onSelect
+                                        ? t(
+                                              'links.templates.notSelectable',
+                                              'Nur aktive Vorlagen dieser Art können ausgewählt werden.',
+                                          )
+                                        : undefined
+                                }
+                            >
+                                <span className={styles.templateName}>
+                                    {mark}
+                                    {value}
+                                </span>
+                            </Tooltip>
+                        );
+                    }
+
+                    return (
+                        <button
+                            aria-current={selected ? 'true' : undefined}
+                            className={classNames(styles.templateName, styles.selectButton, {
+                                [styles.selectedName]: selected,
+                            })}
+                            type="button"
+                            onClick={() => onSelect?.(template)}
+                        >
+                            {mark}
+                            {value}
+                        </button>
+                    );
+                },
             },
             {
                 title: t('links.templates.col.language', 'Language'),
@@ -221,7 +288,7 @@ export const EmailTemplatesDialog = ({
                 ),
             },
         ],
-        [kindLabel, openEditForm, t],
+        [isSelectable, kindLabel, onSelect, openEditForm, selectedTemplateId, t],
     );
 
     const listFooter = (
@@ -244,14 +311,19 @@ export const EmailTemplatesDialog = ({
         </div>
     );
 
+    // Title AND description follow the view: each of the three states is a
+    // different job, so a single sentence would be wrong in two of them.
     let titleKey = 'links.templates.dialogTitle';
+    let descriptionKey = onSelect ? 'links.templates.pickHint' : 'links.templates.dialogDescription';
     if (view !== 'list') {
         titleKey = editingTemplate ? 'links.templates.editTitle' : 'links.templates.newTitle';
+        descriptionKey = editingTemplate ? 'links.templates.editDescription' : 'links.templates.newDescription';
     }
 
     return (
         <Modal
             titleKey={titleKey}
+            descriptionKey={descriptionKey}
             icon={<EmailOutlinedIcon />}
             onClose={onClose}
             footer={view === 'list' ? listFooter : formFooter}
@@ -266,11 +338,28 @@ export const EmailTemplatesDialog = ({
                     pagination={false}
                     scroll={{ y: 'auto' }}
                     onRow={(template: InviteEmailTemplateDTO) => ({
-                        onDoubleClick: () => openEditForm(template),
+                        className: classNames({
+                            [styles.pickableRow]: isSelectable(template),
+                            [styles.selectedRow]: template.id === selectedTemplateId,
+                        }),
+                        // The whole row is a hit area for picking, but its own
+                        // buttons (name, edit) keep their meaning.
+                        onClick: isSelectable(template)
+                            ? (event: MouseEvent<HTMLElement>) => {
+                                  if (!(event.target as HTMLElement).closest('button')) {
+                                      onSelect?.(template);
+                                  }
+                              }
+                            : undefined,
+                        // Manager-only mode: without picking, a row click is free
+                        // for the edit shortcut.
+                        onDoubleClick: onSelect ? undefined : () => openEditForm(template),
                     })}
                 />
             ) : (
                 <Form form={form} layout="vertical" onFinish={onSubmit} initialValues={{ active: true }}>
+                    {/* Form on the left, live preview on the right — below 920px the
+                        preview drops under the fields (see the module stylesheet). */}
                     <div className={styles.formAndPreview}>
                         <div className={styles.formFields}>
                             <Form.Item
@@ -284,7 +373,7 @@ export const EmailTemplatesDialog = ({
                             </Form.Item>
                             <Form.Item
                                 name="name"
-                                label={t('links.templates.field.name', 'Name')}
+                                label={t('links.templates.field.name', 'Vorlagenname')}
                                 rules={[
                                     {
                                         required: true,
@@ -343,9 +432,9 @@ export const EmailTemplatesDialog = ({
                             </Form.Item>
                         </div>
                         <EmailTemplatePreview
-                            subject={previewSubject}
                             body={previewBody}
                             previewLabel={t('links.templates.previewLabel', 'Email preview')}
+                            subject={previewSubject}
                         />
                     </div>
                 </Form>

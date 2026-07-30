@@ -14,7 +14,7 @@ describe('parseInviteCsv', () => {
                 email: 'maria@example.org',
                 firstName: 'Maria',
                 lastName: 'Huber',
-                tenantId: 12,
+                id: 12,
                 missingName: false,
             },
             {
@@ -22,7 +22,7 @@ describe('parseInviteCsv', () => {
                 email: 'peter@example.org',
                 firstName: 'Peter',
                 lastName: 'Maier',
-                tenantId: undefined,
+                id: undefined,
                 missingName: false,
             },
         ]);
@@ -32,7 +32,7 @@ describe('parseInviteCsv', () => {
         const result = parseInviteCsv('maria@example.org;Maria;Huber;3\r\npeter@example.org;Peter;Maier;\r\n');
 
         expect(result.delimiter).toBe(';');
-        expect(result.rows.map((row) => row.tenantId)).toEqual([3, undefined]);
+        expect(result.rows.map((row) => row.id)).toEqual([3, undefined]);
     });
 
     it('strips a UTF-8 BOM before parsing', () => {
@@ -52,7 +52,7 @@ describe('parseInviteCsv', () => {
             email: 'maria@example.org',
             firstName: 'Maria, geb. "Mia"',
             lastName: 'Huber\nvon Berg',
-            tenantId: 7,
+            id: 7,
             missingName: false,
         });
         // The quoted line break consumed a physical line — the next record starts on line 3.
@@ -64,7 +64,7 @@ describe('parseInviteCsv', () => {
 
         expect(result.headerSkipped).toBe(true);
         expect(result.rows).toHaveLength(1);
-        expect(result.rows[0]).toMatchObject({ line: 2, email: 'maria@example.org', tenantId: 4 });
+        expect(result.rows[0]).toMatchObject({ line: 2, email: 'maria@example.org', id: 4 });
     });
 
     it('does not treat a merely invalid first e-mail as a header (surfaces it as a rejection)', () => {
@@ -82,7 +82,7 @@ describe('parseInviteCsv', () => {
         const result = parseInviteCsv(`maria@example.org,Maria,Huber,${'9'.repeat(400)}`);
 
         expect(result.rows).toEqual([]);
-        expect(result.rejected.map((row) => row.reason)).toEqual(['invalidTenantId']);
+        expect(result.rejected.map((row) => row.reason)).toEqual(['invalidId']);
     });
 
     it('keeps rows with missing names importable but flags them', () => {
@@ -95,10 +95,10 @@ describe('parseInviteCsv', () => {
                 email: 'maria@example.org',
                 firstName: '',
                 lastName: '',
-                tenantId: undefined,
+                id: undefined,
                 missingName: true,
             },
-            { line: 2, email: 'peter@example.org', firstName: 'Peter', lastName: '', tenantId: 9, missingName: true },
+            { line: 2, email: 'peter@example.org', firstName: 'Peter', lastName: '', id: 9, missingName: true },
         ]);
     });
 
@@ -116,7 +116,7 @@ describe('parseInviteCsv', () => {
         const result = parseInviteCsv('maria@example.org,Maria,Huber,abc\npeter@example.org,Peter,Maier,0');
 
         expect(result.rows).toEqual([]);
-        expect(result.rejected.map((row) => row.reason)).toEqual(['invalidTenantId', 'invalidTenantId']);
+        expect(result.rejected.map((row) => row.reason)).toEqual(['invalidId', 'invalidId']);
     });
 
     it('ignores trailing and interspersed empty lines', () => {
@@ -147,7 +147,7 @@ describe('assignBatchTenantIds', () => {
         const assigned = assignBatchTenantIds(
             [
                 { line: 1 }, // -> 3 (1, 2 taken)
-                { line: 2, tenantId: 5 }, // explicit
+                { line: 2, id: 5 }, // explicit
                 { line: 3 }, // -> 6 (4 taken, 5 explicit)
                 { line: 4 }, // -> 7
             ],
@@ -163,7 +163,7 @@ describe('assignBatchTenantIds', () => {
     });
 
     it('skips a later explicit id even for rows assigned before it', () => {
-        const assigned = assignBatchTenantIds([{ line: 1 }, { line: 2, tenantId: 1 }], new Set());
+        const assigned = assignBatchTenantIds([{ line: 1 }, { line: 2, id: 1 }], new Set());
 
         expect(assigned.get(1)).toBe(2);
         expect(assigned.get(2)).toBe(1);

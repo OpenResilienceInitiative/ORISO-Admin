@@ -6,6 +6,7 @@ import { ConfigProvider } from 'antd';
 import de_DE from 'antd/es/locale/de_DE';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { buildAdminAntdTheme } from '../src/theme/antdM3Theme';
+import { AdminEmpty } from '../src/components/AdminEmpty';
 
 // Global Admin styling: antd v5 reset + app less/overrides. Mirrors src/App.tsx.
 import 'antd/dist/reset.css';
@@ -39,7 +40,7 @@ const preview: Preview = {
     decorators: [
         (Story) => (
             <QueryClientProvider client={queryClient}>
-                <ConfigProvider locale={de_DE} theme={buildAdminAntdTheme()}>
+                <ConfigProvider locale={de_DE} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
                     <MemoryRouter>
                         <Story />
                     </MemoryRouter>

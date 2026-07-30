@@ -6,11 +6,11 @@ import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ThemeProvider } from '@mui/material/styles';
 import Alert from '@mui/material/Alert';
-import Typography from '@mui/material/Typography';
 import Draw from '@mui/icons-material/Draw';
 import Logout from '@mui/icons-material/Logout';
 import Refresh from '@mui/icons-material/Refresh';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
+import { DpaIcon } from '../CustomIcons/LegalIcons';
 import { DpaFormSection, focusDpaConsent } from '../DpaLegalForm/DpaFormSection';
 import { M3Button } from '../M3Button';
 import { pickLegalContentLanguage } from '../Tenants/LegalSettings/utils/legalContentLanguages';
@@ -148,12 +148,24 @@ export const DpaBlocker = ({
                         breakpoint up, which is what lets the card be bounded
                         and genuinely centred; the exits below stay in view. */}
                     <div className={styles.cardBody}>
-                        <Typography id={TITLE_ID} variant="h5" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
-                            {t('dpaBlocker.title')}
-                        </Typography>
-                        <Typography sx={{ mb: 2 }} color="text.secondary">
-                            {t(`dpaBlocker.intro.${reason}`)}
-                        </Typography>
+                        {/* One heading for the screen, centred above the text it
+                            names (Figma 1611-27868). The reader card below runs
+                            with `hideTextHeader`, so the agreement's name is
+                            stated once instead of twice. */}
+                        {/* Plain h1/p, not MUI Typography: Typography's emotion
+                            class beats a CSS-module selector, so the sizes here
+                            would silently fall back to body text (the same trap
+                            documented in DpaFormSection). */}
+                        <div className={styles.hero}>
+                            <DpaIcon className={styles.heroIcon} />
+                            {/* `lang` is what makes `hyphens: auto` work — without
+                                it the browser has no dictionary to break the long
+                                German compound with. */}
+                            <h1 id={TITLE_ID} className={styles.heroTitle} lang={i18n.language}>
+                                {t('dpaBlocker.title')}
+                            </h1>
+                            <p className={styles.heroIntro}>{t(`dpaBlocker.intro.${reason}`)}</p>
+                        </div>
 
                         {signable && dpaContentLoading && (
                             <div className={styles.loading} data-testid="dpa-blocker-content-loading">
@@ -185,7 +197,9 @@ export const DpaBlocker = ({
                             >
                                 <DpaFormSection
                                     dpaHtml={dpaHtml}
+                                    hideTextHeader
                                     textLabel={t('dpaBlocker.title')}
+                                    textLanguage={i18n.language}
                                     accepted={dpaAccepted}
                                     acceptTouched={acceptTouched}
                                     onAcceptedChange={(value) => {

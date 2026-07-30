@@ -51,15 +51,19 @@
     }
 }
 
+/* Icon → title → description. The 16px between icon and title is carried by the
+   icon itself so the title and its description can sit the closer 8px apart —
+   they are one unit, the icon is above it. */
 .titleBlock {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
+    gap: 8px;
 }
 
 .heroIcon {
     display: inline-flex;
+    margin-bottom: 8px;
     color: var(--m3-secondary, #4c555f);
 
     svg {
@@ -75,6 +79,19 @@
     font-weight: 400;
     letter-spacing: 0;
     line-height: 32px;
+    text-align: center;
+}
+
+/* The card-box anatomy's third line: what the dialog is for. Body-small under
+   the headline, same measure as the title so it centres with it, and capped at a
+   reading width so a long sentence does not stretch a wide dialog edge to edge. */
+.description {
+    max-width: 52ch;
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
     text-align: center;
 }
 

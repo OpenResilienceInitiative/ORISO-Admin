@@ -1,4 +1,4 @@
-import { Button, message, Tag } from 'antd';
+import { Button, message, Tag, Tooltip } from 'antd';
 import type { TablePaginationConfig } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,39 +32,33 @@ interface AccountInvitesTabProps {
     includeAgencyField?: boolean;
 }
 
-const statusColor = (value?: string | null) => {
-    switch (value) {
-        case 'EMAIL_SENT':
-        case 'PENDING':
-        case 'PENDING_SETUP':
-        case 'BLOCKED_EMAIL':
-        case 'BLOCKED_TWO_FACTOR':
-            return 'gold';
-        case 'ACCEPTED':
-        case 'VERIFIED':
-        case 'ACTIVE':
-        case 'WAIVED':
-        case 'READY':
-        case 'SENT':
-            return 'green';
-        case 'EXPIRED':
-        case 'REVOKED':
-        case 'SUPERSEDED':
-        case 'FAILED':
-            return 'red';
-        case 'DRAFT':
-            return 'default';
-        default:
-            return 'default';
-    }
-};
+/*
+ * Chips are tonal, not traffic lights (owner call 2026-07-29): the antd colour
+ * names this used to map to — green/gold/red — are antd's palette, not the
+ * ORISO scheme, and in a table meant to be scanned they shouted louder than
+ * the data. The state is in the chip's own label.
+ *
+ * The single exception is a state that means the invite is DEAD. Those carry
+ * the scheme's error role, because "expired" and "accepted" reading identically
+ * is what the tonal pass cost us — the point of the column is to spot them.
+ */
+const DEAD_INVITE_STATES = new Set(['EXPIRED', 'REVOKED', 'FAILED', 'BLOCKED_EMAIL', 'BLOCKED_TWO_FACTOR']);
 
-const StatusValue = ({ value }: { value?: string | null }) => <Tag color={statusColor(value)}>{value || '—'}</Tag>;
+const statusTagClass = (value?: string | null) =>
+    `${listingTableStyles.statusTag} ${
+        value && DEAD_INVITE_STATES.has(value)
+            ? listingTableStyles.statusTagExpired
+            : listingTableStyles.statusTagDefault
+    }`;
+
+const StatusValue = ({ value }: { value?: string | null }) => (
+    <Tag className={statusTagClass(value)}>{value || '—'}</Tag>
+);
 
 /**
  * Send-state column (#316, Figma 1165:17005 red annotation "2nd: send state,
  * draft, sent, declined etc."): the raw enum is translated into the German
- * labels the owner asked for; colors keep the existing statusColor mapping.
+ * labels the owner asked for; every chip uses the one tonal style.
  * Fallbacks double as the i18n defaults for both locales' JSON files.
  */
 const INVITE_STATUS_FALLBACK_LABELS: Record<AccountInviteStatus, string> = {
@@ -323,7 +317,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     // One row of the CSV batch. Uses the send mode captured at file-pick time:
     // direct = with templateId (falling back to the single active template, like
     // resend), create-only = without. Rejections propagate — the modal marks the
-    // row (409 = Träger-ID collision) instead of aborting the batch.
+    // row (409 = id collision) instead of aborting the batch.
     const createCsvInvite = useCallback(
         async (row: InviteCsvCreateRow) => {
             if (!csvImport) return;
@@ -335,10 +329,23 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 recipientEmail: row.recipientEmail,
                 targetRole,
                 templateId: csvImport.sendMode === 'direct' ? selectedTemplateId ?? activeTemplates[0]?.id : undefined,
-                tenantId: row.tenantId,
+                // The file's id column addresses the id space of this tab. On the Träger
+                // tab it IS the tenant id (batch-assigned in the preview). Every other tab
+                // invites into the admin's own tenant, and its id column addresses the
+                // agency space, which exists only as a reservation (TEN-INV-U2): an
+                // explicit id is pinned MANUAL and answered with 409 when taken, an empty
+                // cell asks AgencyService for the smallest free one. No tenant allocation
+                // mode here — UserService rejects it on non-Träger invites with a 400.
+                ...(isTenantInvite
+                    ? { tenantId: row.id }
+                    : {
+                          tenantId: currentTenantId,
+                          agencyId: row.id,
+                          agencyIdAllocationMode: row.id != null ? 'MANUAL' : 'AUTO',
+                      }),
             });
         },
-        [activeTemplates, csvImport, selectedTemplateId, targetRole],
+        [activeTemplates, csvImport, currentTenantId, isTenantInvite, selectedTemplateId, targetRole],
     );
 
     const onResend = useCallback(
@@ -504,12 +511,34 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 dataIndex: 'recipientEmail',
                 key: 'recipientEmail',
             },
+            // Träger-ID (owner report: the sorting field was missing). The list
+            // endpoint takes page/size/target_role/status/tenant_id and no sort
+            // parameter, so this orders the CURRENT PAGE only — the header says
+            // so rather than implying a table-wide sort that does not exist.
+            ...(isTenantInvite
+                ? [
+                      {
+                          title: (
+                              <Tooltip
+                                  title={t('links.accountInvites.tenantIdSortHint', 'Sortiert die aktuelle Seite.')}
+                              >
+                                  <span>{t('links.accountInvites.tenantId', 'Träger-ID')}</span>
+                              </Tooltip>
+                          ),
+                          dataIndex: 'tenantId',
+                          key: 'tenantId',
+                          sorter: (a: AccountInviteDTO, b: AccountInviteDTO) =>
+                              (a.tenantId ?? Number.POSITIVE_INFINITY) - (b.tenantId ?? Number.POSITIVE_INFINITY),
+                          render: (value: number | null) => value ?? '—',
+                      },
+                  ]
+                : []),
             {
                 title: t('links.accountInvites.inviteStatus', 'Invite'),
                 dataIndex: 'inviteStatus',
                 key: 'inviteStatus',
                 render: (value: AccountInviteStatus) => (
-                    <Tag color={statusColor(value)}>
+                    <Tag className={statusTagClass(value)}>
                         {t(`links.accountInvites.status.${value}`, INVITE_STATUS_FALLBACK_LABELS[value] ?? value)}
                     </Tag>
                 ),
@@ -587,11 +616,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 templateId={selectedTemplateId}
                 templates={templates}
                 onBulkSend={onBulkSend}
+                onClearSelection={() => setSelectedIds([])}
                 onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
                 onDeleteSelected={() => setBulkDeleteConfirmOpen(true)}
                 onManageTemplates={(intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list')}
                 onSubmit={onCreate}
-                onTemplateIdChange={setSelectedTemplateId}
             />
             {selectedInvites.length > 0 && (
                 <div className={styles.selectionCount} role="status">
@@ -631,11 +660,10 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             )}
             {csvImport && (
                 <InviteCsvImportModal
-                    autoAssignTenantIds={isTenantInvite}
                     createInvite={createCsvInvite}
-                    defaultTenantId={isTenantInvite ? undefined : currentTenantId}
+                    idKind={isTenantInvite ? 'tenant' : 'agency'}
                     parseResult={csvImport.result}
-                    takenTenantIds={takenTenantIds}
+                    takenTenantIds={isTenantInvite ? takenTenantIds : undefined}
                     onClose={() => setCsvImport(null)}
                     onCreated={() => loadInvites(1, pagination.pageSize)}
                 />
@@ -643,9 +671,16 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             {templatesDialogView && (
                 <EmailTemplatesDialog
                     initialView={templatesDialogView}
+                    selectedTemplateId={selectedTemplateId}
                     templateKind={templateKind}
                     onClose={() => setTemplatesDialogView(null)}
                     onChanged={onTemplateChanged}
+                    // Picking in the overview selects for the composer and closes
+                    // the dialog; create/edit stay inside the dialog itself.
+                    onSelect={(template) => {
+                        setSelectedTemplateId(template.id);
+                        setTemplatesDialogView(null);
+                    }}
                 />
             )}
         </>

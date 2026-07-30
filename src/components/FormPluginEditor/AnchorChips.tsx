@@ -21,6 +21,24 @@ export type AnchorChipsProps = {
 // How far one arrow click scrolls the chip row (roughly one chip).
 const SCROLL_STEP = 240;
 
+/** Longest chapter label a chip shows before it is cut (owner call 2026-07-30). */
+export const ANCHOR_CHIP_LABEL_MAX = 33;
+
+/**
+ * Cuts on a word boundary where there is one in the last third, so a chapter
+ * reads as "§ 4 Technische und organisatorische …" rather than breaking mid-word.
+ * The ellipsis is part of the budget — a chip never exceeds 33 characters.
+ */
+export const truncateAnchorChipLabel = (text: string): string => {
+    if (text.length <= ANCHOR_CHIP_LABEL_MAX) {
+        return text;
+    }
+    const hard = text.slice(0, ANCHOR_CHIP_LABEL_MAX - 1).trimEnd();
+    const lastSpace = hard.lastIndexOf(' ');
+    const cut = lastSpace > ANCHOR_CHIP_LABEL_MAX - 12 ? hard.slice(0, lastSpace) : hard;
+    return `${cut}…`;
+};
+
 // "Chapter Navbar" (Figma 1299-81676): M3 input chips in one scrollable row.
 // The selected chip is filled (secondary-container) with a leading book icon;
 // nav arrows appear per side only while that side can still scroll.
@@ -103,7 +121,14 @@ const AnchorChips = ({
                                 aria-pressed={active}
                             >
                                 {active && <AutoStories className="RichEditor-anchorChipIcon" />}
-                                <span>{anchor.text}</span>
+                                {/* A chapter chip is a signpost, not the heading
+                                    itself: past 33 characters (owner call) it
+                                    stops being scannable and starts pushing the
+                                    other chapters out of the row. The full
+                                    heading stays available on hover. */}
+                                <span title={anchor.text.length > ANCHOR_CHIP_LABEL_MAX ? anchor.text : undefined}>
+                                    {truncateAnchorChipLabel(anchor.text)}
+                                </span>
                             </button>
                             {editable && onRemove && (
                                 <button

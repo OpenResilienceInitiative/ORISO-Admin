@@ -116,6 +116,14 @@
        (src/utils/theme/orisoScheme.ts) so the token is the single source and
        the fallbacks can go. */
     --m3-error: #b1005e;
+    /* The rest of the error role, owner-confirmed 2026-07-29: the container is
+       the saturated magenta, and both on-colours are near-white. Without these
+       every consumer that needed an error surface reached for antd's or MUI's
+       own red instead — which is where the off-scheme danger buttons came
+       from. */
+    --m3-error-container: #de0077;
+    --m3-on-error: #ffffff;
+    --m3-on-error-container: #fff7f9;
     --m3-outline-variant: #c4c7c8;
     /* M3 container/fixed roles (OrisoScheme, seed #A5000A). secondary-container is
        the mid slate (#646D78) from the runtime OrisoScheme (light) and Figma; the

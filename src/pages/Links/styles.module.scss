@@ -21,3 +21,9 @@
     padding: 12px 12px 20px;
     flex-wrap: wrap;
 }
+
+/* The M3 select needs a width of its own — the inline form gives it none, and
+   a floating label needs room for the longest topic name. */
+.inboundField {
+    min-width: 220px;
+}

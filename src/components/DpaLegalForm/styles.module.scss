@@ -16,21 +16,31 @@
     margin-bottom: 24px;
 }
 
+/* The signer fields keep a 12px side inset (owner call 2026-07-30) while the
+   legal text above them runs edge to edge: the text is the document, the fields
+   are a form on top of it, and the inset is what keeps their outlines and focus
+   rings off the card edge. */
+
 .fieldStack {
     display: flex;
     flex-direction: column;
+    padding-inline: 12px;
     gap: 16px;
 }
 
 /* From the reading measure upwards the short signer fields pair up. That is
    not cosmetic: it takes ~190px off the step, which is part of what lets the
    whole step fit inside a viewport-bounded sheet and actually centre
-   (#594.3). Below that width they stay stacked. */
+   (#594.3). Below that width they stay stacked.
+
+   The 24px row gap (Figma 1611-27868) is what a field with an error needs:
+   the message sits directly under its own input, so with the previous zero
+   row gap it ran straight into the input of the row below. */
 
 @media (min-width: 720px) {
     .fieldStackPaired {
         display: grid;
-        gap: 0 16px;
+        gap: 24px;
         grid-template-columns: 1fr 1fr;
     }
 }
@@ -64,8 +74,12 @@
     background: var(--m3-surface-container);
 }
 
+/* `--m3-error` (#b1005e) IS the ORISO error tone — the scheme's error role,
+   not a Material leftover. Owner-confirmed 2026-07-29 along with
+   error-container #de0077, on-error #fff. */
+
 .consentError {
-    border-color: var(--m3-error);
+    border-color: var(--m3-error, #b1005e);
 }
 
 .consentCheckbox {
