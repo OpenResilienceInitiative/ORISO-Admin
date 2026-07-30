@@ -147,6 +147,10 @@ const meta = {
     parameters: { layout: 'fullscreen', msw: { handlers: defaultHandlers } },
     decorators: [
         withAdminProviders,
+        // antd flips a dropdown upwards when its trigger sits at the very top of
+        // the frame, which put the open template menu off-screen in Storybook.
+        // The real page has the tab row above the composer — same headroom here.
+        (Story) => <div style={{ paddingTop: 96 }}>{Story()}</div>,
         (Story) => {
             setStoryAuth([UserRole.TenantAdmin]);
             return <Story />;

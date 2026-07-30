@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
-import { DeleteOutlined, DownloadOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownloadOutlined, MoreOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { message, Upload, type MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
+import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined';
+import SelectAllIcon from '@mui/icons-material/SelectAll';
+import SendOutlined from '@mui/icons-material/SendOutlined';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import {
     agencyIdAllocationClient,
@@ -13,11 +16,11 @@ import { FloatingLabelInput } from '../../components/FloatingLabelInput';
 import { IdAllocationField, useIdAllocation } from '../../components/IdAllocationField';
 import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
+import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';
 import { M3NumberField } from '../../components/M3NumberField';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
 import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
-import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
 import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
 import styles from './inviteComposer.module.scss';
 
@@ -240,12 +243,41 @@ export const InviteComposer = ({
             {
                 key: 'templates',
                 type: 'group',
-                label: t('links.composer.templateGroup', 'E-Mail-Vorlagen auswählen oder erstellen'),
-                children: activeTemplates.map((template) => ({ key: String(template.id), label: template.name })),
+                // Two lines (Figma): what the list is FOR, then what it lists.
+                label: (
+                    <>
+                        <div>{t('links.composer.templateGroupLead', 'Auswählen oder neu erstellen')}</div>
+                        <strong className={styles.templateGroupTitle}>
+                            {t('links.composer.templateGroupTitle', 'E-Mail-Vorlagen')}
+                        </strong>
+                    </>
+                ),
+                children: activeTemplates.map((template, index) => ({
+                    key: String(template.id),
+                    // Names are user input and often near-identical, so each entry
+                    // also carries its position in the list.
+                    label: (
+                        <span className={splitButtonStyles.menuEntry}>
+                            <span aria-hidden className={splitButtonStyles.menuIndex}>
+                                {index + 1}
+                            </span>
+                            {template.name}
+                        </span>
+                    ),
+                })),
             },
             { key: 'divider', type: 'divider' },
-            { key: 'create', label: t('links.composer.templateCreate', 'Neue E-Mail-Vorlage erstellen') },
-            { key: 'delete', label: t('links.composer.templateDelete', 'E-Mail-Vorlage löschen') },
+            {
+                key: 'create',
+                className: splitButtonStyles.menuCreate,
+                icon: <PlusOutlined aria-hidden />,
+                label: t('links.composer.templateCreate', 'Neue E-Mail-Vorlage erstellen'),
+            },
+            {
+                key: 'delete',
+                icon: <DeleteOutlined aria-hidden />,
+                label: t('links.composer.templateDelete', 'E-Mail-Vorlage löschen'),
+            },
         ],
         selectable: true,
         selectedKeys: templateId != null ? [String(templateId)] : [],
@@ -362,8 +394,20 @@ export const InviteComposer = ({
 
     const sendMenu: MenuProps = {
         items: [
-            { key: 'direct', label: t('links.composer.sendDirect', 'Direkt Versenden') },
-            { key: 'createOnly', label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen') },
+            {
+                key: 'direct',
+                // MUI's glyph, not the branded `send_filled` SVG: that file
+                // carries an internal <mask id="…">, and a second copy of it on
+                // the same page collides with the first — which masked the icon
+                // out of the button itself.
+                icon: <SendOutlined aria-hidden fontSize="small" />,
+                label: t('links.composer.sendDirect', 'Direkt Versenden'),
+            },
+            {
+                key: 'createOnly',
+                icon: <FileDownloadOutlined aria-hidden />,
+                label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen'),
+            },
         ],
         selectable: true,
         selectedKeys: [sendMode],
@@ -444,13 +488,18 @@ export const InviteComposer = ({
                 menuLabel={t('links.composer.templateMenuLabel', 'E-Mail-Vorlage wählen')}
                 variant="tonal"
             />
+            {/* Filled primary is reserved for the selected item / main CTA; every
+                other resting state is tonal M3 secondary (owner call). The icon
+                stays in both states — a send button without its glyph was the
+                "icons are missing" note. */}
             <SplitButton
-                icon={sendReady ? <SendFilledIcon /> : <SendIcon />}
-                label={bulkMode ? bulkSendLabel : singleSendLabel}
+                icon={bulkMode ? <SelectAllIcon fontSize="small" /> : <SendFilledIcon />}
+                label={bulkMode ? String(selectionCount) : singleSendLabel}
                 mainDisabled={!sendReady || submitting}
                 menu={sendMenu}
                 menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
-                variant={sendReady ? 'primary' : 'outlined'}
+                title={bulkMode ? bulkSendLabel : undefined}
+                variant={sendReady ? 'primary' : 'secondary'}
                 onClick={bulkMode ? onBulkSend : handleSend}
             />
         </GlobalSearchBar>

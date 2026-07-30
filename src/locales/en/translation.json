@@ -368,6 +368,8 @@
     "links.composer.emailInvalid": "Please enter a valid email address.",
     "links.composer.templatePlaceholder": "Email template",
     "links.composer.templateGroup": "Select or create email templates",
+    "links.composer.templateGroupLead": "Select or create new",
+    "links.composer.templateGroupTitle": "Email templates",
     "links.composer.templateCreate": "Create new email template",
     "links.composer.templateDelete": "Delete email template",
     "links.composer.templateMenuLabel": "Choose email template",

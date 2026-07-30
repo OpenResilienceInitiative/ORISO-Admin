@@ -16,7 +16,7 @@ export interface SplitButtonProps {
      * (e.g. send). Use `outlined` for the resting/not-ready state — the caller
      * flips to `primary` once the form is validly filled.
      */
-    variant?: 'outlined' | 'tonal' | 'primary';
+    variant?: 'outlined' | 'tonal' | 'secondary' | 'primary';
     disabled?: boolean;
     /**
      * Disables only the main (action) segment while the chevron menu stays
@@ -30,6 +30,12 @@ export interface SplitButtonProps {
     menu?: MenuProps;
     /** Accessible label for the chevron segment. */
     menuLabel?: string;
+    /**
+     * Accessible name / tooltip of the main segment when the visible label is a
+     * bare value (e.g. the selection count "23", where the label alone does not
+     * say what pressing it does).
+     */
+    title?: string;
     className?: string;
 }
 
@@ -48,6 +54,7 @@ export const SplitButton = ({
     onClick,
     menu,
     menuLabel,
+    title,
     className,
 }: SplitButtonProps) => {
     const { t } = useTranslation();
@@ -61,6 +68,7 @@ export const SplitButton = ({
                 styles.splitButton,
                 {
                     [styles.tonal]: variant === 'tonal',
+                    [styles.secondary]: variant === 'secondary',
                     [styles.primary]: variant === 'primary',
                     [styles.disabled]: disabled,
                     [styles.open]: open && !disabled,
@@ -70,8 +78,10 @@ export const SplitButton = ({
         >
             <button
                 type="button"
+                aria-label={title}
                 className={classNames(styles.segment, styles.main)}
                 disabled={disabled || mainDisabled}
+                title={title}
                 onClick={onClick}
             >
                 {icon && (
@@ -88,6 +98,9 @@ export const SplitButton = ({
                     open={!disabled && open}
                     onOpenChange={handleOpenChange}
                     menu={menu}
+                    // The sheet carries the same, one step higher shadow as the
+                    // button it grew out of, so the two read as one surface.
+                    overlayClassName={styles.menuOverlay}
                 >
                     <button
                         type="button"
