@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { encode } from 'hi-base32';
 import { M3Switch } from '../M3Switch';
 import { FETCH_ERRORS } from '../../api/fetchData';
 import { OVERLAY_FUNCTIONS, OverlayItem, OverlayWrapper, Overlay } from '../overlay/Overlay';
@@ -27,6 +26,7 @@ import { isStringValidEmail } from '../../utils/validateEmailString';
 import { TwoFactorAuthEmailCodeInput } from './TwoFactorAuthEmailCodeInput';
 import { TwoFactorAuthEmailConfirmation } from './TwoFactorAuthEmailConfirmation';
 import { OTP_LENGTH, isOtpValid } from './twoFactorSetupFlow';
+import { toBase32Secret } from '../../utils/totpSecret';
 
 const { Paragraph } = Typography;
 
@@ -327,9 +327,7 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
     // stores the raw secret; the canonical component expects it base32-encoded.
     const appLink = useMemo(
         () => ({
-            secretBase32: userData?.twoFactorAuth?.secret
-                ? encode(userData.twoFactorAuth.secret).replace(/={1,8}$/, '')
-                : '',
+            secretBase32: toBase32Secret(userData?.twoFactorAuth?.secret),
             qrCodeBase64: userData?.twoFactorAuth?.qrCode || null,
         }),
         [userData?.twoFactorAuth?.secret, userData?.twoFactorAuth?.qrCode],
