@@ -121,6 +121,23 @@ describe('MuiSelectField data parity', () => {
         expect(onValues).toHaveBeenCalledWith(expect.objectContaining({ language: 'en' }));
     });
 
+    it('applies the .Option className to the rendered list item', async () => {
+        const user = userEvent.setup();
+        render(
+            <Form>
+                <MuiSelectField name="tenantId" label="Tenant">
+                    <MuiSelectField.Option value="1" label="Tenant One" className="tenantOption">
+                        <div>Tenant One</div>
+                    </MuiSelectField.Option>
+                </MuiSelectField>
+            </Form>,
+        );
+
+        await user.click(screen.getByRole('combobox'));
+
+        expect(await screen.findByRole('option', { name: 'Tenant One' })).toHaveClass('tenantOption');
+    });
+
     it('surfaces the required-rule message as the field error', async () => {
         const user = userEvent.setup();
         const onFinishFailed = vi.fn();

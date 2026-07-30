@@ -7,6 +7,7 @@ import DisabledContext from 'antd/es/config-provider/DisabledContext';
 import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { muiFieldSx } from '../fieldSx';
 import { flattenChildren } from '../flattenChildren';
@@ -21,6 +22,8 @@ type FieldName = string | Array<string | number>;
 /** An option plus the optional rich node an `MuiSelectField.Option` child supplied. */
 interface ResolvedOption extends Option {
     node?: React.ReactNode;
+    /** Class the `.Option` child declared; applied to the rendered list item. */
+    className?: string;
 }
 
 export interface MuiSelectOptionProps {
@@ -42,10 +45,10 @@ MuiSelectOption.displayName = 'MuiSelectField.Option';
 /** Turns `<MuiSelectField.Option>` children into option descriptors. */
 const optionsFromChildren = (children?: React.ReactNode): ResolvedOption[] =>
     flattenChildren(children).map((child) => {
-        const { value, label, children: node } = (child as React.ReactElement<MuiSelectOptionProps>).props;
+        const { value, label, className, children: node } = (child as React.ReactElement<MuiSelectOptionProps>).props;
         const fallbackLabel = typeof node === 'string' ? node : String(value);
 
-        return { value: String(value), label: label ?? fallbackLabel, node };
+        return { value: String(value), label: label ?? fallbackLabel, node, className };
     });
 
 // Match the old antd behaviour: case-insensitive substring match on the label.
@@ -176,9 +179,9 @@ const MuiSelectControl = ({
             renderOption={(liProps, option) => {
                 // MUI puts `key` in the same object as the DOM props; React 19
                 // warns when a key is spread, so pull it out explicitly.
-                const { key, ...rest } = liProps;
+                const { key, className: muiClassName, ...rest } = liProps;
                 return (
-                    <li key={key} {...rest}>
+                    <li key={key} {...rest} className={classNames(muiClassName, option.className)}>
                         {option.node ?? option.label}
                     </li>
                 );

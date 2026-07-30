@@ -1,4 +1,4 @@
-import { Form, Select } from 'antd';
+import { Form } from 'antd';
 import { cloneElement, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
@@ -35,9 +35,9 @@ export const TranslatableFormField = ({ name, children }: TranslatableFormFieldP
                     className={styles.translateField}
                 >
                     {languages.map((language) => (
-                        <Select.Option value={language} key={language}>
+                        <MuiSelectField.Option value={language} key={language}>
                             {t(`language.${language}`)}
-                        </Select.Option>
+                        </MuiSelectField.Option>
                     ))}
                 </MuiSelectField>
             )}
