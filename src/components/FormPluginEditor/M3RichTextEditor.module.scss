@@ -30,7 +30,6 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     // inside instead. Below 600px the card goes fluid (mobile view).
     @media (min-width: 600px) {
         &:not(.inDialog) {
-            width: 800px;
             height: 740px;
             flex-shrink: 0;
 
