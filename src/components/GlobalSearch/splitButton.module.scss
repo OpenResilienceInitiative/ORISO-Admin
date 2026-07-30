@@ -205,3 +205,21 @@
     display: inline-flex;
     align-items: center;
 }
+
+/* Third segment: the pill's right end moves to it, so the middle chevron
+   becomes a straight-sided divider between the two. */
+.splitButton .collapse {
+    border-radius: 4px 28px 28px 4px;
+}
+
+.splitButton .collapse ~ * {
+    border-radius: 4px;
+}
+
+.splitButton:has(.collapse) .chevron:not(.collapse) {
+    border-radius: 4px;
+}
+
+.chevronUp {
+    transform: rotate(180deg);
+}

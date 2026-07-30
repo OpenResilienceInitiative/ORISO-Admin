@@ -94,6 +94,11 @@ export interface InviteComposerProps {
      */
     onBulkSend?: () => void;
     /**
+     * Bulk mode: clears the row selection. Drives the counter's up-chevron —
+     * the one control that undoes the state the counter is showing.
+     */
+    onClearSelection?: () => void;
+    /**
      * Enables the "Ausgewählte löschen" entry in the "⋮" more-menu (#316).
      * The entry is disabled without a selection; the tab opens the revoke
      * confirmation dialog.
@@ -154,6 +159,7 @@ export const InviteComposer = ({
     onCsvParsed,
     selectionCount = 0,
     onBulkSend,
+    onClearSelection,
     onDeleteSelected,
     searchPlaceholder,
     className,
@@ -495,8 +501,14 @@ export const InviteComposer = ({
                 menu={sendMenu}
                 menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
                 title={bulkMode ? bulkSendLabel : undefined}
-                variant={sendReady ? 'primary' : 'secondary'}
+                // Filled primary is the single-send CTA. The selection counter stays
+                // tonal secondary even when it is ready to fire (Figma 1165:16407
+                // selection variant): it is a state display with actions hanging off
+                // it, not the page's call to action.
+                variant={!bulkMode && sendReady ? 'primary' : 'secondary'}
+                collapseLabel={t('links.bulk.clearSelection', 'Auswahl aufheben')}
                 onClick={bulkMode ? onBulkSend : handleSend}
+                onCollapse={bulkMode ? onClearSelection : undefined}
             />
         </GlobalSearchBar>
     );

@@ -36,6 +36,14 @@ export interface SplitButtonProps {
      * say what pressing it does).
      */
     title?: string;
+    /**
+     * Adds a third, up-chevron segment that undoes the state the button shows —
+     * used by the bulk-selection counter to clear the selection. Omit it and the
+     * button keeps its two segments.
+     */
+    onCollapse?: () => void;
+    /** Accessible name of the up-chevron segment. Required whenever `onCollapse` is set. */
+    collapseLabel?: string;
     className?: string;
 }
 
@@ -55,6 +63,8 @@ export const SplitButton = ({
     menu,
     menuLabel,
     title,
+    onCollapse,
+    collapseLabel,
     className,
 }: SplitButtonProps) => {
     const { t } = useTranslation();
@@ -113,6 +123,22 @@ export const SplitButton = ({
                         <ChevronDownIcon className={styles.chevronIcon} aria-hidden />
                     </button>
                 </Dropdown>
+            )}
+            {/* Third segment (Figma 1165:16407 selection variant): the counter
+                pairs its menu chevron with an up-chevron that undoes the state
+                the counter represents. A segment without a purpose we can name
+                does not ship, so it is opt-in via `onCollapse`. */}
+            {onCollapse && (
+                <button
+                    type="button"
+                    aria-label={collapseLabel}
+                    className={classNames(styles.segment, styles.chevron, styles.collapse)}
+                    disabled={disabled}
+                    title={collapseLabel}
+                    onClick={onCollapse}
+                >
+                    <ChevronDownIcon className={classNames(styles.chevronIcon, styles.chevronUp)} aria-hidden />
+                </button>
             )}
         </span>
     );

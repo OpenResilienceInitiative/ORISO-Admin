@@ -1,4 +1,4 @@
-import { Button, message, Tag } from 'antd';
+import { Button, message, Tag, Tooltip } from 'antd';
 import type { TablePaginationConfig } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -485,6 +485,28 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 dataIndex: 'recipientEmail',
                 key: 'recipientEmail',
             },
+            // Träger-ID (owner report: the sorting field was missing). The list
+            // endpoint takes page/size/target_role/status/tenant_id and no sort
+            // parameter, so this orders the CURRENT PAGE only — the header says
+            // so rather than implying a table-wide sort that does not exist.
+            ...(isTenantInvite
+                ? [
+                      {
+                          title: (
+                              <Tooltip
+                                  title={t('links.accountInvites.tenantIdSortHint', 'Sortiert die aktuelle Seite.')}
+                              >
+                                  <span>{t('links.accountInvites.tenantId', 'Träger-ID')}</span>
+                              </Tooltip>
+                          ),
+                          dataIndex: 'tenantId',
+                          key: 'tenantId',
+                          sorter: (a: AccountInviteDTO, b: AccountInviteDTO) =>
+                              (a.tenantId ?? Number.POSITIVE_INFINITY) - (b.tenantId ?? Number.POSITIVE_INFINITY),
+                          render: (value: number | null) => value ?? '—',
+                      },
+                  ]
+                : []),
             {
                 title: t('links.accountInvites.inviteStatus', 'Invite'),
                 dataIndex: 'inviteStatus',
@@ -568,6 +590,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 templateId={selectedTemplateId}
                 templates={templates}
                 onBulkSend={onBulkSend}
+                onClearSelection={() => setSelectedIds([])}
                 onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
                 onDeleteSelected={() => setBulkDeleteConfirmOpen(true)}
                 onManageTemplates={(intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list')}
