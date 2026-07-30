@@ -153,7 +153,7 @@ describe('EmailTemplatesDialog', () => {
         // Kind is preset to the opening tab's kind — no manual selection needed.
         expect(withinDialog.getByLabelText('Kind')).toHaveValue('TENANT_INVITE');
 
-        await user.type(withinDialog.getByLabelText('Name'), 'New tenant welcome');
+        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'New tenant welcome');
         await user.type(withinDialog.getByLabelText('Subject'), 'Hi there');
         // fireEvent.change avoids userEvent's {{/}} key-sequence escaping for literal braces.
         fireEvent.change(withinDialog.getByLabelText('Body'), { target: { value: 'Body {{email}}' } });
@@ -186,7 +186,7 @@ describe('EmailTemplatesDialog', () => {
 
         const dialog = screen.getByRole('dialog');
         const withinDialog = within(dialog);
-        expect(withinDialog.getByLabelText('Name')).toHaveValue('Default tenant template');
+        expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('Default tenant template');
 
         fireEvent.change(withinDialog.getByLabelText('Subject'), { target: { value: 'Servus' } });
         await user.click(withinDialog.getByRole('button', { name: 'Save' }));
@@ -236,7 +236,9 @@ describe('EmailTemplatesDialog', () => {
         await user.click(within(screen.getAllByTestId('template-row')[0]).getByRole('button', { name: 'Edit' }));
 
         expect(onSelect).not.toHaveBeenCalled();
-        expect(within(screen.getByRole('dialog')).getByLabelText('Name')).toHaveValue('Default tenant template');
+        expect(within(screen.getByRole('dialog')).getByLabelText('Vorlagenname')).toHaveValue(
+            'Default tenant template',
+        );
     });
 
     it('shows the translated error message (not raw server text) when create fails', async () => {
@@ -250,7 +252,7 @@ describe('EmailTemplatesDialog', () => {
         const dialog = screen.getByRole('dialog');
         const withinDialog = within(dialog);
 
-        await user.type(withinDialog.getByLabelText('Name'), 'Broken template');
+        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Broken template');
         await user.type(withinDialog.getByLabelText('Subject'), 'Subject');
         await user.type(withinDialog.getByLabelText('Body'), 'Body');
 

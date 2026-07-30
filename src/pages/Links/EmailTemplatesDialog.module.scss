@@ -71,3 +71,22 @@
 .selectedRow > td:first-child {
     box-shadow: inset 3px 0 0 var(--m3-primary, #a5000a);
 }
+
+/* Create/edit form beside its live preview. Below the breakpoint the preview
+   drops underneath so neither column falls under its reading width. */
+.formAndPreview {
+    display: grid;
+    align-items: start;
+    gap: 24px;
+    grid-template-columns: minmax(320px, 0.9fr) minmax(360px, 1.1fr);
+}
+
+.formFields {
+    min-width: 0;
+}
+
+@media (max-width: 920px) {
+    .formAndPreview {
+        grid-template-columns: 1fr;
+    }
+}
