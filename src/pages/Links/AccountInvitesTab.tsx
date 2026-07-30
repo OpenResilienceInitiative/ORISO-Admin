@@ -317,7 +317,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     // One row of the CSV batch. Uses the send mode captured at file-pick time:
     // direct = with templateId (falling back to the single active template, like
     // resend), create-only = without. Rejections propagate — the modal marks the
-    // row (409 = Träger-ID collision) instead of aborting the batch.
+    // row (409 = id collision) instead of aborting the batch.
     const createCsvInvite = useCallback(
         async (row: InviteCsvCreateRow) => {
             if (!csvImport) return;
@@ -329,10 +329,23 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 recipientEmail: row.recipientEmail,
                 targetRole,
                 templateId: csvImport.sendMode === 'direct' ? selectedTemplateId ?? activeTemplates[0]?.id : undefined,
-                tenantId: row.tenantId,
+                // The file's id column addresses the id space of this tab. On the Träger
+                // tab it IS the tenant id (batch-assigned in the preview). Every other tab
+                // invites into the admin's own tenant, and its id column addresses the
+                // agency space, which exists only as a reservation (TEN-INV-U2): an
+                // explicit id is pinned MANUAL and answered with 409 when taken, an empty
+                // cell asks AgencyService for the smallest free one. No tenant allocation
+                // mode here — UserService rejects it on non-Träger invites with a 400.
+                ...(isTenantInvite
+                    ? { tenantId: row.id }
+                    : {
+                          tenantId: currentTenantId,
+                          agencyId: row.id,
+                          agencyIdAllocationMode: row.id != null ? 'MANUAL' : 'AUTO',
+                      }),
             });
         },
-        [activeTemplates, csvImport, selectedTemplateId, targetRole],
+        [activeTemplates, csvImport, currentTenantId, isTenantInvite, selectedTemplateId, targetRole],
     );
 
     const onResend = useCallback(
@@ -648,11 +661,10 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             )}
             {csvImport && (
                 <InviteCsvImportModal
-                    autoAssignTenantIds={isTenantInvite}
                     createInvite={createCsvInvite}
-                    defaultTenantId={isTenantInvite ? undefined : currentTenantId}
+                    idKind={isTenantInvite ? 'tenant' : 'agency'}
                     parseResult={csvImport.result}
-                    takenTenantIds={takenTenantIds}
+                    takenTenantIds={isTenantInvite ? takenTenantIds : undefined}
                     onClose={() => setCsvImport(null)}
                     onCreated={() => loadInvites(1, pagination.pageSize)}
                 />

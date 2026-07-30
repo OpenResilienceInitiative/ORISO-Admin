@@ -1,7 +1,11 @@
 /*
  * Dependency-free CSV parser for the invite import (#315, Figma 1165:17005
  * "Import CSV File"). Fixed column order per the Figma annotation:
- * Email, First Name, Name (last name), Tenant/Counselor ID (optional 4th).
+ * Email, First Name, Name (last name), ID (optional 4th).
+ *
+ * The 4th column addresses whichever id space the importing tab owns — the
+ * Träger-ID on the Träger tab, the Beratungsstellen-ID everywhere else — so it
+ * is parsed as a bare `id` here and interpreted by the caller.
  */
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,7 +31,7 @@ const RECOGNISED_HEADER_FIRST_CELLS = new Set([
     'recipients emails',
 ]);
 
-export type InviteCsvRejectionReason = 'invalidEmail' | 'invalidTenantId';
+export type InviteCsvRejectionReason = 'invalidEmail' | 'invalidId';
 
 export interface ParsedInviteRow {
     /** 1-based physical line number of the record's first line in the file. */
@@ -35,8 +39,8 @@ export interface ParsedInviteRow {
     email: string;
     firstName: string;
     lastName: string;
-    /** Explicit id from the 4th column; `undefined` = auto-populate later. */
-    tenantId?: number;
+    /** Explicit id from the 4th column; `undefined` = allocated later. */
+    id?: number;
     /** First and/or last name empty — still importable (owner decision), just flagged. */
     missingName: boolean;
 }
@@ -171,20 +175,17 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
         const email = (record.cells[0] ?? '').trim();
         const firstName = (record.cells[1] ?? '').trim();
         const lastName = (record.cells[2] ?? '').trim();
-        const tenantRaw = (record.cells[3] ?? '').trim();
+        const idRaw = (record.cells[3] ?? '').trim();
 
         if (!EMAIL_PATTERN.test(email)) {
             rejected.push({ line: record.line, cells: record.cells, reason: 'invalidEmail' });
             return;
         }
-        const tenantId = tenantRaw === '' ? undefined : Number(tenantRaw);
+        const id = idRaw === '' ? undefined : Number(idRaw);
         // Positive *safe* integer only: `/^\d+$/` alone accepts huge values that
         // Number() turns into Infinity, which JSON-serialises to null downstream.
-        if (
-            tenantRaw !== '' &&
-            !(/^\d+$/.test(tenantRaw) && Number.isSafeInteger(tenantId) && (tenantId as number) >= 1)
-        ) {
-            rejected.push({ line: record.line, cells: record.cells, reason: 'invalidTenantId' });
+        if (idRaw !== '' && !(/^\d+$/.test(idRaw) && Number.isSafeInteger(id) && (id as number) >= 1)) {
+            rejected.push({ line: record.line, cells: record.cells, reason: 'invalidId' });
             return;
         }
 
@@ -193,7 +194,7 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
             email,
             firstName,
             lastName,
-            tenantId,
+            id,
             missingName: firstName === '' || lastName === '',
         });
     });
@@ -203,7 +204,7 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
 
 export interface TenantIdAssignable {
     line: number;
-    tenantId?: number;
+    id?: number;
 }
 
 /**
@@ -216,14 +217,14 @@ export interface TenantIdAssignable {
 export const assignBatchTenantIds = (rows: TenantIdAssignable[], takenIds: Iterable<number>): Map<number, number> => {
     const used = new Set(takenIds);
     rows.forEach((row) => {
-        if (row.tenantId != null) used.add(row.tenantId);
+        if (row.id != null) used.add(row.id);
     });
 
     const assigned = new Map<number, number>();
     let candidate = 1;
     rows.forEach((row) => {
-        if (row.tenantId != null) {
-            assigned.set(row.line, row.tenantId);
+        if (row.id != null) {
+            assigned.set(row.line, row.id);
             return;
         }
         while (used.has(candidate)) candidate += 1;

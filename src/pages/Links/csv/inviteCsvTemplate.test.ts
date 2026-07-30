@@ -16,10 +16,10 @@ describe('buildInviteCsvTemplate', () => {
             email: 'anna.beispiel@traeger.de',
             firstName: 'Anna',
             lastName: 'Beispiel',
-            tenantId: 42,
+            id: 42,
         });
         // Second row shows the id column may stay empty.
-        expect(result.rows[1].tenantId).toBeUndefined();
+        expect(result.rows[1].id).toBeUndefined();
     });
 
     it('uses the separator German spreadsheets export, with a BOM', () => {
