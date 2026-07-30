@@ -1,9 +1,9 @@
 .globalConfigGrid {
     display: grid;
-    max-width: 1120px;
+    max-width: 1164px;
     align-items: start;
     gap: 24px;
-    grid-template-columns: minmax(280px, 340px) minmax(360px, 560px);
+    grid-template-columns: minmax(280px, 340px) minmax(360px, 800px);
 }
 
 .globalConfigCardSlot,

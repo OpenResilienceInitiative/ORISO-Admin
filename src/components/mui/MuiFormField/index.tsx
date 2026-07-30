@@ -74,6 +74,11 @@ const MuiControl = ({
     const form = Form.useFormInstance();
     const isError = status === 'error';
     const errors = form?.getFieldError(fieldName as any) ?? [];
+    const inputSurface = variant === 'outlined' ? 'transparent' : 'var(--input-bg)';
+    const autofillSurface =
+        variant === 'outlined'
+            ? 'var(--input-autofill-surface, var(--input-label-bg, var(--m3-surface-container-highest, #e4e2e2)))'
+            : 'var(--input-autofill-surface, var(--input-bg, #fcf9f9))';
     // Keep height stable: always render a helperText line (' ' when empty).
     // Error matches MUI TextField: `error` + `helperText` message.
     const helperText = (isError && errors[0]) || helpText || ' ';
@@ -146,7 +151,7 @@ const MuiControl = ({
                     minWidth: 0,
                     maxWidth: '100%',
                     boxSizing: 'border-box',
-                    backgroundColor: 'var(--input-bg)',
+                    backgroundColor: inputSurface,
                     color: 'var(--admin-form-field-text)',
                     fontFamily: 'var(--m3-body-font-family)',
                     fontSize: 16,
@@ -172,11 +177,13 @@ const MuiControl = ({
                 // Browser autofill: Chrome/Safari force their own (blue/cream)
                 // fill via a UA !important background. Paint the field's own
                 // surface over it with an inset box-shadow and keep the admin
-                // text colour. `--input-autofill-surface` lets transparent
-                // fields (e.g. login) substitute the page surface instead.
+                // text colour. Outlined controls inherit the surface behind
+                // their floating label; filled controls retain their own fill.
+                // Individual surfaces can override either with
+                // `--input-autofill-surface`.
                 '& .MuiInputBase-input:-webkit-autofill, & .MuiInputBase-input:-webkit-autofill:hover, & .MuiInputBase-input:-webkit-autofill:focus':
                     {
-                        WebkitBoxShadow: 'inset 0 0 0 1000px var(--input-autofill-surface, var(--input-bg, #fcf9f9))',
+                        WebkitBoxShadow: `inset 0 0 0 1000px ${autofillSurface}`,
                         WebkitTextFillColor: 'var(--admin-form-field-text, #1b1b1c)',
                         caretColor: 'var(--admin-form-field-text, #1b1b1c)',
                         transition: 'background-color 9999s ease-out 0s',
@@ -246,7 +253,7 @@ const MuiControl = ({
                 },
                 // Disabled: keep normal colors; opacity on the field dims the control.
                 '& .MuiInputBase-root.Mui-disabled': {
-                    backgroundColor: 'var(--input-bg)',
+                    backgroundColor: inputSurface,
                     color: 'var(--admin-form-field-text)',
                     cursor: 'not-allowed',
                     WebkitTextFillColor: 'var(--admin-form-field-text)',

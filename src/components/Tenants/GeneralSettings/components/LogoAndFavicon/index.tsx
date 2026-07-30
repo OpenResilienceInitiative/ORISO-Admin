@@ -102,7 +102,7 @@ export const LogoAndFavicon = ({ tenantId, readOnly = false }: { tenantId: strin
                     {!settings.multitenancyWithSingleDomainEnabled && (
                         <div className={styles.faviconBlock}>
                             <FormFileUploaderField
-                                className={`${styles.assetUploader} ${styles.faviconUploader}`}
+                                className={`${styles.assetUploader} ${styles.associationLogoUploader}`}
                                 labelKey="organisation.associationLogo"
                                 name={['theming', 'associationLogo']}
                                 tooltip={t('settings.images.tooltip.associationLogo')}

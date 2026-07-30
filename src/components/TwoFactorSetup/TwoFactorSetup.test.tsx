@@ -59,4 +59,23 @@ describe('TwoFactorSetup (profile context)', () => {
             expect(screen.queryByText('twoFactorAuth.activate.step1.title')).not.toBeInTheDocument();
         });
     });
+
+    it('shows the app-connect step with the raw stored secret converted to base32, never the raw value', async () => {
+        // userData.twoFactorAuth.secret is 'secret' — Keycloak's raw HMAC key.
+        // An authenticator needs the base32 form; regression guard for the
+        // switch from the inline hi-base32 call to the shared toBase32Secret.
+        const user = userEvent.setup({ delay: null });
+        render(<TwoFactorSetup context="profile" required />);
+
+        expect(await screen.findByText('twoFactorAuth.activate.step1.title')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.next' }));
+
+        expect(await screen.findByText('twoFactorAuth.activate.app.step2.title')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.next' }));
+
+        expect(await screen.findByText('twoFactorAuth.activate.app.step3.title')).toBeInTheDocument();
+        const shown = screen.getByTestId('totp-secret');
+        expect(shown).toHaveTextContent('ONSWG4TFOQ');
+        expect(shown.textContent).not.toBe('secret');
+    });
 });

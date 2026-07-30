@@ -1,0 +1,54 @@
+ORISO
+==============================================================
+
+Willkommen im Beratungsteam, Erika
+
+Herzlich willkommen, Erika Musterfrau
+
+Sie wurden als Beraterin oder Berater für die ORISO-Plattform
+freigeschaltet. Damit Sie gut starten können, haben wir die wichtigsten
+Schritte zusammengefasst.
+
+Was Sie zuerst tun sollten
+
+- Konto über die Einladung unten einrichten und ein Passwort
+vergeben.
+
+- Zwei-Faktor-Authentisierung aktivieren — sie ist für alle beratenden
+Rollen verpflichtend.
+
+- Profilangaben und Beratungsthemen prüfen und ergänzen.
+
+- Die Hinweise zur Schweigepflicht und zum Datenschutz lesen.
+
+Ihre Ansprechpersonen
+
+Fachliche Fragen beantwortet Ihre Teamleitung. Technische Fragen richten
+Sie bitte an den Support Ihrer Einrichtung. Eine Übersicht finden Sie im
+Handbuch unter https://handbuch.example.org/beratung/erste-schritte
+
+Gut zu wissen
+
+- Ratsuchende sehen nur Ihren Vornamen und Ihr Beratungsthema.
+
+- Nachrichten sind Ende-zu-Ende verschlüsselt; ein verlorenes Passwort
+kann alte Nachrichten unwiederbringlich unlesbar machen.
+
+- Abwesenheiten hinterlegen Sie im Profil, damit keine Anfrage liegen
+bleibt.
+
+- Der Einladungslink ist 30 Tage gültig.
+
+Bitte antworten Sie nicht auf diese E-Mail. Sie wurde
+automatisch erzeugt.
+
+Wir freuen uns auf die Zusammenarbeit.
+
+Einladung annehmen:
+https://app.oriso.org/account-invite/SAMPLE-PREVIEW-TOKEN
+
+--------------------------------------------------------------
+ORISO
+Impressum: https://app.oriso.org/impressum
+Datenschutz: https://app.oriso.org/datenschutz
+Diese E-Mail wurde automatisch versendet. Bitte antworten Sie nicht darauf.

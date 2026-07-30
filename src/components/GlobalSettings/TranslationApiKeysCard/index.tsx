@@ -1,8 +1,9 @@
-import { Button, Form, Typography, message } from 'antd';
+import { Form, Typography, message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ThemeProvider } from '@mui/material/styles';
 import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
 import { Card } from '../../Card';
+import { M3Button } from '../../M3Button';
 import { MuiPasswordFormField } from '../../mui/MuiFormField';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { TRANSLATION_PROVIDERS, TranslationKeys, TranslationProvider } from '../../../types/translation';
@@ -75,13 +76,14 @@ export const TranslationApiKeysCard = ({
                                 autoComplete="new-password"
                                 disabled={disabled}
                             />
-                            <Button
+                            <M3Button
+                                variant="outlined"
                                 loading={savingProvider === provider}
                                 disabled={disabled}
                                 onClick={() => save(provider)}
                             >
                                 {t('legal.translation.settings.save')}
-                            </Button>
+                            </M3Button>
                         </div>
                     ))}
                 </Form>

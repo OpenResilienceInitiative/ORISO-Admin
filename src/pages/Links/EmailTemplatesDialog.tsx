@@ -327,7 +327,7 @@ export const EmailTemplatesDialog = ({
             icon={<EmailOutlinedIcon />}
             onClose={onClose}
             footer={view === 'list' ? listFooter : formFooter}
-            width={860}
+            width={1180}
         >
             {view === 'list' ? (
                 <ListingTable
@@ -433,7 +433,7 @@ export const EmailTemplatesDialog = ({
                         </div>
                         <EmailTemplatePreview
                             body={previewBody}
-                            previewLabel={t('links.templates.previewLabel', 'E-Mail-Vorschau')}
+                            previewLabel={t('links.templates.previewLabel', 'Email preview')}
                             subject={previewSubject}
                         />
                     </div>
