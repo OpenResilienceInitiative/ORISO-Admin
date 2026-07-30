@@ -83,7 +83,7 @@ const defaultHandlers = [
 /**
  * Wires the composer the same way AccountInvitesTab does: templates come from the
  * (MSW-mocked) template endpoint, submits go through `createAccountInvite`, and the
- * template menu's create/delete entries open the EmailTemplatesDialog.
+ * template pill opens EmailTemplatesDialog in list/picker view.
  */
 const ComposerHarness = () => {
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
@@ -128,13 +128,17 @@ const ComposerHarness = () => {
                         setSubmitting(false);
                     }
                 }}
-                onTemplateIdChange={setTemplateId}
             />
             {dialogView && (
                 <EmailTemplatesDialog
                     initialView={dialogView}
+                    selectedTemplateId={templateId}
                     templateKind="TENANT_INVITE"
                     onClose={() => setDialogView(null)}
+                    onSelect={(template) => {
+                        setTemplateId(template.id);
+                        setDialogView(null);
+                    }}
                 />
             )}
         </div>
@@ -207,17 +211,15 @@ export const CreateOnlyMode: Story = {
 };
 
 /**
- * The template split button's chevron menu: active templates of this tab's kind
- * under the "auswählen oder erstellen" group, then create/delete entries that open
- * the EmailTemplatesDialog (delete stays disabled in the dialog — no backend
- * endpoint yet, see #314).
+ * Clicking the template pill opens EmailTemplatesDialog in list/picker view.
+ * Create stays inside the dialog; picking a row selects it and closes.
  */
-export const TemplateMenuOpen: Story = {
+export const TemplateDialogOpen: Story = {
     decorators: Empty.decorators,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await canvas.findByRole('button', { name: /Träger-Willkommen/ });
-        await userEvent.click(canvas.getByRole('button', { name: 'E-Mail-Vorlage wählen' }));
+        const templatePill = await canvas.findByRole('button', { name: /Träger-Willkommen/ });
+        await userEvent.click(templatePill);
     },
 };
 

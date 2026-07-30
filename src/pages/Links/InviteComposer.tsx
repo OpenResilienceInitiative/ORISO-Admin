@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { DeleteOutlined, DownloadOutlined, MoreOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownloadOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
 import { message, Upload, type MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import SelectAllIcon from '@mui/icons-material/SelectAll';
@@ -14,7 +14,6 @@ import { FloatingLabelInput } from '../../components/FloatingLabelInput';
 import { IdAllocationField, useIdAllocation } from '../../components/IdAllocationField';
 import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
-import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';
 import { M3NumberField } from '../../components/M3NumberField';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
@@ -51,11 +50,10 @@ export interface InviteComposerValues {
 }
 
 export interface InviteComposerProps {
-    /** Templates of this tab's kind; only active ones are offered in the menu. */
+    /** Templates of this tab's kind; active ones gate send and label the template pill. */
     templates: InviteEmailTemplateDTO[];
     /** Currently selected template (lifted so the tab can reuse it, e.g. for resend). */
     templateId?: number;
-    onTemplateIdChange: (templateId: number) => void;
     /** Träger tab: the Träger-ID is an allocation field — Auto by default, collision-checked in manual mode (#570). */
     requireTenantId?: boolean;
     /** Non-Träger tabs: prefill with the admin's own tenant. */
@@ -73,8 +71,8 @@ export interface InviteComposerProps {
     persistKey: string;
     /** Resolve `true` on success — the composer then clears its fields. */
     onSubmit: (values: InviteComposerValues) => Promise<boolean> | boolean;
-    /** Open the EmailTemplatesDialog in the requested view. */
-    onManageTemplates: (intent: 'create' | 'delete') => void;
+    /** Open the EmailTemplatesDialog in the requested view (`list` is the picker). */
+    onManageTemplates: (intent: 'create' | 'delete' | 'list') => void;
     /**
      * Enables the "⋮" more-menu with the "CSV-Datei importieren" entry (#315).
      * Called with the client-side parse result and the send mode captured at
@@ -136,8 +134,8 @@ const readPersistedSendMode = (persistKey: string): InviteSendMode => {
 /**
  * Invite composer row (#314, Figma 1165:17005 middle row): minimized global
  * search pill, floating-label recipient fields, the pill-shaped Träger-ID
- * number field (auto-suggest preserved), a tonal template split button whose
- * chevron menu selects/creates/deletes templates, and the send split button.
+ * number field (auto-suggest preserved), a tonal template pill that opens the
+ * EmailTemplatesDialog picker, and the send split button.
  * The send button rests `outlined` + disabled and only turns `primary` once
  * everything is validly filled; its chevron switches the persisted send mode
  * ("Direkt Versenden" vs "Empfänger nur anlegen", saved per tab in
@@ -146,7 +144,6 @@ const readPersistedSendMode = (persistKey: string): InviteSendMode => {
 export const InviteComposer = ({
     templates,
     templateId,
-    onTemplateIdChange,
     requireTenantId = false,
     initialTenantId,
     tenantIdAllocation,
@@ -242,58 +239,6 @@ export const InviteComposer = ({
             tenantAllocation.resetToAuto();
             agencyAllocation.resetToAuto();
         }
-    };
-
-    const templateMenu: MenuProps = {
-        items: [
-            {
-                key: 'templates',
-                type: 'group',
-                // Two lines (Figma): what the list is FOR, then what it lists.
-                label: (
-                    <>
-                        <div>{t('links.composer.templateGroupLead', 'Auswählen oder neu erstellen')}</div>
-                        <strong className={styles.templateGroupTitle}>
-                            {t('links.composer.templateGroupTitle', 'E-Mail-Vorlagen')}
-                        </strong>
-                    </>
-                ),
-                children: activeTemplates.map((template, index) => ({
-                    key: String(template.id),
-                    // Names are user input and often near-identical, so each entry
-                    // also carries its position in the list.
-                    label: (
-                        <span className={splitButtonStyles.menuEntry}>
-                            <span aria-hidden className={splitButtonStyles.menuIndex}>
-                                {index + 1}
-                            </span>
-                            {template.name}
-                        </span>
-                    ),
-                })),
-            },
-            { key: 'divider', type: 'divider' },
-            {
-                key: 'create',
-                className: splitButtonStyles.menuCreate,
-                icon: <PlusOutlined aria-hidden />,
-                label: t('links.composer.templateCreate', 'Neue E-Mail-Vorlage erstellen'),
-            },
-            {
-                key: 'delete',
-                icon: <DeleteOutlined aria-hidden />,
-                label: t('links.composer.templateDelete', 'E-Mail-Vorlage löschen'),
-            },
-        ],
-        selectable: true,
-        selectedKeys: templateId != null ? [String(templateId)] : [],
-        onClick: ({ key }) => {
-            if (key === 'create' || key === 'delete') {
-                onManageTemplates(key);
-                return;
-            }
-            onTemplateIdChange(Number(key));
-        },
     };
 
     // "CSV-Datei importieren" (#315, Figma "Invite Link Options"): the file is read
@@ -486,9 +431,8 @@ export const InviteComposer = ({
             <SplitButton
                 icon={<MailFilledIcon />}
                 label={selectedTemplate?.name ?? t('links.composer.templatePlaceholder', 'E-Mail-Vorlage')}
-                menu={templateMenu}
-                menuLabel={t('links.composer.templateMenuLabel', 'E-Mail-Vorlage wählen')}
                 variant="tonal"
+                onClick={() => onManageTemplates('list')}
             />
             {/* Filled primary is reserved for the selected item / main CTA; every
                 other resting state is tonal M3 secondary (owner call). The icon

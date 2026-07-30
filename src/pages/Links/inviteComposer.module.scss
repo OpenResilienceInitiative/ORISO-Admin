@@ -73,15 +73,6 @@
     white-space: normal;
 }
 
-/* Second line of the template menu's group header — the list's own name. */
-.templateGroupTitle {
-    display: block;
-    color: var(--m3-on-surface, #1b1b1c);
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 20px;
-}
-
 /* Menu-entry glyphs match the 18px antd icons they sit next to. */
 .menuIcon {
     width: 18px;

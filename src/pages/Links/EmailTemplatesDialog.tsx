@@ -31,9 +31,9 @@ interface EmailTemplatesDialogProps {
     /** Fired after any successful create/update so the opener can refetch its template select. */
     onChanged?: (template: InviteEmailTemplateDTO) => void;
     /**
-     * Picker mode: passing `onSelect` turns the overview list into the second way
+     * Picker mode: passing `onSelect` turns the overview list into the way
      * of choosing a template — clicking a row's name hands it back to the opener,
-     * which keeps owning the selection (the split-button menu still changes it).
+     * which keeps owning the selection (the composer pill reopens this dialog).
      * Without it the dialog stays a pure manager (double-click a row to edit).
      */
     onSelect?: (template: InviteEmailTemplateDTO) => void;

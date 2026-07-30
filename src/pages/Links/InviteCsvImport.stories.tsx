@@ -74,7 +74,6 @@ const CsvImportHarness = () => {
                 onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
                 onManageTemplates={() => {}}
                 onSubmit={() => true}
-                onTemplateIdChange={() => {}}
             />
             {csvImport && (
                 <InviteCsvImportModal

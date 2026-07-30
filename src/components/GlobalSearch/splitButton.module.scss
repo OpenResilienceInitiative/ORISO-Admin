@@ -49,6 +49,11 @@
     white-space: nowrap;
 }
 
+/* No chevron: a single-action pill (e.g. template opener) stays fully rounded. */
+.splitButton:not(:has(.chevron)) .main {
+    border-radius: 28px;
+}
+
 /* Menu selections become the main label; long user-defined names truncate. */
 .label {
     overflow: hidden;

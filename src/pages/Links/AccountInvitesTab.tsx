@@ -621,7 +621,6 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 onDeleteSelected={() => setBulkDeleteConfirmOpen(true)}
                 onManageTemplates={(intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list')}
                 onSubmit={onCreate}
-                onTemplateIdChange={setSelectedTemplateId}
             />
             {selectedInvites.length > 0 && (
                 <div className={styles.selectionCount} role="status">
@@ -676,8 +675,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     templateKind={templateKind}
                     onClose={() => setTemplatesDialogView(null)}
                     onChanged={onTemplateChanged}
-                    // Picking in the overview is the shortcut; the split-button menu
-                    // stays the way to change the choice afterwards.
+                    // Picking in the overview selects for the composer and closes
+                    // the dialog; create/edit stay inside the dialog itself.
                     onSelect={(template) => {
                         setSelectedTemplateId(template.id);
                         setTemplatesDialogView(null);
