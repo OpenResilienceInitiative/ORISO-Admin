@@ -62,7 +62,7 @@ describe('LogsTabsLayout', () => {
         // `/admin/logs` is a prefix of both sibling routes, so the tab needs an exact match.
         renderLayout({ showSupervisor: true, showCaseHandover: true, showInactive: true }, routePathNames.logs);
 
-        const active = screen.getAllByRole('tab').filter((tab) => tab.className.includes('itemActive'));
+        const active = screen.getAllByRole('tab').filter((tab) => tab.getAttribute('aria-current') === 'page');
         expect(active).toHaveLength(1);
         expect(active[0].getAttribute('href')).toBe(routePathNames.logs);
     });
@@ -73,7 +73,7 @@ describe('LogsTabsLayout', () => {
             routePathNames.caseHandoverLogs,
         );
 
-        const active = screen.getAllByRole('tab').filter((tab) => tab.className.includes('itemActive'));
+        const active = screen.getAllByRole('tab').filter((tab) => tab.getAttribute('aria-current') === 'page');
         expect(active).toHaveLength(1);
         expect(active[0].getAttribute('href')).toBe(routePathNames.caseHandoverLogs);
     });

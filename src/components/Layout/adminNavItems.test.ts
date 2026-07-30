@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAdminNavItems, type AdminNavLabels } from './adminNavItems';
+import { buildAdminNavItems, resolveLogsPage, type AdminNavLabels } from './adminNavItems';
 import { canFor, hasRoleFor } from './adminNavFixtures';
 import routePathNames from '../../appConfig';
 import { PermissionAction } from '../../enums/PermissionAction';
@@ -19,7 +19,20 @@ const labels: AdminNavLabels = {
 
 const build = (context: Parameters<typeof buildAdminNavItems>[0]) => buildAdminNavItems(context);
 
-const logEntries = (items: ReturnType<typeof build>) => items.filter((item) => item.label === labels.logs);
+// Keyed, not labelled: the entry must stay findable when the display text is translated.
+const logEntries = (items: ReturnType<typeof build>) => items.filter((item) => item.key === 'logs');
+
+describe('resolveLogsPage', () => {
+    it('prefers the supervision tab, then case handover, then the inactive-account audit', () => {
+        expect(resolveLogsPage(true, true, true)).toBe(routePathNames.logs);
+        expect(resolveLogsPage(false, true, true)).toBe(routePathNames.caseHandoverLogs);
+        expect(resolveLogsPage(false, false, true)).toBe(routePathNames.inactiveAccountAuditLogs);
+    });
+
+    it('returns null when the admin may read no log view', () => {
+        expect(resolveLogsPage(false, false, false)).toBeNull();
+    });
+});
 
 describe('buildAdminNavItems', () => {
     it('never renders two nav entries with the same label', () => {
@@ -74,7 +87,7 @@ describe('buildAdminNavItems', () => {
         const items = build({ ...context, labels });
 
         expect(logEntries(items)).toHaveLength(1);
-        expect(logEntries(items)[0].key).toBe('logs');
+        expect(logEntries(items)[0].label).toBe(labels.logs);
         expect(logEntries(items)[0].to).toBe(expectedLanding);
     });
 
