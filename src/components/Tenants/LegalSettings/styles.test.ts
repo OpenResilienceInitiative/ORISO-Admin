@@ -20,14 +20,24 @@ describe('LegalSettings card deck contract', () => {
 
         expect(documentItemRule).toMatch(/--card-deck-item-min-width:\s*800px/);
         expect(documentItemRule).toMatch(/--card-deck-item-width:\s*800px/);
-        expect(documentItemRule).toMatch(/--card-deck-item-max-width:\s*800px/);
+        expect(documentItemRule).toMatch(/--card-deck-item-max-width:\s*min\(800px,\s*calc\(100vw\s*-\s*176px\)\)/);
     });
 
     it('applies the wider item only to DPA, imprint and privacy', () => {
-        expect(legalSettingsSource.match(/className={styles\.documentEditorItem}/g) ?? []).toHaveLength(3);
-        expect(legalSettingsSource).toMatch(
-            /multitenancyWithSingleDomainEnabled[\s\S]*?<CardDeck\.Item>\s*<CardEditable/,
-        );
+        const deckItems = [...legalSettingsSource.matchAll(/<CardDeck\.Item([^>]*)>([\s\S]*?)<\/CardDeck\.Item>/g)];
+        const findItem = (content: string) => deckItems.find(([, , body]) => body.includes(content));
+        const documentEditorClass = 'className={styles.documentEditorItem}';
+        const privacyEditor = legalSettingsSource.match(/const LegalTextElement = \(([\s\S]*?)\n\s{4}\);/)?.[1] ?? '';
+
+        expect(findItem('<DataProcessingAgreementContainer')?.[1]).toContain(documentEditorClass);
+        expect(findItem('legalType="imprint"')?.[1]).toContain(documentEditorClass);
+        expect(privacyEditor).toContain("fieldName={['content', 'privacy']}");
+        expect(privacyEditor).toContain('legalType="privacy"');
+        expect(findItem('{LegalTextElement}')?.[1]).toContain(documentEditorClass);
+
+        const compactSettingsItem = findItem('<CardEditable');
+        expect(compactSettingsItem?.[1]).not.toContain(documentEditorClass);
+        expect(legalSettingsSource).toMatch(/multitenancyWithSingleDomainEnabled[\s\S]*?<CardDeck\.Item>/);
     });
 
     // Deliberately file-wide: any grow rule on this page's deck items would

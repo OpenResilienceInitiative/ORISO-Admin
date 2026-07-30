@@ -16,9 +16,18 @@ describe('LogoAndFavicon preview size contract', () => {
     });
 
     it('does not apply the favicon dimensions to the optional 512x512 association logo', () => {
-        expect(brandingSource).toMatch(
-            /name={\['theming', 'associationLogo']}\}[\s\S]*?className=.*styles\.associationLogoUploader|className=.*styles\.associationLogoUploader[\s\S]*?name={\['theming', 'associationLogo']}/,
+        const uploaderProps = [...brandingSource.matchAll(/<FormFileUploaderField([\s\S]*?)\/>/g)].map(
+            ([, props]) => props,
         );
+        const associationLogoUploader = uploaderProps.find((props) =>
+            props.includes("name={['theming', 'associationLogo']}"),
+        );
+
+        expect(associationLogoUploader).toContain('styles.associationLogoUploader');
+        expect(associationLogoUploader).not.toContain('styles.faviconUploader');
         expect(brandingStyles).toMatch(/\.associationLogoUploader\s*{[\s\S]*?width:\s*54px/);
+        expect(brandingStyles).toMatch(
+            /@media only screen and \(min-height:\s*1000px\)[\s\S]*?\.associationLogoUploader\s*{\s*width:\s*64px/,
+        );
     });
 });
