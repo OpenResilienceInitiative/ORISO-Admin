@@ -235,9 +235,16 @@ describe('CSV import payload per tab', () => {
         const slow = { timeout: 10_000 };
         await screen.findByRole('button', { name: /Standard/ }, slow);
         await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }, slow));
-        // The hidden file input sits inside the lazily rendered more-menu.
+        // The hidden file input sits inside the lazily rendered more-menu. It has
+        // no accessible name (antd hides it from the a11y tree), so it cannot be
+        // reached by role or label — but a bare cast would hand `user.upload` a
+        // silent null the day the menu changes, so assert it is really mounted.
         await screen.findByText('CSV-Datei importieren', undefined, slow);
-        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        const fileInput = await waitFor(() => {
+            const input = document.querySelector<HTMLInputElement>('.ant-upload input[type="file"]');
+            expect(input).not.toBeNull();
+            return input as HTMLInputElement;
+        }, slow);
         await user.upload(fileInput, new File([content], 'invites.csv', { type: 'text/csv' }));
         // The file is read asynchronously (File.text / FileReader) and parsed
         // before the preview modal mounts.
