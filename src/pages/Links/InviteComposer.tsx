@@ -2,9 +2,7 @@ import { useMemo, useState } from 'react';
 import { DeleteOutlined, DownloadOutlined, MoreOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { message, Upload, type MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
-import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined';
 import SelectAllIcon from '@mui/icons-material/SelectAll';
-import SendOutlined from '@mui/icons-material/SendOutlined';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import {
     agencyIdAllocationClient,
@@ -21,6 +19,8 @@ import { M3NumberField } from '../../components/M3NumberField';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
 import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
+import { ReactComponent as FileSaveIcon } from '../../resources/img/svg/oriso/file_save_24px.svg';
+import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
 import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
 import styles from './inviteComposer.module.scss';
 
@@ -396,16 +396,12 @@ export const InviteComposer = ({
         items: [
             {
                 key: 'direct',
-                // MUI's glyph, not the branded `send_filled` SVG: that file
-                // carries an internal <mask id="…">, and a second copy of it on
-                // the same page collides with the first — which masked the icon
-                // out of the button itself.
-                icon: <SendOutlined aria-hidden fontSize="small" />,
+                icon: <SendIcon aria-hidden className={styles.menuIcon} />,
                 label: t('links.composer.sendDirect', 'Direkt Versenden'),
             },
             {
                 key: 'createOnly',
-                icon: <FileDownloadOutlined aria-hidden />,
+                icon: <FileSaveIcon aria-hidden className={styles.menuIcon} />,
                 label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen'),
             },
         ],
