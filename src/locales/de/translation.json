@@ -463,6 +463,7 @@
     "agency.form.registrationSettings.fromPostCode": "Von",
     "agency.form.registrationSettings.toPostCode": "Bis",
     "agency.form.registrationSettings.newPostCodeLabel": "PLZ-Gebiete:",
+    "agency.form.registrationSettings.removePostCode": "PLZ-Bereich entfernen",
     "agency.form.registrationSettings.addNewPostCode": "WEITERE HINZUFÜGEN",
     "agency.form.registrationSettings.autoSelectPostcodeWarning": "Die Funktion zur Auswahl von Postleitzahlenbereichen wird aufgrund der Systemkonfiguration in der Registrierung derzeit nicht unterstützt.",
     "agency.add.general.headline": "Zur Übersicht",

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
 import { CardEditable } from '../../../../CardEditable';
-import { FormRadioGroupField } from '../../../../FormRadioGroupField';
+import { MuiRadioGroupField } from '../../../../mui/MuiRadioGroupField';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import styles from './styles.module.scss';
 
@@ -22,17 +22,17 @@ export const TypeOfLanguage = ({ tenantId, readOnly = false }: { tenantId: strin
             editButtonPlacement="footer"
             headerIcon={<TranslateOutlinedIcon />}
         >
-            <FormRadioGroupField
+            <MuiRadioGroupField
                 labelKey="tenants.typeOfLanguage.radio.description"
                 name={['settings', 'extendedSettings', 'languageFormal']}
                 vertical
                 className={styles.radio}
             >
-                <FormRadioGroupField.Radio value>{t('tenants.typeOfLanguage.radio.formal')}</FormRadioGroupField.Radio>
-                <FormRadioGroupField.Radio value={false}>
+                <MuiRadioGroupField.Radio value>{t('tenants.typeOfLanguage.radio.formal')}</MuiRadioGroupField.Radio>
+                <MuiRadioGroupField.Radio value={false}>
                     {t('tenants.typeOfLanguage.radio.informal')}
-                </FormRadioGroupField.Radio>
-            </FormRadioGroupField>
+                </MuiRadioGroupField.Radio>
+            </MuiRadioGroupField>
         </CardEditable>
     );
 };

@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Form } from 'antd';
-import { FormRadioGroupField } from './index';
+import { MuiRadioGroupField } from './index';
 
 const meta = {
-    title: 'Atoms/FormRadioGroupField',
-    component: FormRadioGroupField,
+    title: 'Atoms/MuiRadioGroupField',
+    component: MuiRadioGroupField,
     parameters: { layout: 'padded' },
     decorators: [
         (Story) => (
@@ -18,12 +18,12 @@ const meta = {
         labelKey: 'Kontaktart',
         children: (
             <>
-                <FormRadioGroupField.Radio value="email">E-Mail</FormRadioGroupField.Radio>
-                <FormRadioGroupField.Radio value="phone">Telefon</FormRadioGroupField.Radio>
+                <MuiRadioGroupField.Radio value="email">E-Mail</MuiRadioGroupField.Radio>
+                <MuiRadioGroupField.Radio value="phone">Telefon</MuiRadioGroupField.Radio>
             </>
         ),
     },
-} satisfies Meta<typeof FormRadioGroupField>;
+} satisfies Meta<typeof MuiRadioGroupField>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

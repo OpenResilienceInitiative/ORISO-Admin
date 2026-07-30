@@ -1,0 +1,16 @@
+.root {
+    max-width: 270px;
+
+    // Baseline type for the hex heading, reproducing what antd's `Title level={4}`
+    // used to supply. `:where()` contributes no specificity, so every consumer
+    // rule (`.colorSelector h4` in GlobalSettings / SmtpSettings / ThemeBuilder)
+    // still wins — this only covers surfaces that style nothing themselves.
+    :where(h4) {
+        margin: 0;
+        color: var(--admin-form-field-text, #1b1b1c);
+        font-family: var(--m3-body-font-family);
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 24px;
+    }
+}

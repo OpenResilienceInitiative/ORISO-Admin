@@ -43,6 +43,12 @@
     width: 100%;
 }
 
+.newRangeLabel {
+    margin-bottom: 1em;
+    color: var(--admin-form-field-text);
+    font-family: var(--m3-body-font-family);
+}
+
 .fieldsContainer {
     display: flex;
     align-items: flex-start;
