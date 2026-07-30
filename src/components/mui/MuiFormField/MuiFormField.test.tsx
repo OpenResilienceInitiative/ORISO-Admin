@@ -9,6 +9,23 @@ import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from './index'
 const renderWithForm = (children: React.ReactNode) => render(<Form>{children}</Form>);
 
 describe('MuiFormField', () => {
+    it('uses the surrounding surface only for filled fields', () => {
+        render(
+            <div style={{ '--input-bg': 'rgb(252, 249, 249)' } as React.CSSProperties}>
+                <Form>
+                    <MuiFormField name="outlined" label="Outlined" />
+                    <MuiFormField name="filled" label="Filled" variant="filled" />
+                </Form>
+            </div>,
+        );
+
+        const outlinedRoot = screen.getByLabelText('Outlined').closest('.MuiInputBase-root');
+        const filledRoot = screen.getByLabelText('Filled').closest('.MuiInputBase-root');
+
+        expect(getComputedStyle(outlinedRoot!).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+        expect(getComputedStyle(filledRoot!).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+    });
+
     it('passes end adornments and native input props through the MUI v9 slot API', () => {
         renderWithForm(
             <MuiFormField
