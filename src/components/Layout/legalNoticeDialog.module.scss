@@ -4,8 +4,22 @@
    this block is what the read-only reader takes over. */
 
 .body {
-    max-height: min(60vh, 520px);
+    /*
+     * The placeholder copy is three paragraphs; the published imprint and
+     * privacy notice are pages. `min(60vh, 520px)` alone still let a short
+     * viewport (a phone in landscape) push the close action off-screen,
+     * because it does not know what the dialog chrome above and below the
+     * text costs — icon + title ≈ 140px, action row + margins ≈ 124px.
+     * Subtracting that keeps the whole sheet inside the viewport at any
+     * height, and `max(...)` stops it collapsing to nothing on a very short
+     * one. `dvh` so the mobile browser's collapsing URL bar is accounted for.
+     */
+    max-height: max(160px, min(60vh, 520px, calc(100dvh - 264px)));
+    padding-right: 4px;
     overflow-y: auto;
+
+    /* A long legal text must not chain its scroll to the page behind the mask. */
+    overscroll-behavior: contain;
 
     p {
         margin: 0 0 12px;

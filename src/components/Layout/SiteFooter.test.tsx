@@ -85,16 +85,36 @@ describe('SiteFooter', () => {
             expect(container.querySelector('.layoutFooter')).toHaveClass('stageFooter');
         });
 
-        it('carries the language selector as a third entry of the same menu', () => {
+        /**
+         * The language selector used to be a submenu ENTRY of this menu. That
+         * is what made the row wrap at 100% zoom, painted antd's red active bar
+         * under it and anchored its popup beside the trigger. It is now its own
+         * control next to the menu — the menu itself is legal texts only.
+         */
+        it('keeps the legal menu to legal texts and puts the language beside it', () => {
             render(<SiteFooter variant="stage" />);
 
-            expect(menuItems()).toEqual(['footer.label.imprint', 'footer.label.privacy', '(DE) Deutsch']);
+            expect(menuItems()).toEqual(['footer.label.imprint', 'footer.label.privacy']);
+            expect(screen.getByRole('button', { name: /language\.selectAriaLabel/ })).toBeInTheDocument();
         });
 
-        it('switches the language from that entry', async () => {
+        it('shows the language code on the trigger and the full name in its options', async () => {
             render(<SiteFooter variant="stage" />);
 
-            await userEvent.click(screen.getByText('(DE) Deutsch'));
+            const trigger = screen.getByRole('button', { name: /language\.selectAriaLabel/ });
+            expect(trigger).toHaveTextContent('DE');
+            expect(trigger).not.toHaveTextContent('Deutsch');
+
+            await userEvent.click(trigger);
+
+            expect(await screen.findByText('(DE) Deutsch')).toBeInTheDocument();
+            expect(await screen.findByText('(EN) English')).toBeInTheDocument();
+        });
+
+        it('switches the language from that control', async () => {
+            render(<SiteFooter variant="stage" />);
+
+            await userEvent.click(screen.getByRole('button', { name: /language\.selectAriaLabel/ }));
             await userEvent.click(await screen.findByText('(EN) English'));
 
             expect(changeLanguage).toHaveBeenCalledWith('en');
@@ -103,7 +123,7 @@ describe('SiteFooter', () => {
         it('keeps the language out of the in-flow footer, which has its own selector elsewhere', () => {
             render(<SiteFooter />);
 
-            expect(screen.queryByText('(DE) Deutsch')).toBeNull();
+            expect(screen.queryByRole('button', { name: /language\.selectAriaLabel/ })).toBeNull();
         });
     });
 });

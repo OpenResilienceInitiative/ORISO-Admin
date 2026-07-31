@@ -6,12 +6,9 @@ import { Footer } from 'antd/es/layout/layout';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { runtimeConfig } from '../../config/runtimeConfig';
-import { useLanguage } from '../../hooks/useLanguage';
-import { isSupportedLanguage } from '../../utils/language';
+import { FooterLanguageMenu } from './FooterLanguageMenu';
 import { LegalNoticeDialog } from './LegalNoticeDialog';
 import { LEGAL_NOTICE_KINDS, type LegalNoticeKind } from './legalNoticeContent';
-
-const LANGUAGE_KEY_PREFIX = 'language:';
 
 export interface SiteFooterProps {
     /**
@@ -28,8 +25,8 @@ export interface SiteFooterProps {
 }
 
 /**
- * The site footer menu — Imprint, Privacy and (on the public surface) the
- * language selector as a third entry of the same menu.
+ * The site footer — Imprint, Privacy and (on the public surface) the language
+ * control.
  *
  * Until #594.15b every entry here was dead: the antd items carried a label and
  * a placeholder key (`item-1`, `split`, `submenu`) and no handler at all, so
@@ -37,44 +34,24 @@ export interface SiteFooterProps {
  * default selection state. The keys are now meaningful, both legal entries open
  * their own dialog, and the `' | '` pseudo-item is gone: a separator is styling,
  * not a focusable entry announced to screen readers.
+ *
+ * The language control is deliberately NOT a fourth item of this menu any more
+ * (see {@link FooterLanguageMenu}). A menu of legal texts and a language
+ * selector are two different things; making the selector a submenu is what made
+ * the row wrap, painted antd's red active bar under it, and anchored its popup
+ * to the side of the trigger instead of over it.
  */
 const SiteFooter = ({ variant = 'default' }: SiteFooterProps) => {
     const { t } = useTranslation();
-    const { language, options, changeLanguage } = useLanguage();
     const [openNotice, setOpenNotice] = useState<LegalNoticeKind | null>(null);
     const isStage = variant === 'stage';
 
-    const items: MenuProps['items'] = [
-        ...LEGAL_NOTICE_KINDS.map((kind) => ({
-            label: <span>{t(`footer.label.${kind}`)}</span>,
-            key: kind,
-        })),
-        // The language selector IS an entry of this menu, not a control floating
-        // next to it (#594.15b) — as a submenu, so the options stay real menu
-        // items instead of a combobox nested inside a menuitem.
-        ...(isStage
-            ? [
-                  {
-                      label: <span>{options.find((option) => option.value === language)?.label ?? language}</span>,
-                      key: 'language',
-                      children: options.map((option) => ({
-                          label: option.label,
-                          key: `${LANGUAGE_KEY_PREFIX}${option.value}`,
-                      })),
-                  },
-              ]
-            : []),
-    ];
+    const items: MenuProps['items'] = LEGAL_NOTICE_KINDS.map((kind) => ({
+        label: <span>{t(`footer.label.${kind}`)}</span>,
+        key: kind,
+    }));
 
     const handleClick: MenuProps['onClick'] = ({ key }) => {
-        if (key.startsWith(LANGUAGE_KEY_PREFIX)) {
-            const next = key.slice(LANGUAGE_KEY_PREFIX.length);
-            if (isSupportedLanguage(next)) {
-                changeLanguage(next);
-            }
-            return;
-        }
-
         if ((LEGAL_NOTICE_KINDS as readonly string[]).includes(key)) {
             setOpenNotice(key as LegalNoticeKind);
         }
@@ -91,6 +68,7 @@ const SiteFooter = ({ variant = 'default' }: SiteFooterProps) => {
                 disabledOverflow
                 aria-label={t('footer.ariaLabel')}
             />
+            {isStage && <FooterLanguageMenu />}
             {runtimeConfig.platformVersion && <span className="platformVersion">{runtimeConfig.platformVersion}</span>}
             {openNotice && <LegalNoticeDialog kind={openNotice} onClose={() => setOpenNotice(null)} />}
         </Footer>

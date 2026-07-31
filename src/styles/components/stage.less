@@ -11,7 +11,9 @@
     flex-direction: column;
     align-items: flex-start;
     justify-content: flex-start;
-    padding: @spacing-2xl;
+    /* Vertical gutter stays the drawn 80px; the horizontal one is shared with
+       the stage footer (`@stage-gutter`) so claim and footer stay flush. */
+    padding: @spacing-2xl @stage-gutter;
     /* The desktop sidebar's own token (#594.13a) — the panel and the app shell
        must provably resolve to the SAME colour, not to two values that merely
        look alike. See the block comment on `--m3-on-background` in app.css for
