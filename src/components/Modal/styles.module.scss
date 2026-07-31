@@ -65,6 +65,11 @@
     display: inline-flex;
     margin-bottom: 8px;
     color: var(--m3-secondary, #4c555f);
+    /* antd's `Icon` renders its SVG at `1em`, and the ORISO icon set clips
+       itself against a rect expressed in the same unit. Sizing by font-size —
+       not only by width/height — keeps both in step, so an icon can never come
+       out cropped to a fraction of its artboard. */
+    font-size: 32px;
 
     svg {
         width: 32px;

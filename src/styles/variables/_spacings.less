@@ -9,3 +9,13 @@
 @spacing-2xl: 80px;
 
 @mobileNavHeight: 77px;
+
+/*
+ * Inner gutter of the public stage panel — used by the panel itself and by the
+ * footer menu pinned to its bottom left, so the claim and the footer can never
+ * drift apart. It is a clamp, not the flat 80px it used to be: the panel is
+ * 40vw, so on a 1280px screen its gutters ate 160px of a 512px panel and the
+ * footer row wrapped onto a second line. It reaches the full @spacing-2xl from
+ * ~1500px up, which is where the design was drawn.
+ */
+@stage-gutter: clamp(@spacing-l, 5.3vw, @spacing-2xl);
