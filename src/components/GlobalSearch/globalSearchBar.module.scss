@@ -55,6 +55,48 @@
     transition: width 240ms cubic-bezier(0.2, 0, 0, 1);
 }
 
+/*
+ * Bottom-bar variant (Figma 56576:34610). Same control, but it sits alone on
+ * the M3 surface-container of AppBottomBar instead of in a page toolbar: 88px
+ * collapsed (4px padding + two 40px icon slots), a lowest-tier surface so it
+ * reads as raised against the bar, and M3's pressed-in inner shadow.
+ */
+.pillScroller {
+    width: 100%;
+    min-width: 0;
+    overflow: visible;
+}
+
+.pillRow {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+}
+
+.pillSearch {
+    width: 88px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    box-shadow: inset 4px 4px 8px rgb(0 0 0 / 12%);
+
+    .iconButton {
+        width: 40px;
+        height: 40px;
+        flex-basis: 40px;
+    }
+}
+
+/*
+ * Expanded, the pill fills whatever the bottom bar gives it — it never grows to
+ * a fixed pixel width. That is the whole guarantee: the bar always keeps a 48px
+ * slot for the overflow ("Mehr") button, so however long the search gets, that
+ * one icon stays reachable and the search does not have to close to get to it.
+ */
+.pillSearchExpanded {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
 .iconButton {
     display: inline-flex;
     width: 48px;
