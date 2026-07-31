@@ -13,7 +13,6 @@ import { AdminSidebarNavItem } from './AdminSidebar';
 /** Resolved sidebar labels. Kept as plain strings so this module stays free of i18n/React. */
 export interface AdminNavLabels {
     account: string;
-    activityLogs: string;
     agency: string;
     links: string;
     logs: string;
@@ -49,11 +48,32 @@ export const resolveUsersPage = (can: CanFn): string => {
 };
 
 /**
+ * Landing tab of the "Logs" nav entry: the first log view the user may actually read. The order
+ * mirrors the tab order in `LogsTabsLayout`.
+ */
+export const resolveLogsPage = (
+    canReadSupervisorLogs: boolean,
+    canReadCaseHandoverLogs: boolean,
+    canReadInactiveAuditLogs: boolean,
+): string | null => {
+    if (canReadSupervisorLogs) {
+        return routePathNames.logs;
+    }
+    if (canReadCaseHandoverLogs) {
+        return routePathNames.caseHandoverLogs;
+    }
+    if (canReadInactiveAuditLogs) {
+        return routePathNames.inactiveAccountAuditLogs;
+    }
+    return null;
+};
+
+/**
  * Builds the upper sidebar nav items for the current user.
  *
  * Pure on purpose: all permission/role/feature input arrives via {@link AdminNavContext}, so the
- * visible navigation can be asserted per role without rendering the whole protected layout. Two
- * nav entries used to share the same "Logs" label, which produced a duplicate-looking menu for
+ * visible navigation can be asserted per role without rendering the whole protected layout. The
+ * log views used to be split over two nav entries, which rendered as a duplicate-looking menu for
  * every non-super-admin with `Read Consultant` (see ORISO-Admin#84) — `adminNavItems.test.ts`
  * guards against that class of bug.
  */
@@ -68,9 +88,10 @@ export const buildAdminNavItems = ({
 
     const canSeeSettingsMenu =
         can(PermissionAction.Read, Resource.Tenant) || can(PermissionAction.Read, Resource.LegalText);
-    const canSeeCounsellorLogs = canSeeSupervisorLogs(isSuperAdmin, hasRole, can);
+    const canSeeCounsellorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
     const canSeeInactiveAuditLogs = isSuperAdmin && can(PermissionAction.Update, Resource.Tenant);
-    const canSeeActivityLogs = canReadCaseHandoverAdmin(isSuperAdmin, hasRole, can) || canSeeInactiveAuditLogs;
+    const canSeeCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
+    const logsPage = resolveLogsPage(canSeeCounsellorLogs, canSeeCaseHandoverLogs, canSeeInactiveAuditLogs);
 
     if (canSeeSettingsMenu) {
         items.push({
@@ -136,29 +157,17 @@ export const buildAdminNavItems = ({
             activeMatch: { paths: [`${routePathNames.links}/`], mode: 'startsWith' },
         });
     }
-    if (canSeeCounsellorLogs) {
+    // Every log view lives behind ONE "Logs" entry that opens a tabbed page (ORISO-Admin#84). The
+    // platform admin already had exactly one entry; splitting it for the other roles is what made
+    // the menu look duplicated. The entry lands on the first tab the role may read, and stays
+    // highlighted across every `/admin/logs/...` sub-route.
+    if (logsPage) {
         items.push({
             key: 'logs',
-            to: routePathNames.logs,
+            to: logsPage,
             label: labels.logs,
             iconPath: routePathNames.logs,
-            end: true,
-        });
-    }
-
-    // Case-handover + inactive-account audit are unified into a single entry that opens a tabbed
-    // page (Inactive default, then Case handover). It must NOT reuse the supervisor-logs label:
-    // both entries are visible at the same time for a tenant admin who also holds `user-admin`.
-    if (canSeeActivityLogs) {
-        items.push({
-            key: 'activity-logs',
-            to: canSeeInactiveAuditLogs ? routePathNames.inactiveAccountAuditLogs : routePathNames.caseHandoverLogs,
-            label: canSeeCounsellorLogs ? labels.activityLogs : labels.logs,
-            iconPath: routePathNames.inactiveAccountAuditLogs,
-            activeMatch: {
-                paths: [routePathNames.inactiveAccountAuditLogs, routePathNames.caseHandoverLogs],
-                mode: 'startsWith',
-            },
+            activeMatch: { paths: [routePathNames.logs], mode: 'startsWith' },
         });
     }
 

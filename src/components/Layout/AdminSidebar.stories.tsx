@@ -150,7 +150,7 @@ export const MinimalAccess: Story = {
  * Träger admin who also holds `user-admin` — the role mix that reported the duplicate "Logs"
  * menu (ORISO-Admin#84). Unlike the other stories, the items here come from the **real**
  * `buildAdminNavItems` builder, so this story shows production output and fails visibly if the
- * two log entries ever share a label again.
+ * log views are ever split back into two nav entries.
  */
 export const TenantAdminWithUserAdmin: Story = {
     args: {
@@ -167,7 +167,6 @@ export const TenantAdminWithUserAdmin: Story = {
             ),
             labels: {
                 account: 'Mein Konto',
-                activityLogs: 'Aktivitäts-Logs',
                 agency: 'Beratungsstellen',
                 links: 'Links',
                 logs: 'Logs',
@@ -177,6 +176,33 @@ export const TenantAdminWithUserAdmin: Story = {
                 users: 'Benutzer',
             },
             settingsPath: `${routePathNames.themeSettings}/general`,
+        }),
+        currentPath: routePathNames.logs,
+    },
+};
+
+/**
+ * Beratungsstellen-Admin (`restricted-agency-admin` + `user-admin`) — the lowest admin level, and
+ * the one a platform-admin test account never exercises. Real builder output: one "Logs" entry,
+ * same as every other role.
+ */
+export const RestrictedAgencyAdmin: Story = {
+    args: {
+        items: buildAdminNavItems({
+            isSuperAdmin: false,
+            hasRole: hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin),
+            can: canFor(Resource.Agency, Resource.Consultant),
+            labels: {
+                account: 'Mein Konto',
+                agency: 'Beratungsstellen',
+                links: 'Links',
+                logs: 'Logs',
+                settings: 'Einstellungen',
+                statistics: 'Statistik',
+                tenants: 'Träger',
+                users: 'Benutzer',
+            },
+            settingsPath: `${routePathNames.themeSettings}/legal`,
         }),
         currentPath: routePathNames.logs,
     },

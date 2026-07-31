@@ -87,7 +87,6 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     const navLabels = {
         account: navLabel('sidebar.account', 'profile.title'),
         agency: navLabel('sidebar.agency', 'agency'),
-        activityLogs: navLabel('sidebar.activityLogs', 'logs.title'),
         links: navLabel('sidebar.links', 'links.navTitle'),
         logout: navLabel('sidebar.logout', 'logout'),
         logs: navLabel('sidebar.logs', 'logs.title'),
