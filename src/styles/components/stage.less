@@ -23,8 +23,16 @@
        only artwork on the panel; the hardcoded Lottie fallback is gone. */
 
     .logo {
-        width: 200px;
-        height: 80px;
+        /*
+         * A box, not a strip. The old 200x80 assumed a wide wordmark; the
+         * uploaded platform logos are square (512x512 on dev), and `contain`
+         * inside an 80px-high strip shrank them to an 80px thumbnail lost in a
+         * 40vw panel. Height leads and width follows so a wide wordmark and a
+         * square mark both fill the same optical area.
+         */
+        width: auto;
+        max-width: 260px;
+        height: 140px;
 
         img {
             max-width: 100%;
