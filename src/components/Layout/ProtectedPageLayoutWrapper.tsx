@@ -137,7 +137,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                 <Layout className={classNames(styles.mainContent)}>
                     <Content className={styles.content}>
                         {children}
-                        {!hasRole(UserRole.TenantAdmin) && <SiteFooter />}
+                        <SiteFooter />
                     </Content>
                 </Layout>
             </Layout>
