@@ -48,12 +48,12 @@ const LONG_BODY = Array.from(
 ).join('\n\n');
 
 const withLongBody = (Story: () => ReactNode) => {
-    /* `keySeparator: false` (see src/i18n.ts) — the dots are part of the key,
-       and the placeholder body is already in the bundle, so the resource has to
-       be overwritten explicitly. */
+    /* The dots are part of the key: src/i18n.ts sets `keySeparator: false`
+       globally and `addResource` inherits it, so `footer.legal.privacy.body` is
+       a single flat key. The placeholder body is already in the bundle, so the
+       resource has to be overwritten explicitly. */
     ['de', 'en'].forEach((language) => {
         i18n.addResource(language, 'translations', 'footer.legal.privacy.body', LONG_BODY, {
-            keySeparator: false,
             silent: true,
         });
     });
