@@ -228,6 +228,7 @@ describe('applyAdminInvertedTheme', () => {
         ['--m3-on-secondary-container', '--m3-secondary-container'],
         ['--m3-on-error', '--m3-error'],
         ['--m3-on-error-container', '--m3-error-container'],
+        ['--admin-nav-indicator-icon', '--admin-nav-indicator-surface'],
     ])('%s on %s meets WCAG-AA body contrast', (onRole, surface) => {
         const { tokens } = computeOrisoPalette({ accentDark: BENCHMARK_SEED }, 'inverted');
         const ratio = wcagRatio(tokens[onRole], tokens[surface]);

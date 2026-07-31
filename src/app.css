@@ -193,6 +193,12 @@
     --admin-field-surface-hover: #f6f3f3;
     --admin-field-selected-surface: #ffe2de;
     --admin-field-selected-text: #930008;
+    /* Mobile bottom-navigation active indicator (Figma 56576:34607). The deep
+       brand red pill behind the selected destination's icon; the icon on top is
+       the readable foreground. Seed-derived at runtime by computeOrisoPalette —
+       these static values must match what it writes for the default seed. */
+    --admin-nav-indicator-surface: #410001;
+    --admin-nav-indicator-icon: #ffffff;
     --admin-status-success: var(--tag-success, #0a882f);
     --admin-status-success-container: color-mix(
         in srgb,
