@@ -5,8 +5,6 @@
    purpose; see the block comment in src/app.css. */
 
 .protectedLayout {
-    padding-bottom: @mobileNavHeight;
-
     .ant-layout-sider {
         z-index: 80;
         height: @mobileNavHeight;
@@ -109,22 +107,19 @@
     }
 }
 
-/* Mobile bottom bar */
+/*
+ * Mobile: the sidebar is no longer folded down into a bottom bar. `AdminBottomNav`
+ * is its own component and is the only navigation rendered below @screen-md, so the
+ * `.ant-layout-sider` rules here simply do not apply — the Sider is not in the tree.
+ * All that is left is reserving the bar's height so it cannot cover page content.
+ *
+ * The old rules stretched the Sider across the viewport and hid `.lowerSidebar`,
+ * which is why mobile users had no way to sign out; account and logout now live in
+ * the overflow sheet instead.
+ */
 @media screen and (max-width: @screen-sm-max) {
     .protectedLayout {
-        .ant-layout-sider {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100% !important;
-            max-width: 100% !important;
-        }
-
-        .mainMenu {
-            .lowerSidebar {
-                display: none;
-            }
-        }
+        padding-bottom: @bottomBarHeight;
     }
 }
 
