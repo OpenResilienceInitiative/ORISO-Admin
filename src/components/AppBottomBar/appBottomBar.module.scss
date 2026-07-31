@@ -1,0 +1,44 @@
+/* Mobile bottom bar (Figma 56576:34607): 96px shelf, 16px padding, 16px gap,
+   rounded only at the top because it is flush with the bottom of the viewport. */
+
+.bar {
+    display: flex;
+    width: 100%;
+    height: 96px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 16px;
+    background: var(--m3-surface-container, #f0edee);
+    border-radius: 12px 12px 0 0;
+    gap: 16px;
+}
+
+.searchSlot {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+}
+
+/* The navigation takes whatever the search pill leaves; its own segments then
+   share that space equally. `min-width: 0` keeps long labels from pushing the
+   search pill off the left edge. */
+.navSlot {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+/*
+ * Expanded search. The two slots swap roles: the search grows into the free
+ * width, the navigation stops growing and shrinks to its single overflow
+ * button. Because the nav slot is `flex: 0 0 auto` here, the search can never
+ * take the last 48px away from it — the guarantee is in the flex model, not in
+ * a magic pixel width that a wider phone would break.
+ */
+.searchSlotExpanded {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.navSlotCollapsed {
+    flex: 0 0 auto;
+}
