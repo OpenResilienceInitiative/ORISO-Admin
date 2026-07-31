@@ -1,5 +1,6 @@
-import { Col, Row } from 'antd';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { CardDeck } from '../../../../components/CardDeck';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { UserRole } from '../../../../enums/UserRole';
 import { useUserRoles } from '../../../../hooks/useUserRoles.hook';
@@ -10,20 +11,33 @@ import { TopicsSettings } from '../../../../components/Tenants/AppSettings/Topic
 
 export const TenantAppSettings = () => {
     const { id } = useParams<{ id: string }>();
+    const { t } = useTranslation();
     const { hasRole, isSuperAdmin } = useUserRoles();
     const { settings } = useAppConfigContext();
     const canSeeTenantAppSettings = isSuperAdmin || hasRole(UserRole.TenantAdmin);
 
+    if (!canSeeTenantAppSettings) {
+        return null;
+    }
+
     return (
-        <Row gutter={[24, 24]}>
-            {canSeeTenantAppSettings && (
-                <Col span={12} sm={6}>
-                    <SmtpSettings tenantId={id} />
-                    <CommunicationSettings tenantId={id} />
-                    <OtherFunctionsSettings tenantId={id} hideTopics={settings.multitenancyWithSingleDomainEnabled} />
-                    <TopicsSettings />
-                </Col>
-            )}
-        </Row>
+        <CardDeck
+            ariaLabel={t('tenant.settings.cardDeck.ariaLabel')}
+            previousLabel={t('tenant.settings.cardDeck.previous')}
+            nextLabel={t('tenant.settings.cardDeck.next')}
+        >
+            <CardDeck.Item>
+                <SmtpSettings tenantId={id} />
+            </CardDeck.Item>
+            <CardDeck.Item>
+                <CommunicationSettings tenantId={id} />
+            </CardDeck.Item>
+            <CardDeck.Item>
+                <OtherFunctionsSettings tenantId={id} hideTopics={settings.multitenancyWithSingleDomainEnabled} />
+            </CardDeck.Item>
+            <CardDeck.Item>
+                <TopicsSettings />
+            </CardDeck.Item>
+        </CardDeck>
     );
 };
