@@ -181,19 +181,6 @@ const adminNavTokens = (navIndicator: string) => ({
     '--admin-nav-indicator-icon': readableOn(navIndicator),
 });
 
-/**
- * Mobile bottom-navigation active indicator (Figma 56576:34607): the deep brand
- * red 56×32 pill behind the selected destination's icon. It is a SURFACE, so
- * the icon on top is {@link readableOn} of it — never the other way round. Kept
- * as its own `--admin-*` pair instead of borrowing an M3 `on-*` role name,
- * because the M3 nav bar normally uses `secondary-container` here and ORISO
- * deliberately deviates. Static fallbacks live in src/app.css.
- */
-const adminNavTokens = (navIndicator: string) => ({
-    '--admin-nav-indicator-surface': navIndicator,
-    '--admin-nav-indicator-icon': readableOn(navIndicator),
-});
-
 const invertedTokens = (accentDark: string, accentLight: string, accentDim: string, onAccentLightVariant: string) => {
     const primary = accentLight;
     const primaryContainer = accentDark;
