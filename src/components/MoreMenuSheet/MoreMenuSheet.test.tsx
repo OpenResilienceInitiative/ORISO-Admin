@@ -170,7 +170,12 @@ describe('MoreMenuSheet', () => {
         expect(screen.getByRole('dialog')).toHaveFocus();
     });
 
-    it('locks page scroll while open and restores it on close', () => {
+    it('locks page scroll while open and restores the prior value on close', () => {
+        // A non-default value here, asserted exactly after close, is what
+        // proves restoration — "not hidden" alone would still pass if
+        // cleanup reset to '' instead of putting this back.
+        document.body.style.overflow = 'clip';
+
         const { rerender } = renderSheet();
 
         expect(document.body.style.overflow).toBe('hidden');
@@ -187,7 +192,8 @@ describe('MoreMenuSheet', () => {
             </MemoryRouter>,
         );
 
-        expect(document.body.style.overflow).not.toBe('hidden');
+        expect(document.body.style.overflow).toBe('clip');
+        document.body.style.overflow = '';
     });
 
     it('keeps Tab inside the sheet and never lands on the scrim', async () => {
