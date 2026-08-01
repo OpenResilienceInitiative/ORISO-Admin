@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { MoreMenuSheet, type MoreMenuSheetGroup } from './MoreMenuSheet';
+import { MoreMenuSheet, type MoreMenuSheetGroup, type MoreMenuSheetProps } from './MoreMenuSheet';
 
 const groups: MoreMenuSheetGroup[] = [
     {
@@ -37,6 +38,29 @@ const renderSheet = (props: Partial<React.ComponentProps<typeof MoreMenuSheet>> 
             />
         </MemoryRouter>,
     );
+
+// A real trigger button that toggles `open`, for tests that need focus to
+// meaningfully leave and return to something — a stub onClose can't stand in
+// for the element the sheet is supposed to hand focus back to.
+const StatefulHarness = (props: Partial<MoreMenuSheetProps> = {}) => {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <MemoryRouter>
+            <button onClick={() => setOpen(true)} type="button">
+                Mehr öffnen
+            </button>
+            <MoreMenuSheet
+                ariaLabel="Weitere Bereiche"
+                closeLabel="Menü schließen"
+                groups={groups}
+                onClose={() => setOpen(false)}
+                open={open}
+                {...props}
+            />
+        </MemoryRouter>
+    );
+};
 
 describe('MoreMenuSheet', () => {
     it('renders nothing while closed', () => {
@@ -106,12 +130,37 @@ describe('MoreMenuSheet', () => {
     it('keeps Tab inside the sheet and never lands on the scrim', async () => {
         renderSheet();
 
-        const entries = screen.getAllByRole('button').filter((entry) => entry.textContent !== '');
+        // The scrim button is a sibling of the dialog, not a child of it — so
+        // scoping to the dialog excludes it without filtering on textContent,
+        // which an unrelated non-empty button could otherwise defeat.
+        const entries = within(screen.getByRole('dialog')).getAllByRole('button');
         entries[entries.length - 1].focus();
 
         await userEvent.tab();
 
         expect(entries[0]).toHaveFocus();
         expect(screen.getByRole('button', { name: 'Menü schließen' })).not.toHaveFocus();
+    });
+
+    it('keeps Shift+Tab inside the sheet, wrapping from the first entry to the last', async () => {
+        renderSheet();
+
+        const entries = within(screen.getByRole('dialog')).getAllByRole('button');
+        entries[0].focus();
+
+        await userEvent.tab({ shift: true });
+
+        expect(entries[entries.length - 1]).toHaveFocus();
+    });
+
+    it('returns focus to the trigger that opened it when the sheet closes', async () => {
+        render(<StatefulHarness />);
+
+        const trigger = screen.getByRole('button', { name: 'Mehr öffnen' });
+        await userEvent.click(trigger);
+
+        await userEvent.keyboard('{Escape}');
+
+        expect(trigger).toHaveFocus();
     });
 });
