@@ -93,4 +93,23 @@ describe('SectionCarousel', () => {
 
         expect(screen.getByRole('tab')).toHaveAttribute('href', '/admin/settings/global-config');
     });
+
+    it('never sets aria-current on a routed tab, even when the router is already at that path', () => {
+        // NavLink would add aria-current="page" here on its own, since `to`
+        // matches the router's actual current location — role="tab" must only
+        // ever carry aria-selected.
+        render(
+            <MemoryRouter initialEntries={['/admin/settings/global-config']}>
+                <SectionCarousel
+                    activeKey="global_config"
+                    ariaLabel="Bereiche"
+                    items={[{ ...items[0], to: '/admin/settings/global-config' }]}
+                />
+            </MemoryRouter>,
+        );
+
+        const tab = screen.getByRole('tab');
+        expect(tab).not.toHaveAttribute('aria-current');
+        expect(tab).toHaveAttribute('aria-selected', 'true');
+    });
 });

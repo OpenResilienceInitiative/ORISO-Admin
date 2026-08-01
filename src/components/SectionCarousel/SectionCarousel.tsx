@@ -1,6 +1,6 @@
 import { useRef, type KeyboardEvent, type ReactNode } from 'react';
 import classNames from 'classnames';
-import { NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { SectionCard } from './SectionCard';
 import styles from './sectionCarousel.module.scss';
 
@@ -117,10 +117,16 @@ export const SectionCarousel = ({
                     return (
                         <li key={item.key} className={styles.slot}>
                             {item.to ? (
+                                // `Link`, not `NavLink`: role="tab" only ever takes
+                                // aria-selected, never aria-current — but NavLink
+                                // adds aria-current="page" on its own whenever `to`
+                                // matches the router's current location, regardless
+                                // of what this component's activeKey says (same
+                                // fix as M3NavigationBar and MoreMenuSheet).
                                 // eslint-disable-next-line react/jsx-props-no-spreading
-                                <NavLink {...shared} to={item.to} onClick={() => onSelect?.(item.key)}>
+                                <Link {...shared} to={item.to} onClick={() => onSelect?.(item.key)}>
                                     {card}
-                                </NavLink>
+                                </Link>
                             ) : (
                                 // eslint-disable-next-line react/jsx-props-no-spreading
                                 <button {...shared} type="button" onClick={() => onSelect?.(item.key)}>
