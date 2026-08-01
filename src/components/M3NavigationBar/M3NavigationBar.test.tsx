@@ -20,7 +20,7 @@ describe('M3NavigationBar', () => {
     it('marks only the active destination with aria-current', () => {
         renderBar();
 
-        expect(screen.getByText('Einstellungen').closest('[aria-current]')).not.toBeNull();
+        expect(screen.getByText('Einstellungen').closest('[aria-current]')).toHaveAttribute('aria-current', 'page');
         expect(screen.getByText('Träger').closest('[aria-current]')).toBeNull();
     });
 
