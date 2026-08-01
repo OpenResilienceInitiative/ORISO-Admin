@@ -1,6 +1,5 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData, FETCH_SUCCESS } from '../fetchData';
 import { agencyEndpointBase } from '../../appConfig';
-import { withLegacyDioceseId } from '../legacyCaritasApiDefaults';
 import { AgencyData } from '../../types/agency';
 import updateAgencyType from './updateAgencyType';
 import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant';
@@ -36,7 +35,7 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
     const hasTopicField = formInput?.topicIds !== undefined || formInput?.topics !== undefined;
     const topicIds = hasTopicField ? normalizeTopicIds(formInput.topicIds ?? formInput.topics) : undefined;
 
-    const agencyDataRequestBody = withLegacyDioceseId({
+    const agencyDataRequestBody = {
         name: formInput.name,
         description: formInput.description,
         ...(hasTopicField ? { topicIds } : {}),
@@ -61,7 +60,7 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         // Omitting `settings` keeps the stored value backend-side; the injected platform
         // controls must never be echoed back (super-admin-only update path).
         ...(formInput.settings ? { settings: stripAgencyAdminControls(formInput.settings) } : {}),
-    });
+    };
 
     return fetchData({
         url: `${agencyEndpointBase}/${agencyModel.id}`,

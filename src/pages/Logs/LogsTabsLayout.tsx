@@ -5,29 +5,36 @@ import { AdminSegmentedTabs, AdminSegmentedTabItem } from '../../components/Admi
 import routePathNames from '../../appConfig';
 import { ReactComponent as PowerOffIcon } from '../../resources/img/svg/power_off.svg';
 import { ReactComponent as FaceNodIcon } from '../../resources/img/svg/face_nod.svg';
+import { ReactComponent as PersonSearchIcon } from '../../resources/img/svg/person_search_filled.svg';
 
 interface LogsTabsLayoutProps {
-    /** Inactive-account audit is super-admin only. */
-    showInactive: boolean;
+    /** Supervision audit — every admin with consultant read except the platform admin. */
+    showSupervisor: boolean;
     /** Case-handover audit requires the case-handover admin permission. */
     showCaseHandover: boolean;
+    /** Inactive-account audit is super-admin only. */
+    showInactive: boolean;
 }
 
 /**
- * Unifies the two activity-log views under a single "Logs" entry: one page with
- * URL-driven tabs ("Inactive" first/default, then "Case handover"). Only the tabs
- * the current admin may access are rendered; the child route renders in the Outlet.
+ * The single "Logs" section: one page, URL-driven tabs, and only the tabs the current admin may
+ * access. Every role — platform admin, Träger admin, Beratungsstellen-Admin — gets the same shape;
+ * splitting these views over separate nav entries is what made the menu look duplicated
+ * (ORISO-Admin#84). The child route renders in the Outlet.
  */
-export const LogsTabsLayout = ({ showInactive, showCaseHandover }: LogsTabsLayoutProps) => {
+export const LogsTabsLayout = ({ showSupervisor, showCaseHandover, showInactive }: LogsTabsLayoutProps) => {
     const { t } = useTranslation();
 
     const tabs: AdminSegmentedTabItem[] = [];
-    if (showInactive) {
+    if (showSupervisor) {
         tabs.push({
-            id: 'inactive',
-            label: t('sidebar.inactiveAudit', String(t('inactiveAudit.title'))),
-            icon: <PowerOffIcon />,
-            to: routePathNames.inactiveAccountAuditLogs,
+            id: 'supervisors',
+            label: t('sidebar.supervisorLogs', String(t('logs.supervisors.subTitle'))),
+            icon: <PersonSearchIcon />,
+            to: routePathNames.logs,
+            // `/admin/logs` is a prefix of every sibling tab route — without an exact match the
+            // supervision tab would stay highlighted on the case-handover and inactive tabs.
+            end: true,
         });
     }
     if (showCaseHandover) {
@@ -36,6 +43,14 @@ export const LogsTabsLayout = ({ showInactive, showCaseHandover }: LogsTabsLayou
             label: t('sidebar.caseHandoverLogs', String(t('caseHandoverLogs.title'))),
             icon: <FaceNodIcon />,
             to: routePathNames.caseHandoverLogs,
+        });
+    }
+    if (showInactive) {
+        tabs.push({
+            id: 'inactive',
+            label: t('sidebar.inactiveAudit', String(t('inactiveAudit.title'))),
+            icon: <PowerOffIcon />,
+            to: routePathNames.inactiveAccountAuditLogs,
         });
     }
 

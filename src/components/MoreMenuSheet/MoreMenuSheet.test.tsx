@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { MoreMenuSheet, type MoreMenuSheetGroup } from './MoreMenuSheet';
+import { MoreMenuSheet, type MoreMenuSheetGroup, type MoreMenuSheetProps } from './MoreMenuSheet';
 
 const groups: MoreMenuSheetGroup[] = [
     {
@@ -38,6 +39,29 @@ const renderSheet = (props: Partial<React.ComponentProps<typeof MoreMenuSheet>> 
         </MemoryRouter>,
     );
 
+// A real trigger button that toggles `open`, for tests that need focus to
+// meaningfully leave and return to something — a stub onClose can't stand in
+// for the element the sheet is supposed to hand focus back to.
+const StatefulHarness = (props: Partial<MoreMenuSheetProps> = {}) => {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <MemoryRouter>
+            <button onClick={() => setOpen(true)} type="button">
+                Mehr öffnen
+            </button>
+            <MoreMenuSheet
+                ariaLabel="Weitere Bereiche"
+                closeLabel="Menü schließen"
+                groups={groups}
+                onClose={() => setOpen(false)}
+                open={open}
+                {...props}
+            />
+        </MemoryRouter>
+    );
+};
+
 describe('MoreMenuSheet', () => {
     it('renders nothing while closed', () => {
         renderSheet({ open: false });
@@ -61,12 +85,29 @@ describe('MoreMenuSheet', () => {
         });
     });
 
-    it('marks the current entry of each group', () => {
+    it('marks the current entry of each group with aria-current="location", not "page"', () => {
         renderSheet();
 
-        const current = screen.getAllByRole('button', { current: 'page' });
+        // These entries have no `to` — they mark the current section of the
+        // page the user is already on, not a link that IS the active route.
+        expect(screen.queryAllByRole('button', { current: 'page' })).toHaveLength(0);
+
+        const current = screen.getAllByRole('button', { current: 'location' });
 
         expect(current.map((entry) => entry.textContent)).toEqual(['Einstellungen', 'Rechtliches']);
+    });
+
+    it('marks a routed entry current with aria-current="page"', () => {
+        const routedGroups: MoreMenuSheetGroup[] = [
+            {
+                label: 'Bereiche',
+                activeKey: 'settings',
+                entries: [{ key: 'settings', label: 'Einstellungen', to: '/admin/settings' }],
+            },
+        ];
+        renderSheet({ groups: routedGroups });
+
+        expect(screen.getByRole('link', { name: 'Einstellungen', current: 'page' })).toBeInTheDocument();
     });
 
     it('drops empty groups instead of rendering a bare heading', () => {
@@ -83,6 +124,26 @@ describe('MoreMenuSheet', () => {
         await userEvent.click(screen.getByText('Träger'));
 
         expect(onSelect).toHaveBeenCalledWith('tenants');
+        expect(onClose).toHaveBeenCalled();
+    });
+
+    it('navigates, reports the chosen entry, and closes for a routed entry', async () => {
+        const onClose = vi.fn();
+        const onSelect = vi.fn();
+        const routedGroups: MoreMenuSheetGroup[] = [
+            {
+                label: 'Bereiche',
+                entries: [{ key: 'settings', label: 'Einstellungen', to: '/admin/settings' }],
+            },
+        ];
+        renderSheet({ groups: routedGroups, onClose, onSelect });
+
+        const link = screen.getByRole('link', { name: 'Einstellungen' });
+        expect(link).toHaveAttribute('href', '/admin/settings');
+
+        await userEvent.click(link);
+
+        expect(onSelect).toHaveBeenCalledWith('settings');
         expect(onClose).toHaveBeenCalled();
     });
 
@@ -103,15 +164,72 @@ describe('MoreMenuSheet', () => {
         expect(screen.getByRole('button', { name: 'Einstellungen' })).toHaveFocus();
     });
 
+    it('falls back to focusing the dialog itself when there is no focusable entry', () => {
+        renderSheet({ groups: [{ label: 'Sektionen', entries: [] }] });
+
+        expect(screen.getByRole('dialog')).toHaveFocus();
+    });
+
+    it('locks page scroll while open and restores the prior value on close', () => {
+        // A non-default value here, asserted exactly after close, is what
+        // proves restoration — "not hidden" alone would still pass if
+        // cleanup reset to '' instead of putting this back.
+        document.body.style.overflow = 'clip';
+
+        const { rerender } = renderSheet();
+
+        expect(document.body.style.overflow).toBe('hidden');
+
+        rerender(
+            <MemoryRouter>
+                <MoreMenuSheet
+                    ariaLabel="Weitere Bereiche"
+                    closeLabel="Menü schließen"
+                    groups={groups}
+                    onClose={vi.fn()}
+                    open={false}
+                />
+            </MemoryRouter>,
+        );
+
+        expect(document.body.style.overflow).toBe('clip');
+        document.body.style.overflow = '';
+    });
+
     it('keeps Tab inside the sheet and never lands on the scrim', async () => {
         renderSheet();
 
-        const entries = screen.getAllByRole('button').filter((entry) => entry.textContent !== '');
+        // The scrim button is a sibling of the dialog, not a child of it — so
+        // scoping to the dialog excludes it without filtering on textContent,
+        // which an unrelated non-empty button could otherwise defeat.
+        const entries = within(screen.getByRole('dialog')).getAllByRole('button');
         entries[entries.length - 1].focus();
 
         await userEvent.tab();
 
         expect(entries[0]).toHaveFocus();
         expect(screen.getByRole('button', { name: 'Menü schließen' })).not.toHaveFocus();
+    });
+
+    it('keeps Shift+Tab inside the sheet, wrapping from the first entry to the last', async () => {
+        renderSheet();
+
+        const entries = within(screen.getByRole('dialog')).getAllByRole('button');
+        entries[0].focus();
+
+        await userEvent.tab({ shift: true });
+
+        expect(entries[entries.length - 1]).toHaveFocus();
+    });
+
+    it('returns focus to the trigger that opened it when the sheet closes', async () => {
+        render(<StatefulHarness />);
+
+        const trigger = screen.getByRole('button', { name: 'Mehr öffnen' });
+        await userEvent.click(trigger);
+
+        await userEvent.keyboard('{Escape}');
+
+        expect(trigger).toHaveFocus();
     });
 });

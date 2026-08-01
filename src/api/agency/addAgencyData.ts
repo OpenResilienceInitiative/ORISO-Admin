@@ -1,6 +1,5 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { agencyEndpointBase } from '../../appConfig';
-import { withLegacyDioceseId } from '../legacyCaritasApiDefaults';
 import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
 import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
@@ -14,7 +13,7 @@ export function buildAgencyDataRequestBody(
 ) {
     // ADR-003: single-select topic picker — normalise the Option/array/id shapes to string[].
     const topicIds = normalizeTopicIds(formData?.topicIds ?? formData?.topics);
-    const requestBody: any = withLegacyDioceseId({
+    const requestBody: any = {
         name: formData.name,
         description: formData.description ? formData.description : '',
         postcode: formData.postcode,
@@ -34,7 +33,7 @@ export function buildAgencyDataRequestBody(
         dataProtection: formData.dataProtection || { agreement: true, agreementDate: new Date().toISOString() },
         tenantId,
         agencyLogo: formData.agencyLogo || '',
-    });
+    };
 
     // Only include optional fields if they have values
     if (topicIds && topicIds.length > 0) {

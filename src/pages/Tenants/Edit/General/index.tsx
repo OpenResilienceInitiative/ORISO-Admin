@@ -8,6 +8,7 @@ import { getDomain } from '../../../../utils/getDomain';
 import { CardEditable } from '../../../../components/CardEditable';
 import { Card } from '../../../../components/Card';
 import { CardDeck } from '../../../../components/CardDeck';
+import { CardGrid } from '../../../../components/CardGrid';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useAddOrUpdateTenant } from '../../../../hooks/useAddOrUpdateTenant.hook';
@@ -210,183 +211,172 @@ export const GeneralTenantSettings = () => {
     return (
         <ThemeProvider theme={orisoMuiTheme}>
             <Form form={form} onFinish={handleSave} layout="vertical">
-                <CardDeck
-                    ariaLabel={t('tenants.add.mainTenantTitle')}
-                    className={styles.tenantCardDeck}
-                    deckClassName={styles.tenantCardDeckScroll}
-                    footerClassName={styles.tenantCardDeckFooter}
-                    previousLabel={t('tenant.settings.cardDeck.previous')}
-                    nextLabel={t('tenant.settings.cardDeck.next')}
-                >
-                    <CardDeck.Item className={styles.tenantCardDeckItem}>
-                        <Card
-                            titleKey="tenants.add.mainTenantTitle"
-                            fullHeight
-                            variant="dialog"
-                            autoHeight
-                            className={styles.createCard}
-                        >
+                <CardGrid minCardWidth={425} maxColumns={2}>
+                    <Card
+                        titleKey="tenants.add.mainTenantTitle"
+                        fullHeight
+                        variant="dialog"
+                        autoHeight
+                        className={styles.createCard}
+                    >
+                        <div className={styles.fieldGroup}>
+                            <MuiFormField
+                                name="name"
+                                label={t('tenants.add.form.name.placeholder')}
+                                required
+                                rules={[requiredRule]}
+                            />
+                        </div>
+                        {shouldShowSubdomainField && (
                             <div className={styles.fieldGroup}>
                                 <MuiFormField
-                                    name="name"
-                                    label={t('tenants.add.form.name.placeholder')}
+                                    name="subdomain"
+                                    label={t('tenants.add.form.subdomain.placeholder')}
                                     required
-                                    rules={[requiredRule]}
+                                    rules={[requiredRule, subdomainFormatRule]}
+                                    endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
                                 />
                             </div>
-                            {shouldShowSubdomainField && (
-                                <div className={styles.fieldGroup}>
-                                    <MuiFormField
-                                        name="subdomain"
-                                        label={t('tenants.add.form.subdomain.placeholder')}
-                                        required
-                                        rules={[requiredRule, subdomainFormatRule]}
-                                        endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
-                                    />
-                                </div>
-                            )}
-                            <div className={styles.fieldGroup}>
-                                <MuiNumberFormField
-                                    name={['licensing', 'allowedNumberOfUsers']}
-                                    label={t('tenants.add.form.allowedConsultantsLicense.placeholder')}
-                                    required
-                                    min={1}
-                                    rules={[requiredRule]}
-                                />
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <MuiFormField
-                                    name="address"
-                                    label={t('tenants.add.form.address.label')}
-                                    placeholder={t('tenants.add.form.address.placeholder')}
-                                />
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <MuiMultilineFormField
-                                    name="description"
-                                    label={t('tenants.add.form.description.label')}
-                                    placeholder={t('tenants.add.form.description.placeholder')}
-                                />
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <MuiFormField
-                                    name="topic"
-                                    label={t('tenants.add.form.topic.label')}
-                                    placeholder={t('tenants.add.form.topic.placeholder')}
-                                    helpText={t('tenants.add.form.topic.info')}
-                                />
-                            </div>
-                        </Card>
-                    </CardDeck.Item>
-                    <CardDeck.Item className={styles.tenantCardDeckItem}>
-                        <Card
-                            titleKey="tenants.add.adminCardTitle"
-                            fullHeight
-                            variant="dialog"
-                            autoHeight
-                            className={styles.createCard}
-                            footer={
-                                <>
-                                    <M3Button onClick={() => navigate(routePathNames.tenants)}>
-                                        {t('card.edit.cancel')}
-                                    </M3Button>
-                                    <M3Button onClick={() => form.submit()}>{t('card.edit.save')}</M3Button>
-                                </>
-                            }
-                        >
-                            <div className={styles.fieldGroup}>
-                                <MuiFormField
-                                    name="tenantAdminUsername"
-                                    label={t('tenantAdmins.form.username')}
-                                    placeholder={t('placeholder.username')}
-                                    required
-                                    rules={[
-                                        requiredRule,
-                                        {
-                                            pattern: /^[a-z0-9_-]+$/,
-                                            message: t('message.error.username.format'),
+                        )}
+                        <div className={styles.fieldGroup}>
+                            <MuiNumberFormField
+                                name={['licensing', 'allowedNumberOfUsers']}
+                                label={t('tenants.add.form.allowedConsultantsLicense.placeholder')}
+                                required
+                                min={1}
+                                rules={[requiredRule]}
+                            />
+                        </div>
+                        <div className={styles.fieldGroup}>
+                            <MuiFormField
+                                name="address"
+                                label={t('tenants.add.form.address.label')}
+                                placeholder={t('tenants.add.form.address.placeholder')}
+                            />
+                        </div>
+                        <div className={styles.fieldGroup}>
+                            <MuiMultilineFormField
+                                name="description"
+                                label={t('tenants.add.form.description.label')}
+                                placeholder={t('tenants.add.form.description.placeholder')}
+                            />
+                        </div>
+                        <div className={styles.fieldGroup}>
+                            <MuiFormField
+                                name="topic"
+                                label={t('tenants.add.form.topic.label')}
+                                placeholder={t('tenants.add.form.topic.placeholder')}
+                                helpText={t('tenants.add.form.topic.info')}
+                            />
+                        </div>
+                    </Card>
+                    <Card
+                        titleKey="tenants.add.adminCardTitle"
+                        fullHeight
+                        variant="dialog"
+                        autoHeight
+                        className={styles.createCard}
+                        footer={
+                            <>
+                                <M3Button onClick={() => navigate(routePathNames.tenants)}>
+                                    {t('card.edit.cancel')}
+                                </M3Button>
+                                <M3Button onClick={() => form.submit()}>{t('card.edit.save')}</M3Button>
+                            </>
+                        }
+                    >
+                        <div className={styles.fieldGroup}>
+                            <MuiFormField
+                                name="tenantAdminUsername"
+                                label={t('tenantAdmins.form.username')}
+                                placeholder={t('placeholder.username')}
+                                required
+                                rules={[
+                                    requiredRule,
+                                    {
+                                        pattern: /^[a-z0-9_-]+$/,
+                                        message: t('message.error.username.format'),
+                                    },
+                                ]}
+                            />
+                        </div>
+                        <div className={styles.fieldGroup}>
+                            <MuiPasswordFormField
+                                name="tenantAdminPassword"
+                                label={t('tenantAdmins.form.password')}
+                                placeholder={t('placeholder.password')}
+                                required
+                                rules={[
+                                    requiredRule,
+                                    {
+                                        min: 8,
+                                        message: t('message.error.password.minLength'),
+                                    },
+                                    {
+                                        pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
+                                        message: t('message.error.password.policy'),
+                                    },
+                                ]}
+                            />
+                        </div>
+                        <div className={styles.fieldGroup}>
+                            <MuiPasswordFormField
+                                name="tenantAdminPasswordConfirmation"
+                                label={t('tenantAdmins.form.passwordConfirmation')}
+                                placeholder={t('placeholder.password')}
+                                required
+                                dependencies={['tenantAdminPassword']}
+                                rules={[
+                                    requiredRule,
+                                    ({ getFieldValue }) => ({
+                                        validator(_, value) {
+                                            if (!value || getFieldValue('tenantAdminPassword') === value) {
+                                                return Promise.resolve();
+                                            }
+                                            return Promise.reject(
+                                                new Error(t('profile.passwordChange.error.passwordsNotMatch')),
+                                            );
                                         },
-                                    ]}
-                                />
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <MuiPasswordFormField
-                                    name="tenantAdminPassword"
-                                    label={t('tenantAdmins.form.password')}
-                                    placeholder={t('placeholder.password')}
-                                    required
-                                    rules={[
-                                        requiredRule,
-                                        {
-                                            min: 8,
-                                            message: t('message.error.password.minLength'),
-                                        },
-                                        {
-                                            pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-                                            message: t('message.error.password.policy'),
-                                        },
-                                    ]}
-                                />
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <MuiPasswordFormField
-                                    name="tenantAdminPasswordConfirmation"
-                                    label={t('tenantAdmins.form.passwordConfirmation')}
-                                    placeholder={t('placeholder.password')}
-                                    required
-                                    dependencies={['tenantAdminPassword']}
-                                    rules={[
-                                        requiredRule,
-                                        ({ getFieldValue }) => ({
-                                            validator(_, value) {
-                                                if (!value || getFieldValue('tenantAdminPassword') === value) {
-                                                    return Promise.resolve();
-                                                }
-                                                return Promise.reject(
-                                                    new Error(t('profile.passwordChange.error.passwordsNotMatch')),
-                                                );
-                                            },
-                                        }),
-                                    ]}
-                                />
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <MuiFormField
-                                    name="tenantAdminEmail"
-                                    label={t('email')}
-                                    placeholder={t('placeholder.email')}
-                                    type="email"
-                                    required
-                                    rules={[
-                                        requiredRule,
-                                        {
-                                            type: 'email',
-                                            message: t('message.error.email.incorrect'),
-                                        },
-                                    ]}
-                                />
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <MuiFormField
-                                    name="tenantAdminFirstname"
-                                    label={t('firstname')}
-                                    placeholder={t('placeholder.firstname')}
-                                    required
-                                    rules={[requiredRule]}
-                                />
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <MuiFormField
-                                    name="tenantAdminLastname"
-                                    label={t('lastname')}
-                                    placeholder={t('placeholder.lastname')}
-                                    required
-                                    rules={[requiredRule]}
-                                />
-                            </div>
-                        </Card>
-                    </CardDeck.Item>
-                </CardDeck>
+                                    }),
+                                ]}
+                            />
+                        </div>
+                        <div className={styles.fieldGroup}>
+                            <MuiFormField
+                                name="tenantAdminEmail"
+                                label={t('email')}
+                                placeholder={t('placeholder.email')}
+                                type="email"
+                                required
+                                rules={[
+                                    requiredRule,
+                                    {
+                                        type: 'email',
+                                        message: t('message.error.email.incorrect'),
+                                    },
+                                ]}
+                            />
+                        </div>
+                        <div className={styles.fieldGroup}>
+                            <MuiFormField
+                                name="tenantAdminFirstname"
+                                label={t('firstname')}
+                                placeholder={t('placeholder.firstname')}
+                                required
+                                rules={[requiredRule]}
+                            />
+                        </div>
+                        <div className={styles.fieldGroup}>
+                            <MuiFormField
+                                name="tenantAdminLastname"
+                                label={t('lastname')}
+                                placeholder={t('placeholder.lastname')}
+                                required
+                                rules={[requiredRule]}
+                            />
+                        </div>
+                    </Card>
+                </CardGrid>
             </Form>
         </ThemeProvider>
     );

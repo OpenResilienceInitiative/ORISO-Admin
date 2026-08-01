@@ -68,7 +68,6 @@ export interface AgencyData {
     deleteDate: string | null | undefined;
     createDate?: string; // Already returned by backend
     updateDate?: string; // Already returned by backend
-    dioceseId?: string;
     postCodes?: PostCodeRange[];
     dataProtection: {
         dataProtectionResponsibleEntity:

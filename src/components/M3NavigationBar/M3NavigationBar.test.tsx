@@ -20,7 +20,7 @@ describe('M3NavigationBar', () => {
     it('marks only the active destination with aria-current', () => {
         renderBar();
 
-        expect(screen.getByText('Einstellungen').closest('[aria-current]')).not.toBeNull();
+        expect(screen.getByText('Einstellungen').closest('[aria-current]')).toHaveAttribute('aria-current', 'page');
         expect(screen.getByText('Träger').closest('[aria-current]')).toBeNull();
     });
 
@@ -63,5 +63,19 @@ describe('M3NavigationBar', () => {
         renderBar();
 
         expect(screen.queryByRole('button', { name: /Mehr/ })).not.toBeInTheDocument();
+    });
+
+    it('renders a collapsed icon-only overflow button', () => {
+        renderBar({ collapsed: true, more: { label: 'Mehr', icon: <svg />, onClick: vi.fn() } });
+
+        const moreButton = screen.getByRole('button', { name: 'Mehr' });
+        expect(moreButton).toHaveAttribute('aria-label', 'Mehr');
+        expect(screen.queryByText('Einstellungen')).not.toBeInTheDocument();
+    });
+
+    it('applies the lang attribute to labels', () => {
+        renderBar({ lang: 'de' });
+
+        expect(screen.getByText('Einstellungen')).toHaveAttribute('lang', 'de');
     });
 });

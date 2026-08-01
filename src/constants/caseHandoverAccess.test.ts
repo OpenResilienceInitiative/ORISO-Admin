@@ -1,55 +1,40 @@
 import { describe, expect, it } from 'vitest';
 import { PermissionAction } from '../enums/PermissionAction';
 import { Resource } from '../enums/Resource';
-import { UserRole } from '../enums/UserRole';
 import {
     canEditCaseHandoverReasonPolicies,
     canReadCaseHandoverAdmin,
     canSeeSupervisorLogs,
 } from './caseHandoverAccess';
 
-describe('canSeeSupervisorLogs', () => {
-    it('allows tenant agency admins with consultant read access', () => {
-        const can = (action: PermissionAction | PermissionAction[], resource: Resource) =>
-            action === PermissionAction.Read && resource === Resource.Consultant;
+const canReadConsultant = (action: PermissionAction | PermissionAction[], resource: Resource) =>
+    action === PermissionAction.Read && resource === Resource.Consultant;
 
-        expect(canSeeSupervisorLogs(false, () => false, can)).toBe(true);
+describe('canSeeSupervisorLogs', () => {
+    it('allows every admin with consultant read access', () => {
+        expect(canSeeSupervisorLogs(false, canReadConsultant)).toBe(true);
     });
 
-    it('denies super admins, restricted agency admins, and users without consultant read', () => {
-        const can = () => false;
-        const canReadConsultant = (action: PermissionAction | PermissionAction[], resource: Resource) =>
-            action === PermissionAction.Read && resource === Resource.Consultant;
+    it('includes Beratungsstellen-Admins, who hold consultant read through `user-admin`', () => {
+        // `restricted-agency-admin` is always paired with `user-admin` (see the UserService's
+        // CreateAdminService), so consultant read is what decides — not the agency-scoped role.
+        expect(canSeeSupervisorLogs(false, canReadConsultant)).toBe(true);
+    });
 
-        expect(canSeeSupervisorLogs(true, () => false, canReadConsultant)).toBe(false);
-        expect(canSeeSupervisorLogs(false, (role) => role === UserRole.RestrictedAgencyAdmin, canReadConsultant)).toBe(
-            false,
-        );
-        expect(canSeeSupervisorLogs(false, () => false, can)).toBe(false);
+    it('denies super admins and admins without consultant read', () => {
+        expect(canSeeSupervisorLogs(true, canReadConsultant)).toBe(false);
+        expect(canSeeSupervisorLogs(false, () => false)).toBe(false);
     });
 });
 
 describe('canReadCaseHandoverAdmin', () => {
     it('allows super admins regardless of consultant permissions', () => {
-        const can = () => false;
-        const hasRole = () => false;
-
-        expect(canReadCaseHandoverAdmin(true, hasRole, can)).toBe(true);
+        expect(canReadCaseHandoverAdmin(true, () => false)).toBe(true);
     });
 
-    it('allows consultant readers except restricted agency admins', () => {
-        const can = (action: PermissionAction | PermissionAction[], resource: Resource) =>
-            action === PermissionAction.Read && resource === Resource.Consultant;
-
-        expect(canReadCaseHandoverAdmin(false, () => false, can)).toBe(true);
-        expect(canReadCaseHandoverAdmin(false, (role) => role === UserRole.RestrictedAgencyAdmin, can)).toBe(false);
-        expect(
-            canReadCaseHandoverAdmin(
-                false,
-                () => false,
-                () => false,
-            ),
-        ).toBe(false);
+    it('allows every consultant reader, Beratungsstellen-Admins included', () => {
+        expect(canReadCaseHandoverAdmin(false, canReadConsultant)).toBe(true);
+        expect(canReadCaseHandoverAdmin(false, () => false)).toBe(false);
     });
 });
 

@@ -46,11 +46,45 @@
        under a grey page. */
     padding: @spacing-sm;
     background: transparent;
+    /* Inherited by the standalone language trigger, whose hover tint and focus
+       ring follow `currentColor`. Below @screen-xl the stage variant is an
+       ordinary in-flow footer on the light surface, so it takes the light
+       surface's ink; the desktop block below flips it to white on the panel. */
+    color: @black-80-opacity;
 
     .footerMenu {
         padding-left: 0;
         border-bottom: 0;
+        /*
+         * ONE row — the defect the 100%-zoom review found was the MENU folding
+         * ("Impressum Datenschutz" on one line, the language entry on the next).
+         * The rule sits on the menu, not on the footer: the menu is two short
+         * words that always fit, so it can be held to a line safely. Holding the
+         * whole FOOTER to a line would be unsafe — `.publicLayout` sets
+         * `overflow-x: hidden`, so anything that did not fit would be clipped
+         * away instead of wrapped, and `disabledOverflow` has already removed
+         * antd's own collapse-to-"…" fallback. The optional version stamp may
+         * therefore still drop below; a wrapped build stamp is not a broken menu.
+         */
+        flex-wrap: nowrap;
         background-color: transparent;
+    }
+}
+
+/*
+ * No red bar under a footer entry.
+ *
+ * antd's horizontal menu marks the active/open entry with a bottom border in
+ * the primary colour. On this surface the primary colour is the brand red, and
+ * a red rule under "Datenschutz" on a sign-in screen reads as a validation
+ * error, not as a hover state. The entries already answer with an underline on
+ * hover (see below), which is the affordance that works on the dark panel.
+ */
+
+.layoutFooter .footerMenu.ant-menu-horizontal {
+    > .ant-menu-item::after,
+    > .ant-menu-submenu::after {
+        border-bottom: 0;
     }
 }
 
@@ -64,8 +98,13 @@
         left: 0;
         width: 40vw;
         justify-content: flex-start;
-        padding: @spacing-m @spacing-2xl;
+        /* Same gutter as the stage panel's own padding (`@stage-gutter`), so the
+           footer stays flush under the claim. It tightens below ~1500px because
+           40vw is simply not wide enough there for a fixed 80px gutter AND a
+           one-line footer — the gutter gives way, the row does not. */
+        padding: @spacing-m @stage-gutter;
         background: transparent;
+        color: @white;
         gap: @spacing-m;
 
         .footerMenu {
@@ -87,6 +126,16 @@
                     color: @white;
                     text-decoration: underline;
                 }
+
+                /* The trailing margin of the last entry used to stack on top of
+                   the footer's own gap, so the language control sat 35px from
+                   "Datenschutz" while the two legal entries sat 20px apart.
+                   Dropping it makes the spacing uniform AND gives the row back
+                   the width it needs at the narrow end of the desktop range. */
+
+                &:last-child {
+                    margin-right: 0;
+                }
             }
 
             .ant-menu-submenu-arrow,
@@ -101,6 +150,15 @@
                     color: @white;
                 }
             }
+        }
+
+        /* Same voice as the menu entries next to it — the control is separate,
+           the typography is not. */
+
+        .footerLanguage {
+            font-size: @fontSize-m;
+            font-weight: 700;
+            text-transform: uppercase;
         }
 
         .platformVersion {
