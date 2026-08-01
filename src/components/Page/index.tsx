@@ -14,8 +14,11 @@ import { Spin } from 'antd';
 import classNames from 'classnames';
 import React, { cloneElement, forwardRef, Ref, useEffect, useMemo, useRef, type JSX } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissions/tab_star.svg';
+import { SectionCarousel, type SectionCarouselItem } from '../SectionCarousel';
+import { getSectionArtwork } from '../../constants/sectionArtwork';
+import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import styles from './styles.module.scss';
 
 interface PageProps {
@@ -72,6 +75,8 @@ export const tabIcons: Record<string, SvgIconComponent> = {
 const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: string; icon?: JSX.Element }> }) => {
     const { t } = useTranslation();
     const tabsContainerRef = useRef<HTMLDivElement>(null);
+    const isDesktopLayout = useIsDesktopLayout();
+    const { pathname } = useLocation();
 
     useEffect(() => {
         tabsContainerRef.current?.querySelector('a.active')?.scrollIntoView({
@@ -79,6 +84,41 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
             inline: 'nearest',
         });
     }, [tabs]);
+
+    /*
+     * Mobile shows the section carousel instead of the pill row: the pills are
+     * sized for a desktop header and become unusable on a phone. Artwork is
+     * looked up by `iconName`, which is also what the image files are named
+     * after — sections without one keep their icon on a tonal tile, so pages
+     * outside settings (logs, statistics, users) work unchanged.
+     */
+    if (!isDesktopLayout) {
+        const items: SectionCarouselItem[] = tabs
+            .filter((tab) => tab && tab.to)
+            .map(({ icon, iconName, ...tab }) => {
+                const Icon = iconName ? tabIcons[iconName] : undefined;
+                const TabIcon = Icon || TabStarIcon;
+
+                return {
+                    key: tab.to,
+                    label: String(t(tab.titleKey)),
+                    image: iconName ? getSectionArtwork(iconName) : undefined,
+                    icon: icon ?? <TabIcon data-admin-tab-icon={iconName || 'fallback'} />,
+                    to: tab.to,
+                };
+            });
+
+        const active = items.filter((item) => pathname === item.to || pathname.startsWith(`${item.to}/`));
+
+        return (
+            <SectionCarousel
+                activeKey={active.sort((a, b) => b.key.length - a.key.length)[0]?.key}
+                ariaLabel={String(t('settings.title', 'Bereiche'))}
+                dimUnselected
+                items={items}
+            />
+        );
+    }
 
     return (
         <div className={styles.tabsContainer} ref={tabsContainerRef}>
