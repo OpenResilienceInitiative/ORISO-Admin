@@ -3,6 +3,7 @@ import { SearchOutlined } from '@ant-design/icons';
 import { Input, type InputRef } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ArrowMenuOpenIcon } from '../../resources/img/svg/oriso/arrow_menu_open_24px.svg';
 import styles from './globalSearchBar.module.scss';
 
 export interface GlobalSearchBarProps {
@@ -30,19 +31,14 @@ export interface GlobalSearchBarProps {
     searchPlaceholder?: string;
     /** Controlled query value; leave undefined for internal state. */
     value?: string;
+    /**
+     * `row` (default) is the page-toolbar layout: the search control plus its
+     * sibling controls in a horizontally scrollable row. `pill` is the
+     * bottom-bar layout (Figma 56576:34610) — the control on its own, 88px
+     * collapsed, raised off the bar surface with M3's inner shadow.
+     */
+    variant?: 'row' | 'pill';
 }
-
-/**
- * Placeholder for the M3 "open search panel" caret (Figma marks it "change
- * icon", so the final glyph is still owned by design). Flips horizontally via
- * CSS when the search control is expanded.
- */
-const ExpandCaretIcon = () => (
-    <svg aria-hidden fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 7v10l6-5-6-5z" fill="currentColor" />
-        <path d="M16 6h2v12h-2z" fill="currentColor" />
-    </svg>
-);
 
 /**
  * Global search row (Figma 1165:17005, "Search Bar Admin Panel"). The search
@@ -67,6 +63,7 @@ export const GlobalSearchBar = ({
     onSearchChange,
     searchPlaceholder,
     value,
+    variant = 'row',
 }: GlobalSearchBarProps) => {
     const { t } = useTranslation();
     const [expanded, setExpanded] = useState(defaultExpanded);
@@ -125,29 +122,63 @@ export const GlobalSearchBar = ({
         toggleExpanded();
     };
 
+    const caretButton = (
+        <button
+            aria-expanded={expanded}
+            aria-label={
+                expanded ? t('globalSearch.collapse', 'Suche einklappen') : t('globalSearch.expand', 'Suche ausklappen')
+            }
+            className={styles.iconButton}
+            key="caret"
+            onClick={toggleExpanded}
+            type="button"
+        >
+            <span className={classNames(styles.caret, { [styles.caretFlipped]: expanded })}>
+                <ArrowMenuOpenIcon aria-hidden />
+            </span>
+        </button>
+    );
+
+    const magnifierButton = (
+        <button
+            aria-label={
+                expanded && searchValue.length > 0
+                    ? t('globalSearch.submit', 'Suche ausführen')
+                    : t('globalSearch.toggle', 'Suche öffnen oder schließen')
+            }
+            className={styles.iconButton}
+            key="magnifier"
+            onClick={handleMagnifierClick}
+            type="button"
+        >
+            <SearchOutlined className={styles.magnifier} />
+        </button>
+    );
+
+    // The bottom bar follows M3's search-bar anatomy — magnifier as the leading
+    // icon, the panel caret trailing (Figma 56576:34610). The page-toolbar row
+    // keeps its established caret-first order so existing screens don't shift.
+    const [leadingButton, trailingButton] =
+        variant === 'pill' ? [magnifierButton, caretButton] : [caretButton, magnifierButton];
+
+    const isPill = variant === 'pill';
+
     return (
-        <div className={classNames(styles.scroller, className)}>
-            <div className={styles.row}>
+        <div className={classNames(styles.scroller, { [styles.pillScroller]: isPill }, className)}>
+            <div className={classNames(styles.row, { [styles.pillRow]: isPill })}>
                 {leading}
                 <div
-                    className={classNames(styles.search, { [styles.searchExpanded]: expanded })}
-                    style={{ width: expanded ? expandedWidth : undefined }}
+                    className={classNames(styles.search, {
+                        [styles.searchExpanded]: expanded,
+                        [styles.pillSearch]: isPill,
+                        [styles.pillSearchExpanded]: isPill && expanded,
+                    })}
+                    // The pill grows by filling its flex slot, never to a fixed
+                    // pixel width: the bottom bar keeps a 48px slot for the
+                    // overflow button, so the search can never push it away.
+                    style={{ width: expanded && !isPill ? expandedWidth : undefined }}
                 >
-                    <button
-                        aria-expanded={expanded}
-                        aria-label={
-                            expanded
-                                ? t('globalSearch.collapse', 'Suche einklappen')
-                                : t('globalSearch.expand', 'Suche ausklappen')
-                        }
-                        className={styles.iconButton}
-                        onClick={toggleExpanded}
-                        type="button"
-                    >
-                        <span className={classNames(styles.caret, { [styles.caretFlipped]: expanded })}>
-                            <ExpandCaretIcon />
-                        </span>
-                    </button>
+                    {leadingButton}
                     {expanded && (
                         <Input
                             aria-label={ariaLabel ?? searchPlaceholder ?? t('globalSearch.placeholder', 'Suchen')}
@@ -164,18 +195,7 @@ export const GlobalSearchBar = ({
                             variant="borderless"
                         />
                     )}
-                    <button
-                        aria-label={
-                            expanded && searchValue.length > 0
-                                ? t('globalSearch.submit', 'Suche ausführen')
-                                : t('globalSearch.toggle', 'Suche öffnen oder schließen')
-                        }
-                        className={styles.iconButton}
-                        onClick={handleMagnifierClick}
-                        type="button"
-                    >
-                        <SearchOutlined className={styles.magnifier} />
-                    </button>
+                    {trailingButton}
                 </div>
                 {children}
             </div>
