@@ -238,4 +238,20 @@ describe('applyAdminInvertedTheme', () => {
             `${onRole} (${tokens[onRole]}) on ${surface} (${tokens[surface]}) = ${ratio.toFixed(2)}:1`,
         ).toBeGreaterThanOrEqual(4.5);
     });
+
+    it('keeps the inverted nav indicator icon readable on a saturated custom accent (#00cc00)', () => {
+        // Regression for readableOn() using a raw-sRGB luminance shortcut: a
+        // saturated green reads as "light" under that shortcut even though its
+        // true WCAG luminance is low, so white text was picked and only cleared
+        // ~2.18:1 against the pill instead of the required 4.5:1.
+        const { tokens } = computeOrisoPalette({ accentDark: BENCHMARK_SEED, accentLight: '#00cc00' }, 'inverted');
+        const onRole = '--admin-nav-indicator-icon';
+        const surface = '--admin-nav-indicator-surface';
+        const ratio = wcagRatio(tokens[onRole], tokens[surface]);
+
+        expect(
+            ratio,
+            `${onRole} (${tokens[onRole]}) on ${surface} (${tokens[surface]}) = ${ratio.toFixed(2)}:1`,
+        ).toBeGreaterThanOrEqual(4.5);
+    });
 });
