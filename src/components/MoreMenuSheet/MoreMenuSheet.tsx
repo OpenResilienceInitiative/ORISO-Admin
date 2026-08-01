@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import classNames from 'classnames';
-import { NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import styles from './moreMenuSheet.module.scss';
 
 export interface MoreMenuSheetEntry {
@@ -63,13 +63,32 @@ export const MoreMenuSheet = ({ ariaLabel, closeLabel, groups, lang, onClose, on
         }
 
         restoreFocusRef.current = document.activeElement as HTMLElement | null;
-        sheetRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+        // Falls back to the dialog itself when every group is empty and there
+        // is no focusable entry — otherwise focus silently stays wherever it
+        // was and the sheet never receives it at all.
+        (sheetRef.current?.querySelector<HTMLElement>(FOCUSABLE) ?? sheetRef.current)?.focus();
 
         return () => {
             // Returning focus to the "Mehr" button is what makes the sheet
             // usable by keyboard at all — otherwise closing it drops the caret
             // back to the top of the document.
             restoreFocusRef.current?.focus();
+        };
+    }, [open]);
+
+    // Scroll-lock the app behind the sheet for as long as it's open — same
+    // pattern as DpaBlocker.tsx. Without it the page behind a position:fixed
+    // sheet keeps scrolling under the user's thumb.
+    useEffect(() => {
+        if (!open) {
+            return undefined;
+        }
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
         };
     }, [open]);
 
@@ -136,6 +155,7 @@ export const MoreMenuSheet = ({ ariaLabel, closeLabel, groups, lang, onClose, on
                 onKeyDown={handleKeyDown}
                 ref={sheetRef}
                 role="dialog"
+                tabIndex={-1}
             >
                 <span aria-hidden className={styles.grabber} />
                 {groups
@@ -159,17 +179,27 @@ export const MoreMenuSheet = ({ ariaLabel, closeLabel, groups, lang, onClose, on
                                     return (
                                         <li key={entry.key}>
                                             {entry.to ? (
-                                                <NavLink
+                                                // `Link`, not `NavLink`: NavLink overwrites any aria-current
+                                                // it is given with the result of its own route match, which
+                                                // would drop the marking here too — activeKey, not the
+                                                // router's current location, is this component's source of
+                                                // truth for which entry is current (see M3NavigationBar).
+                                                <Link
                                                     aria-current={isActive ? 'page' : undefined}
                                                     className={className}
                                                     onClick={select}
                                                     to={entry.to}
                                                 >
                                                     {entryContent(entry)}
-                                                </NavLink>
+                                                </Link>
                                             ) : (
+                                                // No `to` means this entry doesn't navigate to a route — it
+                                                // marks the current section of the page the user is already
+                                                // on. `aria-current="page"` is for a link that IS the active
+                                                // route; `"location"` is the correct value for a same-page
+                                                // position indicator (WAI-ARIA `aria-current`).
                                                 <button
-                                                    aria-current={isActive ? 'page' : undefined}
+                                                    aria-current={isActive ? 'location' : undefined}
                                                     className={className}
                                                     onClick={select}
                                                     type="button"

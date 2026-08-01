@@ -85,12 +85,29 @@ describe('MoreMenuSheet', () => {
         });
     });
 
-    it('marks the current entry of each group', () => {
+    it('marks the current entry of each group with aria-current="location", not "page"', () => {
         renderSheet();
 
-        const current = screen.getAllByRole('button', { current: 'page' });
+        // These entries have no `to` — they mark the current section of the
+        // page the user is already on, not a link that IS the active route.
+        expect(screen.queryAllByRole('button', { current: 'page' })).toHaveLength(0);
+
+        const current = screen.getAllByRole('button', { current: 'location' });
 
         expect(current.map((entry) => entry.textContent)).toEqual(['Einstellungen', 'Rechtliches']);
+    });
+
+    it('marks a routed entry current with aria-current="page"', () => {
+        const routedGroups: MoreMenuSheetGroup[] = [
+            {
+                label: 'Bereiche',
+                activeKey: 'settings',
+                entries: [{ key: 'settings', label: 'Einstellungen', to: '/admin/settings' }],
+            },
+        ];
+        renderSheet({ groups: routedGroups });
+
+        expect(screen.getByRole('link', { name: 'Einstellungen', current: 'page' })).toBeInTheDocument();
     });
 
     it('drops empty groups instead of rendering a bare heading', () => {
@@ -110,6 +127,26 @@ describe('MoreMenuSheet', () => {
         expect(onClose).toHaveBeenCalled();
     });
 
+    it('navigates, reports the chosen entry, and closes for a routed entry', async () => {
+        const onClose = vi.fn();
+        const onSelect = vi.fn();
+        const routedGroups: MoreMenuSheetGroup[] = [
+            {
+                label: 'Bereiche',
+                entries: [{ key: 'settings', label: 'Einstellungen', to: '/admin/settings' }],
+            },
+        ];
+        renderSheet({ groups: routedGroups, onClose, onSelect });
+
+        const link = screen.getByRole('link', { name: 'Einstellungen' });
+        expect(link).toHaveAttribute('href', '/admin/settings');
+
+        await userEvent.click(link);
+
+        expect(onSelect).toHaveBeenCalledWith('settings');
+        expect(onClose).toHaveBeenCalled();
+    });
+
     it('closes on the scrim and on Escape', async () => {
         const onClose = vi.fn();
         renderSheet({ onClose });
@@ -125,6 +162,32 @@ describe('MoreMenuSheet', () => {
         renderSheet();
 
         expect(screen.getByRole('button', { name: 'Einstellungen' })).toHaveFocus();
+    });
+
+    it('falls back to focusing the dialog itself when there is no focusable entry', () => {
+        renderSheet({ groups: [{ label: 'Sektionen', entries: [] }] });
+
+        expect(screen.getByRole('dialog')).toHaveFocus();
+    });
+
+    it('locks page scroll while open and restores it on close', () => {
+        const { rerender } = renderSheet();
+
+        expect(document.body.style.overflow).toBe('hidden');
+
+        rerender(
+            <MemoryRouter>
+                <MoreMenuSheet
+                    ariaLabel="Weitere Bereiche"
+                    closeLabel="Menü schließen"
+                    groups={groups}
+                    onClose={vi.fn()}
+                    open={false}
+                />
+            </MemoryRouter>,
+        );
+
+        expect(document.body.style.overflow).not.toBe('hidden');
     });
 
     it('keeps Tab inside the sheet and never lands on the scrim', async () => {
