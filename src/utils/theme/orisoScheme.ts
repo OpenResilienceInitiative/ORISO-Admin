@@ -43,9 +43,23 @@ const mix = (a: string, b: string, amount: number) => {
     );
 };
 
-const luminance = (hex: string) => {
+const srgbChannelToLinear = (channel: number) => {
+    const c = channel / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+};
+
+// WCAG relative luminance (not the raw-sRGB shortcut): channels are gamma-decoded
+// before weighting, or saturated colors like #00cc00 come out lighter than they
+// actually render and readableOn() below picks a foreground that fails contrast.
+const relativeLuminance = (hex: string) => {
     const { r, g, b } = hexToRgb(hex);
-    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    return 0.2126 * srgbChannelToLinear(r) + 0.7152 * srgbChannelToLinear(g) + 0.0722 * srgbChannelToLinear(b);
+};
+
+const contrastRatio = (hexA: string, hexB: string) => {
+    const a = relativeLuminance(hexA);
+    const b = relativeLuminance(hexB);
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 };
 
 const saturation = (hex: string) => {
@@ -67,6 +81,12 @@ const DEFAULT_ACCENT_DARK = '#a5000a';
 const DEFAULT_ACCENT_LIGHT = '#ffe2de';
 const DEFAULT_ACCENT_DIM = '#ffb4aa';
 const DEFAULT_ACCENT_ACTION = '#cc1e1c';
+/**
+ * Active-indicator tone of the mobile bottom navigation for the default seed
+ * #A5000A, taken 1:1 from Figma 56576:34607 ("Figma hat Vorrang"). Numerically
+ * identical to SYSTEM_ALERT below, but a different role — do not merge them.
+ */
+const DEFAULT_NAV_INDICATOR = '#410001';
 /**
  * The dark stage surface: the desktop sidebar AND the public sign-in stage
  * panel (#594.13a). Figma calls the style `M3/sys/light/on-background`, so the
@@ -127,6 +147,7 @@ const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) =
             accentDim: DEFAULT_ACCENT_DIM,
             accentAction: DEFAULT_ACCENT_ACTION,
             onAccentLightVariant: '#930008',
+            navIndicator: DEFAULT_NAV_INDICATOR,
         };
     }
 
@@ -137,10 +158,28 @@ const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) =
         accentDim: mix(accentLight, accentDark, 0.16),
         accentAction: accentDark,
         onAccentLightVariant: mix(accentDark, '#000000', 0.12),
+        // 0.6 towards black lands #a5000a on #420004 — i.e. the same tone the
+        // default seed pins to DEFAULT_NAV_INDICATOR, so custom seeds stay in
+        // the same depth register as Figma.
+        navIndicator: mix(accentDark, '#000000', 0.6),
     };
 };
 
-const readableOn = (background: string) => (luminance(background) > 0.62 ? DARK_TEXT : '#ffffff');
+const readableOn = (background: string) =>
+    contrastRatio(DARK_TEXT, background) >= contrastRatio('#ffffff', background) ? DARK_TEXT : '#ffffff';
+
+/**
+ * Mobile bottom-navigation active indicator (Figma 56576:34607): the deep brand
+ * red 56×32 pill behind the selected destination's icon. It is a SURFACE, so
+ * the icon on top is {@link readableOn} of it — never the other way round. Kept
+ * as its own `--admin-*` pair instead of borrowing an M3 `on-*` role name,
+ * because the M3 nav bar normally uses `secondary-container` here and ORISO
+ * deliberately deviates. Static fallbacks live in src/app.css.
+ */
+const adminNavTokens = (navIndicator: string) => ({
+    '--admin-nav-indicator-surface': navIndicator,
+    '--admin-nav-indicator-icon': readableOn(navIndicator),
+});
 
 const invertedTokens = (accentDark: string, accentLight: string, accentDim: string, onAccentLightVariant: string) => {
     const primary = accentLight;
@@ -150,6 +189,9 @@ const invertedTokens = (accentDark: string, accentLight: string, accentDim: stri
     return {
         ...ADMIN_TABLE_TOKENS,
         ...adminFieldTokens(accentLight, onAccentLightVariant),
+        // Inverted scheme flips the indicator to the LIGHT accent: the deep red
+        // pill of the light scheme would vanish against the dark surface.
+        ...adminNavTokens(accentLight),
         '--m3-primary': primary,
         '--m3-on-primary': readableOn(primary),
         '--m3-primary-container': primaryContainer,
@@ -196,13 +238,13 @@ const invertedTokens = (accentDark: string, accentLight: string, accentDim: stri
 export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName = 'light'): OrisoPaletteResult => {
     const accentDark = normalizeHex(getAccentDark(seeds)) ?? DEFAULT_ACCENT_DARK;
     const explicitAccentLight = normalizeHex(getAccentLight(seeds));
-    const { accentLight, accentDim, accentAction, onAccentLightVariant } = defaultAccentTokens(
+    const { accentLight, accentDim, accentAction, onAccentLightVariant, navIndicator } = defaultAccentTokens(
         accentDark,
         explicitAccentLight,
     );
-    const onAccentDark = luminance(accentDark) > 0.62 ? '#141c25' : '#ffffff';
-    const onAccentLight = luminance(accentLight) > 0.62 ? '#141c25' : '#ffffff';
-    const onAccentAction = luminance(accentAction) > 0.62 ? '#141c25' : '#ffffff';
+    const onAccentDark = readableOn(accentDark);
+    const onAccentLight = readableOn(accentLight);
+    const onAccentAction = readableOn(accentAction);
     const tooPale = saturation(accentDark) < 0.12;
 
     if (scheme === 'inverted') {
@@ -217,6 +259,7 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
         tokens: {
             ...ADMIN_TABLE_TOKENS,
             ...adminFieldTokens(accentLight, onAccentLightVariant),
+            ...adminNavTokens(navIndicator),
             '--m3-primary': accentDark,
             '--m3-on-primary': onAccentDark,
             '--m3-primary-container': accentLight,
