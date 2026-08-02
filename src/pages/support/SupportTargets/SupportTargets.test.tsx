@@ -94,4 +94,24 @@ describe('SupportTargets', () => {
 
         expect(await screen.findByText('supportAccess.request.duplicate')).toBeTruthy();
     });
+
+    it('reads a zoneless server timestamp as UTC, not as the viewer\'s local time', async () => {
+        vi.mocked(useUserRoles).mockReturnValue({ isGlobalSupportAdmin: true } as ReturnType<typeof useUserRoles>);
+        givenTargets();
+        let onSuccess: ((result: unknown) => void) | undefined;
+        vi.mocked(useRequestSupportAccess).mockImplementation((options: any) => {
+            onSuccess = options?.onSuccess;
+            return { mutate: vi.fn(), isPending: false } as never;
+        });
+
+        renderPage();
+        fireEvent.click(screen.getAllByText('supportAccess.targets.request')[0]);
+        // The backend serialises LocalDateTime in UTC without a zone suffix. Parsed as local time
+        // east of Greenwich that is already in the past, so a request that just opened would be
+        // announced as expired the moment it is created.
+        const inFourMinutes = new Date(Date.now() + 4 * 60_000).toISOString().replace('Z', '');
+        act(() => onSuccess?.({ id: 'hs-1', expiryDate: inFourMinutes }));
+
+        expect(screen.queryByText('supportAccess.request.lapsed')).toBeNull();
+    });
 });

@@ -14,9 +14,15 @@ import { RequestSupportAccessModal } from './RequestSupportAccessModal';
 
 const PAGE_SIZE = 10;
 
+/**
+ * The backend serialises LocalDateTime in UTC without a zone suffix. Parsed as local time east of
+ * Greenwich that instant is already in the past, so a request that just opened would be announced
+ * as expired the moment it is created. A zoneless value is therefore read as UTC.
+ */
 const remainingSeconds = (expiryDate?: string) => {
     if (!expiryDate) return 0;
-    const remaining = Math.floor((new Date(expiryDate).getTime() - Date.now()) / 1000);
+    const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(expiryDate);
+    const remaining = Math.floor((new Date(hasZone ? expiryDate : `${expiryDate}Z`).getTime() - Date.now()) / 1000);
     return remaining > 0 ? remaining : 0;
 };
 
