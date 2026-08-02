@@ -39,6 +39,11 @@ describe('hasAdminPortalAccess', () => {
         expect(hasAdminPortalAccess(token)).toBe(false);
     });
 
+    it('lets a Global Support Admin in — the support board it needs lives in this portal', () => {
+        const token = makeToken({ realm_access: { roles: [UserRole.GlobalSupportAdmin] } });
+        expect(hasAdminPortalAccess(token)).toBe(true);
+    });
+
     it('returns false (no throw) for a malformed token', () => {
         expect(hasAdminPortalAccess('not-a-jwt')).toBe(false);
     });

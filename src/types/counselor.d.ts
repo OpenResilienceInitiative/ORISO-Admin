@@ -20,6 +20,12 @@ export interface CounselorData {
     deleteDate?: string | null;
     status: Status;
     twoFactorAuth?: boolean;
+    secondFactorStatus?: 'PENDING_2FA' | 'ACTIVE' | 'UNAVAILABLE';
+    /**
+     * ADR-018: the authoritative operational state of a Global Support Admin. Only ACTIVE may
+     * initiate support access; everything else means the account is blocked or unfinished.
+     */
+    provisioningStatus?: 'INVITED' | 'PENDING_2FA' | 'ACTIVE' | 'DISABLING' | 'DISABLED' | 'PROVISIONING_FAILED';
     isGroupchatConsultant?: boolean;
     isSupervisor?: boolean;
     publicSlug?: string;

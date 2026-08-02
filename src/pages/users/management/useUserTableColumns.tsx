@@ -1,5 +1,6 @@
 import { CheckOutlined, HistoryOutlined } from '@ant-design/icons';
 
+import { Button, Popconfirm, Tag } from 'antd';
 import { ColumnProps } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +33,24 @@ const SORT_FIELD_BY_COLUMN: Partial<Record<UserTableColumnKey, string>> = {
     tenantOrgName: 'NAME',
 };
 
+const secondFactorTagColor = (status: CounselorData['secondFactorStatus']) => {
+    if (status === 'ACTIVE') return 'success';
+    if (status === 'UNAVAILABLE') return 'error';
+    return 'warning';
+};
+
+/**
+ * ADR-018: only ACTIVE can actually start support. DISABLED and PROVISIONING_FAILED are both
+ * "cannot be used", but they mean different things to an operator — a blocked account versus one
+ * that never finished being created — so they must not look alike.
+ */
+const provisioningTagColor = (status: CounselorData['provisioningStatus']) => {
+    if (status === 'ACTIVE') return 'success';
+    if (status === 'PROVISIONING_FAILED') return 'error';
+    if (status === 'DISABLED') return 'default';
+    return 'warning';
+};
+
 const getColumnSortOrder = (
     columnKey: UserTableColumnKey,
     sortBy?: string,
@@ -54,6 +73,10 @@ interface UseUserTableColumnsParams {
     onDeleteUser: (record: CounselorData) => void;
     onEditTenant?: (record: TenantData) => void;
     onDeleteTenant?: (record: TenantData) => void;
+    /** ADR-018: Global Support Admins are blocked and reactivated, never edited or deleted. */
+    onDisableSupportAdmin?: (record: CounselorData) => void;
+    onEnableSupportAdmin?: (record: CounselorData) => void;
+    supportAdminActionPending?: boolean;
     canEditOrDelete: boolean;
     mainTenantSubdomain?: string;
     figmaTableHeader?: boolean;
@@ -72,6 +95,9 @@ export const useUserTableColumns = ({
     onDeleteUser,
     onEditTenant,
     onDeleteTenant,
+    onDisableSupportAdmin,
+    onEnableSupportAdmin,
+    supportAdminActionPending,
     canEditOrDelete,
     mainTenantSubdomain,
     figmaTableHeader = false,
@@ -195,6 +221,26 @@ export const useUserTableColumns = ({
                             />
                         ),
                     };
+                case 'secondFactorStatus':
+                    return {
+                        ...base,
+                        title: t('globalSupportAdmins.secondFactor'),
+                        render: (status: CounselorData['secondFactorStatus']) => (
+                            <Tag color={secondFactorTagColor(status)}>
+                                {t(`globalSupportAdmins.secondFactor.${status || 'UNAVAILABLE'}`)}
+                            </Tag>
+                        ),
+                    };
+                case 'provisioningStatus':
+                    return {
+                        ...base,
+                        title: t('globalSupportAdmins.provisioning'),
+                        render: (status: CounselorData['provisioningStatus']) => (
+                            <Tag color={provisioningTagColor(status)}>
+                                {t(`globalSupportAdmins.provisioning.${status || 'INVITED'}`)}
+                            </Tag>
+                        ),
+                    };
                 case 'lastname':
                     return { ...base, title: t('lastname') };
                 case 'firstname':
@@ -294,6 +340,45 @@ export const useUserTableColumns = ({
                             }
 
                             const user = record as CounselorData;
+
+                            // ADR-018: a Global Support Admin is blocked or reactivated, never
+                            // edited or deleted — its data is not the thing being administered, its
+                            // ability to reach a consultant is. Blocking also revokes running
+                            // sessions server-side, so the confirmation has to say that.
+                            if (sectionId === TypeOfUser.GlobalSupportAdmins) {
+                                const isBlocked =
+                                    user.provisioningStatus === 'DISABLED' ||
+                                    user.provisioningStatus === 'PROVISIONING_FAILED';
+                                const isEnding = user.provisioningStatus === 'DISABLING';
+
+                                return (
+                                    <div className="tableActionWrapper userTableActions">
+                                        {canEditOrDelete && isBlocked && onEnableSupportAdmin && (
+                                            <Button
+                                                type="link"
+                                                loading={supportAdminActionPending}
+                                                onClick={() => onEnableSupportAdmin(user)}
+                                            >
+                                                {t('globalSupportAdmins.enable')}
+                                            </Button>
+                                        )}
+                                        {canEditOrDelete && !isBlocked && onDisableSupportAdmin && (
+                                            <Popconfirm
+                                                title={t('globalSupportAdmins.disable.confirm.title')}
+                                                description={t('globalSupportAdmins.disable.confirm.description')}
+                                                okText={t('globalSupportAdmins.disable')}
+                                                cancelText={t('btn.cancel.uppercase')}
+                                                onConfirm={() => onDisableSupportAdmin(user)}
+                                            >
+                                                <Button type="link" danger disabled={isEnding}>
+                                                    {t('globalSupportAdmins.disable')}
+                                                </Button>
+                                            </Popconfirm>
+                                        )}
+                                    </div>
+                                );
+                            }
+
                             const canExpand = config.showAgencyExpand && (user.agencies?.length ?? 0) > 1;
                             const isOpen = openRows.includes(user.id);
 
@@ -346,6 +431,9 @@ export const useUserTableColumns = ({
         onDeleteUser,
         onEditTenant,
         onDeleteTenant,
+        onDisableSupportAdmin,
+        onEnableSupportAdmin,
+        supportAdminActionPending,
         canEditOrDelete,
         mainTenantSubdomain,
         figmaTableHeader,

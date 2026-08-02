@@ -56,6 +56,11 @@ export const topicEndpoint = `${consultingTypeServiceURL}/service/topic/`;
 export const topicAdminEndpoint = `${agencyServiceURL}/service/topicadmin`;
 export const tenantAdminsEndpoint = `${userServiceURL}/service/useradmin/tenantadmins`;
 export const tenantAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/tenantadmins/search`;
+export const globalSupportAdminsEndpoint = `${userServiceURL}/service/useradmin/supportadmins`;
+export const globalSupportAdminsSearchEndpoint = `${globalSupportAdminsEndpoint}/search`;
+export const supportTargetsSearchEndpoint = `${userServiceURL}/service/useradmin/support-targets/search`;
+export const supportAccessAuditEndpoint = `${userServiceURL}/service/useradmin/support-access/audit`;
+export const supportAccessRequestsEndpoint = `${userServiceURL}/service/users/support-access/requests`;
 export const twoFactorAuth = `${userServiceURL}/service/users/2fa`;
 export const twoFactorAuthApp = `${userServiceURL}/service/users/2fa/app`;
 export const twoFactorAuthAppEmail = `${userServiceURL}/service/users/2fa/email`;
@@ -124,6 +129,9 @@ const routePathNames = {
     usersTenants: '/admin/users/tenants',
     tenantAdmins: '/admin/users/tenant-admins',
     platformAdmins: '/admin/users/platform-admins',
+    globalSupportAdmins: '/admin/users/global-support-admins',
+    supportTargets: '/admin/support/targets',
+    supportAccessAudit: '/admin/support/audit',
     links: '/admin/links',
     linksTenants: '/admin/links/tenants',
     linksCounsellor: '/admin/links/counsellor',

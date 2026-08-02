@@ -19,6 +19,11 @@ import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useTenantAdminsData } from '../../../hooks/useTenantUserAdminsData';
 import { usePlatformAdminsData } from '../../../hooks/usePlatformAdminsData';
+import { useGlobalSupportAdminsData } from '../../../hooks/useGlobalSupportAdminsData';
+import {
+    useDisableGlobalSupportAdmin,
+    useEnableGlobalSupportAdmin,
+} from '../../../hooks/useGlobalSupportAdminLifecycle';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { CounselorData } from '../../../types/counselor';
@@ -45,6 +50,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const isTenants = sectionId === TypeOfUser.Tenants;
     const isTenantAdmins = sectionId === TypeOfUser.TenantAdmins;
     const isPlatformAdmins = sectionId === TypeOfUser.PlatformAdmins;
+    const isGlobalSupportAdmins = sectionId === TypeOfUser.GlobalSupportAdmins;
     const isConsultants = sectionId === TypeOfUser.Consultants;
     const isAgencyAdmins = sectionId === TypeOfUser.AgencyAdmins;
     const isMobile = !screens.md;
@@ -97,7 +103,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         search,
         ...tableState,
         typeOfUser: consultantsSectionId,
-        enabled: !isTenantAdmins && !isPlatformAdmins && !isTenants,
+        enabled: !isTenantAdmins && !isPlatformAdmins && !isGlobalSupportAdmins && !isTenants,
     });
 
     const tenantAdminsQuery = useTenantAdminsData({
@@ -112,10 +118,17 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         enabled: isPlatformAdmins,
     });
 
+    const globalSupportAdminsQuery = useGlobalSupportAdminsData({
+        search,
+        ...tableState,
+        enabled: isGlobalSupportAdmins,
+    });
+
     const activeQuery = (() => {
         if (isTenants) return tenantsQuery;
         if (isTenantAdmins) return tenantAdminsQuery;
         if (isPlatformAdmins) return platformAdminsQuery;
+        if (isGlobalSupportAdmins) return globalSupportAdminsQuery;
         return consultantsQuery;
     })();
     const { data: responseList, isLoading, isError, error, refetch } = activeQuery;
@@ -176,6 +189,9 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         setTenantToDelete(record);
     }, []);
 
+    const disableSupportAdmin = useDisableGlobalSupportAdmin();
+    const enableSupportAdmin = useEnableGlobalSupportAdmin();
+
     const columns = useUserTableColumns({
         sectionId,
         showTenant: showTenantColumn,
@@ -186,6 +202,9 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         onDeleteUser,
         onEditTenant: isTenants ? onEditTenant : undefined,
         onDeleteTenant: isTenants ? onDeleteTenant : undefined,
+        onDisableSupportAdmin: isGlobalSupportAdmins ? (record) => disableSupportAdmin.mutate(record.id) : undefined,
+        onEnableSupportAdmin: isGlobalSupportAdmins ? (record) => enableSupportAdmin.mutate(record.id) : undefined,
+        supportAdminActionPending: disableSupportAdmin.isPending || enableSupportAdmin.isPending,
         canEditOrDelete,
         mainTenantSubdomain: settings.mainTenantSubdomainForSingleDomainMultitenancy,
         figmaTableHeader: figmaTableHeader && !isOrganizations,
@@ -207,7 +226,9 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                 if (sorter?.field) {
                     const mappedField = mapSorterToApiField(String(sorter.field)) || String(sorter.field).toUpperCase();
                     const apiField =
-                        sectionId === TypeOfUser.TenantAdmins || sectionId === TypeOfUser.PlatformAdmins
+                        sectionId === TypeOfUser.TenantAdmins ||
+                        sectionId === TypeOfUser.PlatformAdmins ||
+                        sectionId === TypeOfUser.GlobalSupportAdmins
                             ? normalizeTenantAdminSortField(mappedField)
                             : mappedField;
                     return {
@@ -283,7 +304,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                 onClick={handleAdd}
                 disabled={atConsultantLimit}
             >
-                {t('new')}
+                {t(config.createLabelKey ?? 'new')}
             </Button>
         );
 
@@ -308,6 +329,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         config.editPathPrefix,
         isTenants,
         isTenantAdmins,
+        isGlobalSupportAdmins,
         navigate,
         responseList?.total,
         t,

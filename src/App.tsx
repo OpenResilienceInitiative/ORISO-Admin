@@ -34,6 +34,9 @@ import {
     LazyGeneralSettingsPage,
     LazyGeneralTenantSettings,
     LazyGlobalLoginSettingsPage,
+    LazyGlobalSupportAdminCreate,
+    LazySupportAccessAudit,
+    LazySupportTargets,
     LazyInactiveAccountAuditLogsPage,
     LazyLegalSettingsPage,
     LazyLinksIndexRedirect,
@@ -369,7 +372,16 @@ export const App = () => {
                                 <Route path="/admin/users/:typeOfUsers" element={<LazyUsersList />} />
                                 <Route path="/admin/users/tenant-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
                                 <Route path="/admin/users/platform-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
+                                <Route
+                                    path="/admin/users/global-support-admins/add"
+                                    element={<LazyGlobalSupportAdminCreate />}
+                                />
                                 <Route path="/admin/users/:typeOfUsers/:id" element={<LazyUserEditOrAdd />} />
+                                {/* ADR-018 support surfaces. Both gate again on the server: the
+                                    target list needs an operational Global Support Admin, the audit
+                                    view is narrowed to the caller's own tenant or agencies. */}
+                                <Route path="/admin/support/targets" element={<LazySupportTargets />} />
+                                <Route path="/admin/support/audit" element={<LazySupportAccessAudit />} />
                                 <Route path="/admin/links" element={<LazyLinksPage />}>
                                     <Route index element={<LazyLinksIndexRedirect />} />
                                     <Route path="tenants" element={<LazyTenantInvitesTab />} />

@@ -9,6 +9,8 @@ export type UserTableSectionKind = 'users' | 'organizations';
 export type UserTableColumnKey =
     | 'lastUpdated'
     | 'status'
+    | 'secondFactorStatus'
+    | 'provisioningStatus'
     | 'lastname'
     | 'firstname'
     | 'email'
@@ -174,6 +176,29 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         editPathPrefix: routePathNames.platformAdmins,
         searchPlaceholderKey: 'consultant-search-placeholder',
         columns: [...tenantAdminIdentityColumns(), col('actions', true, false, 80)],
+    },
+    [TypeOfUser.GlobalSupportAdmins]: {
+        sectionId: TypeOfUser.GlobalSupportAdmins,
+        sectionKind: 'users',
+        readResource: Resource.TenantAdminUser,
+        createResource: Resource.TenantAdminUser,
+        updateResource: Resource.TenantAdminUser,
+        defaultSort,
+        showAgencyExpand: false,
+        showStatus: false,
+        editPathPrefix: routePathNames.globalSupportAdmins,
+        searchPlaceholderKey: 'globalSupportAdmins.searchPlaceholder',
+        emptyTextKey: 'globalSupportAdmins.empty',
+        createLabelKey: 'globalSupportAdmins.create',
+        columns: [
+            col('lastUpdated', true, true, 210),
+            col('provisioningStatus', true, false, 180),
+            col('secondFactorStatus', true, false, 180),
+            col('lastname', true, true, 130),
+            col('firstname', true, true, 120),
+            col('email', true, true, 180),
+            col('username', true, false, 160),
+        ],
     },
     [TypeOfUser.Users]: {
         sectionId: TypeOfUser.Users,

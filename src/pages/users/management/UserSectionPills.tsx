@@ -27,6 +27,11 @@ export const UserSectionPills = () => {
 
         if (isSuperAdmin) {
             visible.push({
+                id: 'global-support-admins',
+                labelKey: 'users.sectionPills.globalSupportAdmins',
+                to: routePathNames.globalSupportAdmins,
+            });
+            visible.push({
                 id: 'platform-admins',
                 labelKey: 'users.sectionPills.platformAdmins',
                 to: routePathNames.platformAdmins,

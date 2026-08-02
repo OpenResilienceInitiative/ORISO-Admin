@@ -17,6 +17,14 @@ export const LazyLegalSettingsPage = lazyNamed(() => import('./TenantSettings/Le
 export const LazyTopicEditOrAdd = lazyNamed(() => import('./Topics/Edit'), 'TopicEditOrAdd');
 export const LazyTenantEditOrAdd = lazyNamed(() => import('./Tenants/Edit'), 'TenantEditOrAdd');
 export const LazyTenantAdminEditOrAdd = lazyNamed(() => import('./users/TenantAdminEdit'), 'TenantAdminEditOrAdd');
+export const LazyGlobalSupportAdminCreate = lazyNamed(
+    () => import('./users/GlobalSupportAdminCreate'),
+    'GlobalSupportAdminCreate',
+);
+
+export const LazySupportTargets = lazyNamed(() => import('./support/SupportTargets'), 'SupportTargets');
+
+export const LazySupportAccessAudit = lazyNamed(() => import('./support/SupportAccessAudit'), 'SupportAccessAudit');
 export const LazyGeneralTenantSettings = lazyNamed(() => import('./Tenants/Edit/General'), 'GeneralTenantSettings');
 export const LazyTenantThemeSettings = lazyNamed(() => import('./Tenants/Edit/ThemeSettings'), 'TenantThemeSettings');
 export const LazyTenantAppSettings = lazyNamed(() => import('./Tenants/Edit/AppSettings'), 'TenantAppSettings');

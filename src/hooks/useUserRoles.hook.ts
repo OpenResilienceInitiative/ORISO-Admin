@@ -8,6 +8,7 @@ export const useUserRoles = (): {
     isSuperAdmin: boolean;
     isTechnicalAccount: boolean;
     isTenantScopedAdmin: boolean;
+    isGlobalSupportAdmin: boolean;
     tenantId: number | null;
     /**
      * An access token exists but could not be decoded (malformed JWT). Roles
@@ -48,6 +49,9 @@ export const useUserRoles = (): {
 
     const isSuperAdmin = hasRole(UserRole.AgencyAdmin) && hasRole(UserRole.TenantAdmin) && tenantId === 0;
     const isTenantScopedAdmin = hasRole(UserRole.TenantAdmin) && tenantId !== null && tenantId > 0;
+    // ADR-018: a support identity holds exactly this role, so the support surfaces key off it
+    // directly rather than off any admin capability.
+    const isGlobalSupportAdmin = hasRole(UserRole.GlobalSupportAdmin);
 
     return {
         roles,
@@ -55,6 +59,7 @@ export const useUserRoles = (): {
         isSuperAdmin,
         isTechnicalAccount,
         isTenantScopedAdmin,
+        isGlobalSupportAdmin,
         tenantId,
         tokenUnreadable,
     };

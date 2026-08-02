@@ -8,6 +8,9 @@ const ADMIN_PORTAL_ROLES = [
     UserRole.AgencyAdmin,
     UserRole.RestrictedAgencyAdmin,
     UserRole.TopicAdmin,
+    // ADR-018: the Global Support Admin's whole surface — target search, handshake, audit — is a
+    // board in this portal. Leaving it out would provision an account that can never sign in.
+    UserRole.GlobalSupportAdmin,
 ];
 
 export const hasAdminPortalRole = (roles: string[] = []) => ADMIN_PORTAL_ROLES.some((role) => roles.includes(role));

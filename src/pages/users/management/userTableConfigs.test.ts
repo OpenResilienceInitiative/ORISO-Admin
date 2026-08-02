@@ -17,4 +17,9 @@ describe('userTableConfigs hasOtherIdentity column', () => {
     it('does not add the hasOtherIdentity column to PlatformAdmins', () => {
         expect(columnKeys(TypeOfUser.PlatformAdmins)).not.toContain('hasOtherIdentity');
     });
+
+    it('shows live 2FA state and no unsupported edit actions for Global Support Admins', () => {
+        expect(columnKeys(TypeOfUser.GlobalSupportAdmins)).toContain('secondFactorStatus');
+        expect(columnKeys(TypeOfUser.GlobalSupportAdmins)).not.toContain('actions');
+    });
 });
