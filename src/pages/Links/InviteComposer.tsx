@@ -24,6 +24,7 @@ export interface InviteComposerValues {
     lastName?: string;
     tenantId?: number;
     agencyId?: number;
+    departmentId?: number;
     /** Only set in `direct` mode — `createOnly` posts without a template. */
     templateId?: number;
     sendMode: InviteSendMode;
@@ -48,6 +49,7 @@ export interface InviteComposerProps {
     /** Non-Träger tabs: prefill with the admin's own tenant. */
     initialTenantId?: number;
     includeAgencyField?: boolean;
+    requireNames?: boolean;
     submitting?: boolean;
     /** Discriminator for the persisted send mode (one per tab), e.g. the target role. */
     persistKey: string;
@@ -90,6 +92,7 @@ export const InviteComposer = ({
     takenTenantIds,
     initialTenantId,
     includeAgencyField = false,
+    requireNames = false,
     submitting = false,
     persistKey,
     onSubmit,
@@ -118,7 +121,9 @@ export const InviteComposer = ({
     const emailValid = EMAIL_PATTERN.test(recipientEmail.trim());
     const tenantIdValid = !requireTenantId || (tenantId != null && !takenTenantIds?.has(tenantId));
     const templateValid = sendMode === 'createOnly' || selectedTemplate != null;
-    const isValid = emailValid && tenantIdValid && templateValid;
+    const namesValid = !requireNames || (firstName.trim().length > 0 && lastName.trim().length > 0);
+    const agencyValid = !includeAgencyField || agencyId != null;
+    const isValid = emailValid && tenantIdValid && templateValid && namesValid && agencyValid;
     const showEmailError = emailTouched && recipientEmail.length > 0 && !emailValid;
 
     const changeSendMode = (mode: InviteSendMode) => {

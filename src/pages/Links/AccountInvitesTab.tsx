@@ -15,6 +15,7 @@ import {
     revokeAccountInvite,
 } from '../../api/accountInvites/accountInvites';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
+import getAgencyDataById from '../../api/agency/getAgencyById';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
@@ -258,9 +259,26 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         async (values: InviteComposerValues): Promise<boolean> => {
             setSubmitting(true);
             try {
+                let departmentId: number | undefined;
+                if (targetRole === 'COUNSELLOR') {
+                    if (values.agencyId == null || values.tenantId == null) {
+                        throw new Error('Counsellor invite requires tenant and agency routing');
+                    }
+                    const agencyResponse = await getAgencyDataById(String(values.agencyId));
+                    const agency = agencyResponse?._embedded ?? agencyResponse;
+                    const topics = agency?.topics ?? [];
+                    if (Number(agency?.tenantId) !== values.tenantId || topics.length !== 1) {
+                        throw new Error('Counsellor invite agency must belong to the tenant and have exactly one topic');
+                    }
+                    departmentId = Number(topics[0].id);
+                    if (!Number.isFinite(departmentId)) {
+                        throw new Error('Counsellor invite topic is invalid');
+                    }
+                }
                 const created = await createAccountInvite({
                     acceptBaseUrl: accountInviteAcceptBaseUrl,
                     agencyId: values.agencyId,
+                    departmentId,
                     expiresInDays: 30,
                     firstName: values.firstName,
                     lastName: values.lastName,
@@ -428,6 +446,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 includeAgencyField={includeAgencyField}
                 initialTenantId={isTenantInvite ? undefined : currentTenantId}
                 persistKey={targetRole}
+                requireNames={targetRole === 'COUNSELLOR'}
                 requireTenantId={isTenantInvite}
                 submitting={submitting}
                 suggestedTenantId={suggestedTenantId}

@@ -42,6 +42,7 @@ const mocks = vi.hoisted(() => ({
     revokeAccountInvite: vi.fn(),
     listInviteEmailTemplates: vi.fn(),
     searchTenantData: vi.fn(),
+    getAgencyDataById: vi.fn(),
     parseUserAuthInfo: vi.fn(),
 }));
 
@@ -56,6 +57,10 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
 
 vi.mock('../../api/tenant/searchTenantData', () => ({
     searchTenantData: mocks.searchTenantData,
+}));
+
+vi.mock('../../api/agency/getAgencyById', () => ({
+    default: mocks.getAgencyDataById,
 }));
 
 vi.mock('../../utils/parseUserAuthInfo', () => ({
@@ -163,5 +168,46 @@ describe('TenantInvitesTab Träger-ID suggestion', () => {
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
         expect(field).toHaveValue('');
         expect(mocks.searchTenantData).not.toHaveBeenCalled();
+    });
+
+    it('routes a counsellor invite to the agency single topic', async () => {
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: 79 });
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+        mocks.listInviteEmailTemplates.mockResolvedValue([
+            { ...TEMPLATE, kind: 'COUNSELLOR_INVITE' },
+        ]);
+        mocks.getAgencyDataById.mockResolvedValue({
+            _embedded: {
+                id: '275',
+                tenantId: 79,
+                topics: [{ id: 2, name: 'U25 Suizidprävention' }],
+            },
+        });
+        mocks.createAccountInvite.mockResolvedValue(invite(99, 79, 'EMAIL_SENT'));
+        const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@oriso.org');
+        await user.type(screen.getByLabelText('Vorname'), 'Lisa');
+        await user.type(screen.getByLabelText('Name'), 'Simpson');
+        await user.type(screen.getByLabelText('Beratungsstellen-ID'), '275');
+        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        await waitFor(() =>
+            expect(mocks.createAccountInvite).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    targetRole: 'COUNSELLOR',
+                    tenantId: 79,
+                    agencyId: 275,
+                    departmentId: 2,
+                    firstName: 'Lisa',
+                    lastName: 'Simpson',
+                    recipientEmail: 'lisa.simpson@oriso.org',
+                }),
+            ),
+        );
     });
 });
