@@ -269,6 +269,7 @@
     "supportAccess.request.otp.required": "Bitte gib den aktuellen Einmalcode ein.",
     "supportAccess.request.submit": "Anfordern",
     "supportAccess.request.failed": "Die Anfrage konnte nicht gestellt werden. Prüfe Passwort und Einmalcode und ob dein Konto freigeschaltet ist.",
+    "supportAccess.request.duplicate": "Für diese Beratungsperson läuft bereits eine Anfrage oder Sitzung. Warte, bis sie abgelaufen oder beendet ist.",
     "supportAccess.request.waiting": "Warten auf Bestätigung — noch {{countdown}}",
     "supportAccess.request.waiting.description": "Der Raum entsteht erst nach der Bestätigung. Ohne Reaktion passiert nichts.",
     "supportAccess.request.openSupportView": "Zur Supportansicht in der Beratungs-App",

@@ -1,6 +1,6 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../hooks/useUserRoles.hook', () => ({ useUserRoles: vi.fn() }));
@@ -75,5 +75,23 @@ describe('SupportTargets', () => {
         expect(screen.queryByText('supportAccess.targets.request')).toBeNull();
         expect(container.querySelector('[data-cy="support-request-button"]')).toBeNull();
         expect(screen.getByText('supportAccess.targets.forbidden')).toBeTruthy();
+    });
+
+    it('names a duplicate request as such instead of blaming the credentials', async () => {
+        vi.mocked(useUserRoles).mockReturnValue({ isGlobalSupportAdmin: true } as ReturnType<typeof useUserRoles>);
+        givenTargets();
+        let onError: ((error: Error) => void) | undefined;
+        vi.mocked(useRequestSupportAccess).mockImplementation((options: any) => {
+            onError = options?.onError;
+            return { mutate: vi.fn(), isPending: false } as never;
+        });
+
+        renderPage();
+        fireEvent.click(screen.getAllByText('supportAccess.targets.request')[0]);
+        // A 409 means a request for this consultant is already open — sending the admin off to
+        // re-check password and OTP is a wrong lead, and it cost real debugging time.
+        act(() => onError?.({ status: 409 } as never));
+
+        expect(await screen.findByText('supportAccess.request.duplicate')).toBeTruthy();
     });
 });

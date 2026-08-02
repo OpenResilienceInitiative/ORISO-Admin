@@ -52,7 +52,14 @@ export const SupportTargets = () => {
             setPendingRequest(result);
             setCountdown(remainingSeconds(result.expiryDate));
         },
-        onError: () => setErrorMessage(t('supportAccess.request.failed')),
+        onError: (error: unknown) =>
+            // A 409 is not a credential problem: a request for this consultant is already open.
+            // Blaming password and OTP there sends the admin chasing the wrong thing.
+            setErrorMessage(
+                (error as { status?: number })?.status === 409
+                    ? t('supportAccess.request.duplicate')
+                    : t('supportAccess.request.failed'),
+            ),
     });
 
     useEffect(() => {
