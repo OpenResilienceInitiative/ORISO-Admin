@@ -1,8 +1,13 @@
 import React from 'react';
+import { Grid } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('antd', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('antd')>();
+    return { ...actual, Grid: { ...actual.Grid, useBreakpoint: vi.fn(() => ({ md: true })) } };
+});
 vi.mock('../../../hooks/useUserRoles.hook', () => ({ useUserRoles: vi.fn() }));
 vi.mock('../../../hooks/useSupportAccess', async () => {
     const actual = await vi.importActual<typeof import('../../../hooks/useSupportAccess')>(
@@ -48,6 +53,7 @@ const givenTargets = () =>
 
 describe('SupportTargets', () => {
     beforeEach(() => {
+        vi.mocked(Grid.useBreakpoint).mockReturnValue({ md: true } as never);
         vi.mocked(useRequestSupportAccess).mockReturnValue({
             mutate: vi.fn(),
             isPending: false,
@@ -114,4 +120,21 @@ describe('SupportTargets', () => {
 
         expect(screen.queryByText('supportAccess.request.lapsed')).toBeNull();
     });
+
+    it('keeps the request action reachable on a phone by dropping the wide columns', () => {
+        vi.mocked(useUserRoles).mockReturnValue({ isGlobalSupportAdmin: true } as ReturnType<typeof useUserRoles>);
+        vi.mocked(Grid.useBreakpoint).mockReturnValue({ md: false } as never);
+        givenTargets();
+
+        renderPage();
+
+        // On a phone the four wide columns push the action off the viewport, and a horizontally
+        // scrolled table hides the only thing this page exists for. One name column plus the
+        // action is all that fits, and all that is needed.
+        expect(screen.queryByText('email')).toBeNull();
+        expect(screen.queryByText('firstname')).toBeNull();
+        expect(screen.queryByText('supportAccess.targets.agency')).toBeNull();
+        expect(screen.getAllByText('supportAccess.targets.request').length).toBeGreaterThan(0);
+    });
 });
+

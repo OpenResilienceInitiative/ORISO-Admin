@@ -1,4 +1,4 @@
-import { Alert, Button, Table } from 'antd';
+import { Alert, Button, Grid, Table } from 'antd';
 import { ColumnProps } from 'antd/lib/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,6 +41,7 @@ const formatCountdown = (seconds: number) => {
 export const SupportTargets = () => {
     const { t } = useTranslation();
     const { isGlobalSupportAdmin } = useUserRoles();
+    const isMobile = !Grid.useBreakpoint().md;
 
     const [search] = useState('');
     const [current, setCurrent] = useState(1);
@@ -94,12 +95,30 @@ export const SupportTargets = () => {
     );
 
     const columns = useMemo<Array<ColumnProps<SupportTarget>>>(() => {
-        const base: Array<ColumnProps<SupportTarget>> = [
-            { key: 'lastName', dataIndex: 'lastName', title: t('lastname') },
-            { key: 'firstName', dataIndex: 'firstName', title: t('firstname') },
-            { key: 'email', dataIndex: 'email', title: t('email') },
-            { key: 'agencyId', dataIndex: 'agencyId', title: t('supportAccess.targets.agency') },
-        ];
+        // On a phone four wide columns push the request action past the right edge, and a
+        // horizontally scrolled table hides the only thing this page exists for. One combined
+        // person column leaves room for the action, which is what the page is for.
+        const base: Array<ColumnProps<SupportTarget>> = isMobile
+            ? [
+                  {
+                      key: 'person',
+                      title: t('lastname'),
+                      render: (_: unknown, record: SupportTarget) => (
+                          <>
+                              <div>{`${record.lastName}, ${record.firstName}`}</div>
+                              <div style={{ opacity: 0.7 }}>
+                                  {`${t('supportAccess.targets.agency')} ${record.agencyId}`}
+                              </div>
+                          </>
+                      ),
+                  },
+              ]
+            : [
+                  { key: 'lastName', dataIndex: 'lastName', title: t('lastname') },
+                  { key: 'firstName', dataIndex: 'firstName', title: t('firstname') },
+                  { key: 'email', dataIndex: 'email', title: t('email') },
+                  { key: 'agencyId', dataIndex: 'agencyId', title: t('supportAccess.targets.agency') },
+              ];
 
         // ADR-018: the support column is not rendered at all for anyone else — hidden, not
         // disabled, so it never appears in the DOM of a non-support account.
@@ -112,7 +131,7 @@ export const SupportTargets = () => {
             {
                 key: 'support',
                 title: '',
-                width: 180,
+                width: isMobile ? 140 : 180,
                 render: (_: unknown, record: SupportTarget) => (
                     <Button
                         type="link"
@@ -128,7 +147,7 @@ export const SupportTargets = () => {
                 ),
             },
         ];
-    }, [countdown, isGlobalSupportAdmin, pendingRequest, t]);
+    }, [countdown, isGlobalSupportAdmin, isMobile, pendingRequest, t]);
 
     if (!isGlobalSupportAdmin) {
         return (
