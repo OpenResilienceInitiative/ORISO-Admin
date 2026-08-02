@@ -1,4 +1,4 @@
-import { fetchData, FETCH_METHODS } from '../fetchData';
+import { fetchData, FETCH_ERRORS, FETCH_METHODS } from '../fetchData';
 import { tenantEndpoint } from '../../appConfig';
 import { TenantData } from '../../types/tenant';
 import { getAccessTokenForRequests } from '../auth/auth';
@@ -43,7 +43,10 @@ const getTenantData = (tenantData: TenantData, useMultiTenancyWithSingleDomain: 
         url,
         method: FETCH_METHODS.GET,
         skipAuth: false,
-        responseHandling: [],
+        // A Global Support Admin administers no tenant, so this call is legitimately forbidden for
+        // it. Without the opt-out the global 403 handler would bounce the whole tab to
+        // access-denied on every page load; the caller already renders a harmless fallback.
+        responseHandling: [FETCH_ERRORS.FORBIDDEN_SILENT],
     })
         .then((response: any) => {
             // console.log('🔍 getTenantData: Raw response:', response);

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { FETCH_ERRORS } from '../fetchData';
 
 vi.mock('../fetchData', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../fetchData')>();
@@ -67,5 +68,19 @@ describe('getTenantData', () => {
             address: '',
             description: '',
         });
+    });
+
+    it('handles a 403 inline instead of bouncing the whole tab to access-denied', async () => {
+        // A Global Support Admin administers no tenant, so this call is legitimately forbidden for
+        // it. The global redirect would throw the account out of the portal on every page load,
+        // while the caller already treats a missing tenant as a harmless fallback.
+        tokenMock.mockReturnValue('');
+        fetchMock.mockResolvedValue({ id: 1 });
+
+        await getTenantData({ id: 1 } as never, false);
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            expect.objectContaining({ responseHandling: expect.arrayContaining([FETCH_ERRORS.FORBIDDEN_SILENT]) }),
+        );
     });
 });
