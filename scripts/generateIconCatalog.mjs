@@ -18,6 +18,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import prettier from 'prettier';
 
 const repoRoot = process.cwd();
 const outputPath = path.join(repoRoot, 'src/components/IconCatalog/iconCatalog.generated.json');
@@ -119,8 +120,16 @@ const entries = walk(assetRoot)
         };
     });
 
+// Format with the repo's Prettier config so the committed file always passes
+// `npx prettier . --check` (CI runs it on every build).
+const prettierConfig = await prettier.resolveConfig(outputPath);
+const formatted = await prettier.format(JSON.stringify(entries), {
+    ...prettierConfig,
+    filepath: outputPath,
+});
+
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-fs.writeFileSync(outputPath, `${JSON.stringify(entries, null, 2)}\n`);
+fs.writeFileSync(outputPath, formatted);
 
 const usedCount = entries.filter(({ usage }) => usage === 'app-used').length;
 console.log(`Generated ${entries.length} icon catalog entries (${usedCount} app-used).`);
