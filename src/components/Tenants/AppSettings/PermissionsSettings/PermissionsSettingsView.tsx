@@ -14,7 +14,6 @@ import styles from './styles.module.scss';
 
 export type PermissionsSettingsViewProps = {
     tenantId: string;
-    disableSubTogglesWhenMasterOff: boolean;
     excludeCardKeys?: Array<ChatTypeCardKey>;
     isLoading: boolean;
     initialValues: Record<string, unknown>;
@@ -35,7 +34,6 @@ export type PermissionsSettingsViewProps = {
 
 export const PermissionsSettingsView = ({
     tenantId,
-    disableSubTogglesWhenMasterOff,
     excludeCardKeys,
     isLoading,
     initialValues,
@@ -173,12 +171,11 @@ export const PermissionsSettingsView = ({
                                                                 label={t(toggle.labelKey)}
                                                                 disabled={
                                                                     restrictedFields.has(toggle.field[1]) ||
-                                                                    (disableSubTogglesWhenMasterOff &&
-                                                                        isSubToggleDisabled(
-                                                                            card,
-                                                                            toggle.field,
-                                                                            masterEnabled,
-                                                                        ))
+                                                                    isSubToggleDisabled(
+                                                                        card,
+                                                                        toggle.field,
+                                                                        masterEnabled,
+                                                                    )
                                                                 }
                                                                 onAfterChange={onToggleUpdate}
                                                             />

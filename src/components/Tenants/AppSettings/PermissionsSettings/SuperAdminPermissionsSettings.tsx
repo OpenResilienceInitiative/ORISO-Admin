@@ -85,7 +85,6 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
     return (
         <PermissionsSettingsView
             tenantId={tenantId}
-            disableSubTogglesWhenMasterOff={false}
             excludeCardKeys={excludeCardKeys}
             isLoading={isLoading}
             initialValues={initialValues}
