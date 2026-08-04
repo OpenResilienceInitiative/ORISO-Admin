@@ -36,6 +36,13 @@ export interface DpaFormSectionProps {
     textLabel: string;
     /** Optional intro line shown in the reader's help-text block. */
     textDescription?: React.ReactNode;
+    /**
+     * Drops the reader card's own icon + title — for hosts that already state
+     * the agreement's name above it (the DPA blocker, Figma 1611-27868).
+     */
+    hideTextHeader?: boolean;
+    /** Language of the shown agreement — passed to the reader for hyphenation. */
+    textLanguage?: string;
     accepted: boolean;
     acceptTouched: boolean;
     /** Toggle handler — the host owns the accepted/touched state (it gates its own submit). */
@@ -58,6 +65,8 @@ export const DpaFormSection = ({
     dpaHtml,
     textLabel,
     textDescription,
+    hideTextHeader,
+    textLanguage,
     accepted,
     acceptTouched,
     onAcceptedChange,
@@ -85,7 +94,13 @@ export const DpaFormSection = ({
 
     return (
         <>
-            <DpaLegalReader html={dpaHtml} label={textLabel} description={textDescription} />
+            <DpaLegalReader
+                html={dpaHtml}
+                label={textLabel}
+                description={textDescription}
+                contentLanguage={textLanguage}
+                hideHeader={hideTextHeader}
+            />
             <div className={classNames(styles.fieldStack, styles.fieldStackPaired)}>
                 <MuiFormField
                     name="signerName"
@@ -105,11 +120,14 @@ export const DpaFormSection = ({
                         { type: 'email', message: t('tenantOnboarding.validation.email') },
                     ]}
                 />
-                <MuiFormField
-                    name="signerOrganisation"
-                    label={t('tenantOnboarding.dpa.signerOrganisation')}
-                    rules={[{ required: true, whitespace: true, message: t('tenantOnboarding.validation.required') }]}
-                />
+                {/* The organisation was asked for already — on the onboarding
+                    step right above, and for an existing Träger the platform
+                    knows it anyway. Asking a second time was pure retyping, so
+                    the slot carries a free, optional note instead (owner call
+                    2026-07-30). It still travels as `signerOrganisation`: that
+                    is the append-only signature record's own field, and no
+                    signature loses a column over a relabel. */}
+                <MuiFormField name="signerOrganisation" label={t('tenantOnboarding.dpa.signerNote')} />
             </div>
 
             <div

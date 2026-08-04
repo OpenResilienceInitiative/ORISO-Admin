@@ -86,10 +86,10 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                     </CardEditable>
                 </CardDeck.Item>
             )}
-            <CardDeck.Item>
+            <CardDeck.Item className={styles.documentEditorItem}>
                 <DataProcessingAgreementContainer tenantId={finalTenantId} />
             </CardDeck.Item>
-            <CardDeck.Item>
+            <CardDeck.Item className={styles.documentEditorItem}>
                 <LegalText
                     tenantId={finalTenantId}
                     fieldName={['content', 'impressum']}
@@ -113,7 +113,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
                     field: ['content', 'confirmTermsAndConditions'],
                 }}
             /> */}
-            <CardDeck.Item>{LegalTextElement}</CardDeck.Item>
+            <CardDeck.Item className={styles.documentEditorItem}>{LegalTextElement}</CardDeck.Item>
         </CardDeck>
     );
 };

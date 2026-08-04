@@ -79,6 +79,57 @@
     }
 }
 
+/* Screen header (Figma 1611-27868): icon, the agreement's name and the one
+   sentence that says why the admin is here — centred, stated once. The reader
+   card below runs with its own header off, so this is the only title. */
+
+.hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 24px 24px;
+    gap: 8px;
+    text-align: center;
+}
+
+.heroIcon {
+    width: 40px;
+    height: 40px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 40px;
+}
+
+/* "Auftragsdatenverarbeitungsvereinbarung" is one 38-character compound, so on a
+   phone it has to break somewhere. `hyphens: auto` breaks it where German
+   allows and sets a hyphen; `anywhere` stays only as the fallback for browsers
+   without hyphenation data, and the smaller mobile size means it rarely comes
+   to that. Without this the title split as "Auftragsdatenverarbeitu /
+   ngsvereinbarung". */
+
+.heroTitle {
+    max-width: 100%;
+    margin: 0;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 28px;
+    hyphens: auto;
+    overflow-wrap: anywhere;
+
+    @media (max-width: 599px) {
+        font-size: 19px;
+        line-height: 26px;
+    }
+}
+
+.heroIntro {
+    max-width: 100%;
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    line-height: 16px;
+}
+
 .actions {
     display: flex;
     justify-content: space-between;

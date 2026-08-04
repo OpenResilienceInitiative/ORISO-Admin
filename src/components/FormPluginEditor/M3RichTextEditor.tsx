@@ -117,6 +117,20 @@ export type M3RichTextEditorProps = {
      * tenant-onboarding DPA step and the DPA blocker (#594).
      */
     fluid?: boolean;
+    /**
+     * Language of the CONTENT (not the UI), e.g. the legal text's own language.
+     * Sets `lang` on the text region so hyphenation works; falls back to the
+     * editor's `language` (the language switcher's value).
+     */
+    contentLanguage?: string;
+    /**
+     * Drops the card's own icon + title row. For hosts that already carry the
+     * same heading right above the card — the DPA blocker states the agreement's
+     * name once, centred, and repeating it inside the card was the duplicate
+     * title in Figma 1611-27868. `title` is still required: it stays the
+     * accessible name of the reading region.
+     */
+    hideHeader?: boolean;
     /** Replaces the built-in language split button (e.g. the legal MT-aware language select). */
     languageSlot?: React.ReactNode;
     /**
@@ -606,6 +620,8 @@ export const M3RichTextEditor = ({
     publishing,
     readOnly,
     fluid,
+    contentLanguage,
+    hideHeader,
     languageSlot,
     topicSlot,
     helpSlot,
@@ -787,14 +803,16 @@ export const M3RichTextEditor = ({
             }`}
             data-testid="m3-editor"
         >
-            <div className={styles.header}>
-                <IconComponent className={styles.headerIcon} />
-                <h2 className={styles.title}>{title}</h2>
-            </div>
+            {!hideHeader && (
+                <div className={styles.header}>
+                    <IconComponent className={styles.headerIcon} />
+                    <h2 className={styles.title}>{title}</h2>
+                </div>
+            )}
 
             {helpSlot}
 
-            <hr className={`${styles.divider} ${styles.headerDivider}`} />
+            {!hideHeader && <hr className={`${styles.divider} ${styles.headerDivider}`} />}
 
             {showToolbar ? (
                 <Toolbar
@@ -852,8 +870,13 @@ export const M3RichTextEditor = ({
                                 scrollable-region-focusable), but the fluid
                                 reader delegates scrolling to its host (#594.3)
                                 and an extra tab stop there would be noise. */}
+                            {/* `lang` on the text itself: long German compounds
+                                ("Auftragsverarbeitungsvertrag") otherwise break
+                                mid-word on a phone, because `hyphens: auto` has
+                                no dictionary without it. */}
                             <div
                                 className={styles.editorContentScroll}
+                                lang={contentLanguage ?? language}
                                 {...(readOnly ? { role: 'region', 'aria-label': title } : {})}
                                 {...(readOnly && scrollsInternally
                                     ? // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex

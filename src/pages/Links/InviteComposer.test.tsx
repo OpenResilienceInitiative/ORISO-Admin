@@ -265,24 +265,12 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(mocks.createAccountInvite).not.toHaveBeenCalled();
     });
 
-    it('opens the templates dialog in create view from the template menu', async () => {
+    it('opens the templates dialog in list view from the template pill', async () => {
         await renderTenantTab();
         const user = userEvent.setup();
 
-        await screen.findByRole('button', { name: /Standard/ });
-        await user.click(screen.getByRole('button', { name: 'E-Mail-Vorlage wählen' }));
-        await user.click(await screen.findByRole('menuitem', { name: 'Neue E-Mail-Vorlage erstellen' }));
-
-        expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('create');
-    });
-
-    it('opens the templates dialog list view from the delete menu entry', async () => {
-        await renderTenantTab();
-        const user = userEvent.setup();
-
-        await screen.findByRole('button', { name: /Standard/ });
-        await user.click(screen.getByRole('button', { name: 'E-Mail-Vorlage wählen' }));
-        await user.click(await screen.findByRole('menuitem', { name: 'E-Mail-Vorlage löschen' }));
+        const templatePill = await screen.findByRole('button', { name: /Standard/ });
+        await user.click(templatePill);
 
         expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('list');
     });

@@ -14,8 +14,9 @@
     min-width: 120px;
 }
 
-.autoTenantId {
-    // Visually marks ids the batch sequence filled in (vs. explicit file values).
+.autoId {
+    // Visually marks ids that are not explicit file values: filled in by the batch
+    // sequence (Träger tab) or left to the owning service on create (agency tab).
     color: var(--m3-on-surface-variant, #444748);
     font-style: italic;
 }

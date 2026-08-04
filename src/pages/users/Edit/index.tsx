@@ -11,7 +11,7 @@ import { MuiFormField, MuiMultilineFormField, MuiPasswordFormField } from '../..
 import { MuiSwitchField } from '../../../components/mui/MuiSwitchField';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { Page } from '../../../components/Page';
-import { SelectFormField, Option } from '../../../components/SelectFormField';
+import { MuiSelectField, Option } from '../../../components/mui/MuiSelectField';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
@@ -472,7 +472,7 @@ export const UserEditOrAdd = () => {
                         <Col xs={24} lg={12}>
                             <Space direction="vertical" size={20} className={styles.columnStack}>
                                 <Card titleKey="settings.title">
-                                    <SelectFormField
+                                    <MuiSelectField
                                         name="tenantId"
                                         placeholder="tenantAdmins.form.tenant"
                                         required
@@ -482,7 +482,7 @@ export const UserEditOrAdd = () => {
                                         options={convertToOptions(tenantsData || [], 'name', 'id')}
                                     />
 
-                                    <SelectFormField
+                                    <MuiSelectField
                                         name="agencies"
                                         label="agency"
                                         labelInValue
@@ -500,7 +500,7 @@ export const UserEditOrAdd = () => {
                                     </div>
 
                                     {showTopicsField && (
-                                        <SelectFormField
+                                        <MuiSelectField
                                             label="topics.title"
                                             name="topicIds"
                                             labelInValue

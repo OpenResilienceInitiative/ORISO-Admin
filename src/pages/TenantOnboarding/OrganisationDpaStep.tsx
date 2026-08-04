@@ -144,7 +144,9 @@ export const OrganisationDpaStep = ({
                 signerName: initialDpa?.signerName ?? [invite.firstName, invite.lastName].filter(Boolean).join(' '),
                 signerPosition: initialDpa?.signerPosition ?? '',
                 signerEmail: initialDpa?.signerEmail ?? invite.recipientEmail,
-                signerOrganisation: initialDpa?.signerOrganisation ?? initialOrganisation?.name ?? '',
+                // The slot is a free note now, not the organisation name — seeding it
+                // from the field three rows up is exactly the duplication that went.
+                signerOrganisation: initialDpa?.signerOrganisation ?? '',
             }}
         >
             <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1 }}>

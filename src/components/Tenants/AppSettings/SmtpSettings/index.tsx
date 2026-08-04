@@ -6,7 +6,7 @@ import { FormSwitchField } from '../../../FormSwitchField';
 import { FormInputField } from '../../../FormInputField';
 import { FormInputNumberField } from '../../../FormInputNumberField';
 import { FormInputPasswordField } from '../../../FormInputPasswordField';
-import { FormColorSelectorField } from '../../../FormColorSelectorField';
+import { MuiColorField } from '../../../mui/MuiColorField';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
@@ -236,7 +236,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         name={['settings', 'smtp', 'from']}
                         disabled={!smtpAllowed}
                     />
-                    <FormColorSelectorField
+                    <MuiColorField
                         className={styles.colorField}
                         labelKey="tenants.appSettings.smtp.emailThemeColor"
                         name={['settings', 'smtp', 'emailThemeColor']}

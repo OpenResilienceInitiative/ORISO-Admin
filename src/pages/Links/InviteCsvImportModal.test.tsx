@@ -72,8 +72,8 @@ describe('InviteCsvImportModal', () => {
     const renderModal = (parseResult: ParseInviteCsvResult, props: Record<string, unknown> = {}) =>
         render(
             <InviteCsvImportModal
-                autoAssignTenantIds
                 createInvite={createInvite}
+                idKind="tenant"
                 parseResult={parseResult}
                 takenTenantIds={new Set([1, 2, 4])}
                 onClose={onClose}
@@ -93,7 +93,7 @@ describe('InviteCsvImportModal', () => {
                         email: 'b@example.org',
                         firstName: 'B',
                         lastName: 'Two',
-                        tenantId: 5,
+                        id: 5,
                         missingName: false,
                     },
                     { line: 3, email: 'c@example.org', firstName: 'C', lastName: 'Three', missingName: false },
@@ -109,7 +109,7 @@ describe('InviteCsvImportModal', () => {
         // The batch ids flow into the sequential createAccountInvite calls.
         await userEvent.click(screen.getByRole('button', { name: '3 Empfänger anlegen' }));
         await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(3));
-        expect(createInvite.mock.calls.map(([row]) => row.tenantId)).toEqual([3, 5, 6]);
+        expect(createInvite.mock.calls.map(([row]) => row.id)).toEqual([3, 5, 6]);
         await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
         expect(onCreated).toHaveBeenCalledTimes(1);
         // Deterministically consume the success message instead of leaving it mid-render.
@@ -132,7 +132,7 @@ describe('InviteCsvImportModal', () => {
                         email: 'b@example.org',
                         firstName: 'B',
                         lastName: 'Two',
-                        tenantId: 9,
+                        id: 9,
                         missingName: false,
                     },
                 ],
@@ -175,6 +175,52 @@ describe('InviteCsvImportModal', () => {
             firstName: 'Anna',
             lastName: 'Muster',
         });
+    });
+
+    it('leaves empty Beratungsstellen-IDs to the service instead of guessing one', async () => {
+        renderModal(
+            parseResultOf({
+                rows: [
+                    { line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', missingName: false },
+                    { line: 2, email: 'b@example.org', firstName: 'B', lastName: 'Two', id: 42, missingName: false },
+                ],
+            }),
+            { idKind: 'agency', takenTenantIds: undefined },
+        );
+
+        // The agency id space is not resolvable client-side: an explicit id shows as
+        // itself, an empty cell says who assigns it rather than inventing a number.
+        // (antd renders the header twice — once for the sticky clone.)
+        expect(screen.getAllByRole('columnheader', { name: 'Beratungsstellen-ID' }).length).toBeGreaterThan(0);
+        expect(screen.queryByRole('columnheader', { name: 'Träger-ID' })).not.toBeInTheDocument();
+        expect(rowCells('a@example.org').getByText('Automatisch')).toBeInTheDocument();
+        expect(rowCells('b@example.org').getByText('42')).toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole('button', { name: '2 Empfänger anlegen' }));
+        await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(2));
+        expect(createInvite.mock.calls.map(([row]) => row.id)).toEqual([undefined, 42]);
+        expect(await screen.findByText('2 Empfänger angelegt')).toBeInTheDocument();
+    });
+
+    it('names the agency id space in a per-row 409', async () => {
+        createInvite.mockRejectedValue(
+            // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's CONFLICT_WITH_RESPONSE rejection (a raw Response)
+            new Response(null, { status: 409 }),
+        );
+        renderModal(
+            parseResultOf({
+                rows: [
+                    { line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', id: 42, missingName: false },
+                ],
+            }),
+            { idKind: 'agency', takenTenantIds: undefined },
+        );
+
+        await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+
+        expect(await rowCells('a@example.org').findByText('Beratungsstellen-ID vergeben')).toBeInTheDocument();
+        expect(onCreated).not.toHaveBeenCalled();
+        expect(await screen.findByText('0 Empfänger angelegt, 1 fehlgeschlagen')).toBeInTheDocument();
     });
 
     it('removes rows individually and disables the confirm button once nothing is importable', async () => {

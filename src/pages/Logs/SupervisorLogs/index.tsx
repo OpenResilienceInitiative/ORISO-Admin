@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ColumnType } from 'antd/lib/table';
 import { ListingTable } from '../../../components/ListingTable';
-import { Page } from '../../../components/Page';
 import { useSupervisorLogsData } from '../../../hooks/useSupervisorLogsData';
 import { SupervisorLogEntry } from '../../../types/supervisorLogs';
 
@@ -52,28 +51,27 @@ export const SupervisorLogsPage = () => {
         },
     ];
 
+    // Results only: the page chrome (title + tabs) belongs to `LogsTabsLayout`, which renders this
+    // page in its Outlet — same contract as the case-handover and inactive-account log pages.
     return (
-        <Page>
-            <Page.Title titleKey="logs.title" subTitle={String(t('logs.supervisors.subTitle', 'Supervisor Log'))} />
-            <ListingTable<SupervisorLogEntry>
-                rowKey={(row) => `${row.relationId}-${row.action}-${row.eventDate}`}
-                loading={isLoading}
-                columns={columns}
-                dataSource={data?.data ?? []}
-                pagination={{
-                    current: page,
-                    pageSize: perPage,
-                    total: data?.total ?? 0,
-                    showSizeChanger: true,
-                    onChange: (nextPage, nextPageSize) => {
-                        setPage(nextPage);
-                        if (nextPageSize && nextPageSize !== perPage) {
-                            setPerPage(nextPageSize);
-                            setPage(1);
-                        }
-                    },
-                }}
-            />
-        </Page>
+        <ListingTable<SupervisorLogEntry>
+            rowKey={(row) => `${row.relationId}-${row.action}-${row.eventDate}`}
+            loading={isLoading}
+            columns={columns}
+            dataSource={data?.data ?? []}
+            pagination={{
+                current: page,
+                pageSize: perPage,
+                total: data?.total ?? 0,
+                showSizeChanger: true,
+                onChange: (nextPage, nextPageSize) => {
+                    setPage(nextPage);
+                    if (nextPageSize && nextPageSize !== perPage) {
+                        setPerPage(nextPageSize);
+                        setPage(1);
+                    }
+                },
+            }}
+        />
     );
 };

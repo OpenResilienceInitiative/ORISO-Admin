@@ -12,3 +12,7 @@ craco.config.js
 src/resources/animations
 build
 .understand-anything
+# Backend-generated e-mail fixtures (ORISO-UserService#914). They are byte-for-byte what the
+# UserService renders and sends; reformatting them here would be exactly the post-processing the
+# issue forbids. Refresh via scripts/email-fixtures/README.md, never by hand or by a formatter.
+src/components/EmailPreview/fixtures

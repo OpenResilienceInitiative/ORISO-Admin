@@ -15,12 +15,14 @@ import { useTenantData } from '../../hooks/useTenantData.hook';
 import { UserRole } from '../../enums/UserRole';
 import { useFeatureContext } from '../../context/FeatureContext';
 import AdminSidebar, { AdminSidebarNavItem } from './AdminSidebar';
+import AdminBottomNav from './AdminBottomNav';
 import { buildAdminNavItems } from './adminNavItems';
 import { FeatureFlag } from '../../enums/FeatureFlag';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { ReleaseToggle } from '../../enums/ReleaseToggle';
 import { useReleasesToggle } from '../../hooks/useReleasesToggle.hook';
 import { useUserPermissions } from '../../hooks/useUserPermission';
+import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import styles from './styles.module.scss';
 import { clearStuckOverlays } from '../../utils/clearStuckOverlays';
 
@@ -38,6 +40,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
         logout(true);
     };
     const { isEnabled, toggleFeature } = useFeatureContext();
+    const isDesktopLayout = useIsDesktopLayout();
     const [searchParams] = useSearchParams();
     // add this to url to enable developer mode -> ?developer=true
     const developer = searchParams.get('developer');
@@ -87,7 +90,6 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     const navLabels = {
         account: navLabel('sidebar.account', 'profile.title'),
         agency: navLabel('sidebar.agency', 'agency'),
-        activityLogs: navLabel('sidebar.activityLogs', 'logs.title'),
         links: navLabel('sidebar.links', 'links.navTitle'),
         logout: navLabel('sidebar.logout', 'logout'),
         logs: navLabel('sidebar.logs', 'logs.title'),
@@ -126,13 +128,26 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     return (
         <>
             <Layout className="protectedLayout">
-                <AdminSidebar
-                    items={upperNavItems}
-                    account={accountNavItem}
-                    logout={{ label: navLabels.logout, onLogout: handleLogout }}
-                    lang={navLanguage}
-                    currentPath={location.pathname}
-                />
+                {/* One resolved item list, two presentations. Rendering only the
+                    one that applies keeps a single navigation landmark in the
+                    accessibility tree instead of two copies of the same links. */}
+                {isDesktopLayout ? (
+                    <AdminSidebar
+                        items={upperNavItems}
+                        account={accountNavItem}
+                        logout={{ label: navLabels.logout, onLogout: handleLogout }}
+                        lang={navLanguage}
+                        currentPath={location.pathname}
+                    />
+                ) : (
+                    <AdminBottomNav
+                        items={upperNavItems}
+                        account={accountNavItem}
+                        logout={{ label: navLabels.logout, onLogout: handleLogout }}
+                        lang={navLanguage}
+                        currentPath={location.pathname}
+                    />
+                )}
 
                 <Layout className={classNames(styles.mainContent)}>
                     <Content className={styles.content}>

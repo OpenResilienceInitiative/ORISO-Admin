@@ -3,7 +3,7 @@ import { Alert, Form, FormInstance, Modal } from 'antd';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../../CardEditable';
-import { FormColorSelectorField } from '../../../../FormColorSelectorField';
+import { MuiColorField } from '../../../../mui/MuiColorField';
 import { SideScrollerFooter } from '../../../../SideScrollerFooter';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
 import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.hook';
@@ -117,14 +117,14 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing }: ThemeBuilderFor
     return (
         <>
             <div className={styles.colorEditor}>
-                <FormColorSelectorField
+                <MuiColorField
                     className={styles.colorField}
                     labelKey="theme.builder.accentDarkColor"
                     name={['theming', 'primaryColor']}
                     required
                     disabled={locks.accentDark}
                 />
-                <FormColorSelectorField
+                <MuiColorField
                     className={styles.colorField}
                     labelKey="theme.builder.accentLightColor"
                     name={['theming', 'accent']}

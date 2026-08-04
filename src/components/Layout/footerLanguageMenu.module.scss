@@ -1,0 +1,107 @@
+/* Standalone language control of the public footer (see FooterLanguageMenu.tsx).
+   Fixed, narrow footprint — globe + language code — so the footer row can never
+   be pushed onto a second line by the length of a translated language name. */
+
+.trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 100px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    /* Typography is inherited from the footer row it sits in — the stage panel
+       makes it white/bold/uppercase like its menu entries, the in-flow footer
+       leaves it plain. Setting it here would make the control the odd one out
+       on one of the two surfaces. */
+    font: inherit;
+    letter-spacing: 0.5px;
+    line-height: 1.4;
+    transition: background-color 150ms ease;
+    white-space: nowrap;
+
+    &:hover,
+    &[aria-expanded='true'] {
+        /* Follows `currentColor`, so the same rule works on the dark stage panel
+           (white) and on the light in-flow footer (near-black). The brand red
+           would vanish on the panel — and an underline reads as an error. */
+        background: color-mix(in srgb, currentColor 12%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 2px;
+    }
+}
+
+.icon {
+    width: 18px;
+    height: 18px;
+    flex: none;
+}
+
+.code {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Popup: centred over the trigger by antd's `top` placement. */
+
+.popup {
+    :global(.ant-dropdown-menu) {
+        min-width: 160px;
+        padding: 8px 0;
+        border-radius: 12px;
+        /* The M3 menu surface, so the sheet reads as product chrome on the dark
+           panel instead of antd's default white card. */
+        background: var(--m3-surface-container-high, #eae7e8);
+    }
+
+    :global(.ant-dropdown-menu-item) {
+        padding: 8px 16px 8px 8px;
+        color: var(--m3-on-surface, #1b1b1c);
+        font-size: 14px;
+    }
+
+    /* antd tints the selected row with the brand colour. On this surface that is
+       the same red we just removed from under the footer entry — a red row in a
+       language list reads as "something is wrong", not as "this is the current
+       one". The check mark carries that meaning; the row stays neutral. */
+
+    /* Doubled class: antd injects its own `.ant-dropdown .ant-dropdown-menu
+       .ant-dropdown-menu-item-selected` rule at runtime, so an equally specific
+       override would lose the cascade by injection order. */
+
+    &#{&} :global(.ant-dropdown-menu-item-selected) {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    &#{&} :global(.ant-dropdown-menu-item:hover),
+    &#{&} :global(.ant-dropdown-menu-item-active) {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 12%, transparent);
+    }
+}
+
+.option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+/* Reserved gutter so the labels stay aligned whether or not the row is active —
+   the check mark must not shift the text when the language changes. */
+
+.optionCheck {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    color: var(--m3-primary, #a5000a);
+    font-size: 18px;
+}

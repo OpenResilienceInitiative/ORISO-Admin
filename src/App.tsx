@@ -137,8 +137,8 @@ export const App = () => {
     const canReadTenant = can(PermissionAction.Read, Resource.Tenant);
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
-    const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, hasRole, can);
-    const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, hasRole, can);
+    const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
+    const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
     const requiresTwoFactorSetup = requiresPlatformAdminTwoFactor(isSuperAdmin, userData, isTwoFactorSetupDeferred);
 
     if (isLoading || (isSuperAdmin && isUserDataLoading)) {
@@ -271,25 +271,28 @@ export const App = () => {
                                         )
                                     }
                                 />
-                                <Route
-                                    path={routePathNames.logs}
-                                    element={
-                                        showSupervisorLogs ? (
-                                            <LazySupervisorLogsPage />
-                                        ) : (
-                                            <Navigate to="/admin/access-denied" replace />
-                                        )
-                                    }
-                                />
-                                {/* Unified "Logs": one page, tabs for Inactive (default) + Case handover. */}
+                                {/* One "Logs" section for every role: tabs for Supervision, Case
+                                    handover and the inactive-account audit, filtered to what the
+                                    current admin may read (ORISO-Admin#84). */}
                                 <Route
                                     element={
                                         <LogsTabsLayout
-                                            showInactive={isSuperAdmin}
+                                            showSupervisor={showSupervisorLogs}
                                             showCaseHandover={showCaseHandoverLogs}
+                                            showInactive={isSuperAdmin}
                                         />
                                     }
                                 >
+                                    <Route
+                                        path={routePathNames.logs}
+                                        element={
+                                            showSupervisorLogs ? (
+                                                <LazySupervisorLogsPage />
+                                            ) : (
+                                                <Navigate to="/admin/access-denied" replace />
+                                            )
+                                        }
+                                    />
                                     {isSuperAdmin && (
                                         <Route
                                             path={routePathNames.inactiveAccountAuditLogs}

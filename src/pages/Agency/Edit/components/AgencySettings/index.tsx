@@ -5,9 +5,9 @@ import { useFeatureContext } from '../../../../../context/FeatureContext';
 import { FeatureFlag } from '../../../../../enums/FeatureFlag';
 import { Gender } from '../../../../../enums/Gender';
 import { convertToOptions } from '../../../../../utils/convertToOptions';
-import { Option, SelectFormField } from '../../../../../components/SelectFormField';
+import { Option, MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { Card } from '../../../../../components/Card';
-import { SliderFormField } from '../../../../../components/SliderFormField';
+import { MuiSliderField } from '../../../../../components/mui/MuiSliderField';
 import { useTenantTopics } from '../../../../../hooks/useTenantTopics';
 import styles from './styles.module.scss';
 import { CounsellingRelation } from '../../../../../enums/CounsellingRelation';
@@ -50,7 +50,7 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
     const fields = (
         <>
             {isSuperAdmin && (
-                <SelectFormField
+                <MuiSelectField
                     label="agency.edit.general.more_settings.tenant.title"
                     name="tenantId"
                     placeholder="plsSelect"
@@ -64,7 +64,7 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
                 // ADR-014: one Beratungsstelle hosts several Fachbereiche. A department is still the
                 // unique (agency × topic) pairing — an agency simply carries more than one of them,
                 // each with its own Impressum and Datenschutzerklärung.
-                <SelectFormField
+                <MuiSelectField
                     label="topics.title"
                     name="topicIds"
                     isMulti
@@ -77,14 +77,14 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
 
             {isEnabled(FeatureFlag.Demographics) && (
                 <>
-                    <SliderFormField
+                    <MuiSliderField
                         className={styles.sliderContainer}
                         label="agency.age"
                         name={['demographics', 'age']}
                         min={0}
                         max={100}
                     />
-                    <SelectFormField
+                    <MuiSelectField
                         required
                         placeholder={t('select.placeholder')}
                         labelInValue
@@ -100,7 +100,7 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
             )}
 
             {isReleaseToggleEnabled(ReleaseToggle.COUNSELLING_RELATIONS) && (
-                <SelectFormField
+                <MuiSelectField
                     required
                     placeholder={t('select.placeholder')}
                     labelInValue

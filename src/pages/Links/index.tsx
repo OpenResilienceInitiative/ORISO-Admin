@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { Page } from '../../components/Page';
 import routePathNames from '../../appConfig';
 import pageStyles from '../../components/Page/styles.module.scss';
-import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissions/tab_star.svg';
+// The tab glyph is the ORISO icon-master link mark, not the generic permissions
+// star that stood in for it: every tab here hands out an invite link.
+import { ReactComponent as TabLinkIcon } from '../../resources/img/svg/oriso/link_24px.svg';
 import styles from './styles.module.scss';
 
 export { ExternalInboundsTab } from './ExternalInboundsTab';
@@ -43,12 +45,12 @@ export const LinksPage = () => {
                                     key={tab.titleKey}
                                     aria-disabled="true"
                                 >
-                                    <TabStarIcon className={pageStyles.tabStar} width={20} height={20} />
+                                    <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
                                     <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
                                 </span>
                             ) : (
                                 <NavLink className={pageStyles.tab} to={tab.to} key={tab.titleKey}>
-                                    <TabStarIcon className={pageStyles.tabStar} width={20} height={20} />
+                                    <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
                                     <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
                                 </NavLink>
                             ),

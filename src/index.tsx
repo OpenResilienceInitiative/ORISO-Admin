@@ -20,6 +20,7 @@ import { ProtectedRoute } from './router/ProtectedRoute';
 import i18n from './i18n';
 import { Imprint } from './pages/Imprint';
 import { Privacy } from './pages/Privacy';
+import { AdminEmpty } from './components/AdminEmpty';
 import { useAppConfigContext, UseAppConfigProvider } from './context/useAppConfig';
 import { apiServerSettings } from './api/settings/apiServerSettings';
 import { Initialization } from './components/Layout/Initialization';
@@ -92,8 +93,11 @@ const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) =>
         };
     }, []);
 
+    // One empty state for the whole admin: antd asks for it once here, so every
+    // table, list and select that runs out of data shows the ORISO graphic
+    // instead of antd's stock tray drawing.
     return (
-        <ConfigProvider locale={myLanguages[language]} theme={buildAdminAntdTheme()}>
+        <ConfigProvider locale={myLanguages[language]} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
             {children}
         </ConfigProvider>
     );

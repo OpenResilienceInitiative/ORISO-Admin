@@ -36,6 +36,7 @@ export const Outlined: Story = {
 export const Filled: Story = { args: { variant: 'filled', icon: <UploadIcon />, children: 'Upload' } };
 export const Tonal: Story = { args: { variant: 'tonal', children: 'Batch Mode' } };
 export const Disabled: Story = { args: { variant: 'filled', disabled: true, children: 'Upload' } };
+export const Loading: Story = { args: { variant: 'outlined', loading: true, children: 'Save' } };
 
 export const AllVariants: StoryObj = {
     render: () => (

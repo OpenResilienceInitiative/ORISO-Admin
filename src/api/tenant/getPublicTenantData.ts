@@ -1,7 +1,33 @@
 import { fetchData, FETCH_METHODS, FETCH_ERRORS } from '../fetchData';
 import { baseTenantPublicEndpoint } from '../../appConfig';
 import getLocationVariables from '../../utils/getLocationVariables';
+import { decodeTenantAsset } from '../../utils/decodeTenantAsset';
 import { AppConfigInterface } from '../../types/AppConfigInterface';
+
+const BRANDING_ASSETS = ['logo', 'favicon', 'associationLogo'] as const;
+
+/**
+ * TenantService HTML-encodes every stored string, so a base64 branding asset
+ * comes back with `+`/`=` as `&#43;`/`&#61;` and is not a decodable data URL
+ * (see {@link decodeTenantAsset}). Decoding here — at the ONE seam every public
+ * consumer reads through — is what makes the tenant logo appear on the sign-in
+ * stage and the tenant favicon in the browser tab. Doing it per consumer is how
+ * it got missed: the admin's upload preview decoded, the public surfaces did not.
+ */
+const decodeBrandingAssets = (result: any) => {
+    if (!result?.theming) {
+        return result;
+    }
+
+    const theming = { ...result.theming };
+    BRANDING_ASSETS.forEach((asset) => {
+        if (typeof theming[asset] === 'string') {
+            theming[asset] = decodeTenantAsset(theming[asset]);
+        }
+    });
+
+    return { ...result, theming };
+};
 
 /**
  * retrieve all needed public tenant data
@@ -36,7 +62,7 @@ const getPublicTenantData = (settings: AppConfigInterface) => {
         })
             .then((result) => {
                 // console.log('🔍 getPublicTenantData: SUCCESS - Result:', result);
-                return result;
+                return decodeBrandingAssets(result);
             })
             .catch((error) => {
                 // console.error('🔍 getPublicTenantData: ERROR:', error);

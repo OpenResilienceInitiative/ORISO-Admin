@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TranslationApiKeysCard } from './index';
+import m3ButtonStyles from '../../M3Button/styles.module.scss';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
@@ -63,5 +64,24 @@ describe('TranslationApiKeysCard', () => {
         });
         // Still visible: the ORISO rule is disable, not hide.
         expect(screen.getByText('legal.translation.settings.provider.openrouter')).toBeInTheDocument();
+    });
+
+    it('renders save actions with the shared transparent outlined button', () => {
+        render(<TranslationApiKeysCard keys={{}} onSave={() => undefined} />);
+
+        screen.getAllByRole('button', { name: saveButtonName }).forEach((button) => {
+            expect(button).toHaveClass(m3ButtonStyles.outlined);
+        });
+    });
+
+    it('keeps a visible and disabled progress state only on the provider being saved', () => {
+        render(<TranslationApiKeysCard keys={{}} onSave={() => undefined} savingProvider="openrouter" />);
+
+        const [openrouterSave, mistralSave] = screen.getAllByRole('button', { name: saveButtonName });
+        expect(openrouterSave).toBeDisabled();
+        expect(openrouterSave).toHaveAttribute('aria-busy', 'true');
+        expect(openrouterSave.querySelector('[role="progressbar"]')).toBeInTheDocument();
+        expect(mistralSave).toBeEnabled();
+        expect(mistralSave).not.toHaveAttribute('aria-busy');
     });
 });

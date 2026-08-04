@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import classNames from 'classnames';
+import CircularProgress from '@mui/material/CircularProgress';
 import styles from './styles.module.scss';
 
 export type M3ButtonVariant = 'text' | 'outlined' | 'filled' | 'tonal';
@@ -11,6 +12,8 @@ export interface M3ButtonProps {
     icon?: ReactNode;
     onClick?: () => void;
     disabled?: boolean;
+    /** Disables the action and replaces its icon with an accessible progress indicator. */
+    loading?: boolean;
     type?: 'button' | 'submit';
     /** Stretch to the container width (e.g. "Link OTP App" full-width action). */
     block?: boolean;
@@ -29,17 +32,24 @@ export const M3Button = ({
     icon,
     onClick,
     disabled = false,
+    loading = false,
     type = 'button',
     block = false,
     className,
 }: M3ButtonProps) => (
     <button
         type={type === 'submit' ? 'submit' : 'button'}
-        disabled={disabled}
+        disabled={disabled || loading}
+        aria-busy={loading || undefined}
         onClick={onClick}
         className={classNames(styles.button, styles[variant], { [styles.block]: block }, className)}
     >
-        {icon && (
+        {loading && (
+            <span className={styles.icon}>
+                <CircularProgress size={18} color="inherit" />
+            </span>
+        )}
+        {!loading && icon && (
             <span className={styles.icon} aria-hidden>
                 {icon}
             </span>

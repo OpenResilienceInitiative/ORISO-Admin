@@ -16,7 +16,15 @@ vi.mock('../../components/ListingTable', () => ({
     ListingTable: ({ columns = [], dataSource = [], onRow }: any) => (
         <div data-testid="listing-table">
             {dataSource.map((row: any, rowIndex: number) => (
-                <div key={row.id ?? rowIndex} data-testid="template-row" onDoubleClick={onRow?.(row)?.onDoubleClick}>
+                // Stand-in for antd's <tr>, which carries the same handlers — the a11y
+                // rules for real interactive markup do not apply to this test double.
+                // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                <div
+                    key={row.id ?? rowIndex}
+                    data-testid="template-row"
+                    onClick={onRow?.(row)?.onClick}
+                    onDoubleClick={onRow?.(row)?.onDoubleClick}
+                >
                     {columns.map((column: any, columnIndex: number) => {
                         const value = column.dataIndex ? row[column.dataIndex] : undefined;
                         const cell = column.render ? column.render(value, row, rowIndex) : value;
@@ -145,7 +153,7 @@ describe('EmailTemplatesDialog', () => {
         // Kind is preset to the opening tab's kind — no manual selection needed.
         expect(withinDialog.getByLabelText('Kind')).toHaveValue('TENANT_INVITE');
 
-        await user.type(withinDialog.getByLabelText('Name'), 'New tenant welcome');
+        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'New tenant welcome');
         await user.type(withinDialog.getByLabelText('Subject'), 'Hi there');
         // fireEvent.change avoids userEvent's {{/}} key-sequence escaping for literal braces.
         fireEvent.change(withinDialog.getByLabelText('Body'), { target: { value: 'Body {{email}}' } });
@@ -168,6 +176,26 @@ describe('EmailTemplatesDialog', () => {
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalledTimes(6));
     });
 
+    it('renders a live email preview from the subject and body fields', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+
+        const dialog = screen.getByRole('dialog');
+        const withinDialog = within(dialog);
+        await user.type(withinDialog.getByLabelText('Subject'), 'Welcome to ORISO');
+        fireEvent.change(withinDialog.getByLabelText('Body'), {
+            target: { value: 'Hello Hugo,\n\nUse {{inviteLink}} to finish setup.' },
+        });
+
+        const preview = withinDialog.getByRole('region', { name: 'Email preview' });
+        expect(within(preview).getByRole('heading', { name: 'Welcome to ORISO' })).toBeInTheDocument();
+        expect(within(preview).getByText(/Hello Hugo/)).toBeInTheDocument();
+        expect(within(preview).getByText('{{inviteLink}}')).toBeInTheDocument();
+    });
+
     it('opens a prefilled edit form on row double-click and updates the template', async () => {
         const user = userEvent.setup();
         mocks.updateInviteEmailTemplate.mockResolvedValue({ ...tenantTemplate, subject: 'Servus' });
@@ -178,7 +206,7 @@ describe('EmailTemplatesDialog', () => {
 
         const dialog = screen.getByRole('dialog');
         const withinDialog = within(dialog);
-        expect(withinDialog.getByLabelText('Name')).toHaveValue('Default tenant template');
+        expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('Default tenant template');
 
         fireEvent.change(withinDialog.getByLabelText('Subject'), { target: { value: 'Servus' } });
         await user.click(withinDialog.getByRole('button', { name: 'Save' }));
@@ -188,6 +216,48 @@ describe('EmailTemplatesDialog', () => {
                 1,
                 expect.objectContaining({ subject: 'Servus' }),
             ),
+        );
+    });
+
+    it('selects a template when its name is clicked in picker mode', async () => {
+        const user = userEvent.setup();
+        const onSelect = vi.fn();
+        renderDialog({ onSelect });
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+
+        await user.click(screen.getByRole('button', { name: 'Default tenant template' }));
+
+        expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+    });
+
+    it('leaves templates of another kind or inactive ones unselectable', async () => {
+        const user = userEvent.setup();
+        const onSelect = vi.fn();
+        renderDialog({ onSelect });
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+
+        // Inactive COUNSELLOR_INVITE template in a TENANT_INVITE tab: plain text, and a
+        // row click must not hand it to the composer either.
+        expect(screen.queryByRole('button', { name: 'Default counsellor template' })).not.toBeInTheDocument();
+        await user.click(screen.getAllByTestId('template-row')[1]);
+
+        expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it('keeps the edit button working in picker mode instead of selecting', async () => {
+        const user = userEvent.setup();
+        const onSelect = vi.fn();
+        renderDialog({ onSelect });
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+
+        await user.click(within(screen.getAllByTestId('template-row')[0]).getByRole('button', { name: 'Edit' }));
+
+        expect(onSelect).not.toHaveBeenCalled();
+        expect(within(screen.getByRole('dialog')).getByLabelText('Vorlagenname')).toHaveValue(
+            'Default tenant template',
         );
     });
 
@@ -202,7 +272,7 @@ describe('EmailTemplatesDialog', () => {
         const dialog = screen.getByRole('dialog');
         const withinDialog = within(dialog);
 
-        await user.type(withinDialog.getByLabelText('Name'), 'Broken template');
+        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Broken template');
         await user.type(withinDialog.getByLabelText('Subject'), 'Subject');
         await user.type(withinDialog.getByLabelText('Body'), 'Body');
 

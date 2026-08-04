@@ -1,4 +1,4 @@
-import { Button, Form, message, Select } from 'antd';
+import { Button, Form, message } from 'antd';
 import type { TablePaginationConfig } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,9 +11,11 @@ import {
     listTopicInviteLinks,
     TopicInviteLinkDTO,
 } from '../../api/invitelinks/topicInviteLinks';
+import { FloatingLabelSelect } from '../../components/FloatingLabelSelect';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { useTenantTopics } from '../../hooks/useTenantTopics';
 import { AnonymityTag, StatusTag } from './components/StatusTag';
+import styles from './styles.module.scss';
 
 const LINK_KIND = 'EXTERNAL_INBOUND' as const;
 const DEFAULT_ANONYMITY = 'FULL' as const;
@@ -186,26 +188,27 @@ export const ExternalInboundsTab = () => {
                 initialValues={{ chatType: CHAT_TYPE_OPTIONS[0].value }}
                 onFinish={onCreate}
             >
+                {/* The M3 outlined select with its floating label — the same
+                    control the invite composer one tab over uses. This form
+                    still ran antd's stock select with a left-hand label, its
+                    colon and weight-900 caps, which is where the "outdated ant
+                    components" reading came from. */}
                 <div className={listingTableStyles.formFields}>
-                    <Form.Item
-                        name="topicId"
-                        label={t('links.form.topic', 'Topic')}
-                        rules={[{ required: true, message: t('plsSelect') }]}
-                    >
-                        <Select
-                            style={{ minWidth: 200 }}
-                            loading={isLoadingTopics}
-                            placeholder={t('links.form.topicPh', 'Select Topic')}
-                            options={topicOptions}
+                    <Form.Item name="topicId" rules={[{ required: true, message: t('plsSelect') }]} noStyle>
+                        <FloatingLabelSelect
                             allowClear
+                            className={styles.inboundField}
+                            label={t('links.form.topic', 'Topic')}
+                            loading={isLoadingTopics}
+                            options={topicOptions}
                         />
                     </Form.Item>
-                    <Form.Item
-                        name="chatType"
-                        label={t('links.form.chatType', 'Chat Type')}
-                        rules={[{ required: true }]}
-                    >
-                        <Select style={{ minWidth: 160 }} options={CHAT_TYPE_OPTIONS} />
+                    <Form.Item name="chatType" rules={[{ required: true }]} noStyle>
+                        <FloatingLabelSelect
+                            className={styles.inboundField}
+                            label={t('links.form.chatType', 'Chat Type')}
+                            options={CHAT_TYPE_OPTIONS}
+                        />
                     </Form.Item>
                 </div>
                 <Form.Item>

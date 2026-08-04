@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { DeleteOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownloadOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
 import { message, Upload, type MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
+import SelectAllIcon from '@mui/icons-material/SelectAll';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import {
     agencyIdAllocationClient,
@@ -15,7 +16,9 @@ import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { M3NumberField } from '../../components/M3NumberField';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
+import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
 import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
+import { ReactComponent as FileSaveIcon } from '../../resources/img/svg/oriso/file_save_24px.svg';
 import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
 import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
 import styles from './inviteComposer.module.scss';
@@ -47,11 +50,10 @@ export interface InviteComposerValues {
 }
 
 export interface InviteComposerProps {
-    /** Templates of this tab's kind; only active ones are offered in the menu. */
+    /** Templates of this tab's kind; active ones gate send and label the template pill. */
     templates: InviteEmailTemplateDTO[];
     /** Currently selected template (lifted so the tab can reuse it, e.g. for resend). */
     templateId?: number;
-    onTemplateIdChange: (templateId: number) => void;
     /** Träger tab: the Träger-ID is an allocation field — Auto by default, collision-checked in manual mode (#570). */
     requireTenantId?: boolean;
     /** Non-Träger tabs: prefill with the admin's own tenant. */
@@ -69,8 +71,8 @@ export interface InviteComposerProps {
     persistKey: string;
     /** Resolve `true` on success — the composer then clears its fields. */
     onSubmit: (values: InviteComposerValues) => Promise<boolean> | boolean;
-    /** Open the EmailTemplatesDialog in the requested view. */
-    onManageTemplates: (intent: 'create' | 'delete') => void;
+    /** Open the EmailTemplatesDialog in the requested view (`list` is the picker). */
+    onManageTemplates: (intent: 'create' | 'delete' | 'list') => void;
     /**
      * Enables the "⋮" more-menu with the "CSV-Datei importieren" entry (#315).
      * Called with the client-side parse result and the send mode captured at
@@ -89,6 +91,11 @@ export interface InviteComposerProps {
      * of the persisted send mode.
      */
     onBulkSend?: () => void;
+    /**
+     * Bulk mode: clears the row selection. Drives the counter's up-chevron —
+     * the one control that undoes the state the counter is showing.
+     */
+    onClearSelection?: () => void;
     /**
      * Enables the "Ausgewählte löschen" entry in the "⋮" more-menu (#316).
      * The entry is disabled without a selection; the tab opens the revoke
@@ -127,8 +134,8 @@ const readPersistedSendMode = (persistKey: string): InviteSendMode => {
 /**
  * Invite composer row (#314, Figma 1165:17005 middle row): minimized global
  * search pill, floating-label recipient fields, the pill-shaped Träger-ID
- * number field (auto-suggest preserved), a tonal template split button whose
- * chevron menu selects/creates/deletes templates, and the send split button.
+ * number field (auto-suggest preserved), a tonal template pill that opens the
+ * EmailTemplatesDialog picker, and the send split button.
  * The send button rests `outlined` + disabled and only turns `primary` once
  * everything is validly filled; its chevron switches the persisted send mode
  * ("Direkt Versenden" vs "Empfänger nur anlegen", saved per tab in
@@ -137,7 +144,6 @@ const readPersistedSendMode = (persistKey: string): InviteSendMode => {
 export const InviteComposer = ({
     templates,
     templateId,
-    onTemplateIdChange,
     requireTenantId = false,
     initialTenantId,
     tenantIdAllocation,
@@ -150,6 +156,7 @@ export const InviteComposer = ({
     onCsvParsed,
     selectionCount = 0,
     onBulkSend,
+    onClearSelection,
     onDeleteSelected,
     searchPlaceholder,
     className,
@@ -234,29 +241,6 @@ export const InviteComposer = ({
         }
     };
 
-    const templateMenu: MenuProps = {
-        items: [
-            {
-                key: 'templates',
-                type: 'group',
-                label: t('links.composer.templateGroup', 'E-Mail-Vorlagen auswählen oder erstellen'),
-                children: activeTemplates.map((template) => ({ key: String(template.id), label: template.name })),
-            },
-            { key: 'divider', type: 'divider' },
-            { key: 'create', label: t('links.composer.templateCreate', 'Neue E-Mail-Vorlage erstellen') },
-            { key: 'delete', label: t('links.composer.templateDelete', 'E-Mail-Vorlage löschen') },
-        ],
-        selectable: true,
-        selectedKeys: templateId != null ? [String(templateId)] : [],
-        onClick: ({ key }) => {
-            if (key === 'create' || key === 'delete') {
-                onManageTemplates(key);
-                return;
-            }
-            onTemplateIdChange(Number(key));
-        },
-    };
-
     // "CSV-Datei importieren" (#315, Figma "Invite Link Options"): the file is read
     // and parsed entirely client-side; the parse result plus the CURRENT persisted
     // send mode go to the tab, which opens the preview modal. Direct mode needs a
@@ -280,6 +264,12 @@ export const InviteComposer = ({
         return Upload.LIST_IGNORE;
     };
 
+    // The id column is the Träger-ID on the Träger tab and the agency id
+    // everywhere else — the template header has to say which one.
+    const csvIdLabel = requireTenantId
+        ? t('links.accountInvites.tenantId', 'Träger-ID')
+        : t('links.accountInvites.agencyId', 'Beratungsstellen-ID');
+
     const moreMenuItems: NonNullable<MenuProps['items']> = [];
     if (onCsvParsed) {
         moreMenuItems.push({
@@ -288,10 +278,30 @@ export const InviteComposer = ({
                 <Upload accept=".csv,text/csv" beforeUpload={handleCsvFile} showUploadList={false}>
                     <span className={styles.csvImportEntry}>
                         <UploadOutlined aria-hidden />
-                        {t('links.csvImport.menuEntry', 'CSV-Datei importieren')}
+                        <span className={styles.csvImportLabel}>
+                            {t('links.csvImport.menuEntry', 'CSV-Datei importieren')}
+                            {/* The import expects a fixed column ORDER, and an
+                                admin standing in this menu has no other way to
+                                learn it (#315 follow-up). */}
+                            <span className={styles.csvImportHint}>
+                                {t('links.csvImport.columns', 'Spalten: {{columns}}', {
+                                    columns: [
+                                        t('links.accountInvites.email', 'E-Mail'),
+                                        t('links.accountInvites.firstName', 'Vorname'),
+                                        t('links.composer.lastName', 'Name'),
+                                        `${csvIdLabel} ${t('links.csvImport.optional', '(optional)')}`,
+                                    ].join(', '),
+                                })}
+                            </span>
+                        </span>
                     </span>
                 </Upload>
             ),
+        });
+        moreMenuItems.push({
+            key: 'csv-template',
+            icon: <DownloadOutlined aria-hidden />,
+            label: t('links.csvImport.downloadTemplate', 'CSV-Vorlage herunterladen'),
         });
     }
     if (onDeleteSelected) {
@@ -311,6 +321,18 @@ export const InviteComposer = ({
         onClick: ({ key }) => {
             if (key === 'delete-selected') {
                 onDeleteSelected?.();
+                return;
+            }
+            if (key === 'csv-template') {
+                downloadInviteCsvTemplate(
+                    {
+                        email: t('links.accountInvites.email', 'E-Mail'),
+                        firstName: t('links.accountInvites.firstName', 'Vorname'),
+                        lastName: t('links.composer.lastName', 'Name'),
+                        id: csvIdLabel,
+                    },
+                    t('links.csvImport.templateFileName', 'oriso-einladungen-vorlage.csv'),
+                );
             }
         },
     };
@@ -323,8 +345,16 @@ export const InviteComposer = ({
 
     const sendMenu: MenuProps = {
         items: [
-            { key: 'direct', label: t('links.composer.sendDirect', 'Direkt Versenden') },
-            { key: 'createOnly', label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen') },
+            {
+                key: 'direct',
+                icon: <SendIcon aria-hidden className={styles.menuIcon} />,
+                label: t('links.composer.sendDirect', 'Direkt Versenden'),
+            },
+            {
+                key: 'createOnly',
+                icon: <FileSaveIcon aria-hidden className={styles.menuIcon} />,
+                label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen'),
+            },
         ],
         selectable: true,
         selectedKeys: [sendMode],
@@ -401,18 +431,28 @@ export const InviteComposer = ({
             <SplitButton
                 icon={<MailFilledIcon />}
                 label={selectedTemplate?.name ?? t('links.composer.templatePlaceholder', 'E-Mail-Vorlage')}
-                menu={templateMenu}
-                menuLabel={t('links.composer.templateMenuLabel', 'E-Mail-Vorlage wählen')}
                 variant="tonal"
+                onClick={() => onManageTemplates('list')}
             />
+            {/* Filled primary is reserved for the selected item / main CTA; every
+                other resting state is tonal M3 secondary (owner call). The icon
+                stays in both states — a send button without its glyph was the
+                "icons are missing" note. */}
             <SplitButton
-                icon={sendReady ? <SendFilledIcon /> : <SendIcon />}
-                label={bulkMode ? bulkSendLabel : singleSendLabel}
+                icon={bulkMode ? <SelectAllIcon fontSize="small" /> : <SendFilledIcon />}
+                label={bulkMode ? String(selectionCount) : singleSendLabel}
                 mainDisabled={!sendReady || submitting}
                 menu={sendMenu}
                 menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
-                variant={sendReady ? 'primary' : 'outlined'}
+                title={bulkMode ? bulkSendLabel : undefined}
+                // Filled primary is the single-send CTA. The selection counter stays
+                // tonal secondary even when it is ready to fire (Figma 1165:16407
+                // selection variant): it is a state display with actions hanging off
+                // it, not the page's call to action.
+                variant={!bulkMode && sendReady ? 'primary' : 'secondary'}
+                collapseLabel={t('links.bulk.clearSelection', 'Auswahl aufheben')}
                 onClick={bulkMode ? onBulkSend : handleSend}
+                onCollapse={bulkMode ? onClearSelection : undefined}
             />
         </GlobalSearchBar>
     );

@@ -30,7 +30,6 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     // inside instead. Below 600px the card goes fluid (mobile view).
     @media (min-width: 600px) {
         &:not(.inDialog) {
-            width: 800px;
             height: 740px;
             flex-shrink: 0;
 
@@ -441,18 +440,44 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 
 // The pinned maximize/minimize button: perfectly round, never squished by the
 // flex row. Doubled class beats the .toolBtn base rule regardless of order.
+//
+// Owner call 2026-07-29: the glyph carries this control, not a button shell —
+// so the 36px pill loses its padding and the icon grows to 22px, which gives
+// the text next to it real width back. 24px is the floor, not padding: it is
+// the minimum pointer target, and at 22px the icon all but fills it.
 .toolBtn.maximizeToolBtn {
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
     flex-shrink: 0;
     border-radius: 50%;
+    // Active primary (owner call 2026-07-30): the bare glyph at 22px read as
+    // nothing in that empty band, so it carries the active tone at full size.
+    color: var(--m3-primary, #a5000a);
+
+    svg {
+        width: 28px;
+        height: 28px;
+    }
+
+    &:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--m3-primary, #a5000a) 12%, transparent);
+    }
 }
 
 // Fullscreen exit (Figma 1276-72139): the pinned button turns red while the
-// editor is in the fullscreen dialog — white icon via currentColor.
+// editor is in the fullscreen dialog — white icon via currentColor. This one
+// IS a filled shell, so it keeps the padded 36px circle the bare maximize
+// glyph gave up.
 .toolBtn.exitFullscreenBtn {
+    width: 36px;
+    height: 36px;
     background: $m3-publish;
     color: #fff;
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
 
     &:hover:not(:disabled) {
         background: #8c0009;
@@ -819,6 +844,14 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     :global(.ProseMirror) {
         min-height: 248px;
         outline: none;
+
+        // German legal prose is full of 25+ character compounds. `hyphens: auto`
+        // breaks them where the language allows (the text region carries `lang`);
+        // `break-word` only steps in for words that fit on no line at all. The
+        // previous `anywhere` short-circuited hyphenation and split headings
+        // mid-word ("Auftragsverarbeitun / gsvertrag").
+        hyphens: auto;
+        overflow-wrap: break-word;
     }
 
     // Inserted images must never blow out the text surface.
@@ -1110,6 +1143,15 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
             border-color: transparent;
             box-shadow: none;
         }
+    }
+
+    // Owner call 2026-07-30, desktop AND mobile: with the outer box gone there
+    // is no edge left for the text to keep its distance from, so the side inset
+    // goes too — the reading measure gets those 16px back on both sides. The
+    // chapter row lives in the same wrapper, which is why its arrows move out
+    // to the edges with it.
+    .editorWrap {
+        padding-inline: 0;
     }
 }
 

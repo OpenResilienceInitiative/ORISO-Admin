@@ -1,0 +1,22 @@
+.root {
+    width: 100%;
+}
+
+.control {
+    // The permanently-visible value labels sit above the track and would
+    // otherwise overlap the field label (antd reserved the room via a 50px
+    // margin on `.ant-form-item-control-input`).
+    padding: 10px 20px 0;
+}
+
+.label {
+    display: block;
+    height: 26px;
+    color: var(--label-color);
+    font-family: var(--m3-body-font-family);
+    font-size: 16px;
+}
+
+.slider {
+    margin-top: 34px;
+}

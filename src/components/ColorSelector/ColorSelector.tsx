@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { HexColorPicker } from 'react-colorful';
-import { Typography, Input } from 'antd';
 import useComponentVisible from '../../hooks/useComponentVisible';
-
-const { Title } = Typography;
 
 interface ColorSelectorProps {
     isLoading: boolean;
@@ -29,17 +26,20 @@ const ColorSelector = ({ isLoading, label, tenantColor, setColorValue, field }: 
 
     return (
         <div className="colorSelector" ref={ref}>
-            <Input hidden />
             <button
                 type="button"
                 disabled={isLoading}
                 className="colorIndicator"
                 style={{ backgroundColor: selectedColor }}
+                aria-label={label}
                 onClick={() => setIsComponentVisible(!isComponentVisible)}
             />
             <div>
                 <span>{label}</span>
-                <Title level={4}>HEX {selectedColor}</Title>
+                {/* Plain `h4` — it used to be antd's `Title level={4}`, and the
+                    surrounding stylesheets hook it as `.colorSelector h4`.
+                    MuiColorField supplies the baseline type those sheets override. */}
+                <h4>HEX {selectedColor}</h4>
             </div>
             {isComponentVisible && (
                 <div className="pickerWrapper">

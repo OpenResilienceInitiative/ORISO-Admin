@@ -12,6 +12,14 @@ export interface DpaLegalReaderProps {
     label: string;
     /** Optional intro line, rendered in the canonical "Editor Help Texts" block. */
     description?: React.ReactNode;
+    /**
+     * Drops the card's icon + title row for hosts that already state the
+     * agreement's name above the card (the DPA blocker). `label` stays the
+     * accessible name of the reading region either way.
+     */
+    hideHeader?: boolean;
+    /** Language the legal text is written in — drives hyphenation of long compounds. */
+    contentLanguage?: string;
     testId?: string;
 }
 
@@ -35,7 +43,14 @@ export interface DpaLegalReaderProps {
  * deliberately never mutates its document, so legal texts published before the
  * anchor feature would otherwise render without any chapters.
  */
-export const DpaLegalReader = ({ html, label, description, testId = 'dpa-text' }: DpaLegalReaderProps) => {
+export const DpaLegalReader = ({
+    html,
+    label,
+    description,
+    hideHeader,
+    contentLanguage,
+    testId = 'dpa-text',
+}: DpaLegalReaderProps) => {
     const anchoredHtml = useMemo(() => ensureHeadingAnchorIds(html), [html]);
 
     return (
@@ -44,6 +59,8 @@ export const DpaLegalReader = ({ html, label, description, testId = 'dpa-text' }
                 readOnly
                 fluid
                 enableAnchors
+                contentLanguage={contentLanguage}
+                hideHeader={hideHeader}
                 title={label}
                 icon={GavelOutlined}
                 value={anchoredHtml}

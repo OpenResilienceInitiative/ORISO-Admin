@@ -74,7 +74,7 @@ describe('DpaFormSection — consent is the deliberate act (#594.5)', () => {
         const checkbox = screen.getByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' });
         expect(consent).toContainElement(checkbox);
         // The block sits AFTER the signer fields — it is the closing act.
-        const lastField = screen.getByLabelText('tenantOnboarding.dpa.signerOrganisation');
+        const lastField = screen.getByLabelText('tenantOnboarding.dpa.signerNote');
         // eslint-disable-next-line no-bitwise
         expect(lastField.compareDocumentPosition(consent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });

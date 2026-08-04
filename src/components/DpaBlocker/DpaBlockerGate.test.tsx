@@ -242,7 +242,7 @@ describe('DpaBlockerGate', () => {
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Toni Tenantadmin');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'toni@example.org');
-        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerOrganisation'), 'Träger Nord e.V.');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Vertretungsberechtigt laut Satzung');
         await user.click(screen.getByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' }));
         await user.click(screen.getByRole('button', { name: 'dpaBlocker.sign.submit' }));
 
@@ -252,7 +252,36 @@ describe('DpaBlockerGate', () => {
             signerName: 'Toni Tenantadmin',
             signerPosition: 'Geschäftsführung',
             signerEmail: 'toni@example.org',
-            signerOrganisation: 'Träger Nord e.V.',
+            signerOrganisation: 'Vertretungsberechtigt laut Satzung',
+            accepted: true,
+            language: 'de',
+        });
+    });
+
+    // The fourth slot used to demand the organisation a second time and blocked the
+    // signature until it was retyped. It is a free note now, so leaving it empty must
+    // not stand between a tenant admin and their own admin area.
+    it('signs with the note left empty', async () => {
+        mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
+        mocks.signDpaAdmin.mockResolvedValue(statusInfo('VALID'));
+        const user = userEvent.setup();
+
+        renderGate();
+
+        expect(await screen.findByTestId('dpa-text')).toBeInTheDocument();
+
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Toni Tenantadmin');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'toni@example.org');
+        await user.click(screen.getByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' }));
+        await user.click(screen.getByRole('button', { name: 'dpaBlocker.sign.submit' }));
+
+        expect(await screen.findByTestId('admin-page')).toBeInTheDocument();
+        expect(mocks.signDpaAdmin).toHaveBeenCalledWith(21, {
+            signerName: 'Toni Tenantadmin',
+            signerPosition: 'Geschäftsführung',
+            signerEmail: 'toni@example.org',
+            signerOrganisation: '',
             accepted: true,
             language: 'de',
         });
@@ -269,7 +298,7 @@ describe('DpaBlockerGate', () => {
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Toni Tenantadmin');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'toni@example.org');
-        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerOrganisation'), 'Träger Nord e.V.');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Vertretungsberechtigt laut Satzung');
         await user.click(screen.getByRole('button', { name: 'dpaBlocker.sign.submit' }));
 
         expect(await screen.findByText('tenantOnboarding.dpa.acceptRequired')).toBeInTheDocument();
@@ -288,7 +317,7 @@ describe('DpaBlockerGate', () => {
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Toni Tenantadmin');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'toni@example.org');
-        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerOrganisation'), 'Träger Nord e.V.');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Vertretungsberechtigt laut Satzung');
         await user.click(screen.getByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' }));
         await user.click(screen.getByRole('button', { name: 'dpaBlocker.sign.submit' }));
 

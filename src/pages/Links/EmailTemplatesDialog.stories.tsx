@@ -5,21 +5,6 @@ import { http, HttpResponse, delay } from 'msw';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 
-/**
- * Mount-on-click harness (same pattern as CreateAgencyModal.stories): opening the
- * dialog at story-mount time leaves antd's zoom-in motion stuck under StrictMode's
- * double mount, so a trigger button mounts it on demand — matching real usage.
- */
-const DialogHarness = (props: React.ComponentProps<typeof EmailTemplatesDialog>) => {
-    const [open, setOpen] = useState(false);
-    return (
-        <>
-            <Button onClick={() => setOpen(true)}>Vorlagen verwalten</Button>
-            {open && <EmailTemplatesDialog {...props} onClose={() => setOpen(false)} />}
-        </>
-    );
-};
-
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
 
 const TEMPLATES: InviteEmailTemplateDTO[] = [
@@ -46,6 +31,17 @@ const TEMPLATES: InviteEmailTemplateDTO[] = [
         updateDate: null,
     },
     {
+        id: 4,
+        kind: 'TENANT_INVITE',
+        name: 'Träger-Willkommen (Kurzfassung)',
+        language: 'de',
+        subject: 'Ihr Zugang — kurz und knapp',
+        body: 'Hallo {{firstName}}, hier ist Ihr Zugang: {{inviteLink}}',
+        active: true,
+        createDate: '2026-07-04T10:00:00Z',
+        updateDate: null,
+    },
+    {
         id: 3,
         kind: 'COUNSELLOR_INVITE',
         name: 'Berater-Willkommen',
@@ -57,6 +53,47 @@ const TEMPLATES: InviteEmailTemplateDTO[] = [
         updateDate: null,
     },
 ];
+
+/**
+ * Mount-on-click harness (same pattern as CreateAgencyModal.stories): opening the
+ * dialog at story-mount time leaves antd's zoom-in motion stuck under StrictMode's
+ * double mount, so a trigger button mounts it on demand — matching real usage.
+ * With `picker` it also stands in for the invite composer, which owns the selection.
+ */
+const DialogHarness = ({
+    picker = false,
+    ...props
+}: React.ComponentProps<typeof EmailTemplatesDialog> & { picker?: boolean }) => {
+    const [open, setOpen] = useState(false);
+    const [selectedTemplateId, setSelectedTemplateId] = useState(props.selectedTemplateId);
+    const selectedName = TEMPLATES.find((template) => template.id === selectedTemplateId)?.name;
+
+    return (
+        <>
+            <Button onClick={() => setOpen(true)}>Vorlagen verwalten</Button>
+            {picker && (
+                <p style={{ marginTop: 12 }}>
+                    Gewählte Vorlage: <strong>{selectedName ?? '—'}</strong>
+                </p>
+            )}
+            {open && (
+                <EmailTemplatesDialog
+                    {...props}
+                    selectedTemplateId={selectedTemplateId}
+                    onClose={() => setOpen(false)}
+                    onSelect={
+                        picker
+                            ? (template) => {
+                                  setSelectedTemplateId(template.id);
+                                  setOpen(false);
+                              }
+                            : undefined
+                    }
+                />
+            )}
+        </>
+    );
+};
 
 const templatesByKind = http.get(TEMPLATES_ENDPOINT, ({ request }) => {
     const kind = new URL(request.url).searchParams.get('kind');
@@ -86,6 +123,17 @@ type Story = StoryObj<typeof meta>;
 
 /** List view with templates of every kind, the opening tab's kind sorted first. */
 export const Filled: Story = {
+    parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
+};
+
+/**
+ * Picker mode (how the invite composer opens it): clicking a template's name selects
+ * it and closes the dialog. Only active templates of the opening tab's kind are
+ * clickable — the rest stay plain text with an explanatory tooltip. The split-button
+ * menu still changes the choice afterwards.
+ */
+export const Picker: Story = {
+    args: { picker: true, selectedTemplateId: 1 },
     parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
 };
 

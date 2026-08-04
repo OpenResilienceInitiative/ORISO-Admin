@@ -6,7 +6,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { MuiFormField, MuiPasswordFormField } from '../../../components/mui/MuiFormField';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { Page } from '../../../components/Page';
-import { SelectFormField } from '../../../components/SelectFormField';
+import { MuiSelectField } from '../../../components/mui/MuiSelectField';
 import { useTenantUserAdminData } from '../../../hooks/useTenantUserAdminData';
 import { Card } from '../../../components/Card';
 import { useTenantsData } from '../../../hooks/useTenantsData';
@@ -173,7 +173,7 @@ export const TenantAdminEditOrAdd = () => {
                         {!isPlatformAdmin && (
                             <Col xs={24} lg={12}>
                                 <Card titleKey="tenantAdmins.card.tenantTitle">
-                                    <SelectFormField
+                                    <MuiSelectField
                                         name="tenantId"
                                         placeholder="tenantAdmins.form.tenant"
                                         required
@@ -181,7 +181,7 @@ export const TenantAdminEditOrAdd = () => {
                                         className={styles.select}
                                     >
                                         {tenants?.data.map((option) => (
-                                            <SelectFormField.Option
+                                            <MuiSelectField.Option
                                                 key={option.id}
                                                 className={styles.option}
                                                 value={String(option.id)}
@@ -193,9 +193,9 @@ export const TenantAdminEditOrAdd = () => {
                                                     {' | '}
                                                     <div className={styles.optionTenantSubdomain}>{getDomain()}</div>
                                                 </div>
-                                            </SelectFormField.Option>
+                                            </MuiSelectField.Option>
                                         ))}
-                                    </SelectFormField>
+                                    </MuiSelectField>
                                 </Card>
                             </Col>
                         )}

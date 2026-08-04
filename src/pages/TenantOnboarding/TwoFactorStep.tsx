@@ -1,4 +1,5 @@
 import { TwoFactorSetup, TwoFactorSetupInlineError } from '../../components/TwoFactorSetup/TwoFactorSetup';
+import { toBase32Secret } from '../../utils/totpSecret';
 import { TwoFactorStepData } from './useTenantAdminOnboardingFlow';
 
 interface TwoFactorStepProps {
@@ -36,7 +37,7 @@ export const TwoFactorStep = ({ result, busy, showCodeError, showServiceError, o
             appLink={
                 result.twoFactor
                     ? {
-                          secretBase32: result.twoFactor.secret,
+                          secretBase32: toBase32Secret(result.twoFactor.secret),
                           qrCodeBase64: result.twoFactor.qrCodeBase64,
                       }
                     : null

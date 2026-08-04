@@ -7,6 +7,8 @@ import {
     accountInvitesEndpoint,
     createAccountInvite,
     createInviteEmailTemplate,
+    getInviteEmailPreview,
+    inviteEmailPreviewEndpoint,
     listAccountInvites,
     listInviteEmailTemplates,
     resendAccountInvite,
@@ -247,5 +249,60 @@ describe('invite email template API', () => {
             active: false,
         });
         expect(result).toEqual(responseBody);
+    });
+});
+
+describe('branded invite e-mail preview (UserService#914)', () => {
+    beforeEach(() => {
+        mocks.fetchData.mockReset();
+    });
+
+    it('renders the built-in platform sample when no parameter is given', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ html: '<!doctype html><html></html>' });
+
+        await getInviteEmailPreview();
+
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                method: FETCH_METHODS.GET,
+                url: inviteEmailPreviewEndpoint,
+                // The preview owns an inline error state; a global toast would be wrong here.
+                responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+            }),
+        );
+    });
+
+    it('passes the documented query parameters, snake_case tenant id included', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ html: '<!doctype html><html></html>' });
+
+        await getInviteEmailPreview({ templateId: 5, kind: 'COUNSELLOR_INVITE', tenantId: 7, language: 'en' });
+
+        expect(mocks.fetchData.mock.calls[0][0].url).toBe(
+            `${inviteEmailPreviewEndpoint}?templateId=5&kind=COUNSELLOR_INVITE&tenant_id=7&language=en`,
+        );
+    });
+
+    it('omits parameters that are not set instead of sending empty values', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ html: '<!doctype html><html></html>' });
+
+        await getInviteEmailPreview({ tenantId: undefined, language: 'de' });
+
+        expect(mocks.fetchData.mock.calls[0][0].url).toBe(`${inviteEmailPreviewEndpoint}?language=de`);
+    });
+
+    it('returns the parsed preview payload unchanged — the html must not be post-processed', async () => {
+        const preview = {
+            templateId: null,
+            templateName: null,
+            kind: 'TENANT_INVITE',
+            language: 'de',
+            subject: 'Ihre Einladung zu ORISO',
+            html: '<!doctype html><html lang="de"><body>mail</body></html>',
+            plainText: 'ORISO\n=====',
+            sampleAcceptUrl: 'https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
+        };
+        mocks.fetchData.mockResolvedValueOnce(preview);
+
+        await expect(getInviteEmailPreview()).resolves.toBe(preview);
     });
 });
