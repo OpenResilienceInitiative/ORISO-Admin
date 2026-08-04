@@ -3,10 +3,31 @@ import { Card } from '../Card';
 import { CardDeck } from '../CardDeck';
 import { Page } from './index';
 
+/**
+ * In the app the page sits right of the 128px admin sidebar, and the header's
+ * arrow rail reaches into that gutter. Without the stand-in the backward arrow
+ * would fall off the left edge of the Storybook canvas and the rail could not be
+ * reviewed at all.
+ */
+const SidebarStandIn = ({ children }: { children: React.ReactNode }) => (
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+        <div
+            style={{
+                width: 128,
+                flex: '0 0 128px',
+                background: 'var(--m3-on-background, #281715)',
+            }}
+            aria-hidden
+        />
+        <div style={{ flex: '1 1 auto', minWidth: 0 }}>{children}</div>
+    </div>
+);
+
 const meta = {
     title: 'Organisms/Page',
     component: Page,
     parameters: { layout: 'fullscreen' },
+    decorators: [(Story) => <SidebarStandIn>{Story()}</SidebarStandIn>],
 } satisfies Meta<typeof Page>;
 
 export default meta;

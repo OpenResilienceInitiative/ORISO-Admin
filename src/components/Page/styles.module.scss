@@ -43,7 +43,6 @@
 // 1285-80496). `align-self: stretch` gives it the full header width in the
 // column layout of `.pageTitleContainer`.
 .tabsRow {
-    position: relative;
     display: flex;
     min-width: 0;
     align-items: center;
@@ -55,10 +54,12 @@
     position: absolute;
     z-index: 1;
     top: 50%;
-    // Backward arrow tucks into the 60px gutter next to the sidebar, forward
+    // The header shell already spans the full page width — from the sidebar edge
+    // to the right edge of the viewport — so the rail rides its edges: the
+    // backward arrow tucks into the 60px gutter next to the sidebar, the forward
     // arrow sits flush against the right page edge.
-    right: var(--page-deck-nav-end, calc(-1 * var(--admin-page-edge)));
-    left: var(--page-deck-nav-start, calc(-1 * var(--admin-page-gutter, 60px)));
+    right: var(--page-deck-nav-end, 0);
+    left: var(--page-deck-nav-start, 0);
     display: flex;
     height: 96px;
     align-items: center;
@@ -206,7 +207,11 @@
     text-align: left;
 }
 
+// Both header shells anchor the arrow rail: the rail spans the whole header, not
+// just the tab row, so a back link in front of the tabs cannot push the backward
+// arrow out of its gutter and under the first tab pill.
 .pageTitleContainer {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -216,6 +221,7 @@
 }
 
 .back {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -226,10 +232,10 @@
         flex-direction: column;
     }
 
-    // The back link already occupies the page edge here, so the backward arrow
-    // moves into the gap between the two — widened to make room for it.
+    // The back link sits inside the header padding, the arrow outside it in the
+    // gutter — so the tab row needs no extra inset here.
     .tabsRow {
-        margin-left: 40px;
+        margin-left: 0;
     }
 }
 
