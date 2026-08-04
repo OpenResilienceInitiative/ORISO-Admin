@@ -9,11 +9,15 @@ import {
     getEnforcedOnFields,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
+import { EnforceModeSwitch } from './EnforceModeSwitch';
 import type { EnforceChangeHandler, PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 
 export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
     const { data: platformControls, isLoading } = useTenantAdminControls(true);
     const { mutate: updateTenantAdminControls } = useTenantAdminControlsMutation({ successMessageKey: false });
+    // Defaults to plain "Configure" mode — the enforce checkboxes used to render permanently;
+    // see ORISO-Admin#297.
+    const [enforceMode, setEnforceMode] = useState(false);
 
     const allowedPermissionToggles = platformControls?.allowedPermissionToggles;
     const enforcedPermissionToggles = platformControls?.enforcedPermissionToggles;
@@ -83,19 +87,22 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
     );
 
     return (
-        <PermissionsSettingsView
-            tenantId={tenantId}
-            disableSubTogglesWhenMasterOff={false}
-            excludeCardKeys={excludeCardKeys}
-            isLoading={isLoading}
-            initialValues={initialValues}
-            formStateKey="platform"
-            restrictedFields={restrictedFields}
-            onToggleUpdate={handleToggleUpdate}
-            onSave={handleSave}
-            enforceMode
-            enforcedFields={enforcedFields}
-            onEnforceChange={handleEnforceChange}
-        />
+        <>
+            <EnforceModeSwitch enforceMode={enforceMode} onChange={setEnforceMode} />
+            <PermissionsSettingsView
+                tenantId={tenantId}
+                disableSubTogglesWhenMasterOff={false}
+                excludeCardKeys={excludeCardKeys}
+                isLoading={isLoading}
+                initialValues={initialValues}
+                formStateKey="platform"
+                restrictedFields={restrictedFields}
+                onToggleUpdate={handleToggleUpdate}
+                onSave={handleSave}
+                enforceMode={enforceMode}
+                enforcedFields={enforcedFields}
+                onEnforceChange={handleEnforceChange}
+            />
+        </>
     );
 };

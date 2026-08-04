@@ -1,0 +1,11 @@
+.switch {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    width: 100%;
+}
+
+.active {
+    color: var(--m3-primary, #a5000a);
+}

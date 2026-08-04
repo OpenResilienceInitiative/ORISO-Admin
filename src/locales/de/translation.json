@@ -1047,6 +1047,7 @@
     "tenants.permissions.enforce.checkboxLabel": "{{feature}} für untergeordnete Rollen erzwingen",
     "tenants.permissions.enforce.footerNote": "Angehakte Auswahlen verhindern, dass diese Funktion für untergeordnete Rollen ausgeblendet wird.",
     "tenants.permissions.enforce.action": "Aktivierte Auswahl erzwingen",
+    "tenants.permissions.enforce.configAction": "Konfigurieren",
     "tenants.permissions.card.configurableFeatures": "konfigurierbare Zusatzfunktionen",
     "tenants.permissions.card.forceSelection": "Auswahl erzwingen",
     "tenants.permissions.card.advanced": "Erweitert",
