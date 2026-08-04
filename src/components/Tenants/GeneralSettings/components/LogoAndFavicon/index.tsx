@@ -7,10 +7,8 @@ import { FormFileUploaderField } from '../../../../FormFileUploaderField';
 import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.hook';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
+import { isReadOnlySetting } from '../../../../../utils/serverSettingsMeta';
 import styles from './styles.module.scss';
-
-const isReadOnlySetting = (meta: Record<string, { readOnly?: boolean }> | undefined, keys: string[]) =>
-    keys.some((key) => meta?.[key]?.readOnly);
 
 export const LogoAndFavicon = ({ tenantId, readOnly = false }: { tenantId: string; readOnly?: boolean }) => {
     const { t } = useTranslation();
