@@ -979,6 +979,8 @@
     "globalSettings.smtp.cardDeck.next": "Show more SMTP cards",
     "agency.cardDeck.previous": "Show previous card",
     "agency.cardDeck.next": "Show more cards",
+    "cardDeck.nav.previous": "Show previous card",
+    "cardDeck.nav.next": "Show more cards",
     "theme.builder.preview.previous": "Show previous color preview",
     "theme.builder.preview.next": "Show next color preview",
     "active": "Active",
