@@ -17,6 +17,7 @@ import {
     revokeAccountInvite,
 } from '../../api/accountInvites/accountInvites';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
+import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { Modal } from '../../components/Modal';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
@@ -269,6 +270,67 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         async (values: InviteComposerValues): Promise<boolean> => {
             setSubmitting(true);
             try {
+                // Department routing (#384): a counsellor must arrive with the
+                // routing a consultant needs before enquiries become visible —
+                // tenant, agency AND department/topic. When the pinned
+                // Beratungsstellen-ID resolves to an existing agency, the invite
+                // adopts that agency's single canonical topic as the department,
+                // after verifying the agency really belongs to the invite's
+                // tenant. A fresh reservation (AUTO, or a manual id the U2 check
+                // confirmed free) resolves to nothing — the agency does not
+                // exist yet, so there is no topic to route to and provisioning
+                // assigns routing when the agency is created on accept.
+                let departmentId: number | undefined;
+                if (targetRole === 'COUNSELLOR' && values.agencyId != null) {
+                    let agencyResponse = null;
+                    try {
+                        agencyResponse = await getAgencyDataById(String(values.agencyId));
+                    } catch (error) {
+                        if (!(error instanceof AgencyAccessError)) {
+                            // Network/5xx: getAgencyDataById already toasted the
+                            // cause; the outer catch adds the create-failed state.
+                            throw error;
+                        }
+                        // 404/403 = no existing (visible) agency behind the id —
+                        // the reservation case. Proceed without a department.
+                    }
+                    if (agencyResponse != null) {
+                        // eslint-disable-next-line no-underscore-dangle -- HAL envelope, same as removeEmbedded
+                        const agency = agencyResponse?._embedded ?? agencyResponse;
+                        if (values.tenantId != null && Number(agency?.tenantId) !== values.tenantId) {
+                            message.error(
+                                t(
+                                    'links.accountInvites.agencyTenantMismatch',
+                                    'Die Beratungsstelle gehört nicht zum Träger dieser Einladung.',
+                                ),
+                            );
+                            return false;
+                        }
+                        const topics = agency?.topics ?? [];
+                        if (topics.length > 1) {
+                            // Multi-topic agencies need an explicit department
+                            // choice the composer does not offer yet — refuse
+                            // instead of guessing a topic (#384 follow-up).
+                            message.error(
+                                t(
+                                    'links.accountInvites.agencyTopicAmbiguous',
+                                    'Die Beratungsstelle hat mehrere Themen — die Einladung kann noch keinem Thema zugeordnet werden.',
+                                ),
+                            );
+                            return false;
+                        }
+                        departmentId = Number(topics[0]?.id);
+                        if (topics.length === 0 || !Number.isFinite(departmentId)) {
+                            message.error(
+                                t(
+                                    'links.accountInvites.agencyTopicMissing',
+                                    'Die Beratungsstelle hat kein Thema — die Einladung kann nicht zugeordnet werden.',
+                                ),
+                            );
+                            return false;
+                        }
+                    }
+                }
                 const created = await createAccountInvite({
                     // Role-aware target (TEN-INV U6/U8): tenant admins land on the
                     // public Admin onboarding route, everyone else on the app layer.
@@ -279,6 +341,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     // and are re-checked authoritatively on create.
                     agencyIdAllocationMode: values.agencyIdAllocationMode,
                     tenantIdAllocationMode: values.tenantIdAllocationMode,
+                    departmentId,
                     expiresInDays: 30,
                     firstName: values.firstName,
                     lastName: values.lastName,
@@ -610,6 +673,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 includeAgencyField={includeAgencyField}
                 initialTenantId={isTenantInvite ? undefined : currentTenantId}
                 persistKey={targetRole}
+                requireNames={targetRole === 'COUNSELLOR'}
                 requireTenantId={isTenantInvite}
                 selectionCount={selectedInvites.length}
                 submitting={submitting || bulkRunning}
