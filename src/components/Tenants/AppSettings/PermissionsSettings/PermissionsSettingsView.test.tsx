@@ -40,7 +40,6 @@ const renderOneOnOne = (initialSettings: Record<string, boolean>, onToggleUpdate
     render(
         <PermissionsSettingsView
             tenantId="t1"
-            disableSubTogglesWhenMasterOff={false}
             excludeCardKeys={['liveChat', 'group', 'groupInternal']}
             isLoading={false}
             initialValues={{ settings: initialSettings }}
@@ -90,5 +89,17 @@ describe('PermissionsSettingsView data parity (1-on-1 card)', () => {
                 settings: expect.objectContaining({ featureVideoCallsOneOnOneChatsEnabled: true }),
             }),
         );
+    });
+
+    it('keeps child features visible but disabled until the platform card master is enabled', async () => {
+        const user = userEvent.setup();
+        renderOneOnOne({ featureCallsEnabled: false, featureVideoCallsOneOnOneChatsEnabled: true });
+
+        const videoCalls = screen.getByRole('switch', { name: 'tenants.permissions.feature.videoCalls' });
+        expect(videoCalls).toBeDisabled();
+
+        await user.click(screen.getByRole('switch', { name: 'tenants.permissions.card.activated' }));
+
+        expect(videoCalls).toBeEnabled();
     });
 });

@@ -78,7 +78,6 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
     return (
         <PermissionsSettingsView
             tenantId={tenantId}
-            disableSubTogglesWhenMasterOff
             excludeCardKeys={excludeCardKeys}
             isLoading={isLoading}
             initialValues={initialValues}
