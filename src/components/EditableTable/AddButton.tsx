@@ -2,7 +2,7 @@ import { Button, Popover } from 'antd';
 import React, { useCallback } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
+import { useParams } from 'react-router-dom';
 
 const AddButton = ({ allowedNumberOfUsers, sourceLength, handleBtnAdd }: AddButtonProps) => {
     const { typeOfUsers } = useParams();

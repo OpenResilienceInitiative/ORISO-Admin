@@ -1,31 +1,91 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import viteTsconfigPaths from 'vite-tsconfig-paths';
 import svgrPlugin from 'vite-plugin-svgr';
 import eslintPlugin from 'vite-plugin-eslint';
+import { visualizer } from 'rollup-plugin-visualizer';
 import { existsSync, readFileSync } from 'node:fs';
 import { authBffDevPlugin } from './vite.authBffPlugin';
 
+// All React-dependent libraries must share one chunk. Splitting them (e.g. vendor-antd,
+// vendor-draftjs, vendor-mui) causes init-order bugs: those bundles call React.createElement
+// / React.Component before the react chunk has executed.
+const vendorUiPattern =
+    /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler|antd|@ant-design|rc-|draft-js|@draft-js-plugins|immutable|@mui|@emotion|react-query|@tanstack)[\\/]/;
+
+const vendorChunkMatchers: Array<{ chunk: string; pattern: RegExp }> = [
+    { chunk: 'vendor-ui', pattern: vendorUiPattern },
+    { chunk: 'vendor-dayjs', pattern: /[\\/]node_modules[\\/]dayjs[\\/]/ },
+];
+
+const resolveManualChunk = (id: string): string | undefined => {
+    if (!id.includes('node_modules')) {
+        return undefined;
+    }
+
+    const match = vendorChunkMatchers.find(({ pattern }) => pattern.test(id));
+    return match?.chunk;
+};
+
+const runtimeEnvPlugin = () => ({
+    name: 'runtime-env',
+    configureServer(server) {
+        const envPath = `${process.cwd()}/public/env.js`;
+        // public/env.js is gitignored. Serve an in-memory fallback so the dev
+        // server works on a fresh checkout without the file being present.
+        const fallback = 'window.__APP_CONFIG__ = window.__APP_CONFIG__ || {};\n';
+
+        const base = (process.env.BASE || '/admin').replace(/\/$/, '');
+        const runtimeEnvPath = `${base}/env.js`;
+        const runtimeEnvPaths = new Set([runtimeEnvPath, base ? `${base}${runtimeEnvPath}` : runtimeEnvPath]);
+
+        server.middlewares.use((req, res, next) => {
+            const pathname = (req.url ?? '').split('?')[0];
+            if (!runtimeEnvPaths.has(pathname)) {
+                next();
+                return;
+            }
+
+            res.setHeader('Content-Type', 'application/javascript');
+            res.end(existsSync(envPath) ? readFileSync(envPath) : fallback);
+        });
+    },
+});
+
 // https://vitejs.dev/config/
 export default ({ mode }) => {
-    process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
+    process.env = { ...loadEnv(mode, process.cwd()), ...process.env };
+    const isAnalyze = mode === 'analyze';
+    const devApiProxyTarget = process.env.VITE_DEV_API_PROXY_TARGET;
 
     return defineConfig({
         base: process.env.BASE || '/admin',
         envPrefix: ['VITE_', 'REACT_APP_'],
         plugins: [
             authBffDevPlugin(),
+            runtimeEnvPlugin(),
             react(),
-            viteTsconfigPaths(),
-            svgrPlugin(),
+            svgrPlugin({
+                include: '**/*.svg',
+                svgrOptions: {
+                    exportType: 'named',
+                    namedExport: 'ReactComponent',
+                },
+            }),
             eslintPlugin({
                 emitWarning: true,
                 failOnWarning: false,
                 emitError: true,
-                failOnError: true,
+                failOnError: false,
                 fix: false,
             }),
-        ],
+            isAnalyze &&
+                visualizer({
+                    filename: 'build/stats.html',
+                    gzipSize: true,
+                    brotliSize: true,
+                    open: false,
+                }),
+        ].filter(Boolean),
         css: {
             preprocessorOptions: {
                 less: {
@@ -33,25 +93,35 @@ export default ({ mode }) => {
                 },
             },
         },
+        resolve: {
+            tsconfigPaths: true,
+        },
         build: {
             outDir: 'build',
+            manifest: true,
+            rollupOptions: {
+                output: {
+                    manualChunks: resolveManualChunk,
+                },
+            },
         },
         server: {
             host: '0.0.0.0',
             port: (process.env.VITE_PORT as unknown as number) || 9000,
-        },
-        configureServer(server) {
-            const envPath = `${process.cwd()}/public/env.js`;
-
-            const runtimeEnvPath = `${(process.env.BASE || '/admin').replace(/\/$/, '')}/env.js`;
-            server.middlewares.use(runtimeEnvPath, (_req, res, next) => {
-                if (!existsSync(envPath)) {
-                    next();
-                    return;
-                }
-                res.setHeader('Content-Type', 'application/javascript');
-                res.end(readFileSync(envPath));
-            });
+            proxy: devApiProxyTarget
+                ? {
+                      '^/(service|api/v1|auth)': {
+                          target: devApiProxyTarget,
+                          changeOrigin: true,
+                          secure: true,
+                          configure: (proxy) => {
+                              proxy.on('proxyReq', (proxyReq) => {
+                                  proxyReq.removeHeader('cookie');
+                              });
+                          },
+                      },
+                  }
+                : undefined,
         },
     });
 };

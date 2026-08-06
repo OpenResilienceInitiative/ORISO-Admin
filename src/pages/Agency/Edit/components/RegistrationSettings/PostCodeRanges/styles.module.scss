@@ -1,10 +1,13 @@
 .postCodeRangesContainer {
-    background-color: var(--black-3);
+    --post-code-ranges-bg: color-mix(in srgb, var(--skin-main-background) 97%, var(--black));
+    --input-label-bg: var(--post-code-ranges-bg);
+
+    background-color: var(--post-code-ranges-bg);
     padding: 1rem;
 }
 
 .remove {
-    margin-top: 37px;
+    margin-top: 12px;
     background-color: var(--primary);
     width: 32px;
     display: flex;
@@ -15,6 +18,7 @@
     --webkit-appearance: none;
     padding: 0;
     border: 0;
+    flex-shrink: 0;
 
     path {
         fill: var(--white);
@@ -39,6 +43,12 @@
     width: 100%;
 }
 
+.newRangeLabel {
+    margin-bottom: 1em;
+    color: var(--admin-form-field-text);
+    font-family: var(--m3-body-font-family);
+}
+
 .fieldsContainer {
     display: flex;
     align-items: flex-start;
@@ -46,7 +56,11 @@
 }
 
 .minusContainer {
-    margin-top: 37px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 56px;
+    flex: 0 0 14px;
 }
 
 .addButton {

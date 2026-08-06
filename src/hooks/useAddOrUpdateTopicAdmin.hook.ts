@@ -1,5 +1,5 @@
 import merge from 'lodash.merge';
-import { useMutation, UseMutationOptions, useQueryClient } from 'react-query';
+import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { topicAdminEndpoint } from '../appConfig';
 import { TopicAdminData } from '../types/TopicAdmin';
@@ -14,8 +14,8 @@ export const useAddOrUpdateTopicAdmin = ({ id, ...options }: UseAddOrUpdateTopic
     const { data: topicData } = useTopicAdmin({ id, enabled: !!id });
     const queryClient = useQueryClient();
 
-    return useMutation(
-        (formData) => {
+    return useMutation({
+        mutationFn: (formData) => {
             const bodyData = JSON.stringify(
                 merge({}, topicData, {
                     ...formData,
@@ -28,7 +28,6 @@ export const useAddOrUpdateTopicAdmin = ({ id, ...options }: UseAddOrUpdateTopic
                         translate: undefined,
                     },
                     external: false,
-                    dioceseId: 0,
                     status: formData.status ? 'ACTIVE' : 'INACTIVE',
                 }),
             );
@@ -40,12 +39,10 @@ export const useAddOrUpdateTopicAdmin = ({ id, ...options }: UseAddOrUpdateTopic
                 bodyData,
             });
         },
-        {
-            ...options,
-            onSuccess: (response, vars, context) => {
-                queryClient.invalidateQueries(TOPIC_ADMIN_KEY);
-                options?.onSuccess?.(response, vars, context);
-            },
+        ...options,
+        onSuccess: (response, vars, onMutateResult, context) => {
+            queryClient.invalidateQueries({ queryKey: [TOPIC_ADMIN_KEY] });
+            options?.onSuccess?.(response, vars, onMutateResult, context);
         },
-    );
+    });
 };

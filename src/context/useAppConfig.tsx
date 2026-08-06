@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { clusterFeatureFlags, featureFlags } from '../appConfig';
+import { clusterFeatureFlags } from '../appConfig';
 import { AppConfigInterface } from '../types/AppConfigInterface';
 import { ServerAppConfigInterface } from '../types/ServerAppConfigInterface';
 
@@ -12,16 +12,26 @@ interface AppConfigContextInterface {
 const UseAppConfigContext =
     React.createContext<[AppConfigInterface, React.Dispatch<React.SetStateAction<AppConfigInterface>>]>(null);
 
-const UseAppConfigProvider = ({ children }: { children?: React.ReactChild | React.ReactChild[] }) => {
+const UseAppConfigProvider = ({
+    children,
+}: {
+    children?: React.ReactElement<any> | number | string | (React.ReactElement<any> | number | string)[];
+}) => {
     const state = React.useState<AppConfigInterface>({
         useApiClusterSettings: clusterFeatureFlags.useApiClusterSettings,
-        useConsultingTypesForAgencies: featureFlags.useConsultingTypesForAgencies,
     });
     return <UseAppConfigContext.Provider value={state}>{children}</UseAppConfigContext.Provider>;
 };
 
 const useAppConfigContext = (): AppConfigContextInterface => {
-    const [settings, setNewSettings] = React.useContext(UseAppConfigContext);
+    // Degrade, don't throw: outside a provider (e.g. isolated Storybook/tests) fall back to the
+    // same cluster defaults the provider seeds with, plus no-op setters, instead of crashing on a
+    // null-context destructure.
+    const context = React.useContext(UseAppConfigContext);
+    const [settings, setNewSettings] = context ?? [
+        { useApiClusterSettings: clusterFeatureFlags.useApiClusterSettings } as AppConfigInterface,
+        (() => undefined) as React.Dispatch<React.SetStateAction<AppConfigInterface>>,
+    ];
 
     const setServerSettings = useCallback(
         (serverSettings: ServerAppConfigInterface) => {

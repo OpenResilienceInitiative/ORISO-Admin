@@ -1,38 +1,10 @@
-.publicContent,
-.protectedLayout,
-.ant-modal-root {
-    button:not(.ant-btn-link) {
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-}
+// M3 buttons use sentence case + label-large (500) — the legacy upstream rule
+// that forced every button to bold uppercase broke the design in ALL panels
+// (Figma 1261-48671) and was removed deliberately.
 
-.ant-btn-primary {
-    background-color: #1f1f1f !important;
-    border-color: #1f1f1f !important;
-    color: #ffffff !important;
-
-    &:hover,
-    &:focus {
-        background-color: #3a3a3a !important;
-        border-color: #3a3a3a !important;
-        color: #ffffff !important;
-    }
-
-    &:active {
-        background-color: #0f0f0f !important;
-        border-color: #0f0f0f !important;
-        color: #ffffff !important;
-    }
-
-    &:disabled,
-    &[disabled] {
-        background-color: #8b8b8f !important;
-        border-color: #8b8b8f !important;
-        color: #ffffff !important;
-        opacity: 0.6;
-    }
-}
+/* The former global `.ant-btn-primary { #1f1f1f !important }` override is gone:
+   it forced every primary button to black, bypassing the M3 theme bridge
+   (colorPrimary). Primary buttons now inherit the design-system primary. */
 
 .ant-switch-checked {
     background-color: rgb(13 205 33);
@@ -43,10 +15,18 @@
     font-weight: @font-weight-regular;
 }
 
-.rc-virtual-list .ant-select-item-option-selected {
-    display: none;
-}
+/* The legacy `.rc-virtual-list .ant-select-item-option-selected { display: none }`
+   rule was removed for #313: selected options stay visible and get the tonal
+   `--admin-field-selected-surface`/`-text` treatment via antdM3Theme. */
 
 .formSwitchField__container {
     display: flex;
+    align-items: center;
+    gap: @spacing-s;
+}
+
+.formSwitchField__stateLabel {
+    color: var(--admin-form-label-text, rgba(0, 0, 0, 0.87));
+    font-size: @fontSize-s;
+    line-height: @lineHeightxs;
 }

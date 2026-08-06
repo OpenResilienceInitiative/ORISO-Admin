@@ -1,11 +1,17 @@
-import { Button, Col, Form, notification, Row } from 'antd';
+import { Alert, Button, Form, notification } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
+import { ThemeProvider } from '@mui/material/styles';
+import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import { AgencyAccessError } from '../../../api/agency/getAgencyById';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
+import { normalizeTopicIds } from '../../../api/agency/normalizeTopicIds';
 import routePathNames from '../../../appConfig';
 import { Page } from '../../../components/Page';
+import { CardDeck } from '../../../components/CardDeck';
+import { DashboardEmptyState } from '../../../components/DashboardEmptyState/DashboardEmptyState';
 import { useFeatureContext } from '../../../context/FeatureContext';
 import { FeatureFlag } from '../../../enums/FeatureFlag';
 import { Gender } from '../../../enums/Gender';
@@ -22,11 +28,13 @@ import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useAgencyLegalDataMissing } from '../../../hooks/useAgencyLegalDataMissing';
 import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
-import { LegalTextSettings } from './components/LegalTextSettings';
-import { DataProcessingAgreement } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreement';
+import { DataProcessingAgreementContainer } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer';
+import { AgencyLegalTextContainer } from '../../../components/Tenants/LegalSettings/components/AgencyLegalTextContainer';
 import styles from '../../../components/Page/styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
-import { PermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings';
+import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -63,33 +71,48 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const isFunctionalitiesSection = section === 'functionalities';
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted, setSubmitted] = useState(false);
-    const { data: agencyData, isLoading } = useAgencyData({ id });
+    const { data: agencyData, isLoading, error: agencyError } = useAgencyData({ id });
+    // 403 and 404 are surfaced identically here so a foreign agency's mere existence
+    // isn't observable from the UI. Any other failure keeps rendering the (empty) page
+    // as before, since fetchData's generic toast already told the user something broke.
+    const isAgencyInaccessible = isEditing && !isLoading && agencyError instanceof AgencyAccessError;
     const { data: postCodes, isLoading: isLoadingPostCodes } = useAgencyPostCodesData({ id });
     const { isEnabled } = useFeatureContext();
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
+    const { isSuperAdmin, isTenantScopedAdmin, tenantId } = useUserRoles();
+    const {
+        data: dpaGate,
+        isLoading: isDpaGateLoading,
+        isError: isDpaGateError,
+        refetch: refetchDpaGate,
+    } = useDpaGate(tenantId ?? 0, !isEditing && isTenantScopedAdmin);
     const [form] = Form.useForm();
-    const { mutate } = useAgencyUpdate(id);
+    const { mutate, isPending: isAgencySaving } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
-    const agencySettingsTabs = [
-        {
-            titleKey: 'settings.subhead.masterData',
-            to: `${routePathNames.agency}/${id}/general`,
-            iconName: 'master_data',
-            icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
-        },
-        isEditing && {
-            titleKey: 'settings.subhead.legal',
-            to: `${routePathNames.agency}/${id}/legal-settings`,
-            iconName: 'legal',
-            icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
-        },
-        isEditing && {
-            titleKey: 'settings.subhead.functionAccess',
-            to: `${routePathNames.agency}/${id}/functionalities`,
-            iconName: 'functionality_access',
-        },
-    ];
+    const agencySettingsTabs = isAgencyInaccessible
+        ? []
+        : [
+              {
+                  titleKey: 'settings.subhead.masterData',
+                  to: `${routePathNames.agency}/${id}/general`,
+                  iconName: 'master_data',
+                  icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
+              },
+              isEditing && {
+                  titleKey: 'settings.subhead.legal',
+                  to: `${routePathNames.agency}/${id}/legal-settings`,
+                  iconName: 'legal',
+                  icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
+              },
+              isEditing && {
+                  titleKey: 'settings.subhead.functionAccess',
+                  to: `${routePathNames.agency}/${id}/functionalities`,
+                  iconName: 'functionality_access',
+              },
+          ];
+    const isAgencyCreationDpaBlocked =
+        !isEditing && isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || dpaGate?.dpaSigned !== true);
 
     const demographicsInitialValues = isEnabled(FeatureFlag.Demographics)
         ? {
@@ -124,6 +147,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         ...counsellingRelationsInitialValues,
         postCodeRangesActive: !hasOnlyDefaultRangeDefined(postCodes || []),
         online: agencyData?.id ? !agencyData?.offline : false,
+        // ADR-014: load every department, not just the first. Taking [0] here was the entry point
+        // of the data loss — the form then sent that single topic back and the backend deleted the
+        // other agency_topic rows together with their published legal texts.
         topicIds: convertToOptions(agencyData?.topics, 'name', 'id', true),
         tenantId: agencyTenantId,
     };
@@ -153,7 +179,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                               genders: mergedFormData.demographics.genders.map(({ value }) => value),
                           }
                         : mergedFormData.demographics,
-                topicIds: mergedFormData.topicIds?.map(({ value }) => value),
+                topicIds: normalizeTopicIds(mergedFormData.topicIds),
                 offline: !mergedFormData.online,
                 counsellingRelations: mergedFormData.counsellingRelations?.map(
                     (relation) => relation.value || relation,
@@ -168,28 +194,55 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         (formData) => {
             setSubmitted(true);
 
+            const selectedTenantId = Number(formData?.tenantId);
+            if (isSuperAdmin && (!Number.isFinite(selectedTenantId) || selectedTenantId <= 0)) {
+                form.setFields([
+                    {
+                        name: 'tenantId',
+                        errors: [t('form.errors.required')],
+                    },
+                ]);
+                notification.error({
+                    message: t('agency.edit.general.more_settings.tenant.title'),
+                    description: t('form.errors.required'),
+                    duration: 5,
+                });
+                setSubmitted(false);
+                return;
+            }
+
             mutate(buildAgencyUpdateData(formData), {
                 onError: () => {
                     setSubmitted(false);
                 },
-                onSuccess: () => {
+                onSuccess: (response) => {
                     navigate(routePathNames.agency);
 
                     notification.success({
                         message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                         duration: 3,
                     });
+                    if (response?.consultantAssignmentFailed) {
+                        notification.warning({
+                            message: t('message.agency.consultantAssignmentFailed'),
+                            duration: 8,
+                        });
+                    }
                     setSubmitted(false);
                     setReadOnly(true);
                 },
             });
         },
-        [buildAgencyUpdateData, isEditing, mutate, navigate, t],
+        [buildAgencyUpdateData, form, isEditing, isSuperAdmin, mutate, navigate, t],
     );
 
     const onSaveCard = useCallback(
         (formData, options?: { onError?: () => void }) => {
-            mutate(buildAgencyUpdateData(formData), {
+            // Card forms deliberately submit only their own nested fields. Passing a
+            // full snapshot here lets a fast follow-up card save re-send stale nulls
+            // before the invalidated agency query has completed, wiping the previous
+            // card. useAgencyUpdate merges this narrow patch into its latest cache.
+            mutate(formData, {
                 onError: () => {
                     options?.onError?.();
                 },
@@ -201,7 +254,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 },
             });
         },
-        [buildAgencyUpdateData, isEditing, mutate, t],
+        [isEditing, mutate, t],
     );
 
     const onCancel = useCallback(() => {
@@ -216,75 +269,91 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const renderGeneralSettings = () => {
         if (isEditing) {
             return (
-                <Row gutter={[20, 10]}>
-                    <Col xs={12}>
-                        <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
-                    </Col>
-                    <Col xs={12} lg={6}>
-                        <CardEditable
-                            allowUnsavedChanges
-                            initialValues={initialValues}
-                            titleKey="agency.edit.general.general_information"
-                            onSave={onSaveCard}
-                        >
-                            <AgencyGeneralInformation asFields />
-                        </CardEditable>
-                    </Col>
-                    <Col xs={12} lg={6}>
-                        <CardEditable
-                            allowUnsavedChanges
-                            initialValues={initialValues}
-                            titleKey="agency.form.registrationSettings.title"
-                            onSave={onSaveCard}
-                        >
-                            <RegistrationSettings consultingTypeId={agencyData?.consultingType} asFields />
-                        </CardEditable>
-                    </Col>
-                    <Col xs={12} lg={6}>
-                        <CardEditable
-                            allowUnsavedChanges
-                            initialValues={initialValues}
-                            titleKey="agency.edit.settings.title"
-                            onSave={onSaveCard}
-                        >
-                            <AgencySettings isEditMode={isEditing} asFields />
-                        </CardEditable>
-                    </Col>
-                </Row>
+                <ThemeProvider theme={orisoMuiTheme}>
+                    <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
+                    <CardDeck
+                        ariaLabel={t(`agency.edit.settings.general.title`)}
+                        previousLabel={t('agency.cardDeck.previous')}
+                        nextLabel={t('agency.cardDeck.next')}
+                    >
+                        <CardDeck.Item>
+                            <CardEditable
+                                allowUnsavedChanges
+                                initialValues={initialValues}
+                                titleKey="agency.edit.general.general_information"
+                                variant="dialog"
+                                editButtonPlacement="footer"
+                                onSave={onSaveCard}
+                            >
+                                <AgencyGeneralInformation asFields />
+                            </CardEditable>
+                        </CardDeck.Item>
+                        <CardDeck.Item>
+                            <CardEditable
+                                allowUnsavedChanges
+                                initialValues={initialValues}
+                                titleKey="agency.form.registrationSettings.title"
+                                variant="dialog"
+                                editButtonPlacement="footer"
+                                onSave={onSaveCard}
+                            >
+                                {({ editing }) => <RegistrationSettings asFields editing={editing} />}
+                            </CardEditable>
+                        </CardDeck.Item>
+                        <CardDeck.Item>
+                            <CardEditable
+                                allowUnsavedChanges
+                                initialValues={initialValues}
+                                titleKey="agency.edit.settings.title"
+                                variant="dialog"
+                                editButtonPlacement="footer"
+                                onSave={onSaveCard}
+                            >
+                                <AgencySettings isEditMode={isEditing} asFields />
+                            </CardEditable>
+                        </CardDeck.Item>
+                    </CardDeck>
+                </ThemeProvider>
             );
         }
 
         return (
-            <Form
-                initialValues={initialValues}
-                labelAlign="left"
-                labelWrap
-                layout="vertical"
-                form={form}
-                size="large"
-                disabled={isReadOnly}
-                onFinish={onSubmit}
-            >
-                <Row gutter={[20, 10]}>
-                    <Col xs={12}>
-                        <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
-                    </Col>
-                    <Col xs={12} lg={6}>
-                        <AgencyGeneralInformation />
-                        <RegistrationSettings consultingTypeId={agencyData?.consultingType} />
-                    </Col>
-                </Row>
-            </Form>
+            <ThemeProvider theme={orisoMuiTheme}>
+                <Form
+                    initialValues={initialValues}
+                    labelAlign="left"
+                    labelWrap
+                    layout="vertical"
+                    form={form}
+                    size="large"
+                    disabled={isReadOnly}
+                    onFinish={onSubmit}
+                >
+                    <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
+                    <CardDeck
+                        ariaLabel={t(`agency.edit.settings.general.title`)}
+                        previousLabel={t('agency.cardDeck.previous')}
+                        nextLabel={t('agency.cardDeck.next')}
+                    >
+                        <CardDeck.Item>
+                            <AgencyGeneralInformation />
+                            <RegistrationSettings />
+                        </CardDeck.Item>
+                        <CardDeck.Item>
+                            <AgencySettings isEditMode={isEditing} />
+                        </CardDeck.Item>
+                    </CardDeck>
+                </Form>
+            </ThemeProvider>
         );
     };
 
     const renderFunctionalitiesSettings = () => (
-        <Row gutter={[20, 10]}>
-            <Col xs={12}>
-                <h3 className={styles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
-            </Col>
-            <Col xs={12}>{agencyTenantId ? <PermissionsSettings tenantId={agencyTenantId} /> : null}</Col>
-        </Row>
+        <>
+            <h3 className={styles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
+            {/* Agency-scoped toggles (the agency's own settings JSON) — not the tenant's. */}
+            <AgencyPermissionsSettings agencyId={id} />
+        </>
     );
 
     const renderLegacyFunctionalitiesSettings = () => (
@@ -298,52 +367,108 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             disabled={isReadOnly}
             onFinish={onSubmit}
         >
-            <Row gutter={[20, 10]}>
-                <Col xs={12}>
-                    <h3 className={styles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
-                </Col>
-                <Col xs={12} lg={6}>
+            <h3 className={styles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
+            <CardDeck
+                ariaLabel={t('agency.edit.settings.functionalities.title')}
+                previousLabel={t('agency.cardDeck.previous')}
+                nextLabel={t('agency.cardDeck.next')}
+            >
+                <CardDeck.Item>
                     <AgencySettings isEditMode={isEditing} />
-                </Col>
-            </Row>
+                </CardDeck.Item>
+            </CardDeck>
         </Form>
     );
 
     const renderLegalSettings = () => (
-        <Row gutter={[20, 10]}>
-            <Col xs={12}>
-                <h3 className={styles.backHeadline}>
-                    {t(`agency.edit.settings.legal.title`)}{' '}
-                    {legalDataMissing && <ErrorOutlinedIcon fontSize="small" color="error" />}
-                </h3>
-            </Col>
-            <Col xs={12} lg={6}>
-                <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />
-            </Col>
-            <Col xs={12} lg={6}>
-                <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
-            </Col>
-            <Col xs={12} lg={6}>
-                <LegalTextSettings
-                    agencyData={agencyData}
-                    field="impressum"
-                    initialValues={initialValues}
-                    onSave={onSaveCard}
-                />
-            </Col>
-            <Col xs={12} lg={6}>
-                <LegalTextSettings
-                    agencyData={agencyData}
-                    field="privacy"
-                    initialValues={initialValues}
-                    onSave={onSaveCard}
-                />
-            </Col>
-            <Col xs={12} lg={6}>
-                <DataProcessingAgreement />
-            </Col>
-        </Row>
+        <>
+            <h3 className={styles.backHeadline}>
+                {t(`agency.edit.settings.legal.title`)}{' '}
+                {legalDataMissing && <ErrorOutlinedIcon fontSize="small" color="error" />}
+            </h3>
+            <CardDeck
+                ariaLabel={t(`agency.edit.settings.legal.title`)}
+                previousLabel={t('legal.cardDeck.previous')}
+                nextLabel={t('legal.cardDeck.next')}
+            >
+                <CardDeck.Item>
+                    <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />
+                </CardDeck.Item>
+                <CardDeck.Item>
+                    <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
+                </CardDeck.Item>
+                <CardDeck.Item className={styles.cardDeckItem}>
+                    {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
+                    <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />
+                </CardDeck.Item>
+                <CardDeck.Item className={styles.cardDeckItem}>
+                    {/* ADR-014: one editor per legal-text kind for the whole Beratungsstelle; the
+                        Fachbereich is chosen in the editor's lower function bar (Figma 1261:52149),
+                        with "Alle Fachbereiche" editing the inheritable agency-wide text. */}
+                    <AgencyLegalTextContainer
+                        agencyData={agencyData}
+                        field="imprint"
+                        onSaveAgencyWide={onSaveCard}
+                        saving={isAgencySaving}
+                    />
+                </CardDeck.Item>
+                <CardDeck.Item className={styles.cardDeckItem}>
+                    <AgencyLegalTextContainer
+                        agencyData={agencyData}
+                        field="privacy"
+                        onSaveAgencyWide={onSaveCard}
+                        saving={isAgencySaving}
+                    />
+                </CardDeck.Item>
+            </CardDeck>
+        </>
     );
+
+    const renderPageBody = () => (
+        <>
+            {isLegalSection && renderLegalSettings()}
+            {isFunctionalitiesSection &&
+                (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
+            {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
+        </>
+    );
+
+    let agencyContent;
+    if (isAgencyInaccessible) {
+        agencyContent = (
+            <DashboardEmptyState
+                icon={<ErrorOutlinedIcon fontSize="large" />}
+                title={t('agency.edit.notFound.title')}
+                description={t('agency.edit.notFound.description')}
+                action={{
+                    label: t('agency.edit.notFound.backToOverview'),
+                    onClick: () => navigate(routePathNames.agency),
+                }}
+            />
+        );
+    } else if (isAgencyCreationDpaBlocked) {
+        agencyContent = (
+            <Alert
+                type="warning"
+                showIcon
+                message={t('agency.dpaGate.title')}
+                description={t('agency.dpaGate.description')}
+                action={
+                    isDpaGateError ? (
+                        <Button size="small" onClick={() => refetchDpaGate()}>
+                            {t('tenants.legal.version.retry')}
+                        </Button>
+                    ) : (
+                        <Button size="small" onClick={() => navigate(`${routePathNames.themeSettings}/legal`)}>
+                            {t('agency.dpaGate.openLegalSettings')}
+                        </Button>
+                    )
+                }
+            />
+        );
+    } else {
+        agencyContent = renderPageBody();
+    }
 
     return (
         <Page isLoading={isLoading || isLoadingPostCodes} stickyHeader>
@@ -357,26 +482,36 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 titleMaxLength={isEditing ? 10 : undefined}
                 tabs={agencySettingsTabs}
             >
-                {isReadOnly && !isEditing && !isLegalSection && (
-                    <Button type="primary" onClick={() => setReadOnly(false)}>
-                        {t('edit')}
-                    </Button>
-                )}
-                {!isReadOnly && !isEditing && !isLegalSection && (
-                    <>
-                        <Button type="default" onClick={onCancel}>
-                            {t('btn.cancel')}
+                {!isAgencyInaccessible &&
+                    !isAgencyCreationDpaBlocked &&
+                    isReadOnly &&
+                    !isEditing &&
+                    !isLegalSection && (
+                        <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
+                            {t('edit')}
                         </Button>
-                        <Button type="primary" onClick={() => form.submit()} disabled={submitted}>
-                            {t('save')}
-                        </Button>
-                    </>
-                )}
+                    )}
+                {!isAgencyInaccessible &&
+                    !isAgencyCreationDpaBlocked &&
+                    !isReadOnly &&
+                    !isEditing &&
+                    !isLegalSection && (
+                        <>
+                            <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
+                                {t('btn.cancel')}
+                            </Button>
+                            <Button
+                                type="text"
+                                className="admin-m3-text-button"
+                                onClick={() => form.submit()}
+                                disabled={submitted}
+                            >
+                                {t('save')}
+                            </Button>
+                        </>
+                    )}
             </Page.BackWithActions>
-            {isLegalSection && renderLegalSettings()}
-            {isFunctionalitiesSection &&
-                (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
-            {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
+            {agencyContent}
         </Page>
     );
 };

@@ -26,15 +26,8 @@ export const CommunicationSettings = ({ tenantId }: { tenantId: string }) => {
                     disableLabels
                 />
             </div>
-            {/* <div className={styles.checkGroup}>
-                <FormSwitchField
-                    labelKey="tenants.appSettings.communications.allowAttachments.title"
-                    name={['settings', 'featureAttachmentUploadDisabled']}
-                    inverseValue
-                    inline
-                    disableLabels
-                />
-            </div> */}
+            {/* Attachment upload moved to the per-chat-type media families on the
+                permissions cards (ADR-015); the old inverted flag is retired. */}
         </CardEditable>
     );
 };

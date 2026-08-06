@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useLocation } from 'react-router';
+import { Navigate, useLocation } from 'react-router-dom';
 import routePathNames from '../appConfig';
 import { getTokenExpiryFromLocalStorage } from '../api/auth/accessSessionLocalStorage';
 import { bootstrapAuthSession, getAccessTokenForRequests, getRefreshTokenForRequests } from '../api/auth/auth';
 import logout from '../api/auth/logout';
 import { Initialization } from '../components/Layout/Initialization';
+import { hasAdminPortalAccess } from '../utils/adminPortalAccess';
 
 interface ProtectedRouteTypes {
     children: React.ReactNode;
@@ -50,6 +50,11 @@ export const ProtectedRoute = ({ children }: ProtectedRouteTypes) => {
     if (refreshTokenValidInMs <= 0 && accessTokenValidInMs <= 0) {
         logout(true);
         return <Navigate to={routePathNames.login} state={{ from: location }} />;
+    }
+
+    if (!hasAdminPortalAccess(accessToken)) {
+        logout(true, routePathNames.login);
+        return <Navigate to={routePathNames.login} replace />;
     }
 
     // eslint-disable-next-line react/jsx-no-useless-fragment

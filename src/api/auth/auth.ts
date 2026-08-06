@@ -1,17 +1,8 @@
 import logout from './logout';
-import {
-    bootstrapAuthSessionViaBff,
-    refreshAuthTokensViaBff,
-    setAuthTokensViaBff,
-} from './authBffClient';
+import { bootstrapAuthSessionViaBff, refreshAuthTokensViaBff, setAuthTokensViaBff } from './authBffClient';
 import { getTokenExpiryFromLocalStorage, setTokenExpiryInLocalStorage } from './accessSessionLocalStorage';
 import routePathNames from '../../appConfig';
-import {
-    getSessionAccessToken,
-    getSessionRefreshToken,
-    hasSessionTokens,
-    setSessionTokens,
-} from './tokenSessionStore';
+import { getSessionAccessToken, getSessionRefreshToken, hasSessionTokens, setSessionTokens } from './tokenSessionStore';
 
 import parseJwt from '../../utils/parseJWT';
 
@@ -26,7 +17,7 @@ const resolveExpiresInSeconds = (token: string | undefined, expiresIn?: number):
 
     try {
         const payload = parseJwt(token);
-        if (typeof payload.exp === 'number') {
+        if (typeof payload?.exp === 'number') {
             return Math.max(payload.exp - Math.floor(Date.now() / 1000), 0);
         }
     } catch {
@@ -66,12 +57,54 @@ const refreshTokens = (): Promise<void> => {
     const tokenExpiry = getTokenExpiryFromLocalStorage();
 
     if (tokenExpiry.refreshTokenValidUntilTime <= currentTime - RENEW_BEFORE_EXPIRY_IN_MS) {
+        logout(true, routePathNames.login);
         return Promise.resolve();
     }
 
     return refreshAuthTokensViaBff().then((response) =>
         setTokens(response.access_token, response.expires_in, response.refresh_token, response.refresh_expires_in),
     );
+};
+
+let inflightTokenRefresh: Promise<boolean> | null = null;
+
+/**
+ * Refresh the access/refresh token via the BFF and repopulate the in-memory token
+ * store. Concurrent callers share a single in-flight refresh. Resolves to `true`
+ * when a fresh token was obtained, `false` otherwise (e.g. the refresh token is
+ * gone or already expired). Unlike {@link refreshTokens} this never logs the user
+ * out by itself — the caller decides what to do on failure. Used by fetchData to
+ * self-heal a single 401 (lapsed/empty access token) before forcing a logout.
+ */
+export const tryRefreshAccessToken = (): Promise<boolean> => {
+    if (inflightTokenRefresh) {
+        return inflightTokenRefresh;
+    }
+
+    inflightTokenRefresh = refreshAuthTokensViaBff()
+        .then((response) => {
+            if (!response?.access_token || !response.refresh_token) {
+                return false;
+            }
+
+            setSessionTokens(response.access_token, response.refresh_token);
+            setTokenExpiryInLocalStorage(
+                'auth.access_token_valid_until',
+                resolveExpiresInSeconds(response.access_token, response.expires_in),
+            );
+            setTokenExpiryInLocalStorage(
+                'auth.refresh_token_valid_until',
+                resolveExpiresInSeconds(response.refresh_token, response.refresh_expires_in),
+            );
+
+            return true;
+        })
+        .catch(() => false)
+        .finally(() => {
+            inflightTokenRefresh = null;
+        });
+
+    return inflightTokenRefresh;
 };
 
 const startTimers = ({
@@ -147,9 +180,15 @@ export const handleTokenRefresh = (): Promise<void> => {
                     resolve();
                 } else if (accessTokenValidInMs <= 0) {
                     refreshTokens().then(() => {
+                        // refreshTokens() has just renewed the access token and written the
+                        // fresh expiry to localStorage. Re-read it here: the pre-refresh
+                        // accessTokenValidInMs is <= 0, so reusing it would compute a negative
+                        // refresh interval and arm no renewal timer at all (silent re-expiry).
+                        const refreshedTime = new Date().getTime();
+                        const refreshedExpiry = getTokenExpiryFromLocalStorage();
                         startTimers({
-                            accessTokenValidInMs,
-                            refreshTokenValidInMs,
+                            accessTokenValidInMs: refreshedExpiry.accessTokenValidUntilTime - refreshedTime,
+                            refreshTokenValidInMs: refreshedExpiry.refreshTokenValidUntilTime - refreshedTime,
                         });
                         resolve();
                     });

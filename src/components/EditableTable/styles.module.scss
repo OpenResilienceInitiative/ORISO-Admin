@@ -1,28 +1,87 @@
-.disabled {
-    :global {
-        path {
-            fill: rgb(0 0 0 / 20%);
+.iconButton {
+    display: flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #4c555f;
+    cursor: pointer;
+    transition: color 140ms ease, transform 140ms ease;
+
+    &:hover,
+    &:focus {
+        color: #4c555f;
+    }
+
+    &:focus-visible {
+        outline: 2px solid #c4c7c8;
+        outline-offset: 2px;
+    }
+
+    &:hover:not(:disabled),
+    &:focus:not(:disabled) {
+        .actionIconDefault {
+            opacity: 0;
+        }
+
+        .actionIconHover {
+            opacity: 1;
+        }
+    }
+
+    &:active:not(:disabled),
+    &.selected {
+        .actionIconDefault,
+        .actionIconHover {
+            opacity: 0;
+        }
+
+        .actionIconSelected {
+            opacity: 1;
+            transform: scale(1);
         }
     }
 }
 
-.iconButton {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    border-radius: 50%;
-    height: 36px;
-    width: 36px;
-
-    &:hover {
-        background: rgba(39, 50, 112, 0.1);
-    }
+.disabled {
+    color: rgb(76 85 95 / 38%);
+    cursor: default;
 }
 
-.disabled {
-    path {
-        fill: gray;
-    }
+.selected {
+    color: #4c555f;
+}
+
+.actionIconStack {
+    position: relative;
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+}
+
+.actionIcon {
+    position: absolute;
+    inset: 0;
+    width: 24px;
+    height: 24px;
+    opacity: 0;
+    transition: opacity 120ms ease, transform 140ms ease;
+}
+
+.actionIconDefault {
+    opacity: 1;
+}
+
+.actionIconHover {
+    opacity: 0;
+}
+
+.actionIconSelected {
+    transform: scale(0.96);
 }

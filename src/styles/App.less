@@ -1,5 +1,7 @@
-@import 'antd/dist/antd.less';
-
+// antd v5 dropped its global less stylesheet — component styles are injected
+// via CSS-in-JS at runtime, and the base reset is imported in App.tsx
+// (antd/dist/reset.css). The app's own less below still uses antd-style
+// variables, now defined in variables/_antd_defaults.less.
 @import 'variables/index.less';
 @import 'components/index.less';
 @import 'util/index.less';
@@ -62,7 +64,7 @@ h3,
 h4,
 h5 {
     &.ant-typography {
-        font-family: Nunito;
+        font-family: @body-font-family;
         font-weight: 700;
     }
 }

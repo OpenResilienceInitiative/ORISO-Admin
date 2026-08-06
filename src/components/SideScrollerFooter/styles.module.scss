@@ -1,0 +1,64 @@
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.positions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--m3-outline, #747878);
+    transition: background 0.2s ease, width 0.2s ease;
+}
+
+// Active dots widen to a pill so the state is not conveyed by color alone.
+.dotActive {
+    width: 20px;
+    background: var(--m3-on-surface, #1b1b1c);
+}
+
+.button {
+    display: inline-flex;
+    width: var(--side-scroller-button-width, 128px);
+    height: var(--side-scroller-button-height, 96px);
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 100px;
+    appearance: none;
+    background: #bec7d4;
+    color: #ffffff;
+    cursor: default;
+    pointer-events: auto;
+    transition: background 0.2s ease, transform 0.2s ease;
+
+    &:disabled {
+        background: #bec7d4;
+        opacity: 1;
+    }
+
+    &:active:not(:disabled) {
+        transform: scale(0.98);
+    }
+
+    svg {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+.active {
+    background: #111923;
+    cursor: pointer;
+
+    &:hover {
+        background: #1c2735;
+    }
+}

@@ -28,20 +28,23 @@
     --lineHeight-l: calc(var(--fontSize-l) * 1.8);
     --lineHeight-xl: calc(var(--fontSize-xl) * 1.8);
     --lineHeight-2xl: calc(var(--fontSize-2xl) * 1.8);
-    --m3-body-font-family: 'Inter Variable', Arial, sans-serif;
+    --m3-body-font-family: 'Inter Variable', Inter, Arial, sans-serif;
 
     /* FormFields */
     --input-padding: 16px;
     --input-border-radius: 4px;
-    --input-border-color: var(--m3-outline);
-    --input-active-border-color: var(--m3-on-surface);
-    --input-disabled-border-color: rgb(68 71 72 / 38%);
-    --input-bg: transparent;
-    --input-disabled-bg: transparent;
-    --input-disabled-color: rgb(27 27 28 / 38%);
-    --input-placeholder-color: rgb(68 71 72 / 64%);
-    --input-label-bg: var(--m3-surface);
-    --label-color: var(--m3-on-surface-variant);
+    --input-border-color: var(--admin-field-outline, #c4c7c8);
+    --admin-form-field-text: #1b1b1c;
+    --admin-form-muted-text: #444748;
+    --admin-form-disabled-text: #444748;
+    --input-active-border-color: var(--m3-primary, #a5000a);
+    --input-disabled-border-color: color-mix(in srgb, var(--admin-field-outline, #c4c7c8) 56%, transparent);
+    --input-bg: var(--admin-form-field-surface, #fcf9f9);
+    --input-disabled-bg: var(--input-bg);
+    --input-disabled-color: var(--admin-form-disabled-text);
+    --input-placeholder-color: color-mix(in srgb, var(--admin-form-muted-text) 64%, transparent);
+    --input-label-bg: var(--admin-form-field-surface, #fcf9f9);
+    --label-color: var(--admin-form-label-text, var(--admin-form-muted-text));
     --form-item-label-font-size: var(--fontSize-s);
     --form-item-label-height: auto;
     --form-item-margin-bottom: var(--spacing-sm);
@@ -99,6 +102,115 @@
     --m3-surface-container: #f0edee;
     --m3-surface-container-high: #eae7e8;
     --m3-surface-container-highest: #e4e2e2;
+    /* `M3/sys/light/secondary` — the product's quiet accent. It was only ever
+       produced at runtime by computeOrisoPalette, so components that wanted it
+       hardcoded the value (editor help icon, success glyph — #594.11). Static
+       now, so nothing has to. */
+    --m3-secondary: #4c555f;
+    /* Static defaults for two roles that until now only existed at runtime
+       (applyAdminTheme writes the OrisoScheme light values as inline
+       properties). Without them every consumer had to carry its own literal
+       fallback, and those fallbacks had already drifted: the error tone was
+       written as #cc0000 in several places while the scheme resolves it to
+       #b1005e. Values below are copied from OrisoScheme light
+       (src/utils/theme/orisoScheme.ts) so the token is the single source and
+       the fallbacks can go. */
+    --m3-error: #b1005e;
+    /* The rest of the error role, owner-confirmed 2026-07-29: the container is
+       the saturated magenta, and both on-colours are near-white. Without these
+       every consumer that needed an error surface reached for antd's or MUI's
+       own red instead — which is where the off-scheme danger buttons came
+       from. */
+    --m3-error-container: #de0077;
+    --m3-on-error: #ffffff;
+    --m3-on-error-container: #fff7f9;
+    --m3-outline-variant: #c4c7c8;
+    /* M3 container/fixed roles (OrisoScheme, seed #A5000A). secondary-container is
+       the mid slate (#646D78) from the runtime OrisoScheme (light) and Figma; the
+       previous #e8ebee drifted and left the light on-colour text unreadable. */
+    --m3-secondary-container: #646d78;
+    --m3-on-secondary-container: #e7effc;
+    --m3-primary: #a5000a;
+    --m3-on-primary: #ffffff;
+    /* The rose SURFACE of the active sidebar pill. Figma calls that style
+       `M3/sys/light/on-primary-container` because it was applied as the pill's
+       FILL — see the `--m3-on-background` note below for why this palette's
+       `on-*` names are read inverted. Figma's value (#FFE2DE) wins (#594.13b);
+       the role stays `primary-container`, because in this codebase `on-*` is
+       the readable FOREGROUND produced by readableOn() in
+       utils/theme/orisoScheme.ts. Putting the rose on `--m3-on-primary-container`
+       would render rose text on rose surfaces and silently defeat that contrast
+       guard. Keep in sync with DEFAULT_ACCENT_LIGHT in orisoScheme.ts. */
+    --m3-primary-container: #ffe2de;
+    --m3-on-primary-container: #141c25;
+    --m3-primary-fixed: #ffe2de;
+    --m3-tertiary-container: #ffdad6;
+    --m3-on-tertiary-container: #410005;
+    /*
+     * THE DARK STAGE SURFACE — read this before "fixing" the name (#594.13a).
+     *
+     * #281715 is the deliberately dark, elegant tone of the desktop sidebar and
+     * of the public sign-in/sign-up stage panel. Figma names the style
+     * `M3/sys/light/on-background`, so the name is kept 1:1 with Figma even
+     * though M3's own semantics would make `on-background` a FOREGROUND colour.
+     *
+     * This palette therefore uses some M3 *system* names in an INVERTED way —
+     * exactly the same deliberate stopgap as the mail palette — because the
+     * product has no real dark-mode token set yet. It has no other consumer, so
+     * nothing reads it as a text colour. Do NOT "correct" it into
+     * `--m3-background`/`--m3-surface-dim` or swap the value: the sidebar
+     * (styles/components/protectedLayout.less) and the public stage
+     * (styles/components/stage.less) must provably resolve to the SAME token,
+     * which is the whole point of naming it.
+     */
+    --m3-on-background: #281715;
+    --oriso-app-accent-dark: #a5000a;
+    --admin-control-selected: var(--oriso-app-accent-dark, var(--m3-primary, #a5000a));
+    --admin-workspace-background: #e4e2e2;
+    /* Card elevation. Softer + wider than M3 elevation-1 (which is a tight
+       0 1px 3px) — a gentle, diffuse drop like the M3 dialog, tunable here. */
+    --admin-card-elevation: 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%);
+    --admin-search-surface: #fcf9f9;
+    --admin-search-text: #444748;
+    --admin-search-placeholder: #444748;
+    --admin-search-icon: #444748;
+    --admin-search-hover-surface: #f0edee;
+    --admin-table-surface: #f6f3f3;
+    --admin-table-header-surface: #e4e2e2;
+    --admin-table-row-hover-surface: #f0edee;
+    --admin-table-footer-surface: #e4e2e2;
+    --admin-table-border: #eae7e8;
+    --admin-table-text: #444748;
+    --admin-table-header-text: #1b1b1c;
+    --admin-table-chip-surface: #e4e2e2;
+    --admin-table-chip-border: #c4c7c8;
+    --admin-table-chip-text: #444748;
+    /* Field anatomy (#313) — static fallbacks; must match the runtime values
+       computeOrisoPalette writes for the default seed #A5000A exactly. */
+    --admin-form-field-surface: #fcf9f9;
+    --admin-field-surface: #fcf9f9;
+    --admin-field-outline: #c4c7c8;
+    --admin-field-surface-hover: #f6f3f3;
+    --admin-field-selected-surface: #ffe2de;
+    --admin-field-selected-text: #930008;
+    /* Mobile bottom-navigation active indicator (Figma 56576:34607). The deep
+       brand red pill behind the selected destination's icon; the icon on top is
+       the readable foreground. Seed-derived at runtime by computeOrisoPalette —
+       these static values must match what it writes for the default seed. */
+    --admin-nav-indicator-surface: #410001;
+    --admin-nav-indicator-icon: #ffffff;
+    --admin-status-success: var(--tag-success, #0a882f);
+    --admin-status-success-container: color-mix(
+        in srgb,
+        var(--admin-status-success) 14%,
+        var(--m3-surface-container-low)
+    );
+    --admin-status-success-border: color-mix(in srgb, var(--admin-status-success) 42%, transparent);
+    --admin-status-error: var(--form-error, #cc0000);
+    --admin-status-error-container: color-mix(in srgb, var(--admin-status-error) 12%, var(--m3-surface-container-low));
+    --admin-status-error-border: color-mix(in srgb, var(--admin-status-error) 42%, transparent);
+    --admin-status-warning: var(--warning-dark, #ff9f00);
+    --admin-status-muted: var(--m3-outline, #747878);
 
     /* YELLOW THEME */
     --yellow-1: #ffeed2;
@@ -117,9 +229,101 @@
 }
 
 body {
-    background: #f2efea;
+    background: var(--admin-workspace-background, #e4e2e2);
+}
+
+/* ── M3 type scale (Figma Admin.ORISO variable defs) ───────────────────────────
+   Global utility classes so both CSS-module components and the <Typography> atom
+   share one source of truth. Inter for everything except Title Small (Roboto).
+   Sizes/weights/tracking are copied verbatim from the Figma M3/* font variables. */
+:root {
+    --m3-title-small-font-family: 'Roboto', var(--m3-body-font-family);
+}
+
+.m3-headline-small {
+    font: 400 24px/32px var(--m3-body-font-family);
+    letter-spacing: 0;
+}
+
+.m3-title-medium {
+    font: 500 16px/24px var(--m3-body-font-family);
+    letter-spacing: 0.15px;
+}
+
+.m3-title-small {
+    font: 500 14px/20px var(--m3-title-small-font-family);
+    letter-spacing: 0.1px;
+}
+
+.m3-body-large {
+    font: 400 16px/24px var(--m3-body-font-family);
+    letter-spacing: 0.5px;
+}
+
+.m3-body-medium {
+    font: 400 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.25px;
+}
+
+.m3-body-medium-emphasized {
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.25px;
+}
+
+.m3-body-small {
+    font: 400 12px/16px var(--m3-body-font-family);
+    letter-spacing: 0.4px;
+}
+
+.m3-label-large {
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
 }
 
 .ant-layout {
     height: 100%;
+}
+
+/* M3 text button used in edit shells (Edit / Cancel / Save) and other places
+   that used to render antd filled/primary buttons. Flat, pill-shaped, sentence
+   case, brand-blue label with a subtle state-layer on hover. */
+.ant-btn.admin-m3-text-button {
+    height: 40px;
+    padding: 0 12px;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 100px;
+    color: #273270;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    text-transform: none;
+}
+
+.ant-btn.admin-m3-text-button:not(:disabled):hover,
+.ant-btn.admin-m3-text-button:not(:disabled):focus {
+    background: rgba(68, 71, 72, 0.08);
+    color: #273270;
+}
+
+/* Destructive variant: brand red label. */
+.ant-btn.admin-m3-text-button--danger {
+    color: #a5000a;
+}
+
+.ant-btn.admin-m3-text-button--danger:not(:disabled):hover,
+.ant-btn.admin-m3-text-button--danger:not(:disabled):focus {
+    color: #a5000a;
+}
+
+.ant-table-wrapper {
+    --admin-table-fixed-cell-shadow: transparent;
+}
+
+.ant-table-wrapper .ant-table-cell-fix-left-last::after,
+.ant-table-wrapper .ant-table-cell-fix-right-first::after,
+.ant-table-wrapper .ant-table-ping-left .ant-table-cell-fix-left-last::after,
+.ant-table-wrapper .ant-table-ping-right .ant-table-cell-fix-right-first::after {
+    box-shadow: none !important;
 }

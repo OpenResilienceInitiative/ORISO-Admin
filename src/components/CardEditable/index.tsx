@@ -13,29 +13,30 @@ interface CardEditableProps {
     isLoading?: boolean;
     fullHeight?: boolean;
     variant?: CardVariant;
-    headerIcon?: React.ReactChild;
+    headerIcon?: React.ReactElement<any> | number | string;
     initialValues?: Record<string, unknown>;
     titleKey: string;
-    subTitle?: React.ReactChild;
+    subTitle?: React.ReactElement<any> | number | string;
     subTitleKey?: string;
     saveKey?: string;
     cancelKey?: string;
     children:
-        | React.ReactElement
-        | React.ReactElement[]
+        | React.ReactElement<any>
+        | React.ReactElement<any>[]
         | ((data: {
               form: FormInstance<any>;
               editing: boolean;
               startEditing: () => void;
-          }) => React.ReactElement | React.ReactElement[]);
+          }) => React.ReactElement<any> | React.ReactElement<any>[]);
     onSave: <T>(formData: T, options?: { onError?: () => void }) => void;
     formProp?: FormInstance;
     editMode?: boolean;
     hideSaveButton?: boolean;
     hideCancelButton?: boolean;
+    onEdit?: () => void;
     tooltip?: string;
     allowUnsavedChanges?: boolean;
-    editButton?: React.ReactChild;
+    editButton?: React.ReactElement<any> | number | string;
     editButtonPlacement?: 'header' | 'footer';
     editLabelKey?: string;
     /** When false, the card is view-only (no edit pencil). */
@@ -56,6 +57,7 @@ export const CardEditable = ({
     editMode,
     hideSaveButton,
     hideCancelButton,
+    onEdit,
     onSave,
     formProp,
     tooltip,
@@ -96,6 +98,14 @@ export const CardEditable = ({
     const footerActionClassName = classNames(styles.footerActions, {
         [styles.dialogFooterActions]: variant === 'dialog',
     });
+    const startEditing = useCallback(() => {
+        if (onEdit) {
+            onEdit();
+            return;
+        }
+
+        setEditing(true);
+    }, [onEdit]);
 
     return (
         <Card
@@ -111,7 +121,7 @@ export const CardEditable = ({
             cardTitleChildren={
                 canStartEditing &&
                 finalEditButtonPlacement === 'header' && (
-                    <EditButton showLabel={false} icon={editButton} onClick={() => setEditing(true)} />
+                    <EditButton showLabel={false} icon={editButton} onClick={startEditing} />
                 )
             }
         >
@@ -128,14 +138,12 @@ export const CardEditable = ({
                 initialValues={initialValues}
                 className={classNames({ [styles.dialogForm]: variant === 'dialog' })}
             >
-                {typeof children === 'function'
-                    ? children({ form, editing, startEditing: () => setEditing(true) })
-                    : children}
+                {typeof children === 'function' ? children({ form, editing, startEditing }) : children}
             </Form>
 
             {canStartEditing && finalEditButtonPlacement === 'footer' && (
                 <div className={footerActionClassName}>
-                    <EditButton icon={editButton} labelKey={editLabelKey} onClick={() => setEditing(true)} />
+                    <EditButton icon={editButton} labelKey={editLabelKey} onClick={startEditing} />
                 </div>
             )}
             {editing && (!hideSaveButton || !hideCancelButton) && (
@@ -158,12 +166,13 @@ export const CardEditable = ({
             )}
             {allowUnsavedChanges && showUnsavedChangesModal && (
                 <UnsavedChangesModal
-                    onConfirm={() => setShowUnsavedChangesModal(false)}
-                    onClose={() => {
+                    // onConfirm = destructive (discard + exit editing), onClose = safe (keep editing).
+                    onConfirm={() => {
                         form.resetFields();
                         setEditing(false);
                         setShowUnsavedChangesModal(false);
                     }}
+                    onClose={() => setShowUnsavedChangesModal(false)}
                 />
             )}
         </Card>

@@ -2,33 +2,64 @@
     height: 100%;
 }
 
+/* Default card surface. Matches the M3 gray card used consistently across the
+   admin (dialog cards, functionality cards) so there are no more white cards:
+   gray surface + subtle border + M3 elevation-1 shadow + rounded corners. The
+   border+shadow give the card separation from the workspace background
+   (--admin-workspace-background #e4e2e2), which sits only one tonal step below
+   the card surface and would otherwise let the card fade into the page. This
+   mirrors the still-shadowed .chatTypeCard so both card systems read the same. */
+
+.card {
+    background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
+    border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 22%, transparent);
+    border-radius: 28px;
+    box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%));
+}
+
 .contentClassName {
     display: flex;
     height: 100%;
+    min-height: 0;
     flex-direction: column;
 }
 
 .dialogContentClassName {
-    min-height: 100%;
+    min-height: 0;
+    /* The dialog card is a flex column with a min-height; height:100% on the
+       content wrapper resolves to auto there, so flex the wrapper instead —
+       the body then absorbs the free space and a footer sits at the bottom. */
+    flex: 1 1 auto;
 }
 
 .dialogCard {
-    --input-label-bg: var(--m3-surface-container-high);
+    --admin-form-field-surface: var(--admin-form-card-surface, #eae7e8);
+    --input-label-bg: var(--admin-form-field-surface);
 
-    height: var(--dialog-card-height, clamp(430px, 49.5vh, 598px));
+    display: flex;
+    overflow: visible;
+    height: auto;
+    min-height: var(--dialog-card-min-height, 400px);
+    flex-direction: column;
     padding: 0;
-    overflow: hidden;
+    background: var(--m3-surface-container-high);
     border-radius: 28px;
-    background: #eae7e8;
+    box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%));
     font-family: var(--m3-body-font-family);
-    box-shadow:
-        0 1px 2px rgb(0 0 0 / 30%),
-        0 1px 3px 1px rgb(0 0 0 / 15%);
+    -moz-osx-font-smoothing: auto;
+    -webkit-font-smoothing: subpixel-antialiased;
+    font-synthesis: none;
+    text-rendering: optimizelegibility;
+}
+
+.dialogAutoHeight {
+    height: auto;
 }
 
 .cardTitle {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: center;
     margin-bottom: 24px;
 
     &.hasSubtitle {
@@ -37,29 +68,40 @@
 }
 
 .dialogCardTitle {
-    justify-content: center;
-    margin-bottom: 0;
+    flex-direction: column;
+    align-items: center;
     padding: 24px 24px 0;
+    margin-bottom: 0;
 }
 
 .titleContainer {
     display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 8px;
+    text-align: center;
 
+    /* Figma M3/headline/small: Inter 24/32, weight 400. Canonical card title. */
     .title {
         margin-bottom: 0;
+        color: var(--m3-on-surface);
+        font-family: var(--m3-body-font-family);
+        font-size: 24px;
+        font-weight: 400;
+        line-height: 32px;
+        text-align: center;
     }
 }
 
 .dialogTitleContainer {
     width: 100%;
-    align-items: center;
     flex-direction: column;
-    gap: 16px;
+    align-items: center;
+    gap: 8px;
     text-align: center;
 
     .title {
-        color: #1b1b1c;
+        color: var(--m3-on-surface);
         font-family: var(--m3-body-font-family);
         font-size: 24px;
         font-weight: 400;
@@ -74,30 +116,48 @@
     height: 40px;
     align-items: center;
     justify-content: center;
-    color: #444748;
+    color: var(--m3-on-surface-variant);
 
     :global {
         svg {
             width: 40px;
             height: 40px;
         }
+
+        /* Header icons are monochrome on-surface-variant by standard (Figma).
+           Source SVGs hardcode fills (white sidebar icons, black glyphs) —
+           remap everything to currentColor, but leave fill="none" outlines
+           intact so stroke-based icons don't get flattened, and never touch
+           <mask> internals: repainting a luminance mask's bounding box would
+           fade the whole icon (case_handover.svg). */
+        svg [fill]:not([fill='none']):not(mask *) {
+            fill: currentcolor;
+        }
+
+        svg :not([fill]):not(mask *) {
+            fill: currentcolor;
+        }
+
+        svg [stroke]:not([stroke='none']):not(mask *) {
+            stroke: currentcolor;
+        }
     }
 }
 
 .cardSubTitle {
+    margin-top: 5px;
     margin-bottom: 20px;
     color: var(--label-color);
     font-size: 14px;
     font-weight: 400;
     line-height: 16px;
-    margin-top: 5px;
     white-space: pre-line;
 }
 
 .dialogCardSubTitle {
-    margin: 16px 0 0;
     padding: 0 24px;
-    color: #444748;
+    margin: 16px 0 0;
+    color: var(--m3-on-surface-variant);
     font-family: var(--m3-body-font-family);
     font-size: 14px;
     letter-spacing: 0.25px;
@@ -106,13 +166,38 @@
 }
 
 .container {
+    min-height: 0;
+    flex: 1 1 auto;
     flex-grow: 1;
 }
 
 .dialogContainer {
     display: flex;
+    overflow: visible;
     min-height: 0;
     flex-direction: column;
+    padding: 20px 24px 24px;
+
+    :global {
+        .ant-row:not(.ant-form-item-row) {
+            flex-direction: column;
+            margin-right: 0 !important;
+            margin-left: 0 !important;
+            row-gap: 12px;
+        }
+
+        .ant-row:not(.ant-form-item-row) > .ant-col {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 0 0 auto !important;
+            padding-right: 0 !important;
+            padding-left: 0 !important;
+        }
+    }
+}
+
+.dialogContentPadding {
+    padding: 20px 24px 24px;
 }
 
 .tooltip {
@@ -127,4 +212,23 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Shared card action row (M3): a top divider then right-aligned text buttons.
+   Used by every wizard/settings card — Back/Next, Cancel/Save, Edit. */
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 24px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--m3-outline-variant, rgb(0 0 0 / 12%));
+}
+
+/* Dialog cards zero out the Box padding (their body carries its own), so the
+   footer needs explicit inset — divider spans the full card, actions inset. */
+.dialogCard .footer {
+    margin-top: 0;
+    padding: 16px 24px 20px;
 }

@@ -6,20 +6,25 @@
 
 .input {
     width: 100%;
+    max-width: 100%;
     height: 56px;
     min-height: 56px;
+    min-width: 0;
+    box-sizing: border-box;
     padding: var(--input-padding);
     border: 1px solid var(--input-border-color);
     border-radius: var(--input-border-radius);
     background: var(--input-bg);
     box-shadow: none;
-    color: var(--m3-on-surface);
+    color: var(--admin-form-field-text);
     font-family: var(--m3-body-font-family);
     font-size: 16px;
     font-weight: 400;
     letter-spacing: 0.5px;
     line-height: 24px;
     outline: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
 }
 
@@ -49,6 +54,7 @@
     color: var(--input-disabled-color);
     cursor: not-allowed;
     opacity: 1;
+    -webkit-text-fill-color: var(--input-disabled-color);
 }
 
 .input:disabled::placeholder,
@@ -94,30 +100,43 @@
     background: var(--input-disabled-bg) !important;
     color: var(--input-disabled-color) !important;
     opacity: 1;
+    -webkit-text-fill-color: var(--input-disabled-color) !important;
 }
 
 .item {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     margin-bottom: 24px;
 }
 
 .item :global(.ant-form-item-row) {
     position: relative;
+    min-width: 0;
 }
 
 .item :global(.ant-form-item-label) {
+    display: inline-flex !important;
     position: absolute;
     z-index: 2;
     top: -8px;
     left: 12px;
+    width: auto !important;
+    height: 16px !important;
+    align-items: center;
     max-width: calc(100% - 24px);
     padding: 0 4px !important;
     background: var(--input-label-bg);
-    line-height: 16px;
+    line-height: 16px !important;
+    overflow: visible !important;
     pointer-events: none;
+    white-space: nowrap;
 }
 
 .item :global(.ant-form-item-label > label) {
+    display: inline-flex;
     height: 16px;
+    align-items: center;
     color: var(--label-color);
     font-family: var(--m3-body-font-family);
     font-size: 12px;
@@ -128,10 +147,13 @@
 
 .item :global(.ant-form-item-control) {
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .item :global(.ant-form-item-control-input) {
     min-height: 56px;
+    min-width: 0;
 }
 
 .item :global(.ant-form-item-explain-error) {

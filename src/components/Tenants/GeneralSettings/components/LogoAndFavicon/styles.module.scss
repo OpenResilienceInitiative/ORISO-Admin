@@ -31,9 +31,7 @@
 
         .ant-upload {
             overflow: hidden;
-            transition:
-                box-shadow 0.2s ease,
-                transform 0.2s ease;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
         }
 
         .ant-upload:hover {
@@ -58,9 +56,8 @@
     }
 }
 
-.faviconUploader {
-    width: 54px;
-
+.faviconUploader,
+.associationLogoUploader {
     :global {
         .ant-upload.ant-upload-select-picture-card {
             aspect-ratio: 1;
@@ -73,6 +70,14 @@
             object-fit: contain;
         }
     }
+}
+
+.faviconUploader {
+    width: 32px;
+}
+
+.associationLogoUploader {
+    width: 54px;
 }
 
 .assetMetaColumn {
@@ -126,7 +131,7 @@
         grid-template-columns: minmax(180px, min(48%, 256px)) 1fr;
     }
 
-    .faviconUploader {
+    .associationLogoUploader {
         width: 64px;
     }
 

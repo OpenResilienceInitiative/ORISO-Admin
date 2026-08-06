@@ -19,6 +19,7 @@ export type UserTableColumnKey =
     | 'tenantOrgName'
     | 'tenantId'
     | 'maxConsultants'
+    | 'hasOtherIdentity'
     | 'actions';
 
 export interface UserTableColumnConfig {
@@ -51,18 +52,21 @@ const col = (key: UserTableColumnKey, visible: boolean, sortable = false, width?
     width,
 });
 
+// Width budget: at 1440px the sidebar rail and the table padding leave ~1310px, so the fixed
+// widths of a section must stay inside that. Anything wider silently pushes the trailing
+// columns (Träger, "also …" checkmark, actions) out of sight (ORISO-Admin#99).
 const baseIdentityColumns = (): UserTableColumnConfig[] => [
-    col('lastUpdated', true, true, 210),
-    col('status', true, false, 120),
+    col('lastUpdated', true, true, 150),
+    col('status', true, false, 80),
     col('lastname', true, true, 130),
     col('firstname', true, true, 120),
     col('email', true, true, 150),
-    col('username', true, false, 150),
+    col('username', true, true, 150),
 ];
 
 const tenantAdminIdentityColumns = (): UserTableColumnConfig[] => [
-    col('lastUpdated', true, true, 210),
-    col('status', true, false, 120),
+    col('lastUpdated', true, true, 150),
+    col('status', true, false, 80),
     col('lastname', true, true, 130),
     col('firstname', true, true, 120),
     col('email', true, true, 150),
@@ -114,9 +118,10 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         searchPlaceholderKey: 'consultant-search-placeholder',
         columns: [
             ...baseIdentityColumns(),
-            col('agency', true, false, 250),
-            col('tenant', true, false, 100),
-            col('actions', true, false, 100),
+            col('agency', true, false, 220),
+            col('hasOtherIdentity', true, false, 110),
+            col('tenant', true, false, 120),
+            col('actions', true, false, 80),
         ],
     },
     [TypeOfUser.AgencyAdmins]: {
@@ -132,9 +137,10 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         searchPlaceholderKey: 'consultant-search-placeholder',
         columns: [
             ...baseIdentityColumns(),
-            col('agency', true, false, 250),
-            col('tenant', true, false, 100),
-            col('actions', true, false, 100),
+            col('agency', true, false, 220),
+            col('hasOtherIdentity', true, false, 110),
+            col('tenant', true, false, 120),
+            col('actions', true, false, 80),
         ],
     },
     [TypeOfUser.TenantAdmins]: {
@@ -150,9 +156,10 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         searchPlaceholderKey: 'consultant-search-placeholder',
         columns: [
             ...tenantAdminIdentityColumns(),
-            col('subdomain', true, false, 200),
-            col('tenant', true, false, 100),
-            col('actions', true, false, 100),
+            col('subdomain', true, false, 160),
+            col('hasOtherIdentity', true, false, 110),
+            col('tenant', true, false, 120),
+            col('actions', true, false, 80),
         ],
     },
     [TypeOfUser.PlatformAdmins]: {
@@ -166,7 +173,7 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         showStatus: true,
         editPathPrefix: routePathNames.platformAdmins,
         searchPlaceholderKey: 'consultant-search-placeholder',
-        columns: [...tenantAdminIdentityColumns(), col('actions', true, false, 100)],
+        columns: [...tenantAdminIdentityColumns(), col('actions', true, false, 80)],
     },
     [TypeOfUser.Users]: {
         sectionId: TypeOfUser.Users,

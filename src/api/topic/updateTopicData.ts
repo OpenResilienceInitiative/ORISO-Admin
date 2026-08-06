@@ -14,7 +14,6 @@ const updateTopicData = async (topicId: string, formInput: TopicData) => {
     }
 
     const topicDataRequestBody = {
-        dioceseId: 0,
         name: formInput.name,
         description: formInput.description,
         internalIdentifier: formInput.internalIdentifier,

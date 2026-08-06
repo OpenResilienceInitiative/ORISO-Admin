@@ -1,0 +1,63 @@
+describe('login page', () => {
+    beforeEach(() => {
+        cy.visit('/login');
+    });
+
+    it('displays username and password fields', () => {
+        cy.get('form').should('be.visible');
+        cy.get('input[autocomplete="username"]').should('be.visible');
+        cy.get('input[autocomplete="current-password"]').should('be.visible');
+    });
+
+    it('keeps submit disabled until username and password are filled', () => {
+        cy.get('button[type="submit"]').should('be.disabled');
+        cy.get('input[autocomplete="username"]').type('test-user');
+        cy.get('button[type="submit"]').should('be.disabled');
+        cy.get('input[autocomplete="current-password"]').type('test-password', { log: false });
+        cy.get('button[type="submit"]').should('not.be.disabled');
+    });
+
+    it('toggles password visibility from the login form', () => {
+        cy.get('input[autocomplete="current-password"]').type('test-password', { log: false });
+        cy.get('input[autocomplete="current-password"]').should('have.attr', 'type', 'password');
+        cy.get('[data-testid="password-visibility-toggle"]').should('have.attr', 'aria-pressed', 'false');
+
+        cy.get('[data-testid="password-visibility-toggle"]').click();
+        cy.get('input[autocomplete="current-password"]').should('have.attr', 'type', 'text');
+        cy.get('[data-testid="password-visibility-toggle"]').should('have.attr', 'aria-pressed', 'true');
+
+        cy.get('[data-testid="password-visibility-toggle"]').click();
+        cy.get('input[autocomplete="current-password"]').should('have.attr', 'type', 'password');
+        cy.get('[data-testid="password-visibility-toggle"]').should('have.attr', 'aria-pressed', 'false');
+    });
+});
+
+const authenticatedSuite = (title, fn) => {
+    describe(title, () => {
+        before(function skipWithoutAuthenticatedUser() {
+            cy.env(['userOne', 'passwordOne']).then(({ userOne, passwordOne }) => {
+                if (!userOne || !passwordOne) {
+                    this.skip();
+                }
+            });
+        });
+
+        fn();
+    });
+};
+
+authenticatedSuite('authenticated admin', () => {
+    beforeEach(() => {
+        cy.loginAsTestUser();
+    });
+
+    it('redirects to the admin home after login', () => {
+        cy.url().should('include', '/admin');
+        cy.url().should('not.include', '/login');
+    });
+
+    it('can open the agency list page', () => {
+        cy.visit('/agency');
+        cy.url().should('include', '/agency');
+    });
+});

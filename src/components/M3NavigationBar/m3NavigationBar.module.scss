@@ -1,0 +1,124 @@
+/* Material-3 navigation bar, vertical items (Figma 56576:34607).
+   Geometry is taken 1:1 from the design: 64px tall, every segment an equal
+   fraction of the row, a 56×32 active-indicator pill and a 12/16/0.5
+   label-medium caption underneath. */
+
+.bar {
+    display: flex;
+    height: 64px;
+    align-items: center;
+    justify-content: center;
+    overflow: clip;
+}
+
+/* Search-expanded state: only the overflow button is left, so the bar must not
+   claim any width beyond that one 48px touch target. */
+.barCollapsed {
+    flex: 0 0 auto;
+}
+
+.itemIconOnly {
+    width: 48px;
+    min-width: 48px;
+    flex: 0 0 48px;
+    justify-content: center;
+    padding: 0;
+}
+
+.item {
+    display: flex;
+    height: 100%;
+    min-width: 0;
+    flex: 1 0 0;
+    flex-direction: column;
+    align-items: center;
+    /* 4px inline padding keeps neighbouring labels from touching once the
+       segments get narrow; Figma's 96px slot has the same optical gap. */
+    padding: 6px 4px;
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    font-family: inherit;
+    gap: 4px;
+    text-decoration: none;
+
+    &:focus-visible {
+        border-radius: 12px;
+        outline: 2px solid var(--m3-secondary, #4c555f);
+        outline-offset: 2px;
+    }
+}
+
+.indicator {
+    display: flex;
+    width: 56px;
+    height: 32px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    overflow: clip;
+    transition: background 140ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.item:hover .indicator:not(.indicatorActive) {
+    /* M3 hover state layer: 8% of the on-surface role over the bar surface. */
+    background: color-mix(in srgb, var(--m3-on-surface-variant, #444748) 8%, transparent);
+}
+
+.indicatorActive {
+    background: var(--admin-nav-indicator-surface, #410001);
+
+    .glyph {
+        color: var(--admin-nav-indicator-icon, #ffffff);
+    }
+}
+
+.glyph {
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    color: var(--m3-on-surface-variant, #444748);
+
+    > svg {
+        display: block;
+        width: 24px;
+        height: 24px;
+    }
+
+    :global {
+        .anticon {
+            font-size: 24px;
+            line-height: 1;
+        }
+    }
+}
+
+/* Single line, then ellipsis — the 64px bar has room for exactly one 16px line
+   below the 32px indicator, so wrapping would either clip the second line or
+   push the whole shelf taller. A truncated label means the segment is too
+   narrow for its destination; the answer is to move a destination into "Mehr",
+   which is the caller's call (see useNavOverflow), not this component's. */
+.label {
+    overflow: hidden;
+    /* `width`, not `min-width`: a min-width lets the box grow past the segment
+       when the text is wider, and then there is nothing left for the ellipsis
+       to clip — the label just spills over its neighbour. */
+    width: 100%;
+    min-width: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    line-height: 16px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.labelActive {
+    color: var(--m3-secondary, #4c555f);
+}

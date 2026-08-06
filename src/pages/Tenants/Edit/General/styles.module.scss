@@ -6,6 +6,50 @@
     line-height: 24px;
 }
 
+.tenantCardDeck {
+    --card-deck-min-height: 0;
+    --card-deck-item-width: 425px;
+    --card-deck-item-max-width: calc(100vw - 176px);
+}
+
+.tenantCardDeckScroll {
+    align-items: flex-start;
+}
+
+.tenantCardDeckItem {
+    min-width: min(425px, calc(100vw - 176px));
+}
+
+.tenantInfoCard,
+.createCard {
+    width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
+
+    :global {
+        .MuiFormControl-root,
+        .MuiTextField-root,
+        .MuiInputBase-root {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+    }
+}
+
+.createCardsRow {
+    --dialog-card-height: auto;
+    --dialog-card-max-height: none;
+
+    align-items: stretch;
+
+    > :global(.ant-col) {
+        display: flex;
+        min-width: 0;
+    }
+}
+
 .warning {
     display: flex;
     align-items: center;
@@ -23,12 +67,16 @@
 }
 
 .fieldGroup {
-    margin-bottom: 36px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-bottom: 16px;
 }
 
-.buttons {
-    display: flex;
-    gap: 16px;
+.domainSuffix {
+    color: var(--m3-outline, #747878);
+    font-size: 14px;
+    white-space: nowrap;
 }
 
 .emptyAdminsContainer {

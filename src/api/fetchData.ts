@@ -1,7 +1,6 @@
 import { message } from 'antd';
 import i18next from 'i18next';
-import { getValueFromCookie } from './auth/accessSessionCookie';
-import { getAccessTokenForRequests } from './auth/auth';
+import { getAccessTokenForRequests, tryRefreshAccessToken } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
 
@@ -24,9 +23,14 @@ export const FETCH_ERRORS = {
     BAD_REQUEST_WITH_RESPONSE: 'BAD_REQUEST_WITH_RESPONSE',
     CATCH_ALL: 'CATCH_ALL',
     CATCH_ALL_SILENT: 'CATCH_ALL_SILENT',
+    // Opt-in only: skips the global `/admin/access-denied` redirect for this one call so the
+    // caller can render its own inline access-denied state. Additive — every existing caller
+    // that doesn't pass this flag keeps the redirect exactly as before.
+    FORBIDDEN_SILENT: 'FORBIDDEN_SILENT',
     CONFLICT: 'CONFLICT',
     CONFLICT_WITH_RESPONSE: 'CONFLICT_WITH_RESPONSE',
     EMPTY: 'EMPTY',
+    FORBIDDEN: 'FORBIDDEN',
     NO_MATCH: 'NO_MATCH',
     TIMEOUT: 'TIMEOUT',
     UNAUTHORIZED: 'UNAUTHORIZED',
@@ -66,15 +70,17 @@ interface FetchDataProps {
     url: string;
     method: string;
     headersData?: object;
-    rcValidation?: boolean;
-    bodyData?: string;
+    bodyData?: BodyInit;
     skipAuth?: boolean;
     responseHandling?: string[];
     timeout?: number;
     signal?: AbortSignal;
+    // Internal flag: set on the single automatic retry after a token refresh so a
+    // genuinely-unauthenticated request cannot loop. Not part of the public API.
+    retriedAfterRefresh?: boolean;
 }
 
-export const fetchData = (props: FetchDataProps): Promise<any> =>
+const executeFetchData = (props: FetchDataProps): Promise<any> =>
     new Promise((resolve, reject) => {
         const accessToken = getAccessTokenForRequests();
         // Check if manual authorization header is provided in headersData
@@ -91,14 +97,8 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
 
         const csrfToken = generateCsrfToken();
 
-        const rcHeaders = props.rcValidation
-            ? {
-                  rcToken: getValueFromCookie('rc_token'),
-                  rcUserId: getValueFromCookie('rc_uid'),
-              }
-            : null;
-
-        const localDevelopmentHeader = isLocalDevelopment ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
+        const localDevelopmentHeader =
+            isLocalDevelopment && CSRF_WHITELIST_HEADER ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
 
         const controller = new AbortController();
         const timeoutMs = props.timeout ?? 30_000;
@@ -112,16 +112,16 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
 
         const normalizedLanguage = normalizeLanguage(i18next.resolvedLanguage || i18next.language) || DEFAULT_LANGUAGE;
 
+        const isMultipartBody = typeof FormData !== 'undefined' && props.bodyData instanceof FormData;
         const req = new Request(props.url, {
             method: props.method,
             headers: {
-                'Content-Type': 'application/json',
+                ...(isMultipartBody ? {} : { 'Content-Type': 'application/json' }),
                 'cache-control': 'no-cache',
                 'Accept-Language': normalizedLanguage,
                 ...authorization,
                 'X-CSRF-TOKEN': csrfToken,
                 ...otherHeadersData,
-                ...rcHeaders,
                 ...localDevelopmentHeader,
             },
             credentials: 'include',
@@ -165,13 +165,22 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                                 ? response
                                 : new Error(FETCH_ERRORS.CONFLICT),
                         );
+                    } else if (response.status === 403 && props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN)) {
+                        // Reject locally so the caller can render an in-place "no access"
+                        // state instead of losing the whole page to the redirect below.
+                        reject(new Error(FETCH_ERRORS.FORBIDDEN));
                     } else if (response.status === 403) {
-                        // Temporarily disabled to allow admin pages to work while we fix role mapping
-                        // window.location.href = '/admin/access-denied';
-                        reject(new Error('403 Forbidden'));
+                        if (props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN_SILENT)) {
+                            reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
+                        } else {
+                            window.location.href = '/admin/access-denied';
+                            reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
+                        }
                     } else if (response.status === 401) {
-                        // console.log('🔍 fetchData: 401 Unauthorized - session expired, logging out');
-                        logout(true, routePathNames.login);
+                        // Don't force a logout here. fetchData()'s wrapper attempts a single
+                        // token refresh + retry before falling back to logout, so a lapsed or
+                        // empty access token self-heals instead of dropping the user on the
+                        // login page mid-action (e.g. while creating an agency).
                         reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
                     } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL_SILENT)) {
                         // Reject without showing a toast so the caller can decide how to handle it.
@@ -181,11 +190,13 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                             content: i18next.t([
                                 `message.error.${response.headers.get(FETCH_ERRORS.X_REASON)}`,
                                 'message.error.default',
-                            ]),
+                            ]) as string,
                             duration: 8,
                         });
 
                         reject(new Error(FETCH_ERRORS.CATCH_ALL));
+                    } else {
+                        reject(new Error(`API call error: ${response.status} ${response.statusText}`));
                     }
                 } else {
                     // Handle unhandled response status - reject with appropriate error
@@ -203,3 +214,34 @@ export const fetchData = (props: FetchDataProps): Promise<any> =>
                 }
             });
     });
+
+/**
+ * Public request helper. Wraps {@link executeFetchData} with a self-healing 401
+ * handler: when an authenticated request comes back 401 (typically a lapsed or
+ * empty access token in this tab), refresh the token via the BFF and retry the
+ * request exactly once. Only if the retry is still unauthorized — or there is no
+ * valid session to refresh — do we fall back to logging the user out. This stops
+ * the "logged out while creating an agency" forced-logout.
+ */
+export const fetchData = async (props: FetchDataProps): Promise<any> => {
+    try {
+        return await executeFetchData(props);
+    } catch (error) {
+        const isUnauthorized = error instanceof Error && error.message === FETCH_ERRORS.UNAUTHORIZED;
+
+        if (isUnauthorized && !props.skipAuth && !props.retriedAfterRefresh) {
+            const refreshed = await tryRefreshAccessToken();
+            if (refreshed) {
+                // Retry once through fetchData (not executeFetchData) so a retry that
+                // is still unauthorized also runs the logout fallback below.
+                return fetchData({ ...props, retriedAfterRefresh: true });
+            }
+        }
+
+        if (isUnauthorized && !props.skipAuth) {
+            logout(true, routePathNames.login);
+        }
+
+        throw error;
+    }
+};

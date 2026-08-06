@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../../CardEditable';
-import { FormColorSelectorField } from '../../../../FormColorSelectorField';
+import { MuiColorField } from '../../../../mui/MuiColorField';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
 import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.hook';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
@@ -51,7 +51,7 @@ export const TenantColor = ({ tenantId, readOnly = false }: { tenantId: string; 
             subTitle={t<string>('settings.colors.howto')}
             onSave={onSubmit}
         >
-            <FormColorSelectorField
+            <MuiColorField
                 labelKey="organisation.primaryColor"
                 name={['theming', 'primaryColor']}
                 disabled={primaryColorReadOnly}

@@ -17,7 +17,7 @@ const ResponsibleSettingsFields = () => {
         <>
             <Paragraph className="text desc">{t('agency.edit.settings.legal.responsible.text')}</Paragraph>
             <Row gutter={[20, 10]}>
-                <Col xs={12}>
+                <Col xs={24}>
                     <FormInputField
                         name={['dataProtection', 'agencyDataProtectionResponsibleContact', 'nameAndLegalForm']}
                         labelKey="agency.edit.settings.legal.responsible.identifier"
@@ -25,7 +25,7 @@ const ResponsibleSettingsFields = () => {
                         required
                     />
                 </Col>
-                <Col xs={7}>
+                <Col xs={14}>
                     <FormInputField
                         name={['dataProtection', 'agencyDataProtectionResponsibleContact', 'postcode']}
                         labelKey="agency.edit.settings.legal.responsible.postcode"
@@ -35,7 +35,7 @@ const ResponsibleSettingsFields = () => {
                         rules={[{ min: 5, required: true, message: t('agency.postcode.minimum') }]}
                     />
                 </Col>
-                <Col xs={5}>
+                <Col xs={10}>
                     <FormInputField
                         name={['dataProtection', 'agencyDataProtectionResponsibleContact', 'city']}
                         labelKey="agency.edit.settings.legal.responsible.city"
@@ -44,7 +44,7 @@ const ResponsibleSettingsFields = () => {
                         maxLength={100}
                     />
                 </Col>
-                <Col xs={7}>
+                <Col xs={14}>
                     <FormInputField
                         name={['dataProtection', 'agencyDataProtectionResponsibleContact', 'phoneNumber']}
                         labelKey="agency.edit.settings.legal.responsible.phone"
@@ -53,7 +53,7 @@ const ResponsibleSettingsFields = () => {
                         maxLength={100}
                     />
                 </Col>
-                <Col xs={5}>
+                <Col xs={10}>
                     <FormInputField
                         name={['dataProtection', 'agencyDataProtectionResponsibleContact', 'email']}
                         labelKey="agency.edit.settings.legal.responsible.email"
@@ -74,6 +74,8 @@ export const ResponsibleSettings = ({ initialValues, onSave }: ResponsibleSettin
                 allowUnsavedChanges
                 initialValues={initialValues}
                 titleKey="agency.edit.settings.legal.responsible.title"
+                variant="dialog"
+                editButtonPlacement="footer"
                 onSave={onSave}
             >
                 <ResponsibleSettingsFields />
@@ -82,7 +84,7 @@ export const ResponsibleSettings = ({ initialValues, onSave }: ResponsibleSettin
     }
 
     return (
-        <Card titleKey="agency.edit.settings.legal.responsible.title">
+        <Card titleKey="agency.edit.settings.legal.responsible.title" variant="dialog">
             <ResponsibleSettingsFields />
         </Card>
     );

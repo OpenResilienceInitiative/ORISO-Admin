@@ -1,3 +1,10 @@
+/* M3 shell: same reading-width constraints as the other legal cards. */
 .card {
-    margin-bottom: 24px;
+    width: 100%;
+    min-width: 375px;
+    max-width: 960px;
+}
+
+.description {
+    margin-bottom: 12px;
 }

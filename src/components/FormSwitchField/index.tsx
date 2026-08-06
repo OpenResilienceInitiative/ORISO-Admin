@@ -11,7 +11,7 @@ type SwitchVariant = 'antd' | 'm3';
 
 interface FormSwitchFieldProps {
     labelKey?: string;
-    label?: React.ReactChild;
+    label?: React.ReactElement<any> | number | string;
     name: string | string[];
     help?: string;
     disabled?: boolean;
@@ -62,7 +62,19 @@ const FormSwitchFieldLocal = ({
     return (
         <div className="formSwitchField__container">
             {switchVariant === 'm3' ? (
-                <M3Switch disabled={isDisabled} label={switchLabel} onChange={onSwitchChange} checked={fieldChecked} />
+                <>
+                    <M3Switch
+                        disabled={isDisabled}
+                        label={switchLabel}
+                        onChange={onSwitchChange}
+                        checked={fieldChecked}
+                    />
+                    {!disableLabels && (
+                        <span className="formSwitchField__stateLabel">
+                            {t(fieldChecked ? checkedKey : unCheckedKey)}
+                        </span>
+                    )}
+                </>
             ) : (
                 <Switch
                     disabled={isDisabled}
@@ -94,7 +106,7 @@ export const FormSwitchField = ({
     checkedKey = 'yes',
     unCheckedKey = 'no',
     switchLabel,
-    switchVariant = 'antd',
+    switchVariant = 'm3',
 }: FormSwitchFieldProps) => {
     const [t] = useTranslation();
     const message = errorMessage || t('form.errors.required');

@@ -17,11 +17,7 @@
     justify-content: space-between;
     gap: 16px 24px;
     width: 100%;
-    padding-left: 32px;
-
-    @media (max-width: 767px) {
-        padding-left: 0;
-    }
+    margin-bottom: 24px;
 }
 
 .searchWithButton {
@@ -107,8 +103,7 @@
 .tableContainer {
     width: 100%;
     min-width: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: visible;
 
     :global {
         .ant-table {
@@ -119,14 +114,14 @@
         .ant-table-container,
         .ant-table-content {
             min-width: 0;
-            background: var(--m3-surface-container-low, #f6f3f3);
+            background: var(--admin-table-surface, #f6f3f3);
         }
 
         .ant-table-thead > tr > th {
-            background: var(--m3-surface-container-highest, #e4e2e2);
+            background: var(--admin-table-header-surface, #e4e2e2);
             border-bottom: none;
             border-radius: 0 !important;
-            color: var(--m3-on-surface, #1b1b1c);
+            color: var(--admin-table-header-text, #1b1b1c);
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
             font-size: 14px;
             font-weight: 500;
@@ -136,14 +131,14 @@
         }
 
         .ant-table-tbody > tr > td {
-            background: var(--m3-surface-container-low, #f6f3f3);
-            border-bottom: 1px solid var(--m3-surface-container-high, #eae7e8);
-            color: var(--m3-on-surface-variant, #444748);
+            background: var(--admin-table-surface, #f6f3f3);
+            border-bottom: 1px solid var(--admin-table-border, #eae7e8);
+            color: var(--admin-table-text, #444748);
             vertical-align: middle;
         }
 
         .ant-table-tbody > tr:hover > td {
-            background: var(--m3-surface-container, #f0edee) !important;
+            background: var(--admin-table-row-hover-surface, #f0edee) !important;
         }
 
         .ant-table-cell-fix-right,

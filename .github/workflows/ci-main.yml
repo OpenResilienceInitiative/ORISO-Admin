@@ -1,35 +1,70 @@
 name: CI - Main
 
 on:
-  push:
-    branches:
-      - main
-      - dev
+    push:
+        branches:
+            - main
+            - dev
+            - pre-dev
 
 env:
-  REGISTRY: ghcr.io
-  ORG: openresilienceinitiative
+    REGISTRY: ghcr.io
+    ORG: openresilienceinitiative
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+    build:
+        runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-      packages: write
+        permissions:
+            contents: read
+            packages: write
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v6
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
 
-    - name: Build frontend application
-      uses: ./.github/actions/node-build
-      with:
-        node_version: '18'
+            - name: Build frontend application
+              uses: ./.github/actions/node-build
+              with:
+                  node_version: '22.12.0'
 
-    - name: Create and Publish Docker image
-      uses: ./.github/actions/docker-build-push
-      with:
-        push_to_ghcr: true
-        image_name: oriso-admin
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+            - name: Create and Publish Docker image
+              id: publish
+              uses: ./.github/actions/docker-build-push
+              with:
+                  push_to_ghcr: true
+                  image_name: oriso-admin
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+
+            # Guard against the stale-bundle class of failure (issue #424): the
+            # image we just published must contain exactly the frontend bundle
+            # this run built, not a cache-restored older one. Green CI + a fresh
+            # image timestamp hid this before, so assert it explicitly. Inspect
+            # the immutable digest, never the mutable :pre-dev tag — a concurrent
+            # push could rewrite the tag between publish and pull.
+            - name: Verify the published image contains the freshly built bundle
+              shell: bash
+              env:
+                  DIGEST: ${{ steps.publish.outputs.digest }}
+              run: |
+                  set -euo pipefail
+                  built="$(cd build/assets && ls index-*.js | head -n1)"
+                  if [ -z "$built" ]; then
+                    echo "::error::npm run build produced no build/assets/index-*.js"
+                    exit 1
+                  fi
+                  if [ -z "${DIGEST}" ]; then
+                    echo "::error::build step exposed no image digest to verify against"
+                    exit 1
+                  fi
+                  ref="${REGISTRY}/${ORG}/oriso-admin@${DIGEST}"
+                  docker pull -q "$ref"
+                  shipped="$(docker run --rm --entrypoint sh "$ref" \
+                    -c 'ls /usr/share/nginx/html/admin/assets/index-*.js' \
+                    | xargs -n1 basename | head -n1)"
+                  echo "built entry bundle:   ${built}"
+                  echo "shipped entry bundle: ${shipped}"
+                  if [ "${built}" != "${shipped}" ]; then
+                    echo "::error::${ref} ships '${shipped}' but this run built '${built}' — stale bundle in image (issue #424)."
+                    exit 1
+                  fi

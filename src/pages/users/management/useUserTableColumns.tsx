@@ -1,10 +1,12 @@
-import { HistoryOutlined } from '@ant-design/icons';
+import { CheckOutlined, HistoryOutlined } from '@ant-design/icons';
+
 import { ColumnProps } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import CustomChevronDownIcon from '../../../components/CustomIcons/ChevronDown';
-import CustomChevronUpIcon from '../../../components/CustomIcons/ChevronUp';
+import { ReactComponent as RowExpandIcon } from '../../../resources/img/svg/table-actions/row_expand_200.svg';
+import { ReactComponent as RowExpandHoverIcon } from '../../../resources/img/svg/table-actions/row_expand_400.svg';
+import { ReactComponent as RowExpandSelectedIcon } from '../../../resources/img/svg/table-actions/row_expand_filled.svg';
 import EditButtons from '../../../components/EditableTable/EditButtons';
 import StatusIcons from '../../../components/EditableTable/StatusIcons';
 import { CopyToClipboard } from '../../../components/CopyToClipboard';
@@ -26,6 +28,7 @@ const SORT_FIELD_BY_COLUMN: Partial<Record<UserTableColumnKey, string>> = {
     lastname: 'LASTNAME',
     firstname: 'FIRSTNAME',
     email: 'EMAIL',
+    username: 'USERNAME',
     tenantOrgName: 'NAME',
 };
 
@@ -38,7 +41,6 @@ const getColumnSortOrder = (
     if (!apiField || !sortBy || apiField !== sortBy) return undefined;
     return order === 'DESC' ? 'descend' : 'ascend';
 };
-
 
 type TableRow = CounselorData | TenantData;
 
@@ -75,7 +77,7 @@ export const useUserTableColumns = ({
     figmaTableHeader = false,
     fixActionsColumn = true,
     sortBy,
-    order
+    order,
 }: UseUserTableColumnsParams) => {
     const { t } = useTranslation();
     const config = USER_TABLE_CONFIGS[sectionId];
@@ -107,11 +109,22 @@ export const useUserTableColumns = ({
             const isOpen = openRows.includes(record.id);
             const visibleAgencies = isOpen ? agencies : [agencies[0]];
 
+            // Each chip label lives in its own element: `text-overflow: ellipsis` is ignored on
+            // the anonymous flex item of an `inline-flex` chip, which sliced long names mid-word.
+            const chip = (variant: 'postcode' | 'name' | 'city', value?: string) => (
+                <span
+                    className={`counselorList__agencyChip counselorList__agencyChip--${variant}`}
+                    title={value || undefined}
+                >
+                    <span className="counselorList__agencyChipLabel">{value}</span>
+                </span>
+            );
+
             return visibleAgencies.filter(Boolean).map((agencyItem) => (
                 <div key={agencyItem.id} className="counselorList__agencies">
-                    <span>{agencyItem.postcode}</span>
-                    <span>{agencyItem.name}</span>
-                    <span>[{agencyItem.city}]</span>
+                    {chip('postcode', agencyItem.postcode)}
+                    {chip('name', agencyItem.name)}
+                    {chip('city', agencyItem.city)}
                 </div>
             ));
         };
@@ -128,10 +141,10 @@ export const useUserTableColumns = ({
                 className: 'counselorList__column',
                 ...(sortable && apiSortField
                     ? {
-                        sorter: true,
-                        sortOrder: getColumnSortOrder(key, sortBy, order),
-                        showSorterTooltip: false,
-                    }
+                          sorter: true,
+                          sortOrder: getColumnSortOrder(key, sortBy, order),
+                          showSorterTooltip: false,
+                      }
                     : {}),
             };
 
@@ -211,6 +224,25 @@ export const useUserTableColumns = ({
                             }
                         },
                     };
+                case 'hasOtherIdentity': {
+                    // Identity-specific, read-only checkmark for the *other* identity:
+                    // consultants table → "also Träger-Admin"; admin tables → "also Berater*in".
+                    const isConsultantSection = sectionId === TypeOfUser.Consultants;
+                    const titleKey = isConsultantSection ? 'users.table.alsoTenantAdmin' : 'users.table.alsoConsultant';
+                    return {
+                        ...base,
+                        title: t(titleKey),
+                        render: (_: unknown, record: TableRow) => {
+                            const row = record as CounselorData;
+                            const hasOtherIdentityForSection = isConsultantSection
+                                ? (row.otherIdentityTypes || []).includes('TENANT_ADMIN')
+                                : !!row.hasOtherIdentity;
+                            return hasOtherIdentityForSection ? (
+                                <CheckOutlined data-testid="other-identity-checkmark" aria-label={t(titleKey)} />
+                            ) : null;
+                        },
+                    };
+                }
                 case 'agency':
                     return {
                         ...base,
@@ -270,12 +302,18 @@ export const useUserTableColumns = ({
                                     {canExpand && (
                                         <button
                                             type="button"
-                                            className="counselorList__toggle counselorList__toggle--inline"
+                                            className={`counselorList__toggle counselorList__toggle--inline${
+                                                isOpen ? ' counselorList__toggle--expanded' : ''
+                                            }`}
                                             aria-expanded={isOpen}
                                             aria-label={isOpen ? t('users.table.collapse') : t('users.table.expand')}
                                             onClick={() => onToggleRow(user.id)}
                                         >
-                                            {isOpen ? <CustomChevronUpIcon /> : <CustomChevronDownIcon />}
+                                            <span className="counselorList__toggleIconStack" aria-hidden="true">
+                                                <RowExpandIcon className="counselorList__toggleIcon counselorList__toggleIcon--default" />
+                                                <RowExpandHoverIcon className="counselorList__toggleIcon counselorList__toggleIcon--hover" />
+                                                <RowExpandSelectedIcon className="counselorList__toggleIcon counselorList__toggleIcon--selected" />
+                                            </span>
                                         </button>
                                     )}
                                     {canEditOrDelete && (
@@ -316,7 +354,7 @@ export const useUserTableColumns = ({
         showTenant,
         showSubdomain,
         sortBy,
-        order
+        order,
     ]);
 };
 

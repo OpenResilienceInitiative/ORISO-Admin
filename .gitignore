@@ -7,6 +7,9 @@
 
 # testing
 /coverage
+cypress/videos/
+cypress/screenshots/
+cypress.env.json
 
 # production
 /build
@@ -27,3 +30,10 @@ yarn-error.log*
 
 .env
 graphify-out/*
+
+# Generated at container start by scripts/generate-runtime-env.js — never commit personal configs here
+public/env.js
+storybook-static
+
+# local testing notes (contains credentials) — never commit
+TESTING-CONTEXT.md

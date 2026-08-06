@@ -1,0 +1,122 @@
+.root {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: var(--card-deck-min-height, max(0px, calc(100dvh - 220px)));
+    flex-direction: column;
+}
+
+.deck {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+    padding: var(--card-deck-padding, 0 4px 8px);
+    -webkit-overflow-scrolling: touch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-behavior: smooth;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    touch-action: pan-x pan-y;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.list {
+    display: flex;
+    min-width: max-content;
+    align-items: flex-start;
+    padding: 0;
+    margin: 0;
+    gap: var(--card-deck-gap, 24px);
+    list-style: none;
+}
+
+.item {
+    display: flex;
+    // A deck item is a single vertical page: stack its cards, never let two
+    // siblings share the row width and crush each other on narrow screens.
+    flex-direction: column;
+    min-width: min(var(--card-deck-item-min-width, 320px), var(--card-deck-item-max-width, calc(100vw - 176px)));
+
+    // #568: without a max-width a growable item contributes its content
+    // max-content width to the `min-width: max-content` list, so a wide
+    // toolbar silently doubles the card and pushes its siblings off-screen.
+    max-width: min(var(--card-deck-item-width, 392px), var(--card-deck-item-max-width, calc(100vw - 176px)));
+    flex: 0 0 min(var(--card-deck-item-width, 392px), var(--card-deck-item-max-width, calc(100vw - 176px)));
+    scroll-snap-align: start;
+
+    > * {
+        width: 100%;
+    }
+}
+
+// #568: with room for less than two cards a horizontal scroller reads as a
+// single-card page — fall back to the same vertical stack as on mobile.
+.stacked {
+    min-height: 0;
+
+    .deck {
+        overflow: visible;
+        padding: var(--card-deck-mobile-padding, 0);
+        scroll-snap-type: none;
+    }
+
+    .list {
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--card-deck-mobile-gap, 24px);
+    }
+
+    .item {
+        width: 100%;
+        max-width: none;
+        flex-basis: auto;
+    }
+}
+
+.footer {
+    position: sticky;
+    z-index: 20;
+    bottom: var(--card-deck-footer-bottom, 28px);
+    flex: 0 0 auto;
+    padding: var(--card-deck-footer-padding, 0 24px);
+    margin-top: auto;
+    pointer-events: none;
+
+    :global(button) {
+        pointer-events: auto;
+    }
+}
+
+@media (max-width: 767px) {
+    .root {
+        min-height: 0;
+    }
+
+    .deck {
+        overflow: visible;
+        padding: var(--card-deck-mobile-padding, 0);
+        gap: var(--card-deck-mobile-gap, 24px);
+        scroll-snap-type: none;
+    }
+
+    .list {
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--card-deck-mobile-gap, 24px);
+    }
+
+    .item {
+        width: 100%;
+        max-width: none;
+        flex-basis: auto;
+    }
+
+    .footer {
+        display: none;
+    }
+}

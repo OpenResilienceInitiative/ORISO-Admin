@@ -1,0 +1,55 @@
+/* Avatar picker grid: circular primary-tinted tiles, single-select ring. */
+
+.grid {
+    display: grid;
+    gap: 12px;
+    justify-items: center;
+}
+
+.avatar {
+    display: inline-flex;
+    width: 52px;
+    height: 52px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    background: var(--m3-primary, #a5000a);
+    color: var(--m3-on-primary, #ffffff);
+    font-size: 24px;
+    cursor: pointer;
+    transition: border-color 140ms ease, transform 140ms ease;
+}
+
+.avatar:hover {
+    transform: scale(1.05);
+}
+
+.avatar:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 2px;
+}
+
+/* Monochrome avatar glyphs (fill=black) recolour to the on-primary white.
+   Broadened past <path> so glyphs that fill circles/rects/groups also flip. */
+.avatar :global(svg) {
+    width: 30px;
+    height: 30px;
+    fill: currentColor;
+}
+
+.avatar :global(svg path),
+.avatar :global(svg circle),
+.avatar :global(svg rect),
+.avatar :global(svg ellipse),
+.avatar :global(svg polygon),
+.avatar :global(svg polyline),
+.avatar :global(svg g) {
+    fill: currentColor;
+}
+
+.selected {
+    border-color: var(--m3-on-surface, #1b1b1c);
+    box-shadow: 0 0 0 2px var(--m3-surface, #fcf9f9);
+}

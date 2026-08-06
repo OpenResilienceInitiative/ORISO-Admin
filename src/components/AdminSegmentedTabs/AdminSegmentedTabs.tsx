@@ -9,6 +9,8 @@ export type AdminSegmentedTabItem = {
     icon?: ReactNode;
     activeIcon?: ReactNode;
     to?: string;
+    /** Forwarded to `NavLink` — exact-match only, for a `to` that is a prefix of its siblings. */
+    end?: boolean;
     disabled?: boolean;
 };
 
@@ -70,6 +72,7 @@ export const AdminSegmentedTabs = ({ activeId, ariaLabel, className, items, onCh
                             <NavLink
                                 key={item.id}
                                 to={item.to}
+                                end={item.end}
                                 role="tab"
                                 className={({ isActive }) =>
                                     getItemClassName(activeId ? item.id === activeId : isActive, item.disabled)

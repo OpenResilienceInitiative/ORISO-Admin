@@ -1,5 +1,47 @@
+.globalConfigGrid {
+    display: grid;
+    max-width: 1164px;
+    align-items: start;
+    gap: 24px;
+    grid-template-columns: minmax(280px, 340px) minmax(360px, 800px);
+}
+
+.globalConfigCardSlot,
+.translationCardSlot {
+    min-width: 0;
+}
+
+.loginFunctionCard {
+    width: 100%;
+    min-height: 240px;
+
+    :global([class*='cardTitle']) {
+        align-items: flex-start;
+    }
+
+    :global(h5.ant-typography) {
+        color: #1b1b1c;
+        font-family: var(--m3-body-font-family);
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0;
+        line-height: 28px;
+    }
+}
+
 .checkGroup {
-    margin-bottom: 16px;
+    margin-top: 40px;
+    margin-bottom: 0;
+
+    :global(.MuiFormControlLabel-label) {
+        color: #1b1b1c;
+        font-family: var(--m3-body-font-family);
+        font-size: 18px;
+        font-weight: 400;
+        letter-spacing: 0;
+        line-height: 28px;
+        white-space: normal;
+    }
 }
 
 .checkInfo {
@@ -11,62 +53,42 @@
 }
 
 .smtpPage {
-    display: grid;
-    max-width: 1128px;
-    align-items: stretch;
-    gap: 24px;
-    grid-template-columns: minmax(420px, 1fr) minmax(360px, 1fr);
+    --card-deck-gap: 24px;
+    --card-deck-item-width: 425px;
+    --card-deck-item-max-width: 425px;
+    --card-deck-footer-margin-top: 40px;
+    --card-deck-footer-padding: 0 24px;
+}
+
+.smtpCardSlot {
+    display: flex;
 }
 
 .smtpCard {
-    --dialog-card-height: clamp(700px, 82vh, 1040px);
+    width: 100%;
 
-    :global([class*='dialogCardSubTitle']) {
-        margin-top: 24px;
+    :global([class*='dialogCardTitle']) {
+        min-height: 112px;
     }
 
-    :global([class*='dialogForm']) {
-        padding-bottom: 24px;
+    :global([class*='dialogTitleContainer']) {
+        min-height: 88px;
     }
 }
 
 .smtpSwitch {
     margin-bottom: 18px;
 
-    :global(.ant-form-item-row) {
+    :global(.MuiFormControlLabel-root) {
         align-items: flex-start;
-        flex-wrap: nowrap;
-        gap: 16px;
     }
 
-    :global(.ant-form-item-label) {
-        min-width: 0;
+    :global(.MuiFormControlLabel-label) {
         max-width: calc(100% - 76px);
-        flex: 1 1 calc(100% - 76px);
-        overflow: visible;
-        text-align: left;
-        white-space: normal;
     }
 
-    :global(.ant-form-item-label > label) {
-        display: block;
-        width: 100%;
-        padding-bottom: 0;
-        white-space: normal;
-    }
-
-    :global(.ant-col.ant-form-item-control) {
-        max-width: 60px;
-        flex: 0 0 60px;
-        padding-top: 0;
-    }
-
-    :global(.ant-form-item-control-input) {
-        min-height: 48px;
-    }
-
-    :global(.formSwitchField__container) {
-        justify-content: flex-end;
+    :global(.MuiSwitch-root) {
+        margin-top: 0;
     }
 }
 
@@ -78,20 +100,20 @@
 }
 
 .switchTitle {
-    color: var(--m3-on-surface, #1b1b1c);
+    color: #1b1b1c;
     font-family: var(--m3-body-font-family);
     font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0;
-    line-height: 20px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    line-height: 24px;
 }
 
 .switchDescription {
-    color: var(--m3-on-surface-variant, #444748);
+    color: #444748;
     font-family: var(--m3-body-font-family);
     font-size: 14px;
     font-weight: 400;
-    letter-spacing: 0;
+    letter-spacing: 0.25px;
     line-height: 20px;
 }
 
@@ -128,7 +150,7 @@
         line-height: 16px;
     }
 
-    :global(.colorSelector h4.ant-typography) {
+    :global(.colorSelector h4) {
         margin: 0;
         color: #2c3a4b;
         font-family: var(--m3-body-font-family);
@@ -148,7 +170,7 @@
     min-height: 0;
     flex: 1 1 auto;
     flex-direction: column;
-    padding: 24px;
+    padding: 20px 24px 24px;
 }
 
 .smtpActionButton {
@@ -178,14 +200,27 @@
     margin-top: 4px;
 }
 
+@media only screen and (max-width: 760px) {
+    .globalConfigGrid {
+        max-width: 100%;
+        grid-template-columns: minmax(280px, 1fr);
+    }
+}
+
 @media only screen and (max-width: 1000px) {
     .smtpPage {
-        max-width: 560px;
-        grid-template-columns: minmax(0, 1fr);
+        --card-deck-item-max-width: calc(100vw - 144px);
+        --card-deck-footer-padding: 0 8px;
+        --side-scroller-button-width: 88px;
+        --side-scroller-button-height: 56px;
     }
 }
 
 @media only screen and (max-width: 640px) {
+    .globalConfigGrid {
+        gap: 16px;
+    }
+
     .smtpPage {
         max-width: 100%;
     }

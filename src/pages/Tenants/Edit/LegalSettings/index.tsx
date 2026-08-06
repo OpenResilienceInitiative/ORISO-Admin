@@ -1,4 +1,4 @@
-import { useParams } from 'react-router';
+import { useParams } from 'react-router-dom';
 import { LegalSettings } from '../../../../components/Tenants/LegalSettings';
 
 export const SingleLegalSettings = () => {

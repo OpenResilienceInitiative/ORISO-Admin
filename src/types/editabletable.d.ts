@@ -12,8 +12,8 @@ export default interface EditableTableProps {
     source: any[];
     columns: any[];
     isDeleteModalVisible: boolean;
-    handleOnDelete: (formData: any) => void;
-    handleDeleteModalCancel: (formData: any) => void;
+    handleOnDelete: (formData?: any) => void;
+    handleDeleteModalCancel: (formData?: any) => void;
     handleDeleteModalTitle: string;
     handleDeleteModalText: string;
     handlePagination: Dispatch<SetStateAction<number>>;

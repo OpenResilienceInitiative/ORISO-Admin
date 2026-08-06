@@ -3,23 +3,28 @@ import { agencyEndpointBase } from '../../appConfig';
 import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
 import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
+import { assignAgencyToConsultants } from './assignAgencyToConsultants';
+import { normalizeTopicIds } from './normalizeTopicIds';
 
-function buildAgencyDataRequestBody(
+export function buildAgencyDataRequestBody(
     consultingTypeResponseId: string | number,
     formData: Record<string, any>,
     tenantId: number,
 ) {
-    const topics = formData?.topicIds || formData?.topics;
-    const topicIds = topics
-        ?.map((topic) => (typeof topic === 'string' ? topic : topic?.value || topic?.id))
-        .filter((id) => id != null && !Number.isNaN(Number(id)));
+    // ADR-003: single-select topic picker — normalise the Option/array/id shapes to string[].
+    const topicIds = normalizeTopicIds(formData?.topicIds ?? formData?.topics);
     const requestBody: any = {
-        // diocese in case of SAAS is not relevant object but enforced by API
-        // dioceseId: formData.dioceseId ? parseInt(formData.dioceseId, 10) : 0,
         name: formData.name,
         description: formData.description ? formData.description : '',
         postcode: formData.postcode,
         city: formData.city,
+        street: formData.street,
+        houseNumber: formData.houseNumber,
+        floorBuilding: formData.floorBuilding,
+        country: formData.country,
+        phone: formData.phone,
+        phoneSecondary: formData.phoneSecondary,
+        email: formData.email,
         consultingType: consultingTypeResponseId,
         teamAgency: formData.teamAgency ? formData.teamAgency : false,
         // enforced by admin API, without business value for SAAS
@@ -56,6 +61,22 @@ async function createAgency(agencyDataRequestBody: string) {
     });
 }
 
+export function resolveAgencyTenantId(selectedTenantIdValue: unknown, tokenTenantIdValue: unknown): number | undefined {
+    const selectedTenantId = Number(selectedTenantIdValue);
+
+    if (Number.isFinite(selectedTenantId) && selectedTenantId > 0) {
+        return selectedTenantId;
+    }
+
+    const tokenTenantId = Number(tokenTenantIdValue);
+
+    if (Number.isFinite(tokenTenantId) && tokenTenantId > 0) {
+        return tokenTenantId;
+    }
+
+    return undefined;
+}
+
 /**
  * add new agency
  * @param agencyData
@@ -64,9 +85,12 @@ async function createAgency(agencyDataRequestBody: string) {
 async function addAgencyData(agencyData: Record<string, any>) {
     // Prefer explicitly selected tenant from form (superadmin flow).
     // Fallback to JWT tenant for tenant-admin users.
-    const { tenantId: tokenTenantId = 1 } = parseUserAuthInfo();
-    const selectedTenantId = Number(agencyData?.tenantId);
-    const tenantId = Number.isFinite(selectedTenantId) && selectedTenantId > 0 ? selectedTenantId : tokenTenantId;
+    const { tenantId: tokenTenantId } = parseUserAuthInfo();
+    const tenantId = resolveAgencyTenantId(agencyData?.tenantId, tokenTenantId);
+
+    if (!tenantId) {
+        throw new Error('A valid tenantId is required to create an agency.');
+    }
 
     const consultingTypeId =
         agencyData.consultingType !== null && agencyData.consultingType !== undefined
@@ -78,6 +102,17 @@ async function addAgencyData(agencyData: Record<string, any>) {
     // eslint-disable-next-line no-underscore-dangle
     const agencyResponseData = agencyCreationResponse._embedded;
     await updateAgencyPostCodeRange(agencyResponseData.id, agencyData.postCodes || [], 'POST');
+
+    if (agencyData.consultantIds?.length > 0) {
+        try {
+            await assignAgencyToConsultants(agencyResponseData.id, agencyData.consultantIds);
+        } catch {
+            return {
+                ...agencyResponseData,
+                consultantAssignmentFailed: true,
+            };
+        }
+    }
 
     return agencyResponseData;
 }

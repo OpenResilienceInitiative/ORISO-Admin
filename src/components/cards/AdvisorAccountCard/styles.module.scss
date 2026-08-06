@@ -1,0 +1,16 @@
+.card {
+    width: 360px;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Batch Mode / Send Invitation text buttons sit left-aligned in a row. */
+.actionRow {
+    display: flex;
+    gap: 8px;
+    margin-top: -8px;
+}

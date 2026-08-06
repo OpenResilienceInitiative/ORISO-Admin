@@ -1,10 +1,11 @@
 import { createContext, ReactNode, useState, useContext, useCallback } from 'react';
-import { featureFlags } from '../appConfig';
 import { FeatureFlag } from '../enums/FeatureFlag';
 import { IFeature } from '../types/feature';
 import { TenantData } from '../types/tenant';
 
 const FeatureContext = createContext<[IFeature[], (features: IFeature[]) => void]>(null);
+const NO_FEATURES: IFeature[] = [];
+const ignoreFeatureUpdates = () => undefined;
 
 interface FeatureProviderProps {
     children: ReactNode;
@@ -41,10 +42,6 @@ const FeatureProvider = ({ children, tenantData, publicTenantData }: FeatureProv
             active: !!safeTenantData?.settings?.topicsInRegistrationEnabled,
         },
         {
-            name: FeatureFlag.ConsultingTypesForAgencies,
-            active: !!featureFlags.useConsultingTypesForAgencies,
-        },
-        {
             name: FeatureFlag.GroupChatV2,
             active: !!safePublicTenantData?.settings?.featureGroupChatV2Enabled,
         },
@@ -58,7 +55,11 @@ const FeatureProvider = ({ children, tenantData, publicTenantData }: FeatureProv
 };
 
 function useFeatureContext() {
-    const [features, setFeatures] = useContext(FeatureContext);
+    const contextValue = useContext(FeatureContext);
+
+    // Degrade to "all flags off" instead of crashing the tree when the
+    // provider is missing (e.g. on public pages).
+    const [features, setFeatures] = contextValue ?? [NO_FEATURES, ignoreFeatureUpdates];
 
     const isEnabled = useCallback(
         (name: FeatureFlag) => {
@@ -70,11 +71,11 @@ function useFeatureContext() {
     );
 
     const toggleFeature = (key: FeatureFlag) => {
-        const feature = features.find((f) => f.name === key);
+        if (!features.some((f) => f.name === key)) {
+            return;
+        }
 
-        feature.active = !feature.active;
-
-        setFeatures([...features]);
+        setFeatures(features.map((f) => (f.name === key ? { ...f, active: !f.active } : f)));
     };
 
     return {

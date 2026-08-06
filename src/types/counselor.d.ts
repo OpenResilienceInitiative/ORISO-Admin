@@ -17,11 +17,17 @@ export interface CounselorData {
     formalLanguage: boolean;
     absent: boolean;
     absenceMessage?: string;
-    deleteDate?: string;
+    deleteDate?: string | null;
     status: Status;
     twoFactorAuth?: boolean;
     isGroupchatConsultant?: boolean;
     isSupervisor?: boolean;
+    publicSlug?: string;
+    pendingPublicSlug?: string;
+    publicSlugStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    rejectPendingPublicSlug?: boolean;
+    hasOtherIdentity?: boolean;
+    otherIdentityTypes?: ('TENANT_ADMIN' | 'AGENCY_ADMIN')[];
     tenantId: string;
     tenantName: string;
     tenantSubdomain?: string;

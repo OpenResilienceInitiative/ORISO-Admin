@@ -3,14 +3,14 @@ import { Button, notification } from 'antd';
 import { ColumnProps, TablePaginationConfig } from 'antd/lib/table';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { useDebouncedCallback } from 'use-debounce';
 import routePathNames from '../../../appConfig';
 import { EditButtons } from '../../../components/EditableTable/EditButtons';
 import { Modal } from '../../../components/Modal';
 import { Page } from '../../../components/Page';
 import { ResizeTable } from '../../../components/ResizableTable';
-import { SearchInput } from '../../../components/SearchInput/SearchInput';
+import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
@@ -24,6 +24,24 @@ import { TenantData } from '../../../types/tenant';
 import decodeHTML from '../../../utils/decodeHTML';
 import { getDomain } from '../../../utils/getDomain';
 import styles from './styles.module.scss';
+
+const TENANT_SORT_FIELD_BY_DATA_INDEX: Record<string, string> = {
+    beraterCount: 'BERATERCOUNT',
+    id: 'ID',
+    name: 'NAME',
+    subdomain: 'SUBDOMAIN',
+};
+
+const getTenantColumnSortOrder = (
+    dataIndex: keyof typeof TENANT_SORT_FIELD_BY_DATA_INDEX,
+    tableState: TableState,
+): 'ascend' | 'descend' | undefined => {
+    if (tableState.sortBy !== TENANT_SORT_FIELD_BY_DATA_INDEX[dataIndex]) {
+        return undefined;
+    }
+
+    return tableState.order === 'DESC' ? 'descend' : 'ascend';
+};
 
 export const TenantsList = () => {
     const navigate = useNavigate();
@@ -43,7 +61,14 @@ export const TenantsList = () => {
         setSearch(value);
         setTableState((data) => ({ ...data, current: 1 }));
     }, []);
-    const { data, isLoading } = useTenantsData({ page: tableState.current, perPage: tableState.pageSize, search });
+    const handleSearchDebounced = useDebouncedCallback(handleSearch, 1000);
+    const { data, isLoading } = useTenantsData({
+        page: tableState.current,
+        perPage: tableState.pageSize,
+        search,
+        sort: tableState.sortBy,
+        dir: tableState.order,
+    });
     const { mutate: deleteTenant } = useDeleteTenant({
         onSuccess: () => {
             notification.success({ message: t('tenants.list.deleteMessage.success') });
@@ -68,19 +93,26 @@ export const TenantsList = () => {
 
     const handleTableAction = useCallback((pagination: TablePaginationConfig, _: any, sorter: any) => {
         const { current, pageSize } = pagination;
-        if (sorter.field) {
-            const sortBy = sorter.field.toUpperCase();
-            const order = sorter.order === 'descend' ? 'DESC' : 'ASC';
-            setTableState({
-                ...tableState,
+
+        const activeSorter = Array.isArray(sorter) ? sorter[0] : sorter;
+        const sortField =
+            activeSorter?.field && typeof activeSorter.field === 'string'
+                ? TENANT_SORT_FIELD_BY_DATA_INDEX[activeSorter.field]
+                : undefined;
+
+        setTableState((currentState) => {
+            if (!sortField || !activeSorter?.order) {
+                return { ...currentState, current, pageSize, sortBy: undefined, order: undefined };
+            }
+
+            return {
+                ...currentState,
                 current,
                 pageSize,
-                sortBy,
-                order,
-            });
-        } else {
-            setTableState({ ...tableState, current, pageSize });
-        }
+                sortBy: sortField,
+                order: activeSorter.order === 'descend' ? 'DESC' : 'ASC',
+            };
+        });
     }, []);
 
     const pagination = {
@@ -96,6 +128,9 @@ export const TenantsList = () => {
             dataIndex: 'name',
             width: 100,
             ellipsis: true,
+            sorter: true,
+            sortOrder: getTenantColumnSortOrder('name', tableState),
+            showSorterTooltip: false,
             render: (name: string) => <>{decodeHTML(name)}</>,
         },
         !settings.multitenancyWithSingleDomainEnabled && {
@@ -103,6 +138,9 @@ export const TenantsList = () => {
             title: t('tenants.list.subdomain'),
             dataIndex: 'subdomain',
             ellipsis: true,
+            sorter: true,
+            sortOrder: getTenantColumnSortOrder('subdomain', tableState),
+            showSorterTooltip: false,
             render: (subdomain: string) => (
                 <Link target="_blank" to={`//${getDomain(subdomain)}`} className={styles.subdomain}>{`${getDomain(
                     subdomain,
@@ -114,12 +152,18 @@ export const TenantsList = () => {
             title: t('tenants.list.tenantId'),
             dataIndex: 'id',
             ellipsis: true,
+            sorter: true,
+            sortOrder: getTenantColumnSortOrder('id', tableState),
+            showSorterTooltip: false,
         },
         {
             width: 130,
             title: t('tenants.list.maxConsultants'),
             dataIndex: 'beraterCount',
             ellipsis: true,
+            sorter: true,
+            sortOrder: getTenantColumnSortOrder('beraterCount', tableState),
+            showSorterTooltip: false,
         },
         can([PermissionAction.Update, PermissionAction.Delete], Resource.Tenant) && {
             width: 80,
@@ -151,14 +195,13 @@ export const TenantsList = () => {
         <Page>
             <Page.Title titleKey="tenants.title" subTitle={t<string>('tenants.subTitle', { count: data?.total || 0 })}>
                 <div className={styles.searchContainer}>
-                    <div className={styles.searchWithButton}>
-                        <SearchInput
-                            className={styles.searchField}
-                            placeholder={t('tenants.searchPlaceholder')}
-                            handleOnSearch={(a) => handleSearch(a)}
-                            handleOnSearchClear={() => handleSearch('')}
-                        />
-
+                    <GlobalSearchBar
+                        className={styles.searchWithButton}
+                        expandedWidth={499}
+                        onSearch={handleSearch}
+                        onSearchChange={handleSearchDebounced}
+                        searchPlaceholder={t('tenants.searchPlaceholder')}
+                    >
                         {can(PermissionAction.Create, Resource.Tenant) &&
                             (isSuperAdmin || isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING)) && (
                                 <div className={styles.toolbarActions}>
@@ -178,7 +221,7 @@ export const TenantsList = () => {
                                     </Button>
                                 </div>
                             )}
-                    </div>
+                    </GlobalSearchBar>
                 </div>
             </Page.Title>
             <div className={styles.tableContainer}>

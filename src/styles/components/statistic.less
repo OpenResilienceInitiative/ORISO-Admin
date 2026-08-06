@@ -1,13 +1,11 @@
 .statisticDashboardPage {
     width: 100%;
-    max-height: calc(100vh - 50px);
     box-sizing: border-box;
     padding-bottom: clamp(32px, 6vw, 72px);
     color: #000000;
-    font-family: Inter, Roboto, Arial, sans-serif;
+    font-family: @body-font-family;
     -webkit-overflow-scrolling: touch;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: visible;
     scrollbar-gutter: stable;
 
     h2,
@@ -23,10 +21,13 @@
 }
 
 .statisticDashboard__filterBar {
+    position: relative;
+    z-index: 55;
     display: grid;
     align-items: start;
     justify-content: start;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
+    padding: 0px 0 12px;
     gap: 10px 12px;
     grid-template-columns: minmax(0, 499px);
 }
@@ -203,11 +204,78 @@
 .statisticDashboard__scopeTabs {
     width: 100%;
     max-width: 100%;
+
+    /* Scope icons must inherit AdminSegmentedTabs colors (same as Users header pills). */
+    svg {
+        color: inherit;
+    }
 }
 
 .statisticDashboard__animatedContent {
     animation: statisticScopeIn 180ms ease-out both;
     transform-origin: top center;
+}
+
+.statisticDashboard__notice {
+    padding: 10px 14px;
+    margin: 0 0 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.statisticDashboard__notice--error {
+    background: #fdecea;
+    color: #8a1c12;
+}
+
+.statisticDashboard__notice--info {
+    background: #eef3f8;
+    color: #33475b;
+}
+
+.statisticDashboard__notice--warning {
+    background: #fdf3e3;
+    color: #7a4d05;
+}
+
+.statisticDashboard__loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 80px 0;
+    color: #687180;
+
+    .spinner {
+        position: static;
+    }
+}
+
+.statisticDashboard__export {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 12px;
+}
+
+.statisticDashboard__exportLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #141c25;
+    font-size: 14px;
+    line-height: 20px;
+    text-decoration: none;
+
+    &:hover {
+        text-decoration: underline;
+    }
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
 }
 
 @keyframes statisticScopeIn {
@@ -370,9 +438,9 @@
     top: calc(100% + 10px);
     right: 0;
     display: grid;
-    width: 256px;
+    width: 360px;
     max-width: calc(100vw - 48px);
-    max-height: min(430px, calc(100vh - 180px));
+    max-height: min(520px, calc(100vh - 180px));
     padding: 8px;
     border: 1px solid #d8e0e9;
     background: #ffffff;
@@ -407,61 +475,122 @@
 }
 
 .statisticDashboard__cardMenuItem {
-    display: flex;
+    display: grid;
     width: 100%;
     min-width: 0;
-    min-height: 40px;
+    min-height: 78px;
     box-sizing: border-box;
-    align-items: center;
-    justify-content: space-between;
-    padding: 9px 10px;
+    align-items: start;
+    padding: 12px 14px;
     border: 0;
     background: transparent;
     border-radius: 8px;
-    color: #141c25;
+    color: #4c555f;
     cursor: pointer;
     font: inherit;
+    grid-template-columns: 28px minmax(0, 1fr);
     gap: 12px;
     text-align: left;
-
-    span {
-        overflow: hidden;
-        min-width: 0;
-        flex: 1 1 auto;
-        font-size: 14px;
-        font-weight: 700;
-        line-height: 20px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    strong {
-        flex: 0 0 auto;
-        color: #4d5965;
-        font-size: 14px;
-        font-weight: 800;
-        line-height: 20px;
-        white-space: nowrap;
-    }
+    text-transform: none;
 
     &:hover {
         background: #eef2f7;
         color: #141c25;
+    }
 
-        strong {
-            color: #4d5965;
-        }
+    &:focus-visible {
+        background: #eef2f7;
+        outline: 2px solid #6ba6ff;
+        outline-offset: 2px;
+    }
+}
+
+.protectedLayout button.statisticDashboard__cardMenuItem:not(.ant-btn-link) {
+    text-transform: none;
+}
+
+.statisticDashboard__cardMenuItemIcon {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    padding-top: 1px;
+    color: currentColor;
+
+    svg {
+        display: block;
+        width: 24px;
+        height: 24px;
+        color: inherit;
+    }
+}
+
+.statisticDashboard__cardMenuItemBody {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+}
+
+.statisticDashboard__cardMenuItemRow {
+    display: flex;
+    min-width: 0;
+    align-items: start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.statisticDashboard__cardMenuItemTitle {
+    overflow: hidden;
+    min-width: 0;
+    color: currentColor;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.statisticDashboard__cardMenuItemDescription {
+    display: block;
+    color: #757575;
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 0.25px;
+    line-height: 20px;
+}
+
+.statisticDashboard__cardMenuItem {
+    strong {
+        flex: 0 0 auto;
+        color: #5c6672;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 22px;
+        text-transform: none;
+        white-space: nowrap;
     }
 }
 
 .statisticDashboard__cardMenuItem--active,
 .statisticDashboard__cardMenuItem--active:hover {
-    background: #141c25;
-    color: #ffffff;
+    background: #dbe7f5;
+    color: #8b0008;
 
+    .statisticDashboard__cardMenuItemTitle,
+    .statisticDashboard__cardMenuItemIcon,
     strong {
-        color: #ffffff;
+        color: #8b0008;
     }
+
+    .statisticDashboard__cardMenuItemDescription {
+        color: #5a0000;
+    }
+}
+
+.statisticDashboard__cardMenuItem--active:focus-visible {
+    background: #dbe7f5;
 }
 
 .statisticDashboard__cardMenuWrap:focus-within .statisticDashboard__cardMenu {
@@ -482,12 +611,42 @@
         overflow: hidden;
         min-width: 0;
         color: #000000;
-        font-size: 40px;
+        font-size: 36px;
         font-weight: 400;
-        line-height: 48px;
+        line-height: 44px;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
+}
+
+// Calm empty presentation: a muted dash instead of a shouty "Keine Daten" value,
+// with a one-line hint explaining when data will appear (or why it is withheld).
+.statisticDashboard__cardValueRow--empty {
+    grid-template-columns: minmax(0, 1fr);
+
+    strong {
+        color: #9d9da4;
+    }
+}
+
+.statisticDashboard__cardEmptyHint {
+    overflow: hidden;
+    color: #9d9da4;
+    font-size: 14px;
+    line-height: 20px;
+    text-overflow: ellipsis;
+}
+
+.statisticDashboard__emptyHero {
+    margin-bottom: 12px;
+}
+
+// While the whole dashboard is empty the metric grids step back behind the
+// DashboardEmptyState hero. Cards stay visible (disable, don't hide) but quiet.
+.statisticDashboard__summaryGrid--quiet,
+.statisticDashboard__communicationGrid--quiet,
+.statisticDashboard__chartGrid--quiet {
+    opacity: 0.62;
 }
 
 .statisticDashboard__trend {

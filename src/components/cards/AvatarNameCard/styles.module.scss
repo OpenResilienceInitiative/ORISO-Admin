@@ -1,0 +1,14 @@
+.card {
+    width: 340px;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Figma centres the two internal section headings. */
+.subsection {
+    text-align: center;
+}

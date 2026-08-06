@@ -19,11 +19,43 @@
 
 .dialogForm {
     display: flex;
+    width: 100%;
     flex: 1 1 auto;
     min-height: 0;
+    min-width: 0;
     flex-direction: column;
-    overflow: auto;
+    overflow: visible;
     padding: 20px 24px 0;
+
+    :global {
+        .ant-row:not(.ant-form-item-row) {
+            flex-direction: column;
+            margin-right: 0 !important;
+            margin-left: 0 !important;
+            row-gap: 12px;
+        }
+
+        .ant-row:not(.ant-form-item-row) > .ant-col {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 0 0 auto !important;
+            padding-right: 0 !important;
+            padding-left: 0 !important;
+        }
+
+        .ant-form-item,
+        .ant-form-item-row,
+        .ant-form-item-control,
+        .ant-form-item-control-input,
+        .MuiFormControl-root,
+        .MuiTextField-root,
+        .MuiInputBase-root {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+    }
 }
 
 .dialogFooterActions {

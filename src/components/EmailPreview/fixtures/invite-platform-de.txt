@@ -1,0 +1,23 @@
+ORISO
+==============================================================
+
+Ihre Einladung zu ORISO
+
+Hallo Erika Musterfrau,
+
+Sie wurden eingeladen, ein Konto auf der ORISO-Plattform einzurichten.
+Bitte schliessen Sie die Einrichtung ueber den folgenden Link ab:
+
+https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN
+
+Der Link ist 30 Tage gueltig. Bei Fragen antworten Sie bitte nicht auf diese
+E-Mail, sondern wenden Sie sich an Ihre Ansprechperson.
+
+Einladung annehmen:
+https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN
+
+--------------------------------------------------------------
+ORISO
+Impressum: https://app.oriso.org/impressum
+Datenschutz: https://app.oriso.org/datenschutz
+Diese E-Mail wurde automatisch versendet. Bitte antworten Sie nicht darauf.

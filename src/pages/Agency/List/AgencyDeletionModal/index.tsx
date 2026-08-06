@@ -1,7 +1,8 @@
-import { message, Modal } from 'antd';
+import { message } from 'antd';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useTranslation } from 'react-i18next';
-import Title from 'antd/lib/typography/Title';
 import deleteAgencyData from '../../../../api/agency/deleteAgencyData';
+import { Modal } from '../../../../components/Modal';
 import { AgencyData } from '../../../../types/agency';
 
 export const AgencyDeletionModal = ({ agencyModel, onClose }: { agencyModel: AgencyData; onClose: () => void }) => {
@@ -19,15 +20,13 @@ export const AgencyDeletionModal = ({ agencyModel, onClose }: { agencyModel: Age
 
     return (
         <Modal
-            title={<Title level={2}>{t('agency.modal.headline.delete')}</Title>}
-            open
-            onOk={handleOnDelete}
-            onCancel={() => onClose()}
-            cancelText={t('btn.cancel.uppercase')}
-            centered
-            okText={t('agency.modal.btn.ok.uppercase')}
-        >
-            <p>{t('agency.modal.text.delete')}</p>
-        </Modal>
+            titleKey="agency.modal.headline.delete"
+            icon={<DeleteOutlineOutlinedIcon />}
+            contentKey="agency.modal.text.delete"
+            cancelLabelKey="btn.cancel.uppercase"
+            okLabelKey="agency.modal.btn.ok.uppercase"
+            onConfirm={handleOnDelete}
+            onClose={onClose}
+        />
     );
 };

@@ -1,4 +1,4 @@
-import { useParams } from 'react-router';
+import { useParams } from 'react-router-dom';
 import { Page } from '../../../components/Page';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { UserManagementTable } from '../management/UserManagementTable';
@@ -19,9 +19,11 @@ export const UsersList = () => {
     return (
         <Page>
             {isUsersHub ? (
-                <div className={styles.usersHubHeader}>
-                    <UserSectionPills />
-                </div>
+                <Page.Title>
+                    <div className={styles.usersHubHeader}>
+                        <UserSectionPills />
+                    </div>
+                </Page.Title>
             ) : (
                 <Page.Title titleKey="users.title" />
             )}

@@ -1,26 +1,30 @@
-import { ChevronLeft } from '@mui/icons-material';
+import {
+    AdminPanelSettingsOutlined,
+    AppsOutlined,
+    BalanceOutlined,
+    CategoryOutlined,
+    ChevronLeft,
+    EmailOutlined,
+    ManageAccountsOutlined,
+    SettingsApplicationsOutlined,
+    SettingsOutlined,
+} from '@mui/icons-material';
+import type { SvgIconComponent } from '@mui/icons-material';
 import { Spin } from 'antd';
 import classNames from 'classnames';
-import React, { cloneElement, forwardRef, LegacyRef, useEffect, useMemo, useRef } from 'react';
+import React, { cloneElement, forwardRef, Ref, useEffect, useMemo, useRef, type JSX } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink } from 'react-router-dom';
-import { ReactComponent as FunctionalitiesIcon } from '../../resources/img/svg/permissions/functionalities.svg';
-import { ReactComponent as GlobalSettingsIcon } from '../../resources/img/svg/permissions/global_settings.svg';
-import { ReactComponent as MasterDataIcon } from '../../resources/img/svg/permissions/master_data.svg';
+import { NavLink, useLocation } from 'react-router-dom';
 import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissions/tab_star.svg';
-import { ReactComponent as AppearanceIcon } from '../../resources/img/svg/settings-tabs/appearance.svg';
-import { ReactComponent as AppearanceFilledIcon } from '../../resources/img/svg/settings-tabs/appearance_filled.svg';
-import { ReactComponent as EmailServerIcon } from '../../resources/img/svg/settings-tabs/email_server.svg';
-import { ReactComponent as FunctionalityAccessIcon } from '../../resources/img/svg/settings-tabs/feature_access.svg';
-import { ReactComponent as GlobalConfigIcon } from '../../resources/img/svg/settings-tabs/global_configs.svg';
-import { ReactComponent as LegalIcon } from '../../resources/img/svg/settings-tabs/legal.svg';
-import { ReactComponent as MasterDataFilledIcon } from '../../resources/img/svg/settings-tabs/master_data.svg';
+import { SectionCarousel, type SectionCarouselItem } from '../SectionCarousel';
+import { getSectionArtwork } from '../../constants/sectionArtwork';
+import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import styles from './styles.module.scss';
 
 interface PageProps {
     isLoading?: boolean;
     stickyHeader?: boolean;
-    children?: React.ReactChild | React.ReactChild[];
+    children?: React.ReactNode;
 }
 
 interface PageTitleProps {
@@ -30,21 +34,21 @@ interface PageTitleProps {
     // eslint-disable-next-line react/no-unused-prop-types
     subTitleKey?: string;
     // eslint-disable-next-line react/no-unused-prop-types
-    subTitle?: React.ReactChild;
-    children?: React.ReactChild | React.ReactChild[];
+    subTitle?: React.ReactNode;
+    children?: React.ReactNode;
     tabs?: Array<{ to: string; titleKey; iconName?: string }>;
 }
 
 interface PageBackProps {
-    title?: React.ReactChild;
+    title?: React.ReactNode;
     titleKey?: string;
     titleMaxLength?: number;
     path: string;
-    children?: React.ReactChild | React.ReactChild[];
+    children?: React.ReactNode;
     tabs?: Array<{ to: string; titleKey: string; iconName?: string; icon?: JSX.Element }>;
 }
 
-export const Page = ({ children, stickyHeader, isLoading }: PageProps) => {
+export const Page = ({ children, stickyHeader = true, isLoading }: PageProps) => {
     return (
         <div
             className={classNames(styles.page, {
@@ -57,44 +61,22 @@ export const Page = ({ children, stickyHeader, isLoading }: PageProps) => {
     );
 };
 
-const tabIcons: Record<
-    string,
-    {
-        outline: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-        filled?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-    }
-> = {
-    appearance: {
-        outline: AppearanceIcon,
-        filled: AppearanceFilledIcon,
-    },
-    email_server: {
-        outline: EmailServerIcon,
-    },
-    functionalities: {
-        outline: FunctionalitiesIcon,
-    },
-    functionality_access: {
-        outline: FunctionalityAccessIcon,
-    },
-    global_config: {
-        outline: GlobalConfigIcon,
-    },
-    global_settings: {
-        outline: GlobalSettingsIcon,
-    },
-    legal: {
-        outline: LegalIcon,
-    },
-    master_data: {
-        outline: MasterDataIcon,
-        filled: MasterDataFilledIcon,
-    },
+export const tabIcons: Record<string, SvgIconComponent> = {
+    appearance: CategoryOutlined,
+    email_server: EmailOutlined,
+    functionalities: AppsOutlined,
+    functionality_access: AdminPanelSettingsOutlined,
+    global_config: SettingsOutlined,
+    global_settings: SettingsApplicationsOutlined,
+    legal: BalanceOutlined,
+    master_data: ManageAccountsOutlined,
 };
 
 const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: string; icon?: JSX.Element }> }) => {
     const { t } = useTranslation();
     const tabsContainerRef = useRef<HTMLDivElement>(null);
+    const isDesktopLayout = useIsDesktopLayout();
+    const { pathname } = useLocation();
 
     useEffect(() => {
         tabsContainerRef.current?.querySelector('a.active')?.scrollIntoView({
@@ -103,12 +85,47 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
         });
     }, [tabs]);
 
+    /*
+     * Mobile shows the section carousel instead of the pill row: the pills are
+     * sized for a desktop header and become unusable on a phone. Artwork is
+     * looked up by `iconName`, which is also what the image files are named
+     * after — sections without one keep their icon on a tonal tile, so pages
+     * outside settings (logs, statistics, users) work unchanged.
+     */
+    if (!isDesktopLayout) {
+        const items: SectionCarouselItem[] = tabs
+            .filter((tab) => tab && tab.to)
+            .map(({ icon, iconName, ...tab }) => {
+                const Icon = iconName ? tabIcons[iconName] : undefined;
+                const TabIcon = Icon || TabStarIcon;
+
+                return {
+                    key: tab.to,
+                    label: String(t(tab.titleKey)),
+                    image: iconName ? getSectionArtwork(iconName) : undefined,
+                    icon: icon ?? <TabIcon data-admin-tab-icon={iconName || 'fallback'} />,
+                    to: tab.to,
+                };
+            });
+
+        const active = items.filter((item) => pathname === item.to || pathname.startsWith(`${item.to}/`));
+
+        return (
+            <SectionCarousel
+                activeKey={active.sort((a, b) => b.key.length - a.key.length)[0]?.key}
+                ariaLabel={String(t('settings.title', 'Bereiche'))}
+                dimUnselected
+                items={items}
+            />
+        );
+    }
+
     return (
         <div className={styles.tabsContainer} ref={tabsContainerRef}>
             {tabs
                 ?.filter((tab) => tab && tab.to)
                 .map(({ icon, iconName, ...tab }) => {
-                    const IconSet = iconName ? tabIcons[iconName] : undefined;
+                    const Icon = iconName ? tabIcons[iconName] : undefined;
 
                     return (
                         <NavLink
@@ -116,14 +133,15 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
                             to={tab.to}
                             key={tab.titleKey}
                         >
-                            {({ isActive }) => {
-                                const TabIcon = isActive
-                                    ? IconSet?.filled || IconSet?.outline || TabStarIcon
-                                    : IconSet?.outline || TabStarIcon;
+                            {() => {
+                                const TabIcon = Icon || TabStarIcon;
 
                                 return (
                                     <>
-                                        <TabIcon className={styles.tabStar} width={20} height={20} />
+                                        <TabIcon
+                                            className={styles.tabStar}
+                                            data-admin-tab-icon={iconName || 'fallback'}
+                                        />
                                         <span className={styles.tabLabel}>{t(tab.titleKey)}</span>
                                         {icon && cloneElement(icon, { className: styles.tabIcon })}
                                     </>
@@ -140,7 +158,7 @@ export const PageTitle = forwardRef(({ tabs, children }: PageTitleProps, ref) =>
     const finalTabs = useMemo(() => tabs?.filter?.(Boolean) || [], [tabs]);
 
     return (
-        <div className={styles.pageTitleContainer} ref={ref as LegacyRef<HTMLDivElement>}>
+        <div className={styles.pageTitleContainer} ref={ref as Ref<HTMLDivElement>} data-admin-page-header>
             {children}
             {!!finalTabs?.length && finalTabs.length > 1 && <PageTabs tabs={finalTabs} />}
         </div>
@@ -161,7 +179,7 @@ export const PageBack = forwardRef(({ path, title, titleKey, titleMaxLength, tab
     const headline = getTruncatedTitle(title ?? (titleKey ? t<string>(titleKey) : ''), titleMaxLength);
 
     return (
-        <div className={styles.back} ref={ref as LegacyRef<HTMLDivElement>}>
+        <div className={styles.back} ref={ref as Ref<HTMLDivElement>} data-admin-page-header>
             <NavLink to={path} className={classNames(styles.backLink, { [styles.backWithTabs]: !!finalTabs?.length })}>
                 <ChevronLeft />
                 <h3 className={styles.backHeadline}>{headline}</h3>

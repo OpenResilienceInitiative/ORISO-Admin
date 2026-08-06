@@ -73,16 +73,21 @@
     }
 }
 
+/* Align with Page subsection tabs (Settings / Links) so Users / Logs / Statistics match. */
 .itemActive,
 .itemActive:first-child,
 .itemActive:last-child {
-    background: #141c25;
+    background: #4c555f;
     border-radius: 38px;
     color: #ffffff;
 
     &:hover {
-        background: #141c25;
+        background: #4c555f;
         color: #ffffff;
+    }
+
+    .icon {
+        color: #ffe2de;
     }
 }
 
@@ -122,6 +127,7 @@
 .label {
     flex: 0 0 auto;
     font-weight: 400;
+    text-transform: math-auto;
 }
 
 @media (max-width: 768px) {

@@ -13,7 +13,7 @@ export interface AdminData {
     agencyIds: string[];
     username: string;
     key: string;
-    deleteDate?: string;
+    deleteDate?: string | null;
     status: Status;
     twoFactorAuth?: boolean;
     agencyAssignmentFailed?: boolean;

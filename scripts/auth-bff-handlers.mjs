@@ -47,10 +47,31 @@ const getAuthBffConfig = () => {
 
     return {
         cookieDomain: readEnv('VITE_COOKIE_DOMAIN', 'REACT_APP_COOKIE_DOMAIN') || '',
+        hostnamesWithoutCookieDomain: (
+            readEnv('VITE_HOSTNAMES_WITHOUT_COOKIE_DOMAIN', 'REACT_APP_HOSTNAMES_WITHOUT_COOKIE_DOMAIN') || ''
+        )
+            .split(',')
+            .map((entry) => entry.trim())
+            .filter(Boolean),
+        cookiePath: readEnv('VITE_AUTH_COOKIE_PATH', 'REACT_APP_AUTH_COOKIE_PATH') || '/admin',
         cookieSecure: readBooleanEnv('VITE_COOKIE_SECURE', readBooleanEnv('REACT_APP_COOKIE_SECURE', useHttps)),
         loginEndpoint,
         keycloakClientId,
     };
+};
+
+const getRequestHostname = (request) => {
+    const forwardedHost = request.headers['x-forwarded-host'];
+    const host = Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost || request.headers.host || '';
+    return host.split(':')[0];
+};
+
+const getRequestAuthBffConfig = (config, request) => {
+    if (config.hostnamesWithoutCookieDomain.includes(getRequestHostname(request))) {
+        return { ...config, cookieDomain: '' };
+    }
+
+    return config;
 };
 
 const buildAuthCookieAttributes = (config, { httpOnly = true, maxAge } = {}) => {
@@ -58,8 +79,9 @@ const buildAuthCookieAttributes = (config, { httpOnly = true, maxAge } = {}) => 
     const domain = config.cookieDomain ? `; Domain=${config.cookieDomain}` : '';
     const httpOnlyFlag = httpOnly ? '; HttpOnly' : '';
     const maxAgeFlag = typeof maxAge === 'number' && maxAge > 0 ? `; Max-Age=${Math.floor(maxAge)}` : '';
+    const path = config.cookiePath || '/admin';
 
-    return `; Path=/; SameSite=Strict${secure}${domain}${httpOnlyFlag}${maxAgeFlag}`;
+    return `; Path=${path}; SameSite=Strict${secure}${domain}${httpOnlyFlag}${maxAgeFlag}`;
 };
 
 const parseCookies = (cookieHeader = '') =>
@@ -83,21 +105,27 @@ const appendSetCookie = (response, cookieValue) => {
 };
 
 const buildAuthTokenCookies = (config, payload) => {
-    const cookies = [];
+    const cookies = buildRootPathAuthTokenClearCookies(config);
 
     if (payload.access_token) {
         cookies.push(
-            `${AUTH_ACCESS_TOKEN_COOKIE}=${encodeURIComponent(payload.access_token)}${buildAuthCookieAttributes(config, {
-                maxAge: payload.expires_in,
-            })}`,
+            `${AUTH_ACCESS_TOKEN_COOKIE}=${encodeURIComponent(payload.access_token)}${buildAuthCookieAttributes(
+                config,
+                {
+                    maxAge: payload.expires_in,
+                },
+            )}`,
         );
     }
 
     if (payload.refresh_token) {
         cookies.push(
-            `${AUTH_REFRESH_TOKEN_COOKIE}=${encodeURIComponent(payload.refresh_token)}${buildAuthCookieAttributes(config, {
-                maxAge: payload.refresh_expires_in,
-            })}`,
+            `${AUTH_REFRESH_TOKEN_COOKIE}=${encodeURIComponent(payload.refresh_token)}${buildAuthCookieAttributes(
+                config,
+                {
+                    maxAge: payload.refresh_expires_in,
+                },
+            )}`,
         );
     }
 
@@ -106,6 +134,24 @@ const buildAuthTokenCookies = (config, payload) => {
 
 const buildClearAuthTokenCookies = (config) => {
     const clearAttributes = buildAuthCookieAttributes(config, { httpOnly: true }).replace(
+        /; Max-Age=\d+/,
+        '; Max-Age=0',
+    );
+
+    return [
+        `${AUTH_ACCESS_TOKEN_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 GMT${clearAttributes}`,
+        `${AUTH_REFRESH_TOKEN_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 GMT${clearAttributes}`,
+        ...buildRootPathAuthTokenClearCookies(config),
+    ];
+};
+
+const buildRootPathAuthTokenClearCookies = (config) => {
+    if (!config.cookiePath || config.cookiePath === '/') {
+        return [];
+    }
+
+    const rootPathConfig = { ...config, cookiePath: '/' };
+    const clearAttributes = buildAuthCookieAttributes(rootPathConfig, { httpOnly: true }).replace(
         /; Max-Age=\d+/,
         '; Max-Age=0',
     );
@@ -235,6 +281,7 @@ const createAuthBffHandler = (configOverride = {}) => {
     return async (request, response) => {
         const url = new URL(request.url, 'http://localhost');
         const pathname = url.pathname.replace(/\/+$/, '');
+        const requestConfig = getRequestAuthBffConfig(config, request);
 
         if (request.method === 'OPTIONS') {
             response.statusCode = 204;
@@ -244,22 +291,22 @@ const createAuthBffHandler = (configOverride = {}) => {
 
         try {
             if (request.method === 'POST' && matchesAuthRoute(pathname, 'set-token')) {
-                await handleSetToken(request, response, config);
+                await handleSetToken(request, response, requestConfig);
                 return;
             }
 
             if (request.method === 'POST' && matchesAuthRoute(pathname, 'clear-token')) {
-                handleClearToken(response, config);
+                handleClearToken(response, requestConfig);
                 return;
             }
 
             if (request.method === 'GET' && matchesAuthRoute(pathname, 'session')) {
-                await handleSession(request, response, config);
+                await handleSession(request, response, requestConfig);
                 return;
             }
 
             if (request.method === 'POST' && matchesAuthRoute(pathname, 'refresh-token')) {
-                await handleRefreshToken(request, response, config);
+                await handleRefreshToken(request, response, requestConfig);
                 return;
             }
 
@@ -280,4 +327,5 @@ export {
     buildAuthCookieAttributes,
     createAuthBffHandler,
     getAuthBffConfig,
+    getRequestAuthBffConfig,
 };

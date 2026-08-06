@@ -2,7 +2,7 @@ import { Col, message, Row } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router-dom';
 import { CardEditable } from '../../../components/CardEditable';
 import { Button, BUTTON_TYPES } from '../../../components/button/Button';
 import { FormInputField } from '../../../components/FormInputField';

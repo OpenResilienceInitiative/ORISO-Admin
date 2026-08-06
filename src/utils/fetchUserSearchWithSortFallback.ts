@@ -1,5 +1,9 @@
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
-import { USER_TABLE_API_SAFE_ORDER, USER_TABLE_API_SAFE_SORT, USER_TABLE_DEFAULT_ORDER } from '../constants/userTableSort';
+import {
+    USER_TABLE_API_SAFE_ORDER,
+    USER_TABLE_API_SAFE_SORT,
+    USER_TABLE_DEFAULT_ORDER,
+} from '../constants/userTableSort';
 import { CounselorData } from '../types/counselor';
 import { HalResponseList, ResponseList } from '../types/ResponseList';
 import removeEmbedded from './removeEmbedded';

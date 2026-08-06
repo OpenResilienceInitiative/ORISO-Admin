@@ -1,0 +1,33 @@
+.header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.department {
+    font-weight: 600;
+}
+
+.description {
+    margin-bottom: 12px;
+}
+
+.translateField {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.fieldError {
+    width: 100%;
+}
+
+/* Legal editor cards: comfortable reading width — never narrower than a small
+   phone (375), never wider than a long-form text column. */
+.card {
+    min-width: 375px;
+    max-width: 960px;
+}

@@ -1,9 +1,9 @@
-import { QueryOptions, useQuery } from 'react-query';
+import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import getAgencyData from '../api/agency/getAgencyData';
 import { AgencyData } from '../types/agency';
 import { ResponseList } from '../types/ResponseList';
 
-interface AgenciesDataProps extends QueryOptions<ResponseList<AgencyData>> {
+interface AgenciesDataProps extends Omit<UseQueryOptions<ResponseList<AgencyData>>, 'queryKey' | 'queryFn'> {
     current?: number;
     sortBy?: string;
     order?: string;
@@ -12,9 +12,11 @@ interface AgenciesDataProps extends QueryOptions<ResponseList<AgencyData>> {
 }
 
 export const useAgenciesData = ({ current, sortBy, order, pageSize, search, ...options }: AgenciesDataProps) => {
-    return useQuery(
-        ['AGENCIES', current, sortBy, order, pageSize, search],
-        () => getAgencyData({ current, sortBy, order, pageSize, search }),
-        options,
-    );
+    return useQuery({
+        queryKey: ['AGENCIES', current, sortBy, order, pageSize, search],
+        queryFn: () => getAgencyData({ current, sortBy, order, pageSize, search }),
+        retry: false,
+        refetchOnWindowFocus: false,
+        ...options,
+    });
 };

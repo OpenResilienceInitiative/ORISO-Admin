@@ -3,9 +3,25 @@
 }
 
 .checkInfo {
-    width: calc(100% - 71px);
     font-weight: 400;
     font-size: 14px;
     line-height: 20px;
     color: var(--black-60);
+}
+
+// Compact legal settings cards use the same width as the other settings decks.
+.cardDeck {
+    --card-deck-item-width: 425px;
+    --card-deck-item-max-width: 425px;
+}
+
+// #605: the M3 document editor is intentionally 800px wide on desktop
+// (Figma 1261-48667). Scope that width to DPA, imprint and privacy so the
+// compact settings card keeps the regular deck width from #582.
+@media (min-width: 768px) {
+    .documentEditorItem {
+        --card-deck-item-min-width: 800px;
+        --card-deck-item-width: 800px;
+        --card-deck-item-max-width: min(800px, calc(100vw - 176px));
+    }
 }

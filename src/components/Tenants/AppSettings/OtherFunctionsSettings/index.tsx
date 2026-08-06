@@ -69,6 +69,15 @@ export const OtherFunctionsSettings = ({
                     <p className={styles.checkInfo}>{t('tenants.appSettings.otherFunctions.groupChat.description')}</p>
                 </div>
             )}
+            <div className={styles.checkGroup}>
+                <FormSwitchField
+                    labelKey="tenants.appSettings.otherFunctions.teamDiscussion.title"
+                    name={['settings', 'featureTeamDiscussionEnabled']}
+                    inline
+                    disableLabels
+                />
+                <p className={styles.checkInfo}>{t('tenants.appSettings.otherFunctions.teamDiscussion.description')}</p>
+            </div>
         </CardEditable>
     );
 };

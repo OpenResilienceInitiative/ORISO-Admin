@@ -21,6 +21,17 @@
     gap: 5px;
 }
 
+.createAgency {
+    margin: -8px 0 24px;
+}
+
+.switchGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
 .select {
     :global(.ant-select-selection-item) {
         .optionGroup {
@@ -30,4 +41,8 @@
             color: var(--black-80);
         }
     }
+}
+
+.columnStack {
+    width: 100%;
 }

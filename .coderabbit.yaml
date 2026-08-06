@@ -2,83 +2,81 @@
 
 language: en-US
 
-tone_instructions: "Be a strict, practical ORISO Admin reviewer. Keep comments concise, concrete, and focused on correctness, mergeability, privacy, accessibility, tests, and maintainability. Review German UI copy too."
+tone_instructions: 'Be a strict, practical ORISO Admin reviewer. Keep comments concise, concrete, and focused on correctness, mergeability, privacy, accessibility, tests, and maintainability. Review German UI copy too.'
 
 reviews:
-  profile: assertive
-  request_changes_workflow: true
-  high_level_summary: true
-  review_status: true
-  review_details: true
-  poem: false
+    profile: assertive
+    request_changes_workflow: true
+    high_level_summary: true
+    review_status: true
+    review_details: true
+    poem: false
 
-  auto_review:
-    enabled: true
-    auto_incremental_review: true
-    drafts: true
-    base_branches:
-      - "dev"
-      - "main"
-      - "release/.*"
-      - "hotfix/.*"
+    auto_review:
+        enabled: true
+        auto_incremental_review: true
+        drafts: false
+        labels: []
+        base_branches:
+            - 'dev'
 
-  path_filters:
-    - "!node_modules/**"
-    - "!dist/**"
-    - "!coverage/**"
-    - "src/**"
-    - "cypress/**"
-    - "scripts/**"
-    - ".github/**"
-    - "*.md"
+    path_filters:
+        - '!node_modules/**'
+        - '!dist/**'
+        - '!coverage/**'
+        - 'src/**'
+        - 'cypress/**'
+        - 'scripts/**'
+        - '.github/**'
+        - '**/*.md'
 
-  path_instructions:
-    - path: "src/**/*.{ts,tsx,js,jsx}"
-      instructions: |
-        Check admin behavior against the surrounding ORISO workflow, not only
-        types. Flag missing error/loading handling, permission/role regressions,
-        unsafe API assumptions, and duplicated table/form logic that should be
-        expressed through shared hooks or utilities.
-    - path: "src/**/*.{scss,css,less}"
-      instructions: |
-        Prefer existing design tokens and shared component states. Flag
-        hardcoded one-off styling when the same control/state already exists
-        elsewhere.
-    - path: "src/**/*.test.{ts,tsx,js,jsx}"
-      instructions: |
-        Tests should prove the failing/admin-visible behavior and relevant edge
-        cases. Flag brittle selectors, over-mocking that hides the bug, and
-        missing assertions for permissions, save flows, and API state.
+    path_instructions:
+        - path: 'src/**/*.{ts,tsx,js,jsx}'
+          instructions: |
+              Check admin behavior against the surrounding ORISO workflow, not only
+              types. Flag missing error/loading handling, permission/role regressions,
+              unsafe API assumptions, and duplicated table/form logic that should be
+              expressed through shared hooks or utilities.
+        - path: 'src/**/*.{scss,css,less}'
+          instructions: |
+              Prefer existing design tokens and shared component states. Flag
+              hardcoded one-off styling when the same control/state already exists
+              elsewhere.
+        - path: 'src/**/*.test.{ts,tsx,js,jsx}'
+          instructions: |
+              Tests should prove the failing/admin-visible behavior and relevant edge
+              cases. Flag brittle selectors, over-mocking that hides the bug, and
+              missing assertions for permissions, save flows, and API state.
 
-  pre_merge_checks:
-    title:
-      mode: warning
-      requirements: "Use a concise conventional title that names the affected ORISO Admin area."
-    description:
-      mode: warning
-    custom_checks:
-      - name: "Validation evidence"
-        mode: error
-        instructions: |
-          Pass for docs/config-only PRs. For behavior-affecting product code,
-          pass only if the PR includes relevant automated tests or clearly lists
-          the exact validation command and result. Fail if product behavior
-          changed with no test/validation evidence and no explicit rationale.
-      - name: "Shared admin patterns"
-        mode: warning
-        instructions: |
-          Pass when UI changes reuse existing table, form, role, API, and
-          validation patterns. Warn when a PR creates a second local
-          implementation of an existing ORISO Admin interaction pattern.
+    pre_merge_checks:
+        title:
+            mode: warning
+            requirements: 'Use a concise conventional title that names the affected ORISO Admin area.'
+        description:
+            mode: warning
+        custom_checks:
+            - name: 'Validation evidence'
+              mode: error
+              instructions: |
+                  Pass for docs/config-only PRs. For behavior-affecting product code,
+                  pass only if the PR includes relevant automated tests or clearly lists
+                  the exact validation command and result. Fail if product behavior
+                  changed with no test/validation evidence and no explicit rationale.
+            - name: 'Shared admin patterns'
+              mode: warning
+              instructions: |
+                  Pass when UI changes reuse existing table, form, role, API, and
+                  validation patterns. Warn when a PR creates a second local
+                  implementation of an existing ORISO Admin interaction pattern.
 
 knowledge_base:
-  code_guidelines:
-    enabled: true
-    filePatterns:
-      - "AGENTS.md"
-      - ".understand-anything/README.md"
-      - ".understand-anything/ARCHITECTURE.md"
-      - ".understand-anything/ORISO-ECOSYSTEM.md"
+    code_guidelines:
+        enabled: true
+        filePatterns:
+            - 'AGENTS.md'
+            - '.understand-anything/README.md'
+            - '.understand-anything/ARCHITECTURE.md'
+            - '.understand-anything/ORISO-ECOSYSTEM.md'
 
 chat:
-  auto_reply: true
+    auto_reply: true

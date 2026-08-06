@@ -1,26 +1,102 @@
 .listingTable {
+    --admin-table-radius: 16px;
+
+    width: 100%;
+    overflow: visible;
+    padding-bottom: 24px;
+
     :global {
+        .ant-table {
+            background: var(--admin-table-surface, #f6f3f3);
+            overflow: hidden;
+            border-radius: var(--admin-table-radius);
+        }
+
+        .ant-table-container,
+        .ant-table-content {
+            background: var(--admin-table-surface, #f6f3f3);
+            overflow: hidden;
+            border-radius: inherit;
+        }
+
+        .ant-table-body {
+            background: var(--admin-table-surface, #f6f3f3);
+            overflow: auto !important;
+            min-height: var(--admin-table-scroll-y, calc(100dvh - 280px));
+            scrollbar-gutter: stable;
+        }
+
+        .ant-table-pagination.ant-pagination {
+            position: sticky;
+            z-index: 850;
+            left: 0;
+            right: 0;
+            /* Flush with the viewport bottom: at 24px the table container kept
+               peeking through the gap below the sticky bar on tall pages
+               (owner report 2026-07-18, Logs page). The 24px breathing room
+               still applies once the page is scrolled to its end (wrapper
+               padding takes over when sticky releases). */
+            bottom: 0;
+            display: flex;
+            width: 100%;
+            box-sizing: border-box;
+            align-items: center;
+            justify-content: flex-end;
+            margin: 0;
+            padding: 16px 24px;
+            overflow: hidden;
+            border-radius: 0 0 var(--admin-table-radius) var(--admin-table-radius);
+            /* Dedicated footer surface from the reviewed admin-table polish (#354). */
+            background: var(--admin-table-footer-surface, #e4e2e2);
+        }
+
         .ant-table-thead > tr > th {
-            background: #f5f5f5 !important;
-            font-weight: 900;
-            color: rgba(0, 0, 0, 0.85);
+            background: var(--admin-table-header-surface, #e4e2e2) !important;
+            border-bottom: 1px solid var(--admin-table-border, #eae7e8);
+            color: var(--admin-table-header-text, #1b1b1c);
+            font-weight: 500;
             text-align: center;
 
             &::before {
-                background-color: rgba(0, 0, 0, 0.8) !important;
+                background-color: var(--admin-table-border, #eae7e8) !important;
             }
         }
 
         .ant-table-tbody > tr > td {
             text-align: center;
-            color: rgba(0, 0, 0, 0.8);
-            font-weight: 900;
-            background: #fafafa !important;
+            border-bottom: 1px solid var(--admin-table-border, #eae7e8);
+            background: var(--admin-table-surface, #f6f3f3) !important;
+            color: var(--admin-table-text, #444748);
+            font-weight: 400;
+        }
+
+        .ant-table-tbody > tr:hover > td {
+            background: var(--admin-table-row-hover-surface, #f0edee) !important;
+        }
+
+        .ant-table-cell-fix-left,
+        .ant-table-cell-fix-right {
+            background: inherit !important;
+        }
+
+        .ant-table-cell-fix-left-last::after,
+        .ant-table-cell-fix-right-first::after,
+        .ant-table-ping-left .ant-table-cell-fix-left-last::after,
+        .ant-table-ping-right .ant-table-cell-fix-right-first::after {
+            box-shadow: none !important;
         }
 
         .ant-table-column-title,
         .ant-table-thead > tr > th {
-            font-weight: 900;
+            font-weight: 500;
+        }
+    }
+}
+
+.autoHeight {
+    :global {
+        .ant-table-body {
+            min-height: 0;
         }
     }
 }
@@ -64,83 +140,147 @@
     gap: 12px;
 }
 
+/* Narrow screens: stack every create-form field (label above control, full width)
+   instead of the ragged inline wrap; the table below keeps its own horizontal scroll. */
+@media (max-width: 767px) {
+    .createForm {
+        :global {
+            .ant-form-item {
+                width: 100%;
+            }
+
+            .ant-form-item .ant-form-item-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .ant-form-item-label {
+                text-align: left;
+            }
+
+            .ant-form-item-label > label {
+                height: auto;
+            }
+
+            .ant-form-item-label > label::after {
+                content: '';
+                margin-inline: 0;
+            }
+
+            .ant-select,
+            .ant-input-number,
+            .ant-input,
+            .ant-btn {
+                width: 100%;
+            }
+        }
+    }
+
+    .formFields {
+        width: 100%;
+        align-items: stretch;
+    }
+
+    .createButton {
+        width: 100%;
+    }
+}
+
+/* M3 filled and outlined buttons. Both used to carry hard-coded hexes that
+   belong to no ORISO palette — black #1f1f1f and navy #273270 — plus uppercase
+   at weight 900, which is not a type style this product has anywhere else. */
+
 .createButton {
-    background: #1f1f1f !important;
-    border-color: #1f1f1f !important;
-    text-transform: uppercase;
-    font-weight: 900;
-    letter-spacing: 0.02em;
     height: 40px;
-    padding-inline: 16px;
+    padding-inline: 24px;
+    border-color: transparent !important;
+    background: var(--m3-primary, #a5000a) !important;
+    color: var(--m3-on-primary, #ffffff) !important;
+    font-weight: 500;
+    letter-spacing: 0.1px;
 
     &:hover,
     &:focus {
-        background: #3a3a3a !important;
-        border-color: #3a3a3a !important;
+        border-color: transparent !important;
+        background: color-mix(in srgb, var(--m3-on-primary, #fff) 8%, var(--m3-primary, #a5000a)) !important;
+        color: var(--m3-on-primary, #ffffff) !important;
     }
 }
 
 .copyButton {
-    border-color: #273270 !important;
-    color: #273270 !important;
-    text-transform: uppercase;
-    font-weight: 900;
-    letter-spacing: 0.02em;
-    background: #fff !important;
+    border-color: var(--m3-outline, #74777b) !important;
+    background: transparent !important;
+    color: var(--m3-primary, #a5000a) !important;
+    font-weight: 500;
+    letter-spacing: 0.1px;
 
     &:hover,
     &:focus {
-        border-color: #273270 !important;
-        color: #273270 !important;
-        background: rgba(39, 50, 112, 0.04) !important;
+        border-color: var(--m3-primary, #a5000a) !important;
+        background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, transparent) !important;
+        color: var(--m3-primary, #a5000a) !important;
     }
+}
+
+.actionGroup {
+    display: inline-flex;
+    gap: 8px;
+    white-space: nowrap;
 }
 
 .statusTag {
     margin: 0;
-    border-radius: 4px;
-    font-weight: 900;
+    border-radius: 30px;
+    font-weight: 500;
     text-transform: capitalize;
 }
 
+/* Owner call 2026-07-29: chips are tonal, not traffic lights. The green came
+   from antd's defaults and was the loudest thing in a table whose job is to be
+   scanned; the state is in the chip's own text. */
+
 .statusTagActive {
-    background: #f6ffed;
-    border-color: #b7eb8f;
-    color: #389e0d;
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }
 
 .statusTagDefault {
-    background: #fafafa;
-    border-color: #d9d9d9;
-    color: rgba(0, 0, 0, 0.65);
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }
 
 .statusTagUsed {
-    background: #f5f5f5;
-    border-color: #595959;
-    color: #262626;
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }
 
+/* The one exception to "chips are tonal": a state that means something went
+   wrong or ran out carries the scheme's ERROR role. That is not a traffic
+   light — it is the role M3 has for exactly this, and without it an expired
+   invite was indistinguishable from a live one in a table you scan. */
 .statusTagExpired {
-    background: #fff2f0;
-    border-color: #ffccc7;
-    color: #cf1322;
+    background: color-mix(in srgb, var(--m3-error, #b1005e) 10%, var(--m3-surface-container-low, #f6f3f3));
+    border-color: color-mix(in srgb, var(--m3-error, #b1005e) 35%, transparent);
+    color: var(--m3-error, #b1005e);
 }
 
 .anonymityTagFull {
-    background: #f6ffed;
-    border-color: #b7eb8f;
-    color: #389e0d;
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }
 
 .anonymityTagCustomize {
-    background: #fffbe6;
-    border-color: #ffe58f;
-    color: #d48806;
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }
 
 .anonymityTagNameEmail {
-    background: #fff2f0;
-    border-color: #ffccc7;
-    color: #cf1322;
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-color: var(--admin-table-chip-border, #c4c7c8);
+    color: var(--admin-table-chip-text, #444748);
 }

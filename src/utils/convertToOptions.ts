@@ -1,4 +1,4 @@
-import { Option } from '../components/SelectFormField';
+import { Option } from '../components/mui/MuiSelectField';
 
 const getValue = (data, key) => {
     const nestedKeys = typeof key === 'string' && key.split('.');

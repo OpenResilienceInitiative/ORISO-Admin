@@ -1,12 +1,14 @@
-import { message, Modal, notification, Checkbox } from 'antd';
-import Title from 'antd/lib/typography/Title';
+import { message, notification, Checkbox } from 'antd';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useState } from 'react';
 import { CheckboxChangeEvent } from 'antd/es/checkbox';
 import i18next from 'i18next';
 import { useDeleteConsultantOrAgencyAdmin } from '../../../../../hooks/useDeleteConsultantOrAdmin';
+import { Modal } from '../../../../../components/Modal';
 import { Text } from '../../../../../components/text/Text';
-import { FETCH_ERRORS, X_REASON } from '../../../../../api/fetchData';
+import { X_REASON } from '../../../../../api/fetchData';
+import { extractApiErrorReason } from '../../../../../utils/extractApiErrorMessage';
 
 interface DeleteUserModalProps {
     typeOfUser: 'consultants' | 'admins';
@@ -28,9 +30,10 @@ export const DeleteUserModal = ({ typeOfUser, deleteUserId, onClose }: DeleteUse
             });
             onClose();
         },
-        onError: (error: Error | Response) => {
+        onError: async (error: Error | Response) => {
             if (error instanceof Response) {
-                switch (error.headers.get(FETCH_ERRORS.X_REASON)) {
+                const reason = await extractApiErrorReason(error);
+                switch (reason) {
                     case X_REASON.CONSULTANT_HAS_ACTIVE_OR_ARCHIVE_SESSIONS:
                         notification.error({
                             message: t('message.counselor.delete.error.hasSessions'),
@@ -45,10 +48,7 @@ export const DeleteUserModal = ({ typeOfUser, deleteUserId, onClose }: DeleteUse
                         break;
                     default:
                         message.error({
-                            content: i18next.t([
-                                `message.error.${error.headers.get(FETCH_ERRORS.X_REASON)}`,
-                                'message.error.default',
-                            ]),
+                            content: i18next.t([`message.error.${reason}`, 'message.error.default']) as string,
                             duration: 3,
                         });
                 }
@@ -60,17 +60,20 @@ export const DeleteUserModal = ({ typeOfUser, deleteUserId, onClose }: DeleteUse
         setForce(e.target.checked);
     }, []);
 
+    const deleteLabelKey = hasSessions ? 'forceDelete' : 'delete';
+
     return (
         <Modal
-            title={<Title level={2}>{t('counselor.modal.headline.delete')}</Title>}
-            open
-            onOk={() => deleteConsultant({ id: deleteUserId, forceDelete: hasSessions })}
-            onCancel={onClose}
-            cancelText={t('btn.cancel.uppercase')}
+            titleKey="counselor.modal.headline.delete"
+            icon={<DeleteOutlineOutlinedIcon />}
             closable={false}
-            centered
-            okText={t(hasSessions ? 'forceDelete' : 'delete')}
-            okButtonProps={{ disabled: hasSessions && !force, hidden: lastConsultantOfAgency }}
+            cancelLabelKey="btn.cancel.uppercase"
+            // The confirm action is hidden entirely for the last consultant of an
+            // agency (no valid delete), else labelled force/normal delete.
+            okLabelKey={lastConsultantOfAgency ? undefined : deleteLabelKey}
+            confirmDisabled={hasSessions && !force}
+            onConfirm={() => deleteConsultant({ id: deleteUserId, forceDelete: hasSessions })}
+            onClose={onClose}
         >
             <p>{t('counselor.modal.text.delete.text')}</p>
 

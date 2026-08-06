@@ -1,12 +1,12 @@
-import { QueryOptions, useQuery, UseQueryOptions } from 'react-query';
-import { agencyAdminsSearchEndpoint, usersConsultantsSearchEndpoint } from '../appConfig';
+import { useQuery, UseQueryOptions } from '@tanstack/react-query';
+import { agencyAdminsSearchEndpoint, tenantAdminsSearchEndpoint, usersConsultantsSearchEndpoint } from '../appConfig';
 import { USER_TABLE_DEFAULT_ORDER, USER_TABLE_DEFAULT_SORT } from '../constants/userTableSort';
 import { TypeOfUser } from '../enums/TypeOfUser';
 import { CounselorData } from '../types/counselor';
 import { ResponseList } from '../types/ResponseList';
 import { fetchUserSearchWithSortFallback } from '../utils/fetchUserSearchWithSortFallback';
 
-interface ConsultantsDataProps extends UseQueryOptions<ResponseList<CounselorData>> {
+interface ConsultantsDataProps extends Omit<UseQueryOptions<ResponseList<CounselorData>>, 'queryKey' | 'queryFn'> {
     search?: string;
     current?: number;
     sortBy?: string;
@@ -24,11 +24,15 @@ export const useConsultantsOrAdminsData = ({
     typeOfUser = TypeOfUser.Consultants,
     ...options
 }: ConsultantsDataProps) => {
-    const baseUrl = typeOfUser === TypeOfUser.Consultants ? usersConsultantsSearchEndpoint : agencyAdminsSearchEndpoint;
+    const baseUrlByTypeOfUser = {
+        [TypeOfUser.Consultants]: usersConsultantsSearchEndpoint,
+        [TypeOfUser.TenantAdmins]: tenantAdminsSearchEndpoint,
+    };
+    const baseUrl = baseUrlByTypeOfUser[typeOfUser] ?? agencyAdminsSearchEndpoint;
 
-    return useQuery(
-        [typeOfUser.toUpperCase(), search, current, sortBy, order, pageSize],
-        () =>
+    return useQuery({
+        queryKey: [typeOfUser.toUpperCase(), search, current, sortBy, order, pageSize],
+        queryFn: () =>
             fetchUserSearchWithSortFallback({
                 url: `${baseUrl}?query=${encodeURIComponent(search || '*')}&page=${current || 1}&perPage=${
                     pageSize || 10
@@ -38,10 +42,8 @@ export const useConsultantsOrAdminsData = ({
                 current,
                 pageSize,
             }),
-        {
-            ...options,
-            retry: false,
-            refetchOnWindowFocus: false,
-        } as QueryOptions<ResponseList<CounselorData>>,
-    );
+        ...(options as object),
+        retry: false,
+        refetchOnWindowFocus: false,
+    });
 };

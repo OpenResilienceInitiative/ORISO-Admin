@@ -1,29 +1,29 @@
-.input {
-    composes: input from '../FormFields/styles.module.scss';
-}
+/*
+ * Form.Item shell for the M3 floating-label fields. The visual anatomy
+ * (outline, label, disabled state) lives in FloatingLabelInput; this file
+ * only handles spacing and restyles antd's validation message as M3
+ * supporting text.
+ */
 
 .item {
-    composes: item from '../FormFields/styles.module.scss';
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-bottom: 24px;
 }
 
-.disabled {
-    composes: disabled from '../FormFields/styles.module.scss';
+.item :global(.ant-form-item-control-input) {
+    min-height: 56px;
+    min-width: 0;
 }
 
-.withAddon {
-    &.disabled {
-        .input {
-            border-color: var(--input-disabled-border-color);
-            background: var(--input-disabled-bg);
-            color: var(--input-disabled-color);
-        }
-    }
-}
-
-.item :global(.ant-form-item-label) {
-    padding-bottom: 0;
-}
-
-.item :global(label) {
-    height: 16px;
+.item :global(.ant-form-item-explain-error) {
+    margin-top: 4px;
+    padding: 0 16px;
+    color: var(--m3-error, var(--form-error));
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.4px;
+    line-height: 16px;
 }

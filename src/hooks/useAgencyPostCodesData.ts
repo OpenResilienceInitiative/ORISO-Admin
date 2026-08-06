@@ -1,12 +1,14 @@
-import { useQuery, UseQueryOptions } from 'react-query';
+import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import getAgencyPostCodeRange, { PostCodeRange } from '../api/agency/getAgencyPostCodeRange';
 
-interface PostCodeRangeProps extends UseQueryOptions<PostCodeRange[]> {
+interface PostCodeRangeProps extends Omit<UseQueryOptions<PostCodeRange[]>, 'queryKey' | 'queryFn'> {
     id?: string;
 }
 
 export const useAgencyPostCodesData = ({ id, ...options }: PostCodeRangeProps) => {
-    return useQuery<PostCodeRange[]>(['AGENCY_POST_CODES', id], () => getAgencyPostCodeRange(id), {
+    return useQuery<PostCodeRange[]>({
+        queryKey: ['AGENCY_POST_CODES', id],
+        queryFn: () => getAgencyPostCodeRange(id),
         enabled: id !== 'add',
         ...options,
     });

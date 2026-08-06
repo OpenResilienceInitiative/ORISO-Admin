@@ -1,7 +1,7 @@
 import { Divider } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
-import { FormRadioGroupField } from '../../../FormRadioGroupField';
+import { MuiRadioGroupField } from '../../../mui/MuiRadioGroupField';
 import { FormSwitchField } from '../../../FormSwitchField';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
@@ -50,7 +50,7 @@ export const NotificationsSettings = ({ tenantId }: { tenantId: string }) => {
             </div> */}
             <Divider />
             <div className={styles.radioGroup}>
-                <FormRadioGroupField
+                <MuiRadioGroupField
                     vertical
                     labelKey="tenants.appSettings.notifications.info"
                     name={[
@@ -63,13 +63,13 @@ export const NotificationsSettings = ({ tenantId }: { tenantId: string }) => {
                     ]}
                     className={styles.notifications}
                 >
-                    <FormRadioGroupField.Radio value={false}>
+                    <MuiRadioGroupField.Radio value={false}>
                         {t('tenants.appSettings.notifications.option.onlyConsultant')}
-                    </FormRadioGroupField.Radio>
-                    <FormRadioGroupField.Radio value>
+                    </MuiRadioGroupField.Radio>
+                    <MuiRadioGroupField.Radio value>
                         {t('tenants.appSettings.notifications.option.allTeamConsultants')}
-                    </FormRadioGroupField.Radio>
-                </FormRadioGroupField>
+                    </MuiRadioGroupField.Radio>
+                </MuiRadioGroupField>
             </div>
         </CardEditable>
     );

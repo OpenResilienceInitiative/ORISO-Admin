@@ -1,0 +1,35 @@
+/* Body of the footer's Imprint/Privacy dialog (#594.15b). The dialog chrome is
+   the shared M3 Modal; only the reading rhythm of the text lives here. When the
+   stored legal texts replace the placeholder copy (see legalNoticeContent.ts)
+   this block is what the read-only reader takes over. */
+
+.body {
+    /*
+     * The placeholder copy is three paragraphs; the published imprint and
+     * privacy notice are pages. `min(60vh, 520px)` alone still let a short
+     * viewport (a phone in landscape) push the close action off-screen,
+     * because it does not know what the dialog chrome above and below the
+     * text costs — icon + title ≈ 140px, action row + margins ≈ 124px.
+     * Subtracting that keeps the whole sheet inside the viewport at any
+     * height, and `max(...)` stops it collapsing to nothing on a very short
+     * one. `dvh` so the mobile browser's collapsing URL bar is accounted for.
+     */
+    max-height: max(160px, min(60vh, 520px, calc(100dvh - 264px)));
+    padding-right: 4px;
+    overflow-y: auto;
+
+    /* A long legal text must not chain its scroll to the page behind the mask. */
+    overscroll-behavior: contain;
+
+    p {
+        margin: 0 0 12px;
+        color: var(--m3-on-surface-variant, #444748);
+        font-size: 14px;
+        letter-spacing: 0.25px;
+        line-height: 20px;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+}

@@ -13,15 +13,22 @@ interface CardProps {
     className?: string;
     isLoading?: boolean;
     fullHeight?: boolean;
+    autoHeight?: boolean;
+    dialogContentPadding?: boolean;
     variant?: CardVariant;
-    headerIcon?: React.ReactChild;
+    headerIcon?: React.ReactElement<any> | number | string;
     titleKey: string;
-    subTitle?: React.ReactChild;
+    subTitle?: React.ReactElement<any> | number | string;
     subTitleKey?: string;
     cardTitleClassName?: string;
     tooltip?: string;
-    children: React.ReactChild | React.ReactChild[];
-    cardTitleChildren?: React.ReactChild | React.ReactChild[];
+    children: React.ReactElement<any> | number | string | (React.ReactElement<any> | number | string)[];
+    cardTitleChildren?: React.ReactElement<any> | number | string | (React.ReactElement<any> | number | string)[];
+    /** Optional footer slot: rendered below a top divider (M3 card action row —
+     *  Back/Next, Cancel/Save, Edit, etc.). Shared by every wizard/settings card. */
+    footer?: React.ReactNode;
+    /** Forwarded to the card root as `data-testid` (preserves existing test anchors). */
+    dataTestId?: string;
 }
 
 export const Card = ({
@@ -31,11 +38,15 @@ export const Card = ({
     subTitle,
     subTitleKey,
     fullHeight,
+    autoHeight,
+    dialogContentPadding,
     tooltip,
     cardTitleChildren,
     cardTitleClassName,
     variant = 'default',
     headerIcon,
+    footer,
+    dataTestId,
     children,
 }: CardProps) => {
     const { t } = useTranslation();
@@ -43,9 +54,11 @@ export const Card = ({
 
     return (
         <Box
+            data-testid={dataTestId}
             className={classNames(styles.card, className, {
                 [styles.fullHeight]: fullHeight,
                 [styles.dialogCard]: isDialog,
+                [styles.dialogAutoHeight]: isDialog && autoHeight,
             })}
             contentClassName={classNames(styles.contentClassName, { [styles.dialogContentClassName]: isDialog })}
         >
@@ -62,7 +75,7 @@ export const Card = ({
                     </Title>
 
                     {tooltip && (
-                        <Tooltip className={styles.tooltip} trigger={<InfoIcon fill="var(--primary)" />}>
+                        <Tooltip className={styles.tooltip} trigger={<InfoIcon fill="var(--m3-primary)" />}>
                             {tooltip}
                         </Tooltip>
                     )}
@@ -78,11 +91,13 @@ export const Card = ({
                 className={classNames(styles.container, {
                     [styles.isLoading]: isLoading,
                     [styles.dialogContainer]: isDialog,
+                    [styles.dialogContentPadding]: isDialog && dialogContentPadding,
                 })}
             >
                 {isLoading && <Spin />}
                 {!isLoading && children}
             </div>
+            {footer && <div className={styles.footer}>{footer}</div>}
         </Box>
     );
 };

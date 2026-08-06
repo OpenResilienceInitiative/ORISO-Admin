@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Form, FormInstance, Modal } from 'antd';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import { useTranslation } from 'react-i18next';
-import { Card } from '../../../../Card';
-import { FormColorSelectorField } from '../../../../FormColorSelectorField';
-import { ReactComponent as PenIcon } from '../../../../../resources/img/svg/pen.svg';
+import { CardEditable } from '../../../../CardEditable';
+import { MuiColorField } from '../../../../mui/MuiColorField';
+import { SideScrollerFooter } from '../../../../SideScrollerFooter';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
 import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.hook';
-import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
-import { useTenantAdminDataMutation } from '../../../../../hooks/useTenantAdminDataMutation.hook';
+import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { isReadOnlySetting } from '../../../../../utils/serverSettingsMeta';
 import { computeOrisoPalette } from '../../../../../utils/theme/orisoScheme';
 import {
@@ -120,14 +117,14 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing }: ThemeBuilderFor
     return (
         <>
             <div className={styles.colorEditor}>
-                <FormColorSelectorField
+                <MuiColorField
                     className={styles.colorField}
                     labelKey="theme.builder.accentDarkColor"
                     name={['theming', 'primaryColor']}
                     required
                     disabled={locks.accentDark}
                 />
-                <FormColorSelectorField
+                <MuiColorField
                     className={styles.colorField}
                     labelKey="theme.builder.accentLightColor"
                     name={['theming', 'accent']}
@@ -320,33 +317,16 @@ const ThemeEditorModal = ({ open, initialValues, storedSeeds, locks, onCancel, o
                             <PhoneThemePreview labelKey="theme.builder.preview.current" seeds={storedSeeds} />
                             <PhoneThemePreview labelKey="theme.builder.preview.new" seeds={draftSeeds} />
                         </section>
-                        <div
+                        <SideScrollerFooter
                             className={styles.themePreviewScrollerFooter}
-                            aria-label={t('theme.builder.preview.scroll')}
-                        >
-                            <button
-                                className={`${styles.themePreviewScrollButton} ${
-                                    previewScrollState.canScrollBackward ? styles.themePreviewScrollButtonActive : ''
-                                }`}
-                                type="button"
-                                aria-label={t('theme.builder.preview.previous')}
-                                disabled={!previewScrollState.canScrollBackward}
-                                onClick={() => scrollPreview(-1)}
-                            >
-                                <ArrowBackIcon />
-                            </button>
-                            <button
-                                className={`${styles.themePreviewScrollButton} ${
-                                    previewScrollState.canScrollForward ? styles.themePreviewScrollButtonActive : ''
-                                }`}
-                                type="button"
-                                aria-label={t('theme.builder.preview.next')}
-                                disabled={!previewScrollState.canScrollForward}
-                                onClick={() => scrollPreview(1)}
-                            >
-                                <ArrowForwardIcon />
-                            </button>
-                        </div>
+                            ariaLabel={t('theme.builder.preview.scroll')}
+                            previousLabel={t('theme.builder.preview.previous')}
+                            nextLabel={t('theme.builder.preview.next')}
+                            canScrollBackward={previewScrollState.canScrollBackward}
+                            canScrollForward={previewScrollState.canScrollForward}
+                            onScrollBackward={() => scrollPreview(-1)}
+                            onScrollForward={() => scrollPreview(1)}
+                        />
                     </div>
                 </div>
             </Form>
@@ -358,9 +338,8 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
     const { t } = useTranslation();
     const [editorOpen, setEditorOpen] = useState(false);
     const { settings } = useAppConfigContext();
-    const { data, isLoading } = useSingleTenantData({ id: tenantId });
+    const { data, isLoading, mutate } = useTenantAppearanceFormData(tenantId);
     const { data: inheritedData } = usePublicTenantData();
-    const { mutate } = useTenantAdminDataMutation({ id: tenantId });
 
     const locks = {
         accentDark:
@@ -406,30 +385,20 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
 
     return (
         <>
-            <Card
+            <CardEditable
                 key={`theme-builder-${effectiveAccentDark}-${effectiveAccentLight}-${locks.accentDark}-${locks.accentLight}`}
+                allowEdit={canEdit}
                 isLoading={isLoading}
                 titleKey="settings.colors"
                 subTitle={t<string>('settings.colors.howto')}
+                onEdit={() => setEditorOpen(true)}
+                onSave={() => undefined}
                 variant="dialog"
+                editButtonPlacement="footer"
                 headerIcon={<PaletteOutlinedIcon />}
             >
-                <div className={styles.themeCardBody}>
-                    <ThemeSummary seeds={effectiveSeeds} />
-                </div>
-                {canEdit && (
-                    <div className={styles.themeCardFooter}>
-                        <button
-                            className={styles.themeFooterEditButton}
-                            type="button"
-                            onClick={() => setEditorOpen(true)}
-                        >
-                            <PenIcon />
-                            <span>{t('edit')}</span>
-                        </button>
-                    </div>
-                )}
-            </Card>
+                <ThemeSummary seeds={effectiveSeeds} />
+            </CardEditable>
             {canEdit && (
                 <ThemeEditorModal
                     open={editorOpen}

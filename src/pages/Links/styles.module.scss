@@ -4,36 +4,26 @@
     pointer-events: none;
 }
 
+/* Bulk selection (#316): "N ausgewählt" line between composer and table. */
+.selectionCount {
+    padding: 0 12px 8px;
+    font-size: 14px;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
 .pageHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    padding-bottom: 60px;
+    /* 12px breathing room around the pill row on every side (design baseline),
+       keeping the larger gap to the content below. */
+    padding: 12px 12px 20px;
     flex-wrap: wrap;
 }
 
-.myAccessButton {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    padding: 18px 32px;
-    border: 2px solid #c4c7c8;
-    border-radius: 999px;
-    background: rgba(68, 71, 72, 0.1);
-    color: #444748;
-    font-size: 16px;
-    line-height: 24px;
-    white-space: nowrap;
-    transition: background 160ms ease;
-
-    &:hover {
-        background: rgba(68, 71, 72, 0.16);
-        color: #444748;
-    }
-
-    svg {
-        width: 20px;
-        height: 20px;
-    }
+/* The M3 select needs a width of its own — the inline form gives it none, and
+   a floating label needs room for the longest topic name. */
+.inboundField {
+    min-width: 220px;
 }
