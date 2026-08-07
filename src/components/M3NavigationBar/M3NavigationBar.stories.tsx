@@ -36,7 +36,7 @@ const agency: M3NavigationBarItem = {
 };
 const users: M3NavigationBarItem = {
     key: 'users',
-    label: 'Nutzer*innen',
+    label: 'Konten',
     icon: <PeopleOutlined />,
     activeIcon: <People />,
 };
@@ -126,7 +126,7 @@ export const LongLabels: Story = {
     args: {
         items: [
             { ...agency, label: 'Beratungsstelle' },
-            { ...users, label: 'Nutzer*innen' },
+            { ...users, label: 'Konten' },
         ],
         activeKey: 'agency',
     },

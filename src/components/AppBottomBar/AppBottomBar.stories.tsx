@@ -33,7 +33,7 @@ const destinations: M3NavigationBarItem[] = [
 const superAdminDestinations: M3NavigationBarItem[] = [
     ...destinations,
     { key: 'agency', label: 'Beratungsstelle', icon: <RealEstateAgentOutlined />, activeIcon: <RealEstateAgent /> },
-    { key: 'users', label: 'Nutzer*innen', icon: <PeopleOutlined />, activeIcon: <People /> },
+    { key: 'users', label: 'Konten', icon: <PeopleOutlined />, activeIcon: <People /> },
     { key: 'statistics', label: 'Statistiken', icon: <AssessmentOutlined />, activeIcon: <Assessment /> },
     { key: 'links', label: 'Links', icon: <LinkOutlined />, activeIcon: <LinkIcon /> },
     { key: 'logs', label: 'Logs', icon: <ListAltOutlined />, activeIcon: <ListAlt /> },
@@ -167,7 +167,7 @@ export const NarrowPhone: Story = {
                         icon: <RealEstateAgentOutlined />,
                         activeIcon: <RealEstateAgent />,
                     },
-                    { key: 'users', label: 'Nutzer*innen', icon: <PeopleOutlined />, activeIcon: <People /> },
+                    { key: 'users', label: 'Konten', icon: <PeopleOutlined />, activeIcon: <People /> },
                 ]}
                 activeKey="agency"
                 lang="de"
