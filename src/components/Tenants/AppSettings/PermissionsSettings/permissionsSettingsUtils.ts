@@ -153,6 +153,16 @@ export const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, st
     mediaAiScanSupervisionChats: ['featureMediaAiScanSupervisionChatsEnabled'],
 };
 
+/**
+ * Direct setting owned by each governance toggle. Family toggles list their own setting first,
+ * followed by the child settings they constrain when disabled.
+ */
+export const TOGGLE_KEY_TO_FIELD = Object.fromEntries(
+    (Object.entries(PLATFORM_TOGGLE_FIELDS) as [keyof PermissionToggleVisibility, string[]][]).map(
+        ([toggleKey, [directField]]) => [toggleKey, directField],
+    ),
+) as Record<keyof PermissionToggleVisibility, string>;
+
 const ONE_ON_ONE_CALL_TOGGLE_FIELDS = new Set([
     'featureVideoCallsOneOnOneChatsEnabled',
     'featureAudioCallsOneOnOneChatsEnabled',
@@ -161,16 +171,25 @@ const ONE_ON_ONE_CALL_TOGGLE_FIELDS = new Set([
 export const getForcedOffFields = (toggles?: PermissionToggleVisibility) => {
     if (!toggles) return new Set<string>();
 
-    return Object.entries(toggles).reduce((fields, [toggleKey, enabled]) => {
+    const fields = Object.entries(toggles).reduce((forcedOffFields, [toggleKey, enabled]) => {
         if (enabled === false) {
             const platformFields = PLATFORM_TOGGLE_FIELDS[toggleKey as keyof PermissionToggleVisibility];
             if (platformFields) {
-                platformFields.forEach((field) => fields.add(field));
-                return fields;
+                platformFields.forEach((field) => forcedOffFields.add(field));
             }
         }
-        return fields;
+        return forcedOffFields;
     }, new Set<string>());
+
+    // A granular permission is authoritative for its own field. This lets a platform admin opt a
+    // chat type into AI scanning even though the hidden family master defaults off.
+    Object.entries(toggles).forEach(([toggleKey, enabled]) => {
+        if (enabled === true) {
+            fields.delete(TOGGLE_KEY_TO_FIELD[toggleKey as keyof PermissionToggleVisibility]);
+        }
+    });
+
+    return fields;
 };
 
 export const applyForcedOffFields = (
@@ -263,55 +282,6 @@ export const applyVisibleTogglesAsValues = (visibleToggles?: PermissionToggleVis
     );
 
     return settings;
-};
-
-/**
- * 1:1 map from a platform allowed/enforced toggle key to the single settings feature flag it
- * mirrors. Encoding (settings → controls) and decoding stay inverse because each key owns exactly
- * one field — no cross-gating by a card master and no group/granular overlap. See ADR-013 P2.
- */
-export const TOGGLE_KEY_TO_FIELD: Record<keyof PermissionToggleVisibility, string> = {
-    anonymousChat: 'featureAnonymousChatEnabled',
-    groupChat: 'featureGroupChatV2Enabled',
-    calls: 'featureCallsEnabled',
-    supervision: 'featureSupervisionEnabled',
-    supervisionAnonymousChats: 'featureSupervisionAnonymousChatsEnabled',
-    supervisionOneOnOneChats: 'featureSupervisionOneOnOneChatsEnabled',
-    audioCalls: 'featureAudioCallsEnabled',
-    audioCallsAnonymousChats: 'featureAudioCallsAnonymousChatsEnabled',
-    audioCallsOneOnOneChats: 'featureAudioCallsOneOnOneChatsEnabled',
-    audioCallsGroupChats: 'featureAudioCallsGroupChatsEnabled',
-    audioCallsSupervisionChats: 'featureAudioCallsSupervisionChatsEnabled',
-    videoCalls: 'featureVideoCallsEnabled',
-    videoCallsAnonymousChats: 'featureVideoCallsAnonymousChatsEnabled',
-    videoCallsOneOnOneChats: 'featureVideoCallsOneOnOneChatsEnabled',
-    videoCallsGroupChats: 'featureVideoCallsGroupChatsEnabled',
-    videoCallsSupervisionChats: 'featureVideoCallsSupervisionChatsEnabled',
-    threads: 'featureThreadsEnabled',
-    threadsAnonymousChats: 'featureThreadsAnonymousChatsEnabled',
-    threadsOneOnOneChats: 'featureThreadsOneOnOneEnabled',
-    threadsGroupChats: 'featureThreadsGroupChatsEnabled',
-    threadsSupervisionChats: 'featureThreadsSupervisionChatsEnabled',
-    voiceMessages: 'featureVoiceMessagesEnabled',
-    voiceMessagesAnonymousChats: 'featureVoiceMessagesAnonymousChatsEnabled',
-    voiceMessagesOneOnOneChats: 'featureVoiceMessagesOneOnOneChatsEnabled',
-    voiceMessagesGroupChats: 'featureVoiceMessagesGroupChatsEnabled',
-    voiceMessagesSupervisionChats: 'featureVoiceMessagesSupervisionChatsEnabled',
-    mediaUpload: 'featureMediaUploadEnabled',
-    mediaUploadAnonymousChats: 'featureMediaUploadAnonymousChatsEnabled',
-    mediaUploadOneOnOneChats: 'featureMediaUploadOneOnOneChatsEnabled',
-    mediaUploadGroupChats: 'featureMediaUploadGroupChatsEnabled',
-    mediaUploadSupervisionChats: 'featureMediaUploadSupervisionChatsEnabled',
-    mediaInlineDisplay: 'featureMediaInlineDisplayEnabled',
-    mediaInlineDisplayAnonymousChats: 'featureMediaInlineDisplayAnonymousChatsEnabled',
-    mediaInlineDisplayOneOnOneChats: 'featureMediaInlineDisplayOneOnOneChatsEnabled',
-    mediaInlineDisplayGroupChats: 'featureMediaInlineDisplayGroupChatsEnabled',
-    mediaInlineDisplaySupervisionChats: 'featureMediaInlineDisplaySupervisionChatsEnabled',
-    mediaAiScan: 'featureMediaAiScanEnabled',
-    mediaAiScanAnonymousChats: 'featureMediaAiScanAnonymousChatsEnabled',
-    mediaAiScanOneOnOneChats: 'featureMediaAiScanOneOnOneChatsEnabled',
-    mediaAiScanGroupChats: 'featureMediaAiScanGroupChatsEnabled',
-    mediaAiScanSupervisionChats: 'featureMediaAiScanSupervisionChatsEnabled',
 };
 
 export const syncMasterTogglesToTenantAdminControls = (formData: { settings?: Record<string, unknown> }) => {

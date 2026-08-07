@@ -66,6 +66,7 @@ export interface InviteComposerProps {
     tenantIdAllocation?: IdAllocationClient;
     agencyIdAllocation?: IdAllocationClient;
     includeAgencyField?: boolean;
+    requireNames?: boolean;
     submitting?: boolean;
     /** Discriminator for the persisted send mode (one per tab), e.g. the target role. */
     persistKey: string;
@@ -149,6 +150,7 @@ export const InviteComposer = ({
     tenantIdAllocation,
     agencyIdAllocation,
     includeAgencyField = false,
+    requireNames = false,
     submitting = false,
     persistKey,
     onSubmit,
@@ -191,7 +193,10 @@ export const InviteComposer = ({
     const tenantIdValid = !requireTenantId || tenantAllocation.canSubmit;
     const agencyIdValid = !includeAgencyField || agencyAllocation.canSubmit;
     const templateValid = sendMode === 'createOnly' || selectedTemplate != null;
-    const isValid = emailValid && tenantIdValid && agencyIdValid && templateValid;
+    // Counsellor invites provision a person (#384): without names the invite
+    // cannot create a usable counsellor account, so the send button stays off.
+    const namesValid = !requireNames || (firstName.trim().length > 0 && lastName.trim().length > 0);
+    const isValid = emailValid && tenantIdValid && agencyIdValid && templateValid && namesValid;
     const showEmailError = emailTouched && recipientEmail.length > 0 && !emailValid;
 
     // Bulk mode (#316): while rows are checked, sending acts on the selection

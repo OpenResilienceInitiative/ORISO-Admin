@@ -91,7 +91,6 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
             <EnforceModeSwitch enforceMode={enforceMode} onChange={setEnforceMode} />
             <PermissionsSettingsView
                 tenantId={tenantId}
-                disableSubTogglesWhenMasterOff={false}
                 excludeCardKeys={excludeCardKeys}
                 isLoading={isLoading}
                 initialValues={initialValues}

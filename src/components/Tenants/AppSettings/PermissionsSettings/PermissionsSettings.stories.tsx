@@ -73,7 +73,6 @@ type Story = StoryObj<typeof meta>;
  *  Sub-toggles disable when their card master is switched off. */
 export const TenantView: Story = {
     args: {
-        disableSubTogglesWhenMasterOff: true,
         initialValues: { settings: filledSettings },
     },
 };
@@ -82,7 +81,6 @@ export const TenantView: Story = {
  *  are locked off while the master is off — "disable, don't hide". */
 export const LiveChatMasterOff: Story = {
     args: {
-        disableSubTogglesWhenMasterOff: true,
         initialValues: {
             settings: { ...filledSettings, featureAnonymousChatEnabled: false },
         },
@@ -94,7 +92,6 @@ export const LiveChatMasterOff: Story = {
  *  by the tenant admin. */
 export const PlatformForcedVideoOff: Story = {
     args: {
-        disableSubTogglesWhenMasterOff: true,
         restrictedFields: getForcedOffFields({ videoCalls: false } as never),
         initialValues: {
             settings: {
@@ -109,12 +106,19 @@ export const PlatformForcedVideoOff: Story = {
     },
 };
 
-/** Super-admin (platform) view: sub-toggles stay editable regardless of the
- *  card master, because the platform decides which toggles tenants may see. */
+/** Super-admin (platform) view with every chat-type master enabled. */
 export const SuperAdminView: Story = {
     args: {
-        disableSubTogglesWhenMasterOff: false,
         initialValues: { settings: filledSettings },
+    },
+};
+
+/** Platform view with the 1:1 master off: children remain visible but non-interactive until the
+ *  master is enabled again, matching tenant and agency behavior. */
+export const SuperAdminMasterOff: Story = {
+    args: {
+        enforceMode: true,
+        initialValues: { settings: { ...filledSettings, featureCallsEnabled: false } },
     },
 };
 
@@ -122,7 +126,6 @@ export const SuperAdminView: Story = {
  *  feature to lock it on for every lower role, so it can no longer be hidden. */
 export const EnforceActiveStates: Story = {
     args: {
-        disableSubTogglesWhenMasterOff: false,
         enforceMode: true,
         initialValues: { settings: filledSettings },
     },

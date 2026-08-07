@@ -421,6 +421,24 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 }
 
+@media (max-width: 599px) {
+    .toolbarScroll {
+        padding-bottom: 4px;
+        scrollbar-color: var(--m3-outline, #747778) transparent;
+        scrollbar-width: thin;
+
+        &::-webkit-scrollbar {
+            display: block;
+            height: 4px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: var(--m3-outline, #747778);
+            border-radius: 999px;
+        }
+    }
+}
+
 .toolGroup {
     display: flex;
     flex-shrink: 0;
