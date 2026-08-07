@@ -99,3 +99,61 @@
     background: var(--m3-secondary, #4c555f);
     color: var(--m3-on-primary, #ffffff);
 }
+
+// The expanded search takes the row and pushes the create action to the edge;
+// the row height never changes, so nothing below it moves (Figma 1683:41452).
+.searchField {
+    display: flex;
+    height: 56px;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    padding: 0 8px 0 16px;
+    border-radius: 28px;
+    background: var(--admin-search-surface, #fcf9f9);
+    box-shadow: inset 4px 4px 8px rgb(0 0 0 / 12%);
+    color: var(--m3-on-surface-variant, #444748);
+    gap: 8px;
+}
+
+.searchFieldIcon {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+}
+
+.searchInput {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    font-size: 16px;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    outline: none;
+
+    &::-webkit-search-cancel-button {
+        display: none;
+    }
+}
+
+.searchClose {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 100px;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}

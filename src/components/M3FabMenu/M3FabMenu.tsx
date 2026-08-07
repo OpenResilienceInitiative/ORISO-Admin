@@ -58,7 +58,9 @@ export const M3FabMenu = ({
     const menuId = useId();
     const rootRef = useRef<HTMLDivElement>(null);
     const fabRef = useRef<HTMLButtonElement>(null);
-    const activeItem = items.find((item) => item.key === activeKey);
+    // The account entries are destinations too: standing on "Konto" and closing
+    // the menu left the FAB empty, because only `items` was searched.
+    const activeItem = [...items, ...footerItems].find((item) => item.key === activeKey);
 
     const close = useCallback(
         (returnFocus = true) => {

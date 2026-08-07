@@ -1,7 +1,31 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { AdminMobileNav } from './AdminMobileNav';
-import { ADMIN_ACCOUNT_ITEMS, ADMIN_SECTIONS } from './adminSections.fixture';
+import { ADMIN_ACCOUNT_ITEMS, ADMIN_SECTIONS, capabilitiesFor } from './adminSections.fixture';
+
+/** Stand-ins for the real filter controls of a page (Figma 1683:41718). */
+const FilterChips = () => (
+    <>
+        {['Rolle', 'Zeitraum'].map((label) => (
+            <span
+                key={label}
+                style={{
+                    display: 'inline-flex',
+                    height: 56,
+                    alignItems: 'center',
+                    padding: '0 24px',
+                    border: '1px solid var(--m3-outline-variant, #c4c7c8)',
+                    borderRadius: '28px 4px 4px 28px',
+                    color: 'var(--m3-on-surface-variant, #444748)',
+                    fontSize: 16,
+                    whiteSpace: 'nowrap',
+                }}
+            >
+                {label}
+            </span>
+        ))}
+    </>
+);
 
 const firstSubsection = (key: string) => ADMIN_SECTIONS.find((s) => s.key === key)?.subsections?.[0]?.key;
 
@@ -12,8 +36,7 @@ const firstSubsection = (key: string) => ADMIN_SECTIONS.find((s) => s.key === ke
 const PhoneFrame = ({ withBack = false, startSection = 'settings' }: { withBack?: boolean; startSection?: string }) => {
     const [sectionKey, setSectionKey] = useState(startSection);
     const [subsectionKey, setSubsectionKey] = useState<string | undefined>(firstSubsection(startSection));
-    const section = ADMIN_SECTIONS.find((s) => s.key === sectionKey);
-    const subsection = section?.subsections?.find((s) => s.key === subsectionKey);
+    const caps = capabilitiesFor(sectionKey, subsectionKey);
 
     return (
         <div
@@ -25,11 +48,15 @@ const PhoneFrame = ({ withBack = false, startSection = 'settings' }: { withBack?
                 overflow: 'hidden',
             }}
         >
-            <div style={{ padding: '24px 24px 80px' }}>
-                <p style={{ margin: 0, fontSize: 22, fontWeight: 500 }}>{section?.label}</p>
-                <p style={{ margin: '4px 0 0', color: '#444748' }}>
-                    {subsection ? subsection.label : 'Bereich ohne Unterbereiche'}
+            {/* No page header on mobile: the bar already says which section and
+                subsection you are in (Frank, 2026-08-07). What stays is content. */}
+            <div style={{ padding: '24px 24px 80px', color: '#444748', fontSize: 14 }}>
+                <p style={{ margin: 0 }}>
+                    Zweite Zeile hier: {caps.search ? 'Suche' : 'keine Suche'} · {caps.add ? 'Anlegen' : 'kein Anlegen'}{' '}
+                    · {caps.filters ? 'Filterreihe' : 'keine Filter'}
                 </p>
+                <p style={{ margin: '8px 0 0', fontSize: 12 }}>Belegt durch {caps.source}</p>
+                {caps.note && <p style={{ margin: '8px 0 0', fontSize: 12 }}>{caps.note}</p>}
             </div>
             <div style={{ position: 'absolute', right: 0, bottom: 0, left: 0 }}>
                 <AdminMobileNav
@@ -44,10 +71,12 @@ const PhoneFrame = ({ withBack = false, startSection = 'settings' }: { withBack?
                     onSubsectionSelect={setSubsectionKey}
                     onBack={withBack ? () => undefined : undefined}
                     backLabel="Zurück"
-                    onSearch={() => undefined}
+                    onSearch={caps.search ? () => undefined : undefined}
                     searchLabel="Suchen"
-                    onAdd={() => undefined}
+                    searchPlaceholder="Suchen…"
+                    onAdd={caps.add ? () => undefined : undefined}
                     addLabel="Neu anlegen"
+                    filters={caps.filters ? <FilterChips /> : undefined}
                     openLabel="Menü öffnen"
                     closeLabel="Menü schließen"
                 />
