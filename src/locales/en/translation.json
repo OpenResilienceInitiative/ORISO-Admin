@@ -718,6 +718,7 @@
     "tenants.permissions.enforce.checkboxLabel": "Enforce {{feature}} for lower roles",
     "tenants.permissions.enforce.footerNote": "Checked selections prevent this feature from being hidden for lower roles.",
     "tenants.permissions.enforce.action": "Enforce activated selections",
+    "tenants.permissions.enforce.configAction": "Configure",
     "tenants.permissions.card.configurableFeatures": "Configurable additional functions",
     "tenants.permissions.card.group.title": "Group consultations",
     "tenants.permissions.card.groupInternal.title": "Group chats (internal)",
