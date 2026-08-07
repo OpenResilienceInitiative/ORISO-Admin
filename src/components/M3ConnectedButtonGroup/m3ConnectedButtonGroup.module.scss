@@ -60,10 +60,12 @@
 .segmentSelected {
     border-radius: 100px;
     background: var(--m3-secondary, #4c555f);
-    // Figma uses primary-fixed #FFDAD5 here; this palette's --m3-primary-fixed
-    // is #ffe2de. Kept on the existing token until that difference is decided
-    // (Q6) — a hardcoded hex would break the seed-derived palette.
-    color: var(--m3-primary-fixed, #ffe2de);
+    // The role Figma names here is primary-fixed, so that is the token used,
+    // with Figma's own #FFDAD5 as the fallback. Note the value drift: at runtime
+    // orisoScheme writes #ffe2de into --m3-primary-fixed (DEFAULT_ACCENT_LIGHT),
+    // so the app renders the rose one shade lighter than the design until the
+    // token is corrected globally — deliberately not patched from here.
+    color: var(--m3-primary-fixed, #ffdad5);
 }
 
 // The last segment rounds its outer side to close the group.

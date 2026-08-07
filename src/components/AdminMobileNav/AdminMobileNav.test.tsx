@@ -63,6 +63,20 @@ describe('AdminMobileNav', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Träger' }));
 
         expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    });
+
+    // The search row is fixed furniture: it must be there on a section with
+    // subsections and on one without, or the menu's anchor would jump every
+    // time you switch section (Frank, 2026-08-07).
+    it('keeps the search row in place across sections', async () => {
+        render(<Harness />);
+
+        expect(screen.getByRole('button', { name: 'Suchen' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Neu anlegen' })).toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Träger' }));
+
         expect(screen.getByRole('button', { name: 'Suchen' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Neu anlegen' })).toBeInTheDocument();
     });

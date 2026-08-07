@@ -17,16 +17,13 @@
     }
 }
 
-.row {
+// Always present, always above the bar. Its height is reserved even when a
+// section has neither filters nor a create action, so opening the menu never
+// moves the rows underneath it.
+.searchRow {
     display: flex;
     min-width: 0;
-    align-items: flex-end;
-    gap: 8px;
-}
-
-.aboveRow {
-    display: flex;
-    min-width: 0;
+    min-height: 56px;
     align-items: center;
     gap: 4px;
     overflow-x: auto;
@@ -35,6 +32,20 @@
     &::-webkit-scrollbar {
         display: none;
     }
+}
+
+.row {
+    display: flex;
+    min-width: 0;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+// The menu must not be clipped by the row's own overflow handling, and it grows
+// upward past the search row.
+.fabMenu {
+    position: relative;
+    z-index: 2;
 }
 
 .back {
@@ -58,27 +69,18 @@
     }
 }
 
-// Sections without subsections put their own actions here, so the row keeps
-// its shape instead of collapsing to a lone FAB.
-.actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
+.search,
 .action {
     display: inline-flex;
     width: 56px;
     height: 56px;
     box-sizing: border-box;
+    flex: 0 0 56px;
     align-items: center;
     justify-content: center;
     padding: 16px;
     border: 0;
     border-radius: 100px;
-    background: var(--admin-search-surface, #fcf9f9);
-    box-shadow: inset 4px 4px 8px rgb(0 0 0 / 12%);
-    color: var(--m3-on-surface-variant, #444748);
     cursor: pointer;
 
     svg {
@@ -87,8 +89,13 @@
     }
 }
 
+.search {
+    background: var(--admin-search-surface, #fcf9f9);
+    box-shadow: inset 4px 4px 8px rgb(0 0 0 / 12%);
+    color: var(--m3-on-surface-variant, #444748);
+}
+
 .actionPrimary {
     background: var(--m3-secondary, #4c555f);
-    box-shadow: none;
     color: var(--m3-on-primary, #ffffff);
 }

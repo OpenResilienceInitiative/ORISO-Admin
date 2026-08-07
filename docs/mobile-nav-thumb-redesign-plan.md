@@ -208,6 +208,31 @@ app proves the wiring.
     drawn in `1683:39454`. No scrim, no hiding: you keep seeing which section
     you are in while you pick a destination.
 
+## 7b. Corrections from the first interactive review (2026-08-07)
+
+-   **The search row is fixed furniture.** It is always the row directly above
+    the bar, on every section — not something that appears when a section has no
+    subsections. A row that comes and goes moves the menu's anchor each time it
+    opens, which is exactly the jumping the redesign is meant to remove.
+-   **The menu overlays, it does not push.** The destination stack is positioned
+    absolutely against the FAB and lies on top of the rows. In flow it shoved the
+    search row off the top of the screen (measured at `y = -90`).
+-   **The stack scrolls.** Eight sections plus the account group are taller than
+    a phone; the stack is capped at `100dvh - 140px` so the first entry can never
+    be cut off.
+-   **Sections without subsections show an empty chip row**, not substitute
+    controls. Search and create live in the search row, where they always are.
+-   **Sections have more subsections than assumed.** `AdminMobileNav` stories and
+    tests now read from `adminSections.fixture.tsx`, which mirrors the real route
+    tree — including the four user groups from `UserSectionPills`, the tenant and
+    agency edit tabs, the three link tabs and the three log views.
+-   **Q6 answered: use the correct token.** The selected chip label uses
+    `--m3-primary-fixed` with Figma's `#FFDAD5` as fallback. The runtime palette
+    still writes `#ffe2de` into that variable (`DEFAULT_ACCENT_LIGHT` in
+    `utils/theme/orisoScheme.ts`), so the app renders one shade lighter than the
+    design until the token is corrected globally — a separate, deliberate change,
+    not something to patch from a component stylesheet.
+
 ## 8. Phase 0 results (token and icon audit)
 
 ### 8.1 Colour mapping

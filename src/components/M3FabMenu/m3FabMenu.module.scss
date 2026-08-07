@@ -8,15 +8,34 @@
  */
 
 .root {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    // The stack grows upward out of the FAB; nothing here may push the row.
-    gap: 6px;
 }
 
 .stack {
+    // Absolute, not a flex sibling: an in-flow stack pushes everything above the
+    // FAB — the search row was shoved off-screen every time the menu opened.
+    // The menu lies ON TOP of the rows instead, so nothing but the FAB's own
+    // icon changes when you open it.
+    position: absolute;
+    // 6px clear of the FAB, matching the bar row's own inset.
+    bottom: calc(100% + 6px);
+    left: 0;
+    // With every destination a permission grants, the stack is taller than a
+    // phone: eight sections plus the account group already overflow a 650px
+    // screen and the first entry disappears off the top. Cap it against the
+    // viewport minus the two rows below and let it scroll instead.
     display: flex;
+    max-height: calc(100dvh - 140px);
+    overflow-y: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+
     // Left edges line up with the FAB, right edges stay ragged: every pill hugs
     // its label. Figma right-aligns the content *inside* each pill, which has no
     // visible effect on a hug-width box — do not mistake that for a right-aligned

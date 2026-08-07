@@ -24,39 +24,45 @@ export interface AdminMobileNavProps {
     /** Present only on pages you can go back from; icon only, never a label. */
     onBack?: () => void;
     backLabel?: string;
-    /** Search for the current section. Shown when it has no subsections. */
+    /** Search for the current section. */
     onSearch?: () => void;
     searchLabel?: string;
     /** Primary create action of the current section, e.g. "Träger anlegen". */
     onAdd?: () => void;
     addLabel?: string;
+    /**
+     * Filter controls of the current page, rendered in the search row between
+     * search and add (Figma 1683:41718, "Searchbar Config Row").
+     */
+    filters?: ReactNode;
     openLabel: string;
     closeLabel: string;
-    /** Extra row above the bar — the expanded search or a filter row. */
-    aboveRow?: ReactNode;
     className?: string;
 }
 
 /**
- * The mobile navigation as a whole (Figma 1683:39455, all six variants): the
- * page FAB with the destination menu, an optional back button, and the
- * subsections of the section you are in.
+ * The mobile navigation as a whole (Figma 1683:39455): the search row on top,
+ * the bar row underneath it, and the destination menu that opens above both.
  *
  * It is the mobile sidebar, not a decoration of one: picking a destination in
  * the menu makes it the active section, its icon moves into the FAB when the
- * menu closes, and the row next to the FAB reloads with that section's
- * subsections. Sections without subsections show their search and create
- * actions there instead, so the row is never empty and never dead.
+ * menu closes, and the chip row beside the FAB reloads with that section's
+ * subsections.
+ *
+ * **The rows never trade places.** Search is always the row above the bar, even
+ * on sections that have no subsections and no filters — a row that appears and
+ * disappears would shift the menu's anchor every time you open it (Frank,
+ * 2026-08-07). Sections without subsections simply show an empty chip row.
  */
 export const AdminMobileNav = ({
     accountItems,
     activeSectionKey,
     activeSubsectionKey,
     addLabel,
-    aboveRow,
     backLabel,
     className,
     closeLabel,
+    filters,
     onAdd,
     onBack,
     onSearch,
@@ -79,7 +85,24 @@ export const AdminMobileNav = ({
 
     return (
         <div className={classNames(styles.root, className)} data-admin-mobile-nav>
-            {aboveRow && <div className={styles.aboveRow}>{aboveRow}</div>}
+            <div className={styles.searchRow} data-admin-mobile-nav-search-row>
+                {onSearch && (
+                    <button className={styles.search} type="button" aria-label={searchLabel} onClick={onSearch}>
+                        <SearchIcon />
+                    </button>
+                )}
+                {filters}
+                {onAdd && (
+                    <button
+                        className={classNames(styles.action, styles.actionPrimary)}
+                        type="button"
+                        aria-label={addLabel}
+                        onClick={onAdd}
+                    >
+                        <AddIcon />
+                    </button>
+                )}
+            </div>
             <div className={styles.row}>
                 <M3FabMenu
                     items={sections}
@@ -90,37 +113,20 @@ export const AdminMobileNav = ({
                     openLabel={openLabel}
                     closeLabel={closeLabel}
                     onSelect={onSectionSelect}
+                    className={styles.fabMenu}
                 />
                 {onBack && (
                     <button className={styles.back} type="button" aria-label={backLabel} onClick={onBack}>
                         <ArrowBackIcon />
                     </button>
                 )}
-                {subsections.length > 0 ? (
+                {subsections.length > 0 && (
                     <M3ConnectedButtonGroup
                         ariaLabel={activeSection?.label ?? ''}
                         items={subsections}
                         selectedKey={activeSubsectionKey}
                         onSelect={onSubsectionSelect}
                     />
-                ) : (
-                    <div className={styles.actions}>
-                        {onSearch && (
-                            <button className={styles.action} type="button" aria-label={searchLabel} onClick={onSearch}>
-                                <SearchIcon />
-                            </button>
-                        )}
-                        {onAdd && (
-                            <button
-                                className={classNames(styles.action, styles.actionPrimary)}
-                                type="button"
-                                aria-label={addLabel}
-                                onClick={onAdd}
-                            >
-                                <AddIcon />
-                            </button>
-                        )}
-                    </div>
                 )}
             </div>
         </div>
