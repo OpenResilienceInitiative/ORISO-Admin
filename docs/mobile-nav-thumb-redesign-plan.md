@@ -196,3 +196,68 @@ app proves the wiring.
     a separate module?
 -   **Q5** Scope: Admin only, or does the App layer (`ORISO-Frontend`) get the same
     pattern?
+
+### Answered (2026-08-07)
+
+-   **Q1 → the illustrated section cards go, without replacement.** `SectionCarousel`
+    and `SectionCard` are deleted once the chip group is wired; sections are
+    reachable only through the bottom chips. One navigation path, not two.
+-   **Q2 → account and sign-out become two more pills at the bottom of the FAB
+    stack**, visually set apart from the destinations above them.
+-   **Q3 → the chip group stays visible while the menu is open**, exactly as
+    drawn in `1683:39454`. No scrim, no hiding: you keep seeing which section
+    you are in while you pick a destination.
+
+## 8. Phase 0 results (token and icon audit)
+
+### 8.1 Colour mapping
+
+This palette **inverts some M3 `on-*` names on purpose** (documented in
+`src/app.css` at `--m3-primary-container` and `--m3-on-background`, #594.13a/b):
+in this codebase `on-*` is the readable foreground produced by `readableOn()`,
+so a Figma style applied as a FILL must not be copied onto the same-named
+variable. The mapping below is therefore by **role**, not by name:
+
+| Figma style        | Figma hex | Use in this design            | Admin token                                                    | Status                           |
+| ------------------ | --------- | ----------------------------- | -------------------------------------------------------------- | -------------------------------- |
+| on-primary-fixed   | `#410001` | FAB fill, active pill fill    | `--admin-nav-indicator-surface`                                | exists, seed-derived             |
+| on-primary-cont.   | `#FFE2DE` | inactive pill fill, FAB glyph | `--m3-primary-container`                                       | exists (name inverted by design) |
+| primary            | `#A5000A` | back FAB fill                 | `--m3-primary`                                                 | exists                           |
+| on-primary         | `#FFFFFF` | back FAB glyph                | `--m3-on-primary`                                              | exists                           |
+| secondary          | `#4C555F` | selected chip, add button     | `--m3-secondary`                                               | exists                           |
+| secondary-cont.    | `#646D78` | unselected chips              | `--m3-secondary-container`                                     | exists                           |
+| on-secondary-cont. | `#E7EFFC` | unselected chip label         | `--m3-on-secondary-container`                                  | exists                           |
+| surface-bright     | `#FCF9F9` | collapsed search fill         | `--admin-search-surface`                                       | exists                           |
+| outline-variant    | `#C4C7C8` | filter button border          | `--m3-outline-variant`                                         | exists                           |
+| on-surface-variant | `#444748` | filter button label           | `--m3-on-surface-variant`                                      | exists                           |
+| **primary-fixed**  | `#FFDAD5` | **selected chip label**       | none — `--m3-primary-fixed` holds `#ffe2de`, a different value | **decision needed (Q6)**         |
+
+Nothing may be hardcoded: colours are seed-derived at runtime by
+`computeOrisoPalette`, and the `m3Sweep` guard rejects variables used without a
+fallback.
+
+**Q6** The selected chip's label is `#FFDAD5` in Figma, but the codebase's
+`--m3-primary-fixed` is `#ffe2de` — a real difference (rose vs. slightly deeper
+rose), not a rounding error. Reuse `#ffe2de` and drop the distinction, or add a
+seed-derived token for `#FFDAD5`?
+
+### 8.2 Icons
+
+All six destination glyphs already exist as local assets under
+`src/resources/img/svg/navbar/` in three states, and the Figma names map onto
+them: `holiday_village` → `tenants`, `real_estate_agent` → `counseling`,
+`identity_platform` → `users`, `query_stats` → `statistics`, `link` → `links`,
+`display_settings` → `display_settings`.
+
+Two problems make them unusable as-is for the FAB menu:
+
+1. **Fixed fills.** The assets carry `fill="white"` / `fill="#141C25"`, but each
+   glyph now has to render in two colours (`#410001` on the rose pill, `#FFE2DE`
+   on the dark pill and inside the FAB). They must be converted to
+   `fill="currentColor"`.
+2. **Mask-id collision.** Every asset starts with `<mask id="mask0_1_…">`. With
+   several inlined on one page the ids collide and glyphs disappear — the same
+   Figma export artefact already hit us before. The ids must be stripped.
+
+Phase 0 therefore delivers a `currentColor` glyph set (one file per
+destination, no state variants) before any component work starts.
