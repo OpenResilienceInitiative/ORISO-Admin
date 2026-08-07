@@ -8,12 +8,15 @@ vi.mock('react-i18next', () => ({
 
 afterEach(cleanup);
 
+const configLabel = 'tenants.permissions.enforce.configAction';
+const enforceLabel = 'tenants.permissions.enforce.action';
+
 describe('EnforceModeSwitch', () => {
     it('calls onChange(false) when Config is clicked', () => {
         const onChange = vi.fn();
         render(<EnforceModeSwitch enforceMode onChange={onChange} />);
 
-        fireEvent.click(screen.getByText('tenants.permissions.enforce.configAction'));
+        fireEvent.click(screen.getByRole('button', { name: configLabel }));
 
         expect(onChange).toHaveBeenCalledWith(false);
     });
@@ -22,26 +25,18 @@ describe('EnforceModeSwitch', () => {
         const onChange = vi.fn();
         render(<EnforceModeSwitch enforceMode={false} onChange={onChange} />);
 
-        fireEvent.click(screen.getByText('tenants.permissions.enforce.action'));
+        fireEvent.click(screen.getByRole('button', { name: enforceLabel }));
 
         expect(onChange).toHaveBeenCalledWith(true);
     });
 
     it('marks the active mode button so it can be styled distinctly', () => {
         const { rerender } = render(<EnforceModeSwitch enforceMode onChange={() => {}} />);
-        expect(screen.getByText('tenants.permissions.enforce.action').closest('button')).toHaveAttribute(
-            'aria-pressed',
-            'true',
-        );
-        expect(screen.getByText('tenants.permissions.enforce.configAction').closest('button')).toHaveAttribute(
-            'aria-pressed',
-            'false',
-        );
+        expect(screen.getByRole('button', { name: enforceLabel })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: configLabel })).toHaveAttribute('aria-pressed', 'false');
 
         rerender(<EnforceModeSwitch enforceMode={false} onChange={() => {}} />);
-        expect(screen.getByText('tenants.permissions.enforce.configAction').closest('button')).toHaveAttribute(
-            'aria-pressed',
-            'true',
-        );
+        expect(screen.getByRole('button', { name: configLabel })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: enforceLabel })).toHaveAttribute('aria-pressed', 'false');
     });
 });
