@@ -1,0 +1,179 @@
+import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react';
+import CloseIcon from '@mui/icons-material/Close';
+import classNames from 'classnames';
+import { Link } from 'react-router-dom';
+import styles from './m3FabMenu.module.scss';
+
+export interface M3FabMenuItem {
+    /** Stable key; also what `onSelect` reports and what `activeKey` matches. */
+    key: string;
+    label: string;
+    /** Single-colour glyph — it inherits the pill's text colour. */
+    icon?: ReactNode;
+    /** Route. Without it the pill renders as a plain button. */
+    to?: string;
+}
+
+export interface M3FabMenuProps {
+    /** Destinations, in the order the design shows them (top to bottom). */
+    items: M3FabMenuItem[];
+    /**
+     * Account-level entries — rendered below the destinations behind a divider,
+     * because they are not places in the same sense (Frank, 2026-08-07).
+     */
+    footerItems?: M3FabMenuItem[];
+    activeKey?: string;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    /** Accessible name of the FAB while closed, e.g. "Menü öffnen". */
+    openLabel: string;
+    /** Accessible name while open, e.g. "Menü schließen". */
+    closeLabel: string;
+    onSelect?: (key: string) => void;
+    className?: string;
+}
+
+/**
+ * The page FAB and the destination stack it opens (Figma 1683:39454 / 1683:39456).
+ *
+ * Closed, the FAB carries the icon of the destination you are on — it is a
+ * "you are here" marker as much as a menu handle. Open, it becomes the close
+ * button and the destinations stack above it, right-aligned, within thumb reach.
+ *
+ * The component owns no navigation: it reports selections and lets its parent
+ * decide. Open state is controlled, so the bar can coordinate it with the
+ * search row.
+ */
+export const M3FabMenu = ({
+    activeKey,
+    className,
+    closeLabel,
+    footerItems = [],
+    items,
+    onOpenChange,
+    onSelect,
+    open,
+    openLabel,
+}: M3FabMenuProps) => {
+    const menuId = useId();
+    const rootRef = useRef<HTMLDivElement>(null);
+    const fabRef = useRef<HTMLButtonElement>(null);
+    const activeItem = items.find((item) => item.key === activeKey);
+
+    const close = useCallback(
+        (returnFocus = true) => {
+            onOpenChange(false);
+
+            if (returnFocus) {
+                fabRef.current?.focus();
+            }
+        },
+        [onOpenChange],
+    );
+
+    // Escape and a click outside close the menu. Pointer-down rather than click,
+    // so a tap that starts outside never also activates what is underneath.
+    // Both listeners sit on the document: Escape has to work while focus is on
+    // a pill, on the FAB, or nowhere in particular.
+    useEffect(() => {
+        if (!open) {
+            return undefined;
+        }
+
+        const onPointerDown = (event: MouseEvent | TouchEvent) => {
+            if (!rootRef.current?.contains(event.target as Node)) {
+                close(false);
+            }
+        };
+
+        const onKeyDown = (event: globalThis.KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                close();
+            }
+        };
+
+        document.addEventListener('mousedown', onPointerDown);
+        document.addEventListener('touchstart', onPointerDown);
+        document.addEventListener('keydown', onKeyDown);
+
+        return () => {
+            document.removeEventListener('mousedown', onPointerDown);
+            document.removeEventListener('touchstart', onPointerDown);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [close, open]);
+
+    const renderItem = (item: M3FabMenuItem, isFooter: boolean) => {
+        const isActive = item.key === activeKey;
+        const content = (
+            <>
+                {item.icon}
+                <span className={styles.itemLabel}>{item.label}</span>
+            </>
+        );
+        const itemClassName = classNames(styles.item, {
+            [styles.itemActive]: isActive,
+            [styles.itemFooter]: isFooter,
+        });
+
+        if (item.to) {
+            return (
+                <li key={item.key}>
+                    <Link
+                        className={itemClassName}
+                        to={item.to}
+                        aria-current={isActive ? 'page' : undefined}
+                        onClick={() => {
+                            onSelect?.(item.key);
+                            close(false);
+                        }}
+                    >
+                        {content}
+                    </Link>
+                </li>
+            );
+        }
+
+        return (
+            <li key={item.key}>
+                <button
+                    className={itemClassName}
+                    type="button"
+                    onClick={() => {
+                        onSelect?.(item.key);
+                        close(false);
+                    }}
+                >
+                    {content}
+                </button>
+            </li>
+        );
+    };
+
+    return (
+        <div className={classNames(styles.root, className)} ref={rootRef}>
+            {open && (
+                <ul className={styles.stack} id={menuId} data-admin-fab-menu-stack>
+                    {items.map((item) => renderItem(item, false))}
+                    {footerItems.map((item) => renderItem(item, true))}
+                </ul>
+            )}
+            <button
+                className={styles.fab}
+                ref={fabRef}
+                type="button"
+                aria-label={open ? closeLabel : openLabel}
+                aria-expanded={open}
+                aria-controls={open ? menuId : undefined}
+                aria-haspopup="menu"
+                data-admin-fab-menu-toggle
+                onClick={() => onOpenChange(!open)}
+            >
+                {open ? <CloseIcon className={styles.fabGlyph} /> : activeItem?.icon ?? null}
+            </button>
+        </div>
+    );
+};
+
+export default M3FabMenu;
