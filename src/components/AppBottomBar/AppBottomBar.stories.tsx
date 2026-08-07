@@ -32,7 +32,7 @@ const destinations: M3NavigationBarItem[] = [
 /** The full set a super admin sees today — the seven that break the old bar. */
 const superAdminDestinations: M3NavigationBarItem[] = [
     ...destinations,
-    { key: 'agency', label: 'Beratungsstelle', icon: <RealEstateAgentOutlined />, activeIcon: <RealEstateAgent /> },
+    { key: 'agency', label: 'Beratungsstellen', icon: <RealEstateAgentOutlined />, activeIcon: <RealEstateAgent /> },
     { key: 'users', label: 'Konten', icon: <PeopleOutlined />, activeIcon: <People /> },
     { key: 'statistics', label: 'Statistiken', icon: <AssessmentOutlined />, activeIcon: <Assessment /> },
     { key: 'links', label: 'Links', icon: <LinkOutlined />, activeIcon: <LinkIcon /> },
@@ -163,7 +163,7 @@ export const NarrowPhone: Story = {
                 items={[
                     {
                         key: 'agency',
-                        label: 'Beratungsstelle',
+                        label: 'Beratungsstellen',
                         icon: <RealEstateAgentOutlined />,
                         activeIcon: <RealEstateAgent />,
                     },
