@@ -1,0 +1,81 @@
+/*
+ * Figma 1683:39456, `Active Subheaders`. Colours map by role, not by Figma's
+ * style name — see the note in m3FabMenu.module.scss.
+ */
+
+.group {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 2px;
+    // Wider than the space beside the FAB on purpose: subsections run off the
+    // right edge and are swiped into view.
+    overflow-x: auto;
+    border-radius: 28px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.segment {
+    display: inline-flex;
+    height: 56px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 24px;
+    border: 0;
+    // Unselected segments are slabs; only the selected one is a pill.
+    border-radius: 8px;
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    gap: 8px;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    min-width: 48px;
+    text-decoration: none;
+    // The shape morph is the selection affordance, so it must be visible.
+    transition: border-radius 0.2s ease, background 0.2s ease;
+    white-space: nowrap;
+
+    svg {
+        width: 24px;
+        height: 24px;
+        flex: 0 0 24px;
+    }
+
+    &:hover,
+    &:focus-visible {
+        text-decoration: none;
+    }
+}
+
+.segmentSelected {
+    border-radius: 100px;
+    background: var(--m3-secondary, #4c555f);
+    // Figma uses primary-fixed #FFDAD5 here; this palette's --m3-primary-fixed
+    // is #ffe2de. Kept on the existing token until that difference is decided
+    // (Q6) — a hardcoded hex would break the seed-derived palette.
+    color: var(--m3-primary-fixed, #ffe2de);
+}
+
+// The last segment rounds its outer side to close the group.
+.segmentLast {
+    border-radius: 8px 28px 28px 8px;
+
+    &.segmentSelected {
+        border-radius: 100px;
+    }
+}
+
+.label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

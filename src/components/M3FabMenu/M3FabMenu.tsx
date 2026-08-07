@@ -140,6 +140,9 @@ export const M3FabMenu = ({
                 <button
                     className={itemClassName}
                     type="button"
+                    // Also on the button branch: which destination you are on
+                    // must not depend on whether it was given a route.
+                    aria-current={isActive ? 'page' : undefined}
                     onClick={() => {
                         onSelect?.(item.key);
                         close(false);
