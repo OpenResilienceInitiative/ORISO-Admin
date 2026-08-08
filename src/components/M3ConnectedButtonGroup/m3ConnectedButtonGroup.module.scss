@@ -55,6 +55,12 @@
     &:focus-visible {
         text-decoration: none;
     }
+
+    // No inherited orange ring on a dark pill.
+    &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--m3-on-secondary-container, #e7effc);
+    }
 }
 
 .segmentSelected {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { M3ConnectedButtonGroupItem } from '../M3ConnectedButtonGroup';
 
 export interface MobileNavRegistration {
@@ -9,6 +9,10 @@ export interface MobileNavRegistration {
     /** Where "back" leads from this page. Absent on pages you cannot leave. */
     backPath?: string;
     backLabel?: string;
+    /** Search of this page, if it has one. Most settings pages do not. */
+    search?: { label: string; placeholder?: string; onSearch: (term: string) => void };
+    /** Create action of this page, if it has one. Logs and statistics do not. */
+    add?: { label: string; onAdd: () => void };
 }
 
 interface MobileNavContextValue {
@@ -19,20 +23,36 @@ interface MobileNavContextValue {
 const MobileNavContext = createContext<MobileNavContextValue | null>(null);
 
 /**
- * Lets the page tell the bottom navigation what it has, without every settings
- * page having to thread props through the layout.
+ * Lets the page tell the bottom navigation what it has, without every page
+ * having to thread props through the layout.
  *
- * Same shape as {@link CardDeckNavContext}: the page owns its own tabs and back
- * target, the bar just renders them. Only one page is mounted at a time, so the
- * context holds a single entry; a second registration replaces the first and
- * warns in development.
+ * Same shape as {@link CardDeckNavContext}: the page owns its tabs, back target
+ * and toolbar actions, the bar just renders them. Only one page is mounted at a
+ * time, so the context holds a single entry; a second registration replaces the
+ * first and warns in development.
  */
 export const MobileNavProvider = ({ children }: { children: ReactNode }) => {
     const [entries, setEntries] = useState<Record<string, MobileNavRegistration>>({});
 
+    // Merged rather than first-wins: a page registers its subsections from the
+    // header and its toolbar actions from the toolbar, and the bar needs both.
+    const registration = useMemo<MobileNavRegistration | null>(() => {
+        const parts = Object.values(entries);
+
+        if (!parts.length) {
+            return null;
+        }
+
+        return parts.reduce<MobileNavRegistration>((merged, part) => {
+            const defined = Object.fromEntries(Object.entries(part).filter(([, field]) => field !== undefined));
+
+            return { ...merged, ...defined };
+        }, {});
+    }, [entries]);
+
     const value = useMemo<MobileNavContextValue>(
         () => ({
-            registration: Object.values(entries)[0] ?? null,
+            registration,
             register: (id, entry) =>
                 setEntries((current) => {
                     if (!entry) {
@@ -47,46 +67,69 @@ export const MobileNavProvider = ({ children }: { children: ReactNode }) => {
                         return rest;
                     }
 
-                    if (process.env.NODE_ENV !== 'production') {
-                        const other = Object.keys(current).find((key) => key !== id);
-
-                        if (other) {
-                            // eslint-disable-next-line no-console
-                            console.warn(
-                                'MobileNavProvider: a second page registered its navigation; the bar shows only one.',
-                            );
-                        }
-                    }
-
                     return { ...current, [id]: entry };
                 }),
         }),
-        [entries],
+        [registration],
     );
 
     return <MobileNavContext.Provider value={value}>{children}</MobileNavContext.Provider>;
 };
 
+/** The data half of a registration — what a page's identity actually depends on. */
+const describe = (entry: MobileNavRegistration | null) =>
+    JSON.stringify(
+        entry && {
+            subsections: entry.subsections,
+            activeSubsectionKey: entry.activeSubsectionKey,
+            backPath: entry.backPath,
+            backLabel: entry.backLabel,
+            search: entry.search ? { label: entry.search.label, placeholder: entry.search.placeholder } : undefined,
+            add: entry.add ? { label: entry.add.label } : undefined,
+        },
+    );
+
 /**
- * Publishes this page's subsections and back target to the bar. Pass `null` to
- * publish nothing — a page without tabs must clear what the previous one left.
+ * Publishes this page's subsections, back target and toolbar actions to the
+ * bar. Pass `null` to publish nothing — a page without them must clear what the
+ * previous one left.
+ *
+ * Callbacks are read through a ref, so a page that rebuilds its handlers on
+ * every render does not re-register in a loop; only the described data above
+ * triggers a new registration.
  */
 export const useRegisterMobileNav = (id: string, entry: MobileNavRegistration | null) => {
     const context = useContext(MobileNavContext);
     const register = context?.register;
-    // Registrations are plain data; comparing them by value keeps a page that
-    // rebuilds its tabs on every render from looping through the provider.
-    const serialised = JSON.stringify(entry ?? null);
+    const latest = useRef(entry);
+    const described = describe(entry);
+
+    latest.current = entry;
 
     useEffect(() => {
         if (!register) {
             return undefined;
         }
 
-        register(id, JSON.parse(serialised) as MobileNavRegistration | null);
+        const { current } = latest;
+
+        register(
+            id,
+            current && {
+                ...JSON.parse(described),
+                search: current.search
+                    ? {
+                          label: current.search.label,
+                          placeholder: current.search.placeholder,
+                          onSearch: (term: string) => latest.current?.search?.onSearch(term),
+                      }
+                    : undefined,
+                add: current.add ? { label: current.add.label, onAdd: () => latest.current?.add?.onAdd() } : undefined,
+            },
+        );
 
         return () => register(id, null);
-    }, [id, register, serialised]);
+    }, [described, id, register]);
 };
 
 /** Read side, for the bar. Without a provider there is simply nothing to show. */

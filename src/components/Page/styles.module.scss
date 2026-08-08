@@ -288,24 +288,25 @@
 }
 
 @media (max-width: 768px) {
-    // No room for the arrow-rail gutter on a phone — the whole page collapses to
-    // a single 24px edge.
+    // No room for the arrow-rail gutter on a phone, and no reason for a wide
+    // edge either: the screen is 390px and every pixel spent on margin is one
+    // the table cannot use. 6px all round (Frank, 2026-08-07).
     .page {
-        --admin-page-edge: 24px;
+        --admin-page-edge: 6px;
     }
 
     .stickyHeaderPage {
         .content {
-            padding: 0 var(--admin-page-edge) 48px;
+            padding: 0 var(--admin-page-edge) 6px;
         }
 
         .back,
         .pageTitleContainer {
-            padding: 20px var(--admin-page-edge) 24px;
+            padding: 6px var(--admin-page-edge);
         }
 
         .back {
-            padding-bottom: 32px;
+            padding-bottom: 6px;
         }
     }
 

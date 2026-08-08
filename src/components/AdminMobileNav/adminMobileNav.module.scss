@@ -6,7 +6,8 @@
 .root {
     display: flex;
     flex-direction: column;
-    padding: 6px;
+    // Inset comes from whoever places the bar (see adminMobileNavBar.module.scss)
+    // so the safe-area handling lives in one place.
     gap: 12px;
     pointer-events: none;
 

@@ -100,6 +100,11 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout }: Admin
             }}
             onBack={registration?.backPath ? () => navigate(registration.backPath as string) : undefined}
             backLabel={registration?.backLabel ?? t('back', 'Zurück')}
+            onSearch={registration?.search?.onSearch}
+            searchLabel={registration?.search?.label}
+            searchPlaceholder={registration?.search?.placeholder}
+            onAdd={registration?.add?.onAdd}
+            addLabel={registration?.add?.label}
             openLabel={t('sidebar.menu.open', 'Menü öffnen')}
             closeLabel={t('sidebar.menu.close', 'Menü schließen')}
             aria-label={activeSection?.label}

@@ -70,6 +70,7 @@
     text-align: right;
     text-decoration: none;
     white-space: nowrap;
+    outline: none;
 
     svg {
         width: 24px;
@@ -80,6 +81,10 @@
     &:hover,
     &:focus-visible {
         text-decoration: none;
+    }
+
+    &:focus-visible {
+        box-shadow: 0 0 0 3px var(--admin-nav-indicator-surface, #410001);
     }
 }
 
@@ -128,6 +133,14 @@
     box-shadow: 0 1px 3px rgb(0 0 0 / 30%), 0 4px 8px 3px rgb(0 0 0 / 15%);
     color: var(--m3-primary-container, #ffe2de);
     cursor: pointer;
+    // The global focus style paints an orange ring that reads as a warning on a
+    // round dark control. Keyboard users still get a ring — in the palette.
+    outline: none;
+
+    &:focus-visible {
+        box-shadow: 0 0 0 3px var(--m3-primary-container, #ffe2de), 0 1px 3px rgb(0 0 0 / 30%),
+            0 4px 8px 3px rgb(0 0 0 / 15%);
+    }
 
     svg {
         width: 20px;

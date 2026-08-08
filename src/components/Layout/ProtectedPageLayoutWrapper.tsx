@@ -152,7 +152,11 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                 <Layout className={classNames(styles.mainContent)}>
                     <Content className={styles.content}>
                         {children}
-                        <SiteFooter />
+                        {/* Imprint and privacy belong to the public area: inside
+                            the admin they cost a full band of vertical space,
+                            add a second background tone and repeat links every
+                            signed-in user already accepted (Frank, 2026-08-07). */}
+                        {isDesktopLayout && <SiteFooter />}
                     </Content>
                 </Layout>
             </Layout>

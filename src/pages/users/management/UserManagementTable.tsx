@@ -8,6 +8,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import { PlusOutlined } from '@ant-design/icons';
 import { Modal } from '../../../components/Modal';
 import { GlobalSearchBar } from '../../../components/GlobalSearch';
+import { PageMobileActions } from '../../../components/Page/PageMobileActions';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { ResizeTable } from '../../../components/ResizableTable';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -317,35 +318,61 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     return (
         <div className={classNames('counselorList', styles.wrapper)}>
-            <div className={styles.searchContainer}>
-                <GlobalSearchBar
-                    className={styles.searchWithButton}
-                    expandedWidth={499}
-                    onSearch={updateSearch}
-                    onSearchChange={setSearchDebounced}
-                    searchPlaceholder={t(config.searchPlaceholderKey)}
-                >
-                    {canCreate && <div className={styles.toolbarActions}>{createButton}</div>}
-                </GlobalSearchBar>
-                {isConsultants && allowedNumberOfUsers > 0 && (
-                    <span className={styles.sectionCount}>
-                        {consultantCount}/{allowedNumberOfUsers} {t('counselor.title')}
-                    </span>
-                )}
-                {isAgencyAdmins && responseList?.total != null && (
-                    <span className={styles.sectionCount}>
-                        {t('agencyAdmins.title.text', { userCount: responseList.total })}
-                    </span>
-                )}
-                {isTenantAdmins && responseList?.total != null && (
-                    <span className={styles.sectionCount}>
-                        {t('tenantAdmins.title.text', { userCount: responseList.total })}
-                    </span>
-                )}
-                {isTenants && responseList?.total != null && (
-                    <span className={styles.sectionCount}>{t('tenants.subTitle', { count: responseList.total })}</span>
-                )}
-            </div>
+            <PageMobileActions
+                id="users"
+                search={{
+                    label: t(config.searchPlaceholderKey),
+                    placeholder: t(config.searchPlaceholderKey),
+                    onSearch: updateSearch,
+                }}
+                add={
+                    canCreate && !atConsultantLimit
+                        ? {
+                              label: t(config.createLabelKey ?? 'new'),
+                              onAdd: () =>
+                                  navigate(
+                                      isTenants
+                                          ? `${config.editPathPrefix}/add/general${
+                                                responseList?.total === 0 ? '?main=true' : ''
+                                            }`
+                                          : `${config.editPathPrefix}/add`,
+                                  ),
+                          }
+                        : undefined
+                }
+            >
+                <div className={styles.searchContainer}>
+                    <GlobalSearchBar
+                        className={styles.searchWithButton}
+                        expandedWidth={499}
+                        onSearch={updateSearch}
+                        onSearchChange={setSearchDebounced}
+                        searchPlaceholder={t(config.searchPlaceholderKey)}
+                    >
+                        {canCreate && <div className={styles.toolbarActions}>{createButton}</div>}
+                    </GlobalSearchBar>
+                    {isConsultants && allowedNumberOfUsers > 0 && (
+                        <span className={styles.sectionCount}>
+                            {consultantCount}/{allowedNumberOfUsers} {t('counselor.title')}
+                        </span>
+                    )}
+                    {isAgencyAdmins && responseList?.total != null && (
+                        <span className={styles.sectionCount}>
+                            {t('agencyAdmins.title.text', { userCount: responseList.total })}
+                        </span>
+                    )}
+                    {isTenantAdmins && responseList?.total != null && (
+                        <span className={styles.sectionCount}>
+                            {t('tenantAdmins.title.text', { userCount: responseList.total })}
+                        </span>
+                    )}
+                    {isTenants && responseList?.total != null && (
+                        <span className={styles.sectionCount}>
+                            {t('tenants.subTitle', { count: responseList.total })}
+                        </span>
+                    )}
+                </div>
+            </PageMobileActions>
             {isError && (
                 <Alert
                     message={t('error.loading')}
