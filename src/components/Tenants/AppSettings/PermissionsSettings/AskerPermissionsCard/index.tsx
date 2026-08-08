@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Card } from '../../../../Card';
 import { M3Checkbox } from '../../../../M3Checkbox';
@@ -44,6 +45,12 @@ export type AskerPermissionsCardProps = {
     enforceMode?: boolean;
     enforcedFields?: Set<string>;
     onEnforceChange?: EnforceChangeHandler;
+    /**
+     * Card footer (edit affordance). The outer CardEditable chrome is hidden by
+     * `.transparentCardWrapper`, so without a per-card EditButton the first deck page
+     * cannot enter edit mode — especially on mobile where only this card is visible.
+     */
+    footer?: ReactNode;
 };
 
 const DISPLAY_NAME_FIELD = ['settings', 'featureDisplayNameEditable'];
@@ -55,6 +62,7 @@ export const AskerPermissionsCard = ({
     enforceMode = false,
     enforcedFields,
     onEnforceChange,
+    footer,
 }: AskerPermissionsCardProps) => {
     const { t } = useTranslation();
 
@@ -77,7 +85,7 @@ export const AskerPermissionsCard = ({
         ) : null;
 
     return (
-        <Card titleKey="tenants.permissions.asker.title">
+        <Card titleKey="tenants.permissions.asker.title" footer={footer}>
             <p className={styles.intro}>
                 <Trans i18nKey="tenants.permissions.asker.description" components={{ strong: <strong /> }} />
             </p>

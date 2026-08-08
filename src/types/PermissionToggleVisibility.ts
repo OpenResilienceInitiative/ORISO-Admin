@@ -1,6 +1,10 @@
 export type PermissionToggleVisibility = {
     anonymousChat?: boolean;
     groupChat?: boolean;
+    /** Advice-seeker account: free display-name entry (ORISO-Admin#602). */
+    displayNameEditable?: boolean;
+    /** Advice-seeker account: may leave an e-mail address (ORISO-Admin#602). */
+    askerEmail?: boolean;
     calls?: boolean;
     supervision?: boolean;
     supervisionAnonymousChats?: boolean;

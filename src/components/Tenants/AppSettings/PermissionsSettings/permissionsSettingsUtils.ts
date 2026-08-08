@@ -5,6 +5,9 @@ import type { ChatTypeCardDef } from './types';
 
 export const DEFAULT_PERMISSION_SETTINGS = {
     featureAnonymousChatEnabled: true,
+    // Asker-account settings are opt-out (ORISO-Admin#602 / ADR-018).
+    featureDisplayNameEditable: true,
+    featureAskerEmailEnabled: true,
     featureGroupChatV2Enabled: true,
     featureCallsEnabled: true,
     featureSupervisionEnabled: true,
@@ -64,6 +67,8 @@ export const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, st
         'featureVoiceMessagesGroupChatsEnabled',
         'featureThreadsGroupChatsEnabled',
     ],
+    displayNameEditable: ['featureDisplayNameEditable'],
+    askerEmail: ['featureAskerEmailEnabled'],
     calls: ['featureCallsEnabled'],
     supervision: [
         'featureSupervisionEnabled',

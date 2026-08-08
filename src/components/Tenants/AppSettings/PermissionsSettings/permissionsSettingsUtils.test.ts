@@ -56,12 +56,35 @@ describe('permissions settings utils', () => {
         expect(DEFAULT_PERMISSION_SETTINGS.featureMediaAiScanOneOnOneChatsEnabled).toBe(false);
     });
 
+    it('defaults asker-account settings on (opt-out)', () => {
+        expect(DEFAULT_PERMISSION_SETTINGS.featureDisplayNameEditable).toBe(true);
+        expect(DEFAULT_PERMISSION_SETTINGS.featureAskerEmailEnabled).toBe(true);
+    });
+
     it('round-trips media enforcement fields into toggle keys', () => {
         const toggles = enforcedFieldsToToggles(
             new Set(['featureMediaInlineDisplayOneOnOneChatsEnabled', 'featureMediaUploadEnabled']),
         );
 
         expect(toggles).toEqual({ mediaInlineDisplayOneOnOneChats: true, mediaUpload: true });
+    });
+
+    it('round-trips asker-account enforcement fields into toggle keys', () => {
+        const toggles = enforcedFieldsToToggles(
+            new Set(['featureDisplayNameEditable', 'featureAskerEmailEnabled']),
+        );
+
+        expect(toggles).toEqual({ displayNameEditable: true, askerEmail: true });
+    });
+
+    it('resolves asker-account fields forced off / enforced on by platform toggles', () => {
+        const forcedOff = getForcedOffFields({ displayNameEditable: false, askerEmail: false });
+        expect(forcedOff.has('featureDisplayNameEditable')).toBe(true);
+        expect(forcedOff.has('featureAskerEmailEnabled')).toBe(true);
+
+        const enforcedOn = getEnforcedOnFields({ displayNameEditable: true, askerEmail: true });
+        expect(enforcedOn.has('featureDisplayNameEditable')).toBe(true);
+        expect(enforcedOn.has('featureAskerEmailEnabled')).toBe(true);
     });
 
     it('resolves all feature fields enforced-on by upper-level enforcement flags', () => {

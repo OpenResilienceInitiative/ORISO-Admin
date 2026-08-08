@@ -9,6 +9,10 @@ export interface TenantSettings {
     featureTeamDiscussionEnabled?: boolean | null;
     featureCentralDataProtectionTemplateEnabled?: boolean | null;
     featureAnonymousChatEnabled?: boolean | null;
+    /** Whether advice seekers may type a display name (vs re-roll only). See ORISO-Admin#602. */
+    featureDisplayNameEditable?: boolean | null;
+    /** Whether advice seekers may leave an e-mail address. See ORISO-Admin#602. */
+    featureAskerEmailEnabled?: boolean | null;
     featureCallsEnabled?: boolean | null;
     featureSupervisionEnabled?: boolean | null;
     featureSupervisionAnonymousChatsEnabled?: boolean | null;
@@ -71,6 +75,8 @@ interface TenantAdminPermissionToggles {
     anonymousChat?: boolean | null;
     groupChat?: boolean | null;
     appearance?: boolean | null;
+    displayNameEditable?: boolean | null;
+    askerEmail?: boolean | null;
     calls?: boolean | null;
     supervision?: boolean | null;
     supervisionAnonymousChats?: boolean | null;

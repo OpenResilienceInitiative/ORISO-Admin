@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -101,5 +102,50 @@ describe('PermissionsSettingsView data parity (1-on-1 card)', () => {
         await user.click(screen.getByRole('switch', { name: 'tenants.permissions.card.activated' }));
 
         expect(videoCalls).toBeEnabled();
+    });
+});
+
+/**
+ * ORISO-Admin#602 — the asker card must receive enforce props from the view (not only accept
+ * them in isolation) and must carry its own EditButton because the outer CardEditable chrome
+ * is hidden.
+ */
+describe('PermissionsSettingsView asker card wiring', () => {
+    const renderAskerOnly = (props: Partial<ComponentProps<typeof PermissionsSettingsView>> = {}) =>
+        render(
+            <PermissionsSettingsView
+                tenantId="t1"
+                excludeCardKeys={['oneOnOne', 'liveChat', 'group', 'groupInternal']}
+                isLoading={false}
+                initialValues={{
+                    settings: { featureDisplayNameEditable: true, featureAskerEmailEnabled: true },
+                }}
+                formStateKey="k1"
+                restrictedFields={new Set()}
+                onToggleUpdate={vi.fn()}
+                onSave={vi.fn()}
+                {...props}
+            />,
+        );
+
+    it('passes enforce mode through so both asker settings can be locked', () => {
+        renderAskerOnly({
+            enforceMode: true,
+            enforcedFields: new Set(['featureAskerEmailEnabled']),
+            onEnforceChange: vi.fn(),
+        });
+
+        expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+        expect(screen.getByLabelText('tenants.permissions.asker.displayName.label')).toBeTruthy();
+        expect(screen.getByLabelText('tenants.permissions.asker.email.label')).toBeTruthy();
+    });
+
+    it('offers an edit button on the asker card so the first deck page can enter edit mode', () => {
+        renderAskerOnly();
+
+        // Outer CardEditable chrome is CSS-hidden but remains in the a11y tree; the asker
+        // card footer EditButton is what makes the first deck page editable on mobile.
+        expect(screen.getByText('tenants.permissions.asker.title')).toBeTruthy();
+        expect(screen.getAllByRole('button', { name: 'edit' }).length).toBeGreaterThanOrEqual(1);
     });
 });

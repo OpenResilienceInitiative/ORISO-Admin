@@ -74,7 +74,21 @@ export const PermissionsSettingsView = ({
                             settings govern the advice seeker's own account, so they come
                             before the per-chat-type feature cards. */}
                         <CardDeck.Item className={styles.chatTypeCardSlot}>
-                            <AskerPermissionsCard restrictedFields={restrictedFields} onToggleUpdate={onToggleUpdate} />
+                            <AskerPermissionsCard
+                                restrictedFields={restrictedFields}
+                                onToggleUpdate={onToggleUpdate}
+                                enforceMode={enforceMode}
+                                enforcedFields={enforcedFields}
+                                onEnforceChange={onEnforceChange}
+                                footer={
+                                    !editing ? (
+                                        <EditButton
+                                            className={styles.cardFooterEditButton}
+                                            onClick={startEditing}
+                                        />
+                                    ) : undefined
+                                }
+                            />
                         </CardDeck.Item>
                         <CardDeck.Item className={styles.chatTypeCardSlot}>
                             <CaseHandoverCard />
