@@ -16,10 +16,9 @@ import React, { cloneElement, forwardRef, Ref, useEffect, useMemo, useRef, type 
 import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissions/tab_star.svg';
-import { SectionCarousel, type SectionCarouselItem } from '../SectionCarousel';
-import { getSectionArtwork } from '../../constants/sectionArtwork';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import { CardDeckNavProvider, useCardDeckNav } from '../CardDeck/CardDeckNavContext';
+import { useRegisterMobileNav } from '../AdminMobileNav/MobileNavContext';
 import { SideScrollerButton } from '../SideScrollerFooter';
 import styles from './styles.module.scss';
 
@@ -113,7 +112,6 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
     const { t } = useTranslation();
     const tabsContainerRef = useRef<HTMLDivElement>(null);
     const isDesktopLayout = useIsDesktopLayout();
-    const { pathname } = useLocation();
 
     useEffect(() => {
         tabsContainerRef.current?.querySelector('a.active')?.scrollIntoView({
@@ -123,38 +121,12 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
     }, [tabs]);
 
     /*
-     * Mobile shows the section carousel instead of the pill row: the pills are
-     * sized for a desktop header and become unusable on a phone. Artwork is
-     * looked up by `iconName`, which is also what the image files are named
-     * after — sections without one keep their icon on a tonal tile, so pages
-     * outside settings (logs, statistics, users) work unchanged.
+     * Mobile renders no tab row at all: the subsections moved into the bottom
+     * navigation, where the thumb is. The page only publishes them (see
+     * useRegisterMobileNav in PageMobileNavRegistration below).
      */
     if (!isDesktopLayout) {
-        const items: SectionCarouselItem[] = tabs
-            .filter((tab) => tab && tab.to)
-            .map(({ icon, iconName, ...tab }) => {
-                const Icon = iconName ? tabIcons[iconName] : undefined;
-                const TabIcon = Icon || TabStarIcon;
-
-                return {
-                    key: tab.to,
-                    label: String(t(tab.titleKey)),
-                    image: iconName ? getSectionArtwork(iconName) : undefined,
-                    icon: icon ?? <TabIcon data-admin-tab-icon={iconName || 'fallback'} />,
-                    to: tab.to,
-                };
-            });
-
-        const active = items.filter((item) => pathname === item.to || pathname.startsWith(`${item.to}/`));
-
-        return (
-            <SectionCarousel
-                activeKey={active.sort((a, b) => b.key.length - a.key.length)[0]?.key}
-                ariaLabel={String(t('settings.title', 'Bereiche'))}
-                dimUnselected
-                items={items}
-            />
-        );
+        return null;
     }
 
     return (
@@ -194,11 +166,46 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
     );
 };
 
+/**
+ * Publishes the page's subsections and back target to the mobile bar, which
+ * renders them next to its FAB. Headless: on desktop nothing reads the
+ * registration, and the tab row above is unaffected.
+ */
+const PageMobileNavRegistration = ({
+    id,
+    tabs,
+    backPath,
+    backLabel,
+}: {
+    id: string;
+    tabs: Array<{ to: string; titleKey; iconName?: string; icon?: JSX.Element }>;
+    backPath?: string;
+    backLabel?: string;
+}) => {
+    const { t } = useTranslation();
+    const { pathname } = useLocation();
+    const usable = tabs.filter((tab) => tab && tab.to);
+    // Longest match wins: subsection routes share a prefix with their parent.
+    const active = usable
+        .filter((tab) => pathname === tab.to || pathname.startsWith(`${tab.to}/`))
+        .sort((a, b) => b.to.length - a.to.length)[0];
+
+    useRegisterMobileNav(id, {
+        subsections: usable.length > 1 ? usable.map((tab) => ({ key: tab.to, label: String(t(tab.titleKey)) })) : [],
+        activeSubsectionKey: active?.to,
+        backPath,
+        backLabel,
+    });
+
+    return null;
+};
+
 export const PageTitle = forwardRef(({ tabs, children }: PageTitleProps, ref) => {
     const finalTabs = useMemo(() => tabs?.filter?.(Boolean) || [], [tabs]);
 
     return (
         <div className={styles.pageTitleContainer} ref={ref as Ref<HTMLDivElement>} data-admin-page-header>
+            <PageMobileNavRegistration id="page-title" tabs={finalTabs} />
             {children}
             {!!finalTabs?.length && finalTabs.length > 1 && <PageTabs tabs={finalTabs} />}
         </div>
@@ -215,15 +222,30 @@ const getTruncatedTitle = (title: React.ReactNode, titleMaxLength?: number) => {
 
 export const PageBack = forwardRef(({ path, title, titleKey, titleMaxLength, tabs, children }: PageBackProps, ref) => {
     const { t } = useTranslation();
+    const isDesktopLayout = useIsDesktopLayout();
     const finalTabs = useMemo(() => tabs?.filter?.(Boolean) || [], [tabs]);
     const headline = getTruncatedTitle(title ?? (titleKey ? t<string>(titleKey) : ''), titleMaxLength);
 
     return (
         <div className={styles.back} ref={ref as Ref<HTMLDivElement>} data-admin-page-header>
-            <NavLink to={path} className={classNames(styles.backLink, { [styles.backWithTabs]: !!finalTabs?.length })}>
-                <ChevronLeft />
-                <h3 className={styles.backHeadline}>{headline}</h3>
-            </NavLink>
+            <PageMobileNavRegistration
+                id="page-back"
+                tabs={finalTabs}
+                backPath={path}
+                backLabel={typeof headline === 'string' ? headline : undefined}
+            />
+            {/* On mobile the back button lives in the bottom bar, icon only and
+                without the entity name (Figma 1683:40339) — repeating it here
+                would be a second control for the same thing. */}
+            {isDesktopLayout && (
+                <NavLink
+                    to={path}
+                    className={classNames(styles.backLink, { [styles.backWithTabs]: !!finalTabs?.length })}
+                >
+                    <ChevronLeft />
+                    <h3 className={styles.backHeadline}>{headline}</h3>
+                </NavLink>
+            )}
             {!!finalTabs?.length && finalTabs.length > 1 && <PageTabs tabs={finalTabs} />}
             {children}
         </div>

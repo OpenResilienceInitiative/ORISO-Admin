@@ -108,18 +108,19 @@
 }
 
 /*
- * Mobile: the sidebar is no longer folded down into a bottom bar. `AdminBottomNav`
+ * Mobile: the sidebar is no longer folded down into a bottom bar. `AdminMobileNavBar`
  * is its own component and is the only navigation rendered below @screen-md, so the
  * `.ant-layout-sider` rules here simply do not apply — the Sider is not in the tree.
  * All that is left is reserving the bar's height so it cannot cover page content.
  *
  * The old rules stretched the Sider across the viewport and hid `.lowerSidebar`,
- * which is why mobile users had no way to sign out; account and logout now live in
- * the overflow sheet instead.
+ * which is why mobile users had no way to sign out; account and logout are now two
+ * pills at the bottom of the FAB menu.
  */
 @media screen and (max-width: @screen-sm-max) {
     .protectedLayout {
-        padding-bottom: @bottomBarHeight;
+        // The home indicator sits below the bar on modern phones.
+        padding-bottom: calc(@bottomBarHeight + env(safe-area-inset-bottom, 0px));
     }
 }
 

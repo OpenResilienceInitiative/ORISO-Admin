@@ -1,0 +1,17 @@
+/*
+ * Fixing the bar to the viewport is the layout's job, not the component's —
+ * the same split the desktop sidebar uses (protectedLayout.less).
+ */
+.bar {
+    position: fixed;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    // The bar floats over the page; only its controls take pointer events, so
+    // the gaps between them stay transparent to the content underneath.
+    pointer-events: none;
+
+    // Clear the home indicator without moving the bar on devices that have none.
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
