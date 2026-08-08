@@ -1,0 +1,61 @@
+/* ORISO-Admin#602 — the advice-seeker permissions card.
+ *
+ * It borrows the deck's card chrome but not its toggle list, for one reason:
+ * the shared `.toggleRow` carries a bottom border, and each of these two
+ * settings needs an explanation *underneath* its switch. Reusing the shared row
+ * put the divider between a switch and its own description, so the text read as
+ * belonging to the setting below it — precisely the wrong grouping on a card
+ * whose whole job is to say what each switch governs.
+ */
+
+.intro {
+    /* The shared `.cardDescription` reserves `min-height: 124px` for the
+       chat-type cards' longer copy. Here that reserved space renders as a hole. */
+    margin: 12px 0 20px;
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 500;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    letter-spacing: 0.15px;
+}
+
+.setting {
+    padding: 16px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+
+    &:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+    }
+}
+
+.settingHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.settingLabel {
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 500;
+    color: var(--m3-on-surface, #1b1b1c);
+}
+
+.settingDescription {
+    margin: 8px 0 0;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 18px;
+    letter-spacing: 0.3px;
+}
+
+.restrictedReason {
+    margin: 6px 0 0;
+    font-size: 13px;
+    line-height: 18px;
+    font-style: italic;
+    color: var(--m3-on-surface-variant, #444748);
+}
