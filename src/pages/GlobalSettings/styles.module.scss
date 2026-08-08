@@ -234,7 +234,7 @@
    Secondary weight, because it is an explanation rather than a second control. */
 .settingDescription {
     margin: 8px 0 0;
-    color: #46464a;
+    color: var(--m3-on-surface-variant, #444748);
     font-family: var(--m3-body-font-family);
     font-size: 14px;
     line-height: 20px;

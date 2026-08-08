@@ -51,6 +51,21 @@ export const U25Configuration: Story = {
     parameters: { settings: { featureDisplayNameEditable: false, featureAskerEmailEnabled: false } },
 };
 
+/**
+ * **Enforce mode** — an upper role locking these two settings for the roles below.
+ * Without the asker settings in the enforcement contract they would be the only
+ * permissions on the page that could not be locked, which is a hole in the model
+ * rather than a deliberate exemption.
+ */
+export const EnforceMode: Story = {
+    args: {
+        enforceMode: true,
+        enforcedFields: new Set(['featureAskerEmailEnabled']),
+        onEnforceChange: () => undefined,
+    },
+    parameters: { settings: { featureDisplayNameEditable: true, featureAskerEmailEnabled: true } },
+};
+
 /** Free name entry withheld, e-mail still offered. */
 export const DisplayNameLocked: Story = {
     parameters: { settings: { featureDisplayNameEditable: false, featureAskerEmailEnabled: true } },

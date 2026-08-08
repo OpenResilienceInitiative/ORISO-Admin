@@ -61,14 +61,51 @@ describe('AskerPermissionsCard', () => {
         );
     });
 
-    it('toggles a switch through the form', async () => {
-        renderCard();
+    it('toggles a switch through the form and reports the change for persistence', async () => {
+        /* The local form value alone proves nothing about saving: a wrong field
+           path or a dropped callback would still flip the switch on screen and
+           persist nothing. */
+        const onToggleUpdate = vi.fn();
+        renderCard({ onToggleUpdate });
         const user = userEvent.setup();
 
         const emailSwitch = screen.getByLabelText('tenants.permissions.asker.email.label');
         await user.click(emailSwitch);
 
         expect(emailSwitch.getAttribute('aria-checked')).toBe('false');
+        expect(onToggleUpdate).toHaveBeenCalledWith(['settings', 'featureAskerEmailEnabled'], false, expect.anything());
+    });
+
+    it('says why the display-name switch is disabled too, not only the e-mail one', () => {
+        /* This was missing: `featureDisplayNameEditable` was disabled when
+           restricted but carried no explanation, so a Träger admin saw a dead
+           control and no reason for it. */
+        renderCard({ restrictedFields: new Set(['featureDisplayNameEditable']) });
+
+        expect(screen.getByLabelText('tenants.permissions.asker.displayName.label').hasAttribute('disabled')).toBe(
+            true,
+        );
+        expect(screen.getByText('tenants.permissions.asker.restrictedReason')).toBeTruthy();
+    });
+
+    it('offers the enforce checkboxes for both fields in enforce mode', () => {
+        /* Without these two settings in the enforcement contract they would be the
+           only permissions on the page an upper role could not lock for the roles
+           below — a hole in the model rather than a deliberate exemption. */
+        const onEnforceChange = vi.fn();
+        renderCard({
+            enforceMode: true,
+            enforcedFields: new Set(['featureAskerEmailEnabled']),
+            onEnforceChange,
+        });
+
+        expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+    });
+
+    it('shows no enforce checkboxes outside enforce mode', () => {
+        renderCard();
+
+        expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
     });
 
     it('disables rather than hides a field the platform has not permitted', () => {

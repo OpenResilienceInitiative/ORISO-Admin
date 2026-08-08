@@ -1,3 +1,5 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
 /* ORISO-Admin#602 — the advice-seeker permissions card.
  *
  * It borrows the deck's card chrome but not its toggle list, for one reason:
@@ -11,7 +13,7 @@
 .intro {
     /* The shared `.cardDescription` reserves `min-height: 124px` for the
        chat-type cards' longer copy. Here that reserved space renders as a hole. */
-    margin: 12px 0 20px;
+    margin: mui.$mui-unit * 1.5 0 mui.$mui-unit * 2.5;
     font-size: 16px;
     line-height: 24px;
     font-weight: 500;
@@ -20,7 +22,7 @@
 }
 
 .setting {
-    padding: 16px 0;
+    padding: mui.$mui-unit * 2 0;
     border-bottom: 1px solid color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
 
     &:last-child {
@@ -33,7 +35,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: mui.$mui-unit * 1.5;
 }
 
 .settingLabel {
@@ -44,7 +46,7 @@
 }
 
 .settingDescription {
-    margin: 8px 0 0;
+    margin: mui.$mui-unit 0 0;
     color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
     font-size: 13px;
     font-weight: 400;
@@ -53,9 +55,14 @@
 }
 
 .restrictedReason {
-    margin: 6px 0 0;
+    margin: mui.$mui-unit * 0.75 0 0;
     font-size: 13px;
     line-height: 18px;
     font-style: italic;
     color: var(--m3-on-surface-variant, #444748);
+}
+
+/* Matches the enforce checkbox placement on the chat-type cards. */
+.enforceCheckbox {
+    margin-right: mui.$mui-unit;
 }
