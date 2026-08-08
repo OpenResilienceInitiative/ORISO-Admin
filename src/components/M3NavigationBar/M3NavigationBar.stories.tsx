@@ -30,13 +30,13 @@ const tenants: M3NavigationBarItem = {
 };
 const agency: M3NavigationBarItem = {
     key: 'agency',
-    label: 'Beratungsstelle',
+    label: 'Beratungsstellen',
     icon: <RealEstateAgentOutlined />,
     activeIcon: <RealEstateAgent />,
 };
 const users: M3NavigationBarItem = {
     key: 'users',
-    label: 'Nutzer*innen',
+    label: 'Konten',
     icon: <PeopleOutlined />,
     activeIcon: <People />,
 };
@@ -125,8 +125,8 @@ export const WithoutOverflow: Story = {
 export const LongLabels: Story = {
     args: {
         items: [
-            { ...agency, label: 'Beratungsstelle' },
-            { ...users, label: 'Nutzer*innen' },
+            { ...agency, label: 'Beratungsstellen' },
+            { ...users, label: 'Konten' },
         ],
         activeKey: 'agency',
     },
