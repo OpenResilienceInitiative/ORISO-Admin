@@ -215,7 +215,6 @@ const MuiControl = ({
                     borderColor: 'var(--input-border-color)',
                 },
                 '& .MuiOutlinedInput-notchedOutline legend': {
-                    width: 'fit-content',
                     marginBottom: 0,
                     borderBottom: 'none',
                     fontSize: '0.75em',

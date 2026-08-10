@@ -97,7 +97,6 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
     return (
         <PermissionsSettingsView
             tenantId={`agency-${agencyId}`}
-            disableSubTogglesWhenMasterOff
             excludeCardKeys={excludeCardKeys}
             isLoading={isLoading}
             initialValues={initialValues}
