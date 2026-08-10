@@ -96,9 +96,51 @@
     color: var(--m3-on-surface-variant, #444748);
 }
 
-.actionPrimary {
+// The page's primary action: same tonal pill as on the desktop toolbar, so it
+// reads as "create a thing" rather than as an anonymous round control.
+.add {
+    display: inline-flex;
+    height: 56px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 24px;
+    border: 0;
+    border-radius: 100px;
     background: var(--m3-secondary, #4c555f);
     color: var(--m3-on-primary, #ffffff);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    gap: 8px;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    outline: none;
+    white-space: nowrap;
+
+    svg {
+        width: 24px;
+        height: 24px;
+        flex: 0 0 24px;
+    }
+
+    &:focus-visible {
+        box-shadow: 0 0 0 3px var(--m3-on-secondary-container, #e7effc);
+    }
+}
+
+// Expanded search takes the row; the action shrinks to its icon rather than
+// pushing the field off-screen.
+.addCompact {
+    width: 56px;
+    padding: 16px;
+}
+
+.addLabel {
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 // The expanded search takes the row and pushes the create action to the edge;

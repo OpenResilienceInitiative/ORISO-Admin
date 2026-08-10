@@ -144,13 +144,19 @@ export const AdminMobileNav = ({
                     ))}
                 {!searchOpen && filters}
                 {onAdd && (
+                    // A labelled pill, not a bare round icon: this is the page's
+                    // primary action and it carries its name on the desktop
+                    // toolbar too (Figma 1683:41718, "Button - tonal"). While the
+                    // search is expanded it drops to the icon alone so the field
+                    // keeps the row.
                     <button
-                        className={classNames(styles.action, styles.actionPrimary)}
+                        className={classNames(styles.add, { [styles.addCompact]: searchOpen })}
                         type="button"
                         aria-label={addLabel}
                         onClick={onAdd}
                     >
                         <AddIcon />
+                        {!searchOpen && addLabel && <span className={styles.addLabel}>{addLabel}</span>}
                     </button>
                 )}
             </div>
