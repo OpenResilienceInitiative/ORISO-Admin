@@ -18,6 +18,8 @@ export interface M3ButtonProps {
     /** Stretch to the container width (e.g. "Link OTP App" full-width action). */
     block?: boolean;
     className?: string;
+    /** For toggle-style buttons (e.g. a mode switch) — exposes pressed/unpressed state. */
+    'aria-pressed'?: boolean;
 }
 
 /**
@@ -36,11 +38,13 @@ export const M3Button = ({
     type = 'button',
     block = false,
     className,
+    'aria-pressed': ariaPressed,
 }: M3ButtonProps) => (
     <button
         type={type === 'submit' ? 'submit' : 'button'}
         disabled={disabled || loading}
         aria-busy={loading || undefined}
+        aria-pressed={ariaPressed}
         onClick={onClick}
         className={classNames(styles.button, styles[variant], { [styles.block]: block }, className)}
     >

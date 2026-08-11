@@ -191,7 +191,17 @@ const PageMobileNavRegistration = ({
         .sort((a, b) => b.to.length - a.to.length)[0];
 
     useRegisterMobileNav(id, {
-        subsections: usable.length > 1 ? usable.map((tab) => ({ key: tab.to, label: String(t(tab.titleKey)) })) : [],
+        // `to` is load-bearing: without it M3ConnectedButtonGroup renders plain
+        // buttons, and the bar never supplies onSubsectionSelect — chips would
+        // look tappable and do nothing.
+        subsections:
+            usable.length > 1
+                ? usable.map((tab) => ({
+                      key: tab.to,
+                      label: String(t(tab.titleKey)),
+                      to: tab.to,
+                  }))
+                : [],
         activeSubsectionKey: active?.to,
         backPath,
         backLabel,

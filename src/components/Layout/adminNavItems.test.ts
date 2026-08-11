@@ -8,7 +8,7 @@ import { UserRole } from '../../enums/UserRole';
 
 const labels: AdminNavLabels = {
     account: 'Account',
-    agency: 'Counseling center',
+    agency: 'Agencies',
     links: 'Links',
     logs: 'Logs',
     settings: 'Settings',

@@ -17,7 +17,14 @@ import '../src/i18n';
 
 // Start the MSW request-mocking worker. Stories opt in with `parameters.msw.handlers`;
 // everything else passes through untouched (`onUnhandledRequest: 'bypass'`).
-initialize({ onUnhandledRequest: 'bypass' });
+// The worker URL must be resolved relative to the preview iframe: MSW's default is the
+// absolute '/mockServiceWorker.js', which on a sub-path deployment (Pre-Dev serves this
+// build under /storybook-admin/) hits the app's SPA fallback and returns text/html —
+// registration then fails and *every* story renders as an error page instead.
+initialize({
+    onUnhandledRequest: 'bypass',
+    serviceWorker: { url: new URL('mockServiceWorker.js', window.location.href).href },
+});
 
 const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },

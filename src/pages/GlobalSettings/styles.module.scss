@@ -224,3 +224,13 @@
         --dialog-card-height: auto;
     }
 }
+
+/* ORISO-Admin#602: the "Login-Funktion" switch now shows what it actually does.
+   Secondary weight, because it is an explanation rather than a second control. */
+.settingDescription {
+    margin: 8px 0 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    line-height: 20px;
+}

@@ -5,6 +5,7 @@ import { CardDeck } from '../../../CardDeck';
 import { CardEditable } from '../../../CardEditable';
 import { EditButton } from '../../../EditButton';
 import { CHAT_TYPE_CARDS } from './chatTypeCards';
+import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
 import { CheckToggle } from './CheckToggle';
 import { M3Checkbox } from '../../../M3Checkbox';
@@ -14,7 +15,6 @@ import styles from './styles.module.scss';
 
 export type PermissionsSettingsViewProps = {
     tenantId: string;
-    disableSubTogglesWhenMasterOff: boolean;
     excludeCardKeys?: Array<ChatTypeCardKey>;
     isLoading: boolean;
     initialValues: Record<string, unknown>;
@@ -35,7 +35,6 @@ export type PermissionsSettingsViewProps = {
 
 export const PermissionsSettingsView = ({
     tenantId,
-    disableSubTogglesWhenMasterOff,
     excludeCardKeys,
     isLoading,
     initialValues,
@@ -70,6 +69,12 @@ export const PermissionsSettingsView = ({
                         previousLabel={t('permissions.cardDeck.previous')}
                         nextLabel={t('permissions.cardDeck.next')}
                     >
+                        {/* ORISO-Admin#602: first card under Berechtigungen. These two
+                            settings govern the advice seeker's own account, so they come
+                            before the per-chat-type feature cards. */}
+                        <CardDeck.Item className={styles.chatTypeCardSlot}>
+                            <AskerPermissionsCard restrictedFields={restrictedFields} onToggleUpdate={onToggleUpdate} />
+                        </CardDeck.Item>
                         <CardDeck.Item className={styles.chatTypeCardSlot}>
                             <CaseHandoverCard />
                         </CardDeck.Item>
@@ -172,12 +177,11 @@ export const PermissionsSettingsView = ({
                                                                 label={t(toggle.labelKey)}
                                                                 disabled={
                                                                     restrictedFields.has(toggle.field[1]) ||
-                                                                    (disableSubTogglesWhenMasterOff &&
-                                                                        isSubToggleDisabled(
-                                                                            card,
-                                                                            toggle.field,
-                                                                            masterEnabled,
-                                                                        ))
+                                                                    isSubToggleDisabled(
+                                                                        card,
+                                                                        toggle.field,
+                                                                        masterEnabled,
+                                                                    )
                                                                 }
                                                                 onAfterChange={onToggleUpdate}
                                                             />

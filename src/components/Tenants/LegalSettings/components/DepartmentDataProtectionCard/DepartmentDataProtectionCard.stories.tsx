@@ -57,13 +57,12 @@ export const Empty: Story = {
     },
 };
 
-// Narrow viewport: the card must stay usable at its 375px minimum width —
-// same convention as the M3RichTextEditor narrow story.
+// Narrow viewport: the card follows the available canvas without widening it.
 export const Narrow: Story = {
     args: Multilingual.args,
     decorators: [
         (Story) => (
-            <div style={{ width: 375 }}>
+            <div style={{ width: '100%', maxWidth: 375 }}>
                 <Story />
             </div>
         ),

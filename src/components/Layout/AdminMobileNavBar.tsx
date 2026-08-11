@@ -5,6 +5,7 @@ import { AdminMobileNav, type AdminMobileNavSection } from '../AdminMobileNav';
 import { useMobileNav } from '../AdminMobileNav/MobileNavContext';
 import { NavGlyph, type NavGlyphName } from '../NavGlyph';
 import type { AdminSidebarNavItem } from './AdminSidebar';
+import { resolveActiveNavKey } from './resolveActiveNavKey';
 import styles from './adminMobileNavBar.module.scss';
 
 /**
@@ -67,17 +68,13 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout }: Admin
         [account, logout.label],
     );
 
-    // Longest match wins: several destinations share a prefix, and an edit page
-    // sits several segments below the section it belongs to.
-    const activeSectionKey = useMemo(() => {
-        const candidates = [...items, account]
-            .filter((item) => currentPath === item.to || currentPath.startsWith(`${item.to}/`))
-            .sort((a, b) => b.to.length - a.to.length);
+    // Same resolver the deleted bottom nav used: prefix match plus each item's
+    // `activeMatch`, so Users/Logs sibling hubs still light the right section.
+    const activeSectionKey = useMemo(
+        () => resolveActiveNavKey([...items, account], currentPath) ?? '',
+        [account, currentPath, items],
+    );
 
-        return candidates[0]?.key ?? '';
-    }, [account, currentPath, items]);
-
-    const activeSection = sections.find((section) => section.key === activeSectionKey);
     const sectionsWithSubsections = useMemo(
         () =>
             sections.map((section) =>
@@ -107,7 +104,6 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout }: Admin
             addLabel={registration?.add?.label}
             openLabel={t('sidebar.menu.open', 'Menü öffnen')}
             closeLabel={t('sidebar.menu.close', 'Menü schließen')}
-            aria-label={activeSection?.label}
         />
     );
 };
