@@ -120,7 +120,7 @@
     "concurrently": "^6.0.2",
     "cross-env": "^7.0.2",
     "cypress": "^15.18.0",
-    "eslint": "^7.32.0",
+    "eslint": "^10.8.1",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-config-airbnb-typescript": "^16.1.0",
     "eslint-config-prettier": "^8.3.0",
