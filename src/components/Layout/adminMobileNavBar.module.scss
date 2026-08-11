@@ -1,0 +1,21 @@
+/*
+ * Fixing the bar to the viewport is the layout's job, not the component's —
+ * the same split the desktop sidebar uses (protectedLayout.less).
+ */
+.bar {
+    position: fixed;
+    // Above the page's own sticky header (z-index 900) — a paginator scrolling
+    // over the open menu is worse than the menu covering the header. Still below
+    // antd's modal layer (1000), which must stay on top of everything.
+    z-index: 950;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    // The 6px inset applies on all four sides; the safe area is added to the
+    // bottom one, not substituted for it — writing plain `env()` here silently
+    // dropped the inset on every device without a home indicator.
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    // The bar floats over the page; only its controls take pointer events, so
+    // the gaps between them stay transparent to the content underneath.
+    pointer-events: none;
+}

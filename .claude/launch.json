@@ -2,6 +2,12 @@
     "version": "0.0.1",
     "configurations": [
         {
+            "name": "oriso-admin",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "start"],
+            "port": 9000
+        },
+        {
             "name": "storybook-admin",
             "runtimeExecutable": "npm",
             "runtimeArgs": ["run", "storybook", "--", "-p", "6099", "--no-open", "--ci"],

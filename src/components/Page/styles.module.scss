@@ -1,4 +1,10 @@
 .page {
+    // Horizontal raster from Figma 1285-80496: the arrow rail is a 60px gutter
+    // right of the sidebar, cards sit another 24px in. The header spans the full
+    // width and re-adds only the gutter, so the tab bar starts at 60px while the
+    // cards below start at 84px.
+    --admin-page-edge: calc(var(--admin-page-gutter, 60px) + var(--admin-content-inset, 24px));
+
     display: flex;
     min-height: 100%;
     background: var(--admin-workspace-background, #e4e2e2);
@@ -6,7 +12,7 @@
 
 .stickyHeaderPage {
     .content {
-        padding: 0 64px 64px;
+        padding: 0 var(--admin-page-edge) 64px;
     }
 
     .back,
@@ -14,22 +20,57 @@
         position: sticky;
         background: var(--admin-workspace-background, #e4e2e2);
         z-index: 900;
-        margin: 0 -64px;
+        margin: 0 calc(-1 * var(--admin-page-edge));
         top: 0;
     }
 
-    .back {
-        padding: 24px 64px 48px;
-    }
-
+    // Bottom padding is the header's own 24px plus the 12px the content raster
+    // sits below it. Between the two the Figma header carries a 92px search row
+    // that this app does not have yet.
+    .back,
     .pageTitleContainer {
-        padding: 23px 64px 20px;
+        padding: var(--admin-header-pad, 24px) var(--admin-page-edge) 36px var(--admin-page-gutter, 60px);
     }
 }
 
 .content {
     padding: 25px;
     width: 100%;
+}
+
+// Wraps the tab bar so the card-deck arrows can be anchored to it: vertically
+// centred on the tab row, horizontally pushed out to the page edges (Figma
+// 1285-80496). `align-self: stretch` gives it the full header width in the
+// column layout of `.pageTitleContainer`.
+.tabsRow {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    align-self: stretch;
+    flex: 1 1 auto;
+}
+
+.deckNavRail {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    // The header shell already spans the full page width — from the sidebar edge
+    // to the right edge of the viewport — so the rail rides its edges: the
+    // backward arrow tucks into the 60px gutter next to the sidebar, the forward
+    // arrow sits flush against the right page edge.
+    right: var(--page-deck-nav-end, 0);
+    left: var(--page-deck-nav-start, 0);
+    display: flex;
+    height: 96px;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: -48px;
+    // The tab bar underneath stays clickable; only the arrows take pointer input.
+    pointer-events: none;
+
+    button {
+        pointer-events: auto;
+    }
 }
 
 .tabsContainer {
@@ -54,40 +95,42 @@
     }
 }
 
+// Figma 1285-80496 "Header Admin Pannel": a 96px tall pill (32px padding around
+// a 32px line box) inside a 24px-padded band — 24 + 96 + 24 = 144.
 .tab {
     border-bottom: 0;
     display: inline-flex;
-    min-height: 76px;
+    min-height: var(--admin-tab-height, 96px);
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    padding: 24px 38px;
+    gap: 12px;
+    padding: 32px 48px;
     color: #e7effc;
     background: #646d78;
-    border-radius: 12px;
+    border-radius: 16px;
     cursor: pointer;
     font-family: var(--m3-body-font-family);
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 400;
     letter-spacing: 0;
-    line-height: 26px;
+    line-height: 32px;
     text-decoration: none;
     transition: background 220ms ease, border-radius 220ms ease, color 220ms ease, transform 220ms ease;
     white-space: nowrap;
 
     &:first-child {
-        border-radius: 38px 12px 12px 38px;
+        border-radius: 48px 16px 16px 48px;
     }
 
     &:last-child {
-        border-radius: 12px 38px 38px 12px;
+        border-radius: 16px 48px 48px 16px;
     }
 
     .tabStar {
-        width: 26px;
-        height: 26px;
-        flex: 0 0 26px;
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
         color: currentColor;
     }
 
@@ -105,7 +148,7 @@
     &:global(.active):last-child {
         background: #4c555f;
         color: #ffffff;
-        border-radius: 38px;
+        border-radius: 48px;
 
         &:hover {
             background: #4c555f;
@@ -164,15 +207,21 @@
     text-align: left;
 }
 
+// Both header shells anchor the arrow rail: the rail spans the whole header, not
+// just the tab row, so a back link in front of the tabs cannot push the backward
+// arrow out of its gutter and under the first tab pill.
 .pageTitleContainer {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 20px;
+    // 24px below the tab band + 12px above the next row, per the Figma header.
+    gap: 36px;
     padding-bottom: 64px;
 }
 
 .back {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -181,6 +230,12 @@
 
     @media (max-width: 650px) {
         flex-direction: column;
+    }
+
+    // The back link sits inside the header padding, the arrow outside it in the
+    // gutter — so the tab row needs no extra inset here.
+    .tabsRow {
+        margin-left: 0;
     }
 }
 
@@ -233,23 +288,32 @@
 }
 
 @media (max-width: 768px) {
+    // No room for the arrow-rail gutter on a phone, and no reason for a wide
+    // edge either: the screen is 390px and every pixel spent on margin is one
+    // the table cannot use. 6px all round (Frank, 2026-08-07).
+    .page {
+        --admin-page-edge: 6px;
+    }
+
     .stickyHeaderPage {
         .content {
-            padding: 0 24px 48px;
+            padding: 0 var(--admin-page-edge) 6px;
         }
 
         .back,
         .pageTitleContainer {
-            margin: 0 -24px;
+            padding: 6px var(--admin-page-edge);
         }
 
         .back {
-            padding: 20px 24px 32px;
+            padding-bottom: 6px;
         }
+    }
 
-        .pageTitleContainer {
-            padding: 20px 24px 20px;
-        }
+    // Below this width CardDeck stacks its cards vertically — there is nothing
+    // left to scroll sideways, so the arrows go away with it.
+    .deckNavRail {
+        display: none;
     }
 
     .tab {

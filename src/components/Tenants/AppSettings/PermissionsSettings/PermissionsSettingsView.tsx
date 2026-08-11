@@ -66,7 +66,6 @@ export const PermissionsSettingsView = ({
                         ariaLabel={t('tenants.permissions.title')}
                         className={styles.permissionsCardDeck}
                         deckClassName={styles.cardGrid}
-                        footerClassName={styles.permissionsCardDeckFooter}
                         previousLabel={t('permissions.cardDeck.previous')}
                         nextLabel={t('permissions.cardDeck.next')}
                     >

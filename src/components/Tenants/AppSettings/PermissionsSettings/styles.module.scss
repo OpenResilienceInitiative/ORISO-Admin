@@ -38,8 +38,6 @@
 
 .permissionsCardDeck {
     --card-deck-min-height: max(0px, calc(100dvh - 255px));
-    --side-scroller-button-width: 128px;
-    --side-scroller-button-height: 96px;
 }
 
 .cardGrid {
@@ -47,13 +45,6 @@
     --card-deck-padding: 8px 4px 18px;
     --card-deck-item-width: 425px;
     --card-deck-item-max-width: 425px;
-    --card-deck-footer-bottom: 28px;
-    --card-deck-footer-margin-top: 35px;
-    --card-deck-footer-padding: 0 80px;
-}
-
-.permissionsCardDeckFooter {
-    margin-top: var(--card-deck-footer-margin-top, 35px);
 }
 
 .chatTypeCard {
@@ -241,14 +232,10 @@
 @media screen and (max-width: 767px) {
     .permissionsCardDeck {
         --card-deck-min-height: max(0px, calc(100dvh - 220px));
-        --side-scroller-button-width: 88px;
-        --side-scroller-button-height: 56px;
     }
 
     .cardGrid {
         --card-deck-gap: 24px;
-        --card-deck-footer-padding: 0 8px;
-        --card-deck-footer-margin-top: 28px;
         --card-deck-mobile-gap: 24px;
         --card-deck-mobile-padding: 0;
     }

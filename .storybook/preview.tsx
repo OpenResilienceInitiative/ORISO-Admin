@@ -39,6 +39,23 @@ const preview: Preview = {
             options: { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] },
         },
         controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
+        /*
+         * Device sizes for the toolbar switcher. The two phone widths straddle
+         * the app's own breakpoints: components branch at 767/768px (CSS and
+         * `useIsDesktopLayout`), so 360 and 390 both land in the mobile branch
+         * while 768 is the first tablet width that still gets the desktop
+         * layout. Reviewing a story means checking it at Phone 390 and Laptop
+         * 1280 at minimum.
+         */
+        viewport: {
+            options: {
+                phoneSmall: { name: 'Phone 360', styles: { width: '360px', height: '740px' } },
+                phone: { name: 'Phone 390', styles: { width: '390px', height: '844px' } },
+                tablet: { name: 'Tablet 768', styles: { width: '768px', height: '1024px' } },
+                laptop: { name: 'Laptop 1280', styles: { width: '1280px', height: '800px' } },
+                desktop: { name: 'Desktop 1440', styles: { width: '1440px', height: '900px' } },
+            },
+        },
         options: {
             storySort: { order: ['Atoms', 'Molecules', 'Organisms', '*'] },
         },

@@ -284,3 +284,14 @@
     border-color: var(--admin-table-chip-border, #c4c7c8);
     color: var(--admin-table-chip-text, #444748);
 }
+
+// On a phone the table spans the full width, so its rounded corners cut into
+// content instead of framing it — the card look only reads at desktop widths
+// (Frank, 2026-08-07).
+@media (max-width: 768px) {
+    .listingTable {
+        --admin-table-radius: 0;
+
+        padding-bottom: 0;
+    }
+}

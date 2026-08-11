@@ -1,0 +1,88 @@
+import { useState } from 'react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { NavGlyph } from '../NavGlyph';
+import { M3FabMenu, type M3FabMenuProps } from './M3FabMenu';
+
+const items = [
+    { key: 'settings', label: 'Einstellungen', icon: <NavGlyph name="displaySettings" />, to: '/admin/settings' },
+    { key: 'tenants', label: 'Träger', icon: <NavGlyph name="tenants" />, to: '/admin/tenants' },
+    { key: 'agencies', label: 'Beratungstellen', icon: <NavGlyph name="counseling" />, to: '/admin/agencies' },
+    { key: 'users', label: 'Nutzende', icon: <NavGlyph name="users" />, to: '/admin/users' },
+    { key: 'statistics', label: 'Stastiken', icon: <NavGlyph name="statistics" />, to: '/admin/statistics' },
+    { key: 'links', label: 'Links', icon: <NavGlyph name="links" />, to: '/admin/links' },
+];
+
+const footerItems = [
+    { key: 'profile', label: 'Konto', icon: <NavGlyph name="profile" />, to: '/admin/profile' },
+    { key: 'logout', label: 'Abmelden', icon: <NavGlyph name="logout" /> },
+];
+
+/**
+ * Renders the menu where it lives: bottom-left of a phone-sized surface, so the
+ * stack's growth direction and the 6px inset are visible in the story rather
+ * than only in the app.
+ */
+const PhoneFrame = (props: M3FabMenuProps) => {
+    const [open, setOpen] = useState(props.open);
+
+    return (
+        <div
+            style={{
+                display: 'flex',
+                width: 390,
+                height: 650,
+                alignItems: 'flex-end',
+                padding: 6,
+                background: 'var(--schemes-background, #f3eeee)',
+                boxSizing: 'border-box',
+            }}
+        >
+            <M3FabMenu {...props} open={open} onOpenChange={setOpen} />
+        </div>
+    );
+};
+
+const meta = {
+    title: 'Molecules/M3FabMenu',
+    component: M3FabMenu,
+    parameters: {
+        // The frame is the phone; any harness padding would shift every
+        // measurement taken against the Figma node.
+        layout: 'fullscreen',
+        design: {
+            type: 'figma',
+            url: 'https://www.figma.com/design/QfsgojtHQzBjbzU3Im9Cet/Admin.ORISO?node-id=1683-39454',
+        },
+    },
+    render: (args) => <PhoneFrame {...args} />,
+    args: {
+        items,
+        activeKey: 'settings',
+        openLabel: 'Menü öffnen',
+        closeLabel: 'Menü schließen',
+        onOpenChange: () => undefined,
+    },
+} satisfies Meta<typeof M3FabMenu>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+/** Resting state: the FAB carries the icon of the page you are on. */
+export const Closed: Story = {
+    args: { open: false },
+};
+
+/** Figma 1683:39454 — destinations stacked above the close button. */
+export const Open: Story = {
+    args: { open: true },
+};
+
+/** Account and sign-out below the divider (Q2, decided 2026-08-07). */
+export const OpenWithAccount: Story = {
+    args: { open: true, footerItems },
+};
+
+/** The active destination is further down the list, not the first entry. */
+export const OpenDeepInTheList: Story = {
+    args: { open: true, activeKey: 'statistics', footerItems },
+};

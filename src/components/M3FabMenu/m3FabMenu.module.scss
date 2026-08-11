@@ -1,0 +1,153 @@
+/*
+ * Figma 1683:39454 (open) and 1683:39456 (closed).
+ *
+ * Colours map by ROLE, not by Figma's style name: this palette deliberately
+ * inverts some M3 `on-*` names (see src/app.css at --m3-primary-container).
+ * Figma's `on-primary-fixed` fill is --admin-nav-indicator-surface here, and
+ * its `on-primary-container` fill is --m3-primary-container.
+ */
+
+.root {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.stack {
+    // Absolute, not a flex sibling: an in-flow stack pushes everything above the
+    // FAB — the search row was shoved off-screen every time the menu opened.
+    // The menu lies ON TOP of the rows instead, so nothing but the FAB's own
+    // icon changes when you open it.
+    position: absolute;
+    // 6px clear of the FAB, matching the bar row's own inset.
+    bottom: calc(100% + 6px);
+    left: 0;
+    // With every destination a permission grants, the stack is taller than a
+    // phone: eight sections plus the account group already overflow a 650px
+    // screen and the first entry disappears off the top. Cap it against the
+    // viewport minus the two rows below and let it scroll instead.
+    display: flex;
+    max-height: calc(100dvh - 140px);
+    overflow-y: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+
+    // Left edges line up with the FAB, right edges stay ragged: every pill hugs
+    // its label. Figma right-aligns the content *inside* each pill, which has no
+    // visible effect on a hug-width box — do not mistake that for a right-aligned
+    // stack.
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0;
+    margin: 0;
+    gap: 4px;
+    filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 30%)) drop-shadow(0 4px 4px rgb(0 0 0 / 15%));
+    list-style: none;
+}
+
+.item {
+    display: flex;
+    height: 56px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 16px 24px;
+    border: 0;
+    border-radius: 28px;
+    background: var(--m3-primary-container, #ffe2de);
+    color: var(--admin-nav-indicator-surface, #410001);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    gap: 8px;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    text-align: right;
+    text-decoration: none;
+    white-space: nowrap;
+    outline: none;
+
+    svg {
+        width: 24px;
+        height: 24px;
+        flex: 0 0 24px;
+    }
+
+    &:hover,
+    &:focus-visible {
+        text-decoration: none;
+    }
+
+    &:focus-visible {
+        box-shadow: 0 0 0 3px var(--admin-nav-indicator-surface, #410001);
+    }
+}
+
+.itemActive {
+    background: var(--admin-nav-indicator-surface, #410001);
+    color: var(--m3-primary-container, #ffe2de);
+}
+
+// Account and sign-out are not places — a hairline sets them apart from the
+// destinations without giving them a second surface.
+.itemFooter {
+    position: relative;
+    margin-top: 4px;
+
+    &::before {
+        position: absolute;
+        top: -6px;
+        right: 24px;
+        left: 24px;
+        height: 1px;
+        background: var(--m3-outline-variant, #c4c7c8);
+        content: '';
+    }
+
+    & + .itemFooter {
+        margin-top: 0;
+
+        &::before {
+            content: none;
+        }
+    }
+}
+
+.fab {
+    display: inline-flex;
+    width: 56px;
+    height: 56px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    border: 0;
+    border-radius: var(--corner-extra-large, 28px);
+    background: var(--admin-nav-indicator-surface, #410001);
+    // M3/Elevation Light/3
+    box-shadow: 0 1px 3px rgb(0 0 0 / 30%), 0 4px 8px 3px rgb(0 0 0 / 15%);
+    color: var(--m3-primary-container, #ffe2de);
+    cursor: pointer;
+    // The global focus style paints an orange ring that reads as a warning on a
+    // round dark control. Keyboard users still get a ring — in the palette.
+    outline: none;
+
+    &:focus-visible {
+        box-shadow: 0 0 0 3px var(--m3-primary-container, #ffe2de), 0 1px 3px rgb(0 0 0 / 30%),
+            0 4px 8px 3px rgb(0 0 0 / 15%);
+    }
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.fabGlyph {
+    fill: currentcolor;
+}
