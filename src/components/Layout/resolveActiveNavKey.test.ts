@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { AdminSidebarNavItem } from './AdminSidebar';
 import { resolveActiveNavKey } from './resolveActiveNavKey';
 
-const item = (overrides: Partial<AdminSidebarNavItem> & Pick<AdminSidebarNavItem, 'key' | 'to'>): AdminSidebarNavItem => ({
+const item = (
+    overrides: Partial<AdminSidebarNavItem> & Pick<AdminSidebarNavItem, 'key' | 'to'>,
+): AdminSidebarNavItem => ({
     label: overrides.key,
     iconPath: overrides.key,
     ...overrides,
@@ -10,10 +12,7 @@ const item = (overrides: Partial<AdminSidebarNavItem> & Pick<AdminSidebarNavItem
 
 describe('resolveActiveNavKey', () => {
     it('picks the longest prefix match', () => {
-        const items = [
-            item({ key: 'tenants', to: '/admin/tenants' }),
-            item({ key: 'agency', to: '/admin/agency' }),
-        ];
+        const items = [item({ key: 'tenants', to: '/admin/tenants' }), item({ key: 'agency', to: '/admin/agency' })];
 
         expect(resolveActiveNavKey(items, '/admin/tenants/7/legal-settings')).toBe('tenants');
     });
