@@ -95,6 +95,14 @@ const meta = {
             url: 'https://www.figma.com/design/QfsgojtHQzBjbzU3Im9Cet/Admin.ORISO?node-id=1683-39455',
         },
     },
+    // Required by StoryObj when the component has mandatory props; the stories
+    // below render through PhoneFrame and ignore these defaults.
+    args: {
+        sections: ADMIN_SECTIONS,
+        activeSectionKey: 'settings',
+        openLabel: 'Menü öffnen',
+        closeLabel: 'Menü schließen',
+    },
 } satisfies Meta<typeof AdminMobileNav>;
 
 export default meta;
