@@ -141,12 +141,15 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         );
         await renderCounsellorTab();
 
-        expect(await screen.findByText('Draft')).toBeInTheDocument();
-        expect(screen.getByText('Gesendet')).toBeInTheDocument();
-        expect(screen.getByText('Angenommen')).toBeInTheDocument();
-        expect(screen.getByText('Widerrufen')).toBeInTheDocument();
-        expect(screen.getByText('Abgelaufen')).toBeInTheDocument();
-        expect(screen.getByText('Ersetzt')).toBeInTheDocument();
+        // Scoped to the table: the same labels also exist as filter chips above it.
+        await screen.findByText('person21@example.org');
+        const table = within(screen.getByRole('table'));
+        expect(table.getByText('Draft')).toBeInTheDocument();
+        expect(table.getByText('Gesendet')).toBeInTheDocument();
+        expect(table.getByText('Angenommen')).toBeInTheDocument();
+        expect(table.getByText('Widerrufen')).toBeInTheDocument();
+        expect(table.getByText('Abgelaufen')).toBeInTheDocument();
+        expect(table.getByText('Ersetzt')).toBeInTheDocument();
     });
 
     it('only offers checkboxes for DRAFT and EMAIL_SENT rows; terminal rows are disabled', async () => {

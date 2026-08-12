@@ -59,9 +59,7 @@ describe('derivePhases — Träger (TENANT_ADMIN)', () => {
     });
 
     it('completes registration once accepted; DPA stays pending because the API carries no DPA signal', () => {
-        expect(
-            states(invite({ inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z' })),
-        ).toEqual([
+        expect(states(invite({ inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z' }))).toEqual([
             'invited:done',
             'registered:done',
             'dpaConfirmed:current',
@@ -110,13 +108,7 @@ describe('derivePhases — Träger (TENANT_ADMIN)', () => {
                     accessGateStatus: 'READY',
                 }),
             ),
-        ).toEqual([
-            'invited:done',
-            'registered:done',
-            'dpaConfirmed:done',
-            'twoFactorActive:done',
-            'completed:done',
-        ]);
+        ).toEqual(['invited:done', 'registered:done', 'dpaConfirmed:done', 'twoFactorActive:done', 'completed:done']);
     });
 
     it('turns the invited bead into a warning when the e-mail bounced (a resend repairs it)', () => {
@@ -238,9 +230,7 @@ describe('inviteLastActivity', () => {
 
     it('picks the latest of the lifecycle timestamps', () => {
         expect(
-            inviteLastActivity(
-                invite({ acceptedAt: '2026-08-03T10:00:00Z', revokedAt: '2026-08-05T10:00:00Z' }),
-            ),
+            inviteLastActivity(invite({ acceptedAt: '2026-08-03T10:00:00Z', revokedAt: '2026-08-05T10:00:00Z' })),
         ).toBe('2026-08-05T10:00:00Z');
     });
 });
