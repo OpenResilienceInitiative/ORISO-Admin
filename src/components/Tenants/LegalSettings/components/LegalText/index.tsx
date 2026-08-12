@@ -208,6 +208,7 @@ export const LegalText = ({
 
     return (
         <div className={styles.card}>
+            {canEditLegalText && <LegalDraftNotice savedAt={savedAt} onDiscard={discardDraftAndEdits} />}
             <M3RichTextEditor
                 title={t(titleKey)}
                 icon={icon}
@@ -238,12 +239,7 @@ export const LegalText = ({
                         />
                     )
                 }
-                aboveEditorSlot={
-                    <>
-                        {!legalType && subTitle && <p className={styles.description}>{subTitle}</p>}
-                        {canEditLegalText && <LegalDraftNotice savedAt={savedAt} onDiscard={discardDraftAndEdits} />}
-                    </>
-                }
+                aboveEditorSlot={!legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined}
                 placeholder={t(placeHolderKey)}
                 placeholders={placeholders}
                 value={contentByLanguage[activeLanguage] ?? ''}

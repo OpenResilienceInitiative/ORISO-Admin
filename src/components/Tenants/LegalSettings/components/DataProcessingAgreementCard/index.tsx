@@ -195,6 +195,9 @@ export const DataProcessingAgreementCard = ({
 
     return (
         <div className={styles.card}>
+            {!readOnly && onDiscardDraft && (
+                <LegalDraftNotice savedAt={draftSavedAt} stale={draftStale} onDiscard={onDiscardDraft} />
+            )}
             <M3RichTextEditor
                 title={t('tenants.legal.dataProcessingAgreement.title')}
                 icon={DpaIcon}
@@ -233,36 +236,21 @@ export const DataProcessingAgreementCard = ({
                     )
                 }
                 aboveEditorSlot={
-                    !readOnly && (
-                        <>
-                            {onDiscardDraft && (
-                                <LegalDraftNotice
-                                    savedAt={draftSavedAt}
-                                    stale={draftStale}
-                                    onDiscard={onDiscardDraft}
-                                />
+                    !readOnly &&
+                    showFieldTranslate && (
+                        <div className={styles.translateField}>
+                            <Button
+                                size="small"
+                                loading={fieldTranslating}
+                                disabled={fieldTranslateDisabled}
+                                onClick={translateActiveField}
+                            >
+                                {t('legal.translation.field.button')}
+                            </Button>
+                            {fieldErrorKey && (
+                                <Alert type="error" showIcon message={t(fieldErrorKey)} className={styles.fieldError} />
                             )}
-                            {showFieldTranslate && (
-                                <div className={styles.translateField}>
-                                    <Button
-                                        size="small"
-                                        loading={fieldTranslating}
-                                        disabled={fieldTranslateDisabled}
-                                        onClick={translateActiveField}
-                                    >
-                                        {t('legal.translation.field.button')}
-                                    </Button>
-                                    {fieldErrorKey && (
-                                        <Alert
-                                            type="error"
-                                            showIcon
-                                            message={t(fieldErrorKey)}
-                                            className={styles.fieldError}
-                                        />
-                                    )}
-                                </div>
-                            )}
-                        </>
+                        </div>
                     )
                 }
                 onPublish={readOnly ? undefined : () => requestPublish()}
