@@ -1,0 +1,45 @@
+/* Header cells inherit the band styling from dataTable.module.scss (th rules);
+   this module only owns the sort affordance. */
+
+.sortButton {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: none;
+    margin: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    gap: 4px;
+    letter-spacing: inherit;
+}
+
+.sortButton:focus-visible {
+    border-radius: 4px;
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 2px;
+}
+
+.sortIcon {
+    width: 18px !important;
+    height: 18px !important;
+    flex-shrink: 0;
+}
+
+/* Unsorted columns keep a faint affordance — visible, just quiet (never hidden). */
+.sortIconIdle {
+    opacity: 0.38;
+}
+
+.sortButton:hover .sortIconIdle {
+    opacity: 0.72;
+}
+
+.alignCenter {
+    text-align: center !important;
+}
+
+.alignRight {
+    text-align: right !important;
+}

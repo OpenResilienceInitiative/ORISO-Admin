@@ -1,0 +1,207 @@
+/* M3 data table (Figma Admin.ORISO table language, tokens shared with
+   ListingTable's admin-table vars): muted surface card, radius 16, tonal
+   header band, comfortable density (52px rows), row hover state layer.
+   The error role is the scheme's MAGENTA (--m3-error) — never a traffic light. */
+
+.surface {
+    --data-table-radius: 16px;
+
+    position: relative;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 14%, transparent);
+    border-radius: var(--data-table-radius);
+    background: var(--admin-table-surface, var(--m3-surface-container-low, #f6f3f3));
+}
+
+.scroll {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: var(--admin-table-text, var(--m3-on-surface-variant, #444748));
+    font: 400 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.25px;
+}
+
+.table th {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--admin-table-border, #eae7e8);
+    background: var(--admin-table-header-surface, var(--m3-surface-container-highest, #e4e2e2));
+    color: var(--admin-table-header-text, var(--m3-on-surface, #1b1b1c));
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.stickyHeader .table th {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+}
+
+.table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--admin-table-border, #eae7e8);
+    text-align: left;
+    vertical-align: middle;
+}
+
+/* The card's own border closes the bottom — a last hairline would double it. */
+.table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.row:hover td {
+    background: var(--admin-table-row-hover-surface, #f0edee);
+}
+
+.rowSelected td {
+    background: color-mix(in srgb, var(--m3-secondary, #4c555f) 8%, var(--admin-table-surface, #f6f3f3));
+}
+
+/* Dead rows (expired/revoked/superseded): a quiet magenta wash — the error
+   ROLE, visible while scanning, without shouting over the data. */
+
+.rowError td {
+    background: color-mix(in srgb, var(--m3-error, #b1005e) 5%, var(--admin-table-surface, #f6f3f3));
+}
+
+.rowError:hover td {
+    background: color-mix(in srgb, var(--m3-error, #b1005e) 9%, var(--admin-table-surface, #f6f3f3));
+}
+
+.alignCenter {
+    text-align: center !important;
+}
+
+.alignRight {
+    text-align: right !important;
+}
+
+/* Row expansion slot: one tonal step deeper than the row it belongs to. */
+.expansionRow td {
+    border-bottom: 1px solid var(--admin-table-border, #eae7e8);
+    background: var(--m3-surface-container, #f0edee);
+}
+
+/* ── Loading skeleton ────────────────────────────────────────────────────── */
+.skeletonBar {
+    display: block;
+    width: 72%;
+    height: 12px;
+    border-radius: 6px;
+    animation: skeleton-pulse 1.4s ease-in-out infinite;
+    background: color-mix(in srgb, var(--m3-outline, #747878) 18%, transparent);
+}
+
+.skeletonRow td:first-child .skeletonBar {
+    width: 88%;
+}
+
+@keyframes skeleton-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.45;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeletonBar {
+        animation: none;
+    }
+}
+
+/* ── Empty state slot ────────────────────────────────────────────────────── */
+.empty {
+    display: grid;
+    padding: 48px 24px;
+    place-items: center;
+    text-align: center;
+}
+
+/* ── Footer slot (pagination) ────────────────────────────────────────────── */
+.footer {
+    border-top: 1px solid var(--admin-table-border, #eae7e8);
+    background: var(--admin-table-footer-surface, var(--m3-surface-container-highest, #e4e2e2));
+}
+
+/* ── Stacked cards on phones (~390px): each row becomes a card, the header
+      row stays for screen readers only. ─────────────────────────────────── */
+
+@media (max-width: 767px) {
+    .stacked {
+        border: none;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .stacked .table,
+    .stacked .table tbody,
+    .stacked .table tbody tr,
+    .stacked .table tbody td {
+        display: block;
+        width: 100%;
+    }
+
+    .stacked .table thead {
+        position: absolute;
+        overflow: hidden;
+        width: 1px;
+        height: 1px;
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .stacked .table tbody tr {
+        border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 14%, transparent);
+        border-radius: 16px;
+        margin-bottom: 12px;
+        background: var(--admin-table-surface, var(--m3-surface-container-low, #f6f3f3));
+    }
+
+    .stacked .table tbody td {
+        padding: 6px 16px;
+        border-bottom: none;
+        text-align: left !important;
+    }
+
+    .stacked .table tbody td:first-child {
+        padding-top: 14px;
+    }
+
+    .stacked .table tbody td:last-child {
+        padding-bottom: 14px;
+    }
+
+    .stacked .row:hover td,
+    .stacked .rowSelected td,
+    .stacked .rowError td,
+    .stacked .rowError:hover td {
+        background: transparent;
+    }
+
+    .stacked .rowSelected {
+        border-color: color-mix(in srgb, var(--m3-secondary, #4c555f) 45%, transparent);
+        background: color-mix(in srgb, var(--m3-secondary, #4c555f) 8%, var(--m3-surface-container-low, #f6f3f3));
+    }
+
+    .stacked .rowError {
+        border-color: color-mix(in srgb, var(--m3-error, #b1005e) 35%, transparent);
+        background: color-mix(in srgb, var(--m3-error, #b1005e) 5%, var(--m3-surface-container-low, #f6f3f3));
+    }
+
+    .stacked .footer {
+        border-radius: 16px;
+        border-top: none;
+        margin-top: 4px;
+    }
+}
