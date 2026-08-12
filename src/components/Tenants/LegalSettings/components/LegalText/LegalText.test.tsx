@@ -465,4 +465,21 @@ describe('LegalText — local draft', () => {
         renderImprint();
         expect(screen.queryByRole('button', { name: 'legal.m3Editor.saveDraft' })).not.toBeInTheDocument();
     });
+
+    it('never shows a stored draft to a viewer who may not edit', async () => {
+        const user = userEvent.setup();
+        const first = renderImprint();
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.saveDraft' }));
+        first.unmount();
+
+        // The permission is gone by the next visit: the unpublished text must not
+        // surface, and without the notice the viewer could not discard it anyway.
+        mocks.canEdit = false;
+        renderImprint();
+
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>');
+        expect(screen.queryByText('legal.draft.notice.title')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'legal.draft.discard' })).not.toBeInTheDocument();
+    });
 });

@@ -69,31 +69,43 @@ export const readLegalDraft = (key: string | undefined): LegalDraft | undefined 
     }
 };
 
-/** Stores the draft. A missing key (unknown user) writes nothing rather than a shared draft. */
+/**
+ * Stores the draft. A missing key (unknown user) writes nothing rather than a shared
+ * draft. Returns whether the draft actually reached storage — the caller must not
+ * confirm a save that quota or a disabled storage silently swallowed.
+ */
 export const writeLegalDraft = (
     key: string | undefined,
     content: Record<string, string>,
     baseVersionId?: string,
-): void => {
+): boolean => {
     if (!key) {
-        return;
+        return false;
     }
     const draft: LegalDraft = { content, savedAt: new Date().toISOString(), baseVersionId };
     try {
         window.localStorage.setItem(key, JSON.stringify(draft));
+        return true;
     } catch {
-        // Quota exceeded / storage disabled: the draft is simply not kept.
+        // Quota exceeded / storage disabled: the draft is NOT kept, and the caller
+        // has to say so rather than showing a success message.
+        return false;
     }
 };
 
-/** Removes the draft (discarded by the admin, or superseded by a successful publish). */
-export const clearLegalDraft = (key: string | undefined): void => {
+/**
+ * Removes the draft (discarded by the admin, or superseded by a successful publish).
+ * Returns whether it is really gone: a failed removal that the UI treats as success
+ * would resurrect the draft on the next load.
+ */
+export const clearLegalDraft = (key: string | undefined): boolean => {
     if (!key) {
-        return;
+        return false;
     }
     try {
         window.localStorage.removeItem(key);
+        return true;
     } catch {
-        // Nothing to do — the draft stays until the browser clears it.
+        return false;
     }
 };

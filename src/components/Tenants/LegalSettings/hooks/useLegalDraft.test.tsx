@@ -4,10 +4,12 @@ import { useLegalDraft } from './useLegalDraft';
 import { legalDraftKey, readLegalDraft, writeLegalDraft } from '../utils/legalDraftStorage';
 
 const successNotification = vi.fn();
+const errorNotification = vi.fn();
 
 vi.mock('antd', () => ({
     notification: {
         success: (...args: unknown[]) => successNotification(...args),
+        error: (...args: unknown[]) => errorNotification(...args),
     },
 }));
 
@@ -18,6 +20,8 @@ vi.mock('react-i18next', () => ({
 afterEach(() => {
     window.localStorage.clear();
     successNotification.mockClear();
+    errorNotification.mockClear();
+    vi.restoreAllMocks();
 });
 
 describe('useLegalDraft', () => {
@@ -97,6 +101,43 @@ describe('useLegalDraft', () => {
         writeLegalDraft(legalDraftKey('dpa', '1:user-abc'), { de: '<p>alt</p>' }, '2026-08-01T09:00:00.000Z');
         const { result } = renderHook(() => useLegalDraft('dpa', '1:user-abc', '2026-08-01T09:00:00.000Z'));
         expect(result.current.isStale).toBe(false);
+    });
+
+    it('clears the stale warning once the draft is re-saved against the current version', () => {
+        writeLegalDraft(legalDraftKey('dpa', '1:user-abc'), { de: '<p>alt</p>' }, '2026-08-01T09:00:00.000Z');
+        const { result } = renderHook(() => useLegalDraft('dpa', '1:user-abc', '2026-08-10T09:00:00.000Z'));
+        expect(result.current.isStale).toBe(true);
+
+        act(() => result.current.saveDraft({ de: '<p>neu gegen die aktuelle Fassung</p>' }));
+
+        expect(result.current.isStale).toBe(false);
+        expect(readLegalDraft(legalDraftKey('dpa', '1:user-abc'))?.baseVersionId).toBe('2026-08-10T09:00:00.000Z');
+    });
+
+    it('reports a failed save instead of confirming it', () => {
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+            throw new Error('quota');
+        });
+        const { result } = renderHook(() => useLegalDraft('dpa', '1:user-abc'));
+        act(() => result.current.saveDraft({ de: '<p>neu</p>' }));
+
+        expect(errorNotification).toHaveBeenCalledTimes(1);
+        expect(successNotification).not.toHaveBeenCalled();
+        expect(result.current.savedAt).toBeUndefined();
+    });
+
+    it('keeps showing the draft when discarding it failed', () => {
+        writeLegalDraft(legalDraftKey('dpa', '1:user-abc'), { de: '<p>bleibt</p>' });
+        const { result } = renderHook(() => useLegalDraft('dpa', '1:user-abc'));
+        vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+            throw new Error('denied');
+        });
+
+        act(() => result.current.discardDraft());
+
+        expect(errorNotification).toHaveBeenCalledTimes(1);
+        expect(result.current.draft?.content).toEqual({ de: '<p>bleibt</p>' });
+        expect(result.current.savedAt).toBeDefined();
     });
 
     it('is not stale when no version reference is known on either side', () => {

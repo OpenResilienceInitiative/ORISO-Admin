@@ -19,7 +19,7 @@ export interface UseLegalDraftResult {
     draft?: LegalDraft;
     /** Timestamp of the most recent save (loaded or just written). */
     savedAt?: string;
-    /** A newer version was published after this draft was saved. */
+    /** A newer version was published after the draft was last saved. */
     isStale: boolean;
     saveDraft: (contentByLanguage: Record<string, string>) => void;
     discardDraft: () => void;
@@ -42,12 +42,20 @@ export const useLegalDraft = (
     const key = legalDraftKey(document, scope);
     const [draft, setDraft] = useState<LegalDraft | undefined>(() => readLegalDraft(key));
     const [savedAt, setSavedAt] = useState<string | undefined>(() => readLegalDraft(key)?.savedAt);
+    // The version the draft was LAST saved against — tracked separately from `draft`,
+    // which stays frozen on purpose. Re-saving a stale draft against the current
+    // version has to clear the stale warning; reading it off the frozen record would
+    // keep warning about a conflict the admin has just resolved.
+    const [savedBaseVersionId, setSavedBaseVersionId] = useState<string | undefined>(
+        () => readLegalDraft(key)?.baseVersionId,
+    );
 
     // The scope is undefined until the opaque user id has loaded; pick the draft up then.
     useEffect(() => {
         const stored = readLegalDraft(key);
         setDraft(stored);
         setSavedAt(stored?.savedAt);
+        setSavedBaseVersionId(stored?.baseVersionId);
     }, [key]);
 
     const saveDraft = useCallback(
@@ -55,20 +63,36 @@ export const useLegalDraft = (
             if (!key) {
                 return;
             }
-            writeLegalDraft(key, contentByLanguage, baseVersionId);
+            if (!writeLegalDraft(key, contentByLanguage, baseVersionId)) {
+                // Quota exceeded or storage disabled: nothing was stored, so say so
+                // instead of confirming a save the admin would rely on.
+                notification.error({ message: t('legal.draft.saveError'), duration: 8 });
+                return;
+            }
             setSavedAt(readLegalDraft(key)?.savedAt);
+            setSavedBaseVersionId(baseVersionId);
             notification.success({ message: t('legal.draft.saved'), duration: 4 });
         },
         [baseVersionId, key, t],
     );
 
     const discardDraft = useCallback(() => {
-        clearLegalDraft(key);
+        if (!key) {
+            // No scope yet: there is nothing stored to discard, and nothing to warn about.
+            return;
+        }
+        if (!clearLegalDraft(key)) {
+            // The draft is still on disk — keep showing it rather than pretending it
+            // is gone and resurrecting it on the next load.
+            notification.error({ message: t('legal.draft.discardError'), duration: 8 });
+            return;
+        }
         setDraft(undefined);
         setSavedAt(undefined);
-    }, [key]);
+        setSavedBaseVersionId(undefined);
+    }, [key, t]);
 
-    const isStale = !!draft?.baseVersionId && !!baseVersionId && draft.baseVersionId !== baseVersionId;
+    const isStale = !!savedBaseVersionId && !!baseVersionId && savedBaseVersionId !== baseVersionId;
 
     return { draft, savedAt, isStale, saveDraft, discardDraft };
 };

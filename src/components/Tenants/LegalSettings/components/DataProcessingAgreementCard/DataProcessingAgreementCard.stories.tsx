@@ -99,7 +99,7 @@ export const ReadOnly: Story = {
 };
 
 /**
- * The draft action (ORISO-Admin#708): "Als Entwurf speichern" sits next to
+ * The draft action (ORISO-Admin#708): "Entwurf bearbeiten" sits next to
  * "Veröffentlichen" so unfinished wording can be parked without stamping a new
  * published DPA version that every tenant would have to sign again.
  */

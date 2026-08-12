@@ -60,15 +60,19 @@ describe('writeLegalDraft', () => {
     });
 
     it('does nothing without a key, so an unknown user never writes a shared draft', () => {
-        writeLegalDraft(undefined, { de: '<p>Entwurf</p>' });
+        expect(writeLegalDraft(undefined, { de: '<p>Entwurf</p>' })).toBe(false);
         expect(window.localStorage.length).toBe(0);
     });
 
-    it('survives a full or disabled storage', () => {
+    it('reports failure instead of throwing when storage is full or disabled', () => {
         vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
             throw new Error('quota');
         });
-        expect(() => writeLegalDraft(key, { de: '<p>Entwurf</p>' })).not.toThrow();
+        expect(writeLegalDraft(key, { de: '<p>Entwurf</p>' })).toBe(false);
+    });
+
+    it('reports success once the draft is stored', () => {
+        expect(writeLegalDraft(key, { de: '<p>Entwurf</p>' })).toBe(true);
     });
 });
 
@@ -79,10 +83,10 @@ describe('clearLegalDraft', () => {
         expect(readLegalDraft(key)).toBeUndefined();
     });
 
-    it('survives a storage that throws', () => {
+    it('reports failure when the removal is refused, so the UI can keep showing the draft', () => {
         vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
             throw new Error('denied');
         });
-        expect(() => clearLegalDraft(key)).not.toThrow();
+        expect(clearLegalDraft(key)).toBe(false);
     });
 });

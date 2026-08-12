@@ -878,6 +878,8 @@
     "legal.m3Editor.publish": "Veröffentlichen",
     "legal.m3Editor.saveDraft": "Entwurf bearbeiten",
     "legal.draft.saved": "Entwurf gespeichert — nur in diesem Browser auf diesem Gerät.",
+    "legal.draft.saveError": "Der Entwurf konnte nicht gespeichert werden — der Browserspeicher ist voll oder deaktiviert. Kopieren Sie den Text heraus, bevor Sie die Seite verlassen.",
+    "legal.draft.discardError": "Der Entwurf konnte nicht verworfen werden — der Browserspeicher ist gesperrt.",
     "legal.draft.notice.title": "Sie bearbeiten einen gespeicherten Entwurf",
     "legal.draft.notice.description": "Zuletzt gespeichert am {{savedAt}}. Der Entwurf liegt nur in diesem Browser auf diesem Gerät — veröffentlicht ist weiterhin der bisherige Text.",
     "legal.draft.notice.stale": "Achtung: Seit dem Speichern wurde eine neuere Fassung veröffentlicht. Wenn Sie diesen Entwurf veröffentlichen, überschreiben Sie die neuere Fassung.",

@@ -1325,6 +1325,8 @@
     "legal.m3Editor.publish": "Publish",
     "legal.m3Editor.saveDraft": "Edit draft",
     "legal.draft.saved": "Draft saved — in this browser on this device only.",
+    "legal.draft.saveError": "The draft could not be saved — browser storage is full or disabled. Copy the text elsewhere before leaving the page.",
+    "legal.draft.discardError": "The draft could not be discarded — browser storage is locked.",
     "legal.draft.notice.title": "You are editing a saved draft",
     "legal.draft.notice.description": "Last saved on {{savedAt}}. The draft is kept in this browser on this device only — the previously published text stays live.",
     "legal.draft.notice.stale": "Careful: a newer version was published after this draft was saved. Publishing this draft overwrites that newer version.",

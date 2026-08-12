@@ -5,7 +5,7 @@ import { DataProcessingAgreementContainer } from './index';
 /**
  * The wired DPA card — real container, real hooks, real localStorage, mocked HTTP.
  * This is the story to look at for ORISO-Admin#708: type into the editor, press
- * "Als Entwurf speichern", reload the page and the text is still there, announced
+ * "Entwurf bearbeiten", reload the page and the text is still there, announced
  * by the draft notice. Publishing (PUT .../dpa) is mocked and clears the draft.
  */
 const meta = {

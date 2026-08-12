@@ -1,3 +1,5 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
 /* Draft banner above the legal editor card. Deliberately NOT an antd Alert:
    the admin theme maps colorInfo to the ORISO primary (a deep red), so an
    informational alert reads as an error. Neutral M3 surface tokens instead —
@@ -5,13 +7,13 @@
 .notice {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 16px;
+    gap: mui.$mui-unit mui.$mui-unit * 2;
     align-items: flex-start;
     justify-content: space-between;
     /* Line up with the M3 editor shell below, which caps at 800px. */
     max-width: 800px;
-    margin-bottom: 12px;
-    padding: 12px 16px;
+    margin-bottom: mui.$mui-unit * 1.5;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
     border: 1px solid var(--m3-outline-variant, #c4c7c8);
     border-radius: 12px;
     background: var(--m3-surface-container-high, #eae7e8);
@@ -24,7 +26,7 @@
 }
 
 .title {
-    margin: 0 0 2px;
+    margin: 0 0 mui.$mui-unit * 0.25;
     font-weight: 600;
     color: var(--m3-on-surface, #1b1b1c);
 }
@@ -36,7 +38,7 @@
 }
 
 .stale {
-    margin: 6px 0 0;
+    margin: mui.$mui-unit * 0.75 0 0;
     font-size: 14px;
     line-height: 1.4;
     font-weight: 600;

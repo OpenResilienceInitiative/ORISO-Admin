@@ -150,8 +150,14 @@ export const LegalText = ({
         } else if (typeof storedContent === 'string' && storedContent !== '') {
             base = { [languages[0]]: storedContent };
         }
+        // A viewer who may not edit must never see unpublished local content: the
+        // draft notice and its discard action are hidden for them, so they could
+        // neither recognise nor remove it. Show the published text only.
+        if (!canEditLegalText) {
+            return base;
+        }
         return { ...base, ...(draft?.content ?? {}), ...edits };
-    }, [storedContent, draft, edits, languages]);
+    }, [canEditLegalText, storedContent, draft, edits, languages]);
 
     // Discarding drops the stored draft AND this session's unsaved edits — otherwise the
     // editor would still show the text the admin just asked to throw away.
