@@ -16,3 +16,4 @@ build
 # UserService renders and sends; reformatting them here would be exactly the post-processing the
 # issue forbids. Refresh via scripts/email-fixtures/README.md, never by hand or by a formatter.
 src/components/EmailPreview/fixtures
+coverage

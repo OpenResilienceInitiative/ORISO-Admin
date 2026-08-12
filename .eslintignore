@@ -12,3 +12,4 @@ build
 vitest.config.ts
 vite.authBffPlugin.ts
 public/mockServiceWorker.js
+coverage
