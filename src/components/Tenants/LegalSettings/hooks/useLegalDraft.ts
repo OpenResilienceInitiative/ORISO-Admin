@@ -22,7 +22,8 @@ export interface UseLegalDraftResult {
     /** A newer version was published after the draft was last saved. */
     isStale: boolean;
     saveDraft: (contentByLanguage: Record<string, string>) => void;
-    discardDraft: () => void;
+    /** Returns whether the draft is really gone — callers must not drop further state otherwise. */
+    discardDraft: () => boolean;
 }
 
 /**
@@ -79,17 +80,18 @@ export const useLegalDraft = (
     const discardDraft = useCallback(() => {
         if (!key) {
             // No scope yet: there is nothing stored to discard, and nothing to warn about.
-            return;
+            return true;
         }
         if (!clearLegalDraft(key)) {
             // The draft is still on disk — keep showing it rather than pretending it
             // is gone and resurrecting it on the next load.
             notification.error({ message: t('legal.draft.discardError'), duration: 8 });
-            return;
+            return false;
         }
         setDraft(undefined);
         setSavedAt(undefined);
         setSavedBaseVersionId(undefined);
+        return true;
     }, [key, t]);
 
     const isStale = !!savedBaseVersionId && !!baseVersionId && savedBaseVersionId !== baseVersionId;

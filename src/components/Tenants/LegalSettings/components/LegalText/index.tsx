@@ -160,10 +160,13 @@ export const LegalText = ({
     }, [canEditLegalText, storedContent, draft, edits, languages]);
 
     // Discarding drops the stored draft AND this session's unsaved edits — otherwise the
-    // editor would still show the text the admin just asked to throw away.
+    // editor would still show the text the admin just asked to throw away. If the draft
+    // could NOT be removed, the edits stay: the error says the draft is still there, so
+    // silently wiping the work typed since the last save would be the worse lie.
     const discardDraftAndEdits = useCallback(() => {
-        discardDraft();
-        setEdits({});
+        if (discardDraft()) {
+            setEdits({});
+        }
     }, [discardDraft]);
 
     const help = useLegalHelp(legalType ?? 'privacy', {

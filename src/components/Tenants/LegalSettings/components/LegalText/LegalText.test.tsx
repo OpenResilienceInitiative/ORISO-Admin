@@ -466,6 +466,29 @@ describe('LegalText — local draft', () => {
         expect(screen.queryByRole('button', { name: 'legal.m3Editor.saveDraft' })).not.toBeInTheDocument();
     });
 
+    it('keeps unsaved edits when the draft could not be discarded', async () => {
+        const user = userEvent.setup();
+        // Draft holds the PUBLISHED text, so a later edit is distinguishable from it.
+        const first = renderImprint();
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.saveDraft' }));
+        first.unmount();
+
+        renderImprint();
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
+
+        // Storage refuses the removal — the notice says the draft is still there, so the
+        // text typed since the last save must not silently disappear either.
+        vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+            throw new Error('denied');
+        });
+        await user.click(screen.getByRole('button', { name: 'legal.draft.discard' }));
+
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
+        expect(screen.getByText('legal.draft.notice.title')).toBeInTheDocument();
+        vi.restoreAllMocks();
+    });
+
     it('never shows a stored draft to a viewer who may not edit', async () => {
         const user = userEvent.setup();
         const first = renderImprint();

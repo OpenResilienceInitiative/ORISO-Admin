@@ -133,8 +133,12 @@ describe('useLegalDraft', () => {
             throw new Error('denied');
         });
 
-        act(() => result.current.discardDraft());
+        let discarded: boolean | undefined;
+        act(() => {
+            discarded = result.current.discardDraft();
+        });
 
+        expect(discarded).toBe(false);
         expect(errorNotification).toHaveBeenCalledTimes(1);
         expect(result.current.draft?.content).toEqual({ de: '<p>bleibt</p>' });
         expect(result.current.savedAt).toBeDefined();
