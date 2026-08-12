@@ -248,11 +248,14 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                     action={null}
                 />
             )}
-            {isTenantScopedAdmin && dpaGate?.dpaSigned && (
+            {/* The "agreement signed" confirmation itself now lives in the editor's own
+                success snackbar (Figma 1261-51137). What stays here is the audit detail —
+                who signed and when — which only makes sense once a signature exists. */}
+            {isTenantScopedAdmin && dpaGate?.dpaSigned && latestSignedDpa && (
                 <Alert
                     type="success"
                     showIcon
-                    message={t('legal.dpa.sign.complete')}
+                    message={t('legal.dpa.sign.signedBy')}
                     description={
                         latestSignedDpa && (
                             <div>
