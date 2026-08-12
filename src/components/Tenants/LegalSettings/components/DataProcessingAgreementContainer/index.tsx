@@ -14,6 +14,7 @@ import { useDpaGate } from '../../../../../hooks/useDpaGate.hook';
 import { useCreateDpaInvite } from '../../../../../hooks/useCreateDpaInvite.hook';
 import { resolveDpaSignLink } from '../../../../../api/tenant/createDpaSignInvite';
 import { useDpaSignatures } from '../../../../../hooks/useDpaSignatures.hook';
+import { useLegalDraft } from '../../hooks/useLegalDraft';
 import { useSendDpaInviteEmail } from '../../../../../hooks/useSendDpaInviteEmail.hook';
 
 interface DataProcessingAgreementContainerProps {
@@ -64,13 +65,23 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     // must not remount the editor (which would discard an in-progress draft).
     const dismissalScope = userData?.id ? `${id}:${userData.id}` : undefined;
 
+    const latestVersionId = (versions as DpaVersion[])[0]?.activationDate;
     const latestContentByLanguage = useMemo(
         () => parseLegalContentMap((versions as DpaVersion[])[0]?.content),
         [versions],
     );
+    // Publishing the DPA stamps a new version every tenant must sign again, so the
+    // admin needs a way to stop mid-text. Until the backend has draft state this is
+    // device-local — the card says so via LegalDraftNotice.
+    const { draft, savedAt, isStale, saveDraft, discardDraft } = useLegalDraft(
+        'dpa',
+        effectiveReadOnly ? undefined : dismissalScope,
+        latestVersionId,
+    );
+    const editorContentByLanguage = draft?.content ?? latestContentByLanguage;
     const languages = useMemo(
-        () => getEditableLanguages(tenantData?.settings?.activeLanguages, latestContentByLanguage),
-        [tenantData?.settings?.activeLanguages, latestContentByLanguage],
+        () => getEditableLanguages(tenantData?.settings?.activeLanguages, editorContentByLanguage),
+        [tenantData?.settings?.activeLanguages, editorContentByLanguage],
     );
 
     const mapped: LegalVersion[] = useMemo(
@@ -159,18 +170,24 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     return (
         <>
             <DataProcessingAgreementCard
-                // remount when the stored content changes (e.g. after a publish) so the editor resets to it
-                key={(versions as DpaVersion[])[0]?.activationDate ?? ''}
-                initialContentByLanguage={latestContentByLanguage}
+                // Remount when the stored content changes (e.g. after a publish) so the editor
+                // resets to it, and when a stored draft appears or is discarded. Saving a draft
+                // deliberately does NOT change this key — it would reset the editor mid-edit.
+                key={`${latestVersionId ?? ''}|${draft?.savedAt ?? ''}`}
+                initialContentByLanguage={editorContentByLanguage}
                 languages={languages}
                 defaultLanguage={lang}
                 versions={mapped}
-                onPublish={publish}
+                onPublish={(contentByLanguage) => publish(contentByLanguage, { onSuccess: () => discardDraft() })}
                 publishing={isPending}
                 onTranslate={readOnly ? undefined : translate}
                 readOnly={effectiveReadOnly}
                 dpaSigned={dpaGate?.dpaSigned}
                 dismissalScope={dismissalScope}
+                onSaveDraft={effectiveReadOnly ? undefined : saveDraft}
+                draftSavedAt={savedAt}
+                draftStale={isStale}
+                onDiscardDraft={effectiveReadOnly ? undefined : discardDraft}
             />
             {isTenantScopedAdmin && dpaGateError && (
                 <Alert

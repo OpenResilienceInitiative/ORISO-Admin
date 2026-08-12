@@ -7,7 +7,7 @@ import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({ t: (key: string) => key }),
+    useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
     Trans: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,
 }));
 
@@ -61,6 +61,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onChange,
         readOnly,
         onPublish,
+        onSaveDraft,
         helpSlot,
         snackbarSlot,
         aboveEditorSlot,
@@ -70,6 +71,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onChange?: (html: string) => void;
         readOnly?: boolean;
         onPublish?: () => void;
+        onSaveDraft?: () => void;
         helpSlot?: React.ReactNode;
         snackbarSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
@@ -87,6 +89,11 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
             {!readOnly && onPublish && (
                 <button type="button" onClick={() => onPublish()}>
                     legal.m3Editor.publish
+                </button>
+            )}
+            {!readOnly && onSaveDraft && (
+                <button type="button" onClick={() => onSaveDraft()}>
+                    legal.m3Editor.saveDraft
                 </button>
             )}
             {belowSlot}
@@ -361,5 +368,101 @@ describe('LegalText hint snackbar (imprint / privacy)', () => {
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
         expect(window.localStorage.getItem('oriso-admin.legal.privacy.hint.dismissed.1:user-1')).toBeNull();
         expect(window.sessionStorage.getItem('oriso-admin.legal.privacy.hint.closed.1:user-1')).toBe('true');
+    });
+});
+
+describe('LegalText — local draft', () => {
+    const renderImprint = () =>
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                legalType="imprint"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+    it('offers a draft action that does not write to the tenant', async () => {
+        const user = userEvent.setup();
+        mocks.updateTenant.mockClear();
+        renderImprint();
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.saveDraft' }));
+
+        expect(mocks.updateTenant).not.toHaveBeenCalled();
+    });
+
+    it('restores the draft and announces it on the next mount', async () => {
+        const user = userEvent.setup();
+        const first = renderImprint();
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.saveDraft' }));
+        first.unmount();
+
+        renderImprint();
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
+        expect(screen.getByText('legal.draft.notice.title')).toBeInTheDocument();
+    });
+
+    it('discarding restores the published text and removes the notice', async () => {
+        const user = userEvent.setup();
+        const first = renderImprint();
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.saveDraft' }));
+        first.unmount();
+
+        renderImprint();
+        await user.click(screen.getByRole('button', { name: 'legal.draft.discard' }));
+
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>');
+        expect(screen.queryByText('legal.draft.notice.title')).not.toBeInTheDocument();
+    });
+
+    it('keeps the imprint and privacy drafts apart', async () => {
+        const user = userEvent.setup();
+        const first = renderImprint();
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.saveDraft' }));
+        first.unmount();
+
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="privacy.title"
+                legalType="privacy"
+                placeHolderKey="settings.privacy.placeholder"
+            />,
+        );
+        expect(screen.queryByText('legal.draft.notice.title')).not.toBeInTheDocument();
+    });
+
+    it('publishes the draft text and drops the draft once the tenant write succeeds', async () => {
+        const user = userEvent.setup();
+        mocks.updateTenant.mockClear();
+        mocks.updateTenant.mockImplementation((_data: unknown, options?: { onSuccess?: () => void }) =>
+            options?.onSuccess?.(),
+        );
+        const first = renderImprint();
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.saveDraft' }));
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
+        first.unmount();
+
+        expect(mocks.updateTenant.mock.calls[0][0]).toEqual({
+            content: { imprint: { de: '<p>edited</p>', en: '<p>Imprint EN</p>', fr: '<p>Imprint FR</p>' } },
+        });
+
+        renderImprint();
+        expect(screen.queryByText('legal.draft.notice.title')).not.toBeInTheDocument();
+        mocks.updateTenant.mockReset();
+    });
+
+    it('gives a viewer without edit permission no draft action', () => {
+        mocks.canEdit = false;
+        renderImprint();
+        expect(screen.queryByRole('button', { name: 'legal.m3Editor.saveDraft' })).not.toBeInTheDocument();
     });
 });

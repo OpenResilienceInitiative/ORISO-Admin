@@ -8,6 +8,7 @@ import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnack
 import { useLegalHelp } from '../../hooks/useLegalHelp';
 import { LegalHelpRole } from '../../utils/legalHelpTexts';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
+import { LegalDraftNotice } from '../LegalDraftNotice';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
 import { parseLegalContentMap, pickLegalContentLanguage } from '../../utils/legalContentLanguages';
@@ -91,6 +92,17 @@ interface DataProcessingAgreementCardProps {
     helpRole?: LegalHelpRole;
     /** Tenant/account scope for dismissal persistence. */
     dismissalScope?: string;
+    /**
+     * Stores the complete content map as a draft WITHOUT publishing. Omitted = no draft
+     * action; publishing a DPA stamps a new version every tenant has to sign again, so
+     * "save" and "publish" must stay two separate decisions.
+     */
+    onSaveDraft?: (contentByLanguage: Record<string, string>) => void;
+    /** When set, the editor is showing a restored draft saved at this time. */
+    draftSavedAt?: string;
+    /** A newer version was published after the restored draft was saved. */
+    draftStale?: boolean;
+    onDiscardDraft?: () => void;
 }
 
 /**
@@ -112,6 +124,10 @@ export const DataProcessingAgreementCard = ({
     dpaSigned,
     helpRole,
     dismissalScope,
+    onSaveDraft,
+    draftSavedAt,
+    draftStale,
+    onDiscardDraft,
 }: DataProcessingAgreementCardProps) => {
     const { t } = useTranslation();
     const {
@@ -217,24 +233,42 @@ export const DataProcessingAgreementCard = ({
                     )
                 }
                 aboveEditorSlot={
-                    !readOnly &&
-                    showFieldTranslate && (
-                        <div className={styles.translateField}>
-                            <Button
-                                size="small"
-                                loading={fieldTranslating}
-                                disabled={fieldTranslateDisabled}
-                                onClick={translateActiveField}
-                            >
-                                {t('legal.translation.field.button')}
-                            </Button>
-                            {fieldErrorKey && (
-                                <Alert type="error" showIcon message={t(fieldErrorKey)} className={styles.fieldError} />
+                    !readOnly && (
+                        <>
+                            {onDiscardDraft && (
+                                <LegalDraftNotice
+                                    savedAt={draftSavedAt}
+                                    stale={draftStale}
+                                    onDiscard={onDiscardDraft}
+                                />
                             )}
-                        </div>
+                            {showFieldTranslate && (
+                                <div className={styles.translateField}>
+                                    <Button
+                                        size="small"
+                                        loading={fieldTranslating}
+                                        disabled={fieldTranslateDisabled}
+                                        onClick={translateActiveField}
+                                    >
+                                        {t('legal.translation.field.button')}
+                                    </Button>
+                                    {fieldErrorKey && (
+                                        <Alert
+                                            type="error"
+                                            showIcon
+                                            message={t(fieldErrorKey)}
+                                            className={styles.fieldError}
+                                        />
+                                    )}
+                                </div>
+                            )}
+                        </>
                     )
                 }
                 onPublish={readOnly ? undefined : () => requestPublish()}
+                // Saving a draft must never reach the publish endpoint: it hands over the
+                // same complete map the publish would send, but only to local storage.
+                onSaveDraft={readOnly || !onSaveDraft ? undefined : () => onSaveDraft(contentMapWithEdits)}
                 belowSlot={
                     !readOnly && (
                         <TranslateOnPublishModal
