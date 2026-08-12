@@ -145,12 +145,13 @@
         position: relative;
     }
 
-    /* The checkbox floats to the card corner instead of eating a full row. */
+    /* The checkbox floats to the card corner instead of eating a full row.
+       width needs !important against the stacked layout's full-width cells. */
     .selectCell {
         position: absolute;
         top: 8px;
         right: 8px;
-        width: auto;
+        width: auto !important;
         padding: 0 !important;
     }
 
