@@ -75,7 +75,7 @@
     "prebuild-storybook": "npm run generate:icon-catalog && npm run typecheck:storybook",
     "build-storybook": "storybook build",
     "test": "vitest run",
-    "lint": "yarn run lint:css && yarn run lint:js && yarn run lint:formatting",
+    "lint": "npm run lint:css && npm run lint:js && npm run lint:formatting",
     "lint:css": "stylelint --fix \"src/**/*.(s(c|a)ss|css|less)\"",
     "lint:js": "eslint",
     "lint:formatting": "prettier . --write --ignore-unknown --check",
