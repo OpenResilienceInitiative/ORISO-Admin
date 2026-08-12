@@ -24,6 +24,12 @@ export interface SplitButtonProps {
      * gated on form validity but whose send-mode menu must remain reachable.
      */
     mainDisabled?: boolean;
+    /**
+     * Id of an element describing the main segment — used to attach the reason
+     * a disabled action is disabled without touching its accessible NAME (which
+     * stays the visible label, so tests and screen readers still find it by it).
+     */
+    mainDescribedBy?: string;
     /** Pressing the main segment triggers the action itself. */
     onClick?: () => void;
     /** Dropdown menu opened by the chevron segment (secondary options). */
@@ -59,6 +65,7 @@ export const SplitButton = ({
     variant = 'outlined',
     disabled = false,
     mainDisabled = false,
+    mainDescribedBy,
     onClick,
     menu,
     menuLabel,
@@ -89,6 +96,7 @@ export const SplitButton = ({
             <button
                 type="button"
                 aria-label={title}
+                aria-describedby={mainDescribedBy}
                 className={classNames(styles.segment, styles.main)}
                 disabled={disabled || mainDisabled}
                 title={title}

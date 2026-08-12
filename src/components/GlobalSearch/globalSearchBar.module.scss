@@ -32,11 +32,20 @@
     }
 }
 
+/*
+ * #713: this row used to be `width: max-content` — it grew to the width its
+ * widest possible single line needed and let `.scroller` clip everything past
+ * the viewport. On the tenant-invite composer that put the primary send action
+ * at x=1718 in a 1336px-wide slot: unreachable at 1600px, 1440px and 1280px.
+ * The row now wraps onto as many lines as it needs; `.scroller` stays as the
+ * last-resort escape for a single control wider than its container.
+ */
 .row {
     display: flex;
-    width: max-content;
-    min-width: 100%;
+    width: 100%;
+    min-width: 0;
     align-items: center;
+    flex-wrap: wrap;
     padding: 4px 0 8px;
     gap: 8px;
 }
@@ -67,9 +76,12 @@
     overflow: visible;
 }
 
+/* The bottom bar is one control plus a fixed 48px overflow slot inside a
+   fixed-height bar — wrapping there would push "Mehr" onto a second line. */
 .pillRow {
     width: 100%;
     min-width: 0;
+    flex-wrap: nowrap;
     padding: 0;
 }
 
