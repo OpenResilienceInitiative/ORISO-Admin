@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import { Form, message, Upload } from 'antd';
+import { ConfigProvider, Form, message, Upload } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { UploadFileProps } from '../../types/uploadFiles';
 import decodeHTML from '../../utils/decodeHTML';
@@ -24,9 +24,16 @@ interface FormRichTextEditorProps {
 
 const FormFileUploaderLocal = ({ onChange, value, allowIcon, disabled }: FormRichTextEditorProps) => {
     const { t } = useTranslation();
+    // CardEditable disables its <Form> while the card is in view mode, which antd
+    // publishes as `componentDisabled`. antd merges `customDisabled ?? contextDisabled`,
+    // so passing an explicit `false` here would shadow that and leave the uploader
+    // clickable outside edit mode — the picked file would then land in the form state
+    // with no way to save it. Merge both instead of forwarding the prop alone.
+    const { componentDisabled } = ConfigProvider.useConfig();
+    const isDisabled = disabled || componentDisabled;
 
     const beforeUpload = (file: UploadFileProps) => {
-        if (disabled) {
+        if (isDisabled) {
             return false;
         }
         const isJpgOrPng =
@@ -55,7 +62,7 @@ const FormFileUploaderLocal = ({ onChange, value, allowIcon, disabled }: FormRic
             className="fileUploader"
             showUploadList={false}
             beforeUpload={beforeUpload}
-            disabled={disabled}
+            disabled={isDisabled}
         >
             {value ? (
                 <img src={decodeHTML(value)} className={styles.image} alt="" />

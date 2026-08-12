@@ -87,11 +87,21 @@ export const CardEditable = ({
 
     const onFormSubmit = useCallback(
         (formData) => {
-            onSave(formData, { onError: () => setEditing(editMode) });
+            // Close optimistically first, so a synchronous onError still wins the race
+            // and reopens the card rather than being overwritten by this reset.
             setEditing(editMode);
             setHasChanges(false);
+            onSave(formData, {
+                // A failed save must not be indistinguishable from a successful one:
+                // reopen the card with the entered values still in the form so the user
+                // can retry, instead of silently dropping the change on the floor.
+                onError: () => {
+                    setEditing(true);
+                    setHasChanges(true);
+                },
+            });
         },
-        [onSave],
+        [onSave, editMode],
     );
     const canStartEditing = allowEdit && !editMode && !editing;
     const finalEditButtonPlacement = editButtonPlacement ?? (variant === 'dialog' ? 'footer' : 'header');
