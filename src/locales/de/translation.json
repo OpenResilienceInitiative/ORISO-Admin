@@ -530,6 +530,7 @@
     "agency.edit.general.address.phone": "Telefon",
     "agency.edit.general.address.phone_secondary": "Telefon (alternativ)",
     "agency.edit.general.address.email": "E-Mail",
+    "agency.edit.general.address.opening_hours": "Öffnungszeiten",
     "agency.edit.general.address.zip_code_scope": "Postleitzahl Umfang",
     "agency.edit.general.address.zip_code_scope.information": "Umkreis für Beratungsstelle einstellen",
     "agency.edit.general.address.save": "Speichern",

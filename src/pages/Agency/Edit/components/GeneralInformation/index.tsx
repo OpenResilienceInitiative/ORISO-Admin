@@ -99,6 +99,13 @@ export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationP
                 </Col>
                 <Col xs={24}>
                     <MuiMultilineFormField
+                        name="openingHours"
+                        label={t('agency.edit.general.address.opening_hours')}
+                        placeholder={t('agency.edit.general.address.opening_hours')}
+                    />
+                </Col>
+                <Col xs={24}>
+                    <MuiMultilineFormField
                         name="description"
                         label={t('agency.edit.general.general_information.description')}
                         placeholder={t('agency.edit.general.general_information.description')}

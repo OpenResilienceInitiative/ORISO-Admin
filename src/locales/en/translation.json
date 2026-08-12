@@ -802,6 +802,7 @@
     "agency.edit.general.address.phone": "Phone",
     "agency.edit.general.address.phone_secondary": "Phone (secondary)",
     "agency.edit.general.address.email": "Email",
+    "agency.edit.general.address.opening_hours": "Opening hours",
     "agency.edit.general.general_information": "General information",
     "agency.edit.general.general_information.description": "Description",
     "agency.edit.general.general_information.name": "Name",
