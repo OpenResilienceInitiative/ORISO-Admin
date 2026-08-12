@@ -34,6 +34,26 @@ describe('CardEditable', () => {
         await waitFor(() => expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument());
     });
 
+    it('ignores a failure that arrives after a newer save was sent', async () => {
+        const user = userEvent.setup();
+        const deferredErrors: (() => void)[] = [];
+        const onSave = vi.fn((_formData, options) => {
+            if (options?.onError) {
+                deferredErrors.push(options.onError);
+            }
+        });
+        renderCard(onSave);
+
+        await startEditingAndSave(user);
+        await startEditingAndSave(user);
+        expect(deferredErrors).toHaveLength(2);
+
+        // The first save fails late, after the second one has already been sent.
+        deferredErrors[0]();
+
+        await waitFor(() => expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument());
+    });
+
     it('stays in edit mode with the entered value when the save fails', async () => {
         const user = userEvent.setup();
         const onSave = vi.fn((_formData, options) => options?.onError?.());

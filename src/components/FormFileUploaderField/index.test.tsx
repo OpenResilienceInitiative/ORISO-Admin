@@ -18,9 +18,12 @@ const renderField = ({ formDisabled, disabled }: { formDisabled: boolean; disabl
         </Form>,
     );
 
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    // Assert the input is really there: without it the change event below would be a
+    // no-op and the "nothing happened" expectations would pass for the wrong reason.
+    const input = container.querySelector('.ant-upload input[type="file"]');
+    expect(input).not.toBeNull();
 
-    return { changes, input };
+    return { changes, input: input as HTMLInputElement };
 };
 
 const pickPng = (input: HTMLInputElement) =>

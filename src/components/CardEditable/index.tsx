@@ -1,6 +1,6 @@
 import { Form, FormInstance } from 'antd';
 import classNames from 'classnames';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, ButtonItem, BUTTON_TYPES } from '../button/Button';
 import { UnsavedChangesModal } from './components/UnsavedChanges';
@@ -74,6 +74,7 @@ export const CardEditable = ({
     const [editing, setEditing] = useState(editMode);
     const [hasChanges, setHasChanges] = useState(false);
     const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+    const latestSubmission = useRef(0);
 
     const cancelEditButton: ButtonItem = {
         label: t(cancelKey),
@@ -87,6 +88,10 @@ export const CardEditable = ({
 
     const onFormSubmit = useCallback(
         (formData) => {
+            // Identifies this submission so a slow failure from an earlier save cannot
+            // reopen the card on top of a later one the user has already sent.
+            const submission = latestSubmission.current + 1;
+            latestSubmission.current = submission;
             // Close optimistically first, so a synchronous onError still wins the race
             // and reopens the card rather than being overwritten by this reset.
             setEditing(editMode);
@@ -96,6 +101,9 @@ export const CardEditable = ({
                 // reopen the card with the entered values still in the form so the user
                 // can retry, instead of silently dropping the change on the floor.
                 onError: () => {
+                    if (submission !== latestSubmission.current) {
+                        return;
+                    }
                     setEditing(true);
                     setHasChanges(true);
                 },
