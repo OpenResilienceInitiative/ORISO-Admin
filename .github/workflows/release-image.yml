@@ -71,6 +71,7 @@ jobs:
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Build and push admin image
+              id: app_image
               uses: docker/build-push-action@v7
               with:
                   context: .
@@ -84,7 +85,18 @@ jobs:
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 
+            - name: Reject fixable admin image vulnerabilities
+              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+              with:
+                  image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.APP_IMAGE_NAME }}@${{ steps.app_image.outputs.digest }}
+                  format: table
+                  exit-code: '1'
+                  ignore-unfixed: true
+                  vuln-type: os,library
+                  severity: CRITICAL,HIGH
+
             - name: Build and push admin Storybook image
+              id: storybook_image
               uses: docker/build-push-action@v7
               with:
                   context: .
@@ -97,6 +109,16 @@ jobs:
                       org.opencontainers.image.version=${{ env.VERSION }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
+
+            - name: Reject fixable Storybook image vulnerabilities
+              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+              with:
+                  image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.STORYBOOK_IMAGE_NAME }}@${{ steps.storybook_image.outputs.digest }}
+                  format: table
+                  exit-code: '1'
+                  ignore-unfixed: true
+                  vuln-type: os,library
+                  severity: CRITICAL,HIGH
 
             - name: Create and push release tag
               shell: bash
