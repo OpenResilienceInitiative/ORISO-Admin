@@ -14,7 +14,12 @@ interface UseLegalContentTranslationArgs {
     initialContentByLanguage: Record<string, string>;
     /** The languages offered for editing. */
     languages: string[];
-    /** The language shown first (usually the admin's UI language). */
+    /**
+     * Explicit override of the language shown first. Without it the editor opens on the
+     * legal source language ("Rechtssprache") — NOT on the admin's UI language: the legal
+     * texts are authored in the source language, and an editor that opens elsewhere lets
+     * an admin publish into a language their advice seekers never read (#718).
+     */
     defaultLanguage?: string;
     /** Translate call (usually useTranslateLegalContent().translate). Absent = no translation UI. */
     onTranslate?: (request: TranslateRequest) => Promise<TranslateResponse>;
@@ -43,19 +48,19 @@ export const useLegalContentTranslation = ({
     onTranslate,
     onPublish,
 }: UseLegalContentTranslationArgs) => {
+    // v1: the platform's legal source language ("Rechtssprache") is always German.
+    const sourceLanguage = languages.includes(LEGAL_SOURCE_LANGUAGE) ? LEGAL_SOURCE_LANGUAGE : languages[0];
+
     const [edits, setEdits] = useState<Record<string, string>>({});
     const [freshMeta, setFreshMeta] = useState<Record<string, string>>({});
     const [activeLanguage, setActiveLanguage] = useState(
-        defaultLanguage && languages.includes(defaultLanguage) ? defaultLanguage : languages[0],
+        defaultLanguage && languages.includes(defaultLanguage) ? defaultLanguage : sourceLanguage,
     );
     const [modalOpen, setModalOpen] = useState(false);
     const [translating, setTranslating] = useState(false);
     const [modalErrorKey, setModalErrorKey] = useState<string | null>(null);
     const [fieldTranslating, setFieldTranslating] = useState(false);
     const [fieldErrorKey, setFieldErrorKey] = useState<string | null>(null);
-
-    // v1: the platform's legal source language ("Rechtssprache") is always German.
-    const sourceLanguage = languages.includes(LEGAL_SOURCE_LANGUAGE) ? LEGAL_SOURCE_LANGUAGE : languages[0];
     const targetLanguages = useMemo(
         () => languages.filter((language) => language !== sourceLanguage),
         [languages, sourceLanguage],

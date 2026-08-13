@@ -168,6 +168,48 @@ describe('DepartmentDataProtectionCard', () => {
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
     });
 
+    it('opens on the legal source language when no default is given (#718)', () => {
+        render(
+            <DepartmentDataProtectionCard
+                // 'en' first — the editor must still open on the source language 'de'
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['en', 'de']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
+    });
+
+    it('falls back to the first offered language when the source language is not offered', () => {
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ en: '<p>EN</p>', fr: '<p>FR</p>' }}
+                languages={['en', 'fr']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
+    });
+
+    it('marks languages without content in the language menu (#718)', async () => {
+        const user = userEvent.setup();
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                languages={['de', 'en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+
+        expect(await screen.findByText('legal.translation.label.empty:en')).toBeInTheDocument();
+        // The source language carries content and keeps its "original" label.
+        expect(screen.getByText('legal.translation.label.original:de')).toBeInTheDocument();
+    });
+
     it('shows the published status tag', () => {
         render(<DepartmentDataProtectionCard publicationStatus="PUBLISHED" onSave={() => undefined} />);
         expect(screen.getByText('tenants.legal.departmentDataProtection.status.published')).toBeInTheDocument();

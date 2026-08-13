@@ -163,7 +163,6 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 key={(versions as DpaVersion[])[0]?.activationDate ?? ''}
                 initialContentByLanguage={latestContentByLanguage}
                 languages={languages}
-                defaultLanguage={lang}
                 versions={mapped}
                 onPublish={publish}
                 publishing={isPending}
