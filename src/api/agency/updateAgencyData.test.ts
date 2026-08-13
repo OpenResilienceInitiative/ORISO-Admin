@@ -40,7 +40,13 @@ describe('updateAgencyData — ADR-014 multi-topic departments', () => {
         // card patch with no `online` field. `offline: !formInput.online` read that
         // absence as false and took the agency out of registration — an agency admin
         // publishing their imprint made their own counselling centre disappear.
-        await updateAgencyData(agencyModel, { ...agencyModel } as any);
+        // Delete rather than simply omit: spreading the fixture would silently stop
+        // exercising the undefined branch the day `online` is added to it, and the
+        // test would keep passing while proving nothing.
+        const patch: Record<string, unknown> = { ...agencyModel };
+        delete patch.online;
+
+        await updateAgencyData(agencyModel, patch as any);
         expect(sentBody()).not.toHaveProperty('offline');
     });
 
