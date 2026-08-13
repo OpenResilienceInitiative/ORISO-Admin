@@ -1,4 +1,8 @@
 import * as React from 'react';
+// antd's static APIs (message/notification/Modal.confirm) are silent no-ops
+// under React 19 without this patch — the app imports it in src/index.tsx,
+// stories exercising those APIs need it here too.
+import '@ant-design/v5-patch-for-react-19';
 import type { Preview } from '@storybook/react-vite';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
