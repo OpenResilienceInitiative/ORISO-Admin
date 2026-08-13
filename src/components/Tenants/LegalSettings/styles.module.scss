@@ -9,6 +9,17 @@
     color: var(--black-60);
 }
 
+// Figma 1285-80496: the settings dialog card is 360 wide, the legal editor
+// panels 800, with a 48px gap between them.
+.legalCardDeck {
+    --card-deck-item-width: var(--admin-panel-card-width, 800px);
+}
+
+.dialogCardItem {
+    min-width: min(var(--admin-dialog-card-width, 360px), var(--card-deck-item-max-width, 100%));
+    flex: 0 0 min(var(--admin-dialog-card-width, 360px), var(--card-deck-item-max-width, 100%));
+}
+
 .cardDeckItem {
     flex-grow: 1;
 }

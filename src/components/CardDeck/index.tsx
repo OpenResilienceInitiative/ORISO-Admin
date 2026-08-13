@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { SideScrollerFooter } from '../SideScrollerFooter';
+import { useRegisterCardDeckNav } from './CardDeckNavContext';
 import styles from './styles.module.scss';
 
 interface CardDeckProps {
@@ -8,7 +8,6 @@ interface CardDeckProps {
     children?: React.ReactNode;
     className?: string;
     deckClassName?: string;
-    footerClassName?: string;
     nextLabel: string;
     previousLabel: string;
 }
@@ -26,15 +25,7 @@ const CardDeckItem = ({ children, className }: CardDeckItemProps) => (
     </li>
 );
 
-const CardDeckRoot = ({
-    ariaLabel,
-    children,
-    className,
-    deckClassName,
-    footerClassName,
-    nextLabel,
-    previousLabel,
-}: CardDeckProps) => {
+const CardDeckRoot = ({ ariaLabel, children, className, deckClassName, nextLabel, previousLabel }: CardDeckProps) => {
     const deckId = useId();
     const deckRef = useRef<HTMLDivElement>(null);
     const cards = useMemo(() => React.Children.toArray(children).filter(Boolean), [children]);
@@ -131,6 +122,33 @@ const CardDeckRoot = ({
         };
     }, [cards.length, updateScrollState]);
 
+    // The arrows live in the sticky page header, not under the cards — down here
+    // they collided with the cards' own footer actions and toasts (Figma 1285-80496).
+    const navRegistration = useMemo(
+        () =>
+            cards.length > 1
+                ? {
+                      canScrollBackward: scrollState.canScrollBackward,
+                      canScrollForward: scrollState.canScrollForward,
+                      controlsId: deckId,
+                      nextLabel,
+                      previousLabel,
+                      scroll: scrollCards,
+                  }
+                : null,
+        [
+            cards.length,
+            deckId,
+            nextLabel,
+            previousLabel,
+            scrollCards,
+            scrollState.canScrollBackward,
+            scrollState.canScrollForward,
+        ],
+    );
+
+    useRegisterCardDeckNav(deckId, navRegistration);
+
     return (
         <section className={classNames(styles.root, className)} aria-label={ariaLabel} data-admin-card-deck>
             <div
@@ -145,20 +163,6 @@ const CardDeckRoot = ({
                     {cards}
                 </ul>
             </div>
-            {cards.length > 1 && (
-                <SideScrollerFooter
-                    className={classNames(styles.footer, footerClassName)}
-                    controlsId={deckId}
-                    data-admin-card-deck-footer
-                    ariaLabel={`${ariaLabel} Navigation`}
-                    previousLabel={previousLabel}
-                    nextLabel={nextLabel}
-                    canScrollBackward={scrollState.canScrollBackward}
-                    canScrollForward={scrollState.canScrollForward}
-                    onScrollBackward={() => scrollCards(-1)}
-                    onScrollForward={() => scrollCards(1)}
-                />
-            )}
         </section>
     );
 };

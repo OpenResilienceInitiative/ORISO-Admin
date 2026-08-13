@@ -1386,6 +1386,8 @@
     "users.allUsers": "Nutzer*innen",
     "agency.cardDeck.next": "Weitere Karte anzeigen",
     "agency.cardDeck.previous": "Vorherige Karte anzeigen",
+    "cardDeck.nav.next": "Weitere Karte anzeigen",
+    "cardDeck.nav.previous": "Vorherige Karte anzeigen",
     "agency.form.registrationSettings.assignmentWarning": "Damit die Beratungsstelle in der Registrierung sichtbar gestellt werden kann, wählen Sie mindestens eine:n Berater:in aus – oder legen Sie hier direkt eine:n neue:n an.",
     "agency.form.registrationSettings.consultants.label": "Berater:innen hinzufügen",
     "agency.form.registrationSettings.consultants.placeholder": "Berater:innen auswählen",

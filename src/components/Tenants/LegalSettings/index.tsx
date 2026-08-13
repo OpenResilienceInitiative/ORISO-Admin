@@ -56,11 +56,12 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
     return (
         <CardDeck
             ariaLabel={t('settings.subhead.legal')}
+            className={styles.legalCardDeck}
             previousLabel={t('legal.cardDeck.previous')}
             nextLabel={t('legal.cardDeck.next')}
         >
             {settings?.multitenancyWithSingleDomainEnabled && (
-                <CardDeck.Item>
+                <CardDeck.Item className={styles.dialogCardItem}>
                     <CardEditable
                         key={`legal-toggle-${settings.legalContentChangesBySingleTenantAdminsAllowed}`}
                         allowEdit={isSuperAdmin}

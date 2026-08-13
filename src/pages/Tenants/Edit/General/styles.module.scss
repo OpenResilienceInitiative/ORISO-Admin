@@ -9,11 +9,7 @@
 .tenantCardDeck {
     --card-deck-min-height: 0;
     --card-deck-item-width: 425px;
-    --card-deck-item-max-width: calc(100vw - 176px);
-}
-
-.tenantCardDeckFooter {
-    margin-top: 32px;
+    --card-deck-item-max-width: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
 }
 
 .tenantCardDeckScroll {
@@ -21,7 +17,7 @@
 }
 
 .tenantCardDeckItem {
-    min-width: min(425px, calc(100vw - 176px));
+    min-width: min(425px, calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px)));
 }
 
 .tenantInfoCard,

@@ -31,35 +31,25 @@
     align-items: flex-start;
     padding: 0;
     margin: 0;
-    gap: var(--card-deck-gap, 24px);
+    gap: var(--card-deck-gap, var(--admin-card-gap, 48px));
     list-style: none;
 }
+
+// A single card can never be wider than the viewport minus the sidebar and both
+// page edges — otherwise it would push the whole page into a horizontal scroll.
+$deck-item-cap: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
 
 .item {
     display: flex;
     // A deck item is a single vertical page: stack its cards, never let two
     // siblings share the row width and crush each other on narrow screens.
     flex-direction: column;
-    min-width: min(var(--card-deck-item-min-width, 320px), var(--card-deck-item-max-width, calc(100vw - 176px)));
-    flex: 0 0 min(var(--card-deck-item-width, 392px), var(--card-deck-item-max-width, calc(100vw - 176px)));
+    min-width: min(var(--card-deck-item-min-width, 320px), var(--card-deck-item-max-width, #{$deck-item-cap}));
+    flex: 0 0 min(var(--card-deck-item-width, 392px), var(--card-deck-item-max-width, #{$deck-item-cap}));
     scroll-snap-align: start;
 
     > * {
         width: 100%;
-    }
-}
-
-.footer {
-    position: sticky;
-    z-index: 20;
-    bottom: var(--card-deck-footer-bottom, 28px);
-    flex: 0 0 auto;
-    padding: var(--card-deck-footer-padding, 0 24px);
-    margin-top: auto;
-    pointer-events: none;
-
-    :global(button) {
-        pointer-events: auto;
     }
 }
 
@@ -84,9 +74,5 @@
     .item {
         width: 100%;
         flex-basis: auto;
-    }
-
-    .footer {
-        display: none;
     }
 }

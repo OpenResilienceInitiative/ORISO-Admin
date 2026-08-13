@@ -16,6 +16,8 @@ import React, { cloneElement, forwardRef, Ref, useEffect, useMemo, useRef, type 
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissions/tab_star.svg';
+import { CardDeckNavProvider, useCardDeckNav } from '../CardDeck/CardDeckNavContext';
+import { SideScrollerButton } from '../SideScrollerFooter';
 import styles from './styles.module.scss';
 
 interface PageProps {
@@ -47,13 +49,48 @@ interface PageBackProps {
 
 export const Page = ({ children, stickyHeader = true, isLoading }: PageProps) => {
     return (
-        <div
-            className={classNames(styles.page, {
-                [styles.loading]: isLoading,
-                [styles.stickyHeaderPage]: stickyHeader,
-            })}
-        >
-            {isLoading ? <Spin /> : <div className={styles.content}>{children}</div>}
+        <CardDeckNavProvider>
+            <div
+                className={classNames(styles.page, {
+                    [styles.loading]: isLoading,
+                    [styles.stickyHeaderPage]: stickyHeader,
+                })}
+            >
+                {isLoading ? <Spin /> : <div className={styles.content}>{children}</div>}
+            </div>
+        </CardDeckNavProvider>
+    );
+};
+
+/**
+ * The card-deck arrows, anchored to the left and right edge of the page header
+ * (Figma 1285-80496). They used to sit in a sticky footer under the cards, where
+ * they overlapped the cards' own footer actions and toasts. The deck registers
+ * itself via CardDeckNavContext; with no scrollable deck on the page both arrows
+ * stay visible but disabled, so the header does not change height per route.
+ */
+const PageDeckNav = () => {
+    const { t } = useTranslation();
+    const nav = useCardDeckNav();
+
+    return (
+        <div className={styles.deckNavRail} data-admin-page-deck-nav>
+            <SideScrollerButton
+                controlsId={nav?.controlsId}
+                direction="backward"
+                edgeAnchored
+                enabled={nav?.canScrollBackward ?? false}
+                label={nav?.previousLabel ?? t('cardDeck.nav.previous')}
+                onClick={() => nav?.scroll(-1)}
+            />
+            <SideScrollerButton
+                controlsId={nav?.controlsId}
+                direction="forward"
+                edgeAnchored
+                enabled={nav?.canScrollForward ?? false}
+                label={nav?.nextLabel ?? t('cardDeck.nav.next')}
+                onClick={() => nav?.scroll(1)}
+            />
         </div>
     );
 };
@@ -81,35 +118,38 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
     }, [tabs]);
 
     return (
-        <div className={styles.tabsContainer} ref={tabsContainerRef}>
-            {tabs
-                ?.filter((tab) => tab && tab.to)
-                .map(({ icon, iconName, ...tab }) => {
-                    const Icon = iconName ? tabIcons[iconName] : undefined;
+        <div className={styles.tabsRow}>
+            <PageDeckNav />
+            <div className={styles.tabsContainer} ref={tabsContainerRef}>
+                {tabs
+                    ?.filter((tab) => tab && tab.to)
+                    .map(({ icon, iconName, ...tab }) => {
+                        const Icon = iconName ? tabIcons[iconName] : undefined;
 
-                    return (
-                        <NavLink
-                            className={({ isActive }) => classNames(styles.tab, { active: isActive })}
-                            to={tab.to}
-                            key={tab.titleKey}
-                        >
-                            {() => {
-                                const TabIcon = Icon || TabStarIcon;
+                        return (
+                            <NavLink
+                                className={({ isActive }) => classNames(styles.tab, { active: isActive })}
+                                to={tab.to}
+                                key={tab.titleKey}
+                            >
+                                {() => {
+                                    const TabIcon = Icon || TabStarIcon;
 
-                                return (
-                                    <>
-                                        <TabIcon
-                                            className={styles.tabStar}
-                                            data-admin-tab-icon={iconName || 'fallback'}
-                                        />
-                                        <span className={styles.tabLabel}>{t(tab.titleKey)}</span>
-                                        {icon && cloneElement(icon, { className: styles.tabIcon })}
-                                    </>
-                                );
-                            }}
-                        </NavLink>
-                    );
-                })}
+                                    return (
+                                        <>
+                                            <TabIcon
+                                                className={styles.tabStar}
+                                                data-admin-tab-icon={iconName || 'fallback'}
+                                            />
+                                            <span className={styles.tabLabel}>{t(tab.titleKey)}</span>
+                                            {icon && cloneElement(icon, { className: styles.tabIcon })}
+                                        </>
+                                    );
+                                }}
+                            </NavLink>
+                        );
+                    })}
+            </div>
         </div>
     );
 };

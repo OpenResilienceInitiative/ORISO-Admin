@@ -214,7 +214,6 @@ export const GeneralTenantSettings = () => {
                     ariaLabel={t('tenants.add.mainTenantTitle')}
                     className={styles.tenantCardDeck}
                     deckClassName={styles.tenantCardDeckScroll}
-                    footerClassName={styles.tenantCardDeckFooter}
                     previousLabel={t('tenant.settings.cardDeck.previous')}
                     nextLabel={t('tenant.settings.cardDeck.next')}
                 >

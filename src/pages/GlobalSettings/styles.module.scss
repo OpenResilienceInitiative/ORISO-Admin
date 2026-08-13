@@ -56,8 +56,6 @@
     --card-deck-gap: 24px;
     --card-deck-item-width: 425px;
     --card-deck-item-max-width: 425px;
-    --card-deck-footer-margin-top: 40px;
-    --card-deck-footer-padding: 0 24px;
 }
 
 .smtpCardSlot {
@@ -209,10 +207,7 @@
 
 @media only screen and (max-width: 1000px) {
     .smtpPage {
-        --card-deck-item-max-width: calc(100vw - 144px);
-        --card-deck-footer-padding: 0 8px;
-        --side-scroller-button-width: 88px;
-        --side-scroller-button-height: 56px;
+        --card-deck-item-max-width: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
     }
 }
 

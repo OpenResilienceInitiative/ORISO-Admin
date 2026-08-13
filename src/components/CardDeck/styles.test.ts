@@ -5,11 +5,16 @@ import { describe, expect, it } from 'vitest';
 const cardDeckStyles = readFileSync(resolve(__dirname, './styles.module.scss'), 'utf8');
 
 describe('CardDeck responsive contract', () => {
-    it('stacks cards and hides the side-scroll footer across smartphone widths', () => {
+    it('stacks cards across smartphone widths', () => {
         expect(cardDeckStyles).toContain('@media (max-width: 767px)');
         expect(cardDeckStyles).toMatch(/\.list\s*{[^}]*flex-direction:\s*column;/s);
         expect(cardDeckStyles).toMatch(/\.deck\s*{[^}]*overflow:\s*visible;/s);
-        expect(cardDeckStyles).toMatch(/\.footer\s*{[^}]*display:\s*none;/s);
+    });
+
+    // The arrows moved into the sticky page header (Figma 1285-80496); down here
+    // they overlapped the cards' own footer actions and toasts.
+    it('owns no scroll footer of its own', () => {
+        expect(cardDeckStyles).not.toContain('.footer');
     });
 
     // #259: items must respect --card-deck-item-min-width, not collapse to 0.
@@ -24,6 +29,7 @@ describe('CardDeck responsive contract', () => {
 
     it('exposes the distance between cards as a deck token', () => {
         const listRule = cardDeckStyles.match(/\.list\s*{([^}]*)}/s)?.[1] ?? '';
-        expect(listRule).toMatch(/gap:\s*var\(--card-deck-gap,\s*24px\)/);
+        // Default is the 48px card raster from Figma 1285-80496.
+        expect(listRule).toMatch(/gap:\s*var\(--card-deck-gap,\s*var\(--admin-card-gap,\s*48px\)\)/);
     });
 });

@@ -5,15 +5,16 @@
 
 .button {
     display: inline-flex;
-    width: var(--side-scroller-button-width, 128px);
+    box-sizing: border-box;
+    width: var(--side-scroller-button-width, 48px);
     height: var(--side-scroller-button-height, 96px);
     align-items: center;
     justify-content: center;
-    border: 0;
-    border-radius: 100px;
     appearance: none;
+    border: 1px solid var(--side-scroller-button-border, #eae7e8);
+    border-radius: 100px;
     background: #bec7d4;
-    color: #ffffff;
+    color: #e7effc;
     cursor: default;
     pointer-events: auto;
     transition: background 0.2s ease, transform 0.2s ease;
@@ -34,10 +35,23 @@
 }
 
 .active {
-    background: #111923;
+    border-color: var(--side-scroller-button-border-active, #f0edee);
+    background: #410001;
     cursor: pointer;
 
     &:hover {
-        background: #1c2735;
+        background: #5c1416;
     }
+}
+
+// Edge-anchored variant: the button sits flush against a viewport edge, so the
+// outer side is flat and only the side facing the content keeps the pill radius.
+.edgeStart {
+    border-bottom-left-radius: 0;
+    border-top-left-radius: 0;
+}
+
+.edgeEnd {
+    border-bottom-right-radius: 0;
+    border-top-right-radius: 0;
 }
