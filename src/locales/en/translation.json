@@ -1397,6 +1397,7 @@
     "tenants.legal.departmentDataProtection.publish": "Publish",
     "legal.translation.label.original": "{{language}} (original)",
     "legal.translation.label.machineTranslated": "{{language}} (machine translated)",
+    "legal.translation.label.empty": "{{language}} (no content yet)",
     "legal.translation.settings.title": "Automatic translation",
     "legal.translation.settings.description": "API keys for the machine translation of legal texts. Only super admins can change them — everyone else sees them read-only.",
     "legal.translation.settings.provider.openrouter": "OpenRouter",

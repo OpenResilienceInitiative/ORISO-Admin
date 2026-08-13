@@ -168,6 +168,134 @@ describe('DepartmentDataProtectionCard', () => {
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
     });
 
+    it('opens on the legal source language when no default is given (#718)', () => {
+        render(
+            <DepartmentDataProtectionCard
+                // 'en' first — the editor must still open on the source language 'de'
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['en', 'de']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
+    });
+
+    it('falls back to the first offered language when the source language is not offered', () => {
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ en: '<p>EN</p>', fr: '<p>FR</p>' }}
+                languages={['en', 'fr']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
+    });
+
+    it('lets an explicit defaultLanguage override the source-language default', () => {
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="en"
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
+    });
+
+    it('re-runs the automatic selection when the offered languages arrive late', () => {
+        const { rerender } = render(
+            <DepartmentDataProtectionCard
+                // Before the tenant settings load only the stored language is offered.
+                initialContentByLanguage={{ en: '<p>EN</p>' }}
+                languages={['en']}
+                onSave={() => undefined}
+            />,
+        );
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
+
+        rerender(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
+    });
+
+    it('keeps a language the admin engaged with when the offered languages change', async () => {
+        const user = userEvent.setup();
+        const { rerender } = render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(await screen.findByText('en'));
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
+
+        rerender(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>', fr: '<p>FR</p>' }}
+                languages={['de', 'en', 'fr']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
+    });
+
+    it('keeps a language the admin edited when the offered languages change', async () => {
+        const user = userEvent.setup();
+        const { rerender } = render(
+            <DepartmentDataProtectionCard
+                // Before the tenant settings load only the stored language is offered.
+                initialContentByLanguage={{ en: '<p>EN</p>' }}
+                languages={['en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        // Editing counts as engagement just like picking a language in the menu.
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>edited</p>');
+
+        rerender(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>edited</p>');
+    });
+
+    it('marks languages without content in the language menu (#718)', async () => {
+        const user = userEvent.setup();
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                languages={['de', 'en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+
+        expect(await screen.findByText('legal.translation.label.empty:en')).toBeInTheDocument();
+        // The source language carries content and keeps its "original" label.
+        expect(screen.getByText('legal.translation.label.original:de')).toBeInTheDocument();
+    });
+
     it('shows the published status tag', () => {
         render(<DepartmentDataProtectionCard publicationStatus="PUBLISHED" onSave={() => undefined} />);
         expect(screen.getByText('tenants.legal.departmentDataProtection.status.published')).toBeInTheDocument();

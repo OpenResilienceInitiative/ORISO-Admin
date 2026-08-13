@@ -950,6 +950,7 @@
     "tenants.legal.departmentDataProtection.publish": "Veröffentlichen",
     "legal.translation.label.original": "{{language}} (Original)",
     "legal.translation.label.machineTranslated": "{{language}} (maschinell übersetzt)",
+    "legal.translation.label.empty": "{{language}} (noch kein Inhalt)",
     "legal.translation.settings.title": "Automatische Übersetzung",
     "legal.translation.settings.description": "API-Schlüssel für die automatische Übersetzung der Rechtstexte. Nur Super-Admins können sie ändern — für alle anderen sind sie sichtbar, aber nicht veränderbar.",
     "legal.translation.settings.provider.openrouter": "OpenRouter",
