@@ -64,7 +64,10 @@ interface DataProcessingAgreementCardProps {
     initialContentByLanguage?: Record<string, string>;
     /** The languages offered for editing (tenant's active languages + stored ones). */
     languages?: string[];
-    /** Explicit override of the language shown first; defaults to the legal source language. */
+    /**
+     * Explicit override of the language shown first; defaults to the legal source
+     * language, or to the first offered language when the source is not offered.
+     */
     defaultLanguage?: string;
     /** Previously published versions, newest first — browsable via the editor's version select. */
     versions: LegalVersion[];
