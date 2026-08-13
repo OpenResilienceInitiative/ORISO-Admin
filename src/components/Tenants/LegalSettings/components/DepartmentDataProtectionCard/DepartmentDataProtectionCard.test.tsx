@@ -127,6 +127,8 @@ describe('DepartmentDataProtectionCard', () => {
 
         await user.click(screen.getByRole('button', { name: 'edit' }));
         await user.click(screen.getByRole('button', { name: publishButtonName }));
+        // Only the non-source language was edited — the source warning is confirmed away (#720).
+        await user.click(await screen.findByRole('button', { name: 'legal.publishWarning.confirm' }));
 
         expect(onSave).toHaveBeenCalledWith({ de: '<p>DE</p>', en: '<p>edited</p>' }, true);
     });
@@ -309,6 +311,103 @@ describe('DepartmentDataProtectionCard', () => {
     it('renders the department name when provided', () => {
         render(<DepartmentDataProtectionCard departmentName="Suchtberatung" onSave={() => undefined} />);
         expect(screen.getByText('Suchtberatung')).toBeInTheDocument();
+    });
+});
+
+describe('DepartmentDataProtectionCard — publish source warning (#720)', () => {
+    const warnConfirmName = 'legal.publishWarning.confirm';
+    const warnCancelName = 'legal.publishWarning.cancel';
+
+    it('warns when publishing edits only in a non-source language; confirming publishes', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                onSave={onSave}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(await screen.findByText('en'));
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: publishButtonName }));
+
+        expect(onSave).not.toHaveBeenCalled();
+        expect(screen.getByText('legal.publishWarning.title')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: warnConfirmName }));
+        expect(onSave).toHaveBeenCalledWith({ de: '<p>DE</p>', en: '<p>edited</p>' }, true);
+    });
+
+    it('cancelling the warning publishes nothing and returns to the editor', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                onSave={onSave}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(await screen.findByText('en'));
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: publishButtonName }));
+        await user.click(await screen.findByRole('button', { name: warnCancelName }));
+
+        expect(onSave).not.toHaveBeenCalled();
+        expect(screen.queryByText('legal.publishWarning.title')).not.toBeInTheDocument();
+    });
+
+    it('does not warn when the source language itself was edited', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                onSave={onSave}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: publishButtonName }));
+
+        expect(screen.queryByText('legal.publishWarning.title')).not.toBeInTheDocument();
+        expect(onSave).toHaveBeenCalledWith({ de: '<p>edited</p>', en: '<p>EN</p>' }, true);
+    });
+
+    it('does not warn for machine-translated languages (they come from the source)', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        const onTranslate = vi.fn().mockResolvedValue({
+            translations: { en: { content: '<p>EN-MT</p>' } },
+            provider: 'openrouter',
+            model: 'test-model',
+        });
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                languages={['de', 'en']}
+                onSave={onSave}
+                onTranslate={onTranslate}
+            />,
+        );
+
+        // Translate EN from the source via the per-field button, then publish.
+        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(await screen.findByText('legal.translation.label.empty:en'));
+        await user.click(screen.getByRole('button', { name: 'legal.translation.field.button' }));
+        await waitFor(() => expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN-MT</p>'));
+
+        await user.click(screen.getByRole('button', { name: publishButtonName }));
+
+        // Straight to the translate-on-publish modal — no source warning in between.
+        expect(screen.queryByText('legal.publishWarning.title')).not.toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' })).toBeInTheDocument();
     });
 });
 
