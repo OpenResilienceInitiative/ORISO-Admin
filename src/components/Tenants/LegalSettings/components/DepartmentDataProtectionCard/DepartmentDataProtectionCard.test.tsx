@@ -253,6 +253,32 @@ describe('DepartmentDataProtectionCard', () => {
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
     });
 
+    it('keeps a language the admin edited when the offered languages change', async () => {
+        const user = userEvent.setup();
+        const { rerender } = render(
+            <DepartmentDataProtectionCard
+                // Before the tenant settings load only the stored language is offered.
+                initialContentByLanguage={{ en: '<p>EN</p>' }}
+                languages={['en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        // Editing counts as engagement just like picking a language in the menu.
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>edited</p>');
+
+        rerender(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>edited</p>');
+    });
+
     it('marks languages without content in the language menu (#718)', async () => {
         const user = userEvent.setup();
         render(
