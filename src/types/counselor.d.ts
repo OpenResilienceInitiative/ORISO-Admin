@@ -22,6 +22,11 @@ export interface CounselorData {
     twoFactorAuth?: boolean;
     isGroupchatConsultant?: boolean;
     isSupervisor?: boolean;
+    salutation?: string;
+    position?: string;
+    title?: string;
+    /** Only present/writable for tenant-level admins (tenant admin / platform admin). */
+    adminRemarks?: string;
     publicSlug?: string;
     pendingPublicSlug?: string;
     publicSlugStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
