@@ -60,6 +60,7 @@ export const useLegalContentTranslation = ({
     // only then may a late change of the offered languages not switch it away.
     const [languageEngaged, setLanguageEngaged] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
+    const [sourceWarningOpen, setSourceWarningOpen] = useState(false);
     const [translating, setTranslating] = useState(false);
     const [modalErrorKey, setModalErrorKey] = useState<string | null>(null);
     const [fieldTranslating, setFieldTranslating] = useState(false);
@@ -124,8 +125,20 @@ export const useLegalContentTranslation = ({
 
     const canTranslate = !!onTranslate && targetLanguages.length > 0 && !isEmptyHtml(sourceContent);
 
-    /** Publish entry point: opens the translate modal when translating is possible. */
-    const requestPublish = () => {
+    // Non-source languages the admin authored by hand this session. Machine
+    // translations (still carrying their fresh meta) came FROM the source text, so
+    // they are no evidence of authoring into the wrong language.
+    const editedNonSourceLanguages = useMemo(
+        () => Object.keys(edits).filter((language) => language !== sourceLanguage && !(language in freshMeta)),
+        [edits, freshMeta, sourceLanguage],
+    );
+    // The #718 failure shape: translations were edited while the variant the advice
+    // seekers actually read stayed untouched. Publishing stays possible — the warning
+    // modal only makes the gap explicit before it goes live (#720).
+    const sourceUntouchedOnPublish = editedNonSourceLanguages.length > 0 && !(sourceLanguage in edits);
+
+    /** Continues into the regular publish flow (translate modal when possible). */
+    const proceedToPublish = () => {
         if (!canTranslate) {
             onPublish(buildPublishMap());
             return;
@@ -133,6 +146,24 @@ export const useLegalContentTranslation = ({
         setModalErrorKey(null);
         setModalOpen(true);
     };
+
+    /** Publish entry point: warns first when the source language was left untouched. */
+    const requestPublish = () => {
+        if (sourceUntouchedOnPublish) {
+            setSourceWarningOpen(true);
+            return;
+        }
+        proceedToPublish();
+    };
+
+    /** Source-warning confirm: publish anyway. */
+    const confirmSourceWarning = () => {
+        setSourceWarningOpen(false);
+        proceedToPublish();
+    };
+
+    /** Source-warning cancel: back to the editor, nothing published. */
+    const cancelSourceWarning = () => setSourceWarningOpen(false);
 
     /** "Publish without translation" (modal skip button) — also used when nothing is selected. */
     const publishWithoutTranslation = () => {
@@ -216,6 +247,10 @@ export const useLegalContentTranslation = ({
         buildPublishMap,
         // publish + modal
         requestPublish,
+        sourceWarningOpen,
+        editedNonSourceLanguages,
+        confirmSourceWarning,
+        cancelSourceWarning,
         modalOpen,
         closeModal,
         translating,
