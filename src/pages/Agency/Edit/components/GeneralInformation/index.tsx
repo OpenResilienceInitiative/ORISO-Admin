@@ -86,6 +86,13 @@ export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationP
             />
             <FieldGrid.Wide>
                 <MuiMultilineFormField
+                    name="openingHours"
+                    label={t('agency.edit.general.address.opening_hours')}
+                    placeholder={t('agency.edit.general.address.opening_hours')}
+                />
+            </FieldGrid.Wide>
+            <FieldGrid.Wide>
+                <MuiMultilineFormField
                     name="description"
                     label={t('agency.edit.general.general_information.description')}
                     placeholder={t('agency.edit.general.general_information.description')}

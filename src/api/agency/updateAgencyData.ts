@@ -48,6 +48,7 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         phone: formInput.phone,
         phoneSecondary: formInput.phoneSecondary,
         email: formInput.email,
+        openingHours: formInput.openingHours,
         consultingType: consultingTypeId,
         teamAgency: formInput.teamAgency,
         // Same absent-vs-empty trap as `topicIds` above: a narrow card patch (publishing a

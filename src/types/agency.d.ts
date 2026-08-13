@@ -62,6 +62,7 @@ export interface AgencyData {
     phone?: string;
     phoneSecondary?: string;
     email?: string;
+    openingHours?: string;
     teamAgency: boolean;
     consultingType: string;
     status: string | undefined;
