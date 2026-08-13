@@ -198,6 +198,8 @@ export const UserEditOrAdd = () => {
         }
 
         form.setFieldsValue({
+            displayName: consultantById.displayName || '',
+            internalDisplayName: consultantById.internalDisplayName || '',
             salutation: consultantById.salutation || undefined,
             position: consultantById.position || '',
             title: consultantById.title || '',
@@ -426,6 +428,20 @@ export const UserEditOrAdd = () => {
 
                                 {isConsultantForm && (
                                     <>
+                                        <MuiFormField
+                                            name="displayName"
+                                            label={t('counselor.displayName')}
+                                            placeholder={t('counselor.displayName.placeholder')}
+                                            helpText={t('counselor.displayName.hint')}
+                                        />
+
+                                        <MuiFormField
+                                            name="internalDisplayName"
+                                            label={t('counselor.internalDisplayName')}
+                                            placeholder={t('counselor.internalDisplayName.placeholder')}
+                                            helpText={t('counselor.internalDisplayName.hint')}
+                                        />
+
                                         <MuiSelectField
                                             name="salutation"
                                             label="counselor.salutation"

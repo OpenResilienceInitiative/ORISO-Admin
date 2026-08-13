@@ -35,3 +35,15 @@ describe('personal-info fields (#994)', () => {
         expect(source).toContain('hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])');
     });
 });
+
+describe('dual display names (#996)', () => {
+    it('renders both name inputs exactly once', () => {
+        expect(source.match(/name="displayName"/g)).toHaveLength(1);
+        expect(source.match(/name="internalDisplayName"/g)).toHaveLength(1);
+    });
+
+    it('explains the fallback on both fields via helper text', () => {
+        expect(source).toContain("helpText={t('counselor.displayName.hint')}");
+        expect(source).toContain("helpText={t('counselor.internalDisplayName.hint')}");
+    });
+});
