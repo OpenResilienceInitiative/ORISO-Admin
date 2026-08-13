@@ -51,7 +51,11 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         openingHours: formInput.openingHours,
         consultingType: consultingTypeId,
         teamAgency: formInput.teamAgency,
-        offline: !formInput.online, // Convert from 'online' form field to 'offline' API field
+        // Same absent-vs-empty trap as `topicIds` above: a narrow card patch (publishing a
+        // department's legal document, for one) carries no `online` field, and `!undefined`
+        // is `true` — which asserted `offline: true` and quietly pulled the agency out of
+        // registration. Omitting the key leaves the stored visibility alone (ORISO-Admin#715).
+        ...(formInput.online !== undefined ? { offline: !formInput.online } : {}),
         external: false,
         demographics: formInput.demographics,
         counsellingRelations: formInput.counsellingRelations,
