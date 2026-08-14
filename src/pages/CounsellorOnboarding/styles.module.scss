@@ -1,0 +1,55 @@
+/* Public counsellor onboarding wizard (#997).
+ *
+ * Surface language inherited from the tenant onboarding (#594.12/#594.17):
+ * the neutral `--m3-surface-container-high` tone is the PAGE background of
+ * the public surface, the wizard cards sit on it as the product's own card
+ * skeletons, and fields stay tonal with their card. Every colour resolves to
+ * an ORISO token from src/app.css.
+ */
+
+.wizard {
+    padding: 32px 0;
+
+    /* Fields are tonal with the surface instead of white cut-outs — same
+       single surface knob the tenant onboarding sets. */
+    --input-bg: var(--m3-surface-container-highest);
+    --input-autofill-surface: var(--m3-surface-container-highest);
+    --input-border-color: var(--m3-outline-variant);
+    --input-hover-border-color: var(--m3-on-surface);
+    --input-focus-border-color: var(--m3-primary);
+
+    @media (max-width: 599px) {
+        padding: 20px 0;
+    }
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
+}
+
+/* Desktop composition: the four form cards share rows while they fit
+   (CardGrid handles wrap/stack); the grid must not stretch cards to equal
+   height — each card ends where its content ends. */
+
+.grid {
+    align-items: start;
+}
+
+/* One primary action for the whole worksheet. Hint and error sit before the
+   button so the reason is read before the disabled control is reached. */
+
+.submitRow {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-top: 24px;
+    gap: 12px;
+}
+
+.mobileStep {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}

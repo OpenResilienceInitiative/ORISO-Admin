@@ -1,4 +1,5 @@
 import classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../../Card';
 import { FilterChip } from '../../FilterChip';
 import { M3Button } from '../../M3Button';
@@ -22,32 +23,41 @@ export interface FocusTopicsCardProps {
  * icon + Headline Small title + subtitle + footer slot) wrapping a <FilterChip>
  * multi-select group. No bespoke surface, title or chip markup.
  */
-export const FocusTopicsCard = ({ topics, selected, onToggle, onBack, onNext, className }: FocusTopicsCardProps) => (
-    <Card
-        className={classNames(styles.card, className)}
-        headerIcon={<ShieldIcon />}
-        titleKey="Focus Topics"
-        subTitle="Please select at least one area of activity."
-        footer={
-            <>
-                <M3Button variant="text" onClick={onBack}>
-                    Back
-                </M3Button>
-                <M3Button variant="text" onClick={onNext}>
-                    Next
-                </M3Button>
-            </>
-        }
-    >
-        <div className={styles.chips}>
-            {topics.map((topic) => (
-                <FilterChip
-                    key={topic}
-                    label={topic}
-                    selected={selected.includes(topic)}
-                    onChange={() => onToggle(topic)}
-                />
-            ))}
-        </div>
-    </Card>
-);
+export const FocusTopicsCard = ({ topics, selected, onToggle, onBack, onNext, className }: FocusTopicsCardProps) => {
+    const { t } = useTranslation();
+    return (
+        <Card
+            className={classNames(styles.card, className)}
+            headerIcon={<ShieldIcon />}
+            titleKey="cards.focusTopics.title"
+            subTitle={t('cards.focusTopics.subtitle')}
+            footer={
+                onBack || onNext ? (
+                    <>
+                        {onBack && (
+                            <M3Button variant="text" onClick={onBack}>
+                                {t('cards.actions.back')}
+                            </M3Button>
+                        )}
+                        {onNext && (
+                            <M3Button variant="text" onClick={onNext}>
+                                {t('cards.actions.next')}
+                            </M3Button>
+                        )}
+                    </>
+                ) : undefined
+            }
+        >
+            <div className={styles.chips}>
+                {topics.map((topic) => (
+                    <FilterChip
+                        key={topic}
+                        label={topic}
+                        selected={selected.includes(topic)}
+                        onChange={() => onToggle(topic)}
+                    />
+                ))}
+            </div>
+        </Card>
+    );
+};

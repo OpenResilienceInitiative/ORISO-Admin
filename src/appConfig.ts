@@ -100,6 +100,12 @@ const routePathNames = {
      * so the route takes the raw token as a path segment.
      */
     tenantOnboarding: '/admin/tenant-onboarding',
+    /**
+     * Public counsellor onboarding wizard (#997). Counsellor invite links land
+     * here (UserService InviteAcceptUrlBuilder) instead of the app-layer
+     * acceptance page; the raw token is the trailing path segment.
+     */
+    counsellorOnboarding: '/admin/counsellor-onboarding',
     themeSettings: '/admin/theme-settings',
     globalSettings: '/admin/global-settings',
     permissionsSettings: '/admin/theme-settings/permissions',
