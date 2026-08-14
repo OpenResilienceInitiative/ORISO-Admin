@@ -470,7 +470,11 @@ export const InviteComposer = ({
                 <SplitButton
                     icon={<MailFilledIcon />}
                     label={selectedTemplate?.name ?? t('links.composer.templatePlaceholder', 'E-Mail-Vorlage')}
-                    variant="tonal"
+                    // Outlined at rest (#741): the old `tonal` was the light
+                    // Elevated colourway, which claimed a raised state the resting
+                    // picker is not in. `tonal` now means the M3 secondary
+                    // container per the spec sheet.
+                    variant="outlined"
                     onClick={() => onManageTemplates('list')}
                 />
                 {/* Filled primary is reserved for the selected item / main CTA; every
