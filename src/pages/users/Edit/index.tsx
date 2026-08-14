@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
+import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
 import { FETCH_ERRORS, X_REASON } from '../../../api/fetchData';
 import { Card } from '../../../components/Card';
 import { MuiFormField, MuiMultilineFormField, MuiPasswordFormField } from '../../../components/mui/MuiFormField';
@@ -35,6 +36,13 @@ import { CreateAgencyModal } from '../../../components/CreateAgencyModal';
 import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
+import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
+
+/**
+ * antd prefixes every bound control id with the form name, and
+ * `focusFirstInvalidField` resolves that same id. Keep them in lockstep.
+ */
+const FORM_NAME = 'consultantOrAdmin';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
     const seen = new Set(current.map(({ value }) => value));
@@ -265,6 +273,10 @@ export const UserEditOrAdd = () => {
         },
         [isConsultantForm, filteredAgencies, form, mutate, t],
     );
+    const onFinishFailed = useCallback(({ errorFields }: ValidateErrorEntity) => {
+        // Keep values; jump to the field that blocked save (#717 / #594.6).
+        focusFirstInvalidField(errorFields, FORM_NAME);
+    }, []);
     const onCancel = useCallback(() => navigate(`/admin/users/${typeOfUsers}`), []);
     const isAbsentEnabled = useWatch('absent', form);
     const activePublicSlug = publicSlug || consultantById?.publicSlug;
@@ -356,7 +368,10 @@ export const UserEditOrAdd = () => {
                     labelWrap
                     layout="vertical"
                     form={form}
+                    name={FORM_NAME}
                     onFinish={onSave}
+                    onFinishFailed={onFinishFailed}
+                    preserve
                     initialValues={{
                         ...(singleData || {
                             formalLanguage: true,
@@ -409,6 +424,7 @@ export const UserEditOrAdd = () => {
                                     label={t('counselor.username')}
                                     placeholder={t('placeholder.username')}
                                     disabled={isEditing}
+                                    helpText={t('message.error.username.format')}
                                     rules={[
                                         {
                                             required: true,

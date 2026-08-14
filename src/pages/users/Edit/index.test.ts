@@ -11,3 +11,12 @@ describe('user assignment fields', () => {
         expect(source.match(/name="topicIds"/g)).toHaveLength(1);
     });
 });
+
+describe('consultant form validation (#717)', () => {
+    it('jumps to the first invalid field instead of dropping the save on the floor', () => {
+        expect(source).toContain('onFinishFailed');
+        expect(source).toContain('focusFirstInvalidField');
+        expect(source).toMatch(/name=\{FORM_NAME\}/);
+        expect(source).toContain('preserve');
+    });
+});
