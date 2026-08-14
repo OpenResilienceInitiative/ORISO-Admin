@@ -1,0 +1,831 @@
+/*
+ * DPIA document page — layout taken from the v3 mockups (2a desktop / 2b mobile).
+ * Colours come exclusively from the admin design tokens in `src/app.css`; the
+ * few document-specific shades below are aliases, not new brand values.
+ */
+
+.page {
+    --dpia-hair: var(--m3-surface-container-highest, #e4e2e2);
+    --dpia-hair-soft: var(--m3-surface-container, #f0edee);
+    --dpia-wash: var(--list-item-selected-bg, #fdeceb);
+    --dpia-line: var(--m3-primary-fixed-dim, #ffb4aa);
+    --dpia-anno-ink: #8a5a00;
+    --dpia-anno-bg: #fdf6e6;
+    --dpia-anno-line: #e3c77a;
+    --dpia-success-ink: #075e26;
+    --dpia-success-wash: #e8f3eb;
+    --dpia-success-line: #b9dcc2;
+    --dpia-mono: ui-monospace, 'SF Mono', menlo, consolas, monospace;
+
+    min-height: 100%;
+    background: var(--m3-surface-container, #f0edee);
+    color: var(--m3-on-surface, #1a1c1e);
+    font-size: 16px;
+    line-height: 1.6;
+
+    /* Icons sit next to wrapping labels in flex rows. Without this they are the
+       first thing the layout shrinks, and on narrow viewports they collapse to
+       zero width instead of the label wrapping. */
+
+    svg {
+        flex: 0 0 auto;
+    }
+}
+
+.srOnly {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- app bar */
+.appbar {
+    position: sticky;
+    z-index: 30;
+    top: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--dpia-hair);
+    background: var(--m3-surface-container-lowest, #ffffff);
+    gap: 16px;
+}
+
+.brand {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 12px;
+}
+
+.logoSlot {
+    display: flex;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px dashed var(--dpia-anno-line);
+    background: var(--dpia-anno-bg);
+    border-radius: 8px;
+    color: var(--dpia-anno-ink);
+    font-size: 8px;
+    line-height: 1.15;
+    text-align: center;
+}
+
+.brandTitle {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.brandSub {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 11.5px;
+
+    code {
+        font-family: var(--dpia-mono);
+    }
+}
+
+.tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.version {
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--dpia-mono);
+    font-size: 11.5px;
+    white-space: nowrap;
+}
+
+/* Segmented KDG / DSGVO switch, rendered as a radio group for assistive tech. */
+.segmented {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid rgb(0 0 0 / 20%);
+    background: var(--m3-surface-container, #f0edee);
+    border-radius: 25px;
+    gap: 0;
+}
+
+.segment {
+    padding: 4px 16px;
+    border: none;
+    background: transparent;
+    border-radius: 25px;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+
+    &:focus-visible {
+        outline: 2px solid var(--focus-blue, #199fff);
+        outline-offset: 2px;
+    }
+}
+
+.segmentActive {
+    background: var(--m3-primary, #a5000a);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
+    color: #ffffff;
+}
+
+.statusPill {
+    padding: 2px 10px;
+    border: 1px solid var(--dpia-anno-line);
+    background: var(--dpia-anno-bg);
+    border-radius: 25px;
+    color: var(--dpia-anno-ink);
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
+.notesToggle {
+    display: inline-flex;
+    align-items: center;
+    border: none;
+    background: none;
+    color: var(--dpia-anno-ink);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    gap: 8px;
+
+    &:focus-visible {
+        outline: 2px solid var(--focus-blue, #199fff);
+        outline-offset: 4px;
+    }
+}
+
+.knob {
+    position: relative;
+    width: 30px;
+    height: 16px;
+    flex: 0 0 auto;
+    background: var(--m3-outline-variant, #c4c7c8);
+    border-radius: 25px;
+    transition: background 150ms ease;
+
+    &:after {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 12px;
+        height: 12px;
+        background: #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
+        content: '';
+        transition: transform 150ms ease;
+    }
+}
+
+.knobOn {
+    background: var(--dpia-anno-ink);
+
+    &:after {
+        transform: translateX(14px);
+    }
+}
+
+/* ------------------------------------------------------------------- hero */
+.hero {
+    padding: 28px 24px 0;
+}
+
+.heroCard {
+    max-width: 1240px;
+    padding: 28px 32px 24px;
+    border: 1px solid var(--dpia-hair);
+    border-left: 4px solid var(--m3-primary, #a5000a);
+    margin: 0 auto;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    border-radius: 24px;
+    box-shadow: 0 3px 0 1px rgb(0 0 0 / 10%);
+}
+
+.kicker {
+    color: var(--m3-primary, #a5000a);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.heroCard h1 {
+    margin: 8px 0;
+    font-size: 32px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+}
+
+.lede {
+    max-width: 74ch;
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 15.5px;
+}
+
+.facts {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    gap: 8px;
+}
+
+.fact {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border: 1px solid var(--dpia-line);
+    background: var(--m3-surface-container-low, #f6f3f3);
+    border-radius: 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    gap: 7px;
+
+    svg {
+        color: var(--m3-primary, #a5000a);
+    }
+}
+
+.factReview {
+    background: var(--dpia-wash);
+    color: var(--m3-primary, #a5000a);
+}
+
+/* ------------------------------------------------------------ chapter nav */
+.chapterNav {
+    position: sticky;
+    z-index: 20;
+    top: 61px;
+    border-bottom: 1px solid var(--dpia-hair);
+    margin-top: 24px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+}
+
+.chapterNavInner {
+    display: flex;
+    max-width: 1240px;
+    padding: 12px 24px;
+    margin: 0 auto;
+    gap: 8px;
+    overflow-x: auto;
+}
+
+.chip {
+    flex: none;
+    padding: 7px 15px;
+    border: 1px solid var(--dpia-hair);
+    background: var(--m3-surface-container, #f0edee);
+    border-radius: 25px;
+    color: var(--m3-on-surface, #1a1c1e);
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+
+    &:hover {
+        border-color: var(--m3-primary, #a5000a);
+        color: var(--m3-primary, #a5000a);
+    }
+}
+
+.chipCurrent {
+    border-color: var(--m3-primary, #a5000a);
+    background: var(--m3-primary, #a5000a);
+    color: #ffffff;
+}
+
+/* --------------------------------------------------------------- sections */
+.body {
+    max-width: 1240px;
+    padding: 0 24px 64px;
+    margin: 0 auto;
+}
+
+.section {
+    padding: 26px 30px 28px;
+    border: 1px solid var(--dpia-hair);
+    margin-top: 20px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    border-radius: 24px;
+    box-shadow: 0 3px 0 1px rgb(0 0 0 / 10%);
+    scroll-margin-top: 122px;
+
+    h2 {
+        margin: 0 0 10px;
+        font-size: 24px;
+        font-weight: 500;
+        line-height: 32px;
+    }
+
+    h3 {
+        margin: 26px 0 8px;
+        font-size: 17px;
+        font-weight: 600;
+    }
+
+    p {
+        max-width: 74ch;
+        margin: 0 0 14px;
+    }
+}
+
+.chapterNo {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--m3-primary, #a5000a);
+    font-family: var(--dpia-mono);
+    font-size: 13px;
+}
+
+.norm {
+    display: inline-block;
+    padding: 0 7px;
+    border: 1px solid var(--dpia-line);
+    background: var(--dpia-wash);
+    border-radius: 4px;
+    color: var(--m3-primary, #a5000a);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.internalNote {
+    max-width: 68ch;
+    padding: 10px 14px;
+    border: 1.5px dashed var(--dpia-anno-line);
+    margin: 14px 0 4px;
+    background: var(--dpia-anno-bg);
+    border-radius: 4px;
+    color: var(--dpia-anno-ink);
+    font-size: 13px;
+    line-height: 1.55;
+
+    code {
+        padding: 0 3px;
+        background: rgb(0 0 0 / 5%);
+        border-radius: 2px;
+        font-family: var(--dpia-mono);
+        font-size: 11.5px;
+    }
+}
+
+.internalTag {
+    display: inline-block;
+    padding: 1.5px 6px;
+    margin-right: 8px;
+    background: var(--dpia-anno-ink);
+    border-radius: 2px;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+/* ----------------------------------------------------------- key figures */
+.figures {
+    display: grid;
+    margin: 18px 0 6px;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.figure {
+    padding: 16px 16px 13px;
+    border: 1px solid var(--dpia-hair);
+    border-top: 3px solid var(--m3-primary, #a5000a);
+    background: var(--m3-surface-container-low, #f6f3f3);
+    border-radius: 8px;
+}
+
+.figureValue {
+    font-size: 27px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.figureLabel {
+    margin-top: 2px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12.5px;
+    line-height: 1.35;
+}
+
+.footnote {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12.5px;
+}
+
+/* --------------------------------------------------------- role hierarchy */
+.roleGrid {
+    display: grid;
+    margin: 16px 0 14px;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+}
+
+.roleCard {
+    padding: 14px 16px 12px;
+    border: 1px solid var(--dpia-hair);
+    border-top: 4px solid var(--m3-primary, #a5000a);
+    background: var(--m3-surface-container-low, #f6f3f3);
+    border-radius: 8px;
+}
+
+.roleTier2 {
+    border-top-color: var(--m3-primary-outline, #930008);
+}
+
+.roleTier3 {
+    border-top-color: #de8a00;
+}
+
+.roleTier4 {
+    border-top-color: var(--m3-secondary, #4c555f);
+}
+
+.roleHead {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    gap: 8px;
+
+    svg {
+        color: var(--m3-primary, #a5000a);
+    }
+}
+
+.roleName {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.roleDesc {
+    margin-bottom: 10px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.roleTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.realmRole {
+    padding: 2px 7px;
+    background: var(--dpia-wash);
+    border-radius: 3px;
+    color: var(--m3-primary, #a5000a);
+    font-family: var(--dpia-mono);
+    font-size: 10.5px;
+    white-space: nowrap;
+}
+
+.mfaFlag {
+    padding: 1px 8px;
+    border: 1px solid var(--dpia-success-line);
+    background: var(--dpia-success-wash);
+    border-radius: 25px;
+    color: var(--dpia-success-ink);
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+.clientStrip {
+    display: flex;
+    align-items: flex-start;
+    padding: 13px 16px;
+    border: 1px solid var(--dpia-line);
+    margin-bottom: 18px;
+    background: var(--dpia-wash);
+    border-radius: 8px;
+    font-size: 13px;
+    gap: 12px;
+    line-height: 1.55;
+
+    > svg {
+        margin-top: 1px;
+        color: var(--m3-primary, #a5000a);
+    }
+}
+
+/* ------------------------------------------------------ permission matrix */
+.scrollHint {
+    margin-bottom: 8px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 11.5px;
+}
+
+.tableScroll {
+    border: 1px solid var(--dpia-hair);
+    margin: 0 0 6px;
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+.matrix {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th {
+        padding: 9px 14px;
+        border-bottom: 2px solid var(--dpia-hair);
+        background: var(--m3-surface-container, #f0edee);
+        color: var(--m3-on-surface-variant, #444748);
+        font-size: 11.5px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-align: left;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    th + th {
+        text-align: center;
+    }
+
+    td {
+        padding: 8px 14px;
+        border-bottom: 1px solid var(--dpia-hair-soft);
+        vertical-align: top;
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+}
+
+.cellYes {
+    color: var(--m3-success, #0a882f);
+    font-weight: 700;
+    text-align: center;
+}
+
+/* Deliberately not a faint grey: the "not permitted" state has to stay legible. */
+.cellNo {
+    color: var(--m3-on-surface-variant, #444748);
+    text-align: center;
+}
+
+.cellText {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 11.5px;
+    text-align: center;
+}
+
+.cellE2ee {
+    text-align: center;
+
+    span {
+        display: inline-flex;
+        align-items: center;
+        color: var(--m3-error, #cc0000);
+        font-size: 11.5px;
+        font-weight: 700;
+        gap: 4px;
+    }
+}
+
+/* ---------------------------------------------------------- inheritance */
+.split {
+    display: grid;
+    align-items: start;
+    gap: 18px;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+
+.cascade {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 12px 0 6px;
+    gap: 5px;
+    list-style: none;
+}
+
+.cascadeRow {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    gap: 10px;
+}
+
+.cascadeDot {
+    width: 10px;
+    height: 10px;
+    flex: 0 0 auto;
+    background: var(--m3-primary, #a5000a);
+    border-radius: 50%;
+}
+
+.cascadeName {
+    font-weight: 600;
+}
+
+.cascadeWho {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 11.5px;
+}
+
+.cascadeLine {
+    width: 1.5px;
+    height: 12px;
+    margin-left: 4.5px;
+    background: var(--dpia-hair);
+}
+
+.cascadeNote {
+    padding: 12px 14px;
+    border: 1px solid var(--dpia-hair);
+    margin-top: 10px;
+    background: var(--m3-surface-container-low, #f6f3f3);
+    border-radius: 8px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12.5px;
+    line-height: 1.55;
+}
+
+/* ------------------------------------------------------ counselling types */
+.typeGrid {
+    display: grid;
+    margin: 16px 0;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+
+.typeCard {
+    padding: 16px 18px 14px;
+    border: 1px solid var(--dpia-hair);
+    background: var(--m3-surface-container-low, #f6f3f3);
+    border-radius: 8px;
+
+    h4 {
+        margin: 0 0 6px;
+        font-size: 14.5px;
+        font-weight: 700;
+    }
+
+    p {
+        margin: 0;
+        color: var(--m3-on-surface-variant, #444748);
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    > svg {
+        display: block;
+        margin-bottom: 10px;
+        color: var(--m3-primary, #a5000a);
+    }
+}
+
+.typeCardPlanned {
+    border-style: dashed;
+    border-color: var(--dpia-anno-line);
+    background: var(--dpia-anno-bg);
+
+    h4,
+    p,
+    > svg {
+        color: var(--dpia-anno-ink);
+    }
+}
+
+.plannedBadge {
+    display: inline-block;
+    padding: 1px 6px;
+    border: 1px solid #ffdca3;
+    margin-left: 6px;
+    background: #ffeed2;
+    border-radius: 2px;
+    color: var(--dpia-anno-ink);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    vertical-align: 2px;
+}
+
+.planBox {
+    max-width: 74ch;
+    padding: 14px 18px;
+    border: 1px solid #ffdca3;
+    border-left: 4px solid #de8a00;
+    margin: 14px 0 8px;
+    background: #fdf3dd;
+    border-radius: 8px;
+
+    p {
+        margin: 0;
+        font-size: 14.5px;
+    }
+}
+
+.planTitle {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    color: var(--dpia-anno-ink);
+    font-size: 12px;
+    font-weight: 800;
+    gap: 8px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.measures {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 12px 0 8px;
+    gap: 8px;
+}
+
+.measure {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border: 1px solid var(--dpia-hair);
+    background: var(--m3-surface-container, #f0edee);
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    gap: 6px;
+
+    svg {
+        color: var(--m3-primary, #a5000a);
+    }
+}
+
+/* ------------------------------------------------------------- responsive */
+
+@media (max-width: 820px) {
+    .split {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 767px) {
+    /* A multi-row app bar would pin too much height on a phone and collide with
+       the chapter chips, so it scrolls away and only the chips stay put. */
+
+    .appbar {
+        position: static;
+        padding: 10px 14px;
+        gap: 10px;
+    }
+
+    .version {
+        display: none;
+    }
+
+    .chapterNav {
+        top: 0;
+    }
+
+    .chapterNavInner {
+        padding: 10px 14px;
+    }
+
+    .hero {
+        padding: 16px 14px 0;
+    }
+
+    .heroCard {
+        padding: 20px 18px 18px;
+    }
+
+    .heroCard h1 {
+        font-size: 24px;
+    }
+
+    .body {
+        padding: 0 14px 48px;
+    }
+
+    .section {
+        padding: 20px 16px 22px;
+        border-radius: 8px;
+        scroll-margin-top: 64px;
+    }
+}
