@@ -1,0 +1,61 @@
+.card {
+    width: 100%;
+}
+
+.sections {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+}
+
+.sectionTitle {
+    margin-bottom: 12px;
+    color: #1b1b1c;
+    font-family: var(--m3-body-font-family);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+}
+
+.sectionHint {
+    margin: 0 0 12px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+/* The row gap is load-bearing, not cosmetic: MUI floats the shrunk field label above the
+   input's top edge, so with a zero row gap it renders over the helper text of the field in
+   the row above ("Kurzname" hint vs. "Anschrift" label). */
+.fieldGrid {
+    display: grid;
+    gap: 12px 24px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Address fields need the full row — a two-line textarea in a half column reads cramped. */
+.wideField {
+    grid-column: 1 / -1;
+}
+
+/* Each key figure is a count plus the date it was accurate on; they belong together. */
+.keyFigureRow {
+    display: grid;
+    gap: 12px 16px;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media only screen and (max-width: 760px) {
+    .fieldGrid,
+    .keyFigureRow {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
