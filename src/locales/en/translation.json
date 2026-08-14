@@ -1826,6 +1826,7 @@
     "dpia.editor.status.published": "Published",
     "dpia.editor.status.unsaved": "Unsaved",
     "dpia.editor.loadError": "The DPIA free texts could not be loaded.",
+    "dpia.editor.saveError": "Your changes could not be saved. Your input has not been lost.",
     "dpia.editor.guard.title": "Switch chapter?",
     "dpia.editor.guard.description": "This chapter has unsaved changes. Would you like to save them as a draft first?",
     "dpia.editor.guard.save": "Save and switch",

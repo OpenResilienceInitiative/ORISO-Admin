@@ -111,3 +111,16 @@ export const findDpiaSection = (id: string): DpiaSection | undefined =>
 
 /** Content keyed by section id; a missing key simply means "not written yet". */
 export type DpiaTextMap = Record<string, string>;
+
+/** Publication status of a section as persisted by the tenant service. */
+export type DpiaPublicationStatus = 'DRAFT' | 'PUBLISHED';
+
+/**
+ * True when a section carries operator text. TipTap reports an untouched document as `<p></p>`
+ * or `<p><br></p>`; both the gateway (what publishing finalises) and the editor (what the
+ * dropdown marks as filled) must agree on this, so it lives here once instead of twice.
+ */
+export const hasDpiaText = (html: string | undefined): boolean => {
+    const trimmed = (html ?? '').trim();
+    return trimmed !== '' && trimmed !== '<p></p>' && trimmed !== '<p><br></p>';
+};

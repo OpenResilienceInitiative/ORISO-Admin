@@ -37,24 +37,26 @@ export const DpiaSectionSelect = ({ value, onChange, filledSectionIds = [] }: Dp
         return `${prefix}${t(titleKey)}${filled.has(sectionId) ? ' •' : ''}`;
     };
 
-    const flat = DPIA_SECTIONS.filter((section) => !section.group);
     const proportionality = DPIA_SECTIONS.filter((section) => section.group === 'proportionality');
     const toItem = ({ id, chapter, titleKey }: (typeof DPIA_SECTIONS)[number]) => ({
         key: id,
         label: label(id, chapter, titleKey),
     });
+    const groupItem = {
+        key: 'proportionality',
+        type: 'group' as const,
+        label: t(PROPORTIONALITY_GROUP_KEY),
+        children: proportionality.map(toItem),
+    };
+    const firstGroupedIndex = DPIA_SECTIONS.findIndex((section) => section.group === 'proportionality');
 
-    // Chapter order in the menu follows the document, not the array: 4, 5, 8.x, 9.x, 2, annex.
-    const items: MenuProps['items'] = [
-        ...flat.slice(0, 5).map(toItem),
-        {
-            key: 'proportionality',
-            type: 'group' as const,
-            label: t(PROPORTIONALITY_GROUP_KEY),
-            children: proportionality.map(toItem),
-        },
-        ...flat.slice(5).map(toItem),
-    ];
+    // Menu order follows the registry order (the document order — see dpiaSections.ts): the four
+    // chapter 9 stages collapse into one heading at the position of the FIRST grouped entry, so
+    // adding or reordering a non-grouped section can never leave the group behind.
+    const items: MenuProps['items'] = DPIA_SECTIONS.flatMap((section, index) => {
+        if (!section.group) return [toItem(section)];
+        return index === firstGroupedIndex ? [groupItem] : [];
+    });
 
     return (
         <SplitDropdown

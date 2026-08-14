@@ -243,5 +243,26 @@ describe('DpiaTextEditor unsaved-changes guard', () => {
         expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'publish' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'saveDraft' })).not.toBeInTheDocument();
+        // Nothing can ever get dirty in read-only mode, so the unsaved-changes guard must never render.
+        expect(screen.queryByText('dpia.editor.guard.description')).not.toBeInTheDocument();
+    });
+
+    it('read-only mode still allows reading another chapter', async () => {
+        const user = userEvent.setup();
+        render(
+            <DpiaTextEditor
+                onSave={vi.fn()}
+                initialTexts={{ governance: '<p>governance</p>', escalationChain: '<p>escalation</p>' }}
+                readOnly
+            />,
+        );
+
+        expect(editorValue()).toBe('<p>governance</p>');
+
+        await openChapterMenu(user);
+        await user.click(await screen.findByText(/8\.11 dpia\.sections\.escalationChain\.title/));
+
+        expect(editorValue()).toBe('<p>escalation</p>');
+        expect(screen.queryByText('dpia.editor.guard.description')).not.toBeInTheDocument();
     });
 });

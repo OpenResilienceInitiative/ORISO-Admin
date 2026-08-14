@@ -1826,6 +1826,7 @@
     "dpia.editor.status.published": "Veröffentlicht",
     "dpia.editor.status.unsaved": "Nicht gespeichert",
     "dpia.editor.loadError": "Die DSFA-Freitexte konnten nicht geladen werden.",
+    "dpia.editor.saveError": "Die Änderungen konnten nicht gespeichert werden. Ihre Eingaben bleiben erhalten.",
     "dpia.editor.guard.title": "Kapitel wechseln?",
     "dpia.editor.guard.description": "In diesem Kapitel gibt es ungespeicherte Änderungen. Möchten Sie sie zuerst als Entwurf speichern?",
     "dpia.editor.guard.save": "Speichern und wechseln",

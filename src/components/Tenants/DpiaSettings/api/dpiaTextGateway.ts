@@ -1,5 +1,5 @@
-import { DpiaTextMap } from '../utils/dpiaSections';
-import type { DpiaPublicationStatus } from '../components/DpiaTextEditor';
+import { DpiaTextMap, hasDpiaText } from '../utils/dpiaSections';
+import type { DpiaPublicationStatus } from '../utils/dpiaSections';
 
 /**
  * What the DSFA free-text editor needs from a backend, stated as an interface so the UI can be
@@ -40,19 +40,23 @@ export const createMockDpiaTextGateway = (seed: Partial<DpiaTextDocument> = {}):
         load: async (tenantId) => read(tenantId),
         save: async (tenantId, texts, publish) => {
             const previous = read(tenantId);
+            const statusBySection: Record<string, DpiaPublicationStatus> = { ...previous.statusBySection };
+            Object.entries(texts).forEach(([id, html]) => {
+                if (publish) {
+                    // Publishing finalises exactly the sections that carry text.
+                    if (hasDpiaText(html)) {
+                        statusBySection[id] = 'PUBLISHED';
+                    }
+                } else {
+                    // A draft save supersedes whatever was published before: a section just
+                    // edited and saved as a draft must not keep showing a Published badge over
+                    // its now-unpublished replacement. A missing entry means DRAFT.
+                    delete statusBySection[id];
+                }
+            });
             const next: DpiaTextDocument = {
                 texts: { ...previous.texts, ...texts },
-                statusBySection: publish
-                    ? {
-                          ...previous.statusBySection,
-                          // Publishing finalises exactly the sections that carry text.
-                          ...Object.fromEntries(
-                              Object.entries(texts)
-                                  .filter(([, html]) => html.trim() !== '' && html.trim() !== '<p></p>')
-                                  .map(([id]) => [id, 'PUBLISHED' as DpiaPublicationStatus]),
-                          ),
-                      }
-                    : previous.statusBySection,
+                statusBySection,
             };
             store.set(tenantId, next);
             return next;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Skeleton } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { DpiaTextEditor } from '../DpiaTextEditor';
@@ -28,26 +28,64 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
 
     const [document, setDocument] = useState<DpiaTextDocument>();
     const [loadFailed, setLoadFailed] = useState(false);
+    const [saveFailed, setSaveFailed] = useState(false);
     const [saving, setSaving] = useState(false);
+    // Remembers the exact map + publish flag from the last save attempt, so the save-error
+    // retry button can replay it without asking the (still-mounted) editor to resupply it.
+    const lastSaveAttempt = useRef<{ texts: DpiaTextMap; publish: boolean } | undefined>(undefined);
+    // Bumped on every load call (from the effect OR a manual retry click) so a response that
+    // resolves after a newer one was already issued — a slower tenant-A request outliving a
+    // tenant-B switch, or two retry clicks in a row — is discarded instead of overwriting state.
+    const loadToken = useRef(0);
 
     const load = useCallback(() => {
-        if (!Number.isFinite(id) || id <= 0) return;
+        // An id that cannot resolve to a tenant is a failed load, not an eternal skeleton: the
+        // admin needs the same error + retry affordance as a network failure would give them.
+        if (!Number.isFinite(id) || id <= 0) {
+            setLoadFailed(true);
+            return;
+        }
         setLoadFailed(false);
+        loadToken.current += 1;
+        const token = loadToken.current;
         resolvedGateway
             .load(id)
-            .then(setDocument)
-            .catch(() => setLoadFailed(true));
+            .then((next) => {
+                if (loadToken.current === token) setDocument(next);
+            })
+            .catch(() => {
+                if (loadToken.current === token) setLoadFailed(true);
+            });
     }, [id, resolvedGateway]);
 
-    useEffect(load, [load]);
+    useEffect(() => {
+        // Reset to a clean slate BEFORE the new tenant's load resolves: without this, switching
+        // tenants would keep showing (and let the admin keep editing) the previous tenant's
+        // document and any of its unsaved edits until the new load happened to land, and a save
+        // in that window could write tenant A's edits under tenant B's id.
+        setDocument(undefined);
+        setSaveFailed(false);
+        lastSaveAttempt.current = undefined;
+        load();
+    }, [load]);
 
-    const handleSave = (texts: DpiaTextMap, publish: boolean) => {
-        setSaving(true);
-        resolvedGateway
-            .save(id, texts, publish)
-            .then(setDocument)
-            .catch(() => setLoadFailed(true))
-            .finally(() => setSaving(false));
+    const handleSave = useCallback(
+        (texts: DpiaTextMap, publish: boolean) => {
+            if (!Number.isFinite(id) || id <= 0) return;
+            lastSaveAttempt.current = { texts, publish };
+            setSaving(true);
+            setSaveFailed(false);
+            resolvedGateway
+                .save(id, texts, publish)
+                .then(setDocument)
+                .catch(() => setSaveFailed(true))
+                .finally(() => setSaving(false));
+        },
+        [id, resolvedGateway],
+    );
+
+    const retrySave = () => {
+        if (lastSaveAttempt.current) handleSave(lastSaveAttempt.current.texts, lastSaveAttempt.current.publish);
     };
 
     // A failed load must not look like "nothing written yet": editing on an unknown current
@@ -59,7 +97,7 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
                 showIcon
                 message={t('dpia.editor.loadError')}
                 action={
-                    <Button size="small" onClick={load}>
+                    <Button size="small" onClick={() => load()}>
                         {t('tenants.legal.version.retry')}
                     </Button>
                 }
@@ -72,13 +110,35 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
     }
 
     return (
-        <DpiaTextEditor
-            initialTexts={document.texts}
-            statusBySection={document.statusBySection}
-            onSave={handleSave}
-            saving={saving}
-            readOnly={readOnly}
-        />
+        <>
+            {/* A save failure is not a load failure: the editor and its unsaved chapters stay
+                mounted, and only a save (not a re-fetch) is retried. */}
+            {saveFailed && (
+                <Alert
+                    type="error"
+                    showIcon
+                    closable
+                    onClose={() => setSaveFailed(false)}
+                    message={t('dpia.editor.saveError')}
+                    action={
+                        <Button size="small" onClick={retrySave}>
+                            {t('tenants.legal.version.retry')}
+                        </Button>
+                    }
+                />
+            )}
+            <DpiaTextEditor
+                // Remount on tenant switch: the editor's own `edits` state has no idea the tenant
+                // changed, so without a fresh instance tenant A's unsaved edits would keep
+                // overriding tenant B's loaded texts (mirrors AgencyLegalTextContainer's key).
+                key={id}
+                initialTexts={document.texts}
+                statusBySection={document.statusBySection}
+                onSave={handleSave}
+                saving={saving}
+                readOnly={readOnly}
+            />
+        </>
     );
 };
 

@@ -5,10 +5,18 @@ import { DpiaIcon } from '../../../../CustomIcons/LegalIcons';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { DpiaSectionSelect } from '../DpiaSectionSelect';
-import { DEFAULT_DPIA_SECTION_ID, DpiaTextMap, findDpiaSection } from '../../utils/dpiaSections';
+import {
+    DEFAULT_DPIA_SECTION_ID,
+    DpiaPublicationStatus,
+    DpiaTextMap,
+    findDpiaSection,
+    hasDpiaText,
+} from '../../utils/dpiaSections';
 import styles from './styles.module.scss';
 
-export type DpiaPublicationStatus = 'DRAFT' | 'PUBLISHED';
+// Re-exported for existing consumers: the type is owned by the data layer (`dpiaSections.ts`)
+// since the API gateway needs it too and must not depend on a UI module.
+export type { DpiaPublicationStatus };
 
 export interface DpiaTextEditorProps {
     /** Stored text per section id; missing keys are sections nobody has written yet. */
@@ -68,7 +76,7 @@ export const DpiaTextEditor = ({
     const filledSectionIds = useMemo(
         () =>
             Object.entries(texts)
-                .filter(([, html]) => html.trim() !== '' && html.trim() !== '<p></p>')
+                .filter(([, html]) => hasDpiaText(html))
                 .map(([id]) => id),
         [texts],
     );
