@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { notification } from 'antd';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,6 +9,19 @@ import {
     readLegalDraft,
     writeLegalDraft,
 } from '../utils/legalDraftStorage';
+
+interface LegalDraftState {
+    /** The scope key this snapshot was read for — guards against cross-user leakage. */
+    key: string | undefined;
+    draft?: LegalDraft;
+    savedAt?: string;
+    savedBaseVersionId?: string;
+}
+
+const readState = (key: string | undefined): LegalDraftState => {
+    const stored = readLegalDraft(key);
+    return { key, draft: stored, savedAt: stored?.savedAt, savedBaseVersionId: stored?.baseVersionId };
+};
 
 export interface UseLegalDraftResult {
     /**
@@ -41,23 +54,20 @@ export const useLegalDraft = (
 ): UseLegalDraftResult => {
     const { t } = useTranslation();
     const key = legalDraftKey(document, scope);
-    const [draft, setDraft] = useState<LegalDraft | undefined>(() => readLegalDraft(key));
-    const [savedAt, setSavedAt] = useState<string | undefined>(() => readLegalDraft(key)?.savedAt);
-    // The version the draft was LAST saved against — tracked separately from `draft`,
-    // which stays frozen on purpose. Re-saving a stale draft against the current
-    // version has to clear the stale warning; reading it off the frozen record would
-    // keep warning about a conflict the admin has just resolved.
-    const [savedBaseVersionId, setSavedBaseVersionId] = useState<string | undefined>(
-        () => readLegalDraft(key)?.baseVersionId,
-    );
-
-    // The scope is undefined until the opaque user id has loaded; pick the draft up then.
-    useEffect(() => {
-        const stored = readLegalDraft(key);
-        setDraft(stored);
-        setSavedAt(stored?.savedAt);
-        setSavedBaseVersionId(stored?.baseVersionId);
-    }, [key]);
+    // Key, draft and save markers live in ONE state object so they can never
+    // disagree: an effect would let the render right after a scope change still
+    // return the previous scope's draft — i.e. one frame of another user's text.
+    // `savedBaseVersionId` is tracked apart from the (deliberately frozen) draft
+    // record: re-saving a stale draft against the current version has to clear the
+    // stale warning, which reading it off the frozen record would not do.
+    const [state, setState] = useState<LegalDraftState>(() => readState(key));
+    // Render-phase adjustment for a changed scope — React's documented pattern for
+    // derived state, and the only way to keep this synchronous.
+    const current = state.key === key ? state : readState(key);
+    if (current !== state) {
+        setState(current);
+    }
+    const { draft, savedAt, savedBaseVersionId } = current;
 
     const saveDraft = useCallback(
         (contentByLanguage: Record<string, string>) => {
@@ -70,8 +80,11 @@ export const useLegalDraft = (
                 notification.error({ message: t('legal.draft.saveError'), duration: 8 });
                 return;
             }
-            setSavedAt(readLegalDraft(key)?.savedAt);
-            setSavedBaseVersionId(baseVersionId);
+            setState((previous) => ({
+                ...previous,
+                savedAt: readLegalDraft(key)?.savedAt,
+                savedBaseVersionId: baseVersionId,
+            }));
             notification.success({ message: t('legal.draft.saved'), duration: 4 });
         },
         [baseVersionId, key, t],
@@ -88,9 +101,7 @@ export const useLegalDraft = (
             notification.error({ message: t('legal.draft.discardError'), duration: 8 });
             return false;
         }
-        setDraft(undefined);
-        setSavedAt(undefined);
-        setSavedBaseVersionId(undefined);
+        setState({ key, draft: undefined, savedAt: undefined, savedBaseVersionId: undefined });
         return true;
     }, [key, t]);
 

@@ -91,7 +91,7 @@ export const LegalText = ({
     const { can } = useUserPermissions();
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const { data, isLoading, mutate: updateTenant, isPending } = useTenantAppearanceFormData(`${tenantId}`);
-    const { data: userData } = useUserData();
+    const { data: userData, isLoading: isUserLoading } = useUserData();
     // Persist dismissal only once the opaque user id is known (same pattern as DPA).
     const dismissalScope = userData?.id ? `${tenantId}:${userData.id}` : undefined;
     const [activeLanguage, setActiveLanguage] = useState('de');
@@ -107,7 +107,9 @@ export const LegalText = ({
         return configured && configured.length > 0 ? configured : ['de'];
     }, [data?.settings?.activeLanguages]);
 
-    const editorIdentity = `${tenantId}:${fieldName.join('.')}`;
+    // The signed-in account is part of the editor identity: a user change must drop
+    // this session's edits, never hand them to the next account.
+    const editorIdentity = `${tenantId}:${fieldName.join('.')}:${dismissalScope ?? ''}`;
     useEffect(() => {
         setEdits({});
         setPendingFormData(undefined);
@@ -207,7 +209,10 @@ export const LegalText = ({
 
     const onSaveDraft = useCallback(() => saveDraft({ ...contentByLanguage }), [contentByLanguage, saveDraft]);
 
-    if (isLoading) {
+    // Wait for the opaque user id too: mounting the editor first and letting the draft
+    // arrive later would remount it mid-edit and offer a save action that silently
+    // does nothing while the scope is still unknown.
+    if (isLoading || isUserLoading) {
         return (
             <div className={styles.card}>
                 <Spin />
@@ -258,7 +263,7 @@ export const LegalText = ({
                         : undefined
                 }
                 onPublish={canEditLegalText ? onPublish : undefined}
-                onSaveDraft={canEditLegalText && legalType ? onSaveDraft : undefined}
+                onSaveDraft={canEditLegalText && legalType && dismissalScope ? onSaveDraft : undefined}
                 belowSlot={
                     showConfirmationModal &&
                     modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />

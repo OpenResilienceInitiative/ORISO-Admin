@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LegalText } from './index';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
     can: vi.fn((): boolean => mocks.canEdit),
     imprint: undefined as unknown,
     activeLanguages: ['de', 'en'] as string[],
+    userId: 'user-1' as string | undefined,
+    userLoading: false,
 }));
 
 vi.mock('../../../../../hooks/useTenantAppearanceFormData', () => ({
@@ -39,7 +41,10 @@ vi.mock('../../../../../hooks/useUserPermission', () => ({
 }));
 
 vi.mock('../../../../../hooks/useUserData.hook', () => ({
-    useUserData: () => ({ data: { id: 'user-1' } }),
+    useUserData: () => ({
+        data: mocks.userId ? { id: mocks.userId } : undefined,
+        isLoading: mocks.userLoading,
+    }),
 }));
 
 vi.mock('../../../../../hooks/useUserRoles.hook', () => ({
@@ -124,6 +129,8 @@ beforeEach(() => {
     mocks.imprint = DEFAULT_IMPRINT;
     mocks.activeLanguages = ['de', 'en'];
     mocks.canEdit = true;
+    mocks.userId = 'user-1';
+    mocks.userLoading = false;
     window.localStorage.clear();
     window.sessionStorage.clear();
 });
@@ -487,6 +494,51 @@ describe('LegalText — local draft', () => {
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
         expect(screen.getByText('legal.draft.notice.title')).toBeInTheDocument();
         vi.restoreAllMocks();
+    });
+
+    it('offers no draft action while the opaque user id is still loading', () => {
+        mocks.userLoading = true;
+        renderImprint();
+        // The whole editor waits: mounting it now and remounting it when the draft
+        // arrives would throw away whatever was typed in between.
+        expect(screen.queryByTestId('m3-editor')).not.toBeInTheDocument();
+    });
+
+    it('offers no draft action when the user id could not be loaded at all', () => {
+        mocks.userId = undefined;
+        renderImprint();
+        // The editor still works — only the draft action is withheld, because without a
+        // scope it would silently store nothing.
+        expect(screen.getByTestId('m3-editor')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'legal.m3Editor.saveDraft' })).not.toBeInTheDocument();
+    });
+
+    it('never hands one account’s unsaved edits or draft to the next', async () => {
+        const user = userEvent.setup();
+        // A fresh element each time: React bails out of an update when the element is
+        // referentially identical, so reusing one would silently skip the re-render.
+        const imprint = () => (
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                legalType="imprint"
+                placeHolderKey="settings.imprint.placeholder"
+            />
+        );
+        const { rerender } = render(imprint());
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.saveDraft' }));
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
+
+        // The account changes while the editor stays mounted — no unmount to save us.
+        mocks.userId = 'user-2';
+        rerender(imprint());
+
+        await waitFor(() =>
+            expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>'),
+        );
+        expect(screen.queryByText('legal.draft.notice.title')).not.toBeInTheDocument();
     });
 
     it('never shows a stored draft to a viewer who may not edit', async () => {

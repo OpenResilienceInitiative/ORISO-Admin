@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, Button, Input, Space } from 'antd';
+import { Alert, Button, Input, Space, Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useDpaVersions } from '../../../../../hooks/useDpaVersions.hook';
 import { usePublishDpa } from '../../../../../hooks/usePublishDpa.hook';
@@ -42,7 +42,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     const { mutate: publish, isPending } = usePublishDpa(id);
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
-    const { data: userData } = useUserData();
+    const { data: userData, isLoading: isUserLoading } = useUserData();
     const { isTenantScopedAdmin } = useUserRoles();
     const {
         data: dpaGate,
@@ -152,6 +152,13 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     // A failed version load must not masquerade as "no versions yet": editing a
     // legal text on an unknown current state could silently overwrite it, so we
     // withhold the editor and offer a retry instead.
+    // Same reason as LegalText: the draft scope needs the opaque user id, and a card
+    // mounted before it arrives would be remounted the moment the draft loads —
+    // throwing away anything typed in between.
+    if (isUserLoading) {
+        return <Spin />;
+    }
+
     if (versionsError) {
         return (
             <Alert
@@ -183,10 +190,10 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 readOnly={effectiveReadOnly}
                 dpaSigned={dpaGate?.dpaSigned}
                 dismissalScope={dismissalScope}
-                onSaveDraft={effectiveReadOnly ? undefined : saveDraft}
+                onSaveDraft={effectiveReadOnly || !dismissalScope ? undefined : saveDraft}
                 draftSavedAt={savedAt}
                 draftStale={isStale}
-                onDiscardDraft={effectiveReadOnly ? undefined : discardDraft}
+                onDiscardDraft={effectiveReadOnly || !dismissalScope ? undefined : discardDraft}
             />
             {isTenantScopedAdmin && dpaGateError && (
                 <Alert

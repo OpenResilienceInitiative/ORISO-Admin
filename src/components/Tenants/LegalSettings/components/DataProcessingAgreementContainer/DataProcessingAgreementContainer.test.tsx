@@ -424,3 +424,28 @@ describe('DataProcessingAgreementContainer — local draft', () => {
         expect(screen.getByTestId('card')).toHaveAttribute('data-has-draft-action', 'false');
     });
 });
+
+describe('DataProcessingAgreementContainer — draft scope readiness', () => {
+    it('withholds the card until the opaque user id has loaded', () => {
+        useDpaVersions.mockReturnValue({
+            data: [{ activationDate: '2026-07-01T10:00:00', content: '{"de":"<p>DE</p>"}' }],
+        });
+        useUserData.mockReturnValue({ data: undefined, isLoading: true });
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+        // Mounting now and remounting when the draft hydrates would discard edits
+        // typed during identity loading.
+        expect(screen.queryByTestId('card')).not.toBeInTheDocument();
+    });
+
+    it('shows the card without a draft action when the user id never arrives', () => {
+        useDpaVersions.mockReturnValue({
+            data: [{ activationDate: '2026-07-01T10:00:00', content: '{"de":"<p>DE</p>"}' }],
+        });
+        useUserData.mockReturnValue({ data: undefined, isLoading: false });
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+        const card = screen.getByTestId('card');
+        // Reading and publishing still work; only the draft action is withheld,
+        // because without a scope it would store nothing and say nothing.
+        expect(card).toHaveAttribute('data-has-draft-action', 'false');
+    });
+});
