@@ -1331,8 +1331,10 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     color: $m3-on-surface-variant;
 }
 
+// Figma 1285-80496, "Footer Legal Editor": the publish/edit row is 68px tall.
 .actions {
     display: flex;
+    min-height: var(--admin-card-footer-height, 68px);
     gap: 8px;
     align-items: center;
     justify-content: flex-end;
