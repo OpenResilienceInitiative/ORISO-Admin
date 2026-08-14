@@ -11,7 +11,7 @@ interface TenantAdminControlsMutationOptions
 }
 
 export const useTenantAdminControlsMutation = ({
-    successMessageKey = 'tenants.message.setting.update',
+    successMessageKey = 'tenants.message.settingsUpdate',
     ...options
 }: TenantAdminControlsMutationOptions = {}) => {
     const { t } = useTranslation();
