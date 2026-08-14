@@ -37,12 +37,17 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
     // resolves after a newer one was already issued — a slower tenant-A request outliving a
     // tenant-B switch, or two retry clicks in a row — is discarded instead of overwriting state.
     const loadToken = useRef(0);
-    // Bumped ONLY on a tenant switch (see the reset effect below). A save is bound to the tenant
-    // it was fired for the same way a load is bound to its token: without this, a save started
-    // on tenant A that resolves after the admin has switched to tenant B would apply A's result
-    // (or A's error/saving flags) to B's now-mounted editor, and a follow-up save from B could
-    // then submit A's stale texts under B's id.
-    const tenantEpoch = useRef(0);
+    // Bumped on a tenant switch (the reset effect below) AND on every save call (handleSave).
+    // Guards a save's completion the same way loadToken guards a load's: without the tenant-switch
+    // bump, a save started on tenant A that resolves after the admin has switched to tenant B
+    // would apply A's result (or A's error/saving flags) to B's now-mounted editor, and a
+    // follow-up save from B could submit A's stale texts under B's id. Without the per-save bump,
+    // two overlapping saves for the SAME tenant (e.g. a retry fired while the original request is
+    // still in flight) could still race: if the OLDER request resolves LAST, it would overwrite
+    // the newer one's result. The M3 editor shell also disables its draft button while `saving`
+    // is true, but this ref is the actual guarantee — the disabled button is only the first line
+    // of defense.
+    const saveGuard = useRef(0);
 
     const load = useCallback(() => {
         // An id that cannot resolve to a tenant is a failed load, not an eternal skeleton: the
@@ -69,7 +74,7 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
         // tenants would keep showing (and let the admin keep editing) the previous tenant's
         // document and any of its unsaved edits until the new load happened to land, and a save
         // in that window could write tenant A's edits under tenant B's id.
-        tenantEpoch.current += 1;
+        saveGuard.current += 1;
         setDocument(undefined);
         setSaveFailed(false);
         setSaving(false);
@@ -83,17 +88,21 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
             lastSaveAttempt.current = { texts, publish };
             setSaving(true);
             setSaveFailed(false);
-            const epoch = tenantEpoch.current;
+            // Bumping here (not just on tenant switch) means an OLDER overlapping save's guard
+            // can never match again once a NEWER save (or a tenant switch) has started, so only
+            // the most recent request's outcome is ever applied.
+            saveGuard.current += 1;
+            const guard = saveGuard.current;
             resolvedGateway
                 .save(id, texts, publish)
                 .then((next) => {
-                    if (tenantEpoch.current === epoch) setDocument(next);
+                    if (saveGuard.current === guard) setDocument(next);
                 })
                 .catch(() => {
-                    if (tenantEpoch.current === epoch) setSaveFailed(true);
+                    if (saveGuard.current === guard) setSaveFailed(true);
                 })
                 .finally(() => {
-                    if (tenantEpoch.current === epoch) setSaving(false);
+                    if (saveGuard.current === guard) setSaving(false);
                 });
         },
         [id, resolvedGateway],

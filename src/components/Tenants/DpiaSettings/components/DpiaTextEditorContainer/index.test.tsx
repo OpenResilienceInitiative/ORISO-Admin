@@ -44,9 +44,11 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
 
 /** A gateway whose `save` resolves only when the matching entry in `releasers` is called, so a
  * test can control exactly when a save "completes" relative to other actions (e.g. a tenant
- * switch). `load` always resolves immediately with a per-tenant document. */
+ * switch, or a second overlapping save). Calls for the same tenant queue up in order, so the
+ * Nth `save` call for a tenant is released by `releaseSave(tenantId, N)`. `load` always resolves
+ * immediately with a per-tenant document. */
 const createControllableGateway = () => {
-    const releasers: Record<number, (doc: DpiaTextDocument) => void> = {};
+    const releasers: Record<number, Array<(doc: DpiaTextDocument) => void>> = {};
     const docs: Record<number, DpiaTextDocument> = {
         1: { texts: { governance: '<p>tenant-1</p>' }, statusBySection: {} },
         2: { texts: { governance: '<p>tenant-2</p>' }, statusBySection: {} },
@@ -55,10 +57,15 @@ const createControllableGateway = () => {
         load: async (tenantId) => docs[tenantId],
         save: (tenantId) =>
             new Promise((resolve) => {
-                releasers[tenantId] = resolve;
+                (releasers[tenantId] ??= []).push(resolve);
             }),
     };
-    return { gateway, docs, releaseSave: (tenantId: number, doc: DpiaTextDocument) => releasers[tenantId](doc) };
+    return {
+        gateway,
+        docs,
+        releaseSave: (tenantId: number, callIndex: number, doc: DpiaTextDocument) =>
+            releasers[tenantId][callIndex](doc),
+    };
 };
 
 describe('DpiaTextEditorContainer tenant-switch save race', () => {
@@ -77,7 +84,7 @@ describe('DpiaTextEditorContainer tenant-switch save race', () => {
         await waitFor(() => expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>tenant-2</p>'));
 
         // Tenant 1's stale save now resolves with a document that must never reach the screen.
-        releaseSave(1, { texts: { governance: '<p>STALE-TENANT-1-RESULT</p>' }, statusBySection: {} });
+        releaseSave(1, 0, { texts: { governance: '<p>STALE-TENANT-1-RESULT</p>' }, statusBySection: {} });
 
         // Give the resolved promise's .then a tick, then assert tenant 2's view is unchanged.
         await new Promise<void>((resolve) => {
@@ -85,5 +92,36 @@ describe('DpiaTextEditorContainer tenant-switch save race', () => {
         });
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', docs[2].texts.governance);
         expect(screen.queryByText('dpia.editor.saveError')).not.toBeInTheDocument();
+    });
+
+    it('ignores an older overlapping save for the SAME tenant that resolves after a newer one', async () => {
+        const user = userEvent.setup();
+        const { gateway, releaseSave } = createControllableGateway();
+
+        render(<DpiaTextEditorContainer tenantId={1} gateway={gateway} />);
+
+        await screen.findByTestId('editor');
+        // Deliberately no 'edit' click: DpiaTextEditor's own `edits` session state is never
+        // cleared by a successful save, so an edited section would keep echoing the LOCAL edit
+        // regardless of which save result the container applied, masking exactly the race this
+        // test exists to catch. Saving without editing isolates the container's own guard.
+        //
+        // Fire two overlapping draft saves for the same tenant (e.g. a retry click racing the
+        // original request — the M3 shell disables the button while saving, but the container
+        // must not rely on that alone).
+        await user.click(screen.getByRole('button', { name: 'saveDraft' }));
+        await user.click(screen.getByRole('button', { name: 'saveDraft' }));
+
+        // The NEWER (second) save resolves first...
+        releaseSave(1, 1, { texts: { governance: '<p>NEWER-RESULT</p>' }, statusBySection: {} });
+        await waitFor(() => expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>NEWER-RESULT</p>'));
+
+        // ...then the OLDER (first) save resolves last. Its result must be discarded, not applied
+        // over the newer one.
+        releaseSave(1, 0, { texts: { governance: '<p>STALE-OLDER-RESULT</p>' }, statusBySection: {} });
+        await new Promise<void>((resolve) => {
+            setTimeout(resolve, 0);
+        });
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>NEWER-RESULT</p>');
     });
 });
