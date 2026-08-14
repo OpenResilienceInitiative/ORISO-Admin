@@ -2,7 +2,7 @@ import React from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Form } from 'antd';
+import { Form, notification } from 'antd';
 import { AgencyPageEdit } from './index';
 
 // Render AgencyPageEdit inside a QueryClientProvider so child components that use
@@ -404,5 +404,23 @@ describe('AgencyPageEdit create flow', () => {
             { name: fieldName, errors: ['agency.edit.settings.legal.validation.responsible_required'] },
         ]);
         expect(mocks.legalForm.scrollToField).toHaveBeenCalledWith(fieldName, { focus: true });
+    });
+
+    it('shows the generic error notification for an unsupported service validation reason', async () => {
+        const notificationSpy = vi.spyOn(notification, 'error').mockImplementation(() => undefined as never);
+        mocks.routeId = '282';
+        mocks.agencyData = { id: 282, name: 'E2E Agency', tenantId: 84, topics: [] };
+
+        renderWithClient(<AgencyPageEdit section="legal" />);
+        fireEvent.click(screen.getByRole('button', { name: 'Save responsible card' }));
+        await mocks.mutate.mock.calls[0][1].onError(
+            new Response(JSON.stringify({ field: 'dataProtection', reason: 'A_NEW_REASON' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            }),
+        );
+
+        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
+        notificationSpy.mockRestore();
     });
 });

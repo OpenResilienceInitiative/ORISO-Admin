@@ -87,9 +87,15 @@ export const CardEditable = ({
 
     const onFormSubmit = useCallback(
         (formData) => {
-            onSave(formData, { onError: () => setEditing(true), form });
             setEditing(editMode);
             setHasChanges(false);
+            onSave(formData, {
+                onError: () => {
+                    setEditing(true);
+                    setHasChanges(true);
+                },
+                form,
+            });
         },
         [editMode, form, onSave],
     );

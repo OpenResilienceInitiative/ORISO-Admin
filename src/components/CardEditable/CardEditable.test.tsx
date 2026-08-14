@@ -61,4 +61,23 @@ describe('CardEditable', () => {
         await waitFor(() => expect(screen.getByLabelText('Name')).toBeEnabled());
         expect(screen.getByLabelText('Name')).toHaveValue('Edited agency');
     });
+
+    it('restores edit and unsaved-change state when save fails synchronously', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn((_formData, options) => options?.onError?.());
+        render(
+            <CardEditable allowUnsavedChanges titleKey="card.title" onSave={onSave} initialValues={{ name: 'ACME' }}>
+                <MuiFormField name="name" label="Name" />
+            </CardEditable>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.clear(screen.getByLabelText('Name'));
+        await user.type(screen.getByLabelText('Name'), 'Edited agency');
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        expect(screen.getByLabelText('Name')).toBeEnabled();
+        await user.click(screen.getByRole('button', { name: 'card.edit.cancel' }));
+        expect(await screen.findByText('overlay.unsaved.title')).toBeInTheDocument();
+    });
 });
