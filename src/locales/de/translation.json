@@ -1587,6 +1587,7 @@
     "tenants.permissions.feature.mediaUpload": "Medien-Upload",
     "tenants.permissions.feature.mediaInlineDisplay": "Medien-Vorschau (Inline-Anzeige)",
     "tenants.permissions.feature.mediaAiScan": "KI-Bildprüfung",
+    "tenants.permissions.feature.mediaAiScanUnavailable": "Noch nicht aktivierbar: Die KI-Bildprüfung benötigt eine ausgerollte Inhaltsprüfung und eine unterzeichnete Auftragsverarbeitungs-Vereinbarung mit Zero Retention.",
     "users.table.alsoTenantAdmin": "Auch Träger-Admin",
     "users.table.alsoConsultant": "Auch Berater*in",
     "productTour.next": "Weiter",

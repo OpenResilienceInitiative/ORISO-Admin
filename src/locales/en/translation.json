@@ -1587,6 +1587,7 @@
     "tenants.permissions.feature.mediaUpload": "Media upload",
     "tenants.permissions.feature.mediaInlineDisplay": "Media preview (inline display)",
     "tenants.permissions.feature.mediaAiScan": "AI media check",
+    "tenants.permissions.feature.mediaAiScanUnavailable": "Not switchable yet: the AI media check needs a deployed content scanner and a signed zero-retention data processing agreement.",
     "users.table.alsoTenantAdmin": "Also Tenant Admin",
     "users.table.alsoConsultant": "Also Counsellor",
     "productTour.next": "Next",
