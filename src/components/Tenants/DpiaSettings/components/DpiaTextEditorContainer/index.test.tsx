@@ -24,22 +24,34 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onSaveDraft?: (html: string) => void;
         topicSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
-    }) => (
-        <div data-testid="editor" data-value={value}>
-            {topicSlot}
-            {onChange && (
-                <button type="button" onClick={() => onChange('<p>edited</p>')}>
-                    edit
-                </button>
-            )}
-            {onSaveDraft && (
-                <button type="button" onClick={() => onSaveDraft(value)}>
-                    saveDraft
-                </button>
-            )}
-            {belowSlot}
-        </div>
-    ),
+    }) => {
+        // Each 'edit' click produces DISTINCT content (edited-1, edited-2, ...) instead of a
+        // fixed string, so a test can prove a queued save carries the LATEST edit rather than
+        // merely re-sending whatever the first call happened to capture.
+        const editCount = React.useRef(0);
+        return (
+            <div data-testid="editor" data-value={value}>
+                {topicSlot}
+                {onChange && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            editCount.current += 1;
+                            onChange(`<p>edited-${editCount.current}</p>`);
+                        }}
+                    >
+                        edit
+                    </button>
+                )}
+                {onSaveDraft && (
+                    <button type="button" onClick={() => onSaveDraft(value)}>
+                        saveDraft
+                    </button>
+                )}
+                {belowSlot}
+            </div>
+        );
+    },
 }));
 
 /** A gateway whose `save` resolves only when the matching entry in `releasers` is called, so a
@@ -49,14 +61,16 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
  * immediately with a per-tenant document. */
 const createControllableGateway = () => {
     const releasers: Record<number, Array<(doc: DpiaTextDocument) => void>> = {};
+    const savedArgs: Record<number, Array<{ texts: Record<string, string>; publish: boolean }>> = {};
     const docs: Record<number, DpiaTextDocument> = {
         1: { texts: { governance: '<p>tenant-1</p>' }, statusBySection: {} },
         2: { texts: { governance: '<p>tenant-2</p>' }, statusBySection: {} },
     };
     const gateway: DpiaTextGateway = {
         load: async (tenantId) => docs[tenantId],
-        save: (tenantId) =>
+        save: (tenantId, texts, publish) =>
             new Promise((resolve) => {
+                (savedArgs[tenantId] ??= []).push({ texts, publish });
                 (releasers[tenantId] ??= []).push(resolve);
             }),
     };
@@ -68,6 +82,9 @@ const createControllableGateway = () => {
         /** How many `save` calls the gateway has actually received for this tenant so far —
          * used to prove a second save was NOT dispatched while the first was still pending. */
         dispatchedCount: (tenantId: number) => (releasers[tenantId] ?? []).length,
+        /** The exact texts/publish arguments a dispatched `save` call received, by call index —
+         * used to prove a queued call carries the LATEST content, not a replay of the first. */
+        dispatchedArgs: (tenantId: number, callIndex: number) => savedArgs[tenantId][callIndex],
     };
 };
 
@@ -97,24 +114,29 @@ describe('DpiaTextEditorContainer tenant-switch save race', () => {
         expect(screen.queryByText('dpia.editor.saveError')).not.toBeInTheDocument();
     });
 
-    it('serializes overlapping saves: a second save is never dispatched while the first is pending', async () => {
+    it('serializes overlapping saves: a second save is never dispatched while the first is pending, and carries the latest content', async () => {
         const user = userEvent.setup();
-        const { gateway, releaseSave, dispatchedCount } = createControllableGateway();
+        const { gateway, releaseSave, dispatchedCount, dispatchedArgs } = createControllableGateway();
 
         render(<DpiaTextEditorContainer tenantId={1} gateway={gateway} />);
 
         await screen.findByTestId('editor');
-        // Deliberately no 'edit' click: DpiaTextEditor's own `edits` session state is never
-        // cleared by a successful save, so an edited section would keep echoing the LOCAL edit
-        // regardless of which save result the container applied, masking exactly what this test
-        // checks. Saving without editing isolates the container's own guard.
-        await user.click(screen.getByRole('button', { name: 'saveDraft' }));
-        expect(dispatchedCount(1)).toBe(1);
+        const editButton = screen.getByRole('button', { name: 'edit' });
+        const saveDraftButton = screen.getByRole('button', { name: 'saveDraft' });
 
-        // A second click while the first is still in flight must NOT reach the gateway yet — a
-        // second concurrent REQUEST is exactly what could persist out of order at the backend,
-        // regardless of which RESPONSE the container later chooses to apply.
-        await user.click(screen.getByRole('button', { name: 'saveDraft' }));
+        // First edit + save: dispatches immediately with editedContent #1.
+        await user.click(editButton);
+        await user.click(saveDraftButton);
+        expect(dispatchedCount(1)).toBe(1);
+        expect(dispatchedArgs(1, 0).texts.governance).toBe('<p>edited-1</p>');
+
+        // A second, DIFFERENT edit + save while the first is still in flight must not reach the
+        // gateway yet — a second concurrent REQUEST is exactly what could persist out of order at
+        // the backend, regardless of which RESPONSE the container later chooses to apply. A queue
+        // that simply replayed the first call's payload would pass a same-content test but fail
+        // this one, since the content differs.
+        await user.click(editButton);
+        await user.click(saveDraftButton);
         expect(dispatchedCount(1)).toBe(1);
 
         // The first request settles, but its result must be discarded rather than briefly shown:
@@ -123,11 +145,21 @@ describe('DpiaTextEditorContainer tenant-switch save race', () => {
         releaseSave(1, 0, { texts: { governance: '<p>FIRST-RESULT</p>' }, statusBySection: {} });
         await waitFor(() => expect(dispatchedCount(1)).toBe(2)); // only now does the queued follow-up dispatch
         expect(screen.getByTestId('editor')).not.toHaveAttribute('data-value', '<p>FIRST-RESULT</p>');
+        // The follow-up request carries editedContent #2 — the admin's actual latest intent, not
+        // a repeat of the first call's payload.
+        expect(dispatchedArgs(1, 1).texts.governance).toBe('<p>edited-2</p>');
 
-        // The queued follow-up (the admin's actual latest intent) settles and is what finally
-        // reaches the screen.
+        // That follow-up settles cleanly: no third request gets queued/dispatched, no error
+        // surfaced. (The editor's own `edits` state — deliberately never cleared by a successful
+        // save, see the other test above — would keep echoing editedContent #2 regardless of the
+        // resolved document, so that isn't asserted here; the request-content correctness above
+        // already proves the queue carried the latest edit.)
         releaseSave(1, 1, { texts: { governance: '<p>SECOND-RESULT</p>' }, statusBySection: {} });
-        await waitFor(() => expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>SECOND-RESULT</p>'));
+        await new Promise<void>((resolve) => {
+            setTimeout(resolve, 0);
+        });
+        expect(dispatchedCount(1)).toBe(2);
+        expect(screen.queryByText('dpia.editor.saveError')).not.toBeInTheDocument();
     });
 
     it('blocks the chapter selector while a save is in flight, so its in-progress text cannot be discarded mid-save', async () => {
