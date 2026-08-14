@@ -1659,5 +1659,21 @@
     "placeholderTemplate.legal.text": "Einwilligungstext",
     "placeholderTemplate.legal.previewLabel": "Vorschau der Einwilligung",
     "placeholderTemplate.legal.previewCaption": "So sieht der Satz in der Registrierung aus:",
-    "placeholderTemplate.legal.checkboxLabel": "Einwilligung"
+    "placeholderTemplate.legal.checkboxLabel": "Einwilligung",
+    "tenants.erstantwort.title": "Erstantwort",
+    "tenants.erstantwort.description": "Diese Texte schreibt Ihr Träger in eigener Stimme. Alles andere in der Erstantwort — die Antwortfrist als Satz, der Hinweis „keine persönlichen Daten senden“ und die Notfallnummern — wird aus der Konfiguration erzeugt und lässt sich hier bewusst nicht überschreiben: Was das System weiß, schreibt das System.",
+    "tenants.erstantwort.deadline.label": "Antwortfrist in Werktagen",
+    "tenants.erstantwort.deadline.help": "Als Zahl, nicht als Satz — so steht die Zusage an genau einer Stelle und lässt sich mit dem vergleichen, was tatsächlich passiert ist. Leer lassen heißt: es gilt der Plattform-Standard von 2 Werktagen.",
+    "tenants.erstantwort.greeting.label": "Begrüßung",
+    "tenants.erstantwort.greeting.help": "Der erste Satz, den die ratsuchende Person von Ihnen liest. Leer lassen heißt: es gilt der Plattform-Text.",
+    "tenants.erstantwort.whoReadsAlong.label": "Wer die Nachricht liest",
+    "tenants.erstantwort.whoReadsAlong.help": "Wer in Ihrer Beratungsstelle Zugriff auf das Gespräch hat.",
+    "tenants.erstantwort.whoReadsAlong.mandatory": "Pflichtangabe: Ihr Träger ist verantwortliche Stelle, ORISO nur Auftragsverarbeiter — die Plattform darf diese Aussage nicht für Sie erfinden.",
+    "tenants.erstantwort.emergencyAddition.label": "Ergänzung zu den Notfallnummern",
+    "tenants.erstantwort.emergencyAddition.help": "Wird zusätzlich zu den Notfallnummern der Plattform angezeigt. Diese lassen sich nicht ersetzen und nicht abschalten.",
+    "tenants.erstantwort.freeNotice.label": "Freier Hinweis",
+    "tenants.erstantwort.freeNotice.help": "Der eine Baustein, den der Katalog nicht vorsieht — etwa eine Angabe zu Ihrem Beratungsmodell. Es gibt genau einen.",
+    "tenants.erstantwort.closing.label": "Abschluss",
+    "tenants.erstantwort.closing.help": "Der letzte Satz der Sequenz. Leer lassen heißt: es gilt der Plattform-Text.",
+    "tenants.erstantwort.mandatoryChip": "Pflicht"
 }
