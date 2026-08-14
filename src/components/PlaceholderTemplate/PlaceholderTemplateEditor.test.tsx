@@ -48,13 +48,18 @@ const InviteHarness = () => {
     );
 };
 
+/** The e-mail document the preview iframe renders (jsdom does not paint srcDoc). */
+const previewDocument = (preview: HTMLElement): string => preview.querySelector('iframe')?.getAttribute('srcdoc') ?? '';
+
 describe('InviteEmailTemplateEditor', () => {
     it('substitutes sample values into the live preview', () => {
         render(<InviteHarness />);
         const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
-        // firstName sample resolved, token no longer visible in the preview body.
+        // firstName sample resolved in the inbox strip and the mail document.
         expect(within(preview).getAllByText(/Lisa/).length).toBeGreaterThan(0);
         expect(within(preview).queryByText('{{firstName}}')).not.toBeInTheDocument();
+        expect(previewDocument(preview)).toContain('Hallo Lisa,');
+        expect(previewDocument(preview)).not.toContain('{{firstName}}');
     });
 
     it('updates the preview live while typing', () => {
@@ -62,7 +67,7 @@ describe('InviteEmailTemplateEditor', () => {
         const body = screen.getByRole('textbox', { name: 'Inhalt' });
         fireEvent.change(body, { target: { value: 'Guten Tag {{lastName}}!' } });
         const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
-        expect(within(preview).getByText(/Guten Tag Beispiel!/)).toBeInTheDocument();
+        expect(previewDocument(preview)).toContain('Guten Tag Beispiel!');
     });
 
     it('keeps unknown tokens visible as {{key}} in the preview', () => {
@@ -70,8 +75,20 @@ describe('InviteEmailTemplateEditor', () => {
         const body = screen.getByRole('textbox', { name: 'Inhalt' });
         fireEvent.change(body, { target: { value: 'Hallo {{firstName}} und {{unbekannt}}' } });
         const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
-        expect(within(preview).getByText('{{unbekannt}}')).toBeInTheDocument();
-        expect(within(preview).queryByText('{{firstName}}')).not.toBeInTheDocument();
+        expect(previewDocument(preview)).toContain('{{unbekannt}}');
+        expect(previewDocument(preview)).toContain('data-unknown-token');
+        expect(previewDocument(preview)).not.toContain('{{firstName}}');
+    });
+
+    it('renders the mail in the new e-mail design shell', () => {
+        render(<InviteHarness />);
+        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
+        const doc = previewDocument(preview);
+        // Kit canvas + centred 600px column + responsive stylesheet (ported
+        // from ORISO-Frontend src/emails/kit).
+        expect(doc).toContain('background-color:#f2efef');
+        expect(doc).toContain('max-width:600px');
+        expect(doc).toContain('@media only screen and (max-width:620px)');
     });
 
     it('loads the picked template into the fields via the split button', async () => {

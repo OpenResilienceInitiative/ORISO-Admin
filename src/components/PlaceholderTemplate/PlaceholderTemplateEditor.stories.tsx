@@ -11,7 +11,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Reusable placeholder-template module: `{{token}}` fields with a picker, template selection on the M3 split button, and a live preview that substitutes synthetic sample values while typing. Unknown tokens stay visible as `{{key}}`. Presentational only — persistence and wiring into InviteComposer / the legal editors follow after Storybook approval.',
+                    'Reusable placeholder-template module: `{{token}}` fields with a picker, template selection on the M3 split button, and a live preview that substitutes synthetic sample values while typing. The invite e-mail previews in the NEW transactional e-mail design system (ported from ORISO-Frontend `src/emails/`, see the `Email/*` stories there): branded header with the tenant primary colour, white card, kit typography and footer. Unknown tokens stay visible as `{{key}}` chips. Presentational only — persistence and wiring into InviteComposer / the legal editors follow after Storybook approval.',
             },
         },
     },
@@ -85,6 +85,19 @@ export const InviteEmailUnknownToken: Story = {
                 subject: 'Einladung für {{firstName}}',
                 body: 'Hallo {{firstName}},\ndieser Platzhalter existiert nicht: {{unbekannterPlatzhalter}}',
             }}
+            onChange={() => {}}
+            onSelectTemplate={() => {}}
+        />
+    ),
+};
+
+export const InviteEmailEmpty: Story = {
+    name: 'Invite e-mail — empty draft keeps the shell intact',
+    render: () => (
+        <InviteEmailTemplateEditor
+            activeTemplateId={1}
+            templates={inviteTemplates}
+            values={{ subject: '', body: '' }}
             onChange={() => {}}
             onSelectTemplate={() => {}}
         />
