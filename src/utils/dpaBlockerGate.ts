@@ -1,3 +1,4 @@
+import { ActiveDpaForward } from '../api/tenantOnboarding/dpaForward';
 import { TenantDpaStatus } from '../types/dpa';
 
 /**
@@ -15,7 +16,14 @@ export type DpaBlockerReason = 'UNSIGNED' | 'OUTDATED' | 'MISSING' | 'INCONSISTE
 export type DpaGateDecision =
     | { kind: 'inactive' }
     | { kind: 'pending' }
-    | { kind: 'blocked'; reason: DpaBlockerReason; signable: boolean };
+    | { kind: 'blocked'; reason: DpaBlockerReason; signable: boolean }
+    /**
+     * #724: the signature is missing but was explicitly handed to an
+     * authorised signatory (active forward link). The app renders — with the
+     * friendly recurring dialog instead of the hard blocker. The backend
+     * write-guard for legal-gated operations is untouched.
+     */
+    | { kind: 'forwarded-pending'; reason: DpaBlockerReason; forward: ActiveDpaForward };
 
 export interface DpaGateSubjectInput {
     hasTenantAdminRole: boolean;
@@ -64,6 +72,15 @@ export interface DpaGateDecisionInput {
     status: TenantDpaStatus | undefined;
     isLoading: boolean;
     isError: boolean;
+    /**
+     * Pending forwarded signature of the tenant (#724). `null` = the backend
+     * answered "no forward declared"; `undefined` = unknown (not loaded /
+     * failed) — the gate then stays with the hard blocker (fail-closed:
+     * softening the gate needs positive proof of the delegation, never its
+     * absence).
+     */
+    forward?: ActiveDpaForward | null;
+    forwardLoading?: boolean;
 }
 
 /**
@@ -78,6 +95,8 @@ export const deriveDpaGateDecision = ({
     status,
     isLoading,
     isError,
+    forward,
+    forwardLoading = false,
 }: DpaGateDecisionInput): DpaGateDecision => {
     if (subjectKind === 'exempt') return { kind: 'inactive' };
     if (subjectKind === 'indeterminate') {
@@ -93,6 +112,12 @@ export const deriveDpaGateDecision = ({
             return { kind: 'inactive' };
         case 'UNSIGNED':
         case 'OUTDATED':
+            // #724: only a POSITIVELY known active forward softens the gate.
+            // While the forward lookup is in flight nothing leaks out, and a
+            // failed lookup keeps the hard blocker (#572 behaviour unchanged
+            // for the never-forwarded state).
+            if (forwardLoading) return { kind: 'pending' };
+            if (forward) return { kind: 'forwarded-pending', reason: status, forward };
             return { kind: 'blocked', reason: status, signable: true };
         case 'MISSING':
             return { kind: 'blocked', reason: 'MISSING', signable: false };

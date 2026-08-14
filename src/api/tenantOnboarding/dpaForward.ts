@@ -155,6 +155,13 @@ export const getActiveDpaForward = async (tenantId: number): Promise<ActiveDpaFo
     }
 };
 
+/** Whether the active forward link's validity window has passed (#724). */
+export const isDpaForwardExpired = (forward: Pick<ActiveDpaForward, 'expiresAt'>, now: Date = new Date()): boolean => {
+    if (!forward.expiresAt) return false;
+    const expiry = new Date(forward.expiresAt);
+    return !Number.isNaN(expiry.getTime()) && expiry.getTime() <= now.getTime();
+};
+
 export interface StubDpaForwardOptions {
     /** Simulated network latency. Default 0 (tests); stories may raise it. */
     latencyMs?: number;

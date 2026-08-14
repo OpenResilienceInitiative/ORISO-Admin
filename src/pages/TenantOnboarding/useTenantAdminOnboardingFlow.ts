@@ -48,11 +48,24 @@ export type TenantAdminOnboardingState =
 /** Which submit failed retryably; link-death is modelled in the state instead. */
 export type TenantAdminOnboardingSubmitError = 'registration' | 'two-factor-code' | 'two-factor' | null;
 
+/**
+ * Declared delegation of the DPA signature (#723): the sign link exists and
+ * the wizard may continue WITHOUT a consent act — the registration then
+ * carries the forwarded state instead of a self-signature.
+ */
+export interface WizardDpaForwardState {
+    signLink: string;
+    expiresAt: string | null;
+    /** Recipient of the forward mail; null when the link was shared manually. */
+    recipientEmail: string | null;
+}
+
 export const useTenantAdminOnboardingFlow = (inviteToken: string, client: TenantAdminOnboardingClient) => {
     const [state, setState] = useState<TenantAdminOnboardingState>({ phase: 'loading' });
     const [invite, setInvite] = useState<TenantAdminOnboardingInviteDTO | null>(null);
     const [organisation, setOrganisation] = useState<OrganisationData | null>(null);
     const [dpa, setDpa] = useState<DpaAcceptanceData | null>(null);
+    const [dpaForward, setDpaForward] = useState<WizardDpaForwardState | null>(null);
     const [submitError, setSubmitError] = useState<TenantAdminOnboardingSubmitError>(null);
     const [busy, setBusy] = useState(false);
     // Bumping re-runs the resolve effect — the retry for transient load failures.
@@ -118,8 +131,29 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
         setLoadAttempt((attempt) => attempt + 1);
     }, []);
 
-    const submitOrganisationDpa = useCallback((organisationData: OrganisationData, dpaData: DpaAcceptanceData) => {
+    /**
+     * Declares "not authorised to sign" (#723): remembers the created sign
+     * link and drops any half-entered self-signature — the two ways of
+     * satisfying the DPA step are mutually exclusive.
+     */
+    const markDpaForwarded = useCallback((forward: WizardDpaForwardState) => {
         if (stateRef.current.phase !== 'organisation') {
+            return;
+        }
+        setDpaForward(forward);
+        setDpa(null);
+    }, []);
+
+    const dpaForwardRef = useRef(dpaForward);
+    dpaForwardRef.current = dpaForward;
+
+    const submitOrganisationDpa = useCallback((organisationData: OrganisationData, dpaData: DpaAcceptanceData | null) => {
+        if (stateRef.current.phase !== 'organisation') {
+            return;
+        }
+        // Without a consent act the step is only complete when the signature
+        // was explicitly forwarded — never silently.
+        if (!dpaData && !dpaForwardRef.current) {
             return;
         }
         setOrganisation(organisationData);
@@ -146,7 +180,13 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
 
     const submitAccount = useCallback(
         async (password: string) => {
-            if (stateRef.current.phase !== 'account' || busyRef.current || !invite || !organisation || !dpa) {
+            if (
+                stateRef.current.phase !== 'account' ||
+                busyRef.current ||
+                !invite ||
+                !organisation ||
+                (!dpa && !dpaForward)
+            ) {
                 return;
             }
             busyRef.current = true;
@@ -155,7 +195,9 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
             try {
                 const result = await client.registerTenantAdmin(inviteToken, {
                     organisation,
-                    dpa,
+                    // The register call carries the forwarded state instead of
+                    // a self-signature (#723).
+                    dpa: dpa ?? { forwarded: true },
                     account: { password },
                     reservedTenantId: invite.reservedTenantId,
                     tenantIdReservationToken: invite.tenantIdReservationToken,
@@ -171,7 +213,7 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                 setBusy(false);
             }
         },
-        [client, inviteToken, invite, organisation, dpa],
+        [client, inviteToken, invite, organisation, dpa, dpaForward],
     );
 
     const submitTwoFactorCode = useCallback(
@@ -205,9 +247,11 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
         invite,
         organisation,
         dpa,
+        dpaForward,
         submitError,
         busy,
         retryLoad,
+        markDpaForwarded,
         submitOrganisationDpa,
         goBackToOrganisation,
         submitAccount,

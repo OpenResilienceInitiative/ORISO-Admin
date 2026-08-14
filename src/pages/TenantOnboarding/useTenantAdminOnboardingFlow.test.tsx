@@ -318,4 +318,69 @@ describe('useTenantAdminOnboardingFlow', () => {
         expect(result.current.state.phase).toBe('loading');
         expect(client.registerTenantAdmin).not.toHaveBeenCalled();
     });
+
+    it('forwarded delegation (#723): continues without a consent act and registers the forwarded state', async () => {
+        const client = createClient();
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+
+        const forward = {
+            signLink: 'https://app.example.org/dpa-sign/fwd-token',
+            expiresAt: '2026-08-28T12:00:00Z',
+            recipientEmail: 'legal@example.org',
+        };
+        act(() => result.current.markDpaForwarded(forward));
+        expect(result.current.dpaForward).toEqual(forward);
+
+        act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
+        expect(result.current.state.phase).toBe('account');
+
+        await act(async () => {
+            await result.current.submitAccount('SecurePass1!');
+        });
+        expect(result.current.state.phase).toBe('two-factor');
+        expect(client.registerTenantAdmin).toHaveBeenCalledWith(
+            'raw-token',
+            expect.objectContaining({ organisation: ORGANISATION, dpa: { forwarded: true } }),
+        );
+    });
+
+    it('refuses to leave the DPA step without either a consent act or a declared forward', async () => {
+        const client = createClient();
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+
+        act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
+
+        expect(result.current.state.phase).toBe('organisation');
+        expect(client.registerTenantAdmin).not.toHaveBeenCalled();
+    });
+
+    it('declaring the forward drops a previously entered self-signature', async () => {
+        const client = createClient();
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+
+        act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
+        act(() => result.current.goBackToOrganisation());
+        act(() =>
+            result.current.markDpaForwarded({
+                signLink: 'https://app.example.org/dpa-sign/fwd-token',
+                expiresAt: null,
+                recipientEmail: null,
+            }),
+        );
+
+        expect(result.current.dpa).toBeNull();
+
+        act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
+        await act(async () => {
+            await result.current.submitAccount('SecurePass1!');
+        });
+        expect(client.registerTenantAdmin).toHaveBeenCalledWith(
+            'raw-token',
+            expect.objectContaining({ dpa: { forwarded: true } }),
+        );
+    });
+
 });

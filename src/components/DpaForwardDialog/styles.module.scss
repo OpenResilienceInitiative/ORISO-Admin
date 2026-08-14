@@ -11,7 +11,8 @@
     color: var(--m3-on-surface-variant, #444748);
 }
 
-.linkBlock {
+.linkBlock,
+.linkSection {
     display: flex;
     flex-direction: column;
     gap: 8px;

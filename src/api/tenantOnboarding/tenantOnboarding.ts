@@ -96,9 +96,21 @@ export interface DpaAcceptanceData {
     signerOrganisation: string;
 }
 
+/**
+ * DPA part of the registration: either the on-the-spot self-signature or the
+ * declared delegation to an authorised signatory (#723). In the forwarded
+ * case no consent and no signer identity exist yet — the signature arrives
+ * later through the public sign link.
+ *
+ * TODO(TS#179 contract alignment): `{ forwarded: true }` is the best-guess
+ * wire shape for the forwarded state; align with the contract posted on
+ * ORISO-Admin#723 ("Backend contract for the wizard forward dialog").
+ */
+export type DpaRegistrationData = (DpaAcceptanceData & { forwarded?: false }) | { forwarded: true };
+
 export interface TenantAdminRegistrationRequest {
     organisation: OrganisationData;
-    dpa: DpaAcceptanceData;
+    dpa: DpaRegistrationData;
     account: {
         password: string;
     };
@@ -390,7 +402,9 @@ export const createStubTenantAdminOnboardingClient = (
                 // matching token with a conflict — surfaced as an unusable link.
                 throw new InviteLinkError('INVALID');
             }
-            if (!request.dpa.accepted) {
+            // Forwarded registrations carry the delegation instead of a
+            // consent act; self-signed ones still require the acceptance.
+            if (!('forwarded' in request.dpa && request.dpa.forwarded) && !request.dpa.accepted) {
                 throw new Error('DPA_NOT_ACCEPTED');
             }
             registered = true;

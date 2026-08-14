@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Form } from 'antd';
 import Alert from '@mui/material/Alert';
-import CheckRounded from '@mui/icons-material/CheckRounded';
-import ContentCopyRounded from '@mui/icons-material/ContentCopyRounded';
 import ForwardToInboxRounded from '@mui/icons-material/ForwardToInboxRounded';
 import Refresh from '@mui/icons-material/Refresh';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +8,7 @@ import { Modal } from '../Modal';
 import { M3Button } from '../M3Button';
 import { MuiFormField } from '../mui/MuiFormField';
 import { EmailKitPreview } from '../PlaceholderTemplate/EmailKitPreview';
+import { CopyLinkRow } from './CopyLinkRow';
 import styles from './styles.module.scss';
 
 /** The single-use public sign link the delegation runs on. */
@@ -53,9 +52,6 @@ interface RecipientFormValues {
 
 type LinkState = { kind: 'loading' } | { kind: 'ready'; link: DpaForwardLink } | { kind: 'error' };
 
-/** How long the copy button confirms before reverting to its idle label. */
-const COPY_FEEDBACK_MS = 2000;
-
 /**
  * Shared forward-to-authorised-signer dialog (#723, epic #722) — house M3
  * dialog anatomy. One dialog for every surface that delegates the DPA
@@ -79,11 +75,9 @@ export const DpaForwardDialog = ({
     const [form] = Form.useForm<RecipientFormValues>();
     const [linkState, setLinkState] = useState<LinkState>({ kind: 'loading' });
     const [linkAttempt, setLinkAttempt] = useState(0);
-    const [copied, setCopied] = useState(false);
     const [sendState, setSendState] = useState<'idle' | 'pending' | 'sent' | 'failed'>('idle');
     const [sentTo, setSentTo] = useState<string | null>(null);
     const [recipientName, setRecipientName] = useState('');
-    const linkInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -102,25 +96,7 @@ export const DpaForwardDialog = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [linkAttempt]);
 
-    useEffect(() => {
-        if (!copied) return undefined;
-        const timer = window.setTimeout(() => setCopied(false), COPY_FEEDBACK_MS);
-        return () => window.clearTimeout(timer);
-    }, [copied]);
-
     const link = linkState.kind === 'ready' ? linkState.link : null;
-
-    const copyLink = async () => {
-        if (!link) return;
-        try {
-            await navigator.clipboard.writeText(link.signLink);
-            setCopied(true);
-        } catch {
-            // Clipboard API unavailable (permissions/insecure context): select
-            // the text so a manual ⌘C still works — never fail silently.
-            linkInputRef.current?.select();
-        }
-    };
 
     const submitEmail = async (values: RecipientFormValues) => {
         if (!link || sendState === 'pending') return;
@@ -189,29 +165,8 @@ export const DpaForwardDialog = ({
                 )}
 
                 {link && (
-                    <div className={styles.linkBlock}>
-                        <label className={styles.linkLabel} htmlFor="dpa-forward-sign-link">
-                            {t('dpaForward.dialog.linkLabel')}
-                        </label>
-                        <div className={styles.linkRow}>
-                            <input
-                                id="dpa-forward-sign-link"
-                                ref={linkInputRef}
-                                className={styles.linkInput}
-                                value={link.signLink}
-                                readOnly
-                                onFocus={(event) => event.target.select()}
-                            />
-                            <M3Button
-                                variant="tonal"
-                                icon={
-                                    copied ? <CheckRounded fontSize="small" /> : <ContentCopyRounded fontSize="small" />
-                                }
-                                onClick={copyLink}
-                            >
-                                {copied ? t('dpaForward.dialog.copied') : t('dpaForward.dialog.copy')}
-                            </M3Button>
-                        </div>
+                    <div className={styles.linkSection}>
+                        <CopyLinkRow value={link.signLink} />
                         <p className={styles.validityNote} data-testid="dpa-forward-validity-note">
                             {t('dpaForward.dialog.validityNote')}
                         </p>
