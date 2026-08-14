@@ -426,11 +426,21 @@ export const UserEditOrAdd = () => {
 
                                 {isConsultantForm && (
                                     <>
+                                        {/*
+                                          Deliberately not clearable. Clearing the select yields
+                                          `undefined`, which the API layer omits and the backend
+                                          reads as "leave unchanged" — so the clear affordance
+                                          would silently fail to persist. `not_specified` ("keine
+                                          Angabe") is the canonical way to say "no salutation", so
+                                          nothing is lost by removing it. Sending `''` instead
+                                          would introduce a second representation of "none" and
+                                          would wipe a stored salutation whenever the form is
+                                          submitted before getConsultantById has prefilled it.
+                                        */}
                                         <MuiSelectField
                                             name="salutation"
                                             label="counselor.salutation"
                                             placeholder="plsSelect"
-                                            allowClear
                                             options={SALUTATION_KEYS.map((key) => ({
                                                 value: key,
                                                 label: t(`counselor.salutation.option.${key}`),
