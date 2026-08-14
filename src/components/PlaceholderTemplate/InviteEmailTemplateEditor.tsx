@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EmailTemplatePreview } from '../EmailTemplatePreview';
+import { EmailKitPreview } from './EmailKitPreview';
 import {
     PlaceholderTemplateEditor,
     type PlaceholderTemplateDefinition,
@@ -25,8 +25,9 @@ export interface InviteEmailTemplateEditorProps {
 /**
  * Variant 1 — invite e-mail template: subject + body with the exact token set
  * the UserService `AccountInviteService` substitutes, previewed live in the
- * e-mail design system's shell (reused {@link EmailTemplatePreview}) with
- * synthetic sample values. Unknown tokens stay visible as `{{key}}` chips.
+ * NEW transactional e-mail design system ({@link EmailKitPreview}, ported from
+ * ORISO-Frontend `src/emails/`) with synthetic sample values. Unknown tokens
+ * stay visible as highlighted `{{key}}` chips.
  */
 export const InviteEmailTemplateEditor = ({
     values,
@@ -50,7 +51,7 @@ export const InviteEmailTemplateEditor = ({
             fields={fields}
             heading={t('placeholderTemplate.invite.heading', 'Einladungs-E-Mail')}
             preview={
-                <EmailTemplatePreview
+                <EmailKitPreview
                     body={fillPlaceholders(values.body, samples)}
                     previewLabel={t('placeholderTemplate.invite.previewLabel', 'E-Mail-Vorschau')}
                     subject={fillPlaceholders(values.subject, samples)}
