@@ -56,7 +56,21 @@ describe('DocumentMasterDataCard', () => {
         expect(screen.getByLabelText(label('keyFigures.counsellingCentres'))).toBeInTheDocument();
         expect(screen.getByLabelText(label('keyFigures.activeCounsellors'))).toBeInTheDocument();
         expect(screen.getByLabelText(label('keyFigures.registeredClients'))).toBeInTheDocument();
-        expect(screen.getAllByLabelText(label('keyFigures.asOfDate'))).toHaveLength(4);
+
+        // Each date field needs its own accessible name — a bare "As of date" repeated four
+        // times is indistinguishable for a screen-reader user.
+        expect(
+            screen.getByLabelText(`${label('keyFigures.asOfDate')}:${label('keyFigures.tenants')}`),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByLabelText(`${label('keyFigures.asOfDate')}:${label('keyFigures.counsellingCentres')}`),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByLabelText(`${label('keyFigures.asOfDate')}:${label('keyFigures.activeCounsellors')}`),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByLabelText(`${label('keyFigures.asOfDate')}:${label('keyFigures.registeredClients')}`),
+        ).toBeInTheDocument();
     });
 
     /**

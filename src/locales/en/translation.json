@@ -1690,5 +1690,5 @@
     "globalSettings.documentMasterData.keyFigures.counsellingCentres": "Counselling centres",
     "globalSettings.documentMasterData.keyFigures.activeCounsellors": "Active counsellors",
     "globalSettings.documentMasterData.keyFigures.registeredClients": "Registered clients",
-    "globalSettings.documentMasterData.keyFigures.asOfDate": "As of date"
+    "globalSettings.documentMasterData.keyFigures.asOfDate": "As of date — {{figure}}"
 }

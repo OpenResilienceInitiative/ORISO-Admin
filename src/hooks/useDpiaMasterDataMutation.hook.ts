@@ -5,7 +5,8 @@ import { updateDpiaMasterData } from '../api/tenant/updateDpiaMasterData';
 import { DpiaMasterData } from '../types/dpiaMasterData';
 import { DPIA_MASTER_DATA_KEY } from './useDpiaMasterData.hook';
 
-interface DpiaMasterDataMutationOptions extends UseMutationOptions<unknown, unknown, DpiaMasterData> {
+interface DpiaMasterDataMutationOptions
+    extends Omit<UseMutationOptions<DpiaMasterData, unknown, DpiaMasterData>, 'mutationFn'> {
     successMessageKey?: string | false;
 }
 

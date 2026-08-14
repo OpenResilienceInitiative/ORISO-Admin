@@ -1690,5 +1690,5 @@
     "globalSettings.documentMasterData.keyFigures.counsellingCentres": "Beratungsstellen",
     "globalSettings.documentMasterData.keyFigures.activeCounsellors": "Aktive Beratende",
     "globalSettings.documentMasterData.keyFigures.registeredClients": "Registrierte Ratsuchende",
-    "globalSettings.documentMasterData.keyFigures.asOfDate": "Stichtag"
+    "globalSettings.documentMasterData.keyFigures.asOfDate": "Stichtag — {{figure}}"
 }

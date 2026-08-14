@@ -185,20 +185,27 @@ export const DocumentMasterDataCard = ({ data, isLoading, onSave, disabled }: Do
                         {/* Manual entry for now; filling these from platform statistics is a follow-up. */}
                         <p className={styles.sectionHint}>{t('globalSettings.documentMasterData.keyFigures.hint')}</p>
                         <div className={styles.fieldGrid}>
-                            {DPIA_KEY_FIGURE_NAMES.map((figure) => (
-                                <div key={figure} className={styles.keyFigureRow}>
-                                    <MuiNumberFormField
-                                        label={t(`globalSettings.documentMasterData.keyFigures.${figure}`)}
-                                        name={['keyFigures', figure, 'count']}
-                                        min={0}
-                                    />
-                                    <MuiFormField
-                                        label={t('globalSettings.documentMasterData.keyFigures.asOfDate')}
-                                        name={['keyFigures', figure, 'asOfDate']}
-                                        type="date"
-                                    />
-                                </div>
-                            ))}
+                            {DPIA_KEY_FIGURE_NAMES.map((figure) => {
+                                const figureLabel = t(`globalSettings.documentMasterData.keyFigures.${figure}`);
+                                return (
+                                    <div key={figure} className={styles.keyFigureRow}>
+                                        <MuiNumberFormField
+                                            label={figureLabel}
+                                            name={['keyFigures', figure, 'count']}
+                                            min={0}
+                                        />
+                                        <MuiFormField
+                                            // Each of the four date fields needs its own accessible name — a
+                                            // screen-reader user otherwise hears "As of date" four times over.
+                                            label={t('globalSettings.documentMasterData.keyFigures.asOfDate', {
+                                                figure: figureLabel,
+                                            })}
+                                            name={['keyFigures', figure, 'asOfDate']}
+                                            type="date"
+                                        />
+                                    </div>
+                                );
+                            })}
                         </div>
                     </section>
                 </div>

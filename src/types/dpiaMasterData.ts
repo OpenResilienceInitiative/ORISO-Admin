@@ -9,38 +9,42 @@
 /** Compliance preset the supervisory authority follows. Switches norm citations in the rendered documents. */
 export type DpiaLegalFramework = 'KDG' | 'GDPR';
 
+// Scalar fields below allow `null` in addition to `undefined`: `useDpiaMasterDataMutation`
+// caches the raw server response, and the backend turns blanked-out fields into `null`
+// rather than omitting them, so the GET/PUT payload can legitimately carry either.
+
 export interface DpiaOperator {
-    legalName?: string;
-    shortName?: string;
-    address?: string;
-    contactEmail?: string;
-    contactPhone?: string;
+    legalName?: string | null;
+    shortName?: string | null;
+    address?: string | null;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
     /** Name or organisation of the data protection officer. */
-    dpoName?: string;
+    dpoName?: string | null;
     /** Department responsible for the processing activity. */
-    department?: string;
+    department?: string | null;
     /** Person responsible for the processing activity. */
-    responsiblePerson?: string;
+    responsiblePerson?: string | null;
 }
 
 export interface DpiaSupervisoryAuthority {
-    legalFramework?: DpiaLegalFramework;
-    name?: string;
-    address?: string;
-    email?: string;
+    legalFramework?: DpiaLegalFramework | null;
+    name?: string | null;
+    address?: string | null;
+    email?: string | null;
 }
 
 export interface DpiaDocumentMetadata {
     /** ISO date (YYYY-MM-DD) of the current document version. */
-    documentDate?: string;
+    documentDate?: string | null;
     /** ISO date (YYYY-MM-DD) the document is due for its next review. */
-    nextReviewDate?: string;
+    nextReviewDate?: string | null;
 }
 
 /** A single reported figure: the count plus the date it was accurate on. */
 export interface DpiaKeyFigure {
-    count?: number;
-    asOfDate?: string;
+    count?: number | null;
+    asOfDate?: string | null;
 }
 
 export interface DpiaKeyFigures {
