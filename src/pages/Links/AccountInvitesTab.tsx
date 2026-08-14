@@ -684,6 +684,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
                 onDeleteSelected={() => setBulkDeleteConfirmOpen(true)}
                 onManageTemplates={(intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list')}
+                // #746: the pill's chevron menu switches the template in place —
+                // the same lifted selection the dialog picker writes.
+                onSelectTemplate={setSelectedTemplateId}
                 onSubmit={onCreate}
             />
             {selectedInvites.length > 0 && (

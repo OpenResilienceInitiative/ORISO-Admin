@@ -83,6 +83,37 @@ export interface EmailKitBrand {
     accentColor: string;
 }
 
+/**
+ * The kit inlines brand colours into quoted HTML/style attributes, so a value
+ * like `#fff" onmouseover="…` would break out of the attribute it is rendered
+ * into (PR #727 post-merge review). This grammar admits only what a colour can
+ * be — hex, rgb()/rgba()/hsl()/hsla() with numeric arguments, `var(--token)`
+ * or a bare keyword — and in particular nothing with quotes, angle brackets or
+ * statement separators.
+ */
+const SAFE_COLOR_PATTERN =
+    /^(#[0-9a-fA-F]{3,8}|(?:rgb|rgba|hsl|hsla)\(\s*[0-9.,%\sdeg/-]*\)|var\(--[A-Za-z0-9_-]+\)|[A-Za-z]{1,30})$/;
+
+/** Fallback when a brand colour fails {@link SAFE_COLOR_PATTERN} — the house primary. */
+export const FALLBACK_EMAIL_BRAND_COLOR = '#a5000a';
+
+/** Returns the trimmed colour if it matches the safe grammar, else the fallback. */
+export const safeEmailColor = (value: string, fallback: string = FALLBACK_EMAIL_BRAND_COLOR): string => {
+    const trimmed = value.trim();
+    return SAFE_COLOR_PATTERN.test(trimmed) ? trimmed : fallback;
+};
+
+/**
+ * Normalises a brand at the kit boundary: every colour is forced through
+ * {@link safeEmailColor} before any markup interpolates it. Text fields need
+ * no treatment here — they are escaped per-use via {@link emailEscape}.
+ */
+export const sanitizeEmailKitBrand = (brand: EmailKitBrand): EmailKitBrand => ({
+    ...brand,
+    primaryColor: safeEmailColor(brand.primaryColor),
+    accentColor: safeEmailColor(brand.accentColor),
+});
+
 /* ------------------------------------------------------------------------- */
 /* Atoms (ported from emailAtoms.ts)                                         */
 /* ------------------------------------------------------------------------- */

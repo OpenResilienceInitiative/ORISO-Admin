@@ -114,6 +114,10 @@ export const TemplateSplitButton = ({
             // fill was the sheet's Elevated colourway — a state claim the resting
             // picker has no business making. It lifts only while its menu is open.
             variant="outlined"
+            // Without a main action the segment is inert — take it out of the
+            // tab order instead of offering a button that does nothing (#727
+            // post-merge review). The chevron menu stays fully interactive.
+            mainDisabled={!onMainClick}
             onClick={onMainClick}
         />
     );

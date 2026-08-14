@@ -6,7 +6,7 @@ import {
     type PlaceholderTemplateDefinition,
     type PlaceholderTemplateFieldConfig,
 } from './PlaceholderTemplateEditor';
-import { fillPlaceholders, INVITE_EMAIL_TOKENS, sampleValues } from './placeholderTokens';
+import { fillPlaceholders, INVITE_EMAIL_TOKENS, sampleValues, type PlaceholderTokenDef } from './placeholderTokens';
 
 export interface InviteEmailTemplateValues extends Record<string, string> {
     subject: string;
@@ -20,6 +20,14 @@ export interface InviteEmailTemplateEditorProps {
     activeTemplateId?: number | string;
     onSelectTemplate: (id: number | string) => void;
     onCreateFromTemplate?: (id: number | string) => void;
+    /** Main-segment press of the template split button (e.g. show the template manager). */
+    onManageTemplates?: () => void;
+    /**
+     * Token set offered by the pickers and substituted in the preview.
+     * Defaults to the shared invite set; pass `inviteEmailTokensForKind(kind)`
+     * for the per-kind wiring (#746).
+     */
+    tokens?: PlaceholderTokenDef[];
 }
 
 /**
@@ -36,9 +44,11 @@ export const InviteEmailTemplateEditor = ({
     activeTemplateId,
     onSelectTemplate,
     onCreateFromTemplate,
+    onManageTemplates,
+    tokens = INVITE_EMAIL_TOKENS,
 }: InviteEmailTemplateEditorProps) => {
     const { t } = useTranslation();
-    const samples = useMemo(() => sampleValues(INVITE_EMAIL_TOKENS), []);
+    const samples = useMemo(() => sampleValues(tokens), [tokens]);
 
     const fields: PlaceholderTemplateFieldConfig<InviteEmailTemplateValues>[] = [
         { name: 'subject', label: t('placeholderTemplate.invite.subject', 'Betreff') },
@@ -58,10 +68,11 @@ export const InviteEmailTemplateEditor = ({
                 />
             }
             templates={templates}
-            tokens={INVITE_EMAIL_TOKENS}
+            tokens={tokens}
             values={values}
             onChange={onChange}
             onCreateFromTemplate={onCreateFromTemplate}
+            onManageTemplates={onManageTemplates}
             onSelectTemplate={onSelectTemplate}
         />
     );

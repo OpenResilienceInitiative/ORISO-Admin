@@ -300,4 +300,35 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
         expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('list');
     });
+
+    /*
+     * #746: the template pill is the module's TemplateSplitButton — the chevron
+     * menu switches the active template directly (marked with the check), the
+     * main segment still opens the manage/pick dialog.
+     */
+    it('selects the active template from the pill menu (module split-button semantics, #746)', async () => {
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE, { ...TEMPLATE, id: 8, name: 'Zweite Vorlage' }]);
+        mocks.createAccountInvite.mockResolvedValue({ id: 99 });
+
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        // Two active templates: nothing preselected, the pill rests on its fallback label.
+        expect(await screen.findByRole('button', { name: /Vorlage wählen/ })).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Zweite Vorlage$/ }));
+
+        // Selection is lifted to the tab and re-labels the pill…
+        expect(await screen.findByRole('button', { name: /Zweite Vorlage/ })).toBeInTheDocument();
+
+        // …and the send call uses exactly that template.
+        await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = await findSendButton('Direkt Versenden');
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.createAccountInvite.mock.calls[0][0].templateId).toBe(8);
+    });
 });
