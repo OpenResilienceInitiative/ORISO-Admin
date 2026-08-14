@@ -130,6 +130,8 @@ describe('DataProcessingAgreementCard', () => {
 
         await user.click(screen.getByRole('button', { name: 'edit' }));
         await user.click(screen.getByRole('button', { name: publishButtonName }));
+        // Only the non-source language was edited — the source warning is confirmed away (#720).
+        await user.click(await screen.findByRole('button', { name: 'legal.publishWarning.confirm' }));
 
         expect(onPublish).toHaveBeenCalledWith({ de: '<p>DE</p>', en: '<p>edited</p>' });
     });
@@ -307,6 +309,8 @@ describe('DataProcessingAgreementCard — version select wiring (#268)', () => {
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN v2</p>');
 
         await user.click(screen.getByRole('button', { name: publishButtonName }));
+        // The restore only changed the non-source draft — the source warning is confirmed away (#720).
+        await user.click(await screen.findByRole('button', { name: 'legal.publishWarning.confirm' }));
         // Only the active language's draft was replaced — the other languages stay untouched.
         expect(onPublish).toHaveBeenCalledWith({ de: '<p>DE</p>', en: '<p>EN v2</p>' });
     });
@@ -566,6 +570,8 @@ describe('DataProcessingAgreementCard — per-field translate', () => {
         await user.click(screen.getByRole('button', { name: 'edit' }));
 
         await user.click(screen.getByRole('button', { name: publishButtonName }));
+        // The manual edit made EN a hand-authored change again → source warning first (#720).
+        await user.click(await screen.findByRole('button', { name: 'legal.publishWarning.confirm' }));
         await user.click(await screen.findByRole('button', { name: skipButtonName }));
 
         const published = onPublish.mock.calls[0][0];

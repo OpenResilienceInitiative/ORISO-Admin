@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
+import { PublishSourceWarningModal } from '../PublishSourceWarningModal';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
@@ -17,7 +18,10 @@ interface DepartmentDataProtectionCardProps {
     initialContentByLanguage?: Record<string, string>;
     /** The languages offered for editing (tenant's active languages + stored ones). */
     languages?: string[];
-    /** The language shown first (usually the admin's UI language). */
+    /**
+     * Explicit override of the language shown first; defaults to the legal source
+     * language, or to the first offered language when the source is not offered.
+     */
     defaultLanguage?: string;
     /** Current publication status of the department's data privacy policy. */
     publicationStatus?: DepartmentPublicationStatus;
@@ -74,6 +78,10 @@ export const DepartmentDataProtectionCard = ({
         handleEditorChange,
         buildPublishMap,
         requestPublish,
+        sourceWarningOpen,
+        editedNonSourceLanguages,
+        confirmSourceWarning,
+        cancelSourceWarning,
         modalOpen,
         closeModal,
         translating,
@@ -155,16 +163,25 @@ export const DepartmentDataProtectionCard = ({
                 onPublish={() => requestPublish()}
                 onSaveDraft={() => onSave(buildPublishMap(), false)}
                 belowSlot={
-                    <TranslateOnPublishModal
-                        open={modalOpen}
-                        sourceLanguage={sourceLanguage}
-                        targetLanguages={targetLanguages}
-                        translating={translating}
-                        errorKey={modalErrorKey}
-                        onConfirm={translateAndPublish}
-                        onSkip={publishWithoutTranslation}
-                        onCancel={closeModal}
-                    />
+                    <>
+                        <PublishSourceWarningModal
+                            open={sourceWarningOpen}
+                            sourceLanguage={sourceLanguage}
+                            editedLanguages={editedNonSourceLanguages}
+                            onConfirm={confirmSourceWarning}
+                            onCancel={cancelSourceWarning}
+                        />
+                        <TranslateOnPublishModal
+                            open={modalOpen}
+                            sourceLanguage={sourceLanguage}
+                            targetLanguages={targetLanguages}
+                            translating={translating}
+                            errorKey={modalErrorKey}
+                            onConfirm={translateAndPublish}
+                            onSkip={publishWithoutTranslation}
+                            onCancel={closeModal}
+                        />
+                    </>
                 }
             />
         </div>

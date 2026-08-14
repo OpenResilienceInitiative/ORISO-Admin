@@ -176,7 +176,6 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 key={`${latestVersionId ?? ''}|${draft?.savedAt ?? ''}`}
                 initialContentByLanguage={editorContentByLanguage}
                 languages={languages}
-                defaultLanguage={lang}
                 versions={mapped}
                 onPublish={(contentByLanguage) => publish(contentByLanguage, { onSuccess: () => discardDraft() })}
                 publishing={isPending}

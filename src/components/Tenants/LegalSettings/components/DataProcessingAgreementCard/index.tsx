@@ -9,6 +9,7 @@ import { useLegalHelp } from '../../hooks/useLegalHelp';
 import { LegalHelpRole } from '../../utils/legalHelpTexts';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { LegalDraftNotice } from '../LegalDraftNotice';
+import { PublishSourceWarningModal } from '../PublishSourceWarningModal';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
 import { parseLegalContentMap, pickLegalContentLanguage } from '../../utils/legalContentLanguages';
@@ -67,7 +68,10 @@ interface DataProcessingAgreementCardProps {
     initialContentByLanguage?: Record<string, string>;
     /** The languages offered for editing (tenant's active languages + stored ones). */
     languages?: string[];
-    /** The language shown first (usually the admin's UI language). */
+    /**
+     * Explicit override of the language shown first; defaults to the legal source
+     * language, or to the first offered language when the source is not offered.
+     */
     defaultLanguage?: string;
     /** Previously published versions, newest first — browsable via the editor's version select. */
     versions: LegalVersion[];
@@ -141,6 +145,10 @@ export const DataProcessingAgreementCard = ({
         contentMapWithEdits,
         handleEditorChange,
         requestPublish,
+        sourceWarningOpen,
+        editedNonSourceLanguages,
+        confirmSourceWarning,
+        cancelSourceWarning,
         modalOpen,
         closeModal,
         translating,
@@ -283,16 +291,25 @@ export const DataProcessingAgreementCard = ({
                 onSaveDraft={readOnly || !onSaveDraft ? undefined : () => onSaveDraft(contentMapWithEdits)}
                 belowSlot={
                     !readOnly && (
-                        <TranslateOnPublishModal
-                            open={modalOpen}
-                            sourceLanguage={sourceLanguage}
-                            targetLanguages={targetLanguages}
-                            translating={translating}
-                            errorKey={modalErrorKey}
-                            onConfirm={translateAndPublish}
-                            onSkip={publishWithoutTranslation}
-                            onCancel={closeModal}
-                        />
+                        <>
+                            <PublishSourceWarningModal
+                                open={sourceWarningOpen}
+                                sourceLanguage={sourceLanguage}
+                                editedLanguages={editedNonSourceLanguages}
+                                onConfirm={confirmSourceWarning}
+                                onCancel={cancelSourceWarning}
+                            />
+                            <TranslateOnPublishModal
+                                open={modalOpen}
+                                sourceLanguage={sourceLanguage}
+                                targetLanguages={targetLanguages}
+                                translating={translating}
+                                errorKey={modalErrorKey}
+                                onConfirm={translateAndPublish}
+                                onSkip={publishWithoutTranslation}
+                                onCancel={closeModal}
+                            />
+                        </>
                     )
                 }
             />
