@@ -42,34 +42,36 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
     // save started on tenant A that resolves after the admin has switched to tenant B would apply
     // A's result (or A's error/saving flags) to B's now-mounted editor.
     const saveGuard = useRef(0);
-    // The currently in-flight save request, if any. `handleSave` queues onto this instead of
-    // firing a new network call immediately, so there is NEVER more than one save request in
-    // flight at once — the guard above only protects which RESPONSE gets applied to state, but a
-    // second concurrent REQUEST could still physically persist to the backend AFTER an earlier
-    // one, corrupting what's actually stored regardless of what the UI shows. Serializing
-    // requests makes that structurally impossible instead of detecting it after the fact.
-    const activeSave = useRef<Promise<void> | null>(null);
-    // The most recently requested save, kept only until the active one settles. A second
-    // handleSave call while one is in flight REPLACES this (not appended), so a burst of clicks
-    // collapses to a single follow-up request carrying the latest content instead of a growing
-    // backlog of stale saves. Carries its OWN id/gateway snapshot (not the outer closure's) so a
-    // queued call started for one tenant still targets that tenant correctly even if the admin
-    // has since switched away and `id`/`resolvedGateway` have moved on.
-    const queuedSave = useRef<{
-        id: number;
-        gateway: DpiaTextGateway;
-        texts: DpiaTextMap;
-        publish: boolean;
-        guard: number;
-    } | null>(null);
+    // One independent save chain PER TENANT id, so "a new save replaces whatever was queued"
+    // only ever coalesces requests for the SAME tenant — never a different one. A single shared
+    // queue slot would let tenant C's save silently discard a save still queued for tenant B (the
+    // admin having switched A -> B -> C without waiting), losing B's edits with no error shown;
+    // scoping by id makes that structurally impossible instead of detecting it after the fact.
+    // Each chain: `active` while its request is in flight, `queued` holds at most the next
+    // request for THAT tenant (a burst of clicks for the same tenant collapses to one follow-up,
+    // not a growing backlog).
+    const saveChains = useRef(
+        new Map<
+            number,
+            {
+                active: boolean;
+                queued: { gateway: DpiaTextGateway; texts: DpiaTextMap; publish: boolean; guard: number } | null;
+            }
+        >(),
+    );
 
-    const runQueuedSave = () => {
-        if (activeSave.current) return; // already running; it will call this again when it settles
-        const call = queuedSave.current;
-        if (!call) return;
-        queuedSave.current = null;
-        activeSave.current = call.gateway
-            .save(call.id, call.texts, call.publish)
+    const runSaveChain = (chainId: number) => {
+        const chain = saveChains.current.get(chainId);
+        if (!chain || chain.active) return; // already running; its own .finally() will call this again
+        const call = chain.queued;
+        if (!call) {
+            saveChains.current.delete(chainId); // nothing left to do for this tenant; don't leak the entry
+            return;
+        }
+        chain.queued = null;
+        chain.active = true;
+        call.gateway
+            .save(chainId, call.texts, call.publish)
             .then((next) => {
                 if (saveGuard.current === call.guard) setDocument(next);
             })
@@ -78,8 +80,8 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
             })
             .finally(() => {
                 if (saveGuard.current === call.guard) setSaving(false);
-                activeSave.current = null;
-                runQueuedSave();
+                chain.active = false;
+                runSaveChain(chainId);
             });
     };
 
@@ -126,11 +128,14 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
             // match again once a NEWER save (or a tenant switch) has started, so only the most
             // recent request's outcome is ever applied to UI state.
             saveGuard.current += 1;
-            // Queue instead of firing immediately: if a save is already active, this REPLACES
-            // whatever was previously queued (so a burst of clicks becomes one follow-up request,
-            // not a growing pile) and runs only once the active one settles — see runQueuedSave.
-            queuedSave.current = { id, gateway: resolvedGateway, texts, publish, guard: saveGuard.current };
-            runQueuedSave();
+            // Queue onto THIS tenant's own chain instead of firing immediately: if a save for
+            // this same tenant is already active, this REPLACES whatever was queued for it (a
+            // burst of clicks becomes one follow-up request), and runs once that active one
+            // settles — see runSaveChain. A different tenant's chain is untouched.
+            const chain = saveChains.current.get(id) ?? { active: false, queued: null };
+            chain.queued = { gateway: resolvedGateway, texts, publish, guard: saveGuard.current };
+            saveChains.current.set(id, chain);
+            runSaveChain(id);
         },
         [id, resolvedGateway],
     );

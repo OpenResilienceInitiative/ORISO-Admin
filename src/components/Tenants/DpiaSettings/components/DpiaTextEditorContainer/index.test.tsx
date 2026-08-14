@@ -65,6 +65,7 @@ const createControllableGateway = () => {
     const docs: Record<number, DpiaTextDocument> = {
         1: { texts: { governance: '<p>tenant-1</p>' }, statusBySection: {} },
         2: { texts: { governance: '<p>tenant-2</p>' }, statusBySection: {} },
+        3: { texts: { governance: '<p>tenant-3</p>' }, statusBySection: {} },
     };
     const gateway: DpiaTextGateway = {
         load: async (tenantId) => docs[tenantId],
@@ -153,13 +154,51 @@ describe('DpiaTextEditorContainer tenant-switch save race', () => {
         // surfaced. (The editor's own `edits` state — deliberately never cleared by a successful
         // save, see the other test above — would keep echoing editedContent #2 regardless of the
         // resolved document, so that isn't asserted here; the request-content correctness above
-        // already proves the queue carried the latest edit.)
+        // already proves the queue carried the latest edit.) Wait on a real settlement signal —
+        // the chapter selector re-enabling, which only happens once `saving` flips back to false
+        // — instead of an arbitrary zero-delay timer.
         releaseSave(1, 1, { texts: { governance: '<p>SECOND-RESULT</p>' }, statusBySection: {} });
-        await new Promise<void>((resolve) => {
-            setTimeout(resolve, 0);
-        });
+        await waitFor(() => expect(screen.getByRole('button', { name: 'dpia.sections.choose' })).toBeEnabled());
         expect(dispatchedCount(1)).toBe(2);
         expect(screen.queryByText('dpia.editor.saveError')).not.toBeInTheDocument();
+    });
+
+    it("does not let a THIRD tenant's save discard a save still queued for a different, in-between tenant", async () => {
+        // A save chain shared across all tenants (a single "queued" slot, replaced by any newer
+        // request) would let switching A -> B -> C silently drop B's queued save the moment C
+        // saves, since C's request would overwrite the shared slot instead of only ever competing
+        // with another A or another C request. Each tenant must own its own chain.
+        const user = userEvent.setup();
+        const { gateway, releaseSave, dispatchedCount } = createControllableGateway();
+
+        const { rerender } = render(<DpiaTextEditorContainer tenantId={1} gateway={gateway} />);
+        await screen.findByTestId('editor');
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'saveDraft' }));
+        expect(dispatchedCount(1)).toBe(1); // tenant A's save is now in flight
+
+        // Switch to tenant 2 (id doubles as a distinct "tenant B") and fire its own save while
+        // A's is still pending.
+        rerender(<DpiaTextEditorContainer tenantId={2} gateway={gateway} />);
+        await waitFor(() => expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>tenant-2</p>'));
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'saveDraft' }));
+        expect(dispatchedCount(2)).toBe(1); // tenant B's own chain dispatches immediately
+
+        // Switch again, to a third tenant, and save there too.
+        rerender(<DpiaTextEditorContainer tenantId={3} gateway={gateway} />);
+        await waitFor(() => expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>tenant-3</p>'));
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'saveDraft' }));
+
+        // Tenant B's save must still have reached its own gateway call — untouched by tenant C.
+        expect(dispatchedCount(2)).toBe(1);
+        expect(dispatchedCount(3)).toBe(1);
+
+        // Clean up the still-pending requests so they don't leak into other tests.
+        releaseSave(1, 0, { texts: { governance: '<p>a-done</p>' }, statusBySection: {} });
+        releaseSave(2, 0, { texts: { governance: '<p>b-done</p>' }, statusBySection: {} });
+        releaseSave(3, 0, { texts: { governance: '<p>c-done</p>' }, statusBySection: {} });
     });
 
     it('blocks the chapter selector while a save is in flight, so its in-progress text cannot be discarded mid-save', async () => {
