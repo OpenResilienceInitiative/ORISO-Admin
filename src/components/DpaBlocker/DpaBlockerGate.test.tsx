@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
     getDpaStatus: vi.fn(),
     getDpaVersions: vi.fn(),
     signDpaAdmin: vi.fn(),
+    getActiveDpaForward: vi.fn(),
     logout: vi.fn(),
     roleState: {
         roles: ['tenant-admin'],
@@ -38,6 +39,17 @@ vi.mock('../../api/tenant/getDpaVersions', () => ({
 vi.mock('../../api/tenant/signDpaAdmin', () => ({
     signDpaAdmin: mocks.signDpaAdmin,
 }));
+
+vi.mock('../../api/tenantOnboarding/dpaForward', async () => {
+    const actual = await vi.importActual<typeof import('../../api/tenantOnboarding/dpaForward')>(
+        '../../api/tenantOnboarding/dpaForward',
+    );
+
+    return {
+        ...actual,
+        getActiveDpaForward: mocks.getActiveDpaForward,
+    };
+});
 
 vi.mock('../../api/auth/logout', () => ({
     default: mocks.logout,
@@ -97,6 +109,9 @@ describe('DpaBlockerGate', () => {
         mocks.getDpaStatus.mockReset();
         mocks.getDpaVersions.mockReset();
         mocks.signDpaAdmin.mockReset();
+        mocks.getActiveDpaForward.mockReset();
+        // Default: no forward was ever declared — the strict gate applies.
+        mocks.getActiveDpaForward.mockResolvedValue(null);
         mocks.logout.mockReset();
         mocks.roleState.roles = ['tenant-admin'];
         mocks.roleState.isSuperAdmin = false;
@@ -349,4 +364,100 @@ describe('DpaBlockerGate', () => {
         unmount();
         expect(document.body.style.overflow).not.toBe('hidden');
     });
+
+    describe('forwarded-pending (#724)', () => {
+        const ACTIVE_FORWARD = {
+            signLink: 'https://app.example.org/dpa-sign/active-token',
+            expiresAt: '2099-01-01T00:00:00Z',
+            recipientEmail: 'legal@example.org',
+        };
+
+        it('replaces the hard blocker with the friendly dialog and renders the admin app behind it', async () => {
+            mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
+            mocks.getActiveDpaForward.mockResolvedValue(ACTIVE_FORWARD);
+
+            renderGate();
+
+            expect(await screen.findByTestId('dpa-pending-dialog')).toBeInTheDocument();
+            expect(screen.getByTestId('admin-page')).toBeInTheDocument();
+            expect(screen.queryByTestId('dpa-blocker')).not.toBeInTheDocument();
+            expect(screen.getByDisplayValue(ACTIVE_FORWARD.signLink)).toBeInTheDocument();
+            expect(screen.getByTestId('dpa-pending-sent-to')).toBeInTheDocument();
+        });
+
+        it('dismissing with "Später" leaves the admin app usable without the dialog', async () => {
+            mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
+            mocks.getActiveDpaForward.mockResolvedValue(ACTIVE_FORWARD);
+            const user = userEvent.setup();
+
+            renderGate();
+
+            await screen.findByTestId('dpa-pending-dialog');
+            await user.click(screen.getByRole('button', { name: 'dpaPending.later' }));
+
+            await waitFor(() => expect(screen.queryByTestId('dpa-pending-dialog')).not.toBeInTheDocument());
+            expect(screen.getByTestId('admin-page')).toBeInTheDocument();
+        });
+
+        it('"E-Mail senden" opens the shared forward dialog with the active link', async () => {
+            mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
+            mocks.getActiveDpaForward.mockResolvedValue(ACTIVE_FORWARD);
+            const user = userEvent.setup();
+
+            renderGate();
+
+            await screen.findByTestId('dpa-pending-dialog');
+            await user.click(screen.getByRole('button', { name: 'dpaPending.resend' }));
+
+            expect(await screen.findByTestId('dpa-forward-dialog')).toBeInTheDocument();
+            await waitFor(() =>
+                expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(ACTIVE_FORWARD.signLink),
+            );
+        });
+
+        it('an expired forward shows the fresh-link hint instead of the dead link', async () => {
+            mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
+            mocks.getActiveDpaForward.mockResolvedValue({ ...ACTIVE_FORWARD, expiresAt: '2020-01-01T00:00:00Z' });
+
+            renderGate();
+
+            expect(await screen.findByTestId('dpa-pending-expired')).toBeInTheDocument();
+            expect(screen.queryByDisplayValue(ACTIVE_FORWARD.signLink)).not.toBeInTheDocument();
+        });
+
+        it('keeps the hard blocker when the forward lookup fails (fail-closed)', async () => {
+            mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
+            mocks.getActiveDpaForward.mockRejectedValue(new Error('CATCH_ALL'));
+
+            renderGate();
+
+            expect(await screen.findByTestId('dpa-blocker')).toBeInTheDocument();
+            expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('dpa-pending-dialog')).not.toBeInTheDocument();
+        });
+
+        it('keeps the hard blocker for the never-forwarded unsigned state (#572 unchanged)', async () => {
+            mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
+            mocks.getActiveDpaForward.mockResolvedValue(null);
+
+            renderGate();
+
+            expect(await screen.findByTestId('dpa-blocker')).toBeInTheDocument();
+            expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+        });
+
+        it('shows neither dialog nor blocker once the DPA is signed', async () => {
+            mocks.getDpaStatus.mockResolvedValue(statusInfo('VALID'));
+            mocks.getActiveDpaForward.mockResolvedValue(ACTIVE_FORWARD);
+
+            renderGate();
+
+            expect(await screen.findByTestId('admin-page')).toBeInTheDocument();
+            expect(screen.queryByTestId('dpa-pending-dialog')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('dpa-blocker')).not.toBeInTheDocument();
+            // VALID never consults the forward endpoint.
+            expect(mocks.getActiveDpaForward).not.toHaveBeenCalled();
+        });
+    });
+
 });
