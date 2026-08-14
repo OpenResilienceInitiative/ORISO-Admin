@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import { FETCH_ERRORS, X_REASON } from '../../../api/fetchData';
+import { passwordFormRules, usernameFormRules } from '../../../utils/consultantCredentialRules';
 import { Card } from '../../../components/Card';
 import { MuiFormField, MuiMultilineFormField, MuiPasswordFormField } from '../../../components/mui/MuiFormField';
 import { MuiSwitchField } from '../../../components/mui/MuiSwitchField';
@@ -493,16 +494,7 @@ export const UserEditOrAdd = () => {
                                     label={t('counselor.username')}
                                     placeholder={t('placeholder.username')}
                                     disabled={isEditing}
-                                    rules={[
-                                        {
-                                            required: true,
-                                            message: t('message.error.username.required'),
-                                        },
-                                        {
-                                            pattern: /^[a-z0-9_-]+$/,
-                                            message: t('message.error.username.format'),
-                                        },
-                                    ]}
+                                    rules={usernameFormRules(t)}
                                 />
 
                                 {!isEditing &&
@@ -514,18 +506,7 @@ export const UserEditOrAdd = () => {
                                                 label={t('counselor.password')}
                                                 placeholder={t('placeholder.password')}
                                                 required
-                                                rules={[
-                                                    requiredRule,
-                                                    {
-                                                        min: 8,
-                                                        message: t('message.error.password.minLength'),
-                                                    },
-                                                    {
-                                                        pattern:
-                                                            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-                                                        message: t('message.error.password.policy'),
-                                                    },
-                                                ]}
+                                                rules={[requiredRule, ...passwordFormRules(t)]}
                                             />
                                             <MuiPasswordFormField
                                                 name="passwordConfirmation"

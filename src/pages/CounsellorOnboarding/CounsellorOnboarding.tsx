@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Refresh from '@mui/icons-material/Refresh';
@@ -20,6 +20,7 @@ import { FocusTopicsCard } from '../../components/cards/FocusTopicsCard';
 import { SuccessCard } from '../../components/cards/SuccessCard';
 import { CardGrid } from '../../components/CardGrid';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
+import { passwordErrorKey, usernameErrorKey } from '../../utils/consultantCredentialRules';
 import { LinkErrorState } from '../TenantOnboarding/LinkErrorState';
 import { MIN_PASSWORD_LENGTH, useCounsellorOnboardingFlow } from './useCounsellorOnboardingFlow';
 import styles from './styles.module.scss';
@@ -71,6 +72,19 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         submitTwoFactorCode,
     } = useCounsellorOnboardingFlow(inviteToken, resolvedClient);
     const [mobileStep, setMobileStep] = useState<MobileStep>('account');
+    // A step transition unmounts the button that carried the focus. Move the
+    // focus onto the freshly rendered step region (tabIndex -1) so keyboard
+    // and screen-reader users keep a meaningful position and announcement —
+    // in BOTH directions (accessibility review on #997).
+    const stepRegionRef = useRef<HTMLDivElement>(null);
+    const stepRenderedOnceRef = useRef(false);
+    useEffect(() => {
+        if (!stepRenderedOnceRef.current) {
+            stepRenderedOnceRef.current = true;
+            return;
+        }
+        stepRegionRef.current?.focus();
+    }, [mobileStep]);
 
     if (state.phase === 'loading') {
         return (
@@ -158,15 +172,25 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         .map((id) => labelsById.get(id))
         .filter((label): label is string => label !== undefined);
 
-    const usernameValid = data.account.username.trim().length > 0;
-    const passwordValid = data.account.password.length >= MIN_PASSWORD_LENGTH;
+    // Shared consultant credential policy — identical to the normal admin
+    // consultant form (utils/consultantCredentialRules): the wizard must never
+    // accept a credential that form would reject.
+    const usernameErrKey = usernameErrorKey(data.account.username);
+    const passwordErrKey = passwordErrorKey(data.account.password);
     const topicsValid = data.topicIds.length > 0;
-    const canSubmit = usernameValid && passwordValid && topicsValid && !busy;
+    const canSubmit = usernameErrKey === null && passwordErrKey === null && topicsValid && !busy;
+    // Field-specific inline errors appear while the field HAS content but
+    // violates the policy; empty required fields are carried by the submit
+    // hint instead of shouting at an untouched form.
+    const usernameInlineError = data.account.username.length > 0 && usernameErrKey ? t(usernameErrKey) : undefined;
+    const passwordInlineError = data.account.password.length > 0 && passwordErrKey ? t(passwordErrKey) : undefined;
 
     const accountCard = (mobile: boolean) => (
         <AdvisorAccountCard
             value={{ email: invite.recipientEmail, ...data.account }}
             emailReadOnly
+            usernameError={usernameInlineError}
+            passwordError={passwordInlineError}
             onChange={(patch) => updateAccount(patch)}
             onNext={mobile ? () => setMobileStep('person') : undefined}
         />
@@ -286,7 +310,16 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     </div>
                 </>
             ) : (
-                <div className={styles.mobileStep}>
+                <div
+                    ref={stepRegionRef}
+                    tabIndex={-1}
+                    role="group"
+                    aria-label={t('counsellorOnboarding.stepIndicator', {
+                        current: MOBILE_STEPS.indexOf(mobileStep) + 1,
+                        total: MOBILE_STEPS.length,
+                    })}
+                    className={styles.mobileStep}
+                >
                     {mobileStep === 'account' && accountCard(true)}
                     {mobileStep === 'person' && personCard(true)}
                     {mobileStep === 'name' && nameCard(true)}

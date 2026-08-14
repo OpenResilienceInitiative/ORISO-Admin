@@ -53,3 +53,12 @@
     flex-direction: column;
     gap: 16px;
 }
+
+/* Programmatic focus target for step transitions (tabIndex -1, not tabbable):
+   the region receives focus so SR users get the step announcement, but a
+   focus ring around the whole card would read as an error — the ring belongs
+   to the tabbable controls inside. */
+
+.mobileStep:focus {
+    outline: none;
+}

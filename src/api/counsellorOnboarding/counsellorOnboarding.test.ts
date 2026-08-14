@@ -24,7 +24,7 @@ vi.mock('../fetchData', async () => {
 });
 
 const registration = (topicIds: number[]): CounsellorRegistrationRequest => ({
-    account: { username: 'lena.b', password: 'SecurePass1!' },
+    account: { username: 'lena_b', password: 'SecurePass1!' },
     person: { salutation: 'counsellor_female', position: 'Leitung', title: 'Dipl.-Soz.Päd.' },
     names: { publicName: 'Lena', internalDisplayName: 'Lena B. (Nord)' },
     topicIds,

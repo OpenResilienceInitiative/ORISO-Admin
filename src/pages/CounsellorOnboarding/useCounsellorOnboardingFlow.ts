@@ -55,8 +55,8 @@ const EMPTY_DATA: CounsellorWizardData = {
     topicIds: [],
 };
 
-/** Backend password floor (UserService MIN_PASSWORD_LENGTH); Keycloak enforces the full policy. */
-export const MIN_PASSWORD_LENGTH = 8;
+/** Single source: the shared consultant credential policy (also used by the admin form). */
+export { PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from '../../utils/consultantCredentialRules';
 
 export const useCounsellorOnboardingFlow = (inviteToken: string, client: CounsellorOnboardingClient) => {
     const [state, setState] = useState<CounsellorOnboardingState>({ phase: 'loading' });

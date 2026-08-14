@@ -33,6 +33,13 @@ export interface AdvisorAccountCardProps {
      * public onboarding wizard (#997).
      */
     emailReadOnly?: boolean;
+    /**
+     * Field-specific, already-translated errors (shared consultant credential
+     * policy — see `utils/consultantCredentialRules`). When set, the field
+     * renders in the M3 error state with the message as supporting text.
+     */
+    usernameError?: string;
+    passwordError?: string;
     /** Admin-composer actions — the whole action row is omitted when neither is wired. */
     onBatchMode?: () => void;
     onSendInvitation?: () => void;
@@ -54,6 +61,8 @@ export const AdvisorAccountCard = ({
     value,
     onChange,
     emailReadOnly,
+    usernameError,
+    passwordError,
     onBatchMode,
     onSendInvitation,
     onLinkOtp,
@@ -110,14 +119,16 @@ export const AdvisorAccountCard = ({
                 )}
                 <FloatingLabelInput
                     label={t('cards.advisorAccount.username')}
-                    supportingText={t('cards.advisorAccount.usernameHint')}
+                    error={usernameError !== undefined}
+                    supportingText={usernameError ?? t('cards.advisorAccount.usernameHint')}
                     value={value.username}
                     onChange={(e) => onChange({ username: e.target.value })}
                 />
                 <FloatingLabelInput
                     label={t('cards.advisorAccount.password')}
                     component={Input.Password}
-                    supportingText={t('cards.advisorAccount.passwordHint')}
+                    error={passwordError !== undefined}
+                    supportingText={passwordError ?? t('cards.advisorAccount.passwordHint')}
                     value={value.password}
                     onChange={(e) => onChange({ password: e.target.value })}
                 />

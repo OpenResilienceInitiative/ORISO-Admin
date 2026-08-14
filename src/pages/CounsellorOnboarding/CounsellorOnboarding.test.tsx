@@ -74,7 +74,7 @@ describe('CounsellorOnboarding', () => {
         // Step 1 — account: the invited email is prefilled and not editable.
         expect(await screen.findByLabelText('cards.advisorAccount.email')).toHaveValue('lena@tenant.example');
         expect(screen.getByLabelText('cards.advisorAccount.email')).toBeDisabled();
-        await user.type(screen.getByLabelText('cards.advisorAccount.username'), 'lena.b');
+        await user.type(screen.getByLabelText('cards.advisorAccount.username'), 'lena_b');
         await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
         await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
 
@@ -97,7 +97,7 @@ describe('CounsellorOnboarding', () => {
 
         await waitFor(() =>
             expect(client.registerCounsellor).toHaveBeenCalledWith('raw-token', {
-                account: { username: 'lena.b', password: 'SecurePass1!' },
+                account: { username: 'lena_b', password: 'SecurePass1!' },
                 person: { salutation: undefined, position: 'Leitung', title: undefined },
                 names: { publicName: 'Lena', internalDisplayName: 'Lena B.' },
                 topicIds: [12],
@@ -123,6 +123,51 @@ describe('CounsellorOnboarding', () => {
 
         expect(client.registerCounsellor).not.toHaveBeenCalled();
         expect(screen.getByTestId('wizard-submit-hint')).toBeInTheDocument();
+    });
+
+    it('applies the shared credential policy with field-specific errors before enabling submit', async () => {
+        const client = createClient();
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        // Username with an uppercase letter and a dot — valid for nothing in
+        // this product; the admin form rejects it and so must the wizard.
+        await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'Lena.B');
+        expect(screen.getByText('message.error.username.format')).toBeInTheDocument();
+
+        // Long enough but missing upper case, digit and special character.
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'password');
+        expect(screen.getByText('message.error.password.policy')).toBeInTheDocument();
+
+        // Walk to the topics step and try to finish — the gate must hold.
+        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
+        await user.click(await screen.findByRole('button', { name: 'cards.actions.next' }));
+        await user.click(await screen.findByRole('button', { name: 'cards.actions.next' }));
+        await user.click(await screen.findByRole('checkbox', { name: 'Familienberatung' }));
+        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
+
+        expect(client.registerCounsellor).not.toHaveBeenCalled();
+        expect(screen.getByTestId('wizard-submit-hint')).toBeInTheDocument();
+    });
+
+    it('moves focus to the new step region on mobile transitions, both directions', async () => {
+        const client = createClient();
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await screen.findByLabelText('cards.advisorAccount.email');
+        const stepRegion = () => screen.getByRole('group', { name: 'counsellorOnboarding.stepIndicator' });
+
+        // Forward: the Next button is unmounted with its card — focus must
+        // land on the freshly rendered step region.
+        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
+        await screen.findByLabelText('cards.personalInfo.firstName');
+        expect(stepRegion()).toHaveFocus();
+
+        // Backward transition gets the same treatment.
+        await user.click(screen.getByRole('button', { name: 'cards.actions.back' }));
+        await screen.findByLabelText('cards.advisorAccount.email');
+        expect(stepRegion()).toHaveFocus();
     });
 
     it('resumes a consumed-but-2FA-pending link directly at the 2FA step', async () => {
@@ -169,7 +214,7 @@ describe('CounsellorOnboarding', () => {
         const user = userEvent.setup();
         renderFlow(client);
 
-        await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena.b');
+        await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
         await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
         await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
         await user.click(await screen.findByRole('button', { name: 'cards.actions.next' }));
