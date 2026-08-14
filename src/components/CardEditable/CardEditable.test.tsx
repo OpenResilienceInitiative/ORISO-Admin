@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { CardEditable } from './index';
@@ -38,5 +38,27 @@ describe('CardEditable', () => {
 
         expect(screen.getByLabelText('Name')).toBeEnabled();
         expect(screen.getByRole('switch', { name: 'Enabled' })).toBeEnabled();
+    });
+
+    it('keeps entered values editable when the save callback reports an error', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        render(
+            <CardEditable titleKey="card.title" onSave={onSave} initialValues={{ name: 'ACME' }}>
+                <MuiFormField name="name" label="Name" />
+            </CardEditable>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const nameField = screen.getByLabelText('Name');
+        await user.clear(nameField);
+        await user.type(nameField, 'Edited agency');
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        await waitFor(() => expect(onSave).toHaveBeenCalled());
+        onSave.mock.calls[0][1].onError();
+
+        await waitFor(() => expect(screen.getByLabelText('Name')).toBeEnabled());
+        expect(screen.getByLabelText('Name')).toHaveValue('Edited agency');
     });
 });

@@ -28,7 +28,7 @@ interface CardEditableProps {
               editing: boolean;
               startEditing: () => void;
           }) => React.ReactElement<any> | React.ReactElement<any>[]);
-    onSave: <T>(formData: T, options?: { onError?: () => void }) => void;
+    onSave: <T>(formData: T, options?: { onError?: () => void; form?: FormInstance }) => void;
     formProp?: FormInstance;
     editMode?: boolean;
     hideSaveButton?: boolean;
@@ -87,11 +87,11 @@ export const CardEditable = ({
 
     const onFormSubmit = useCallback(
         (formData) => {
-            onSave(formData, { onError: () => setEditing(editMode) });
+            onSave(formData, { onError: () => setEditing(true), form });
             setEditing(editMode);
             setHasChanges(false);
         },
-        [onSave],
+        [editMode, form, onSave],
     );
     const canStartEditing = allowEdit && !editMode && !editing;
     const finalEditButtonPlacement = editButtonPlacement ?? (variant === 'dialog' ? 'footer' : 'header');

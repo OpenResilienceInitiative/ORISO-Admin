@@ -29,6 +29,10 @@ const mocks = vi.hoisted(() => ({
     routeId: 'add',
     agencyData: undefined as any,
     createConsultantProps: undefined as any,
+    legalForm: {
+        setFields: vi.fn(),
+        scrollToField: vi.fn(),
+    },
 }));
 
 const translations: Record<string, string> = {
@@ -136,15 +140,27 @@ vi.mock('../../../hooks/useAgencyData', () => ({
 }));
 
 vi.mock('./components/ResponsibleSettings', () => ({
-    ResponsibleSettings: ({ onSave }: { onSave: (data: unknown) => void }) => (
+    ResponsibleSettings: ({
+        onSave,
+    }: {
+        onSave: (data: unknown, options: { onError: () => void; form: typeof mocks.legalForm }) => void;
+    }) => (
         <button
             type="button"
             onClick={() =>
-                onSave({
-                    dataProtection: {
-                        agencyDataProtectionResponsibleContact: { nameAndLegalForm: 'E2E Responsible Operator gGmbH' },
+                onSave(
+                    {
+                        dataProtection: {
+                            agencyDataProtectionResponsibleContact: {
+                                nameAndLegalForm: 'E2E Responsible Operator gGmbH',
+                            },
+                        },
                     },
-                })
+                    {
+                        onError: vi.fn(),
+                        form: mocks.legalForm,
+                    },
+                )
             }
         >
             Save responsible card
@@ -242,6 +258,8 @@ describe('AgencyPageEdit create flow', () => {
         mocks.routeId = 'add';
         mocks.agencyData = undefined;
         mocks.createConsultantProps = undefined;
+        mocks.legalForm.setFields.mockReset();
+        mocks.legalForm.scrollToField.mockReset();
     });
 
     it('renders the tenant assignment field for super-admin agency creation', async () => {
@@ -350,5 +368,41 @@ describe('AgencyPageEdit create flow', () => {
             },
             expect.any(Object),
         );
+    });
+
+    it('renders a structured service validation error on the responsible field and focuses it', async () => {
+        mocks.routeId = '282';
+        mocks.agencyData = {
+            id: 282,
+            name: 'E2E Agency',
+            tenantId: 84,
+            topics: [],
+            dataProtection: {
+                agencyDataProtectionResponsibleContact: {
+                    nameAndLegalForm: 'E2E Responsible Operator gGmbH',
+                },
+            },
+        };
+
+        renderWithClient(<AgencyPageEdit section="legal" />);
+        fireEvent.click(screen.getByRole('button', { name: 'Save responsible card' }));
+
+        const mutationOptions = mocks.mutate.mock.calls[0][1];
+        await mutationOptions.onError(
+            new Response(
+                JSON.stringify({
+                    field: 'dataProtection',
+                    reason: 'DATA_PROTECTION_RESPONSIBLE_IS_EMPTY',
+                    message: 'A responsible contact is required.',
+                }),
+                { status: 400, headers: { 'Content-Type': 'application/json' } },
+            ),
+        );
+
+        const fieldName = ['dataProtection', 'agencyDataProtectionResponsibleContact', 'nameAndLegalForm'];
+        expect(mocks.legalForm.setFields).toHaveBeenCalledWith([
+            { name: fieldName, errors: ['agency.edit.settings.legal.validation.responsible_required'] },
+        ]);
+        expect(mocks.legalForm.scrollToField).toHaveBeenCalledWith(fieldName, { focus: true });
     });
 });

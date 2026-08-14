@@ -71,7 +71,7 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         url: `${agencyEndpointBase}/${agencyModel.id}`,
         method: FETCH_METHODS.PUT,
         skipAuth: false,
-        responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_SUCCESS.CONTENT],
+        responseHandling: [FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE, FETCH_ERRORS.CATCH_ALL, FETCH_SUCCESS.CONTENT],
         bodyData: JSON.stringify(agencyDataRequestBody),
     }).then(async (response) => {
         // Card-based agency edits submit narrow patches. The regular agency GET
