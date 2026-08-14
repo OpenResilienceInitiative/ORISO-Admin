@@ -37,6 +37,12 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
     // resolves after a newer one was already issued — a slower tenant-A request outliving a
     // tenant-B switch, or two retry clicks in a row — is discarded instead of overwriting state.
     const loadToken = useRef(0);
+    // Bumped ONLY on a tenant switch (see the reset effect below). A save is bound to the tenant
+    // it was fired for the same way a load is bound to its token: without this, a save started
+    // on tenant A that resolves after the admin has switched to tenant B would apply A's result
+    // (or A's error/saving flags) to B's now-mounted editor, and a follow-up save from B could
+    // then submit A's stale texts under B's id.
+    const tenantEpoch = useRef(0);
 
     const load = useCallback(() => {
         // An id that cannot resolve to a tenant is a failed load, not an eternal skeleton: the
@@ -63,8 +69,10 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
         // tenants would keep showing (and let the admin keep editing) the previous tenant's
         // document and any of its unsaved edits until the new load happened to land, and a save
         // in that window could write tenant A's edits under tenant B's id.
+        tenantEpoch.current += 1;
         setDocument(undefined);
         setSaveFailed(false);
+        setSaving(false);
         lastSaveAttempt.current = undefined;
         load();
     }, [load]);
@@ -75,11 +83,18 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
             lastSaveAttempt.current = { texts, publish };
             setSaving(true);
             setSaveFailed(false);
+            const epoch = tenantEpoch.current;
             resolvedGateway
                 .save(id, texts, publish)
-                .then(setDocument)
-                .catch(() => setSaveFailed(true))
-                .finally(() => setSaving(false));
+                .then((next) => {
+                    if (tenantEpoch.current === epoch) setDocument(next);
+                })
+                .catch(() => {
+                    if (tenantEpoch.current === epoch) setSaveFailed(true);
+                })
+                .finally(() => {
+                    if (tenantEpoch.current === epoch) setSaving(false);
+                });
         },
         [id, resolvedGateway],
     );

@@ -18,7 +18,17 @@ export interface DpiaTextDocument {
 
 export interface DpiaTextGateway {
     load(tenantId: number): Promise<DpiaTextDocument>;
-    /** publish=true finalises the given texts, publish=false stores them as a draft. */
+    /**
+     * publish=true finalises every section in `texts` that carries content (the editor always
+     * sends the complete map, and Publish is a whole-document action, so this applies even to
+     * sections not touched in this particular call).
+     *
+     * publish=false stores a draft. `texts` is still the complete map (loaded + every edit made
+     * this session), but publication status is only ever changed for a section whose HTML
+     * actually differs from what is currently stored — otherwise a draft save of one chapter
+     * would also demote every other already-published chapter that merely rode along in the same
+     * map, unedited.
+     */
     save(tenantId: number, texts: DpiaTextMap, publish: boolean): Promise<DpiaTextDocument>;
 }
 
@@ -43,14 +53,20 @@ export const createMockDpiaTextGateway = (seed: Partial<DpiaTextDocument> = {}):
             const statusBySection: Record<string, DpiaPublicationStatus> = { ...previous.statusBySection };
             Object.entries(texts).forEach(([id, html]) => {
                 if (publish) {
-                    // Publishing finalises exactly the sections that carry text.
+                    // Publish is a whole-document action: every section that currently carries
+                    // text is finalised, whether or not it was touched in THIS save.
                     if (hasDpiaText(html)) {
                         statusBySection[id] = 'PUBLISHED';
+                    } else if (html !== previous.texts[id]) {
+                        // Cleared to empty as part of this publish: drop any stale PUBLISHED
+                        // status instead of leaving a badge on text that no longer exists.
+                        delete statusBySection[id];
                     }
-                } else {
-                    // A draft save supersedes whatever was published before: a section just
-                    // edited and saved as a draft must not keep showing a Published badge over
-                    // its now-unpublished replacement. A missing entry means DRAFT.
+                } else if (html !== previous.texts[id]) {
+                    // Draft save: demote only the section(s) whose stored HTML actually changed.
+                    // `texts` also carries every OTHER section's current content along for the
+                    // ride (see the interface doc) — those must keep their existing status. A
+                    // missing entry means DRAFT.
                     delete statusBySection[id];
                 }
             });

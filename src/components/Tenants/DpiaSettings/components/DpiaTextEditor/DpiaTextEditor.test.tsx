@@ -237,6 +237,25 @@ describe('DpiaTextEditor unsaved-changes guard', () => {
         expect(onSave).toHaveBeenCalledWith({ governance: '<p>edited</p>' }, true);
     });
 
+    it('save draft (toolbar action) sends the complete map with publish=false', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        render(
+            <DpiaTextEditor
+                onSave={onSave}
+                initialTexts={{ governance: '<p>governance</p>', escalationChain: '<p>escalation</p>' }}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'saveDraft' }));
+
+        expect(onSave).toHaveBeenCalledWith(
+            { governance: '<p>edited</p>', escalationChain: '<p>escalation</p>' },
+            false,
+        );
+    });
+
     it('read-only mode offers neither editing nor the publish actions', () => {
         render(<DpiaTextEditor onSave={vi.fn()} initialTexts={{ governance: '<p>governance</p>' }} readOnly />);
 

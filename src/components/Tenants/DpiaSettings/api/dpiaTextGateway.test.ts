@@ -45,6 +45,36 @@ describe('createMockDpiaTextGateway', () => {
         expect(statusBySection.governance).toBeUndefined();
     });
 
+    it('a draft save of one section does not demote OTHER published sections riding along in the map', async () => {
+        const gateway = createMockDpiaTextGateway({
+            texts: { governance: '<p>original</p>', escalationChain: '<p>escalation</p>' },
+            statusBySection: { governance: 'PUBLISHED', escalationChain: 'PUBLISHED' },
+        });
+
+        // The editor always sends the complete map (loaded + every session edit), but only
+        // `governance` actually changed — escalationChain's HTML is identical to what is already
+        // stored, i.e. it just rode along unedited (see the gateway's `save` doc comment).
+        await gateway.save(TENANT, { governance: '<p>edited</p>', escalationChain: '<p>escalation</p>' }, false);
+
+        const { statusBySection } = await gateway.load(TENANT);
+        expect(statusBySection.governance).toBeUndefined();
+        expect(statusBySection.escalationChain).toBe('PUBLISHED');
+    });
+
+    it('publishing a cleared section drops its stale PUBLISHED status', async () => {
+        const gateway = createMockDpiaTextGateway({
+            texts: { governance: '<p>written</p>' },
+            statusBySection: { governance: 'PUBLISHED' },
+        });
+
+        // Admin clears the chapter's text, then hits Publish — the empty result must not keep
+        // showing a Published badge for text that no longer exists.
+        await gateway.save(TENANT, { governance: '<p></p>' }, true);
+
+        const { statusBySection } = await gateway.load(TENANT);
+        expect(statusBySection.governance).toBeUndefined();
+    });
+
     it('publishing marks only the sections that actually carry text', async () => {
         const gateway = createMockDpiaTextGateway();
 
