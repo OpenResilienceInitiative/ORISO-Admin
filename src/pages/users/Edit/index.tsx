@@ -23,6 +23,7 @@ import { convertToOptions } from '../../../utils/convertToOptions';
 import { decodeUsername } from '../../../utils/encryptionHelpers';
 import styles from './styles.module.scss';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { UserRole } from '../../../enums/UserRole';
 import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { searchTenantData } from '../../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
@@ -41,13 +42,30 @@ const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
     return [...current, ...incoming.filter(({ value }) => !seen.has(value))];
 };
 
+/**
+ * Stable salutation keys (#994) — persisted as-is, rendered via i18n.
+ * Wording of the option list follows the Counsellor Setup Wizard design:
+ * Beraterin, Berater, Beratende Person, Berater*in, keine Angabe.
+ */
+const SALUTATION_KEYS = [
+    'counsellor_female',
+    'counsellor_male',
+    'counselling_person',
+    'counsellor_gender_neutral',
+    'not_specified',
+] as const;
+
 export const UserEditOrAdd = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [form] = Form.useForm();
     const { can } = useUserPermissions();
     const { t } = useTranslation();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, hasRole } = useUserRoles();
+    // Mirrors the backend gate (AuthenticatedUser#hasTenantLevelAdminRole): remarks are
+    // tenant-level-admin only. For any other role the field is omitted entirely — the
+    // caller could neither read nor write it.
+    const canManageAdminRemarks = hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin]);
 
     const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
     const isEditing = id !== 'add';
@@ -171,6 +189,21 @@ export const UserEditOrAdd = () => {
         });
         prevAgencyIdsRef.current = (form.getFieldValue('agencies') || []).map(({ value }) => String(value));
     }, [consultantById, isEditing, isConsultantForm, form]);
+
+    // Personal-info fields (#994) are only served by the get-by-id endpoint, not by the
+    // search result the rest of the form prefills from.
+    useEffect(() => {
+        if (!isEditing || !isConsultantForm || !consultantById) {
+            return;
+        }
+
+        form.setFieldsValue({
+            salutation: consultantById.salutation || undefined,
+            position: consultantById.position || '',
+            title: consultantById.title || '',
+            ...(canManageAdminRemarks ? { adminRemarks: consultantById.adminRemarks || '' } : {}),
+        });
+    }, [consultantById, isEditing, isConsultantForm, canManageAdminRemarks, form]);
 
     const { mutate } = useAddOrUpdateConsultantOrAdmin({
         id: isEditing ? id : null,
@@ -390,6 +423,51 @@ export const UserEditOrAdd = () => {
                                     required
                                     rules={[requiredRule]}
                                 />
+
+                                {isConsultantForm && (
+                                    <>
+                                        {/*
+                                          Deliberately not clearable. Clearing the select yields
+                                          `undefined`, which the API layer omits and the backend
+                                          reads as "leave unchanged" — so the clear affordance
+                                          would silently fail to persist. `not_specified` ("keine
+                                          Angabe") is the canonical way to say "no salutation", so
+                                          nothing is lost by removing it. Sending `''` instead
+                                          would introduce a second representation of "none" and
+                                          would wipe a stored salutation whenever the form is
+                                          submitted before getConsultantById has prefilled it.
+                                        */}
+                                        <MuiSelectField
+                                            name="salutation"
+                                            label="counselor.salutation"
+                                            placeholder="plsSelect"
+                                            options={SALUTATION_KEYS.map((key) => ({
+                                                value: key,
+                                                label: t(`counselor.salutation.option.${key}`),
+                                            }))}
+                                        />
+
+                                        <MuiFormField
+                                            name="position"
+                                            label={t('counselor.position')}
+                                            placeholder={t('counselor.position.placeholder')}
+                                        />
+
+                                        <MuiFormField
+                                            name="title"
+                                            label={t('counselor.personalTitle')}
+                                            placeholder={t('counselor.personalTitle.placeholder')}
+                                        />
+
+                                        {canManageAdminRemarks && (
+                                            <MuiMultilineFormField
+                                                name="adminRemarks"
+                                                label={t('counselor.adminRemarks')}
+                                                helpText={t('counselor.adminRemarks.hint')}
+                                            />
+                                        )}
+                                    </>
+                                )}
 
                                 <MuiFormField
                                     name="email"
