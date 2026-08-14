@@ -1,0 +1,24 @@
+.body {
+    /* The Modal centers its title block; the editor body stays left-aligned. */
+    text-align: left;
+}
+
+/* The editor variant renders its own <h3>, which would duplicate the dialog
+   title. Hide it visually; the surrounding <section aria-label> keeps the
+   accessible name. */
+.body :global(section > header > h3) {
+    position: absolute;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    white-space: nowrap;
+}
+
+/* With the heading hidden, the template split button alone forms the header
+   row — keep it on the right edge like in the full-page variant. */
+.body :global(section > header) {
+    justify-content: flex-end;
+}
