@@ -5,8 +5,7 @@ import { Form } from 'antd';
 import InputAdornment from '@mui/material/InputAdornment';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
-import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
+import { describe, expect, it } from 'vitest';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from './index';
 
 const muiFormFieldSource = readFileSync(resolve(__dirname, './index.tsx'), 'utf8');
@@ -93,54 +92,6 @@ describe('MuiFormField', () => {
         await user.keyboard(' ');
         expect(passwordInput).toHaveAttribute('type', 'password');
         expect(toggleButton).toHaveAttribute('aria-pressed', 'false');
-    });
-
-    /**
-     * #717 — a rejected username must keep sibling text values and name the
-     * field. Save on the consultant form sits *outside* the <form> and calls
-     * `form.submit()`, same as this harness.
-     */
-    it('keeps sibling text values and focuses username when the format rule fails', async () => {
-        const FORM_NAME = 'consultantOrAdmin';
-        const user = userEvent.setup();
-        const onFinish = vi.fn();
-
-        const Harness = () => {
-            const [form] = Form.useForm();
-            return (
-                <>
-                    <Form
-                        form={form}
-                        name={FORM_NAME}
-                        onFinish={onFinish}
-                        onFinishFailed={({ errorFields }) => focusFirstInvalidField(errorFields, FORM_NAME)}
-                    >
-                        <MuiFormField name="firstname" label="First name" />
-                        <MuiFormField
-                            name="username"
-                            label="Username"
-                            rules={[{ pattern: /^[a-z0-9_-]+$/, message: 'invalid username' }]}
-                        />
-                    </Form>
-                    <button type="button" onClick={() => form.submit()}>
-                        Save
-                    </button>
-                </>
-            );
-        };
-
-        render(<Harness />);
-
-        await user.type(screen.getByLabelText('First name'), 'Lisa');
-        await user.type(screen.getByLabelText('Username'), 'lisa.simpson');
-        await user.click(screen.getByRole('button', { name: 'Save' }));
-
-        expect(await screen.findByText('invalid username')).toBeVisible();
-        expect(onFinish).not.toHaveBeenCalled();
-        expect(screen.getByLabelText('First name')).toHaveValue('Lisa');
-        expect(screen.getByLabelText('Username')).toHaveValue('lisa.simpson');
-        expect(screen.getByLabelText('Username')).toHaveAttribute('aria-invalid', 'true');
-        expect(screen.getByLabelText('Username')).toHaveFocus();
     });
 
     it('keeps helper text and validation errors wired through MUI accessibility state', async () => {

@@ -333,9 +333,6 @@ export const MuiFormField = ({ name, label, rules, required, dependencies, norma
         required={required}
         dependencies={dependencies as any}
         normalize={normalize}
-        // MUI TextField always emits a DOM event. Store the string, never the event
-        // object — an event as `value` renders as an empty controlled input (#717).
-        getValueFromEvent={(event) => (event?.target ? event.target.value : event)}
         noStyle
     >
         <MuiControl fieldName={name} label={label} {...rest} />

@@ -371,7 +371,6 @@ export const UserEditOrAdd = () => {
                     name={FORM_NAME}
                     onFinish={onSave}
                     onFinishFailed={onFinishFailed}
-                    preserve
                     initialValues={{
                         ...(singleData || {
                             formalLanguage: true,
