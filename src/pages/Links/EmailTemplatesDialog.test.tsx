@@ -124,8 +124,7 @@ const counsellorTemplate = {
 };
 
 /** The srcDoc of the email-kit preview frame inside the currently open dialog. */
-const previewSrcDoc = () =>
-    screen.getByRole('dialog').querySelector('iframe')?.getAttribute('srcdoc') ?? '';
+const previewSrcDoc = () => screen.getByRole('dialog').querySelector('iframe')?.getAttribute('srcdoc') ?? '';
 
 describe('EmailTemplatesDialog', () => {
     beforeEach(() => {
@@ -250,9 +249,7 @@ describe('EmailTemplatesDialog', () => {
         await user.click(pickers[1]);
         await user.click(await screen.findByRole('menuitem', { name: /Einladungslink/ }));
 
-        await waitFor(() =>
-            expect(withinDialog.getByLabelText('Inhalt')).toHaveValue('Ihr Link: {{inviteLink}}'),
-        );
+        await waitFor(() => expect(withinDialog.getByLabelText('Inhalt')).toHaveValue('Ihr Link: {{inviteLink}}'));
         expect(previewSrcDoc()).toContain('https://beratung.example.org/einladung?token=1c9d');
     });
 
