@@ -7,6 +7,8 @@ import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor'
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
 import { useLegalHelp } from '../../hooks/useLegalHelp';
+import { useLegalDraft } from '../../hooks/useLegalDraft';
+import { LegalDraftNotice } from '../LegalDraftNotice';
 import { isEmptyLegalContent } from '../../utils/legalHelpTexts';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { useUserData } from '../../../../../hooks/useUserData.hook';
@@ -89,7 +91,7 @@ export const LegalText = ({
     const { can } = useUserPermissions();
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const { data, isLoading, mutate: updateTenant, isPending } = useTenantAppearanceFormData(`${tenantId}`);
-    const { data: userData } = useUserData();
+    const { data: userData, isLoading: isUserLoading } = useUserData();
     // Persist dismissal only once the opaque user id is known (same pattern as DPA).
     const dismissalScope = userData?.id ? `${tenantId}:${userData.id}` : undefined;
     const [activeLanguage, setActiveLanguage] = useState('de');
@@ -105,7 +107,9 @@ export const LegalText = ({
         return configured && configured.length > 0 ? configured : ['de'];
     }, [data?.settings?.activeLanguages]);
 
-    const editorIdentity = `${tenantId}:${fieldName.join('.')}`;
+    // The signed-in account is part of the editor identity: a user change must drop
+    // this session's edits, never hand them to the next account.
+    const editorIdentity = `${tenantId}:${fieldName.join('.')}:${dismissalScope ?? ''}`;
     useEffect(() => {
         setEdits({});
         setPendingFormData(undefined);
@@ -128,10 +132,19 @@ export const LegalText = ({
         [data, fieldName],
     );
 
-    // The complete language map: stored languages (unknown keys included) with the
-    // local edits on top. Legacy plain-string content has no language split — keep
-    // it under the first configured language so it is shown and preserved on publish
-    // (otherwise an untouched card would overwrite the stored string with {}).
+    // Writing here publishes straight to the live text, so the admin needs somewhere to
+    // park unfinished wording. Until the backend has draft state this is device-local —
+    // LegalDraftNotice says so. Without a legalType (no card identity) there is no draft.
+    const { draft, savedAt, saveDraft, discardDraft } = useLegalDraft(
+        legalType ?? 'privacy',
+        legalType ? dismissalScope : undefined,
+    );
+
+    // The complete language map: stored languages (unknown keys included), then the
+    // saved draft, then this session's edits on top. Legacy plain-string content has no
+    // language split — keep it under the first configured language so it is shown and
+    // preserved on publish (otherwise an untouched card would overwrite the stored
+    // string with {}).
     const contentByLanguage = useMemo<Record<string, string>>(() => {
         let base: Record<string, string> = {};
         if (storedContent && typeof storedContent === 'object') {
@@ -139,8 +152,24 @@ export const LegalText = ({
         } else if (typeof storedContent === 'string' && storedContent !== '') {
             base = { [languages[0]]: storedContent };
         }
-        return { ...base, ...edits };
-    }, [storedContent, edits, languages]);
+        // A viewer who may not edit must never see unpublished local content: the
+        // draft notice and its discard action are hidden for them, so they could
+        // neither recognise nor remove it. Show the published text only.
+        if (!canEditLegalText) {
+            return base;
+        }
+        return { ...base, ...(draft?.content ?? {}), ...edits };
+    }, [canEditLegalText, storedContent, draft, edits, languages]);
+
+    // Discarding drops the stored draft AND this session's unsaved edits — otherwise the
+    // editor would still show the text the admin just asked to throw away. If the draft
+    // could NOT be removed, the edits stay: the error says the draft is still there, so
+    // silently wiping the work typed since the last save would be the worse lie.
+    const discardDraftAndEdits = useCallback(() => {
+        if (discardDraft()) {
+            setEdits({});
+        }
+    }, [discardDraft]);
 
     const help = useLegalHelp(legalType ?? 'privacy', {
         empty: isEmptyLegalContent(storedContent),
@@ -153,15 +182,19 @@ export const LegalText = ({
 
     const showHintSnackbar = !!legalType && !hintHidden;
 
+    // A published text supersedes the draft it came from — keeping it would offer the
+    // admin a "restore" of what is already live.
+    const publishedOptions = useMemo(() => ({ onSuccess: () => discardDraft() }), [discardDraft]);
+
     const onConfirm = useCallback(() => {
-        updateTenant(set(pendingFormData, showConfirmationModal.field, false));
+        updateTenant(set(pendingFormData, showConfirmationModal.field, false), publishedOptions);
         setModalVisible(false);
-    }, [pendingFormData, showConfirmationModal, updateTenant]);
+    }, [pendingFormData, publishedOptions, showConfirmationModal, updateTenant]);
 
     const onCancel = useCallback(() => {
-        updateTenant(set(pendingFormData, showConfirmationModal.field, true));
+        updateTenant(set(pendingFormData, showConfirmationModal.field, true), publishedOptions);
         setModalVisible(false);
-    }, [pendingFormData, showConfirmationModal, updateTenant]);
+    }, [pendingFormData, publishedOptions, showConfirmationModal, updateTenant]);
 
     const onPublish = useCallback(() => {
         // The COMPLETE map goes out — languages the admin did not touch survive.
@@ -170,11 +203,16 @@ export const LegalText = ({
             setPendingFormData(formData);
             setModalVisible(true);
         } else {
-            updateTenant(formData);
+            updateTenant(formData, publishedOptions);
         }
-    }, [contentByLanguage, fieldName, showConfirmationModal, updateTenant]);
+    }, [contentByLanguage, fieldName, publishedOptions, showConfirmationModal, updateTenant]);
 
-    if (isLoading) {
+    const onSaveDraft = useCallback(() => saveDraft({ ...contentByLanguage }), [contentByLanguage, saveDraft]);
+
+    // Wait for the opaque user id too: mounting the editor first and letting the draft
+    // arrive later would remount it mid-edit and offer a save action that silently
+    // does nothing while the scope is still unknown.
+    if (isLoading || isUserLoading) {
         return (
             <div className={styles.card}>
                 <Spin />
@@ -184,6 +222,7 @@ export const LegalText = ({
 
     return (
         <div className={styles.card}>
+            {canEditLegalText && <LegalDraftNotice savedAt={savedAt} onDiscard={discardDraftAndEdits} />}
             <M3RichTextEditor
                 title={t(titleKey)}
                 icon={icon}
@@ -224,6 +263,7 @@ export const LegalText = ({
                         : undefined
                 }
                 onPublish={canEditLegalText ? onPublish : undefined}
+                onSaveDraft={canEditLegalText && legalType && dismissalScope ? onSaveDraft : undefined}
                 belowSlot={
                     showConfirmationModal &&
                     modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
