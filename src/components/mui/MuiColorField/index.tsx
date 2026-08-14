@@ -1,7 +1,5 @@
-import { useContext } from 'react';
-import { Form } from 'antd';
+import { ConfigProvider, Form } from 'antd';
 import type { Rule } from 'antd/lib/form';
-import DisabledContext from 'antd/es/config-provider/DisabledContext';
 import FormHelperText from '@mui/material/FormHelperText';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -21,8 +19,8 @@ interface MuiColorControlProps {
 }
 
 const MuiColorControl = ({ value, onChange, fieldName, label, helpText, disabled }: MuiColorControlProps) => {
-    const contextDisabled = useContext(DisabledContext);
-    const isDisabled = contextDisabled || disabled;
+    const { componentDisabled } = ConfigProvider.useConfig();
+    const isDisabled = componentDisabled || disabled;
     const { status } = Form.Item.useStatus();
     const form = Form.useFormInstance();
     const isError = status === 'error';
