@@ -29,6 +29,12 @@ export interface PlaceholderTemplateEditorProps<V extends Record<string, string>
     activeTemplateId?: number | string;
     onSelectTemplate: (id: number | string) => void;
     onCreateFromTemplate?: (id: number | string) => void;
+    /**
+     * Main-segment press of the template split button (e.g. open the template
+     * manager). Without it the segment is a pure label (and leaves the tab
+     * order, see TemplateSplitButton).
+     */
+    onManageTemplates?: () => void;
     /** Live preview column, computed by the variant from the current values. */
     preview: ReactNode;
 }
@@ -50,6 +56,7 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
     activeTemplateId,
     onSelectTemplate,
     onCreateFromTemplate,
+    onManageTemplates,
     preview,
 }: PlaceholderTemplateEditorProps<V>) => (
     <section aria-label={heading} className={styles.editor}>
@@ -59,6 +66,7 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
                 activeTemplateId={activeTemplateId}
                 templates={templates}
                 onCreateFromTemplate={onCreateFromTemplate}
+                onMainClick={onManageTemplates}
                 onSelectTemplate={onSelectTemplate}
             />
         </header>
