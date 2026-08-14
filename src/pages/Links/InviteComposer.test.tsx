@@ -132,12 +132,13 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         // alone must keep the action gated and in the outlined (non-primary) look.
         expect(await screen.findByRole('button', { name: /Standard/ })).toBeInTheDocument();
         expect(sendButton).toBeDisabled();
-        expect(wrapper).not.toHaveClass(splitButtonStyles.primary);
+        // `primary` is an alias of the sheet's `filled` variant since #741.
+        expect(wrapper).not.toHaveClass(splitButtonStyles.filled);
 
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
 
         await waitFor(() => expect(sendButton).toBeEnabled());
-        expect(wrapper).toHaveClass(splitButtonStyles.primary);
+        expect(wrapper).toHaveClass(splitButtonStyles.filled);
     });
 
     it('persists the chosen send mode per tab and swaps the main label', async () => {
