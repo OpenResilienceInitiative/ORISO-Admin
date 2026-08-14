@@ -62,7 +62,10 @@ const useFittedFrame = (dependency: string) => {
  * stacked mobile layout honest at 320px.
  */
 export const EmailKitPreview = ({ subject, body, previewLabel }: EmailKitPreviewProps) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    // The preview document mirrors the admin's active locale — the real mail's
+    // language is the template's own concern (#727 review: no hardcoded "de").
+    const lang = i18n?.language || 'de';
     // Read once per mount: the admin theme applies the tenant palette to the
     // document root before any editor screen renders.
     const primaryColor = useMemo(readTenantPrimary, []);
@@ -78,7 +81,7 @@ export const EmailKitPreview = ({ subject, body, previewLabel }: EmailKitPreview
                 subject,
                 body,
                 brand,
-                lang: 'de',
+                lang,
                 strings: {
                     subjectHint: t('links.templates.previewSubjectHint', 'Betreff der E-Mail'),
                     bodyHint: t('links.templates.previewBodyHint', 'Inhalt der E-Mail'),
@@ -100,7 +103,7 @@ export const EmailKitPreview = ({ subject, body, previewLabel }: EmailKitPreview
                     ),
                 },
             }),
-        [subject, body, brand, t],
+        [subject, body, brand, lang, t],
     );
 
     const { ref, height, measure } = useFittedFrame(html);
@@ -120,6 +123,10 @@ export const EmailKitPreview = ({ subject, body, previewLabel }: EmailKitPreview
             <iframe
                 ref={ref}
                 title={previewLabel}
+                // Same-origin is required for useFittedFrame's contentDocument
+                // measuring; everything else — scripts above all — stays off
+                // (#727 review).
+                sandbox="allow-same-origin"
                 srcDoc={html}
                 onLoad={measure}
                 className={styles.frame}

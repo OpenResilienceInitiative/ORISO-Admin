@@ -26,6 +26,8 @@ import {
     emailShell,
     emailSpace,
     emailTitleGroup,
+    safeEmailColor,
+    sanitizeEmailKitBrand,
 } from './emailKit';
 
 /**
@@ -82,15 +84,19 @@ const tint = (hex: string): string => {
 };
 
 /** Wraps every `{{token}}` left in (already escaped) text in a highlight chip. */
-export const highlightUnknownTokens = (escapedText: string, brand: EmailKitBrand): string =>
-    escapedText.replace(
+export const highlightUnknownTokens = (escapedText: string, brand: EmailKitBrand): string => {
+    // Exported entry point — normalise the colour here too, independent of the
+    // caller having gone through renderInviteEmailPreviewHtml (#727 review).
+    const chipColor = safeEmailColor(brand.primaryColor);
+    return escapedText.replace(
         TOKEN_PATTERN,
         (token) =>
             `<code data-unknown-token style="padding:1px 5px;border-radius:4px;` +
-            `background:${tint(brand.primaryColor)};color:${brand.primaryColor};` +
+            `background:${tint(chipColor)};color:${chipColor};` +
             `font-family:SFMono-Regular,Consolas,'Liberation Mono',monospace;` +
             `font-size:14px;font-weight:700;">${token}</code>`,
     );
+};
 
 /**
  * Body copy: blank lines separate paragraphs (each its own kit block, like
@@ -117,7 +123,16 @@ const proseRows = (body: string, brand: EmailKitBrand, strings: InvitePreviewStr
 };
 
 /** Renders the complete preview document for the invite e-mail. */
-export const renderInviteEmailPreviewHtml = ({ subject, body, brand, strings, lang }: InvitePreviewOptions): string => {
+export const renderInviteEmailPreviewHtml = ({
+    subject,
+    body,
+    brand: rawBrand,
+    strings,
+    lang,
+}: InvitePreviewOptions): string => {
+    // Colours are inlined into quoted attributes throughout the kit — force
+    // them through the safe grammar once, at the renderer boundary.
+    const brand = sanitizeEmailKitBrand(rawBrand);
     const headline = subject.trim()
         ? emailHeadline(highlightUnknownTokens(emailEscape(subject), brand))
         : emailHeadline(emailEscape(strings.subjectHint), { muted: true });

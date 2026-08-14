@@ -4,12 +4,17 @@ import { EmailKitPreview } from './EmailKitPreview';
 
 const t = (key: string, fallback?: string) => fallback ?? key;
 
+// Mutable so single tests can switch the active locale (the preview derives
+// its document lang from it).
+const i18nMock = { language: 'de' };
+
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({ t }),
+    useTranslation: () => ({ t, i18n: i18nMock }),
 }));
 
 afterEach(() => {
     document.documentElement.style.removeProperty('--m3-primary');
+    i18nMock.language = 'de';
 });
 
 const srcDoc = (preview: HTMLElement): string => preview.querySelector('iframe')?.getAttribute('srcdoc') ?? '';
@@ -35,6 +40,31 @@ describe('EmailKitPreview', () => {
         const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
         expect(srcDoc(preview)).toContain('#336699');
         expect(srcDoc(preview)).not.toContain('#a5000a');
+    });
+
+    /*
+     * PR #727 post-merge review: srcDoc documents inherit the parent origin, so
+     * scripts inside the frame could reach the admin session. The sandbox keeps
+     * same-origin (useFittedFrame needs contentDocument) but drops scripting.
+     */
+    it('sandboxes the preview frame to same-origin without script execution', () => {
+        render(<EmailKitPreview subject="A" body="B" previewLabel="E-Mail-Vorschau" />);
+        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
+        expect(preview.querySelector('iframe')).toHaveAttribute('sandbox', 'allow-same-origin');
+    });
+
+    it('derives the mail document language from the active locale instead of hardcoding de', () => {
+        i18nMock.language = 'en';
+        render(<EmailKitPreview subject="A" body="B" previewLabel="E-Mail-Vorschau" />);
+        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
+        expect(srcDoc(preview)).toContain('<html lang="en">');
+    });
+
+    it('falls back to German when no locale is resolvable', () => {
+        i18nMock.language = '';
+        render(<EmailKitPreview subject="A" body="B" previewLabel="E-Mail-Vorschau" />);
+        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
+        expect(srcDoc(preview)).toContain('<html lang="de">');
     });
 
     it('renders the empty state with both hints instead of a broken frame', () => {
