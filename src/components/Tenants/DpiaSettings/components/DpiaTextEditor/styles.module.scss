@@ -1,0 +1,18 @@
+/* DSFA free-text editor: same comfortable reading column as the legal editor cards —
+   never narrower than a small phone (375), never wider than a long-form text column. */
+.card {
+    min-width: 375px;
+    max-width: 960px;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.chapter {
+    font-weight: 600;
+}
