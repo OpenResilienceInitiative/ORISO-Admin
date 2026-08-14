@@ -443,9 +443,27 @@ describe('DataProcessingAgreementContainer — draft scope readiness', () => {
         });
         useUserData.mockReturnValue({ data: undefined, isLoading: true });
         render(<DataProcessingAgreementContainer tenantId={1} readOnly />);
+        const card = screen.getByTestId('card');
         // A read-only viewer never gets a draft, so nothing about it should make them
-        // wait on /users/data before seeing the published contract.
-        expect(screen.getByTestId('card')).toHaveAttribute('data-read-only', 'true');
+        // wait on /users/data before seeing the published contract — and the point is
+        // the CONTENT, not merely that the shell mounted.
+        expect(card).toHaveAttribute('data-read-only', 'true');
+        expect(JSON.parse(card.getAttribute('data-content') ?? '{}')).toEqual({ de: '<p>DE</p>' });
+    });
+
+    it('withholds the card until the published versions have loaded', () => {
+        useDpaVersions.mockReturnValue({ data: undefined, isLoading: true });
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+        // Mounting on an empty version list would show an empty contract, then remount
+        // when the real one lands — losing edits and stamping a draft with no base version.
+        expect(screen.queryByTestId('card')).not.toBeInTheDocument();
+    });
+
+    it('does not treat a disabled versions query as loading', () => {
+        useDpaVersions.mockReturnValue({ data: undefined, isLoading: true });
+        render(<DataProcessingAgreementContainer tenantId="" />);
+        // No usable tenant id: the query never runs, so the card must not hang on it.
+        expect(screen.getByTestId('card')).toBeInTheDocument();
     });
 
     it('shows the card without a draft action when the user id never arrives', () => {

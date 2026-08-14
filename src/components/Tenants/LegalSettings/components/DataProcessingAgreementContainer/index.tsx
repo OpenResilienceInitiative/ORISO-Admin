@@ -34,11 +34,13 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     const id = Number(tenantId);
     const lang = i18n.language?.split('-')[0] || 'de';
 
+    const versionsEnabled = Number.isFinite(id) && id > 0;
     const {
         data: versions = [],
+        isLoading: isVersionsLoading,
         isError: versionsError,
         refetch: refetchVersions,
-    } = useDpaVersions(id, Number.isFinite(id) && id > 0);
+    } = useDpaVersions(id, versionsEnabled);
     const { mutate: publish, isPending } = usePublishDpa(id);
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
@@ -148,6 +150,15 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
             onError: () => setInviteEmailStatus('failed'),
         });
     };
+
+    // The versions ARE the content: rendering the card before they land shows an empty
+    // contract, and the arriving version flips the remount key — discarding edits and
+    // stamping any draft saved in that window with an undefined base version, which
+    // would make the stale warning permanently blind for it. A disabled query (no
+    // usable tenant id) is not "loading" in react-query v5, so it does not block here.
+    if (versionsEnabled && isVersionsLoading) {
+        return <Spin />;
+    }
 
     // The draft scope needs the opaque user id, and an EDITABLE card mounted before it
     // arrives would be remounted the moment the draft hydrates — throwing away anything
