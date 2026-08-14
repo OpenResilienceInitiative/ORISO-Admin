@@ -32,6 +32,12 @@ export interface RoleTier {
     description: string;
     /** Keycloak realm roles this staff tier maps onto. */
     realmRoles: string[];
+    /**
+     * Whether this tier is prompted for 2FA. Not the same as non-bypassable:
+     * for platform admins, `platformAdminTwoFactorGate.ts` lets an admin pick
+     * "set up later" and reach the normal screens (`isSetupDeferred`), so the
+     * UI must say "required, deferrable", never "Pflicht"/"enforced".
+     */
     mfaMandatory: boolean;
 }
 
@@ -121,8 +127,17 @@ export const MATRIX_ROWS: MatrixRow[] = [
     },
     { capability: 'Löschung beim Verlassen', cells: [no, no, no, no, yes] },
     {
-        capability: '2FA erzwungen',
-        cells: [yes, yes, text('empfohlen'), text('empfohlen'), text('n/a')],
+        // Not "erzwungen"/enforced: `platformAdminTwoFactorGate.ts` lets a
+        // platform admin choose "set up later" and still reach the normal
+        // screens, so this must read as a soft requirement, not a hard block.
+        capability: '2FA erforderlich',
+        cells: [
+            text('Pflicht, Aufschub möglich'),
+            text('Pflicht, Aufschub möglich'),
+            text('empfohlen'),
+            text('empfohlen'),
+            text('n/a'),
+        ],
     },
 ];
 
@@ -206,10 +221,16 @@ export interface KeyFigure {
 }
 
 /**
- * Placeholder figures. In the living document these come from the aggregated,
- * anonymous platform statistics at build time — never from case data.
+ * Sample figures for Storybook/preview only — NOT real release statistics.
+ * `DpiaDocumentPage` renders these as its default `keyFigures` and marks them
+ * as sample data in the UI (badge + footnote) whenever they are in use.
+ *
+ * The real, versioned numbers are meant to be injected via the `keyFigures`
+ * prop from the DPIA operator master data (ORISO-Admin #735) once that feed
+ * exists; wiring that data source is out of scope here — this only prepares
+ * the seam so the caller can pass real figures in later.
  */
-export const KEY_FIGURES: KeyFigure[] = [
+export const SAMPLE_KEY_FIGURES: KeyFigure[] = [
     { value: '12', label: 'Träger' },
     { value: '148', label: 'Beratungsstellen' },
     { value: '412', label: 'aktive Beratende' },

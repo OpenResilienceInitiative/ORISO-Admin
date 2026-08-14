@@ -15,6 +15,13 @@
     --dpia-success-ink: #075e26;
     --dpia-success-wash: #e8f3eb;
     --dpia-success-line: #b9dcc2;
+    /* "Planned/not shipped" amber family, used by the appointment-module card
+       and its badges. Named aliases so the shade is declared once instead of
+       repeated as raw hex at every call site. */
+    --dpia-warn-ink: #de8a00;
+    --dpia-warn-line: #ffdca3;
+    --dpia-warn-bg: #ffeed2;
+    --dpia-warn-bg-soft: #fdf3dd;
     --dpia-mono: ui-monospace, 'SF Mono', menlo, consolas, monospace;
 
     min-height: 100%;
@@ -304,6 +311,21 @@
     }
 }
 
+/** Chapters not yet ported into this view (see AVAILABLE_CHAPTER_IDS) — shown
+    for orientation but not a link, so there is nothing for the anchor to fail
+    to reach. */
+.chipDisabled {
+    border-color: var(--dpia-hair-soft);
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: default;
+    opacity: 0.55;
+
+    &:hover {
+        border-color: var(--dpia-hair-soft);
+        color: var(--m3-on-surface-variant, #444748);
+    }
+}
+
 .chipCurrent {
     border-color: var(--m3-primary, #a5000a);
     background: var(--m3-primary, #a5000a);
@@ -454,7 +476,7 @@
 }
 
 .roleTier3 {
-    border-top-color: #de8a00;
+    border-top-color: var(--dpia-warn-ink);
 }
 
 .roleTier4 {
@@ -540,6 +562,11 @@
     margin: 0 0 6px;
     border-radius: 8px;
     overflow-x: auto;
+
+    &:focus-visible {
+        outline: 2px solid var(--focus-blue, #199fff);
+        outline-offset: 2px;
+    }
 }
 
 .matrix {
@@ -715,9 +742,9 @@
 .plannedBadge {
     display: inline-block;
     padding: 1px 6px;
-    border: 1px solid #ffdca3;
+    border: 1px solid var(--dpia-warn-line);
     margin-left: 6px;
-    background: #ffeed2;
+    background: var(--dpia-warn-bg);
     border-radius: 2px;
     color: var(--dpia-anno-ink);
     font-size: 10px;
@@ -727,13 +754,28 @@
     vertical-align: 2px;
 }
 
+/** Same amber family as .plannedBadge — flags Chapter 3's sample key figures. */
+.sampleBadge {
+    display: inline-block;
+    padding: 1px 6px;
+    border: 1px solid var(--dpia-warn-line);
+    margin-bottom: 10px;
+    background: var(--dpia-warn-bg);
+    border-radius: 2px;
+    color: var(--dpia-anno-ink);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
 .planBox {
     max-width: 74ch;
     padding: 14px 18px;
-    border: 1px solid #ffdca3;
-    border-left: 4px solid #de8a00;
+    border: 1px solid var(--dpia-warn-line);
+    border-left: 4px solid var(--dpia-warn-ink);
     margin: 14px 0 8px;
-    background: #fdf3dd;
+    background: var(--dpia-warn-bg-soft);
     border-radius: 8px;
 
     p {
@@ -785,22 +827,34 @@
     }
 }
 
+/* .appbar has `flex-wrap: wrap` (long operator names, a narrower tablet, or a
+   translated label can all push it past one line), but .chapterNav assumes a
+   fixed 61px app-bar height for its sticky offset. Below the width where the
+   app bar's content realistically fits on one line, drop both to a stacked,
+   non-sticky-offset layout so a taller app bar can never cover the chapter
+   nav. This block covers the phone breakpoint below too (max-width cascades
+   down to 0), so the 767px block only adds phone-specific spacing. */
+@media (max-width: 1024px) {
+    .appbar {
+        position: static;
+    }
+
+    .chapterNav {
+        top: 0;
+    }
+}
+
 @media (max-width: 767px) {
     /* A multi-row app bar would pin too much height on a phone and collide with
        the chapter chips, so it scrolls away and only the chips stay put. */
 
     .appbar {
-        position: static;
         padding: 10px 14px;
         gap: 10px;
     }
 
     .version {
         display: none;
-    }
-
-    .chapterNav {
-        top: 0;
     }
 
     .chapterNavInner {

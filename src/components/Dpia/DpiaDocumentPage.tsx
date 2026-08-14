@@ -12,23 +12,35 @@
  * Porting them into `children` (one component per chapter, evidence dialogs
  * included) is the documented follow-up; the shell already accepts them.
  */
-import { useState } from 'react';
-import type { ReactNode } from 'react';
+import { useRef, useState } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { DpiaIcon } from './DpiaIcon';
 import {
     CHAPTERS,
     COUNSELLING_TYPES,
     INHERITANCE_STEPS,
-    KEY_FIGURES,
     MATRIX_COLUMNS,
     MATRIX_ROWS,
     NORMS,
     PRESET_LABELS,
     ROLE_TIERS,
+    SAMPLE_KEY_FIGURES,
     TECHNICAL_MEASURES,
 } from './dpiaContent';
-import type { CompliancePreset, MatrixCell, NormCitation } from './dpiaContent';
+import type { CompliancePreset, KeyFigure, MatrixCell, NormCitation } from './dpiaContent';
 import styles from './styles.module.scss';
+
+/** Values in render order; drives both the segmented switch and its roving tabIndex. */
+const PRESET_VALUES: CompliancePreset[] = ['kdg', 'dsgvo'];
+
+/**
+ * Chapters actually rendered as `<section>`s below (children ported in later
+ * are not covered here — see the class doc comment). Keep this in sync with
+ * the `id`s used on the `<section>` elements in this file: chip links only
+ * point at chapters listed here so keyboard/AT users never land on a dead
+ * fragment for `kap1`, `kap2`, or `kap6`–`kap11`.
+ */
+const AVAILABLE_CHAPTER_IDS = new Set(['kap3', 'kap4', 'kap5']);
 
 const TIER_CLASS: Record<number, string> = {
     1: '',
@@ -86,6 +98,16 @@ export interface DpiaDocumentPageProps {
     initialPreset?: CompliancePreset;
     /** Whether the ochre internal annotations start visible. */
     initialShowInternalNotes?: boolean;
+    /**
+     * Chapter-3 key figures. Defaults to `SAMPLE_KEY_FIGURES`, which are
+     * shown with an explicit "Beispieldaten" label. Pass the real, versioned
+     * numbers here once they exist (ORISO-Admin #735) — that data source is
+     * not wired up yet, this prop is only the seam for it — and set
+     * `keyFiguresAreSample={false}` so the sample labelling is dropped.
+     */
+    keyFigures?: KeyFigure[];
+    /** Whether `keyFigures` must be labelled as sample data. Defaults to `true`. */
+    keyFiguresAreSample?: boolean;
     /** Verified chapter content, rendered below the overview sections. */
     children?: ReactNode;
 }
@@ -98,10 +120,30 @@ export const DpiaDocumentPage = ({
     nextReviewDate = '14.08.2027',
     initialPreset = 'kdg',
     initialShowInternalNotes = false,
+    keyFigures = SAMPLE_KEY_FIGURES,
+    keyFiguresAreSample = true,
     children,
 }: DpiaDocumentPageProps) => {
     const [preset, setPreset] = useState<CompliancePreset>(initialPreset);
     const [showInternalNotes, setShowInternalNotes] = useState(initialShowInternalNotes);
+    const segmentRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+    const handlePresetKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+        let nextIndex: number | null = null;
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+            nextIndex = (index + 1) % PRESET_VALUES.length;
+        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+            nextIndex = (index - 1 + PRESET_VALUES.length) % PRESET_VALUES.length;
+        } else if (event.key === 'Home') {
+            nextIndex = 0;
+        } else if (event.key === 'End') {
+            nextIndex = PRESET_VALUES.length - 1;
+        }
+        if (nextIndex === null) return;
+        event.preventDefault();
+        setPreset(PRESET_VALUES[nextIndex]);
+        segmentRefs.current[nextIndex]?.focus();
+    };
 
     return (
         <div className={styles.page}>
@@ -120,14 +162,19 @@ export const DpiaDocumentPage = ({
 
                 <div className={styles.tools}>
                     <div className={styles.segmented} role="radiogroup" aria-label="Compliance-Preset">
-                        {(['kdg', 'dsgvo'] as const).map((value) => (
+                        {PRESET_VALUES.map((value, index) => (
                             <button
                                 key={value}
+                                ref={(el) => {
+                                    segmentRefs.current[index] = el;
+                                }}
                                 type="button"
                                 role="radio"
                                 aria-checked={preset === value}
+                                tabIndex={preset === value ? 0 : -1}
                                 className={cx(styles.segment, preset === value && styles.segmentActive)}
                                 onClick={() => setPreset(value)}
+                                onKeyDown={(event) => handlePresetKeyDown(event, index)}
                             >
                                 {value === 'kdg' ? 'KDG' : 'DSGVO'}
                             </button>
@@ -178,11 +225,22 @@ export const DpiaDocumentPage = ({
 
             <nav className={styles.chapterNav} aria-label="Kapitel">
                 <div className={styles.chapterNavInner}>
-                    {CHAPTERS.map((chapter, index) => (
-                        <a key={chapter.id} href={`#${chapter.id}`} className={styles.chip}>
-                            {index + 1} {chapter.label}
-                        </a>
-                    ))}
+                    {CHAPTERS.map((chapter, index) =>
+                        AVAILABLE_CHAPTER_IDS.has(chapter.id) ? (
+                            <a key={chapter.id} href={`#${chapter.id}`} className={styles.chip}>
+                                {index + 1} {chapter.label}
+                            </a>
+                        ) : (
+                            <span
+                                key={chapter.id}
+                                className={cx(styles.chip, styles.chipDisabled)}
+                                aria-disabled="true"
+                                title="Kapitel noch nicht in dieser Ansicht verfügbar"
+                            >
+                                {index + 1} {chapter.label}
+                            </span>
+                        ),
+                    )}
                 </div>
             </nav>
 
@@ -195,8 +253,9 @@ export const DpiaDocumentPage = ({
                         Leistungsspektrum umfasst Nachrichten und Dateien, Sprachnachrichten, Gruppenchats,
                         Video-Beratung und einen anonymen Live-Einzelchat.
                     </p>
+                    {keyFiguresAreSample && <span className={styles.sampleBadge}>Beispieldaten</span>}
                     <div className={styles.figures}>
-                        {KEY_FIGURES.map((figure) => (
+                        {keyFigures.map((figure) => (
                             <div key={figure.label} className={styles.figure}>
                                 <div className={styles.figureValue}>{figure.value}</div>
                                 <div className={styles.figureLabel}>{figure.label}</div>
@@ -204,8 +263,12 @@ export const DpiaDocumentPage = ({
                         ))}
                     </div>
                     <p className={styles.footnote}>
-                        Werte werden bei jedem Release aus der aggregierten, anonymen Plattform-Statistik übernommen —
-                        keine Fall- oder Personendaten.
+                        {keyFiguresAreSample
+                            ? 'Beispielwerte für die Vorschau, keine echten Betriebszahlen. In der produktiven ' +
+                              'Fassung werden hier die aggregierten, anonymen Plattform-Statistiken der DSFA-' +
+                              'Stammdaten (Admin#735) angezeigt — nie Fall- oder Personendaten.'
+                            : 'Werte werden bei jedem Release aus der aggregierten, anonymen Plattform-Statistik ' +
+                              'übernommen — keine Fall- oder Personendaten.'}
                     </p>
                 </section>
 
@@ -237,7 +300,9 @@ export const DpiaDocumentPage = ({
                                             {realmRole}
                                         </span>
                                     ))}
-                                    {role.mfaMandatory && <span className={styles.mfaFlag}>2FA Pflicht</span>}
+                                    {role.mfaMandatory && (
+                                        <span className={styles.mfaFlag}>2FA erforderlich, Aufschub möglich</span>
+                                    )}
                                 </div>
                             </div>
                         ))}
