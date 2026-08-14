@@ -110,7 +110,10 @@ export const TemplateSplitButton = ({
             label={active?.name ?? t('placeholderTemplate.template.none', 'Vorlage wählen')}
             menu={menu}
             menuLabel={t('placeholderTemplate.template.menuLabel', 'Vorlagenmenü öffnen')}
-            variant="tonal"
+            // Outlined at rest (#741, owner call on PR #727): the previous light
+            // fill was the sheet's Elevated colourway — a state claim the resting
+            // picker has no business making. It lifts only while its menu is open.
+            variant="outlined"
             onClick={onMainClick}
         />
     );

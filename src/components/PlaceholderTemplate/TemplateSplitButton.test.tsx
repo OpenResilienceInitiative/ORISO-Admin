@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TemplateSplitButton } from './TemplateSplitButton';
+import splitButtonStyles from '../GlobalSearch/splitButton.module.scss';
 
 const t = (key: string, fallback?: string) => fallback ?? key;
 
@@ -78,5 +79,18 @@ describe('TemplateSplitButton', () => {
         await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
         await screen.findByRole('menuitem', { name: /^Standard-Einladung$/ });
         expect(screen.queryByRole('menuitem', { name: /Neu aus/ })).not.toBeInTheDocument();
+    });
+
+    /*
+     * ORISO-Admin#741, owner feedback on PR #727: "Das ist nur ein Elevated
+     * state, der hier falsch ist." The picker rests as a plain outlined pill —
+     * elevation (and the elevated colourway) is reserved for the open state /
+     * the explicit elevated variant.
+     */
+    it('rests outlined, never in the elevated colourway (#741)', () => {
+        render(<TemplateSplitButton activeTemplateId={1} templates={templates} onSelectTemplate={() => {}} />);
+        const rootClasses = screen.getByRole('button', { name: /Standard-Einladung/ }).parentElement?.classList;
+        expect(rootClasses?.contains(splitButtonStyles.outlined)).toBe(true);
+        expect(rootClasses?.contains(splitButtonStyles.elevated)).toBe(false);
     });
 });
