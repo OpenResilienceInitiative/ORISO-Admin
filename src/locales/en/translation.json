@@ -133,7 +133,7 @@
     "dpaForward.mail.body": "Hello {{recipientName}},\n\nthe online counselling platform is being set up for your organisation. For that, the data processing agreement (DPA) must be signed by an authorised person.\n\nVia the following link you can review the contract and sign it directly online — no account is required:\n\n{{link}}\n\nThe link stays valid until the contract is signed.",
     "dpaPending.title": "Awaiting signature",
     "dpaPending.description": "The data processing agreement (DPA) was forwarded to an authorised signatory and is awaiting the signature.",
-    "dpaPending.expired": "The previous signing link has expired. Using “Send e-mail” or “Copy link” automatically creates a fresh valid link.",
+    "dpaPending.expired": "The previous signing link has expired. Using “Send e-mail” automatically creates a fresh valid link — you can copy it again from there.",
     "dpaPending.gatedNote": "Until the signature arrives, legally gated functionality stays disabled — everything else is already available.",
     "dpaPending.resend": "Send e-mail",
     "dpaPending.later": "Later",

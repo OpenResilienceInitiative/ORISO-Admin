@@ -128,7 +128,7 @@
     "dpaForward.mail.body": "Guten Tag {{recipientName}},\n\nfür Ihre Organisation soll die Online-Beratungsplattform eingerichtet werden. Dafür muss der Auftragsverarbeitungsvertrag (AVV) von einer unterschriftsberechtigten Person unterzeichnet werden.\n\nÜber den folgenden Link können Sie den Vertrag prüfen und direkt online unterzeichnen — ein Konto ist dafür nicht erforderlich:\n\n{{link}}\n\nDer Link bleibt gültig, bis der Vertrag unterzeichnet ist.",
     "dpaPending.title": "Wartet auf Unterschrift",
     "dpaPending.description": "Der Auftragsverarbeitungsvertrag (AVV) wurde an eine unterschriftsberechtigte Person weitergeleitet und wartet auf die Unterschrift.",
-    "dpaPending.expired": "Der bisherige Signaturlink ist abgelaufen. Über „E-Mail senden“ oder „Link kopieren“ wird automatisch ein neuer gültiger Link erstellt.",
+    "dpaPending.expired": "Der bisherige Signaturlink ist abgelaufen. Über „E-Mail senden“ wird automatisch ein neuer gültiger Link erstellt — dort können Sie ihn auch wieder kopieren.",
     "dpaPending.gatedNote": "Bis die Unterschrift eingeht, bleiben rechtlich gesperrte Funktionen deaktiviert — alle übrigen Bereiche können Sie bereits nutzen.",
     "dpaPending.resend": "E-Mail senden",
     "dpaPending.later": "Später",
