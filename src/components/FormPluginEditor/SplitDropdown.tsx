@@ -12,6 +12,7 @@ export type SplitDropdownProps = {
     /**
      * Read-only surfaces keep the control visible but inert (admin design rule:
      * disable, never hide — a picker that vanishes hides what the level offers).
+     * Also blocks opening the menu while a save that a switch could race is in flight.
      */
     disabled?: boolean;
 };

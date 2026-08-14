@@ -148,6 +148,10 @@ export const DpiaTextEditor = ({
                         value={sectionId}
                         onChange={requestSection}
                         filledSectionIds={filledSectionIds}
+                        // A save's payload is fixed the moment it fires; switching chapters (and
+                        // possibly discarding what's about to be persisted) can't stop it, so
+                        // switching is blocked until the in-flight save settles.
+                        disabled={saving}
                     />
                 }
                 helpSlot={
@@ -180,7 +184,7 @@ export const DpiaTextEditor = ({
                                 <Button key="cancel" onClick={closeGuard}>
                                     {t('dpia.editor.guard.cancel')}
                                 </Button>,
-                                <Button key="discard" danger onClick={discardAndSwitch}>
+                                <Button key="discard" danger disabled={saving} onClick={discardAndSwitch}>
                                     {t('dpia.editor.guard.discard')}
                                 </Button>,
                                 <Button key="save" type="primary" loading={saving} onClick={saveAndSwitch}>

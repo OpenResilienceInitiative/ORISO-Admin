@@ -65,6 +65,9 @@ const createControllableGateway = () => {
         docs,
         releaseSave: (tenantId: number, callIndex: number, doc: DpiaTextDocument) =>
             releasers[tenantId][callIndex](doc),
+        /** How many `save` calls the gateway has actually received for this tenant so far —
+         * used to prove a second save was NOT dispatched while the first was still pending. */
+        dispatchedCount: (tenantId: number) => (releasers[tenantId] ?? []).length,
     };
 };
 
@@ -94,34 +97,56 @@ describe('DpiaTextEditorContainer tenant-switch save race', () => {
         expect(screen.queryByText('dpia.editor.saveError')).not.toBeInTheDocument();
     });
 
-    it('ignores an older overlapping save for the SAME tenant that resolves after a newer one', async () => {
+    it('serializes overlapping saves: a second save is never dispatched while the first is pending', async () => {
         const user = userEvent.setup();
-        const { gateway, releaseSave } = createControllableGateway();
+        const { gateway, releaseSave, dispatchedCount } = createControllableGateway();
 
         render(<DpiaTextEditorContainer tenantId={1} gateway={gateway} />);
 
         await screen.findByTestId('editor');
         // Deliberately no 'edit' click: DpiaTextEditor's own `edits` session state is never
         // cleared by a successful save, so an edited section would keep echoing the LOCAL edit
-        // regardless of which save result the container applied, masking exactly the race this
-        // test exists to catch. Saving without editing isolates the container's own guard.
-        //
-        // Fire two overlapping draft saves for the same tenant (e.g. a retry click racing the
-        // original request — the M3 shell disables the button while saving, but the container
-        // must not rely on that alone).
+        // regardless of which save result the container applied, masking exactly what this test
+        // checks. Saving without editing isolates the container's own guard.
         await user.click(screen.getByRole('button', { name: 'saveDraft' }));
+        expect(dispatchedCount(1)).toBe(1);
+
+        // A second click while the first is still in flight must NOT reach the gateway yet — a
+        // second concurrent REQUEST is exactly what could persist out of order at the backend,
+        // regardless of which RESPONSE the container later chooses to apply.
         await user.click(screen.getByRole('button', { name: 'saveDraft' }));
+        expect(dispatchedCount(1)).toBe(1);
 
-        // The NEWER (second) save resolves first...
-        releaseSave(1, 1, { texts: { governance: '<p>NEWER-RESULT</p>' }, statusBySection: {} });
-        await waitFor(() => expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>NEWER-RESULT</p>'));
+        // The first request settles, but its result must be discarded rather than briefly shown:
+        // a newer save was already requested before this one settled, so it is stale the moment
+        // it resolves.
+        releaseSave(1, 0, { texts: { governance: '<p>FIRST-RESULT</p>' }, statusBySection: {} });
+        await waitFor(() => expect(dispatchedCount(1)).toBe(2)); // only now does the queued follow-up dispatch
+        expect(screen.getByTestId('editor')).not.toHaveAttribute('data-value', '<p>FIRST-RESULT</p>');
 
-        // ...then the OLDER (first) save resolves last. Its result must be discarded, not applied
-        // over the newer one.
-        releaseSave(1, 0, { texts: { governance: '<p>STALE-OLDER-RESULT</p>' }, statusBySection: {} });
-        await new Promise<void>((resolve) => {
-            setTimeout(resolve, 0);
-        });
-        expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>NEWER-RESULT</p>');
+        // The queued follow-up (the admin's actual latest intent) settles and is what finally
+        // reaches the screen.
+        releaseSave(1, 1, { texts: { governance: '<p>SECOND-RESULT</p>' }, statusBySection: {} });
+        await waitFor(() => expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>SECOND-RESULT</p>'));
+    });
+
+    it('blocks the chapter selector while a save is in flight, so its in-progress text cannot be discarded mid-save', async () => {
+        const user = userEvent.setup();
+        const { gateway, releaseSave } = createControllableGateway();
+
+        render(<DpiaTextEditorContainer tenantId={1} gateway={gateway} />);
+
+        await screen.findByTestId('editor');
+        const chapterSelect = screen.getByRole('button', { name: 'dpia.sections.choose' });
+        expect(chapterSelect).toBeEnabled();
+
+        await user.click(screen.getByRole('button', { name: 'saveDraft' }));
+        // A save's payload is fixed the moment it fires; switching chapters (and discarding
+        // whatever the guard would otherwise offer to drop) cannot stop it from being persisted,
+        // so the switch itself is blocked until the save settles.
+        expect(chapterSelect).toBeDisabled();
+
+        releaseSave(1, 0, { texts: { governance: '<p>saved</p>' }, statusBySection: {} });
+        await waitFor(() => expect(chapterSelect).toBeEnabled());
     });
 });

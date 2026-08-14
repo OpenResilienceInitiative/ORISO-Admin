@@ -11,6 +11,14 @@ interface DpiaSectionSelectProps {
     onChange: (sectionId: string) => void;
     /** Marks sections that already carry text, so an admin sees what is still missing. */
     filledSectionIds?: string[];
+    /**
+     * Blocks switching chapters — e.g. while a save is in flight. A save's payload is captured
+     * at the moment it fires; switching chapters (and possibly discarding the just-saved edit)
+     * while it is still pending cannot stop it from landing, so the switch itself is blocked
+     * until it settles instead of letting the admin discard something a request is about to
+     * persist anyway.
+     */
+    disabled?: boolean;
 }
 
 /**
@@ -24,7 +32,7 @@ interface DpiaSectionSelectProps {
  * Switching only *requests* the change — the editor owns the unsaved-changes guard, because only
  * it knows whether the current draft differs from what was loaded.
  */
-export const DpiaSectionSelect = ({ value, onChange, filledSectionIds = [] }: DpiaSectionSelectProps) => {
+export const DpiaSectionSelect = ({ value, onChange, filledSectionIds = [], disabled }: DpiaSectionSelectProps) => {
     const { t } = useTranslation();
     const selected = findDpiaSection(value);
     const filled = new Set(filledSectionIds);
@@ -63,6 +71,7 @@ export const DpiaSectionSelect = ({ value, onChange, filledSectionIds = [] }: Dp
             icon={<MenuBook />}
             label={selected ? label(selected.id, selected.chapter, selected.titleKey) : t('dpia.sections.choose')}
             title={t('dpia.sections.choose')}
+            disabled={disabled}
             menu={{
                 selectable: true,
                 selectedKeys: [value],

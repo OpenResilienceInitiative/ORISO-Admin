@@ -38,16 +38,50 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
     // tenant-B switch, or two retry clicks in a row — is discarded instead of overwriting state.
     const loadToken = useRef(0);
     // Bumped on a tenant switch (the reset effect below) AND on every save call (handleSave).
-    // Guards a save's completion the same way loadToken guards a load's: without the tenant-switch
-    // bump, a save started on tenant A that resolves after the admin has switched to tenant B
-    // would apply A's result (or A's error/saving flags) to B's now-mounted editor, and a
-    // follow-up save from B could submit A's stale texts under B's id. Without the per-save bump,
-    // two overlapping saves for the SAME tenant (e.g. a retry fired while the original request is
-    // still in flight) could still race: if the OLDER request resolves LAST, it would overwrite
-    // the newer one's result. The M3 editor shell also disables its draft button while `saving`
-    // is true, but this ref is the actual guarantee — the disabled button is only the first line
-    // of defense.
+    // Guards which save's outcome may still update UI state: without the tenant-switch bump, a
+    // save started on tenant A that resolves after the admin has switched to tenant B would apply
+    // A's result (or A's error/saving flags) to B's now-mounted editor.
     const saveGuard = useRef(0);
+    // The currently in-flight save request, if any. `handleSave` queues onto this instead of
+    // firing a new network call immediately, so there is NEVER more than one save request in
+    // flight at once — the guard above only protects which RESPONSE gets applied to state, but a
+    // second concurrent REQUEST could still physically persist to the backend AFTER an earlier
+    // one, corrupting what's actually stored regardless of what the UI shows. Serializing
+    // requests makes that structurally impossible instead of detecting it after the fact.
+    const activeSave = useRef<Promise<void> | null>(null);
+    // The most recently requested save, kept only until the active one settles. A second
+    // handleSave call while one is in flight REPLACES this (not appended), so a burst of clicks
+    // collapses to a single follow-up request carrying the latest content instead of a growing
+    // backlog of stale saves. Carries its OWN id/gateway snapshot (not the outer closure's) so a
+    // queued call started for one tenant still targets that tenant correctly even if the admin
+    // has since switched away and `id`/`resolvedGateway` have moved on.
+    const queuedSave = useRef<{
+        id: number;
+        gateway: DpiaTextGateway;
+        texts: DpiaTextMap;
+        publish: boolean;
+        guard: number;
+    } | null>(null);
+
+    const runQueuedSave = () => {
+        if (activeSave.current) return; // already running; it will call this again when it settles
+        const call = queuedSave.current;
+        if (!call) return;
+        queuedSave.current = null;
+        activeSave.current = call.gateway
+            .save(call.id, call.texts, call.publish)
+            .then((next) => {
+                if (saveGuard.current === call.guard) setDocument(next);
+            })
+            .catch(() => {
+                if (saveGuard.current === call.guard) setSaveFailed(true);
+            })
+            .finally(() => {
+                if (saveGuard.current === call.guard) setSaving(false);
+                activeSave.current = null;
+                runQueuedSave();
+            });
+    };
 
     const load = useCallback(() => {
         // An id that cannot resolve to a tenant is a failed load, not an eternal skeleton: the
@@ -88,22 +122,15 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
             lastSaveAttempt.current = { texts, publish };
             setSaving(true);
             setSaveFailed(false);
-            // Bumping here (not just on tenant switch) means an OLDER overlapping save's guard
-            // can never match again once a NEWER save (or a tenant switch) has started, so only
-            // the most recent request's outcome is ever applied.
+            // Bumping here (not just on tenant switch) means an OLDER save's guard can never
+            // match again once a NEWER save (or a tenant switch) has started, so only the most
+            // recent request's outcome is ever applied to UI state.
             saveGuard.current += 1;
-            const guard = saveGuard.current;
-            resolvedGateway
-                .save(id, texts, publish)
-                .then((next) => {
-                    if (saveGuard.current === guard) setDocument(next);
-                })
-                .catch(() => {
-                    if (saveGuard.current === guard) setSaveFailed(true);
-                })
-                .finally(() => {
-                    if (saveGuard.current === guard) setSaving(false);
-                });
+            // Queue instead of firing immediately: if a save is already active, this REPLACES
+            // whatever was previously queued (so a burst of clicks becomes one follow-up request,
+            // not a growing pile) and runs only once the active one settles — see runQueuedSave.
+            queuedSave.current = { id, gateway: resolvedGateway, texts, publish, guard: saveGuard.current };
+            runQueuedSave();
         },
         [id, resolvedGateway],
     );
