@@ -504,6 +504,15 @@ describe('LegalText — local draft', () => {
         expect(screen.queryByTestId('m3-editor')).not.toBeInTheDocument();
     });
 
+    it('shows the published text to a viewer without edit permission while the user id loads', () => {
+        mocks.canEdit = false;
+        mocks.userLoading = true;
+        renderImprint();
+        // No edit permission means no draft, so the published text must not wait on a
+        // query it does not need.
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>');
+    });
+
     it('offers no draft action when the user id could not be loaded at all', () => {
         mocks.userId = undefined;
         renderImprint();

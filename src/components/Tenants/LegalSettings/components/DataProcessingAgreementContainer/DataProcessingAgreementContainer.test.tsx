@@ -437,6 +437,17 @@ describe('DataProcessingAgreementContainer — draft scope readiness', () => {
         expect(screen.queryByTestId('card')).not.toBeInTheDocument();
     });
 
+    it('shows the published contract to a read-only viewer while the user id loads', () => {
+        useDpaVersions.mockReturnValue({
+            data: [{ activationDate: '2026-07-01T10:00:00', content: '{"de":"<p>DE</p>"}' }],
+        });
+        useUserData.mockReturnValue({ data: undefined, isLoading: true });
+        render(<DataProcessingAgreementContainer tenantId={1} readOnly />);
+        // A read-only viewer never gets a draft, so nothing about it should make them
+        // wait on /users/data before seeing the published contract.
+        expect(screen.getByTestId('card')).toHaveAttribute('data-read-only', 'true');
+    });
+
     it('shows the card without a draft action when the user id never arrives', () => {
         useDpaVersions.mockReturnValue({
             data: [{ activationDate: '2026-07-01T10:00:00', content: '{"de":"<p>DE</p>"}' }],

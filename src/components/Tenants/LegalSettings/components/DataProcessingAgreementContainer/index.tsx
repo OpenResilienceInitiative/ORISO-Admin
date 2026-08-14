@@ -149,16 +149,17 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
         });
     };
 
-    // A failed version load must not masquerade as "no versions yet": editing a
-    // legal text on an unknown current state could silently overwrite it, so we
-    // withhold the editor and offer a retry instead.
-    // Same reason as LegalText: the draft scope needs the opaque user id, and a card
-    // mounted before it arrives would be remounted the moment the draft loads —
-    // throwing away anything typed in between.
-    if (isUserLoading) {
+    // The draft scope needs the opaque user id, and an EDITABLE card mounted before it
+    // arrives would be remounted the moment the draft hydrates — throwing away anything
+    // typed in between. A read-only viewer never gets a draft, so withholding the
+    // published contract from them behind an unrelated query would be a regression.
+    if (isUserLoading && !effectiveReadOnly) {
         return <Spin />;
     }
 
+    // A failed version load must not masquerade as "no versions yet": editing a
+    // legal text on an unknown current state could silently overwrite it, so we
+    // withhold the editor and offer a retry instead.
     if (versionsError) {
         return (
             <Alert

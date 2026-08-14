@@ -209,10 +209,11 @@ export const LegalText = ({
 
     const onSaveDraft = useCallback(() => saveDraft({ ...contentByLanguage }), [contentByLanguage, saveDraft]);
 
-    // Wait for the opaque user id too: mounting the editor first and letting the draft
-    // arrive later would remount it mid-edit and offer a save action that silently
-    // does nothing while the scope is still unknown.
-    if (isLoading || isUserLoading) {
+    // Wait for the opaque user id too, but only where a draft is possible: mounting the
+    // editor first and letting the draft arrive later would remount it mid-edit and offer
+    // a save action that silently does nothing. A viewer without edit permission has no
+    // draft, so the published text must not wait on that query.
+    if (isLoading || (isUserLoading && canEditLegalText)) {
         return (
             <div className={styles.card}>
                 <Spin />
