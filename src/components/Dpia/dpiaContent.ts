@@ -50,8 +50,11 @@ export const ROLE_TIERS: RoleTier[] = [
         name: 'Plattform-Admin',
         description:
             'Betreibt die Plattform, legt Träger an und pflegt die Rechtstext-Vorlagen der ' +
-            'Plattform-Ebene. Kann Chat-Inhalte technisch nicht einsehen.',
-        realmRoles: ['user-admin'],
+            'Plattform-Ebene. Technisch keine eigene Rolle, sondern dieselben zwei Rollen wie ' +
+            'die Träger- und Beratungsstellen-Ebene darunter (agency-admin + tenant-admin), ' +
+            'nur mit der Mandanten-ID 0 statt an einen einzelnen Träger gebunden ' +
+            '(useUserRoles.hook.ts: isSuperAdmin). Kann Chat-Inhalte technisch nicht einsehen.',
+        realmRoles: ['agency-admin', 'tenant-admin'],
         mfaMandatory: true,
     },
     {

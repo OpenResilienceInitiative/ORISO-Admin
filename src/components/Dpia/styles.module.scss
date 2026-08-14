@@ -278,7 +278,9 @@
 .chapterNav {
     position: sticky;
     z-index: 20;
-    top: 61px;
+    // Set from the app bar's actual rendered height (see the ResizeObserver effect in
+    // DpiaDocumentPage.tsx); 61px is only the pre-JS/no-JS fallback.
+    top: var(--dpia-appbar-height, 61px);
     border-bottom: 1px solid var(--dpia-hair);
     margin-top: 24px;
     background: var(--m3-surface-container-lowest, #ffffff);

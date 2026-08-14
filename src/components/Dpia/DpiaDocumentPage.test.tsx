@@ -62,11 +62,43 @@ describe('DpiaDocumentPage', () => {
         expect(screen.getByText(/Scope/)).toHaveAttribute('aria-disabled', 'true');
     });
 
-    it('labels the default key figures as sample data and can accept real, non-sample figures', () => {
+    it('labels the default key figures as sample data and drops the label once real figures are supplied', () => {
         const { rerender } = render(<DpiaDocumentPage />);
         expect(screen.getByText('Beispieldaten')).toBeInTheDocument();
 
-        rerender(<DpiaDocumentPage keyFigures={[{ value: '1', label: 'Träger' }]} keyFiguresAreSample={false} />);
+        rerender(<DpiaDocumentPage keyFigures={[{ value: '1', label: 'Träger' }]} />);
         expect(screen.queryByText('Beispieldaten')).not.toBeInTheDocument();
+        expect(screen.getByText('1')).toBeInTheDocument();
+    });
+
+    it('documents the platform-admin tier as the agency-admin + tenant-admin composite, not user-admin', () => {
+        render(<DpiaDocumentPage />);
+
+        // useUserRoles.hook.ts: isSuperAdmin = hasRole(AgencyAdmin) && hasRole(TenantAdmin) &&
+        // tenantId === 0. user-admin alone cannot create tenants. Both role tags are shared with
+        // the tenant-admin/agency-admin tiers below (same two Keycloak roles, different scope),
+        // so assert presence rather than a single match.
+        expect(screen.getAllByText('agency-admin').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('tenant-admin').length).toBeGreaterThan(0);
+        expect(screen.queryByText('user-admin')).not.toBeInTheDocument();
+    });
+
+    it("sets the chapter-nav sticky offset from the app bar's actual measured height", () => {
+        const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight');
+        Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+            configurable: true,
+            // Simulates a wrapped, two-line app bar taller than the 61px fallback.
+            get: () => 96,
+        });
+
+        try {
+            const { container } = render(<DpiaDocumentPage />);
+            const page = container.firstChild as HTMLElement;
+            expect(page.style.getPropertyValue('--dpia-appbar-height')).toBe('96px');
+        } finally {
+            if (originalOffsetHeight) {
+                Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight);
+            }
+        }
     });
 });

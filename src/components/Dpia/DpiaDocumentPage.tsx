@@ -12,7 +12,7 @@
  * Porting them into `children` (one component per chapter, evidence dialogs
  * included) is the documented follow-up; the shell already accepts them.
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { DpiaIcon } from './DpiaIcon';
 import {
@@ -99,15 +99,15 @@ export interface DpiaDocumentPageProps {
     /** Whether the ochre internal annotations start visible. */
     initialShowInternalNotes?: boolean;
     /**
-     * Chapter-3 key figures. Defaults to `SAMPLE_KEY_FIGURES`, which are
-     * shown with an explicit "Beispieldaten" label. Pass the real, versioned
-     * numbers here once they exist (ORISO-Admin #735) — that data source is
-     * not wired up yet, this prop is only the seam for it — and set
-     * `keyFiguresAreSample={false}` so the sample labelling is dropped.
+     * Chapter-3 key figures. Omitted (the default) renders `SAMPLE_KEY_FIGURES` with an
+     * explicit "Beispieldaten" label. Passing a value is itself what turns the label off —
+     * there is deliberately no separate "is this real" flag: a caller could set that
+     * independently to `false` while still leaving the placeholder numbers in place, which is
+     * exactly the fabricated-statistics failure this component exists to prevent. Pass the
+     * real, versioned numbers here once they exist (ORISO-Admin #735) — that data source is not
+     * wired up yet, this prop is only the seam for it.
      */
     keyFigures?: KeyFigure[];
-    /** Whether `keyFigures` must be labelled as sample data. Defaults to `true`. */
-    keyFiguresAreSample?: boolean;
     /** Verified chapter content, rendered below the overview sections. */
     children?: ReactNode;
 }
@@ -120,13 +120,43 @@ export const DpiaDocumentPage = ({
     nextReviewDate = '14.08.2027',
     initialPreset = 'kdg',
     initialShowInternalNotes = false,
-    keyFigures = SAMPLE_KEY_FIGURES,
-    keyFiguresAreSample = true,
+    keyFigures,
     children,
 }: DpiaDocumentPageProps) => {
+    // Whether the label shows is derived from whether a caller supplied figures at all, not
+    // from an independent flag — see the keyFigures doc comment above.
+    const keyFiguresAreSample = keyFigures === undefined;
+    const resolvedKeyFigures = keyFigures ?? SAMPLE_KEY_FIGURES;
     const [preset, setPreset] = useState<CompliancePreset>(initialPreset);
     const [showInternalNotes, setShowInternalNotes] = useState(initialShowInternalNotes);
     const segmentRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const pageRef = useRef<HTMLDivElement>(null);
+    const appbarRef = useRef<HTMLElement>(null);
+
+    // .chapterNav's sticky offset must equal the app bar's ACTUAL rendered height, not a fixed
+    // 61px: .appbar has `flex-wrap: wrap`, and a long operatorName (translated labels, a
+    // narrower-than-authored viewport) can push it to wrap onto a second line even above the
+    // 1024px breakpoint that drops both to non-sticky. Measuring instead of guessing means the
+    // chapter nav can never be covered, regardless of why the app bar got taller.
+    useEffect(() => {
+        const appbar = appbarRef.current;
+        const page = pageRef.current;
+        if (!appbar || !page) return undefined;
+
+        const updateHeight = () => {
+            page.style.setProperty('--dpia-appbar-height', `${appbar.offsetHeight}px`);
+        };
+        updateHeight();
+
+        const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateHeight) : undefined;
+        resizeObserver?.observe(appbar);
+        window.addEventListener('resize', updateHeight);
+
+        return () => {
+            resizeObserver?.disconnect();
+            window.removeEventListener('resize', updateHeight);
+        };
+    }, []);
 
     const handlePresetKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
         let nextIndex: number | null = null;
@@ -146,8 +176,8 @@ export const DpiaDocumentPage = ({
     };
 
     return (
-        <div className={styles.page}>
-            <header className={styles.appbar}>
+        <div className={styles.page} ref={pageRef}>
+            <header className={styles.appbar} ref={appbarRef}>
                 <div className={styles.brand}>
                     <span className={styles.logoSlot} aria-hidden="true">
                         Logo
@@ -255,7 +285,7 @@ export const DpiaDocumentPage = ({
                     </p>
                     {keyFiguresAreSample && <span className={styles.sampleBadge}>Beispieldaten</span>}
                     <div className={styles.figures}>
-                        {keyFigures.map((figure) => (
+                        {resolvedKeyFigures.map((figure) => (
                             <div key={figure.label} className={styles.figure}>
                                 <div className={styles.figureValue}>{figure.value}</div>
                                 <div className={styles.figureLabel}>{figure.label}</div>
