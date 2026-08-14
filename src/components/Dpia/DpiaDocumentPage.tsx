@@ -132,29 +132,34 @@ export const DpiaDocumentPage = ({
     const segmentRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const pageRef = useRef<HTMLDivElement>(null);
     const appbarRef = useRef<HTMLElement>(null);
+    const chapterNavRef = useRef<HTMLElement>(null);
 
-    // .chapterNav's sticky offset must equal the app bar's ACTUAL rendered height, not a fixed
-    // 61px: .appbar has `flex-wrap: wrap`, and a long operatorName (translated labels, a
-    // narrower-than-authored viewport) can push it to wrap onto a second line even above the
-    // 1024px breakpoint that drops both to non-sticky. Measuring instead of guessing means the
-    // chapter nav can never be covered, regardless of why the app bar got taller.
+    // .chapterNav's sticky offset, and every .section's scroll-margin-top, must equal the app
+    // bar's and nav's ACTUAL rendered heights, not fixed guesses: .appbar has `flex-wrap: wrap`,
+    // and a long operatorName (translated labels, a narrower-than-authored viewport) can push it
+    // to wrap onto a second line even above the 1024px breakpoint that drops both to non-sticky.
+    // Measuring instead of guessing means the chapter nav — and a chapter's own heading, when
+    // jumped to via an anchor — can never end up covered, regardless of why the app bar grew.
     useEffect(() => {
         const appbar = appbarRef.current;
+        const chapterNav = chapterNavRef.current;
         const page = pageRef.current;
-        if (!appbar || !page) return undefined;
+        if (!appbar || !chapterNav || !page) return undefined;
 
-        const updateHeight = () => {
+        const updateHeights = () => {
             page.style.setProperty('--dpia-appbar-height', `${appbar.offsetHeight}px`);
+            page.style.setProperty('--dpia-chapternav-height', `${chapterNav.offsetHeight}px`);
         };
-        updateHeight();
+        updateHeights();
 
-        const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateHeight) : undefined;
+        const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateHeights) : undefined;
         resizeObserver?.observe(appbar);
-        window.addEventListener('resize', updateHeight);
+        resizeObserver?.observe(chapterNav);
+        window.addEventListener('resize', updateHeights);
 
         return () => {
             resizeObserver?.disconnect();
-            window.removeEventListener('resize', updateHeight);
+            window.removeEventListener('resize', updateHeights);
         };
     }, []);
 
@@ -253,7 +258,7 @@ export const DpiaDocumentPage = ({
                 </div>
             </div>
 
-            <nav className={styles.chapterNav} aria-label="Kapitel">
+            <nav className={styles.chapterNav} aria-label="Kapitel" ref={chapterNavRef}>
                 <div className={styles.chapterNavInner}>
                     {CHAPTERS.map((chapter, index) =>
                         AVAILABLE_CHAPTER_IDS.has(chapter.id) ? (
@@ -331,7 +336,9 @@ export const DpiaDocumentPage = ({
                                         </span>
                                     ))}
                                     {role.mfaMandatory && (
-                                        <span className={styles.mfaFlag}>2FA erforderlich, Aufschub möglich</span>
+                                        <span className={styles.mfaFlag}>
+                                            {role.mfaDeferrable ? '2FA erforderlich, Aufschub möglich' : '2FA Pflicht'}
+                                        </span>
                                     )}
                                 </div>
                             </div>

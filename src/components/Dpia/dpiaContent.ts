@@ -33,12 +33,21 @@ export interface RoleTier {
     /** Keycloak realm roles this staff tier maps onto. */
     realmRoles: string[];
     /**
-     * Whether this tier is prompted for 2FA. Not the same as non-bypassable:
-     * for platform admins, `platformAdminTwoFactorGate.ts` lets an admin pick
-     * "set up later" and reach the normal screens (`isSetupDeferred`), so the
-     * UI must say "required, deferrable", never "Pflicht"/"enforced".
+     * Whether this tier is prompted for 2FA. Not the same as non-bypassable — see
+     * `mfaDeferrable`.
      */
     mfaMandatory: boolean;
+    /**
+     * Whether setup can be deferred. TRUE only for platform admins:
+     * `platformAdminTwoFactorGate.ts` (App.tsx's `requiresPlatformAdminTwoFactor`
+     * gate) explicitly returns `false` for anyone who is not a platform admin,
+     * and lets a platform admin pick "set up later" and reach the normal
+     * screens. Tenant admins get a SEPARATE, non-skippable step
+     * (`TenantOnboarding/TwoFactorStep.tsx`, "Step 3 (#571): mandatory 2FA
+     * setup for the freshly registered tenant admin") with no deferral option
+     * at all — for them `mfaMandatory` really does mean enforced.
+     */
+    mfaDeferrable?: boolean;
 }
 
 /** Source: roles-permissions.mdx §3.3.1 – §3.3.4. */
@@ -49,13 +58,15 @@ export const ROLE_TIERS: RoleTier[] = [
         icon: 'gear',
         name: 'Plattform-Admin',
         description:
-            'Betreibt die Plattform, legt Träger an und pflegt die Rechtstext-Vorlagen der ' +
-            'Plattform-Ebene. Technisch keine eigene Rolle, sondern dieselben zwei Rollen wie ' +
-            'die Träger- und Beratungsstellen-Ebene darunter (agency-admin + tenant-admin), ' +
-            'nur mit der Mandanten-ID 0 statt an einen einzelnen Träger gebunden ' +
-            '(useUserRoles.hook.ts: isSuperAdmin). Kann Chat-Inhalte technisch nicht einsehen.',
-        realmRoles: ['agency-admin', 'tenant-admin'],
+            'Betreibt die Plattform, legt Träger an, verwaltet Beratende plattformweit und ' +
+            'pflegt die Rechtstext-Vorlagen der Plattform-Ebene. Realm-Rollen agency-admin + ' +
+            'tenant-admin mit Mandanten-ID 0 (useUserRoles.hook.ts: isSuperAdmin) identifizieren ' +
+            'die Stufe; user-admin kommt dazu, weil ausschließlich diese Rolle Beratende ' +
+            'anlegen/einladen darf (userRolesToPermissions.ts). Kann Chat-Inhalte technisch ' +
+            'nicht einsehen.',
+        realmRoles: ['agency-admin', 'tenant-admin', 'user-admin'],
         mfaMandatory: true,
+        mfaDeferrable: true,
     },
     {
         id: 'tenant-admin',
@@ -130,17 +141,13 @@ export const MATRIX_ROWS: MatrixRow[] = [
     },
     { capability: 'Löschung beim Verlassen', cells: [no, no, no, no, yes] },
     {
-        // Not "erzwungen"/enforced: `platformAdminTwoFactorGate.ts` lets a
-        // platform admin choose "set up later" and still reach the normal
-        // screens, so this must read as a soft requirement, not a hard block.
+        // The two admin cells are deliberately different: deferral is a platform-admin-only
+        // affordance (`platformAdminTwoFactorGate.ts` / App.tsx's `requiresPlatformAdminTwoFactor`
+        // returns false outright for anyone else), while tenant admins get a separate,
+        // non-skippable onboarding step (`TenantOnboarding/TwoFactorStep.tsx`, "Step 3 (#571):
+        // mandatory 2FA setup") with no deferral at all — for them "Pflicht" is a real hard block.
         capability: '2FA erforderlich',
-        cells: [
-            text('Pflicht, Aufschub möglich'),
-            text('Pflicht, Aufschub möglich'),
-            text('empfohlen'),
-            text('empfohlen'),
-            text('n/a'),
-        ],
+        cells: [text('Pflicht, Aufschub möglich'), text('Pflicht'), text('empfohlen'), text('empfohlen'), text('n/a')],
     },
 ];
 

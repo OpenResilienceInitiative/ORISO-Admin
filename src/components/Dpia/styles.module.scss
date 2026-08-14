@@ -348,7 +348,9 @@
     background: var(--m3-surface-container-lowest, #ffffff);
     border-radius: 24px;
     box-shadow: 0 3px 0 1px rgb(0 0 0 / 10%);
-    scroll-margin-top: 122px;
+    // Set from the app bar's + chapter nav's actual measured heights (same ResizeObserver effect
+    // as .chapterNav's own sticky offset); 122px is only the pre-JS/no-JS fallback.
+    scroll-margin-top: calc(var(--dpia-appbar-height, 61px) + var(--dpia-chapternav-height, 61px));
 
     h2 {
         margin: 0 0 10px;
@@ -844,6 +846,12 @@
     .chapterNav {
         top: 0;
     }
+
+    // The app bar is no longer sticky at this width, so only the (still sticky) chapter nav's
+    // own height needs to be cleared when jumping to a chapter via anchor.
+    .section {
+        scroll-margin-top: var(--dpia-chapternav-height, 61px);
+    }
 }
 
 @media (max-width: 767px) {
@@ -882,6 +890,6 @@
     .section {
         padding: 20px 16px 22px;
         border-radius: 8px;
-        scroll-margin-top: 64px;
+        // scroll-margin-top inherited from the 1024px block above (chapter-nav height only).
     }
 }

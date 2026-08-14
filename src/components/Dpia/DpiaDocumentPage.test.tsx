@@ -71,16 +71,28 @@ describe('DpiaDocumentPage', () => {
         expect(screen.getByText('1')).toBeInTheDocument();
     });
 
-    it('documents the platform-admin tier as the agency-admin + tenant-admin composite, not user-admin', () => {
+    it('documents the platform-admin tier with the full role bundle it actually needs (agency-admin + tenant-admin + user-admin)', () => {
         render(<DpiaDocumentPage />);
 
         // useUserRoles.hook.ts: isSuperAdmin = hasRole(AgencyAdmin) && hasRole(TenantAdmin) &&
-        // tenantId === 0. user-admin alone cannot create tenants. Both role tags are shared with
-        // the tenant-admin/agency-admin tiers below (same two Keycloak roles, different scope),
-        // so assert presence rather than a single match.
+        // tenantId === 0 identifies the tier, but userRolesToPermissions.ts only grants Consultant
+        // CRUD (the matrix's "Beratende anlegen / einladen") to UserRole.UserAdmin — dropping it
+        // would make that matrix cell false. agency-admin/tenant-admin tags are shared with the
+        // tenant-admin tier below (same roles, different scope), so assert presence, not a single
+        // match; user-admin is unique to the platform tier.
         expect(screen.getAllByText('agency-admin').length).toBeGreaterThan(0);
         expect(screen.getAllByText('tenant-admin').length).toBeGreaterThan(0);
-        expect(screen.queryByText('user-admin')).not.toBeInTheDocument();
+        expect(screen.getByText('user-admin')).toBeInTheDocument();
+    });
+
+    it('marks 2FA deferral as a platform-admin-only affordance, not for tenant admins', () => {
+        render(<DpiaDocumentPage />);
+
+        // App.tsx: requiresPlatformAdminTwoFactor returns false outright for non-platform-admins.
+        // TenantOnboarding/TwoFactorStep.tsx is a separate, non-skippable "Step 3 (#571): mandatory
+        // 2FA setup" for tenant admins — no deferral for them.
+        expect(screen.getByText('2FA erforderlich, Aufschub möglich')).toBeInTheDocument();
+        expect(screen.getByText('2FA Pflicht')).toBeInTheDocument();
     });
 
     it("sets the chapter-nav sticky offset from the app bar's actual measured height", () => {
@@ -95,6 +107,9 @@ describe('DpiaDocumentPage', () => {
             const { container } = render(<DpiaDocumentPage />);
             const page = container.firstChild as HTMLElement;
             expect(page.style.getPropertyValue('--dpia-appbar-height')).toBe('96px');
+            // Same measured-height mechanism drives the chapter nav's own height, which the
+            // section anchors' scroll-margin-top also needs (see styles.module.scss).
+            expect(page.style.getPropertyValue('--dpia-chapternav-height')).toBe('96px');
         } finally {
             if (originalOffsetHeight) {
                 Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight);
