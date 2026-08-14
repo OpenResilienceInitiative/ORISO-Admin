@@ -404,7 +404,10 @@ export const createStubTenantAdminOnboardingClient = (
             }
             // Forwarded registrations carry the delegation instead of a
             // consent act; self-signed ones still require the acceptance.
-            if (!('forwarded' in request.dpa && request.dpa.forwarded) && !request.dpa.accepted) {
+            const { dpa } = request;
+            const dpaSatisfied =
+                'forwarded' in dpa && dpa.forwarded ? true : ('accepted' in dpa && dpa.accepted) === true;
+            if (!dpaSatisfied) {
                 throw new Error('DPA_NOT_ACCEPTED');
             }
             registered = true;

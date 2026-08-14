@@ -15,7 +15,6 @@ const LINK: DpaForwardLink = {
     expiresAt: '2026-08-28T12:00:00Z',
 };
 
-
 const renderDialog = (overrides: Partial<Parameters<typeof DpaForwardDialog>[0]> = {}) => {
     const props = {
         ensureSignLink: vi.fn().mockResolvedValue(LINK),

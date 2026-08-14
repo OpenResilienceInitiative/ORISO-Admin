@@ -459,5 +459,4 @@ describe('DpaBlockerGate', () => {
             expect(mocks.getActiveDpaForward).not.toHaveBeenCalled();
         });
     });
-
 });

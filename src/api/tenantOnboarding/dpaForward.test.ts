@@ -91,9 +91,9 @@ describe('createHttpDpaForwardClient', () => {
     it('keeps other failures generic and retryable', async () => {
         mocks.fetchData.mockRejectedValue(new Response(null, { status: 502 }));
 
-        await expect(createHttpDpaForwardClient().sendForwardEmail('tok', { recipientEmail: 'a@b.cd' })).rejects.toThrow(
-            'DPA_FORWARD_HTTP_502',
-        );
+        await expect(
+            createHttpDpaForwardClient().sendForwardEmail('tok', { recipientEmail: 'a@b.cd' }),
+        ).rejects.toThrow('DPA_FORWARD_HTTP_502');
     });
 });
 

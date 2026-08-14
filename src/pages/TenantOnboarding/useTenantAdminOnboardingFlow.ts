@@ -147,20 +147,23 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
     const dpaForwardRef = useRef(dpaForward);
     dpaForwardRef.current = dpaForward;
 
-    const submitOrganisationDpa = useCallback((organisationData: OrganisationData, dpaData: DpaAcceptanceData | null) => {
-        if (stateRef.current.phase !== 'organisation') {
-            return;
-        }
-        // Without a consent act the step is only complete when the signature
-        // was explicitly forwarded — never silently.
-        if (!dpaData && !dpaForwardRef.current) {
-            return;
-        }
-        setOrganisation(organisationData);
-        setDpa(dpaData);
-        setSubmitError(null);
-        setState({ phase: 'account' });
-    }, []);
+    const submitOrganisationDpa = useCallback(
+        (organisationData: OrganisationData, dpaData: DpaAcceptanceData | null) => {
+            if (stateRef.current.phase !== 'organisation') {
+                return;
+            }
+            // Without a consent act the step is only complete when the signature
+            // was explicitly forwarded — never silently.
+            if (!dpaData && !dpaForwardRef.current) {
+                return;
+            }
+            setOrganisation(organisationData);
+            setDpa(dpaData);
+            setSubmitError(null);
+            setState({ phase: 'account' });
+        },
+        [],
+    );
 
     const goBackToOrganisation = useCallback(() => {
         if (stateRef.current.phase !== 'account' || busyRef.current) {

@@ -5,6 +5,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { LONG_DPA_CHAPTER_COUNT, LONG_DPA_HTML, PHONE_390 } from '../../components/DpaLegalForm/dpaStoryText';
 import { createStubTenantAdminOnboardingClient } from '../../api/tenantOnboarding/tenantOnboarding';
+import { createStubDpaForwardClient } from '../../api/tenantOnboarding/dpaForward';
 import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 import { AccountStep } from './AccountStep';
 import { TwoFactorStep } from './TwoFactorStep';
@@ -90,6 +91,68 @@ export const OrganisationAndDpaIncompleteSubmitMobile: Story = {
     args: { client: longDpaClient() },
     ...PHONE_390,
     play: OrganisationAndDpaIncompleteSubmit.play,
+};
+
+/**
+ * Step 1 forward path (#723): "I am not authorised to sign" opens the shared
+ * forward dialog — copyable single-use sign link, optional e-mail send with
+ * the DPA_FORWARD mail preview, and the note that the link stays valid until
+ * the contract is signed.
+ */
+export const OrganisationDpaForwardDialog: Story = {
+    args: {
+        client: createStubTenantAdminOnboardingClient({ latencyMs: 0 }),
+        forwardClient: createStubDpaForwardClient({ latencyMs: 300 }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(
+            await canvas.findByRole('button', { name: /nicht unterschriftsberechtigt|not authorised/ }),
+        );
+        await waitFor(async () => expect(await body.findByTestId('dpa-forward-dialog')).toBeVisible());
+    },
+};
+
+/** The forward dialog at 390×844 (#723 acceptance: 320/412px usable). */
+export const OrganisationDpaForwardDialogMobile: Story = {
+    args: OrganisationDpaForwardDialog.args,
+    ...PHONE_390,
+    play: OrganisationDpaForwardDialog.play,
+};
+
+/**
+ * After confirming the forward the step flips to the calm on-hold state
+ * (#723): success notice, "Weitergeleitet — wartet auf Unterschrift", no
+ * signer fields, no consent box — Continue works with the organisation data
+ * alone.
+ */
+export const OrganisationDpaForwardedOnHold: Story = {
+    args: {
+        client: createStubTenantAdminOnboardingClient({ latencyMs: 0 }),
+        forwardClient: createStubDpaForwardClient({ latencyMs: 0 }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(
+            await canvas.findByRole('button', { name: /nicht unterschriftsberechtigt|not authorised/ }),
+        );
+        const confirm = await body.findByRole('button', {
+            name: /Weiterleitung abschließen|Complete forwarding/,
+        });
+        await waitFor(() => expect(confirm).toBeEnabled());
+        await userEvent.click(confirm);
+        await waitFor(async () => expect(await canvas.findByTestId('dpa-forwarded-onhold')).toBeVisible());
+        await expect(canvas.queryByRole('checkbox')).toBeNull();
+    },
+};
+
+/** The on-hold state at 390×844. */
+export const OrganisationDpaForwardedOnHoldMobile: Story = {
+    args: OrganisationDpaForwardedOnHold.args,
+    ...PHONE_390,
+    play: OrganisationDpaForwardedOnHold.play,
 };
 
 /** A consumed link: distinct terminal state, no form, nothing resubmittable. */
@@ -181,6 +244,18 @@ export const Done: StoryObj = {
 export const DoneMobile: StoryObj = {
     render: () => <DoneStep tenantId={21} />,
     ...PHONE_390,
+};
+
+/**
+ * Completion after a forwarded signature (#723): an additional line says the
+ * admin will be e-mailed once the signature arrives.
+ */
+export const DoneAfterForward: StoryObj = {
+    render: () => <DoneStep tenantId={21} forwarded />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getAllByTestId('onboarding-done-next-step')).toHaveLength(3);
+    },
 };
 
 /** Step 3 in isolation: TOTP linking + first one-time code. */

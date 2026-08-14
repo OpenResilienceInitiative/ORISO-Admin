@@ -176,8 +176,7 @@ export const OrganisationDpaStep = ({
                     name: initialOrganisation?.name ?? '',
                     subdomain: initialOrganisation?.subdomain ?? '',
                     address: initialOrganisation?.address ?? '',
-                    signerName:
-                        initialDpa?.signerName ?? [invite.firstName, invite.lastName].filter(Boolean).join(' '),
+                    signerName: initialDpa?.signerName ?? [invite.firstName, invite.lastName].filter(Boolean).join(' '),
                     signerPosition: initialDpa?.signerPosition ?? '',
                     signerEmail: initialDpa?.signerEmail ?? invite.recipientEmail,
                     // The slot is a free note now, not the organisation name — seeding it

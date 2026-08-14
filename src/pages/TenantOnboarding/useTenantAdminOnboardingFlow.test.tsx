@@ -382,5 +382,4 @@ describe('useTenantAdminOnboardingFlow', () => {
             expect.objectContaining({ dpa: { forwarded: true } }),
         );
     });
-
 });

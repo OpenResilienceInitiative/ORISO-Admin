@@ -4,7 +4,12 @@ import HourglassTopRounded from '@mui/icons-material/HourglassTopRounded';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../Modal';
 import { CopyLinkRow } from '../DpaForwardDialog/CopyLinkRow';
-import { DpaForwardDialog, DpaForwardLink, DpaForwardResult, DpaForwardSendRequest } from '../DpaForwardDialog/DpaForwardDialog';
+import {
+    DpaForwardDialog,
+    DpaForwardLink,
+    DpaForwardResult,
+    DpaForwardSendRequest,
+} from '../DpaForwardDialog/DpaForwardDialog';
 import { ActiveDpaForward, isDpaForwardExpired } from '../../api/tenantOnboarding/dpaForward';
 import styles from './pendingSignatureDialog.module.scss';
 
