@@ -71,5 +71,13 @@ describe('useTenantAdminControlsMutation', () => {
         expect(typeof message).toBe('string');
         expect(translationDe).toHaveProperty([message as string]);
         expect(translationEn).toHaveProperty([message as string]);
+        // Key presence alone would still pass for an empty or key-echoed translation, so
+        // also assert both locales resolve to a non-empty, actually-localized value.
+        const deValue = (translationDe as Record<string, string>)[message as string];
+        const enValue = (translationEn as Record<string, string>)[message as string];
+        expect(deValue).toBeTruthy();
+        expect(enValue).toBeTruthy();
+        expect(deValue).not.toBe(message);
+        expect(enValue).not.toBe(message);
     });
 });
