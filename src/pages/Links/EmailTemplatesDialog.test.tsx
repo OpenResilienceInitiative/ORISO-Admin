@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-const t = (key: string, fallback?: string) => fallback ?? key;
+const t = (key: string, fallback?: unknown) => (typeof fallback === 'string' ? fallback : key);
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t }),
@@ -51,8 +51,8 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
 
 // antd's real Select relies on rc-select's virtual-list/portal machinery, which is
 // flaky to drive under jsdom (no real layout/scroll). Swap it for a native <select>
-// that Form.Item still controls the same way (via the value/onChange it injects),
-// so the Kind field stays fully exercised through Form validation and submission.
+// that stays controlled the same way (value/onChange), so the Kind field remains
+// fully exercised through selection and submission.
 vi.mock('antd', async () => {
     const actual = await vi.importActual<typeof import('antd')>('antd');
     return {
@@ -70,7 +70,7 @@ vi.mock('antd', async () => {
     };
 });
 
-// antd's Modal relies on matchMedia, which jsdom does not implement.
+// antd's Modal and Dropdown rely on matchMedia, which jsdom does not implement.
 Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
@@ -99,6 +99,18 @@ const tenantTemplate = {
     updateDate: '2026-07-02T10:00:00Z',
 };
 
+const tenantTemplateShort = {
+    id: 4,
+    kind: 'TENANT_INVITE',
+    name: 'Short tenant template',
+    language: 'de',
+    subject: 'Kurz',
+    body: 'Link: {{inviteLink}}',
+    active: true,
+    createDate: '2026-07-03T10:00:00Z',
+    updateDate: null,
+};
+
 const counsellorTemplate = {
     id: 2,
     kind: 'COUNSELLOR_INVITE',
@@ -111,13 +123,17 @@ const counsellorTemplate = {
     updateDate: null,
 };
 
+/** The srcDoc of the email-kit preview frame inside the currently open dialog. */
+const previewSrcDoc = () =>
+    screen.getByRole('dialog').querySelector('iframe')?.getAttribute('srcdoc') ?? '';
+
 describe('EmailTemplatesDialog', () => {
     beforeEach(() => {
         mocks.listInviteEmailTemplates.mockReset();
         mocks.createInviteEmailTemplate.mockReset();
         mocks.updateInviteEmailTemplate.mockReset();
         mocks.listInviteEmailTemplates.mockImplementation((kind: string) => {
-            if (kind === 'TENANT_INVITE') return Promise.resolve([tenantTemplate]);
+            if (kind === 'TENANT_INVITE') return Promise.resolve([tenantTemplate, tenantTemplateShort]);
             if (kind === 'COUNSELLOR_INVITE') return Promise.resolve([counsellorTemplate]);
             return Promise.resolve([]);
         });
@@ -128,13 +144,20 @@ describe('EmailTemplatesDialog', () => {
             <EmailTemplatesDialog templateKind="TENANT_INVITE" onClose={vi.fn()} onChanged={vi.fn()} {...overrides} />,
         );
 
+    const openCreateForm = async (user: ReturnType<typeof userEvent.setup>) => {
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+        return within(screen.getByRole('dialog'));
+    };
+
     it('lists templates of every kind, the opening tab kind first', async () => {
         renderDialog();
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
         const rows = screen.getAllByTestId('template-row');
         expect(within(rows[0]).getByText('Default tenant template')).toBeInTheDocument();
-        expect(within(rows[1]).getByText('Default counsellor template')).toBeInTheDocument();
+        expect(within(rows[1]).getByText('Short tenant template')).toBeInTheDocument();
+        expect(within(rows[2]).getByText('Default counsellor template')).toBeInTheDocument();
     });
 
     it('creates a template preset to the opening kind, notifies the opener, and refreshes', async () => {
@@ -144,21 +167,17 @@ describe('EmailTemplatesDialog', () => {
         mocks.createInviteEmailTemplate.mockResolvedValue(saved);
         renderDialog({ onChanged });
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
-
-        await user.click(screen.getByRole('button', { name: 'New template' }));
-        const dialog = screen.getByRole('dialog');
-        const withinDialog = within(dialog);
+        const withinDialog = await openCreateForm(user);
 
         // Kind is preset to the opening tab's kind — no manual selection needed.
         expect(withinDialog.getByLabelText('Kind')).toHaveValue('TENANT_INVITE');
 
         await user.type(withinDialog.getByLabelText('Vorlagenname'), 'New tenant welcome');
-        await user.type(withinDialog.getByLabelText('Subject'), 'Hi there');
+        await user.type(withinDialog.getByLabelText('Betreff'), 'Hi there');
         // fireEvent.change avoids userEvent's {{/}} key-sequence escaping for literal braces.
-        fireEvent.change(withinDialog.getByLabelText('Body'), { target: { value: 'Body {{email}}' } });
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Body {{email}}' } });
 
-        await user.click(withinDialog.getByRole('button', { name: 'Save' }));
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
 
         await waitFor(() => expect(mocks.createInviteEmailTemplate).toHaveBeenCalledTimes(1));
         expect(mocks.createInviteEmailTemplate).toHaveBeenCalledWith(
@@ -176,24 +195,73 @@ describe('EmailTemplatesDialog', () => {
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalledTimes(6));
     });
 
-    it('renders a live email preview from the subject and body fields', async () => {
+    it('disables save until name, subject and body are filled', async () => {
         const user = userEvent.setup();
         renderDialog();
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
-        await user.click(screen.getByRole('button', { name: 'New template' }));
+        const withinDialog = await openCreateForm(user);
+        expect(withinDialog.getByRole('button', { name: 'save' })).toBeDisabled();
 
-        const dialog = screen.getByRole('dialog');
-        const withinDialog = within(dialog);
-        await user.type(withinDialog.getByLabelText('Subject'), 'Welcome to ORISO');
-        fireEvent.change(withinDialog.getByLabelText('Body'), {
-            target: { value: 'Hello Hugo,\n\nUse {{inviteLink}} to finish setup.' },
+        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Name');
+        await user.type(withinDialog.getByLabelText('Betreff'), 'Betreff');
+        expect(withinDialog.getByRole('button', { name: 'save' })).toBeDisabled();
+
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Inhalt' } });
+        expect(withinDialog.getByRole('button', { name: 'save' })).toBeEnabled();
+    });
+
+    it('renders a live email-kit preview substituting known tokens with samples', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        const withinDialog = await openCreateForm(user);
+        await user.type(withinDialog.getByLabelText('Betreff'), 'Welcome to ORISO');
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), {
+            target: { value: 'Hello {{firstName}},\n\nuse {{inviteLink}} to finish setup.' },
         });
 
-        const preview = withinDialog.getByRole('region', { name: 'Email preview' });
-        expect(within(preview).getByRole('heading', { name: 'Welcome to ORISO' })).toBeInTheDocument();
-        expect(within(preview).getByText(/Hello Hugo/)).toBeInTheDocument();
-        expect(within(preview).getByText('{{inviteLink}}')).toBeInTheDocument();
+        // Known tokens are substituted with the synthetic samples in the mail document…
+        expect(previewSrcDoc()).toContain('Hello Lisa,');
+        expect(previewSrcDoc()).toContain('https://beratung.example.org/einladung?token=1c9d');
+        expect(previewSrcDoc()).toContain('Welcome to ORISO');
+    });
+
+    it('keeps unknown tokens visible in the preview instead of rendering blank', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        const withinDialog = await openCreateForm(user);
+        await user.type(withinDialog.getByLabelText('Betreff'), 'S');
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Hallo {{typo}}' } });
+
+        expect(previewSrcDoc()).toContain('{{typo}}');
+        expect(previewSrcDoc()).toContain('data-unknown-token');
+    });
+
+    it('inserts a picked token into the body and substitutes it live', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        const withinDialog = await openCreateForm(user);
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Ihr Link: ' } });
+
+        // Each field has its own picker; the body's is the second one.
+        const pickers = withinDialog.getAllByRole('button', { name: 'Platzhalter einfügen' });
+        await user.click(pickers[1]);
+        await user.click(await screen.findByRole('menuitem', { name: /Einladungslink/ }));
+
+        await waitFor(() =>
+            expect(withinDialog.getByLabelText('Inhalt')).toHaveValue('Ihr Link: {{inviteLink}}'),
+        );
+        expect(previewSrcDoc()).toContain('https://beratung.example.org/einladung?token=1c9d');
+    });
+
+    it('no longer renders the hardcoded token code hint', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        await openCreateForm(user);
+        expect(screen.queryByText('Available placeholders:')).not.toBeInTheDocument();
     });
 
     it('opens a prefilled edit form on row double-click and updates the template', async () => {
@@ -201,15 +269,15 @@ describe('EmailTemplatesDialog', () => {
         mocks.updateInviteEmailTemplate.mockResolvedValue({ ...tenantTemplate, subject: 'Servus' });
         renderDialog();
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
         fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
 
         const dialog = screen.getByRole('dialog');
         const withinDialog = within(dialog);
         expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('Default tenant template');
 
-        fireEvent.change(withinDialog.getByLabelText('Subject'), { target: { value: 'Servus' } });
-        await user.click(withinDialog.getByRole('button', { name: 'Save' }));
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Servus' } });
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
 
         await waitFor(() =>
             expect(mocks.updateInviteEmailTemplate).toHaveBeenCalledWith(
@@ -219,12 +287,65 @@ describe('EmailTemplatesDialog', () => {
         );
     });
 
+    it('switches the loaded template via the split-button menu', async () => {
+        const user = userEvent.setup();
+        mocks.updateInviteEmailTemplate.mockResolvedValue(tenantTemplateShort);
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+
+        const withinDialog = within(screen.getByRole('dialog'));
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+
+        // The other template's stored values are loaded into the editor…
+        expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('Short tenant template');
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+        expect(withinDialog.getByLabelText('Inhalt')).toHaveValue('Link: {{inviteLink}}');
+
+        // …and saving persists against THAT template's id.
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
+        await waitFor(() =>
+            expect(mocks.updateInviteEmailTemplate).toHaveBeenCalledWith(
+                4,
+                expect.objectContaining({ subject: 'Kurz' }),
+            ),
+        );
+    });
+
+    it('starts a new template from an existing one via the split-button menu', async () => {
+        const user = userEvent.setup();
+        mocks.createInviteEmailTemplate.mockResolvedValue({ ...tenantTemplateShort, id: 9, name: 'Kopie' });
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+
+        const withinDialog = within(screen.getByRole('dialog'));
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Short tenant template“/ }));
+
+        // Contents are copied, but the name is empty — this will be a NEW template.
+        expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('');
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+
+        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Kopie');
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
+
+        await waitFor(() => expect(mocks.createInviteEmailTemplate).toHaveBeenCalledTimes(1));
+        expect(mocks.createInviteEmailTemplate).toHaveBeenCalledWith(
+            expect.objectContaining({ name: 'Kopie', subject: 'Kurz', body: 'Link: {{inviteLink}}' }),
+        );
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+    });
+
     it('selects a template when its name is clicked in picker mode', async () => {
         const user = userEvent.setup();
         const onSelect = vi.fn();
         renderDialog({ onSelect });
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
 
         await user.click(screen.getByRole('button', { name: 'Default tenant template' }));
 
@@ -236,12 +357,12 @@ describe('EmailTemplatesDialog', () => {
         const onSelect = vi.fn();
         renderDialog({ onSelect });
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
 
         // Inactive COUNSELLOR_INVITE template in a TENANT_INVITE tab: plain text, and a
         // row click must not hand it to the composer either.
         expect(screen.queryByRole('button', { name: 'Default counsellor template' })).not.toBeInTheDocument();
-        await user.click(screen.getAllByTestId('template-row')[1]);
+        await user.click(screen.getAllByTestId('template-row')[2]);
 
         expect(onSelect).not.toHaveBeenCalled();
     });
@@ -251,7 +372,7 @@ describe('EmailTemplatesDialog', () => {
         const onSelect = vi.fn();
         renderDialog({ onSelect });
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
 
         await user.click(within(screen.getAllByTestId('template-row')[0]).getByRole('button', { name: 'Edit' }));
 
@@ -266,17 +387,13 @@ describe('EmailTemplatesDialog', () => {
         mocks.createInviteEmailTemplate.mockRejectedValue(new Error('CATCH_ALL'));
         renderDialog();
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
-
-        await user.click(screen.getByRole('button', { name: 'New template' }));
-        const dialog = screen.getByRole('dialog');
-        const withinDialog = within(dialog);
+        const withinDialog = await openCreateForm(user);
 
         await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Broken template');
-        await user.type(withinDialog.getByLabelText('Subject'), 'Subject');
-        await user.type(withinDialog.getByLabelText('Body'), 'Body');
+        await user.type(withinDialog.getByLabelText('Betreff'), 'Subject');
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Body' } });
 
-        await user.click(withinDialog.getByRole('button', { name: 'Save' }));
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
 
         expect(await screen.findByText('Could not create template')).toBeInTheDocument();
         expect(screen.queryByText('CATCH_ALL')).not.toBeInTheDocument();

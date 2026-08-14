@@ -1,6 +1,6 @@
-import { Button, Form, Input, message, Select, Switch, Tag, Tooltip } from 'antd';
+import { Button, Input, message, Select, Switch, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
@@ -12,7 +12,13 @@ import {
     TemplateRequestDTO,
     updateInviteEmailTemplate,
 } from '../../api/accountInvites/accountInvites';
-import { EmailTemplatePreview } from '../../components/EmailTemplatePreview';
+import {
+    InviteEmailTemplateEditor,
+    inviteEmailTokensForKind,
+    PlaceholderTemplateDialog,
+    type InviteEmailTemplateValues,
+    type PlaceholderTemplateDefinition,
+} from '../../components/PlaceholderTemplate';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { Modal, DialogButton } from '../../components/Modal';
 import styles from './EmailTemplatesDialog.module.scss';
@@ -41,23 +47,28 @@ interface EmailTemplatesDialogProps {
     selectedTemplateId?: number;
 }
 
-interface TemplateFormValues {
+/** The editable state of the create/edit form, next to the editor's subject/body values. */
+interface TemplateDraftMeta {
     kind: InviteEmailTemplateKind;
     name: string;
-    language?: string;
-    subject: string;
-    body: string;
+    language: string;
     active: boolean;
 }
 
+const emptyValues: InviteEmailTemplateValues = { subject: '', body: '' };
+
 /**
- * Manage-templates dialog opened from the invite tabs' template select. Two views in
- * one dialog: the template list and the create/edit form. Deliberately NOT a separate
- * admin section — templates are only ever needed right where invites are sent.
+ * Manage-templates dialog opened from the invite tabs' template select. Two views:
+ * the template list (house list Modal) and the create/edit form, which is the
+ * placeholder-template module (#746) — `PlaceholderTemplateDialog` wrapping
+ * `InviteEmailTemplateEditor` with per-kind token pickers, the template split
+ * button and the live e-mail-kit preview. Deliberately NOT a separate admin
+ * section — templates are only ever needed right where invites are sent.
  *
- * With `onSelect` the list doubles as a picker: clicking a template's name selects it
- * for the composer. Editing then only happens through the row's "Bearbeiten" button —
- * double-click-to-edit stays for the manager-only mode, where no click means "choose".
+ * With `onSelect` the list doubles as a picker: clicking a template's name selects
+ * it for the composer. Editing then only happens through the row's "Bearbeiten"
+ * button — double-click-to-edit stays for the manager-only mode, where no click
+ * means "choose".
  */
 export const EmailTemplatesDialog = ({
     templateKind,
@@ -68,17 +79,19 @@ export const EmailTemplatesDialog = ({
     selectedTemplateId,
 }: EmailTemplatesDialogProps) => {
     const { t } = useTranslation();
-    const [form] = Form.useForm<TemplateFormValues>();
+    const fieldId = useId();
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [view, setView] = useState<'list' | 'form'>('list');
     const [editingTemplate, setEditingTemplate] = useState<InviteEmailTemplateDTO | null>(null);
-
-    // The preview follows what is typed, not what is saved — `useWatch` is the
-    // only way to read a live antd form value without controlling every field.
-    const previewSubject = Form.useWatch('subject', form) ?? '';
-    const previewBody = Form.useWatch('body', form) ?? '';
+    const [draftMeta, setDraftMeta] = useState<TemplateDraftMeta>({
+        kind: templateKind,
+        name: '',
+        language: '',
+        active: true,
+    });
+    const [draftValues, setDraftValues] = useState<InviteEmailTemplateValues>(emptyValues);
 
     const kindLabel = useCallback((kind: InviteEmailTemplateKind) => t(`links.templates.kind.${kind}`, kind), [t]);
 
@@ -112,10 +125,10 @@ export const EmailTemplatesDialog = ({
 
     const openCreateForm = useCallback(() => {
         setEditingTemplate(null);
-        form.resetFields();
-        form.setFieldsValue({ kind: templateKind, language: undefined, active: true });
+        setDraftMeta({ kind: templateKind, name: '', language: '', active: true });
+        setDraftValues(emptyValues);
         setView('form');
-    }, [form, templateKind]);
+    }, [templateKind]);
 
     // Deep link from the invite composer ("Neue E-Mail-Vorlage erstellen"): open
     // straight in the create form instead of the list.
@@ -125,21 +138,27 @@ export const EmailTemplatesDialog = ({
         }
     }, [initialView, openCreateForm]);
 
-    const openEditForm = useCallback(
-        (template: InviteEmailTemplateDTO) => {
-            setEditingTemplate(template);
-            form.setFieldsValue({
-                kind: template.kind,
-                name: template.name,
-                language: template.language ?? undefined,
-                subject: template.subject,
-                body: template.body,
-                active: template.active,
-            });
-            setView('form');
-        },
-        [form],
-    );
+    const openEditForm = useCallback((template: InviteEmailTemplateDTO) => {
+        setEditingTemplate(template);
+        setDraftMeta({
+            kind: template.kind,
+            name: template.name,
+            language: template.language ?? '',
+            active: template.active,
+        });
+        setDraftValues({ subject: template.subject, body: template.body });
+        setView('form');
+    }, []);
+
+    // "Neu aus …" (split-button menu): a NEW template that starts from an existing
+    // one's contents. The empty name is what marks it as new — the admin has to
+    // name it before save enables.
+    const openCreateFromTemplate = useCallback((template: InviteEmailTemplateDTO) => {
+        setEditingTemplate(null);
+        setDraftMeta({ kind: template.kind, name: '', language: template.language ?? '', active: true });
+        setDraftValues({ subject: template.subject, body: template.body });
+        setView('form');
+    }, []);
 
     // The composer only offers active templates of its own tab's kind, so those are the
     // only rows that can be picked — selecting anything else would put a name on the
@@ -151,45 +170,70 @@ export const EmailTemplatesDialog = ({
 
     const backToList = useCallback(() => {
         setEditingTemplate(null);
-        form.resetFields();
+        setDraftValues(emptyValues);
         setView('list');
-    }, [form]);
+    }, []);
 
-    const onSubmit = useCallback(
-        async (values: TemplateFormValues) => {
-            setSubmitting(true);
-            const payload: TemplateRequestDTO = {
-                kind: values.kind,
-                name: values.name,
-                language: values.language || null,
-                subject: values.subject,
-                body: values.body,
-                active: values.active,
-            };
-            try {
-                let saved: InviteEmailTemplateDTO;
-                if (editingTemplate) {
-                    saved = await updateInviteEmailTemplate(editingTemplate.id, payload);
-                    message.success(t('links.templates.updated', 'Template updated'));
-                } else {
-                    saved = await createInviteEmailTemplate(payload);
-                    message.success(t('links.templates.created', 'Template created'));
-                }
-                onChanged?.(saved);
-                backToList();
-                await loadTemplates();
-            } catch {
-                message.error(
-                    editingTemplate
-                        ? t('links.templates.updateFailed', 'Could not update template')
-                        : t('links.templates.createFailed', 'Could not create template'),
-                );
-            } finally {
-                setSubmitting(false);
-            }
-        },
-        [backToList, editingTemplate, loadTemplates, onChanged, t],
+    // Templates of the draft's kind feed the editor's split button: switching
+    // loads a stored template, "Neu aus" starts a fresh one from it.
+    const kindTemplates = useMemo(
+        () =>
+            templates
+                .filter((template) => template.kind === draftMeta.kind)
+                .sort((a, b) => a.name.localeCompare(b.name)),
+        [templates, draftMeta.kind],
     );
+
+    const editorTemplates = useMemo<PlaceholderTemplateDefinition<InviteEmailTemplateValues>[]>(
+        () =>
+            kindTemplates.map((template) => ({
+                id: template.id,
+                name: template.name,
+                values: { subject: template.subject, body: template.body },
+            })),
+        [kindTemplates],
+    );
+
+    const draftComplete =
+        draftMeta.name.trim().length > 0 && draftValues.subject.trim().length > 0 && draftValues.body.trim().length > 0;
+
+    const onSave = useCallback(async () => {
+        if (!draftComplete || submitting) {
+            return;
+        }
+        setSubmitting(true);
+        // Same payload contract as the pre-module form: subject/body verbatim,
+        // language normalised to null when blank.
+        const payload: TemplateRequestDTO = {
+            kind: draftMeta.kind,
+            name: draftMeta.name.trim(),
+            language: draftMeta.language.trim() || null,
+            subject: draftValues.subject,
+            body: draftValues.body,
+            active: draftMeta.active,
+        };
+        try {
+            let saved: InviteEmailTemplateDTO;
+            if (editingTemplate) {
+                saved = await updateInviteEmailTemplate(editingTemplate.id, payload);
+                message.success(t('links.templates.updated', 'Template updated'));
+            } else {
+                saved = await createInviteEmailTemplate(payload);
+                message.success(t('links.templates.created', 'Template created'));
+            }
+            onChanged?.(saved);
+            backToList();
+            await loadTemplates();
+        } catch {
+            message.error(
+                editingTemplate
+                    ? t('links.templates.updateFailed', 'Could not update template')
+                    : t('links.templates.createFailed', 'Could not create template'),
+            );
+        } finally {
+            setSubmitting(false);
+        }
+    }, [backToList, draftComplete, draftMeta, draftValues, editingTemplate, loadTemplates, onChanged, submitting, t]);
 
     const columns = useMemo(
         () => [
@@ -300,145 +344,139 @@ export const EmailTemplatesDialog = ({
         </div>
     );
 
-    const formFooter = (
-        <div className={styles.footerActions}>
-            <DialogButton onClick={backToList} disabled={submitting}>
-                {t('links.templates.back', 'Back')}
-            </DialogButton>
-            <DialogButton primary loading={submitting} onClick={() => form.submit()}>
-                {t('links.templates.save', 'Save')}
-            </DialogButton>
-        </div>
-    );
+    /* --------------------------------------------------------------------- */
+    /* Form view: the placeholder-template module in the house dialog shell  */
+    /* --------------------------------------------------------------------- */
 
-    // Title AND description follow the view: each of the three states is a
-    // different job, so a single sentence would be wrong in two of them.
-    let titleKey = 'links.templates.dialogTitle';
-    let descriptionKey = onSelect ? 'links.templates.pickHint' : 'links.templates.dialogDescription';
-    if (view !== 'list') {
-        titleKey = editingTemplate ? 'links.templates.editTitle' : 'links.templates.newTitle';
-        descriptionKey = editingTemplate ? 'links.templates.editDescription' : 'links.templates.newDescription';
+    if (view === 'form') {
+        return (
+            <PlaceholderTemplateDialog
+                titleKey={editingTemplate ? 'links.templates.editTitle' : 'links.templates.newTitle'}
+                descriptionKey={editingTemplate ? 'links.templates.editDescription' : 'links.templates.newDescription'}
+                saveDisabled={submitting || !draftComplete}
+                width={1180}
+                onClose={backToList}
+                onSave={onSave}
+            >
+                {/* Persistence metadata around the editor: what the API stores per
+                    template beyond subject/body. The editor below owns the tokenised
+                    content and the live preview. */}
+                <div className={styles.metaFields}>
+                    <div className={styles.metaField}>
+                        <label className={styles.metaLabel} htmlFor={`${fieldId}-kind`}>
+                            {t('links.templates.field.kind', 'Kind')}
+                        </label>
+                        <Select
+                            id={`${fieldId}-kind`}
+                            options={TEMPLATE_KINDS.map((kind) => ({ value: kind, label: kindLabel(kind) }))}
+                            value={draftMeta.kind}
+                            onChange={(kind: InviteEmailTemplateKind) => setDraftMeta((meta) => ({ ...meta, kind }))}
+                        />
+                    </div>
+                    <div className={styles.metaField}>
+                        <label className={styles.metaLabel} htmlFor={`${fieldId}-name`}>
+                            {t('links.templates.field.name', 'Vorlagenname')}
+                        </label>
+                        <Input
+                            id={`${fieldId}-name`}
+                            value={draftMeta.name}
+                            onChange={(event) => setDraftMeta((meta) => ({ ...meta, name: event.target.value }))}
+                        />
+                    </div>
+                    <div className={styles.metaField}>
+                        <label className={styles.metaLabel} htmlFor={`${fieldId}-language`}>
+                            {t('links.templates.field.language', 'Language')}
+                        </label>
+                        <Input
+                            id={`${fieldId}-language`}
+                            placeholder="de"
+                            value={draftMeta.language}
+                            onChange={(event) => setDraftMeta((meta) => ({ ...meta, language: event.target.value }))}
+                        />
+                    </div>
+                    <div className={styles.metaField}>
+                        <label className={styles.metaLabel} htmlFor={`${fieldId}-active`}>
+                            {t('links.templates.field.active', 'Active')}
+                        </label>
+                        <Switch
+                            checked={draftMeta.active}
+                            id={`${fieldId}-active`}
+                            onChange={(active) => setDraftMeta((meta) => ({ ...meta, active }))}
+                        />
+                    </div>
+                </div>
+                <InviteEmailTemplateEditor
+                    activeTemplateId={editingTemplate?.id}
+                    templates={editorTemplates}
+                    tokens={inviteEmailTokensForKind(draftMeta.kind)}
+                    values={draftValues}
+                    onChange={setDraftValues}
+                    onCreateFromTemplate={(id) => {
+                        const template = kindTemplates.find((entry) => entry.id === id);
+                        if (template) {
+                            openCreateFromTemplate(template);
+                        }
+                    }}
+                    onManageTemplates={backToList}
+                    onSelectTemplate={(id) => {
+                        const template = kindTemplates.find((entry) => entry.id === id);
+                        if (template) {
+                            openEditForm(template);
+                        }
+                    }}
+                />
+                {/* #713 house rule: a disabled primary action must say why. */}
+                {!draftComplete && (
+                    <p className={styles.saveHint} role="status">
+                        {t(
+                            'links.templates.saveIncomplete',
+                            'Vorlagenname, Betreff und Inhalt ausfüllen, um zu speichern.',
+                        )}
+                    </p>
+                )}
+            </PlaceholderTemplateDialog>
+        );
     }
+
+    /* --------------------------------------------------------------------- */
+    /* List view                                                             */
+    /* --------------------------------------------------------------------- */
 
     return (
         <Modal
-            titleKey={titleKey}
-            descriptionKey={descriptionKey}
+            titleKey="links.templates.dialogTitle"
+            descriptionKey={onSelect ? 'links.templates.pickHint' : 'links.templates.dialogDescription'}
             icon={<EmailOutlinedIcon />}
             onClose={onClose}
-            footer={view === 'list' ? listFooter : formFooter}
+            footer={listFooter}
             width={1180}
         >
-            {view === 'list' ? (
-                <ListingTable
-                    rowKey="id"
-                    loading={loading}
-                    columns={columns}
-                    dataSource={sortedTemplates}
-                    pagination={false}
-                    scroll={{ y: 'auto' }}
-                    onRow={(template: InviteEmailTemplateDTO) => ({
-                        className: classNames({
-                            [styles.pickableRow]: isSelectable(template),
-                            [styles.selectedRow]: template.id === selectedTemplateId,
-                        }),
-                        // The whole row is a hit area for picking, but its own
-                        // buttons (name, edit) keep their meaning.
-                        onClick: isSelectable(template)
-                            ? (event: MouseEvent<HTMLElement>) => {
-                                  if (!(event.target as HTMLElement).closest('button')) {
-                                      onSelect?.(template);
-                                  }
+            <ListingTable
+                rowKey="id"
+                loading={loading}
+                columns={columns}
+                dataSource={sortedTemplates}
+                pagination={false}
+                scroll={{ y: 'auto' }}
+                onRow={(template: InviteEmailTemplateDTO) => ({
+                    className: classNames({
+                        [styles.pickableRow]: isSelectable(template),
+                        [styles.selectedRow]: template.id === selectedTemplateId,
+                    }),
+                    // The whole row is a hit area for picking, but its own
+                    // buttons (name, edit) keep their meaning.
+                    onClick: isSelectable(template)
+                        ? (event: MouseEvent<HTMLElement>) => {
+                              if (!(event.target as HTMLElement).closest('button')) {
+                                  onSelect?.(template);
                               }
-                            : undefined,
-                        // Manager-only mode: without picking, a row click is free
-                        // for the edit shortcut.
-                        onDoubleClick: onSelect ? undefined : () => openEditForm(template),
-                    })}
-                />
-            ) : (
-                <Form form={form} layout="vertical" onFinish={onSubmit} initialValues={{ active: true }}>
-                    {/* Form on the left, live preview on the right — below 920px the
-                        preview drops under the fields (see the module stylesheet). */}
-                    <div className={styles.formAndPreview}>
-                        <div className={styles.formFields}>
-                            <Form.Item
-                                name="kind"
-                                label={t('links.templates.field.kind', 'Kind')}
-                                rules={[{ required: true, message: t('plsSelect') }]}
-                            >
-                                <Select
-                                    options={TEMPLATE_KINDS.map((kind) => ({ value: kind, label: kindLabel(kind) }))}
-                                />
-                            </Form.Item>
-                            <Form.Item
-                                name="name"
-                                label={t('links.templates.field.name', 'Vorlagenname')}
-                                rules={[
-                                    {
-                                        required: true,
-                                        whitespace: true,
-                                        message: t('links.templates.field.nameRequired', 'Name is required'),
-                                    },
-                                ]}
-                            >
-                                <Input />
-                            </Form.Item>
-                            <Form.Item name="language" label={t('links.templates.field.language', 'Language')}>
-                                <Input placeholder="de" />
-                            </Form.Item>
-                            <Form.Item
-                                name="subject"
-                                label={t('links.templates.field.subject', 'Subject')}
-                                rules={[
-                                    {
-                                        required: true,
-                                        whitespace: true,
-                                        message: t('links.templates.field.subjectRequired', 'Subject is required'),
-                                    },
-                                ]}
-                            >
-                                <Input />
-                            </Form.Item>
-                            <Form.Item
-                                name="body"
-                                label={t('links.templates.field.body', 'Body')}
-                                rules={[
-                                    {
-                                        required: true,
-                                        whitespace: true,
-                                        message: t('links.templates.field.bodyRequired', 'Body is required'),
-                                    },
-                                ]}
-                                extra={
-                                    <>
-                                        {t('links.templates.field.bodyHelp', 'Available placeholders:')}{' '}
-                                        {/* Placeholder tokens are literal template syntax, not prose — kept out of
-                                    i18next's t() so its {{var}} interpolation does not try to substitute them. */}
-                                        <code>
-                                            {'{{inviteLink}}, {{email}}, {{firstName}}, {{lastName}}, {{tenantId}}'}
-                                        </code>
-                                    </>
-                                }
-                            >
-                                <Input.TextArea rows={8} />
-                            </Form.Item>
-                            <Form.Item
-                                name="active"
-                                label={t('links.templates.field.active', 'Active')}
-                                valuePropName="checked"
-                            >
-                                <Switch />
-                            </Form.Item>
-                        </div>
-                        <EmailTemplatePreview
-                            body={previewBody}
-                            previewLabel={t('links.templates.previewLabel', 'Email preview')}
-                            subject={previewSubject}
-                        />
-                    </div>
-                </Form>
-            )}
+                          }
+                        : undefined,
+                    // Manager-only mode: without picking, a row click is free
+                    // for the edit shortcut.
+                    onDoubleClick: onSelect ? undefined : () => openEditForm(template),
+                })}
+            />
         </Modal>
     );
 };
