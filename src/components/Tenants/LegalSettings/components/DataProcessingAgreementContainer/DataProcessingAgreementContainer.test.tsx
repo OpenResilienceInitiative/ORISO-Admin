@@ -66,6 +66,10 @@ vi.mock('../DataProcessingAgreementCard', () => ({
         readOnly,
         onPublish,
         dismissalScope,
+        onSaveDraft,
+        draftSavedAt,
+        draftStale,
+        onDiscardDraft,
     }: any) => {
         const [draft, setDraft] = React.useState('');
         return (
@@ -78,6 +82,9 @@ vi.mock('../DataProcessingAgreementCard', () => ({
                 data-contents={(versions ?? []).map((v: any) => v.content).join('|')}
                 data-read-only={readOnly ? 'true' : 'false'}
                 data-dismissal-scope={dismissalScope}
+                data-draft-saved-at={draftSavedAt ?? ''}
+                data-draft-stale={draftStale ? 'true' : 'false'}
+                data-has-draft-action={onSaveDraft ? 'true' : 'false'}
             >
                 <span data-testid="draft">{draft}</span>
                 <button type="button" onClick={() => setDraft('unsaved draft')}>
@@ -86,12 +93,26 @@ vi.mock('../DataProcessingAgreementCard', () => ({
                 <button type="button" onClick={() => onPublish({ ...initialContentByLanguage, en: '<p>edited</p>' })}>
                     publish
                 </button>
+                {onSaveDraft && (
+                    <button
+                        type="button"
+                        onClick={() => onSaveDraft({ ...initialContentByLanguage, en: '<p>entwurf</p>' })}
+                    >
+                        save draft
+                    </button>
+                )}
+                {onDiscardDraft && (
+                    <button type="button" onClick={() => onDiscardDraft()}>
+                        discard draft
+                    </button>
+                )}
             </div>
         );
     },
 }));
 
 beforeEach(() => {
+    window.localStorage.clear();
     publishMutate.mockClear();
     useDpaVersions.mockReset();
     useDpaVersions.mockReturnValue({ data: [] });
@@ -160,7 +181,10 @@ describe('DataProcessingAgreementContainer', () => {
 
         await user.click(screen.getByRole('button', { name: 'publish' }));
 
-        expect(publishMutate).toHaveBeenCalledWith({ de: '<p>DE</p>', en: '<p>edited</p>' });
+        expect(publishMutate).toHaveBeenCalledWith(
+            { de: '<p>DE</p>', en: '<p>edited</p>' },
+            expect.objectContaining({ onSuccess: expect.any(Function) }),
+        );
     });
 
     it('forwards read-only mode to the card', () => {
@@ -299,5 +323,158 @@ describe('DataProcessingAgreementContainer', () => {
         expect(screen.getByText('erika.e2e.mustermann@oriso.org')).toBeInTheDocument();
         expect(screen.getByText('E2E Full Gate 202607191747')).toBeInTheDocument();
         expect(screen.getByText(/19\.07\.2026/)).toBeInTheDocument();
+    });
+});
+
+describe('DataProcessingAgreementContainer — local draft', () => {
+    const withOneVersion = () =>
+        useDpaVersions.mockReturnValue({
+            data: [{ activationDate: '2026-07-01T10:00:00', content: '{"de":"<p>DE</p>"}' }],
+        });
+
+    it('saves a draft without touching the publish endpoint', async () => {
+        const user = userEvent.setup();
+        withOneVersion();
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+
+        await user.click(screen.getByRole('button', { name: 'save draft' }));
+
+        expect(publishMutate).not.toHaveBeenCalled();
+    });
+
+    it('restores the saved draft into the editor on the next mount', async () => {
+        const user = userEvent.setup();
+        withOneVersion();
+        const first = render(<DataProcessingAgreementContainer tenantId={1} />);
+        await user.click(screen.getByRole('button', { name: 'save draft' }));
+        first.unmount();
+
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+        const card = screen.getByTestId('card');
+        expect(JSON.parse(card.getAttribute('data-content') ?? '{}')).toEqual({
+            de: '<p>DE</p>',
+            en: '<p>entwurf</p>',
+        });
+        expect(card.getAttribute('data-draft-saved-at')).not.toBe('');
+        expect(card).toHaveAttribute('data-draft-stale', 'false');
+    });
+
+    it('keeps drafts of different tenants apart', async () => {
+        const user = userEvent.setup();
+        withOneVersion();
+        const first = render(<DataProcessingAgreementContainer tenantId={1} />);
+        await user.click(screen.getByRole('button', { name: 'save draft' }));
+        first.unmount();
+
+        render(<DataProcessingAgreementContainer tenantId={2} />);
+        expect(JSON.parse(screen.getByTestId('card').getAttribute('data-content') ?? '{}')).toEqual({
+            de: '<p>DE</p>',
+        });
+    });
+
+    it('warns when a newer version was published after the draft was saved', async () => {
+        const user = userEvent.setup();
+        withOneVersion();
+        const first = render(<DataProcessingAgreementContainer tenantId={1} />);
+        await user.click(screen.getByRole('button', { name: 'save draft' }));
+        first.unmount();
+
+        useDpaVersions.mockReturnValue({
+            data: [{ activationDate: '2026-08-01T10:00:00', content: '{"de":"<p>neuer</p>"}' }],
+        });
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+        expect(screen.getByTestId('card')).toHaveAttribute('data-draft-stale', 'true');
+    });
+
+    it('discarding returns the editor to the published text', async () => {
+        const user = userEvent.setup();
+        withOneVersion();
+        const first = render(<DataProcessingAgreementContainer tenantId={1} />);
+        await user.click(screen.getByRole('button', { name: 'save draft' }));
+        first.unmount();
+
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+        await user.click(screen.getByRole('button', { name: 'discard draft' }));
+
+        const card = screen.getByTestId('card');
+        expect(JSON.parse(card.getAttribute('data-content') ?? '{}')).toEqual({ de: '<p>DE</p>' });
+        expect(card).toHaveAttribute('data-draft-saved-at', '');
+    });
+
+    it('clears the draft once a publish succeeds', async () => {
+        const user = userEvent.setup();
+        withOneVersion();
+        publishMutate.mockImplementation((_content: unknown, options?: { onSuccess?: () => void }) =>
+            options?.onSuccess?.(),
+        );
+        const first = render(<DataProcessingAgreementContainer tenantId={1} />);
+        await user.click(screen.getByRole('button', { name: 'save draft' }));
+        await user.click(screen.getByRole('button', { name: 'publish' }));
+        first.unmount();
+
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+        expect(JSON.parse(screen.getByTestId('card').getAttribute('data-content') ?? '{}')).toEqual({
+            de: '<p>DE</p>',
+        });
+    });
+
+    it('gives a read-only viewer no draft action at all', () => {
+        withOneVersion();
+        render(<DataProcessingAgreementContainer tenantId={1} readOnly />);
+        expect(screen.getByTestId('card')).toHaveAttribute('data-has-draft-action', 'false');
+    });
+});
+
+describe('DataProcessingAgreementContainer — draft scope readiness', () => {
+    it('withholds the card until the opaque user id has loaded', () => {
+        useDpaVersions.mockReturnValue({
+            data: [{ activationDate: '2026-07-01T10:00:00', content: '{"de":"<p>DE</p>"}' }],
+        });
+        useUserData.mockReturnValue({ data: undefined, isLoading: true });
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+        // Mounting now and remounting when the draft hydrates would discard edits
+        // typed during identity loading.
+        expect(screen.queryByTestId('card')).not.toBeInTheDocument();
+    });
+
+    it('shows the published contract to a read-only viewer while the user id loads', () => {
+        useDpaVersions.mockReturnValue({
+            data: [{ activationDate: '2026-07-01T10:00:00', content: '{"de":"<p>DE</p>"}' }],
+        });
+        useUserData.mockReturnValue({ data: undefined, isLoading: true });
+        render(<DataProcessingAgreementContainer tenantId={1} readOnly />);
+        const card = screen.getByTestId('card');
+        // A read-only viewer never gets a draft, so nothing about it should make them
+        // wait on /users/data before seeing the published contract — and the point is
+        // the CONTENT, not merely that the shell mounted.
+        expect(card).toHaveAttribute('data-read-only', 'true');
+        expect(JSON.parse(card.getAttribute('data-content') ?? '{}')).toEqual({ de: '<p>DE</p>' });
+    });
+
+    it('withholds the card until the published versions have loaded', () => {
+        useDpaVersions.mockReturnValue({ data: undefined, isLoading: true });
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+        // Mounting on an empty version list would show an empty contract, then remount
+        // when the real one lands — losing edits and stamping a draft with no base version.
+        expect(screen.queryByTestId('card')).not.toBeInTheDocument();
+    });
+
+    it('does not treat a disabled versions query as loading', () => {
+        useDpaVersions.mockReturnValue({ data: undefined, isLoading: true });
+        render(<DataProcessingAgreementContainer tenantId="" />);
+        // No usable tenant id: the query never runs, so the card must not hang on it.
+        expect(screen.getByTestId('card')).toBeInTheDocument();
+    });
+
+    it('shows the card without a draft action when the user id never arrives', () => {
+        useDpaVersions.mockReturnValue({
+            data: [{ activationDate: '2026-07-01T10:00:00', content: '{"de":"<p>DE</p>"}' }],
+        });
+        useUserData.mockReturnValue({ data: undefined, isLoading: false });
+        render(<DataProcessingAgreementContainer tenantId={1} />);
+        const card = screen.getByTestId('card');
+        // Reading and publishing still work; only the draft action is withheld,
+        // because without a scope it would store nothing and say nothing.
+        expect(card).toHaveAttribute('data-has-draft-action', 'false');
     });
 });
