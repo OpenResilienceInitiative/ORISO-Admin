@@ -178,4 +178,24 @@ describe('InviteProgressBoard', () => {
         expect(screen.getByText('21–25 von 25')).toBeInTheDocument();
         expect(screen.getByText('person25@example.org')).toBeInTheDocument();
     });
+
+    it('sorts "Empfänger" by the displayed name, not by the e-mail behind it', async () => {
+        const user = userEvent.setup();
+        // Name order and e-mail order disagree on purpose: sorting on the e-mail
+        // would render Anders → Zeller → Meier and read as unsorted.
+        const named = [
+            invite(1, { firstName: 'Rita', lastName: 'Meier', recipientEmail: 'aaa@example.org' }),
+            invite(2, { firstName: 'Bea', lastName: 'Zeller', recipientEmail: 'mmm@example.org' }),
+            invite(3, { firstName: 'Nils', lastName: 'Anders', recipientEmail: 'zzz@example.org' }),
+        ];
+        render(<InviteProgressBoard {...baseProps()} invites={named} />);
+
+        await user.click(screen.getByRole('button', { name: /Empfänger/ }));
+
+        const names = screen
+            .getAllByRole('row')
+            .slice(1)
+            .map((row) => within(row).getByText(/Meier|Zeller|Anders/).textContent);
+        expect(names).toEqual(['Bea Zeller', 'Nils Anders', 'Rita Meier']);
+    });
 });

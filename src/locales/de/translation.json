@@ -295,7 +295,6 @@
     "links.inviteProgress.summary.inProgress": "In Bearbeitung",
     "links.inviteProgress.summary.completed": "Abgeschlossen",
     "links.inviteProgress.summary.problem": "Abgelaufen / Problem",
-    "links.inviteProgress.filter.allStatuses": "Alle Status",
     "links.inviteProgress.tableLabel": "Einladungen und Onboarding-Fortschritt",
     "links.inviteProgress.col.select": "Auswahl",
     "links.inviteProgress.col.recipient": "Empfänger",

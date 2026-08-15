@@ -32,6 +32,7 @@ import {
     formatRelativeTime,
     INVITE_BUCKETS,
     InviteBucket,
+    inviteDisplayName,
     inviteLastActivity,
     isDeadInvite,
     PHASE_LABEL_FALLBACKS,
@@ -139,7 +140,8 @@ export const InviteProgressBoard = ({
             if (sort.key === 'invitedAt') {
                 return factor * (new Date(a.createDate).getTime() - new Date(b.createDate).getTime());
             }
-            return factor * a.recipientEmail.localeCompare(b.recipientEmail, locale);
+            // Ordered by the string the cell renders, not by the e-mail behind it.
+            return factor * inviteDisplayName(a).localeCompare(inviteDisplayName(b), locale);
         });
     }, [filtered, sort, locale]);
 
@@ -174,7 +176,10 @@ export const InviteProgressBoard = ({
     const emptyUnfiltered = invites.length === 0;
 
     return (
-        <section className={styles.board} aria-label={t('links.inviteProgress.summaryLabel', 'Onboarding-Übersicht')}>
+        // The section is deliberately unnamed: naming it with the same string as
+        // the tile group below announced "Onboarding-Übersicht" twice in a row.
+        // The tile group and the table each carry their own name.
+        <section className={styles.board}>
             <div
                 className={styles.summary}
                 role="group"
@@ -261,7 +266,10 @@ export const InviteProgressBoard = ({
                 {pageRows.map((invite) => {
                     const dead = isDeadInvite(invite);
                     const actionable = isActionable(invite);
-                    const displayName = [invite.firstName, invite.lastName].filter(Boolean).join(' ');
+                    // Same helper the "Empfänger" comparator uses, so the column
+                    // is ordered by exactly what this cell shows.
+                    const displayName = inviteDisplayName(invite);
+                    const hasName = displayName !== invite.recipientEmail;
                     const lastActivity = inviteLastActivity(invite);
                     const phases = derivePhases(invite).map((phase) => ({
                         key: phase.key,
@@ -288,10 +296,8 @@ export const InviteProgressBoard = ({
                             </DataTableCell>
                             <DataTableCell className={styles.identityCell}>
                                 <div className={styles.identity}>
-                                    <span className={styles.identityName}>{displayName || invite.recipientEmail}</span>
-                                    {displayName && (
-                                        <span className={styles.identityEmail}>{invite.recipientEmail}</span>
-                                    )}
+                                    <span className={styles.identityName}>{displayName}</span>
+                                    {hasName && <span className={styles.identityEmail}>{invite.recipientEmail}</span>}
                                     <span className={styles.identityMeta}>
                                         <span className={styles.roleChip}>
                                             {t(`links.inviteProgress.role.${invite.targetRole}`, invite.targetRole)}
@@ -313,7 +319,13 @@ export const InviteProgressBoard = ({
                                 />
                             </DataTableCell>
                             <DataTableCell className={styles.metaCell}>
-                                <span className={styles.cellLabel} aria-hidden>
+                                {/* NOT aria-hidden: the stacked mobile layout sets
+                                    display:block on tr/td, which drops the table
+                                    roles and with them the header↔cell association,
+                                    so this label is the only thing naming the value.
+                                    It is display:none on desktop, where the <th>
+                                    already names it — so it never doubles up. */}
+                                <span className={styles.cellLabel}>
                                     {t('links.inviteProgress.col.invitedAt', 'Eingeladen am')}
                                 </span>
                                 <time dateTime={invite.createDate} className={styles.date}>
@@ -321,7 +333,7 @@ export const InviteProgressBoard = ({
                                 </time>
                             </DataTableCell>
                             <DataTableCell className={styles.metaCell}>
-                                <span className={styles.cellLabel} aria-hidden>
+                                <span className={styles.cellLabel}>
                                     {t('links.inviteProgress.col.lastActivity', 'Letzte Aktivität')}
                                 </span>
                                 <time dateTime={lastActivity} title={formatDate(lastActivity)} className={styles.date}>

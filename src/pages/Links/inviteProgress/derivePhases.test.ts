@@ -5,6 +5,7 @@ import {
     deriveInviteBucket,
     derivePhases,
     formatRelativeTime,
+    inviteDisplayName,
     inviteLastActivity,
     isDeadInvite,
 } from './derivePhases';
@@ -200,6 +201,31 @@ describe('deriveInviteBucket', () => {
         expect(deriveInviteBucket(invite({ emailDeliveryStatus: 'FAILED' }))).toBe('problem');
     });
 
+    it('stops calling a bounce a problem once the invite was accepted', () => {
+        // A historical FAILED delivery on a finished onboarding must not land the
+        // row under "Abgelaufen / Problem" while its stepper shows all-done —
+        // the bucket now reads the bounce the same way derivePhases does.
+        expect(
+            deriveInviteBucket(
+                invite({
+                    inviteStatus: 'ACCEPTED',
+                    acceptedAt: '2026-08-02T10:00:00Z',
+                    emailDeliveryStatus: 'FAILED',
+                    accessGateStatus: 'READY',
+                }),
+            ),
+        ).toBe('completed');
+        expect(
+            deriveInviteBucket(
+                invite({
+                    inviteStatus: 'ACCEPTED',
+                    acceptedAt: '2026-08-02T10:00:00Z',
+                    emailDeliveryStatus: 'FAILED',
+                }),
+            ),
+        ).toBe('inProgress');
+    });
+
     it('counts every bucket over a list', () => {
         expect(
             countInviteBuckets([
@@ -220,6 +246,15 @@ describe('isDeadInvite', () => {
         expect(isDeadInvite(invite({ inviteStatus: 'SUPERSEDED' }))).toBe(true);
         expect(isDeadInvite(invite())).toBe(false);
         expect(isDeadInvite(invite({ inviteStatus: 'ACCEPTED' }))).toBe(false);
+    });
+});
+
+describe('inviteDisplayName', () => {
+    it('joins the name parts and falls back to the e-mail', () => {
+        expect(inviteDisplayName(invite())).toBe('Maria Huber');
+        expect(inviteDisplayName(invite({ lastName: null }))).toBe('Maria');
+        expect(inviteDisplayName(invite({ firstName: null }))).toBe('Huber');
+        expect(inviteDisplayName(invite({ firstName: null, lastName: null }))).toBe('maria.huber@example.org');
     });
 });
 

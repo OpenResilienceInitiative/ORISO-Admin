@@ -354,7 +354,6 @@
     "links.inviteProgress.summary.inProgress": "In progress",
     "links.inviteProgress.summary.completed": "Completed",
     "links.inviteProgress.summary.problem": "Expired / problem",
-    "links.inviteProgress.filter.allStatuses": "All statuses",
     "links.inviteProgress.tableLabel": "Invitations and onboarding progress",
     "links.inviteProgress.col.select": "Selection",
     "links.inviteProgress.col.recipient": "Recipient",

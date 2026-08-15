@@ -137,7 +137,10 @@ export type InviteBucket = 'invited' | 'inProgress' | 'completed' | 'problem';
 export const INVITE_BUCKETS: readonly InviteBucket[] = ['invited', 'inProgress', 'completed', 'problem'];
 
 export const deriveInviteBucket = (invite: PhaseFacts): InviteBucket => {
-    if (isDeadInvite(invite) || invite.emailDeliveryStatus === 'FAILED') {
+    // A delivery failure only means "problem" while it still blocks the invitee.
+    // Once accepted, the bounce is history — the same reading `derivePhases`
+    // takes — so a completed onboarding is never filed under "Abgelaufen / Problem".
+    if (isDeadInvite(invite) || (invite.emailDeliveryStatus === 'FAILED' && !hasAccepted(invite))) {
         return 'problem';
     }
     if (invite.accessGateStatus === 'READY' && hasAccepted(invite)) {
@@ -157,6 +160,16 @@ export const countInviteBuckets = (invites: readonly PhaseFacts[]): Record<Invit
     return counts;
 };
 
+type IdentityFacts = Pick<AccountInviteDTO, 'firstName' | 'lastName' | 'recipientEmail'>;
+
+/**
+ * The name the recipient cell shows — and therefore the only key the "Empfänger"
+ * column may sort by. Sorting on `recipientEmail` while the cell renders a
+ * person's name makes a correctly sorted column look unsorted.
+ */
+export const inviteDisplayName = (invite: IdentityFacts): string =>
+    [invite.firstName, invite.lastName].filter(Boolean).join(' ') || invite.recipientEmail;
+
 type ActivityFacts = Pick<AccountInviteDTO, 'createDate' | 'acceptedAt' | 'revokedAt' | 'supersededAt'>;
 
 /** Latest known activity timestamp of an invite (ISO string), for the "letzte Aktivität" column. */
@@ -164,7 +177,13 @@ export const inviteLastActivity = (invite: ActivityFacts): string => {
     const candidates = [invite.createDate, invite.acceptedAt, invite.revokedAt, invite.supersededAt].filter(
         (value): value is string => value != null,
     );
-    return candidates.reduce((latest, value) => (new Date(value) > new Date(latest) ? value : latest));
+    // Seeded on purpose: `createDate` is non-nullable today, but an unseeded
+    // reduce would throw on an empty list and take the whole board down if the
+    // API ever loosens that.
+    return candidates.reduce(
+        (latest, value) => (new Date(value) > new Date(latest) ? value : latest),
+        invite.createDate,
+    );
 };
 
 const RELATIVE_UNITS: { unit: Intl.RelativeTimeFormatUnit; ms: number }[] = [
