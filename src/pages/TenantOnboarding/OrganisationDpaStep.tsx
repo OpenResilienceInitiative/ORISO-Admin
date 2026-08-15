@@ -21,7 +21,7 @@ import {
     OrganisationData,
     TenantAdminOnboardingInviteDTO,
 } from '../../api/tenantOnboarding/tenantOnboarding';
-import { DpaForwardClient, resolveDpaForwardSignLink } from '../../api/tenantOnboarding/dpaForward';
+import { DpaForwardClient } from '../../api/tenantOnboarding/dpaForward';
 import { WizardDpaForwardState } from './useTenantAdminOnboardingFlow';
 import styles from './styles.module.scss';
 
@@ -251,6 +251,11 @@ export const OrganisationDpaStep = ({
                                             })}
                                         </p>
                                     )}
+                                    {forward?.mailFailed && (
+                                        <p className={styles.forwardOnHoldText} data-testid="dpa-forwarded-mail-failed">
+                                            {t('tenantOnboarding.dpa.forwarded.mailFailed')}
+                                        </p>
+                                    )}
                                     <M3Button
                                         variant="text"
                                         icon={<ForwardToInboxRounded fontSize="small" />}
@@ -311,17 +316,16 @@ export const OrganisationDpaStep = ({
 
             {forwardDialogOpen && (
                 <DpaForwardDialog
-                    ensureSignLink={async () => {
-                        const created = await forwardClient.createForwardInvite(inviteToken);
-                        return { signLink: resolveDpaForwardSignLink(created.signLink), expiresAt: created.expiresAt };
-                    }}
-                    sendEmail={({ recipientEmail, recipientName }) =>
-                        forwardClient.sendForwardEmail(inviteToken, { recipientEmail, recipientName })
-                    }
+                    forward={(request) => forwardClient.forward(inviteToken, request)}
                     onClose={() => setForwardDialogOpen(false)}
-                    onForwarded={({ link, recipientEmail }) => {
+                    onForwarded={({ link, recipientEmail, mailFailed }) => {
                         setForwardDialogOpen(false);
-                        onForwarded({ signLink: link.signLink, expiresAt: link.expiresAt, recipientEmail });
+                        onForwarded({
+                            signUrl: link.signUrl,
+                            expiresAt: link.expiresAt,
+                            recipientEmail,
+                            mailFailed,
+                        });
                     }}
                 />
             )}

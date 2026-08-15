@@ -14,7 +14,8 @@ import { useDpaGate } from '../../../../../hooks/useDpaGate.hook';
 import { createDpaSignInvite, resolveDpaSignLink } from '../../../../../api/tenant/createDpaSignInvite';
 import { sendDpaInviteEmail } from '../../../../../api/tenant/sendDpaInviteEmail';
 import { useDpaSignatures } from '../../../../../hooks/useDpaSignatures.hook';
-import { DpaForwardDialog, DpaForwardLink } from '../../../../DpaForwardDialog/DpaForwardDialog';
+import { DpaForwardDialog } from '../../../../DpaForwardDialog/DpaForwardDialog';
+import { DpaForwardLink, DpaForwardOutcome } from '../../../../../api/tenantOnboarding/dpaForward';
 
 interface DataProcessingAgreementContainerProps {
     tenantId: string | number;
@@ -103,37 +104,40 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     }, [lang, latestSignedDpa?.signedAt]);
 
     /**
-     * Shared forward dialog seam (#723): a created invite is reused for the
-     * lifetime of this view — the backend keeps the link valid until a
-     * signature lands, so repeated opens must not mint fresh tokens.
+     * Shared forward dialog seam (#723). A created invite is reused for the
+     * lifetime of this view — every issued link stays valid until a signature
+     * lands, so repeated opens need not mint fresh tokens here.
      */
     const ensureSignLink = async (): Promise<DpaForwardLink> => {
         if (signInvite && signLink) {
-            return { signLink, expiresAt: signInvite.expiresAt };
+            return { signUrl: signLink, expiresAt: signInvite.expiresAt };
         }
         const invite = await createDpaSignInvite(id);
         const resolvedSignLink = resolveDpaSignLink(invite.signLink);
         setSignInvite(invite);
         setSignLink(resolvedSignLink);
-        return { signLink: resolvedSignLink, expiresAt: invite.expiresAt };
+        return { signUrl: resolvedSignLink, expiresAt: invite.expiresAt };
     };
 
-    const sendForwardEmail = async ({
-        recipientEmail,
-        link,
-    }: {
-        recipientEmail: string;
-        recipientName: string;
-        link: DpaForwardLink;
-    }) => {
-        // The authenticated delivery endpoint (UserService #530) carries no
-        // recipient name — the salutation falls back to the template default.
-        await sendDpaInviteEmail({
-            tenantId: id,
-            recipientEmail,
-            signLink: link.signLink,
-            expiresAt: link.expiresAt ?? '',
-        });
+    const forward = async ({ recipientEmail }: { recipientEmail?: string }): Promise<DpaForwardOutcome> => {
+        const link = await ensureSignLink();
+        if (!recipientEmail) {
+            return { link, mailFailed: false };
+        }
+        try {
+            // The authenticated delivery endpoint (UserService #530) carries no
+            // recipient name — the salutation falls back to the template default.
+            await sendDpaInviteEmail({
+                tenantId: id,
+                recipientEmail,
+                signLink: link.signUrl,
+                expiresAt: link.expiresAt ?? '',
+            });
+            return { link, mailFailed: false };
+        } catch {
+            // Same shape as the public 502: the link exists, the mail did not go.
+            return { link, mailFailed: true };
+        }
     };
 
     // A failed version load must not masquerade as "no versions yet": editing a
@@ -212,8 +216,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                     />
                     {forwardDialogOpen && (
                         <DpaForwardDialog
-                            ensureSignLink={ensureSignLink}
-                            sendEmail={sendForwardEmail}
+                            forward={forward}
                             onClose={() => setForwardDialogOpen(false)}
                             onForwarded={({ recipientEmail }) => {
                                 setForwardDialogOpen(false);

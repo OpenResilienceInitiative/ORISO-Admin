@@ -8,36 +8,31 @@ import { Modal } from '../Modal';
 import { M3Button } from '../M3Button';
 import { MuiFormField } from '../mui/MuiFormField';
 import { EmailKitPreview } from '../PlaceholderTemplate/EmailKitPreview';
+import {
+    DpaForwardError,
+    DpaForwardFailureKind,
+    DpaForwardLink,
+    DpaForwardOutcome,
+} from '../../api/tenantOnboarding/dpaForward';
 import { CopyLinkRow } from './CopyLinkRow';
 import styles from './styles.module.scss';
-
-/** The single-use public sign link the delegation runs on. */
-export interface DpaForwardLink {
-    signLink: string;
-    expiresAt: string | null;
-}
-
-export interface DpaForwardSendRequest {
-    recipientEmail: string;
-    recipientName: string;
-    link: DpaForwardLink;
-}
 
 export interface DpaForwardResult {
     link: DpaForwardLink;
     /** Recipient of the sent mail; null when the link was only copied/shared. */
     recipientEmail: string | null;
+    /** The link exists but its mail could not be sent (502). */
+    mailFailed: boolean;
 }
 
 export interface DpaForwardDialogProps {
     /**
-     * Creates (or returns the still-active) sign link when the dialog opens.
-     * The surfaces differ only here: the wizard uses the public-token client,
-     * the authenticated surfaces the tenant-admin invite endpoint.
+     * Performs the forward. Without `recipientEmail` it only mints a link for
+     * manual sharing; with one it also sends the `DPA_FORWARD` mail. Called
+     * once on open (link-only) and again per send — every issued link stays
+     * valid until a signature lands.
      */
-    ensureSignLink: () => Promise<DpaForwardLink>;
-    /** Sends the DPA_FORWARD mail through the surface-specific transport. */
-    sendEmail: (request: DpaForwardSendRequest) => Promise<void>;
+    forward: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
     onClose: () => void;
     /** Confirms the delegation — the host flips into its forwarded state. */
     onForwarded: (result: DpaForwardResult) => void;
@@ -50,22 +45,36 @@ interface RecipientFormValues {
     recipientEmail: string;
 }
 
-type LinkState = { kind: 'loading' } | { kind: 'ready'; link: DpaForwardLink } | { kind: 'error' };
+type LinkState = { kind: 'loading' } | { kind: 'ready'; link: DpaForwardLink } | { kind: 'error'; why: string };
+
+/** i18n key for a typed backend failure. */
+const FAILURE_MESSAGE: Record<DpaForwardFailureKind, string> = {
+    INVALID_EMAIL: 'tenantOnboarding.validation.email',
+    UNKNOWN_TOKEN: 'dpaForward.dialog.errorUnknownToken',
+    NO_DPA_PUBLISHED: 'dpaForward.dialog.errorNoDpaPublished',
+    TECHNICAL: 'dpaForward.dialog.linkError',
+};
+
+const failureKey = (error: unknown): string =>
+    error instanceof DpaForwardError ? FAILURE_MESSAGE[error.kind] : FAILURE_MESSAGE.TECHNICAL;
 
 /**
  * Shared forward-to-authorised-signer dialog (#723, epic #722) — house M3
  * dialog anatomy. One dialog for every surface that delegates the DPA
  * signature: the public onboarding wizard, the Legal Settings card and the
- * pending-signature dialog's re-send (#724).
+ * pending-signature dialog (#724).
  *
  * The sign link is the primary artefact: copyable for any channel, with the
  * note that it stays valid until the contract is signed no matter where it is
  * shared. The e-mail send is optional and shows the actual DPA_FORWARD mail
  * through the e-mail kit preview before anything goes out.
+ *
+ * The 502 case is deliberately NOT a failure: the backend created the link but
+ * could not hand the mail to the SMTP server, so the dialog keeps the copyable
+ * link and adds a "mail not sent" notice.
  */
 export const DpaForwardDialog = ({
-    ensureSignLink,
-    sendEmail,
+    forward,
     onClose,
     onForwarded,
     titleKey = 'dpaForward.dialog.title',
@@ -75,19 +84,22 @@ export const DpaForwardDialog = ({
     const [form] = Form.useForm<RecipientFormValues>();
     const [linkState, setLinkState] = useState<LinkState>({ kind: 'loading' });
     const [linkAttempt, setLinkAttempt] = useState(0);
-    const [sendState, setSendState] = useState<'idle' | 'pending' | 'sent' | 'failed'>('idle');
+    const [sendState, setSendState] = useState<'idle' | 'pending' | 'sent' | 'mail-failed' | 'failed'>('idle');
+    const [sendErrorKey, setSendErrorKey] = useState<string>(FAILURE_MESSAGE.TECHNICAL);
     const [sentTo, setSentTo] = useState<string | null>(null);
+    const [mailFailed, setMailFailed] = useState(false);
     const [recipientName, setRecipientName] = useState('');
 
     useEffect(() => {
         let cancelled = false;
         setLinkState({ kind: 'loading' });
-        ensureSignLink()
-            .then((link) => {
-                if (!cancelled) setLinkState({ kind: 'ready', link });
+        // Link-only call: no recipient, so no mail goes out yet.
+        forward({})
+            .then((outcome) => {
+                if (!cancelled) setLinkState({ kind: 'ready', link: outcome.link });
             })
-            .catch(() => {
-                if (!cancelled) setLinkState({ kind: 'error' });
+            .catch((error: unknown) => {
+                if (!cancelled) setLinkState({ kind: 'error', why: failureKey(error) });
             });
         return () => {
             cancelled = true;
@@ -99,17 +111,19 @@ export const DpaForwardDialog = ({
     const link = linkState.kind === 'ready' ? linkState.link : null;
 
     const submitEmail = async (values: RecipientFormValues) => {
-        if (!link || sendState === 'pending') return;
+        if (sendState === 'pending') return;
         setSendState('pending');
+        const recipientEmail = values.recipientEmail.trim();
         try {
-            await sendEmail({
-                recipientEmail: values.recipientEmail.trim(),
-                recipientName: values.recipientName?.trim() ?? '',
-                link,
-            });
-            setSentTo(values.recipientEmail.trim());
-            setSendState('sent');
-        } catch {
+            const outcome = await forward({ recipientEmail });
+            // The send issues a fresh link — show THAT one, so the link the
+            // admin copies is the newest of the still-valid set.
+            setLinkState({ kind: 'ready', link: outcome.link });
+            setSentTo(outcome.mailFailed ? null : recipientEmail);
+            setMailFailed(outcome.mailFailed);
+            setSendState(outcome.mailFailed ? 'mail-failed' : 'sent');
+        } catch (error) {
+            setSendErrorKey(failureKey(error));
             setSendState('failed');
         }
     };
@@ -120,7 +134,7 @@ export const DpaForwardDialog = ({
     const previewSubject = t('dpaForward.mail.subject');
     const previewBody = t('dpaForward.mail.body', {
         recipientName: recipientName.trim() || '{{recipientName}}',
-        link: link?.signLink ?? '{{link}}',
+        link: link?.signUrl ?? '{{link}}',
     });
 
     return (
@@ -133,7 +147,7 @@ export const DpaForwardDialog = ({
             confirmDisabled={!link}
             onConfirm={() => {
                 if (!link) return;
-                onForwarded({ link, recipientEmail: sentTo });
+                onForwarded({ link, recipientEmail: sentTo, mailFailed });
             }}
             onClose={onClose}
             width={720}
@@ -160,13 +174,13 @@ export const DpaForwardDialog = ({
                             </M3Button>
                         }
                     >
-                        {t('dpaForward.dialog.linkError')}
+                        {t(linkState.why)}
                     </Alert>
                 )}
 
                 {link && (
                     <div className={styles.linkSection}>
-                        <CopyLinkRow value={link.signLink} />
+                        <CopyLinkRow value={link.signUrl} />
                         <p className={styles.validityNote} data-testid="dpa-forward-validity-note">
                             {t('dpaForward.dialog.validityNote')}
                         </p>
@@ -209,16 +223,21 @@ export const DpaForwardDialog = ({
                                 {t('dpaForward.dialog.sent', { email: sentTo })}
                             </Alert>
                         )}
+                        {/* 502: the link exists — a warning, never an error. */}
+                        {sendState === 'mail-failed' && (
+                            <Alert severity="warning" data-testid="dpa-forward-mail-failed" sx={{ mb: 2 }}>
+                                {t('dpaForward.dialog.mailFailedLinkReady')}
+                            </Alert>
+                        )}
                         {sendState === 'failed' && (
                             <Alert severity="error" role="alert" data-testid="dpa-forward-send-failed" sx={{ mb: 2 }}>
-                                {t('dpaForward.dialog.sendFailed')}
+                                {t(sendErrorKey)}
                             </Alert>
                         )}
 
                         <M3Button
                             type="submit"
                             variant="outlined"
-                            disabled={!link}
                             loading={sendState === 'pending'}
                             icon={<ForwardToInboxRounded fontSize="small" />}
                         >

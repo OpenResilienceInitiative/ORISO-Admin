@@ -191,14 +191,8 @@ describe('deriveDpaGateDecision', () => {
 });
 
 describe('deriveDpaGateDecision — forwarded-pending (#724)', () => {
-    const FORWARD = {
-        signLink: 'https://app.example.org/dpa-sign/active-token',
-        expiresAt: '2099-01-01T00:00:00Z',
-        recipientEmail: 'legal@example.org',
-    };
-
     it.each(['UNSIGNED', 'OUTDATED'] as const)(
-        'softens the %s block into forwarded-pending when an active forward is proven',
+        'softens the %s block into forwarded-pending when the status reports forwardPending',
         (status) => {
             expect(
                 deriveDpaGateDecision({
@@ -206,57 +200,72 @@ describe('deriveDpaGateDecision — forwarded-pending (#724)', () => {
                     status,
                     isLoading: false,
                     isError: false,
-                    forward: FORWARD,
+                    forwardPending: true,
                 }),
-            ).toEqual({ kind: 'forwarded-pending', reason: status, forward: FORWARD });
+            ).toEqual({ kind: 'forwarded-pending', reason: status });
         },
     );
 
-    it('stays pending while the forward lookup is in flight (nothing leaks out)', () => {
+    it('keeps the hard blocker when no forward is pending (#572 unchanged)', () => {
         expect(
             deriveDpaGateDecision({
                 subjectKind: 'subject',
                 status: 'UNSIGNED',
                 isLoading: false,
                 isError: false,
-                forwardLoading: true,
-            }),
-        ).toEqual({ kind: 'pending' });
-    });
-
-    it('keeps the hard blocker when no forward was ever declared (#572 unchanged)', () => {
-        expect(
-            deriveDpaGateDecision({
-                subjectKind: 'subject',
-                status: 'UNSIGNED',
-                isLoading: false,
-                isError: false,
-                forward: null,
+                forwardPending: false,
             }),
         ).toEqual({ kind: 'blocked', reason: 'UNSIGNED', signable: true });
     });
 
-    it('keeps the hard blocker when the forward state is unknown (fail-closed)', () => {
+    it('keeps the hard blocker when the flag is absent (older backend, no PENDING_FORWARDED enum)', () => {
         expect(
-            deriveDpaGateDecision({
-                subjectKind: 'subject',
-                status: 'UNSIGNED',
-                isLoading: false,
-                isError: false,
-                forward: undefined,
-            }),
+            deriveDpaGateDecision({ subjectKind: 'subject', status: 'UNSIGNED', isLoading: false, isError: false }),
         ).toEqual({ kind: 'blocked', reason: 'UNSIGNED', signable: true });
     });
 
-    it('never softens the non-signable states, forward or not', () => {
+    it('never softens the non-signable states, flag or not', () => {
         expect(
             deriveDpaGateDecision({
                 subjectKind: 'subject',
                 status: 'MISSING',
                 isLoading: false,
                 isError: false,
-                forward: FORWARD,
+                forwardPending: true,
             }),
         ).toEqual({ kind: 'blocked', reason: 'MISSING', signable: false });
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'subject',
+                status: 'INCONSISTENT',
+                isLoading: false,
+                isError: false,
+                forwardPending: true,
+            }),
+        ).toEqual({ kind: 'blocked', reason: 'INCONSISTENT', signable: false });
+    });
+
+    it('never softens a valid signature', () => {
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'subject',
+                status: 'VALID',
+                isLoading: false,
+                isError: false,
+                forwardPending: true,
+            }),
+        ).toEqual({ kind: 'inactive' });
+    });
+
+    it('still fails closed on an errored status even with the flag set', () => {
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'subject',
+                status: undefined,
+                isLoading: false,
+                isError: true,
+                forwardPending: true,
+            }),
+        ).toEqual({ kind: 'blocked', reason: 'STATUS_UNAVAILABLE', signable: false });
     });
 });

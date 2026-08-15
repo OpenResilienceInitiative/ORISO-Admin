@@ -54,14 +54,13 @@ vi.mock('../../../../../api/tenant/sendDpaInviteEmail', () => ({
 // Stub the heavy shared dialog (#723) — its own behaviour is covered by
 // DpaForwardDialog.test.tsx; here only the container wiring matters.
 vi.mock('../../../../DpaForwardDialog/DpaForwardDialog', () => ({
-    DpaForwardDialog: ({ ensureSignLink, sendEmail, onClose, onForwarded }: any) => (
+    DpaForwardDialog: ({ forward, onClose, onForwarded }: any) => (
         <div data-testid="forward-dialog">
             <button
                 type="button"
                 onClick={async () => {
-                    const link = await ensureSignLink();
-                    await sendEmail({ recipientEmail: 'bart.simpson@oriso.org', recipientName: '', link });
-                    onForwarded({ link, recipientEmail: 'bart.simpson@oriso.org' });
+                    const { link, mailFailed } = await forward({ recipientEmail: 'bart.simpson@oriso.org' });
+                    onForwarded({ link, recipientEmail: mailFailed ? null : 'bart.simpson@oriso.org', mailFailed });
                 }}
             >
                 complete forward

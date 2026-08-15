@@ -57,12 +57,13 @@ const renderFlow = (client: TenantAdminOnboardingClient, token = 'raw-token', fo
         </MemoryRouter>,
     );
 
-const createForwardClient = (): DpaForwardClient => ({
-    createForwardInvite: vi.fn().mockResolvedValue({
-        signLink: 'https://app.example.org/dpa-sign/fwd-token',
-        expiresAt: '2026-08-28T12:00:00Z',
-    }),
-    sendForwardEmail: vi.fn().mockResolvedValue(undefined),
+const FORWARD_LINK = { signUrl: 'https://app.example.org/dpa-sign/fwd-token', expiresAt: '2026-08-29T14:31:07' };
+
+const createForwardClient = (mailFailed = false): DpaForwardClient => ({
+    forward: vi.fn().mockImplementation(async (_token: string, request: { recipientEmail?: string } = {}) => ({
+        link: FORWARD_LINK,
+        mailFailed: mailFailed && !!request.recipientEmail,
+    })),
 });
 
 const completeOrganisationStep = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -322,11 +323,10 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         // The second path is available without completing the signature form.
         await user.click(screen.getByRole('button', { name: /dpaForward.action.notAuthorised/ }));
         expect(await screen.findByTestId('dpa-forward-dialog')).toBeInTheDocument();
-        expect(forwardClient.createForwardInvite).toHaveBeenCalledWith('raw-token');
+        // Opening only mints a link — no recipient, so no mail goes out.
+        expect(forwardClient.forward).toHaveBeenCalledWith('raw-token', {});
         await waitFor(() =>
-            expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(
-                'https://app.example.org/dpa-sign/fwd-token',
-            ),
+            expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(FORWARD_LINK.signUrl),
         );
 
         await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.confirm' }));
@@ -345,7 +345,7 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         await waitFor(() =>
             expect(client.registerTenantAdmin).toHaveBeenCalledWith(
                 'raw-token',
-                expect.objectContaining({ dpa: { forwarded: true } }),
+                expect.objectContaining({ dpa: expect.objectContaining({ accepted: false }) }),
             ),
         );
 
@@ -372,12 +372,34 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
         await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
         await screen.findByTestId('dpa-forward-sent');
-        expect(forwardClient.sendForwardEmail).toHaveBeenCalledWith('raw-token', {
+        expect(forwardClient.forward).toHaveBeenLastCalledWith('raw-token', {
             recipientEmail: 'legal@example.org',
-            recipientName: 'Dr. Ruth Recht',
         });
 
         await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.confirm' }));
         expect(await screen.findByTestId('dpa-forwarded-sent-to')).toBeInTheDocument();
+    });
+
+    it('502 forward (link created, mail not sent) still lets the wizard continue, with an honest note', async () => {
+        const client = createClient();
+        const forwardClient = createForwardClient(true);
+        const user = userEvent.setup();
+        renderFlow(client, 'raw-token', forwardClient);
+
+        await screen.findByLabelText('tenantOnboarding.organisation.name');
+        await user.click(screen.getByRole('button', { name: /dpaForward.action.notAuthorised/ }));
+        await screen.findByTestId('dpa-forward-dialog');
+        await waitFor(() => expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).not.toHaveValue(''));
+
+        await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+
+        // Warning, not error — the link exists and is the fallback.
+        await screen.findByTestId('dpa-forward-mail-failed');
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.confirm' }));
+
+        expect(await screen.findByTestId('dpa-forwarded-onhold')).toBeInTheDocument();
+        expect(screen.getByTestId('dpa-forwarded-mail-failed')).toBeInTheDocument();
+        expect(screen.queryByTestId('dpa-forwarded-sent-to')).not.toBeInTheDocument();
     });
 });

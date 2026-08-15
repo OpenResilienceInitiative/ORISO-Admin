@@ -4,11 +4,10 @@ import logout from '../../api/auth/logout';
 import { signDpaAdmin } from '../../api/tenant/signDpaAdmin';
 import { createDpaSignInvite, resolveDpaSignLink } from '../../api/tenant/createDpaSignInvite';
 import { sendDpaInviteEmail } from '../../api/tenant/sendDpaInviteEmail';
-import { isDpaForwardExpired } from '../../api/tenantOnboarding/dpaForward';
+import { DpaForwardLink, DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 import { Initialization } from '../Layout/Initialization';
 import { UserRole } from '../../enums/UserRole';
 import { DPA_STATUS_KEY, useDpaStatus } from '../../hooks/useDpaStatus.hook';
-import { DPA_ACTIVE_FORWARD_KEY, useDpaActiveForward } from '../../hooks/useDpaActiveForward.hook';
 import { useDpaVersions } from '../../hooks/useDpaVersions.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { DpaAdminSignRequest } from '../../types/dpa';
@@ -29,9 +28,10 @@ import { DpaPendingSignatureDialog } from './DpaPendingSignatureDialog';
  *               {@link DpaPendingSignatureDialog}: the signature was
  *               explicitly handed to an authorised signatory, so the admin
  *               may work on non-legal data while the tenant legitimately
- *               waits. Softening requires POSITIVE proof of the delegation —
- *               a failed forward lookup keeps the hard blocker (fail-closed),
- *               and the never-forwarded unsigned state is unchanged (#572).
+ *               waits. The trigger is the additive `forwardPending` flag on
+ *               the status DTO (#723 contract correction — the `status` enum
+ *               itself has no `PENDING_FORWARDED` value); absent or false it
+ *               keeps the strict #572 blocker.
  *
  * Signing writes the returned status back into the query cache, so a
  * successful signature lifts the block immediately and permanently.
@@ -57,26 +57,13 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
 
     const statusQuery = useDpaStatus(tenantId ?? 0, subjectKind === 'subject');
 
-    // Whether the status alone would block-but-signable — only then is the
-    // forward lookup relevant (#724). Derived WITHOUT forward input first so
-    // the query enablement cannot depend on its own result.
-    const statusOnlyDecision = deriveDpaGateDecision({
-        subjectKind,
-        status: statusQuery.data?.status,
-        isLoading: statusQuery.isLoading,
-        isError: statusQuery.isError,
-    });
-    const forwardRelevant = statusOnlyDecision.kind === 'blocked' && statusOnlyDecision.signable;
-    const forwardQuery = useDpaActiveForward(tenantId ?? 0, subjectKind === 'subject' && forwardRelevant);
-
     const decision = deriveDpaGateDecision({
         subjectKind,
         status: statusQuery.data?.status,
         isLoading: statusQuery.isLoading,
         isError: statusQuery.isError,
-        // A failed lookup means "delegation unproven" -> hard blocker.
-        forward: forwardQuery.isError ? null : forwardQuery.data,
-        forwardLoading: forwardRelevant && forwardQuery.isLoading,
+        // Rides on the same status answer — no second request to wait for.
+        forwardPending: statusQuery.data?.forwardPending,
     });
 
     const blockedSignable = decision.kind === 'blocked' && decision.signable;
@@ -102,45 +89,44 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
     }
 
     if (decision.kind === 'forwarded-pending') {
-        const { forward } = decision;
-        // The active link when still valid; a fresh invite through the
-        // declaration path when it expired (#724).
-        const ensureSignLink = async () => {
-            if (!isDpaForwardExpired(forward)) {
-                return { signLink: forward.signLink, expiresAt: forward.expiresAt };
-            }
+        // Post-login there is no "read the active link" endpoint: issuing a
+        // fresh one is the supported way, and every issued link stays valid
+        // until a signature lands (#723 contract).
+        const mintLink = async (): Promise<DpaForwardLink> => {
             const invite = await createDpaSignInvite(tenantId ?? 0);
-            return { signLink: resolveDpaSignLink(invite.signLink), expiresAt: invite.expiresAt as string | null };
+            return { signUrl: resolveDpaSignLink(invite.signLink), expiresAt: invite.expiresAt ?? null };
+        };
+        const forward = async ({ recipientEmail }: { recipientEmail?: string }): Promise<DpaForwardOutcome> => {
+            const link = await mintLink();
+            if (!recipientEmail) {
+                return { link, mailFailed: false };
+            }
+            try {
+                // The authenticated delivery endpoint (UserService #530)
+                // carries no recipient name — the salutation falls back to the
+                // template default.
+                await sendDpaInviteEmail({
+                    tenantId: tenantId ?? 0,
+                    recipientEmail,
+                    signLink: link.signUrl,
+                    expiresAt: link.expiresAt ?? '',
+                });
+                return { link, mailFailed: false };
+            } catch {
+                // Same shape as the public 502: the link exists, only the mail
+                // did not go out — never present that as a total failure.
+                return { link, mailFailed: true };
+            }
         };
         return (
             <>
                 {children}
                 {!pendingDismissed && (
                     <DpaPendingSignatureDialog
+                        ensureSignLink={mintLink}
                         forward={forward}
-                        ensureSignLink={ensureSignLink}
-                        sendEmail={({ recipientEmail, link }) =>
-                            // The authenticated delivery endpoint (UserService #530)
-                            // carries no recipient name — the salutation falls back
-                            // to the template default.
-                            sendDpaInviteEmail({
-                                tenantId: tenantId ?? 0,
-                                recipientEmail,
-                                signLink: link.signLink,
-                                expiresAt: link.expiresAt ?? '',
-                            }).then(() => undefined)
-                        }
                         onDismiss={() => setPendingDismissed(true)}
-                        onForwardCompleted={({ link, recipientEmail }) => {
-                            // Keep the cached forward current (fresh link and/or
-                            // recipient) and let the admin proceed.
-                            queryClient.setQueryData([DPA_ACTIVE_FORWARD_KEY, tenantId], {
-                                signLink: link.signLink,
-                                expiresAt: link.expiresAt,
-                                recipientEmail: recipientEmail ?? forward.recipientEmail ?? null,
-                            });
-                            setPendingDismissed(true);
-                        }}
+                        onForwardCompleted={() => setPendingDismissed(true)}
                     />
                 )}
             </>
@@ -161,9 +147,6 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
     const onRetry = () => {
         signMutation.reset();
         statusQuery.refetch();
-        if (forwardRelevant) {
-            forwardQuery.refetch();
-        }
         if (blockedSignable) {
             versionsQuery.refetch();
         }

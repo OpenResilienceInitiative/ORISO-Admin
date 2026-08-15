@@ -18,7 +18,8 @@ const mocks = vi.hoisted(() => ({
     getDpaStatus: vi.fn(),
     getDpaVersions: vi.fn(),
     signDpaAdmin: vi.fn(),
-    getActiveDpaForward: vi.fn(),
+    createDpaSignInvite: vi.fn(),
+    sendDpaInviteEmail: vi.fn(),
     logout: vi.fn(),
     roleState: {
         roles: ['tenant-admin'],
@@ -40,16 +41,14 @@ vi.mock('../../api/tenant/signDpaAdmin', () => ({
     signDpaAdmin: mocks.signDpaAdmin,
 }));
 
-vi.mock('../../api/tenantOnboarding/dpaForward', async () => {
-    const actual = await vi.importActual<typeof import('../../api/tenantOnboarding/dpaForward')>(
-        '../../api/tenantOnboarding/dpaForward',
-    );
+vi.mock('../../api/tenant/createDpaSignInvite', () => ({
+    createDpaSignInvite: mocks.createDpaSignInvite,
+    resolveDpaSignLink: (link: string) => link,
+}));
 
-    return {
-        ...actual,
-        getActiveDpaForward: mocks.getActiveDpaForward,
-    };
-});
+vi.mock('../../api/tenant/sendDpaInviteEmail', () => ({
+    sendDpaInviteEmail: mocks.sendDpaInviteEmail,
+}));
 
 vi.mock('../../api/auth/logout', () => ({
     default: mocks.logout,
@@ -109,9 +108,13 @@ describe('DpaBlockerGate', () => {
         mocks.getDpaStatus.mockReset();
         mocks.getDpaVersions.mockReset();
         mocks.signDpaAdmin.mockReset();
-        mocks.getActiveDpaForward.mockReset();
-        // Default: no forward was ever declared — the strict gate applies.
-        mocks.getActiveDpaForward.mockResolvedValue(null);
+        mocks.createDpaSignInvite.mockReset();
+        mocks.createDpaSignInvite.mockResolvedValue({
+            signLink: 'https://app.example.org/dpa-sign/minted-token',
+            expiresAt: '2026-08-29T14:31:07',
+        });
+        mocks.sendDpaInviteEmail.mockReset();
+        mocks.sendDpaInviteEmail.mockResolvedValue(undefined);
         mocks.logout.mockReset();
         mocks.roleState.roles = ['tenant-admin'];
         mocks.roleState.isSuperAdmin = false;
@@ -366,28 +369,46 @@ describe('DpaBlockerGate', () => {
     });
 
     describe('forwarded-pending (#724)', () => {
-        const ACTIVE_FORWARD = {
-            signLink: 'https://app.example.org/dpa-sign/active-token',
-            expiresAt: '2099-01-01T00:00:00Z',
-            recipientEmail: 'legal@example.org',
-        };
+        // The waiting state is the additive `forwardPending` flag on the status
+        // DTO — the enum stays MISSING|UNSIGNED|OUTDATED|VALID|INCONSISTENT.
+        const forwarded = (status: TenantDpaStatus) => ({ ...statusInfo(status), forwardPending: true });
 
         it('replaces the hard blocker with the friendly dialog and renders the admin app behind it', async () => {
-            mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
-            mocks.getActiveDpaForward.mockResolvedValue(ACTIVE_FORWARD);
+            mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
 
             renderGate();
 
             expect(await screen.findByTestId('dpa-pending-dialog')).toBeInTheDocument();
             expect(screen.getByTestId('admin-page')).toBeInTheDocument();
             expect(screen.queryByTestId('dpa-blocker')).not.toBeInTheDocument();
-            expect(screen.getByDisplayValue(ACTIVE_FORWARD.signLink)).toBeInTheDocument();
-            expect(screen.getByTestId('dpa-pending-sent-to')).toBeInTheDocument();
+        });
+
+        it('mints a shareable link on open and offers it copyable', async () => {
+            mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
+
+            renderGate();
+
+            await screen.findByTestId('dpa-pending-dialog');
+            await waitFor(() =>
+                expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(
+                    'https://app.example.org/dpa-sign/minted-token',
+                ),
+            );
+            expect(mocks.createDpaSignInvite).toHaveBeenCalledWith(21);
+        });
+
+        it('stays usable when the link cannot be minted (send e-mail is still offered)', async () => {
+            mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
+            mocks.createDpaSignInvite.mockRejectedValue(new Error('CATCH_ALL'));
+
+            renderGate();
+
+            expect(await screen.findByTestId('dpa-pending-link-error')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'dpaPending.resend' })).toBeEnabled();
         });
 
         it('dismissing with "Später" leaves the admin app usable without the dialog', async () => {
-            mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
-            mocks.getActiveDpaForward.mockResolvedValue(ACTIVE_FORWARD);
+            mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
             const user = userEvent.setup();
 
             renderGate();
@@ -399,9 +420,8 @@ describe('DpaBlockerGate', () => {
             expect(screen.getByTestId('admin-page')).toBeInTheDocument();
         });
 
-        it('"E-Mail senden" opens the shared forward dialog with the active link', async () => {
-            mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
-            mocks.getActiveDpaForward.mockResolvedValue(ACTIVE_FORWARD);
+        it('"E-Mail senden" opens the shared forward dialog and delivers through the authenticated endpoint', async () => {
+            mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
             const user = userEvent.setup();
 
             renderGate();
@@ -410,24 +430,34 @@ describe('DpaBlockerGate', () => {
             await user.click(screen.getByRole('button', { name: 'dpaPending.resend' }));
 
             expect(await screen.findByTestId('dpa-forward-dialog')).toBeInTheDocument();
-            await waitFor(() =>
-                expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(ACTIVE_FORWARD.signLink),
+            await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+            await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+
+            await screen.findByTestId('dpa-forward-sent');
+            expect(mocks.sendDpaInviteEmail).toHaveBeenCalledWith(
+                expect.objectContaining({ tenantId: 21, recipientEmail: 'legal@example.org' }),
             );
         });
 
-        it('an expired forward shows the fresh-link hint instead of the dead link', async () => {
-            mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
-            mocks.getActiveDpaForward.mockResolvedValue({ ...ACTIVE_FORWARD, expiresAt: '2020-01-01T00:00:00Z' });
+        it('a failed delivery keeps the link and reports it as mail-not-sent, not as a total failure', async () => {
+            mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
+            mocks.sendDpaInviteEmail.mockRejectedValue(new Error('SMTP failed'));
+            const user = userEvent.setup();
 
             renderGate();
 
-            expect(await screen.findByTestId('dpa-pending-expired')).toBeInTheDocument();
-            expect(screen.queryByDisplayValue(ACTIVE_FORWARD.signLink)).not.toBeInTheDocument();
+            await screen.findByTestId('dpa-pending-dialog');
+            await user.click(screen.getByRole('button', { name: 'dpaPending.resend' }));
+            await screen.findByTestId('dpa-forward-dialog');
+            await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+            await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+
+            expect(await screen.findByTestId('dpa-forward-mail-failed')).toBeInTheDocument();
+            expect(screen.queryByTestId('dpa-forward-send-failed')).not.toBeInTheDocument();
         });
 
-        it('keeps the hard blocker when the forward lookup fails (fail-closed)', async () => {
+        it('keeps the hard blocker for the never-forwarded unsigned state (#572 unchanged)', async () => {
             mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
-            mocks.getActiveDpaForward.mockRejectedValue(new Error('CATCH_ALL'));
 
             renderGate();
 
@@ -436,27 +466,15 @@ describe('DpaBlockerGate', () => {
             expect(screen.queryByTestId('dpa-pending-dialog')).not.toBeInTheDocument();
         });
 
-        it('keeps the hard blocker for the never-forwarded unsigned state (#572 unchanged)', async () => {
-            mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
-            mocks.getActiveDpaForward.mockResolvedValue(null);
-
-            renderGate();
-
-            expect(await screen.findByTestId('dpa-blocker')).toBeInTheDocument();
-            expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
-        });
-
         it('shows neither dialog nor blocker once the DPA is signed', async () => {
-            mocks.getDpaStatus.mockResolvedValue(statusInfo('VALID'));
-            mocks.getActiveDpaForward.mockResolvedValue(ACTIVE_FORWARD);
+            mocks.getDpaStatus.mockResolvedValue({ ...statusInfo('VALID'), forwardPending: true });
 
             renderGate();
 
             expect(await screen.findByTestId('admin-page')).toBeInTheDocument();
             expect(screen.queryByTestId('dpa-pending-dialog')).not.toBeInTheDocument();
             expect(screen.queryByTestId('dpa-blocker')).not.toBeInTheDocument();
-            // VALID never consults the forward endpoint.
-            expect(mocks.getActiveDpaForward).not.toHaveBeenCalled();
+            expect(mocks.createDpaSignInvite).not.toHaveBeenCalled();
         });
     });
 });

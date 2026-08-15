@@ -101,7 +101,10 @@ export const OrganisationAndDpaIncompleteSubmitMobile: Story = {
  */
 export const OrganisationDpaForwardDialog: Story = {
     args: {
-        client: createStubTenantAdminOnboardingClient({ latencyMs: 0 }),
+        // `forwarded` mirrors the server-side record the real backend writes
+        // when the forward endpoint is called — it is what permits the later
+        // registration with `accepted: false`.
+        client: createStubTenantAdminOnboardingClient({ latencyMs: 0, forwarded: true }),
         forwardClient: createStubDpaForwardClient({ latencyMs: 300 }),
     },
     play: async ({ canvasElement }) => {
@@ -129,7 +132,7 @@ export const OrganisationDpaForwardDialogMobile: Story = {
  */
 export const OrganisationDpaForwardedOnHold: Story = {
     args: {
-        client: createStubTenantAdminOnboardingClient({ latencyMs: 0 }),
+        client: createStubTenantAdminOnboardingClient({ latencyMs: 0, forwarded: true }),
         forwardClient: createStubDpaForwardClient({ latencyMs: 0 }),
     },
     play: async ({ canvasElement }) => {

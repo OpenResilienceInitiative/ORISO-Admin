@@ -325,8 +325,8 @@ describe('useTenantAdminOnboardingFlow', () => {
         await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
 
         const forward = {
-            signLink: 'https://app.example.org/dpa-sign/fwd-token',
-            expiresAt: '2026-08-28T12:00:00Z',
+            signUrl: 'https://app.example.org/dpa-sign/fwd-token',
+            expiresAt: '2026-08-29T14:31:07',
             recipientEmail: 'legal@example.org',
         };
         act(() => result.current.markDpaForwarded(forward));
@@ -339,10 +339,24 @@ describe('useTenantAdminOnboardingFlow', () => {
             await result.current.submitAccount('SecurePass1!');
         });
         expect(result.current.state.phase).toBe('two-factor');
+        // Unchanged request shape: the forwarded case just sends accepted:false
+        // with no signer identity — the server authorises it against its own
+        // record of the forward, never against a client-sent flag.
         expect(client.registerTenantAdmin).toHaveBeenCalledWith(
             'raw-token',
-            expect.objectContaining({ organisation: ORGANISATION, dpa: { forwarded: true } }),
+            expect.objectContaining({
+                organisation: ORGANISATION,
+                dpa: {
+                    accepted: false,
+                    signerName: '',
+                    signerPosition: '',
+                    signerEmail: '',
+                    signerOrganisation: '',
+                },
+            }),
         );
+        const sent = (client.registerTenantAdmin as ReturnType<typeof vi.fn>).mock.calls[0][1];
+        expect(sent.dpa).not.toHaveProperty('forwarded');
     });
 
     it('refuses to leave the DPA step without either a consent act or a declared forward', async () => {
@@ -365,7 +379,7 @@ describe('useTenantAdminOnboardingFlow', () => {
         act(() => result.current.goBackToOrganisation());
         act(() =>
             result.current.markDpaForwarded({
-                signLink: 'https://app.example.org/dpa-sign/fwd-token',
+                signUrl: 'https://app.example.org/dpa-sign/fwd-token',
                 expiresAt: null,
                 recipientEmail: null,
             }),
@@ -379,7 +393,7 @@ describe('useTenantAdminOnboardingFlow', () => {
         });
         expect(client.registerTenantAdmin).toHaveBeenCalledWith(
             'raw-token',
-            expect.objectContaining({ dpa: { forwarded: true } }),
+            expect.objectContaining({ dpa: expect.objectContaining({ accepted: false, signerName: '' }) }),
         );
     });
 });

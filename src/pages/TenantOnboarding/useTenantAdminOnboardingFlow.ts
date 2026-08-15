@@ -49,16 +49,32 @@ export type TenantAdminOnboardingState =
 export type TenantAdminOnboardingSubmitError = 'registration' | 'two-factor-code' | 'two-factor' | null;
 
 /**
- * Declared delegation of the DPA signature (#723): the sign link exists and
- * the wizard may continue WITHOUT a consent act — the registration then
- * carries the forwarded state instead of a self-signature.
+ * Declared delegation of the DPA signature (#723). The forward is recorded
+ * SERVER-SIDE on the invite when the forward endpoint is called; this state is
+ * only the wizard's local echo of it, so the step can render the on-hold view
+ * and the register call may send `accepted: false` (which the backend accepts
+ * solely because its own `dpa_forwarded_at` is set — never on a client claim).
  */
 export interface WizardDpaForwardState {
-    signLink: string;
+    signUrl: string;
     expiresAt: string | null;
     /** Recipient of the forward mail; null when the link was shared manually. */
     recipientEmail: string | null;
+    /** True when the link exists but its mail could not be sent (502). */
+    mailFailed?: boolean;
 }
+
+/**
+ * The DPA payload of a forwarded registration: no consent, no signer identity
+ * — the signature arrives later through the public sign link.
+ */
+const FORWARDED_DPA: DpaAcceptanceData = {
+    accepted: false,
+    signerName: '',
+    signerPosition: '',
+    signerEmail: '',
+    signerOrganisation: '',
+};
 
 export const useTenantAdminOnboardingFlow = (inviteToken: string, client: TenantAdminOnboardingClient) => {
     const [state, setState] = useState<TenantAdminOnboardingState>({ phase: 'loading' });
@@ -198,9 +214,11 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
             try {
                 const result = await client.registerTenantAdmin(inviteToken, {
                     organisation,
-                    // The register call carries the forwarded state instead of
-                    // a self-signature (#723).
-                    dpa: dpa ?? { forwarded: true },
+                    // Unchanged request shape (#723 contract): the forwarded
+                    // case simply sends `accepted: false` with no signer
+                    // identity — the server authorises that against its own
+                    // record of the forward.
+                    dpa: dpa ?? FORWARDED_DPA,
                     account: { password },
                     reservedTenantId: invite.reservedTenantId,
                     tenantIdReservationToken: invite.tenantIdReservationToken,
