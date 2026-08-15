@@ -1,3 +1,5 @@
+@use '../../styles/muiSpacing' as mui;
+
 /* Header cells inherit the band styling from dataTable.module.scss (th rules);
    this module only owns the sort affordance. */
 
@@ -11,9 +13,14 @@
     color: inherit;
     cursor: pointer;
     font: inherit;
-    gap: 4px;
+    gap: mui.$mui-unit * 0.5;
     letter-spacing: inherit;
 }
+
+/* Focus geometry stays literal on purpose: `outline: 2px solid var(--m3-primary)`
+   with a 2px offset is the repo-wide focus pattern (12+ sites, no token or mixin
+   behind it), and expressing 1–2px rings as fractions of the 8px spacing unit
+   would read worse and diverge from every other control. */
 
 .sortButton:focus-visible {
     border-radius: 4px;
@@ -21,6 +28,7 @@
     outline-offset: 2px;
 }
 
+/* Icon box, not spacing — 18px is off the 8px grid by design (M3 dense icon). */
 .sortIcon {
     width: 18px !important;
     height: 18px !important;

@@ -9,8 +9,8 @@
     position: relative;
     overflow: hidden;
     border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 14%, transparent);
-    border-radius: var(--data-table-radius);
     background: var(--admin-table-surface, var(--m3-surface-container-low, #f6f3f3));
+    border-radius: var(--data-table-radius);
 }
 
 .scroll {
@@ -93,9 +93,9 @@
     display: block;
     width: 72%;
     height: 12px;
-    border-radius: 6px;
     animation: skeleton-pulse 1.4s ease-in-out infinite;
     background: color-mix(in srgb, var(--m3-outline, #747878) 18%, transparent);
+    border-radius: 6px;
 }
 
 .skeletonRow td:first-child .skeletonBar {
@@ -139,8 +139,8 @@
 @media (max-width: 767px) {
     .stacked {
         border: none;
-        border-radius: 0;
         background: transparent;
+        border-radius: 0;
     }
 
     .stacked .table,
@@ -163,9 +163,9 @@
 
     .stacked .table tbody tr {
         border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 14%, transparent);
-        border-radius: 16px;
         margin-bottom: 12px;
         background: var(--admin-table-surface, var(--m3-surface-container-low, #f6f3f3));
+        border-radius: 16px;
     }
 
     .stacked .table tbody td {
@@ -200,8 +200,8 @@
     }
 
     .stacked .footer {
-        border-radius: 16px;
         border-top: none;
         margin-top: 4px;
+        border-radius: 16px;
     }
 }

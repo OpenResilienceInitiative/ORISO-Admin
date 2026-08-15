@@ -62,8 +62,8 @@
 .current .dot:after {
     width: 4px;
     height: 4px;
-    border-radius: 50%;
     background: var(--m3-primary, #a5000a);
+    border-radius: 50%;
     content: '';
 }
 

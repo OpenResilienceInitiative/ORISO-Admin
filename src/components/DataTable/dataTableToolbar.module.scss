@@ -1,17 +1,22 @@
+@use '../../styles/muiSpacing' as mui;
+
 .toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    margin-bottom: 16px;
-    gap: 12px;
+    margin-bottom: mui.$mui-unit * 2;
+    gap: mui.$mui-unit * 1.5;
 }
 
 .filters {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: mui.$mui-unit;
 }
+
+/* Content-sizing intent for the search field, not grid spacing — left as
+   explicit widths so the flex basis stays readable. */
 
 .search {
     min-width: 200px;
@@ -22,5 +27,5 @@
     display: flex;
     align-items: center;
     margin-left: auto;
-    gap: 8px;
+    gap: mui.$mui-unit;
 }
