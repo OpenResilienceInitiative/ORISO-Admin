@@ -167,6 +167,21 @@
     --oriso-app-accent-dark: #a5000a;
     --admin-control-selected: var(--oriso-app-accent-dark, var(--m3-primary, #a5000a));
     --admin-workspace-background: #e4e2e2;
+
+    /* Layout raster — Figma "Site Template" 1285-80496.
+       Horizontally: sidebar 128 · arrow-rail gutter 60 · card inset 24, so a
+       card's left edge sits 84px right of the sidebar. Vertically the header is
+       236px: a 144px tab band (24 + 96 + 24) plus a 92px search row. */
+    --admin-sidebar-width: 128px;
+    --admin-page-gutter: 60px;
+    --admin-content-inset: 24px;
+    --admin-header-pad: 24px;
+    --admin-tab-height: 96px;
+    --admin-card-gap: 48px;
+    --admin-dialog-card-width: 360px;
+    --admin-panel-card-width: 800px;
+    --admin-card-footer-height: 68px;
+    --admin-dialog-card-footer-height: 64px;
     /* Card elevation. Softer + wider than M3 elevation-1 (which is a tight
        0 1px 3px) — a gentle, diffuse drop like the M3 dialog, tunable here. */
     --admin-card-elevation: 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%);

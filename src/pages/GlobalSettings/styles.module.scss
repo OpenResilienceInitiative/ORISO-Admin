@@ -214,7 +214,7 @@
 
 @media only screen and (max-width: 1000px) {
     .smtpPage {
-        --card-deck-item-max-width: calc(100vw - 144px);
+        --card-deck-item-max-width: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
     }
 }
 

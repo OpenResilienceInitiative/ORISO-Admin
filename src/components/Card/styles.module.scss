@@ -228,7 +228,9 @@
 
 /* Dialog cards zero out the Box padding (their body carries its own), so the
    footer needs explicit inset — divider spans the full card, actions inset. */
+/* Figma 1285-80496, "XR Dialog → Actions": a 64px action row under the divider. */
 .dialogCard .footer {
+    min-height: var(--admin-dialog-card-footer-height, 64px);
+    padding: 0 24px;
     margin-top: 0;
-    padding: 16px 24px 20px;
 }
