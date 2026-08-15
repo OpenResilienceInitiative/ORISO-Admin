@@ -338,46 +338,70 @@ describe('EmailTemplatesDialog', () => {
         expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
     });
 
-    it('asks before a template switch discards unsaved edits', async () => {
+    it('asks in the dialog before a template switch discards unsaved edits', async () => {
         const user = userEvent.setup();
-        const confirmSpy = vi.spyOn(window, 'confirm');
         renderDialog();
 
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
         fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
         const withinDialog = within(screen.getByRole('dialog'));
 
-        // Make the draft dirty, then decline the switch: the edits survive.
+        // Make the draft dirty, then trigger the switch: the dialog itself turns
+        // into the discard question instead of navigating.
         fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
-        confirmSpy.mockReturnValue(false);
         await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
         await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
-        expect(confirmSpy).toHaveBeenCalled();
+        // The mocked `t` echoes keys that carry no fallback (the Modal title/description).
+        expect(withinDialog.getByText('links.templates.discardTitle')).toBeInTheDocument();
+        expect(withinDialog.getByText('links.templates.discardDescription')).toBeInTheDocument();
+
+        // Abbrechen returns to the untouched draft.
+        await user.click(withinDialog.getByRole('button', { name: 'Abbrechen' }));
+        expect(withinDialog.queryByText('links.templates.discardTitle')).not.toBeInTheDocument();
         expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Edited subject');
 
-        // Accepting the confirm loads the other template.
-        confirmSpy.mockReturnValue(true);
+        // Verwerfen performs the parked intent.
         await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
         await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.click(withinDialog.getByRole('button', { name: 'Verwerfen' }));
         expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
-
-        confirmSpy.mockRestore();
     });
 
-    it('switches without a confirm while the draft is clean', async () => {
+    it('switches without asking while the draft is clean', async () => {
         const user = userEvent.setup();
-        const confirmSpy = vi.spyOn(window, 'confirm');
         renderDialog();
 
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
         fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
         const withinDialog = within(screen.getByRole('dialog'));
+
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+
+        expect(withinDialog.queryByText('links.templates.discardTitle')).not.toBeInTheDocument();
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+    });
+
+    /*
+     * The prompt must be a state of the open dialog (house M3 anatomy), never a
+     * native browser confirm — those cannot be styled and look broken next to
+     * the rest of the admin.
+     */
+    it('never uses a native window.confirm for the discard question', async () => {
+        const user = userEvent.setup();
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const withinDialog = within(screen.getByRole('dialog'));
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
 
         await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
         await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
 
         expect(confirmSpy).not.toHaveBeenCalled();
-        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+        expect(withinDialog.getByText('links.templates.discardTitle')).toBeInTheDocument();
         confirmSpy.mockRestore();
     });
 
@@ -403,7 +427,6 @@ describe('EmailTemplatesDialog', () => {
 
     it('asks before a dismiss gesture discards unsaved edits', async () => {
         const user = userEvent.setup();
-        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
         const onClose = vi.fn();
         renderDialog({ onClose });
 
@@ -412,14 +435,14 @@ describe('EmailTemplatesDialog', () => {
         const withinDialog = within(screen.getByRole('dialog'));
         fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
 
+        // X shows the question instead of closing…
         await user.click(withinDialog.getByRole('button', { name: 'Close' }));
-        expect(confirmSpy).toHaveBeenCalled();
+        expect(withinDialog.getByText('links.templates.discardTitle')).toBeInTheDocument();
         expect(onClose).not.toHaveBeenCalled();
 
-        confirmSpy.mockReturnValue(true);
-        await user.click(withinDialog.getByRole('button', { name: 'Close' }));
+        // …and only Verwerfen closes the whole dialog.
+        await user.click(withinDialog.getByRole('button', { name: 'Verwerfen' }));
         expect(onClose).toHaveBeenCalledTimes(1);
-        confirmSpy.mockRestore();
     });
 
     it('describes the disabled save button with the incomplete hint', async () => {

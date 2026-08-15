@@ -94,6 +94,21 @@
     font-weight: 500;
 }
 
+/* Discard-changes state of the open dialog: the form stays mounted (draft,
+   caret and preview frame survive an "Abbrechen") but is taken out of view
+   and out of the a11y tree via `inert`. */
+.formHidden {
+    display: none;
+}
+
+.discardBody {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #49454f);
+    font-size: 14px;
+    line-height: 20px;
+    text-align: center;
+}
+
 /* #713: the disabled Speichern button explains itself. */
 .saveHint {
     margin: 12px 0 0;

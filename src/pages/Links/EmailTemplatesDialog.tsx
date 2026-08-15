@@ -108,6 +108,12 @@ export const EmailTemplatesDialog = ({
     // What the form last loaded — the reference for "unsaved edits" (#746 review:
     // no menu click or close gesture may silently discard typed content).
     const draftBaselineRef = useRef<TemplateDraftBaseline | null>(null);
+    /**
+     * Pending navigation waiting for the in-dialog discard confirmation. The
+     * state holds the intent itself, so the prompt stays a state of THIS dialog
+     * instead of a second overlay (see {@link guardDraft}).
+     */
+    const [discardPrompt, setDiscardPrompt] = useState<(() => void) | null>(null);
 
     const kindLabel = useCallback((kind: InviteEmailTemplateKind) => t(`links.templates.kind.${kind}`, kind), [t]);
 
@@ -222,24 +228,37 @@ export const EmailTemplatesDialog = ({
     }, []);
 
     // #746 review: no template switch, back navigation or close gesture may
-    // silently discard typed content. `window.confirm` is deliberate — an antd
-    // confirm inside a closing Modal would race its own unmount.
-    const confirmDiscard = useCallback(() => {
+    // silently discard typed content.
+    const draftDirty = useCallback(() => {
         const baseline = draftBaselineRef.current;
-        const dirty =
+        return (
             baseline != null &&
             (baseline.kind !== draftMeta.kind ||
                 baseline.name !== draftMeta.name ||
                 baseline.language !== draftMeta.language ||
                 baseline.active !== draftMeta.active ||
                 baseline.subject !== draftValues.subject ||
-                baseline.body !== draftValues.body);
-        return (
-            !dirty ||
-            // eslint-disable-next-line no-alert -- an antd confirm inside a closing Modal would race its own unmount
-            window.confirm(t('links.templates.discardChanges', 'Nicht gespeicherte Änderungen verwerfen?'))
+                baseline.body !== draftValues.body)
         );
-    }, [draftMeta, draftValues, t]);
+    }, [draftMeta, draftValues]);
+
+    /**
+     * Runs `intent` right away on a clean draft; on a dirty one it parks the
+     * intent and turns THIS dialog into the discard question. Deliberately not a
+     * second overlay: an antd `Modal.confirm` opened from inside a closing Modal
+     * is torn down with its parent (the portal-overlay unmount trap), and a
+     * native `window.confirm` would break the house M3 dialog anatomy.
+     */
+    const guardDraft = useCallback(
+        (intent: () => void) => {
+            if (draftDirty()) {
+                setDiscardPrompt(() => intent);
+                return;
+            }
+            intent();
+        },
+        [draftDirty],
+    );
 
     // Templates of the draft's kind feed the editor's split button: switching
     // loads a stored template, "Neu aus" starts a fresh one from it.
@@ -417,110 +436,145 @@ export const EmailTemplatesDialog = ({
 
     const saveHintId = `${fieldId}-save-hint`;
 
+    /*
+     * Discard question as a STATE of the open dialog (M3 house anatomy):
+     * title + description become the question, the footer becomes
+     * Abbrechen / Verwerfen. One overlay throughout — no portal that could be
+     * unmounted with its parent, and no native browser confirm.
+     */
+    const discardFooter = discardPrompt ? (
+        <div className={styles.footerActions}>
+            <DialogButton onClick={() => setDiscardPrompt(null)}>
+                {t('links.templates.discardCancel', 'Abbrechen')}
+            </DialogButton>
+            <DialogButton
+                destructive
+                onClick={() => {
+                    const intent = discardPrompt;
+                    setDiscardPrompt(null);
+                    intent();
+                }}
+            >
+                {t('links.templates.discardConfirm', 'Verwerfen')}
+            </DialogButton>
+        </div>
+    ) : undefined;
+
     if (view === 'form') {
+        const formTitleKey = editingTemplate ? 'links.templates.editTitle' : 'links.templates.newTitle';
+        const formDescriptionKey = editingTemplate
+            ? 'links.templates.editDescription'
+            : 'links.templates.newDescription';
+
         return (
             <PlaceholderTemplateDialog
-                titleKey={editingTemplate ? 'links.templates.editTitle' : 'links.templates.newTitle'}
-                descriptionKey={editingTemplate ? 'links.templates.editDescription' : 'links.templates.newDescription'}
+                titleKey={discardPrompt ? 'links.templates.discardTitle' : formTitleKey}
+                descriptionKey={discardPrompt ? 'links.templates.discardDescription' : formDescriptionKey}
+                footer={discardFooter}
                 saveDisabled={submitting || !draftComplete}
                 saveDescribedBy={draftComplete ? undefined : saveHintId}
                 width={1180}
                 // Abbrechen steps back to the list; X/Escape/mask keep closing
                 // the whole dialog, as they did before the module wiring. Both
                 // ask first when the draft carries unsaved edits.
-                onClose={() => {
-                    if (confirmDiscard()) {
-                        backToList();
-                    }
-                }}
-                onDismiss={() => {
-                    if (confirmDiscard()) {
-                        onClose();
-                    }
-                }}
+                onClose={() => guardDraft(backToList)}
+                onDismiss={() => guardDraft(onClose)}
                 onSave={onSave}
             >
-                {/* Persistence metadata around the editor: what the API stores per
-                    template beyond subject/body. The editor below owns the tokenised
-                    content and the live preview. */}
-                <div className={styles.metaFields}>
-                    <div className={styles.metaField}>
-                        <label className={styles.metaLabel} htmlFor={`${fieldId}-kind`}>
-                            {t('links.templates.field.kind', 'Kind')}
-                        </label>
-                        <Select
-                            id={`${fieldId}-kind`}
-                            options={TEMPLATE_KINDS.map((kind) => ({ value: kind, label: kindLabel(kind) }))}
-                            value={draftMeta.kind}
-                            onChange={(kind: InviteEmailTemplateKind) => setDraftMeta((meta) => ({ ...meta, kind }))}
-                        />
-                    </div>
-                    <div className={styles.metaField}>
-                        <label className={styles.metaLabel} htmlFor={`${fieldId}-name`}>
-                            {t('links.templates.field.name', 'Vorlagenname')}
-                        </label>
-                        <Input
-                            id={`${fieldId}-name`}
-                            value={draftMeta.name}
-                            onChange={(event) => setDraftMeta((meta) => ({ ...meta, name: event.target.value }))}
-                        />
-                    </div>
-                    <div className={styles.metaField}>
-                        <label className={styles.metaLabel} htmlFor={`${fieldId}-language`}>
-                            {t('links.templates.field.language', 'Language')}
-                        </label>
-                        <Input
-                            id={`${fieldId}-language`}
-                            placeholder="de"
-                            value={draftMeta.language}
-                            onChange={(event) => setDraftMeta((meta) => ({ ...meta, language: event.target.value }))}
-                        />
-                    </div>
-                    <div className={styles.metaField}>
-                        <label className={styles.metaLabel} htmlFor={`${fieldId}-active`}>
-                            {t('links.templates.field.active', 'Active')}
-                        </label>
-                        <Switch
-                            checked={draftMeta.active}
-                            id={`${fieldId}-active`}
-                            onChange={(active) => setDraftMeta((meta) => ({ ...meta, active }))}
-                        />
-                    </div>
-                </div>
-                <InviteEmailTemplateEditor
-                    activeTemplateId={editingTemplate?.id}
-                    templates={editorTemplates}
-                    tokens={inviteEmailTokensForKind(draftMeta.kind)}
-                    values={draftValues}
-                    onChange={setDraftValues}
-                    onCreateFromTemplate={(id) => {
-                        const template = kindTemplates.find((entry) => entry.id === id);
-                        if (template && confirmDiscard()) {
-                            openCreateFromTemplate(template);
-                        }
-                    }}
-                    onManageTemplates={() => {
-                        if (confirmDiscard()) {
-                            backToList();
-                        }
-                    }}
-                    onSelectTemplate={(id) => {
-                        const template = kindTemplates.find((entry) => entry.id === id);
-                        if (template && confirmDiscard()) {
-                            openEditForm(template);
-                        }
-                    }}
-                />
-                {/* #713 house rule: a disabled primary action must say why —
-                    linked to the save button via aria-describedby. */}
-                {!draftComplete && (
-                    <p className={styles.saveHint} id={saveHintId} role="status">
+                {discardPrompt && (
+                    <p className={styles.discardBody} role="status">
                         {t(
-                            'links.templates.saveIncomplete',
-                            'Vorlagenname, Betreff und Inhalt ausfüllen, um zu speichern.',
+                            'links.templates.discardBody',
+                            'Betreff und Inhalt dieser Vorlage wurden geändert, aber noch nicht gespeichert.',
                         )}
                     </p>
                 )}
+                {/* While the discard question is up, the form stays MOUNTED but
+                    hidden and inert: the draft, the caret and the preview frame
+                    survive an "Abbrechen" untouched. */}
+                <div className={discardPrompt ? styles.formHidden : undefined} inert={discardPrompt != null}>
+                    {/* Persistence metadata around the editor: what the API stores per
+                        template beyond subject/body. The editor below owns the tokenised
+                        content and the live preview. */}
+                    <div className={styles.metaFields}>
+                        <div className={styles.metaField}>
+                            <label className={styles.metaLabel} htmlFor={`${fieldId}-kind`}>
+                                {t('links.templates.field.kind', 'Kind')}
+                            </label>
+                            <Select
+                                id={`${fieldId}-kind`}
+                                options={TEMPLATE_KINDS.map((kind) => ({ value: kind, label: kindLabel(kind) }))}
+                                value={draftMeta.kind}
+                                onChange={(kind: InviteEmailTemplateKind) =>
+                                    setDraftMeta((meta) => ({ ...meta, kind }))
+                                }
+                            />
+                        </div>
+                        <div className={styles.metaField}>
+                            <label className={styles.metaLabel} htmlFor={`${fieldId}-name`}>
+                                {t('links.templates.field.name', 'Vorlagenname')}
+                            </label>
+                            <Input
+                                id={`${fieldId}-name`}
+                                value={draftMeta.name}
+                                onChange={(event) => setDraftMeta((meta) => ({ ...meta, name: event.target.value }))}
+                            />
+                        </div>
+                        <div className={styles.metaField}>
+                            <label className={styles.metaLabel} htmlFor={`${fieldId}-language`}>
+                                {t('links.templates.field.language', 'Language')}
+                            </label>
+                            <Input
+                                id={`${fieldId}-language`}
+                                placeholder="de"
+                                value={draftMeta.language}
+                                onChange={(event) =>
+                                    setDraftMeta((meta) => ({ ...meta, language: event.target.value }))
+                                }
+                            />
+                        </div>
+                        <div className={styles.metaField}>
+                            <label className={styles.metaLabel} htmlFor={`${fieldId}-active`}>
+                                {t('links.templates.field.active', 'Active')}
+                            </label>
+                            <Switch
+                                checked={draftMeta.active}
+                                id={`${fieldId}-active`}
+                                onChange={(active) => setDraftMeta((meta) => ({ ...meta, active }))}
+                            />
+                        </div>
+                    </div>
+                    <InviteEmailTemplateEditor
+                        activeTemplateId={editingTemplate?.id}
+                        templates={editorTemplates}
+                        tokens={inviteEmailTokensForKind(draftMeta.kind)}
+                        values={draftValues}
+                        onChange={setDraftValues}
+                        onCreateFromTemplate={(id) => {
+                            const template = kindTemplates.find((entry) => entry.id === id);
+                            if (template) {
+                                guardDraft(() => openCreateFromTemplate(template));
+                            }
+                        }}
+                        onManageTemplates={() => guardDraft(backToList)}
+                        onSelectTemplate={(id) => {
+                            const template = kindTemplates.find((entry) => entry.id === id);
+                            if (template) {
+                                guardDraft(() => openEditForm(template));
+                            }
+                        }}
+                    />
+                    {/* #713 house rule: a disabled primary action must say why —
+                        linked to the save button via aria-describedby. */}
+                    {!draftComplete && (
+                        <p className={styles.saveHint} id={saveHintId} role="status">
+                            {t(
+                                'links.templates.saveIncomplete',
+                                'Vorlagenname, Betreff und Inhalt ausfüllen, um zu speichern.',
+                            )}
+                        </p>
+                    )}
+                </div>
             </PlaceholderTemplateDialog>
         );
     }

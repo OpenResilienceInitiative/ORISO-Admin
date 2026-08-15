@@ -25,6 +25,13 @@ export interface PlaceholderTemplateDialogProps {
     saveDisabled?: boolean;
     /** Id of an element explaining the save button (e.g. why it is disabled). */
     saveDescribedBy?: string;
+    /**
+     * Replaces the standard Abbrechen/Speichern row — used when the dialog
+     * switches into a sub-state with its own actions (e.g. the discard-changes
+     * question), so that state stays inside THIS dialog instead of opening a
+     * second overlay.
+     */
+    footer?: ReactNode;
     width?: number | string;
 }
 
@@ -45,11 +52,13 @@ export const PlaceholderTemplateDialog = ({
     onDismiss,
     saveDisabled = false,
     saveDescribedBy,
+    footer,
     width = 1080,
 }: PlaceholderTemplateDialogProps) => (
     <Modal
         titleKey={titleKey}
         descriptionKey={descriptionKey}
+        footer={footer}
         okLabelKey="save"
         cancelLabelKey="cancel"
         onConfirm={onSave}
