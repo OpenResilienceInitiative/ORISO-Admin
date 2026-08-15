@@ -92,7 +92,13 @@ vi.mock('../../../hooks/useCounselorById', () => ({
     useCounselorById: () => ({ data: undefined, isLoading: false }),
 }));
 vi.mock('../../../hooks/useUserPermission', () => ({ useUserPermissions: () => ({ can: () => false }) }));
-vi.mock('../../../hooks/useUserRoles.hook', () => ({ useUserRoles: () => ({ isSuperAdmin: false }) }));
+// `hasRole` as well as `isSuperAdmin`: the form gates its admin-remarks field on
+// `hasRole([TenantAdmin, SingleTenantAdmin])`. False keeps this test on the same
+// minimal-permission user as the `can: () => false` mock above — the fields under
+// test here are username and e-mail, not the privileged extras.
+vi.mock('../../../hooks/useUserRoles.hook', () => ({
+    useUserRoles: () => ({ isSuperAdmin: false, hasRole: () => false }),
+}));
 vi.mock('../../../utils/parseUserAuthInfo', () => ({ parseUserAuthInfo: () => ({ tenantId: 84 }) }));
 vi.mock('../../../api/tenant/getSingleTenantData', () => ({
     getSingleTenantData: () => Promise.resolve({ id: 84, name: 'Test tenant' }),
