@@ -1,7 +1,5 @@
 import * as React from 'react';
-import { useContext } from 'react';
-import { Form } from 'antd';
-import DisabledContext from 'antd/es/config-provider/DisabledContext';
+import { ConfigProvider, Form } from 'antd';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
 import FormHelperText from '@mui/material/FormHelperText';
@@ -39,8 +37,8 @@ const MuiSliderControl = ({
     max,
     disabled,
 }: MuiSliderControlProps) => {
-    const contextDisabled = useContext(DisabledContext);
-    const isDisabled = contextDisabled || disabled;
+    const { componentDisabled } = ConfigProvider.useConfig();
+    const isDisabled = componentDisabled || disabled;
     const { status } = Form.Item.useStatus();
     const form = Form.useFormInstance();
     const isError = status === 'error';

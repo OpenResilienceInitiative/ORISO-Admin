@@ -98,6 +98,13 @@ export interface DpaAcceptanceData {
 
 export interface TenantAdminRegistrationRequest {
     organisation: OrganisationData;
+    /**
+     * The request shape is UNCHANGED by the forward flow (#723 contract).
+     * `accepted: false` is accepted ONLY when this invite really forwarded the
+     * DPA — the forward is recorded server-side on the invite (`dpa_forwarded_at`)
+     * and the client cannot claim it by sending a flag. On an invite that never
+     * forwarded, `accepted: false` still answers 400.
+     */
     dpa: DpaAcceptanceData;
     account: {
         password: string;
@@ -292,6 +299,8 @@ export const createHttpTenantAdminOnboardingClient = (): TenantAdminOnboardingCl
 };
 
 export interface StubTenantAdminOnboardingOptions {
+    /** The invite already forwarded the DPA server-side (permits accepted: false). */
+    forwarded?: boolean;
     /**
      * Initial link state presented by the stub. Default: 'VALID'.
      * 'PENDING_2FA_ACTIVATION' = consumed-but-resumable (#569 resume
@@ -345,6 +354,10 @@ export const createStubTenantAdminOnboardingClient = (
     // contract). Only then is the link terminally consumed.
     let registered = inviteState === 'PENDING_2FA_ACTIVATION';
     let twoFactorActivated = inviteState === 'CONSUMED';
+    // Server-side record of the forward (`dpa_forwarded_at`) — the only thing
+    // that permits `accepted: false`. `markForwarded` stands in for the real
+    // endpoint having been called against the same invite.
+    const forwarded = options.forwarded ?? false;
 
     const STUB_TWO_FACTOR = {
         secret: 'ORISOSTUBTOTPSECRET234567ABCDEFG',
@@ -390,7 +403,9 @@ export const createStubTenantAdminOnboardingClient = (
                 // matching token with a conflict — surfaced as an unusable link.
                 throw new InviteLinkError('INVALID');
             }
-            if (!request.dpa.accepted) {
+            // Mirrors the server rule: `accepted: false` passes only when THIS
+            // invite forwarded the DPA beforehand — never on a client claim.
+            if (!request.dpa.accepted && !forwarded) {
                 throw new Error('DPA_NOT_ACCEPTED');
             }
             registered = true;
