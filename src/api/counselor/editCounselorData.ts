@@ -32,6 +32,8 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         isSupervisor,
         publicSlug,
         rejectPendingPublicSlug,
+        displayName,
+        internalDisplayName,
         salutation,
         position,
         title,
@@ -54,6 +56,8 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         // Backend semantics: null/omitted leaves the stored value untouched, '' clears it.
         // Undefined means the form did not render the field (e.g. remarks for
         // restricted agency admins), so it must stay omitted.
+        ...(displayName !== undefined && { displayName }),
+        ...(internalDisplayName !== undefined && { internalDisplayName }),
         ...(salutation !== undefined && { salutation }),
         ...(position !== undefined && { position }),
         ...(title !== undefined && { title }),

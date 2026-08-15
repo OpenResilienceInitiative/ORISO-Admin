@@ -198,6 +198,8 @@ export const UserEditOrAdd = () => {
         }
 
         form.setFieldsValue({
+            displayName: consultantById.displayName || '',
+            internalDisplayName: consultantById.internalDisplayName || '',
             salutation: consultantById.salutation || undefined,
             position: consultantById.position || '',
             title: consultantById.title || '',
@@ -426,6 +428,20 @@ export const UserEditOrAdd = () => {
 
                                 {isConsultantForm && (
                                     <>
+                                        <MuiFormField
+                                            name="displayName"
+                                            label={t('counselor.displayName')}
+                                            placeholder={t('counselor.displayName.placeholder')}
+                                            helpText={t('counselor.displayName.hint')}
+                                        />
+
+                                        <MuiFormField
+                                            name="internalDisplayName"
+                                            label={t('counselor.internalDisplayName')}
+                                            placeholder={t('counselor.internalDisplayName.placeholder')}
+                                            helpText={t('counselor.internalDisplayName.hint')}
+                                        />
+
                                         {/*
                                           Deliberately not clearable. Clearing the select yields
                                           `undefined`, which the API layer omits and the backend

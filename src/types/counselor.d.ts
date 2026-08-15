@@ -22,6 +22,10 @@ export interface CounselorData {
     twoFactorAuth?: boolean;
     isGroupchatConsultant?: boolean;
     isSupervisor?: boolean;
+    /** The PUBLIC display name — the name advice seekers see. */
+    displayName?: string;
+    /** Optional internal display name; internal surfaces fall back to displayName when empty. */
+    internalDisplayName?: string;
     salutation?: string;
     position?: string;
     title?: string;

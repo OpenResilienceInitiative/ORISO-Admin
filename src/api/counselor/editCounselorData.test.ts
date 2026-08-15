@@ -59,4 +59,26 @@ describe('editCounselorData', () => {
         expect(body).not.toHaveProperty('title');
         expect(body).not.toHaveProperty('adminRemarks');
     });
+
+    it('sends both display names, keeping an empty internal name so the backend clears it (fallback)', async () => {
+        await editCounselorData('consultant-1', {
+            ...baseFormData,
+            displayName: 'Anna B.',
+            internalDisplayName: '',
+        });
+
+        const body = JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string);
+        expect(body).toMatchObject({
+            displayName: 'Anna B.',
+            internalDisplayName: '',
+        });
+    });
+
+    it('omits the display names when the form did not render them', async () => {
+        await editCounselorData('consultant-1', { ...baseFormData });
+
+        const body = JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string);
+        expect(body).not.toHaveProperty('displayName');
+        expect(body).not.toHaveProperty('internalDisplayName');
+    });
 });
