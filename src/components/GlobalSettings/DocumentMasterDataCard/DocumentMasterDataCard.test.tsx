@@ -73,20 +73,21 @@ describe('DocumentMasterDataCard', () => {
         ).toBeInTheDocument();
     });
 
-    /**
-     * The card opens read-only and only editing exposes save/cancel. Asserted through the
-     * buttons rather than the inputs' disabled attribute: MuiFormField reads antd's
-     * DisabledContext through a deep import, which resolves to a second module instance
-     * under Vitest, so the context never reaches the field in this environment.
-     */
-    it('offers no way to save until editing starts', async () => {
+    /** The card opens read-only: the fields are disabled and there is nothing to save with. */
+    it('opens read-only and only becomes editable on demand', async () => {
         const user = userEvent.setup({ delay: null });
         render(<DocumentMasterDataCard data={storedData} onSave={() => undefined} />);
 
+        expect(screen.getByLabelText(label('operator.legalName'))).toBeDisabled();
+        expect(screen.getByLabelText(label('supervisoryAuthority.name'))).toBeDisabled();
+        expect(screen.getByLabelText(label('document.nextReviewDate'))).toBeDisabled();
+        expect(screen.getByLabelText(label('keyFigures.tenants'))).toBeDisabled();
         expect(screen.queryByRole('button', { name: 'card.edit.save' })).not.toBeInTheDocument();
 
         await user.click(screen.getByRole('button', { name: 'edit' }));
 
+        expect(screen.getByLabelText(label('operator.legalName'))).toBeEnabled();
+        expect(screen.getByLabelText(label('keyFigures.tenants'))).toBeEnabled();
         expect(screen.getByRole('button', { name: 'card.edit.save' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'card.edit.cancel' })).toBeInTheDocument();
     });
@@ -133,6 +134,7 @@ describe('DocumentMasterDataCard', () => {
         render(<DocumentMasterDataCard data={storedData} onSave={() => undefined} disabled />);
 
         expect(screen.getByLabelText(label('operator.legalName'))).toHaveValue('Deutscher Caritasverband e. V.');
+        expect(screen.getByLabelText(label('operator.legalName'))).toBeDisabled();
         expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument();
     });
 });
