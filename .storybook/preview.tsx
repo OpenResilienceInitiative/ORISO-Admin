@@ -9,6 +9,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider } from 'antd';
 import de_DE from 'antd/es/locale/de_DE';
 import { initialize, mswLoader } from 'msw-storybook-addon';
+// Same patch src/index.tsx installs: without it antd v5's static notification /
+// message / Modal APIs silently no-op under React 19, so stories that confirm an
+// action via notification.success would render nothing and look broken.
+import '@ant-design/v5-patch-for-react-19';
 import { buildAdminAntdTheme } from '../src/theme/antdM3Theme';
 import { AdminEmpty } from '../src/components/AdminEmpty';
 
