@@ -1781,5 +1781,21 @@
     "placeholderTemplate.legal.text": "Consent text",
     "placeholderTemplate.legal.previewLabel": "Consent preview",
     "placeholderTemplate.legal.previewCaption": "This is how the sentence appears during registration:",
-    "placeholderTemplate.legal.checkboxLabel": "Consent"
+    "placeholderTemplate.legal.checkboxLabel": "Consent",
+    "tenants.erstantwort.title": "First response",
+    "tenants.erstantwort.description": "Your organisation writes these texts in its own voice. Everything else in the first response — the deadline sentence, the \"send us no personal data\" notice and the emergency numbers — is rendered from configuration and deliberately cannot be overridden here: what the system knows, the system writes.",
+    "tenants.erstantwort.deadline.label": "Response deadline in working days",
+    "tenants.erstantwort.deadline.help": "A number, not a sentence — so the promise lives in exactly one place and can be compared against what actually happened. Leave empty for the platform default of 2 working days.",
+    "tenants.erstantwort.greeting.label": "Greeting",
+    "tenants.erstantwort.greeting.help": "The first sentence the advice seeker reads from you. Leave empty for the platform text.",
+    "tenants.erstantwort.whoReadsAlong.label": "Who reads the message",
+    "tenants.erstantwort.whoReadsAlong.help": "Who in your counselling centre has access to the conversation.",
+    "tenants.erstantwort.whoReadsAlong.mandatory": "Required: your organisation is the controller and ORISO only the processor — the platform must not invent this statement for you.",
+    "tenants.erstantwort.emergencyAddition.label": "Addition to the emergency numbers",
+    "tenants.erstantwort.emergencyAddition.help": "Shown in addition to the platform's emergency numbers. Those cannot be replaced or switched off.",
+    "tenants.erstantwort.freeNotice.label": "Free notice",
+    "tenants.erstantwort.freeNotice.help": "The one Baustein the catalogue does not anticipate — for example a note about your counselling model. There is exactly one.",
+    "tenants.erstantwort.closing.label": "Closing",
+    "tenants.erstantwort.closing.help": "The final sentence of the sequence. Leave empty for the platform text.",
+    "tenants.erstantwort.mandatoryChip": "Required"
 }
