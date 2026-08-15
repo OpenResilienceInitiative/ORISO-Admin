@@ -3,7 +3,7 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // antd components used by the composer (Dropdown/menus) query matchMedia,
@@ -226,6 +226,96 @@ describe('TenantInvitesTab Träger-ID field', () => {
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
         expect(field).toHaveValue('');
         expect(mocks.searchTenantData).not.toHaveBeenCalled();
+    });
+});
+
+/*
+ * `loadInvites` is called from the mount effect AND after every invite action,
+ * so two runs can be in flight at once — each walks several pages, so the older
+ * one can finish last. Only the newest run may write the list or clear the
+ * loading flag; otherwise a stale response resurrects rows the admin just
+ * changed, or hides a spinner while a newer fetch is still running.
+ */
+describe('overlapping invite loads', () => {
+    /** A promise plus its resolver, so a test can decide the completion order. */
+    const deferred = <T,>() => {
+        let resolve!: (value: T) => void;
+        const promise = new Promise<T>((r) => {
+            resolve = r;
+        });
+        return { promise, resolve };
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
+        mocks.createAccountInvite.mockResolvedValue(invite(1, 21, 'EMAIL_SENT'));
+    });
+
+    /** Fill the composer and send, which triggers the second (newer) load. */
+    const sendOneInvite = async (user: ReturnType<typeof userEvent.setup>) => {
+        await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+    };
+
+    it('keeps the newer list when an older load resolves last', async () => {
+        const stale = deferred<ReturnType<typeof invitesPage>>();
+        mocks.listAccountInvites
+            // Mount: slow, and by the time it lands its rows are gone.
+            .mockReturnValueOnce(stale.promise)
+            // Refresh after the create: fast, and authoritative.
+            .mockResolvedValue(invitesPage([invite(1, 21, 'EMAIL_SENT')]));
+
+        await renderTenantTab();
+        const user = userEvent.setup();
+        await sendOneInvite(user);
+
+        expect(await screen.findByText('taken1@example.org')).toBeInTheDocument();
+
+        stale.resolve(invitesPage([]));
+
+        // Without the revision guard the stale empty page would land last and
+        // replace the row with the "no invites yet" state.
+        await waitFor(() => expect(mocks.listAccountInvites).toHaveBeenCalledTimes(2));
+        expect(screen.getByText('taken1@example.org')).toBeInTheDocument();
+        expect(screen.queryByText('Noch keine Einladungen')).not.toBeInTheDocument();
+    });
+
+    it('does not let an older load clear the loading flag of a newer one', async () => {
+        const first = deferred<ReturnType<typeof invitesPage>>();
+        const second = deferred<ReturnType<typeof invitesPage>>();
+        mocks.listAccountInvites.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+
+        await renderTenantTab();
+        const user = userEvent.setup();
+        await sendOneInvite(user);
+        await waitFor(() => expect(mocks.listAccountInvites).toHaveBeenCalledTimes(2));
+
+        // Settle the older run completely (a macrotask drains every microtask
+        // the component chained behind its await) — a `waitFor` would pass on
+        // its first poll, before React ever processed the stale update.
+        const settle = async (resolve: () => void) => {
+            await act(async () => {
+                resolve();
+                await new Promise((done) => {
+                    setTimeout(done, 0);
+                });
+            });
+        };
+
+        // The older run finishes while the newer one is still fetching.
+        await settle(() => first.resolve(invitesPage([])));
+        expect(screen.getByRole('table')).toHaveAttribute('aria-busy', 'true');
+
+        await settle(() => second.resolve(invitesPage([invite(1, 21, 'EMAIL_SENT')])));
+        expect(screen.getByRole('table')).not.toHaveAttribute('aria-busy');
+        expect(screen.getByText('taken1@example.org')).toBeInTheDocument();
     });
 });
 

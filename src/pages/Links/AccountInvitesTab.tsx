@@ -118,6 +118,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
 
     const activeTemplates = useMemo(() => templates.filter((template) => template.active), [templates]);
 
+    /** Sequence number of the newest `loadInvites` run; see the guard inside it. */
+    const loadRevision = useRef(0);
+
     /**
      * Loads the tab's COMPLETE invite list (all pages, 200 per request). The
      * board derives its summary counts and bucket filters client-side — a
@@ -126,6 +129,15 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
      * (the tenant tab already fetched everything for id pre-flagging before).
      */
     const loadInvites = useCallback(async () => {
+        loadRevision.current += 1;
+        const revision = loadRevision.current;
+        // Only the newest load may write. The initial load, the refresh after
+        // every invite action and the CSV import's refresh all call this, so two
+        // runs can be in flight at once — and because each run walks several
+        // pages, the older one can finish last. Without this guard it would
+        // overwrite fresher rows (and clear `loading` while the newer run is
+        // still fetching), showing a just-revoked invite as still active.
+        const isLatest = () => revision === loadRevision.current;
         setLoading(true);
         try {
             const all: AccountInviteDTO[] = [];
@@ -139,11 +151,14 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 totalPages = response.totalPages ?? 0;
                 page += 1;
             }
+            if (!isLatest()) return;
             setInvites(all);
         } catch {
+            if (!isLatest()) return;
             message.error(t('links.error.loadFailed', 'Could not load links'));
         } finally {
-            setLoading(false);
+            // A superseded run leaves `loading` to the run that overtook it.
+            if (isLatest()) setLoading(false);
         }
     }, [targetRole, t]);
 
