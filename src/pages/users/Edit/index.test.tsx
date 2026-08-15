@@ -259,10 +259,15 @@ describe('admin remarks are gated on the tenant-level admin role (#994)', () => 
         expect(await submit(user)).toMatchObject({ adminRemarks: 'Springt fuer die Kollegin ein.' });
     });
 
-    it('omits the remarks field for a restricted agency admin, whose submission carries no remarks', async () => {
-        // The backend refuses to read or write remarks for this role, so the
-        // field must be absent — not merely disabled.
-        mocks.roles = [UserRole.RestrictedAgencyAdmin];
+    it.each([
+        ['a restricted agency admin', UserRole.RestrictedAgencyAdmin],
+        ['a plain agency admin', UserRole.AgencyAdmin],
+    ])('omits the remarks field for %s, whose submission carries no remarks', async (_label, role) => {
+        // The backend refuses to read or write remarks for these roles, so the
+        // field must be absent — not merely disabled. Visibility alone would
+        // not prove it: a regression can hide the control and still serialize
+        // `adminRemarks`, so the payload is asserted as well.
+        mocks.roles = [role];
         const user = userEvent.setup();
         renderForm();
 
@@ -271,13 +276,6 @@ describe('admin remarks are gated on the tenant-level admin role (#994)', () => 
         await fillMandatoryFields();
 
         expect(await submit(user)).not.toHaveProperty('adminRemarks');
-    });
-
-    it('omits the remarks field for a plain agency admin', async () => {
-        mocks.roles = [UserRole.AgencyAdmin];
-        renderForm();
-
-        expect(screen.queryByLabelText('Interne Anmerkungen')).not.toBeInTheDocument();
     });
 });
 
@@ -304,12 +302,13 @@ describe('salutation control (#994)', () => {
         const salutation = screen.getByLabelText('Anrede');
         expect(salutation).toHaveValue('Keine Angabe');
         // MUI only renders the clear button once a value is set, so this is
-        // checked with the control populated.
-        expect(
-            (salutation.closest('.MuiAutocomplete-root') as HTMLElement).querySelector(
-                '.MuiAutocomplete-clearIndicator',
-            ),
-        ).toBeNull();
+        // checked with the control populated. Asked for by accessible name
+        // (MUI's `clearText`, "Clear") instead of the implementation class the
+        // indicator happens to carry today. The sibling popup toggle is
+        // asserted first so the absence below cannot pass vacuously: it proves
+        // MUI's indicator buttons ARE reachable by role and name here.
+        expect(screen.getAllByRole('button', { name: 'Open' }).length).toBeGreaterThan(0);
+        expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
 
         await fillMandatoryFields();
 
