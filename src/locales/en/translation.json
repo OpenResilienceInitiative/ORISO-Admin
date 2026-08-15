@@ -477,6 +477,7 @@
     "links.templates.field.body": "Body",
     "links.templates.field.active": "Active",
     "links.templates.saveIncomplete": "Fill in template name, subject and body to save.",
+    "links.templates.discardChanges": "Discard unsaved changes?",
     "links.templates.kind.TENANT_INVITE": "Tenant invite",
     "links.templates.kind.COUNSELLOR_INVITE": "Counsellor invite",
     "links.templates.kind.DPA_FORWARD": "DPA forward",

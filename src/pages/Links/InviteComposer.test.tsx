@@ -33,10 +33,20 @@ vi.mock('../../components/ListingTable', () => ({
     listingTableStyles: new Proxy({}, { get: () => undefined }),
 }));
 
-// The dialog itself has its own test file; here only the opened view matters.
+// The dialog itself has its own test file; here only the opened view (and its
+// create-from source, #746) matters.
 vi.mock('./EmailTemplatesDialog', () => ({
-    EmailTemplatesDialog: ({ initialView }: { initialView?: string }) => (
-        <div data-testid="templates-dialog">{initialView}</div>
+    EmailTemplatesDialog: ({
+        initialView,
+        initialTemplateId,
+    }: {
+        initialView?: string;
+        initialTemplateId?: number;
+    }) => (
+        <div data-testid="templates-dialog">
+            {initialView}
+            {initialTemplateId != null ? `:${initialTemplateId}` : ''}
+        </div>
     ),
 }));
 
@@ -330,5 +340,17 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
         await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
         expect(mocks.createAccountInvite.mock.calls[0][0].templateId).toBe(8);
+    });
+
+    it('opens the create view prefilled from the pill menu\'s "Neu aus" entry (#746 review)', async () => {
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        await screen.findByRole('button', { name: /Standard/ });
+        await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Standard“/ }));
+
+        // The dialog opens straight in create mode with template 7 as the source.
+        expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('create:7');
     });
 });

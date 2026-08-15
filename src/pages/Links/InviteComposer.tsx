@@ -82,6 +82,12 @@ export interface InviteComposerProps {
      */
     onSelectTemplate?: (templateId: number) => void;
     /**
+     * "Neu aus „X"" in the pill menu: start a new template prefilled from the
+     * given one (opens the dialog's create view with that source). Omit to
+     * hide the menu's create group.
+     */
+    onCreateFromTemplate?: (templateId: number) => void;
+    /**
      * Enables the "⋮" more-menu with the "CSV-Datei importieren" entry (#315).
      * Called with the client-side parse result and the send mode captured at
      * import time — the file itself is never uploaded anywhere.
@@ -163,6 +169,7 @@ export const InviteComposer = ({
     onSubmit,
     onManageTemplates,
     onSelectTemplate,
+    onCreateFromTemplate,
     onCsvParsed,
     selectionCount = 0,
     onBulkSend,
@@ -480,6 +487,9 @@ export const InviteComposer = ({
                 <TemplateSplitButton
                     activeTemplateId={selectedTemplate?.id}
                     templates={activeTemplates}
+                    onCreateFromTemplate={
+                        onCreateFromTemplate && ((id) => onCreateFromTemplate(typeof id === 'number' ? id : Number(id)))
+                    }
                     onMainClick={() => onManageTemplates('list')}
                     onSelectTemplate={(id) => onSelectTemplate?.(typeof id === 'number' ? id : Number(id))}
                 />

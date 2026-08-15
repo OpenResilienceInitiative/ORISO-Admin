@@ -418,6 +418,7 @@
     "links.templates.field.body": "Inhalt",
     "links.templates.field.active": "Aktiv",
     "links.templates.saveIncomplete": "Vorlagenname, Betreff und Inhalt ausfüllen, um zu speichern.",
+    "links.templates.discardChanges": "Nicht gespeicherte Änderungen verwerfen?",
     "links.templates.kind.TENANT_INVITE": "Träger-Invite",
     "links.templates.kind.COUNSELLOR_INVITE": "Berater-Invite",
     "links.templates.kind.DPA_FORWARD": "AVV-Weiterleitung",

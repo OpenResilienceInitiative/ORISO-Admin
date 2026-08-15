@@ -1,6 +1,6 @@
 import { Button, Input, message, Select, Switch, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { useCallback, useEffect, useId, useMemo, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
@@ -33,6 +33,12 @@ interface EmailTemplatesDialogProps {
      * "Neue E-Mail-Vorlage erstellen"); default is the template list.
      */
     initialView?: 'list' | 'create';
+    /**
+     * With `initialView='create'`: prefill the new template from this stored
+     * one ("Neu aus …" in the composer pill's menu, #746 review). Ignored in
+     * list mode.
+     */
+    initialTemplateId?: number;
     onClose: () => void;
     /** Fired after any successful create/update so the opener can refetch its template select. */
     onChanged?: (template: InviteEmailTemplateDTO) => void;
@@ -57,6 +63,12 @@ interface TemplateDraftMeta {
 
 const emptyValues: InviteEmailTemplateValues = { subject: '', body: '' };
 
+/** Snapshot of what the form last loaded — the reference for "unsaved edits". */
+interface TemplateDraftBaseline extends TemplateDraftMeta {
+    subject: string;
+    body: string;
+}
+
 /**
  * Manage-templates dialog opened from the invite tabs' template select. Two views:
  * the template list (house list Modal) and the create/edit form, which is the
@@ -73,6 +85,7 @@ const emptyValues: InviteEmailTemplateValues = { subject: '', body: '' };
 export const EmailTemplatesDialog = ({
     templateKind,
     initialView = 'list',
+    initialTemplateId,
     onClose,
     onChanged,
     onSelect,
@@ -92,6 +105,9 @@ export const EmailTemplatesDialog = ({
         active: true,
     });
     const [draftValues, setDraftValues] = useState<InviteEmailTemplateValues>(emptyValues);
+    // What the form last loaded — the reference for "unsaved edits" (#746 review:
+    // no menu click or close gesture may silently discard typed content).
+    const draftBaselineRef = useRef<TemplateDraftBaseline | null>(null);
 
     const kindLabel = useCallback((kind: InviteEmailTemplateKind) => t(`links.templates.kind.${kind}`, kind), [t]);
 
@@ -125,28 +141,25 @@ export const EmailTemplatesDialog = ({
 
     const openCreateForm = useCallback(() => {
         setEditingTemplate(null);
-        setDraftMeta({ kind: templateKind, name: '', language: '', active: true });
+        const meta: TemplateDraftMeta = { kind: templateKind, name: '', language: '', active: true };
+        setDraftMeta(meta);
         setDraftValues(emptyValues);
+        draftBaselineRef.current = { ...meta, ...emptyValues };
         setView('form');
     }, [templateKind]);
 
-    // Deep link from the invite composer ("Neue E-Mail-Vorlage erstellen"): open
-    // straight in the create form instead of the list.
-    useEffect(() => {
-        if (initialView === 'create') {
-            openCreateForm();
-        }
-    }, [initialView, openCreateForm]);
-
     const openEditForm = useCallback((template: InviteEmailTemplateDTO) => {
         setEditingTemplate(template);
-        setDraftMeta({
+        const meta: TemplateDraftMeta = {
             kind: template.kind,
             name: template.name,
             language: template.language ?? '',
             active: template.active,
-        });
-        setDraftValues({ subject: template.subject, body: template.body });
+        };
+        const values: InviteEmailTemplateValues = { subject: template.subject, body: template.body };
+        setDraftMeta(meta);
+        setDraftValues(values);
+        draftBaselineRef.current = { ...meta, ...values };
         setView('form');
     }, []);
 
@@ -155,10 +168,43 @@ export const EmailTemplatesDialog = ({
     // name it before save enables.
     const openCreateFromTemplate = useCallback((template: InviteEmailTemplateDTO) => {
         setEditingTemplate(null);
-        setDraftMeta({ kind: template.kind, name: '', language: template.language ?? '', active: true });
-        setDraftValues({ subject: template.subject, body: template.body });
+        const meta: TemplateDraftMeta = {
+            kind: template.kind,
+            name: '',
+            language: template.language ?? '',
+            active: true,
+        };
+        const values: InviteEmailTemplateValues = { subject: template.subject, body: template.body };
+        setDraftMeta(meta);
+        setDraftValues(values);
+        draftBaselineRef.current = { ...meta, ...values };
         setView('form');
     }, []);
+
+    // Deep link from the invite composer: straight into the create form — blank,
+    // or prefilled from `initialTemplateId` ("Neu aus …" in the pill menu). Runs
+    // once; the template list may still be loading when the prefill is requested.
+    const createDeepLinkDone = useRef(false);
+    useEffect(() => {
+        if (initialView !== 'create' || createDeepLinkDone.current) {
+            return;
+        }
+        if (initialTemplateId == null) {
+            createDeepLinkDone.current = true;
+            openCreateForm();
+            return;
+        }
+        const source = templates.find((template) => template.id === initialTemplateId);
+        if (source) {
+            createDeepLinkDone.current = true;
+            openCreateFromTemplate(source);
+        } else if (templates.length > 0) {
+            // The referenced template no longer exists — a blank create form
+            // is still better than silently staying on the list.
+            createDeepLinkDone.current = true;
+            openCreateForm();
+        }
+    }, [initialView, initialTemplateId, templates, openCreateForm, openCreateFromTemplate]);
 
     // The composer only offers active templates of its own tab's kind, so those are the
     // only rows that can be picked — selecting anything else would put a name on the
@@ -171,8 +217,29 @@ export const EmailTemplatesDialog = ({
     const backToList = useCallback(() => {
         setEditingTemplate(null);
         setDraftValues(emptyValues);
+        draftBaselineRef.current = null;
         setView('list');
     }, []);
+
+    // #746 review: no template switch, back navigation or close gesture may
+    // silently discard typed content. `window.confirm` is deliberate — an antd
+    // confirm inside a closing Modal would race its own unmount.
+    const confirmDiscard = useCallback(() => {
+        const baseline = draftBaselineRef.current;
+        const dirty =
+            baseline != null &&
+            (baseline.kind !== draftMeta.kind ||
+                baseline.name !== draftMeta.name ||
+                baseline.language !== draftMeta.language ||
+                baseline.active !== draftMeta.active ||
+                baseline.subject !== draftValues.subject ||
+                baseline.body !== draftValues.body);
+        return (
+            !dirty ||
+            // eslint-disable-next-line no-alert -- an antd confirm inside a closing Modal would race its own unmount
+            window.confirm(t('links.templates.discardChanges', 'Nicht gespeicherte Änderungen verwerfen?'))
+        );
+    }, [draftMeta, draftValues, t]);
 
     // Templates of the draft's kind feed the editor's split button: switching
     // loads a stored template, "Neu aus" starts a fresh one from it.
@@ -348,14 +415,29 @@ export const EmailTemplatesDialog = ({
     /* Form view: the placeholder-template module in the house dialog shell  */
     /* --------------------------------------------------------------------- */
 
+    const saveHintId = `${fieldId}-save-hint`;
+
     if (view === 'form') {
         return (
             <PlaceholderTemplateDialog
                 titleKey={editingTemplate ? 'links.templates.editTitle' : 'links.templates.newTitle'}
                 descriptionKey={editingTemplate ? 'links.templates.editDescription' : 'links.templates.newDescription'}
                 saveDisabled={submitting || !draftComplete}
+                saveDescribedBy={draftComplete ? undefined : saveHintId}
                 width={1180}
-                onClose={backToList}
+                // Abbrechen steps back to the list; X/Escape/mask keep closing
+                // the whole dialog, as they did before the module wiring. Both
+                // ask first when the draft carries unsaved edits.
+                onClose={() => {
+                    if (confirmDiscard()) {
+                        backToList();
+                    }
+                }}
+                onDismiss={() => {
+                    if (confirmDiscard()) {
+                        onClose();
+                    }
+                }}
                 onSave={onSave}
             >
                 {/* Persistence metadata around the editor: what the API stores per
@@ -413,21 +495,26 @@ export const EmailTemplatesDialog = ({
                     onChange={setDraftValues}
                     onCreateFromTemplate={(id) => {
                         const template = kindTemplates.find((entry) => entry.id === id);
-                        if (template) {
+                        if (template && confirmDiscard()) {
                             openCreateFromTemplate(template);
                         }
                     }}
-                    onManageTemplates={backToList}
+                    onManageTemplates={() => {
+                        if (confirmDiscard()) {
+                            backToList();
+                        }
+                    }}
                     onSelectTemplate={(id) => {
                         const template = kindTemplates.find((entry) => entry.id === id);
-                        if (template) {
+                        if (template && confirmDiscard()) {
                             openEditForm(template);
                         }
                     }}
                 />
-                {/* #713 house rule: a disabled primary action must say why. */}
+                {/* #713 house rule: a disabled primary action must say why —
+                    linked to the save button via aria-describedby. */}
                 {!draftComplete && (
-                    <p className={styles.saveHint} role="status">
+                    <p className={styles.saveHint} id={saveHintId} role="status">
                         {t(
                             'links.templates.saveIncomplete',
                             'Vorlagenname, Betreff und Inhalt ausfüllen, um zu speichern.',

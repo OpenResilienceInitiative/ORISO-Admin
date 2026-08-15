@@ -124,7 +124,8 @@ const counsellorTemplate = {
 };
 
 /** The srcDoc of the email-kit preview frame inside the currently open dialog. */
-const previewSrcDoc = () => screen.getByRole('dialog').querySelector('iframe')?.getAttribute('srcdoc') ?? '';
+const previewSrcDoc = () =>
+    within(screen.getByRole('dialog')).getByTitle('E-Mail-Vorschau').getAttribute('srcdoc') ?? '';
 
 describe('EmailTemplatesDialog', () => {
     beforeEach(() => {
@@ -335,6 +336,117 @@ describe('EmailTemplatesDialog', () => {
             expect.objectContaining({ name: 'Kopie', subject: 'Kurz', body: 'Link: {{inviteLink}}' }),
         );
         expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+    });
+
+    it('asks before a template switch discards unsaved edits', async () => {
+        const user = userEvent.setup();
+        const confirmSpy = vi.spyOn(window, 'confirm');
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const withinDialog = within(screen.getByRole('dialog'));
+
+        // Make the draft dirty, then decline the switch: the edits survive.
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
+        confirmSpy.mockReturnValue(false);
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        expect(confirmSpy).toHaveBeenCalled();
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Edited subject');
+
+        // Accepting the confirm loads the other template.
+        confirmSpy.mockReturnValue(true);
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+
+        confirmSpy.mockRestore();
+    });
+
+    it('switches without a confirm while the draft is clean', async () => {
+        const user = userEvent.setup();
+        const confirmSpy = vi.spyOn(window, 'confirm');
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const withinDialog = within(screen.getByRole('dialog'));
+
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+
+        expect(confirmSpy).not.toHaveBeenCalled();
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+        confirmSpy.mockRestore();
+    });
+
+    it('keeps X closing the whole dialog while Abbrechen steps back to the list', async () => {
+        const user = userEvent.setup();
+        const onClose = vi.fn();
+        renderDialog({ onClose });
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+
+        // Cancel: back to the template list, the dialog itself stays open.
+        await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'cancel' }));
+        expect(onClose).not.toHaveBeenCalled();
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+
+        // X in the form view: closes the whole templates dialog (parity with
+        // the pre-module form, where every dismiss gesture reached the parent).
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }));
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('asks before a dismiss gesture discards unsaved edits', async () => {
+        const user = userEvent.setup();
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+        const onClose = vi.fn();
+        renderDialog({ onClose });
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const withinDialog = within(screen.getByRole('dialog'));
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
+
+        await user.click(withinDialog.getByRole('button', { name: 'Close' }));
+        expect(confirmSpy).toHaveBeenCalled();
+        expect(onClose).not.toHaveBeenCalled();
+
+        confirmSpy.mockReturnValue(true);
+        await user.click(withinDialog.getByRole('button', { name: 'Close' }));
+        expect(onClose).toHaveBeenCalledTimes(1);
+        confirmSpy.mockRestore();
+    });
+
+    it('describes the disabled save button with the incomplete hint', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        const withinDialog = await openCreateForm(user);
+        expect(withinDialog.getByRole('button', { name: 'save' })).toHaveAccessibleDescription(
+            'Vorlagenname, Betreff und Inhalt ausfüllen, um zu speichern.',
+        );
+
+        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Name');
+        await user.type(withinDialog.getByLabelText('Betreff'), 'Betreff');
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Inhalt' } });
+        expect(withinDialog.getByRole('button', { name: 'save' })).not.toHaveAccessibleDescription();
+    });
+
+    it('prefills the create deep link from initialTemplateId ("Neu aus …")', async () => {
+        renderDialog({ initialView: 'create', initialTemplateId: 4 });
+
+        // The list dialog shows first while templates load, then the form
+        // replaces it — query globally instead of pinning the first dialog node.
+        const subject = await screen.findByLabelText('Betreff');
+        await waitFor(() => expect(subject).toHaveValue('Kurz'));
+        expect(screen.getByLabelText('Inhalt')).toHaveValue('Link: {{inviteLink}}');
+        // Copied contents, but a NEW template: the name stays empty.
+        expect(screen.getByLabelText('Vorlagenname')).toHaveValue('');
     });
 
     it('selects a template when its name is clicked in picker mode', async () => {

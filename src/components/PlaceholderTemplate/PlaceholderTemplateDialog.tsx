@@ -15,8 +15,16 @@ export interface PlaceholderTemplateDialogProps {
     children: ReactNode;
     onSave: () => void;
     onClose: () => void;
+    /**
+     * X button / Escape / mask click, when they must differ from the Cancel
+     * text button (e.g. Cancel steps back to a list while X closes the whole
+     * dialog). Defaults to `onClose`.
+     */
+    onDismiss?: () => void;
     /** Disables "Speichern" (e.g. while submitting or invalid). */
     saveDisabled?: boolean;
+    /** Id of an element explaining the save button (e.g. why it is disabled). */
+    saveDescribedBy?: string;
     width?: number | string;
 }
 
@@ -34,7 +42,9 @@ export const PlaceholderTemplateDialog = ({
     children,
     onSave,
     onClose,
+    onDismiss,
     saveDisabled = false,
+    saveDescribedBy,
     width = 1080,
 }: PlaceholderTemplateDialogProps) => (
     <Modal
@@ -44,7 +54,9 @@ export const PlaceholderTemplateDialog = ({
         cancelLabelKey="cancel"
         onConfirm={onSave}
         onClose={onClose}
+        onDismiss={onDismiss}
         confirmDisabled={saveDisabled}
+        confirmDescribedBy={saveDescribedBy}
         width={width}
     >
         <div className={styles.body}>{children}</div>

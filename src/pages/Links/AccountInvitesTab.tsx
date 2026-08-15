@@ -89,6 +89,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [submitting, setSubmitting] = useState(false);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
     const [templatesDialogView, setTemplatesDialogView] = useState<'list' | 'create' | null>(null);
+    // "Neu aus „X"" (#746): source template the create view prefills from.
+    const [createFromTemplateId, setCreateFromTemplateId] = useState<number | undefined>();
     // CSV import (#315): parse result + the send mode captured when the file was picked.
     const [csvImport, setCsvImport] = useState<{ result: ParseInviteCsvResult; sendMode: InviteSendMode } | null>(null);
     // Bulk selection (#316): checked row ids, the open/closed state of the
@@ -687,6 +689,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 // #746: the pill's chevron menu switches the template in place —
                 // the same lifted selection the dialog picker writes.
                 onSelectTemplate={setSelectedTemplateId}
+                // "Neu aus „X"": open the dialog's create view prefilled from X.
+                onCreateFromTemplate={(templateId) => {
+                    setCreateFromTemplateId(templateId);
+                    setTemplatesDialogView('create');
+                }}
                 onSubmit={onCreate}
             />
             {selectedInvites.length > 0 && (
@@ -738,9 +745,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             {templatesDialogView && (
                 <EmailTemplatesDialog
                     initialView={templatesDialogView}
+                    initialTemplateId={templatesDialogView === 'create' ? createFromTemplateId : undefined}
                     selectedTemplateId={selectedTemplateId}
                     templateKind={templateKind}
-                    onClose={() => setTemplatesDialogView(null)}
+                    onClose={() => {
+                        setTemplatesDialogView(null);
+                        setCreateFromTemplateId(undefined);
+                    }}
                     onChanged={onTemplateChanged}
                     // Picking in the overview selects for the composer and closes
                     // the dialog; create/edit stay inside the dialog itself.
