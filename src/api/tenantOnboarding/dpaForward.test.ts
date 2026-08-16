@@ -1,0 +1,179 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { FETCH_METHODS } from '../fetchData';
+import { publicAccountInvitesEndpoint } from '../../appConfig';
+import { InviteLinkError } from './tenantOnboarding';
+import {
+    createHttpDpaForwardClient,
+    createStubDpaForwardClient,
+    DpaForwardError,
+    isAwaitingForwardedSignature,
+    resolveDpaForwardSignLink,
+} from './dpaForward';
+
+const mocks = vi.hoisted(() => ({
+    fetchData: vi.fn(),
+}));
+
+vi.mock('../fetchData', async () => {
+    const actual = await vi.importActual<typeof import('../fetchData')>('../fetchData');
+
+    return {
+        ...actual,
+        fetchData: mocks.fetchData,
+    };
+});
+
+beforeEach(() => {
+    mocks.fetchData.mockReset();
+});
+
+const SIGN_URL = 'https://app.example.org/dpa-sign/8Kd2';
+const RESPONSE = { signUrl: SIGN_URL, expiresAt: '2026-08-29T14:31:07' };
+
+describe('resolveDpaForwardSignLink', () => {
+    it('resolves a relative sign path against the configured App origin', () => {
+        expect(resolveDpaForwardSignLink('/dpa-sign/token-value', 'https://app.oriso-dev.site')).toBe(
+            'https://app.oriso-dev.site/dpa-sign/token-value',
+        );
+    });
+
+    it('keeps an absolute sign URL on its own origin', () => {
+        expect(
+            resolveDpaForwardSignLink('https://sign.example.org/dpa-sign/token-value', 'https://app.oriso-dev.site'),
+        ).toBe('https://sign.example.org/dpa-sign/token-value');
+    });
+});
+
+describe('createHttpDpaForwardClient', () => {
+    it('mints a link-only forward against the public UserService endpoint without auth', async () => {
+        mocks.fetchData.mockResolvedValue(RESPONSE);
+
+        const outcome = await createHttpDpaForwardClient().forward('raw token');
+
+        expect(outcome).toEqual({ link: { signUrl: SIGN_URL, expiresAt: RESPONSE.expiresAt }, mailFailed: false });
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                url: `${publicAccountInvitesEndpoint}/raw%20token/onboarding/dpa-forward`,
+                method: FETCH_METHODS.POST,
+                skipAuth: true,
+                bodyData: JSON.stringify({}),
+            }),
+        );
+    });
+
+    it('sends the DPA_FORWARD mail when a recipient is given', async () => {
+        mocks.fetchData.mockResolvedValue(RESPONSE);
+
+        await createHttpDpaForwardClient().forward('tok', { recipientEmail: 'legal@example.org' });
+
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                url: `${publicAccountInvitesEndpoint}/tok/onboarding/dpa-forward`,
+                bodyData: JSON.stringify({ recipientEmail: 'legal@example.org' }),
+            }),
+        );
+    });
+
+    it('502: keeps the created link and reports the mail failure instead of failing outright', async () => {
+        mocks.fetchData
+            .mockRejectedValueOnce(new Response(null, { status: 502 }))
+            .mockResolvedValueOnce({ ...RESPONSE, signUrl: 'https://app.example.org/dpa-sign/retry' });
+
+        const outcome = await createHttpDpaForwardClient().forward('tok', { recipientEmail: 'legal@example.org' });
+
+        expect(outcome.mailFailed).toBe(true);
+        expect(outcome.link.signUrl).toBe('https://app.example.org/dpa-sign/retry');
+        // The fallback call must not try to send the mail again.
+        expect(mocks.fetchData).toHaveBeenLastCalledWith(expect.objectContaining({ bodyData: JSON.stringify({}) }));
+    });
+
+    it('502 whose link-only fallback also fails stays a technical error', async () => {
+        mocks.fetchData
+            .mockRejectedValueOnce(new Response(null, { status: 502 }))
+            .mockRejectedValueOnce(new Response(null, { status: 500 }));
+
+        await expect(
+            createHttpDpaForwardClient().forward('tok', { recipientEmail: 'legal@example.org' }),
+        ).rejects.toMatchObject({ kind: 'TECHNICAL' });
+    });
+
+    it.each([
+        [400, 'INVALID_EMAIL'],
+        [404, 'UNKNOWN_TOKEN'],
+        [409, 'NO_DPA_PUBLISHED'],
+        [500, 'TECHNICAL'],
+    ] as const)('maps %i to DpaForwardError(%s)', async (status, kind) => {
+        mocks.fetchData.mockRejectedValue(new Response(null, { status }));
+
+        const error = await createHttpDpaForwardClient()
+            .forward('tok')
+            .catch((caught: unknown) => caught);
+
+        expect(error).toBeInstanceOf(DpaForwardError);
+        expect((error as DpaForwardError).kind).toBe(kind);
+    });
+
+    it.each(['CONSUMED', 'REVOKED', 'EXPIRED'] as const)('maps a 410 with reason %s body-first', async (reason) => {
+        mocks.fetchData.mockRejectedValue(new Response(JSON.stringify({ reason }), { status: 410 }));
+
+        await expect(createHttpDpaForwardClient().forward('tok')).rejects.toMatchObject(new InviteLinkError(reason));
+    });
+
+    it.each(['SUPERSEDED', 'NOT_ACTIVE'] as const)(
+        'collapses the %s link death onto the terminal invalid state',
+        async (reason) => {
+            mocks.fetchData.mockRejectedValue(new Response(JSON.stringify({ reason }), { status: 410 }));
+
+            await expect(createHttpDpaForwardClient().forward('tok')).rejects.toMatchObject(
+                new InviteLinkError('INVALID'),
+            );
+        },
+    );
+});
+
+describe('isAwaitingForwardedSignature', () => {
+    it('is true for the gate DTO when a forward is pending and nothing is signed', () => {
+        expect(isAwaitingForwardedSignature({ dpaSigned: false, dpaForwardPending: true })).toBe(true);
+    });
+
+    it('never softens a signed tenant', () => {
+        expect(isAwaitingForwardedSignature({ dpaSigned: true, dpaForwardPending: true })).toBe(false);
+    });
+
+    it('is true for the status DTO on UNSIGNED/OUTDATED with the additive flag', () => {
+        expect(isAwaitingForwardedSignature({ status: 'UNSIGNED', forwardPending: true })).toBe(true);
+        expect(isAwaitingForwardedSignature({ status: 'OUTDATED', forwardPending: true })).toBe(true);
+    });
+
+    it('ignores the flag for states it may never mask', () => {
+        expect(isAwaitingForwardedSignature({ status: 'VALID', forwardPending: true })).toBe(false);
+        expect(isAwaitingForwardedSignature({ status: 'MISSING', forwardPending: true })).toBe(false);
+        expect(isAwaitingForwardedSignature({ status: 'INCONSISTENT', forwardPending: true })).toBe(false);
+    });
+
+    it('is false when the flag is absent (older backend)', () => {
+        expect(isAwaitingForwardedSignature({ status: 'UNSIGNED' })).toBe(false);
+    });
+});
+
+describe('createStubDpaForwardClient', () => {
+    it('returns a link and reports no mail failure by default', async () => {
+        const outcome = await createStubDpaForwardClient().forward('tok', { recipientEmail: 'a@b.cd' });
+
+        expect(outcome.link.signUrl).toContain('/dpa-sign/');
+        expect(outcome.mailFailed).toBe(false);
+    });
+
+    it('reports the mail failure only when a recipient was actually given', async () => {
+        const stub = createStubDpaForwardClient({ mailFails: true });
+
+        expect((await stub.forward('tok')).mailFailed).toBe(false);
+        expect((await stub.forward('tok', { recipientEmail: 'a@b.cd' })).mailFailed).toBe(true);
+    });
+
+    it('rejects with the configured typed failure', async () => {
+        const stub = createStubDpaForwardClient({ failWith: 'NO_DPA_PUBLISHED' });
+
+        await expect(stub.forward('tok')).rejects.toMatchObject({ kind: 'NO_DPA_PUBLISHED' });
+    });
+});
