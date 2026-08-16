@@ -1,0 +1,93 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
+/* Träger editor for the Erstantwort Bausteine (ORISO-Admin#601).
+ *
+ * Sits on the MUI 8px grid like the other settings surfaces, and uses the shared
+ * M3 tokens rather than fresh literals so it follows the theme.
+ */
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit * 3;
+}
+
+.title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 400;
+}
+
+.intro,
+.deadlineHelp,
+.bausteinHelp {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.deadline {
+    display: flex;
+    max-width: 22rem;
+    flex-direction: column;
+    gap: mui.$mui-unit;
+}
+
+.deadlineLabel {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.deadlineInput {
+    width: 7rem;
+    padding: mui.$mui-unit mui.$mui-unit * 1.5;
+    border: 1px solid var(--m3-outline, #74777f);
+    border-radius: mui.$mui-unit;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #005cbb);
+        outline-offset: 2px;
+    }
+}
+
+.baustein {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit;
+}
+
+.mandatory {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.bausteinTitle {
+    flex: 1;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* "Pflicht" beside the section title, so the one mandatory Baustein is visible
+   without opening it. Text, not colour alone. */
+
+.mandatoryChip {
+    padding: 2px mui.$mui-unit;
+    border-radius: mui.$mui-unit * 1.5;
+    margin-right: mui.$mui-unit;
+    background: var(--m3-secondary-container, #dae2f9);
+    color: var(--m3-on-secondary-container, #131c2b);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.bausteinDetails {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit;
+}

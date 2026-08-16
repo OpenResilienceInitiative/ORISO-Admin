@@ -162,6 +162,16 @@ describe('MuiFormField', () => {
         expect(screen.getByLabelText('Address')).toHaveAttribute('id', 'onboarding_address');
     });
 
+    it('honors antd Form disabled context (CardEditable view mode)', () => {
+        render(
+            <Form disabled>
+                <MuiFormField name="name" label="Name" />
+            </Form>,
+        );
+
+        expect(screen.getByLabelText('Name')).toBeDisabled();
+    });
+
     it('keeps an explicitly passed id', () => {
         render(
             <Form name="onboarding">

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { DeleteOutlined, DownloadOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
 import { message, Upload, type MenuProps } from 'antd';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import SelectAllIcon from '@mui/icons-material/SelectAll';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
@@ -206,6 +207,38 @@ export const InviteComposer = ({
     const bulkValid = selectedTemplate != null;
     const sendReady = bulkMode ? bulkValid : isValid;
 
+    /*
+     * #713: a greyed-out primary action that says nothing is itself the bug.
+     * The rule here is "disable rather than hide, but always explain", so the
+     * composer names the FIRST unmet precondition in the order an admin fills
+     * the row. The most common one on a live tenant is the template: the tab
+     * only preselects when exactly one template of its kind is active, so with
+     * two active templates nothing is chosen and send rests off.
+     */
+    const sendBlockedReason = (() => {
+        if (sendReady || submitting) return undefined;
+        if (bulkMode) {
+            return t('links.composer.blocked.template', 'Bitte zuerst eine E-Mail-Vorlage auswählen.');
+        }
+        if (!emailValid) {
+            return t('links.composer.blocked.email', 'Bitte eine gültige E-Mail-Adresse eingeben.');
+        }
+        if (!namesValid) {
+            return t('links.composer.blocked.names', 'Bitte Vorname und Name eingeben.');
+        }
+        if (!tenantIdValid) {
+            return t('links.composer.blocked.tenantId', 'Bitte eine freie Träger-ID wählen (oder Auto).');
+        }
+        if (!agencyIdValid) {
+            return t('links.composer.blocked.agencyId', 'Bitte eine freie Beratungsstellen-ID wählen (oder Auto).');
+        }
+        if (!templateValid) {
+            return t('links.composer.blocked.template', 'Bitte zuerst eine E-Mail-Vorlage auswählen.');
+        }
+        return undefined;
+    })();
+    const sendHintId = `invite-composer-send-hint-${persistKey}`;
+
     const changeSendMode = (mode: InviteSendMode) => {
         setSendMode(mode);
         try {
@@ -407,82 +440,94 @@ export const InviteComposer = ({
         ) : undefined;
 
     return (
-        <GlobalSearchBar className={className} leading={moreButton} searchPlaceholder={searchPlaceholder}>
-            <FloatingLabelInput
-                className={styles.emailField}
-                error={showEmailError}
-                label={t('links.accountInvites.email', 'E-Mail')}
-                name="recipientEmail"
-                supportingText={
-                    showEmailError
-                        ? t('links.composer.emailInvalid', 'Bitte gültige E-Mail-Adresse eingeben.')
-                        : undefined
-                }
-                type="email"
-                value={recipientEmail}
-                onBlur={() => setEmailTouched(true)}
-                onChange={(event) => setRecipientEmail(event.target.value)}
-            />
-            <FloatingLabelInput
-                className={styles.nameField}
-                label={t('links.accountInvites.firstName', 'Vorname')}
-                name="firstName"
-                value={firstName}
-                onChange={(event) => setFirstName(event.target.value)}
-            />
-            <FloatingLabelInput
-                className={styles.nameField}
-                label={t('links.composer.lastName', 'Name')}
-                name="lastName"
-                value={lastName}
-                onChange={(event) => setLastName(event.target.value)}
-            />
-            {requireTenantId ? (
-                <IdAllocationField
-                    allocation={tenantAllocation}
-                    label={t('links.accountInvites.tenantId', 'Träger-ID')}
+        <div className={classNames(styles.composer, className)}>
+            <GlobalSearchBar leading={moreButton} searchPlaceholder={searchPlaceholder}>
+                <FloatingLabelInput
+                    className={styles.emailField}
+                    error={showEmailError}
+                    label={t('links.accountInvites.email', 'E-Mail')}
+                    name="recipientEmail"
+                    supportingText={
+                        showEmailError
+                            ? t('links.composer.emailInvalid', 'Bitte gültige E-Mail-Adresse eingeben.')
+                            : undefined
+                    }
+                    type="email"
+                    value={recipientEmail}
+                    onBlur={() => setEmailTouched(true)}
+                    onChange={(event) => setRecipientEmail(event.target.value)}
                 />
-            ) : (
-                <M3NumberField
-                    label={t('links.accountInvites.tenantId', 'Träger-ID')}
-                    min={1}
-                    value={tenantId}
-                    onChange={setTenantIdOverride}
+                <FloatingLabelInput
+                    className={styles.nameField}
+                    label={t('links.accountInvites.firstName', 'Vorname')}
+                    name="firstName"
+                    value={firstName}
+                    onChange={(event) => setFirstName(event.target.value)}
                 />
-            )}
-            {includeAgencyField && (
-                <IdAllocationField
-                    allocation={agencyAllocation}
-                    label={t('links.accountInvites.agencyId', 'Beratungsstellen-ID')}
+                <FloatingLabelInput
+                    className={styles.nameField}
+                    label={t('links.composer.lastName', 'Name')}
+                    name="lastName"
+                    value={lastName}
+                    onChange={(event) => setLastName(event.target.value)}
                 />
-            )}
-            <SplitButton
-                icon={<MailFilledIcon />}
-                label={selectedTemplate?.name ?? t('links.composer.templatePlaceholder', 'E-Mail-Vorlage')}
-                variant="tonal"
-                onClick={() => onManageTemplates('list')}
-            />
-            {/* Filled primary is reserved for the selected item / main CTA; every
+                {requireTenantId ? (
+                    <IdAllocationField
+                        allocation={tenantAllocation}
+                        label={t('links.accountInvites.tenantId', 'Träger-ID')}
+                    />
+                ) : (
+                    <M3NumberField
+                        label={t('links.accountInvites.tenantId', 'Träger-ID')}
+                        min={1}
+                        value={tenantId}
+                        onChange={setTenantIdOverride}
+                    />
+                )}
+                {includeAgencyField && (
+                    <IdAllocationField
+                        allocation={agencyAllocation}
+                        label={t('links.accountInvites.agencyId', 'Beratungsstellen-ID')}
+                    />
+                )}
+                <SplitButton
+                    icon={<MailFilledIcon />}
+                    label={selectedTemplate?.name ?? t('links.composer.templatePlaceholder', 'E-Mail-Vorlage')}
+                    // Outlined at rest (#741): the old `tonal` was the light
+                    // Elevated colourway, which claimed a raised state the resting
+                    // picker is not in. `tonal` now means the M3 secondary
+                    // container per the spec sheet.
+                    variant="outlined"
+                    onClick={() => onManageTemplates('list')}
+                />
+                {/* Filled primary is reserved for the selected item / main CTA; every
                 other resting state is tonal M3 secondary (owner call). The icon
                 stays in both states — a send button without its glyph was the
                 "icons are missing" note. */}
-            <SplitButton
-                icon={bulkMode ? <SelectAllIcon fontSize="small" /> : renderSendGlyph()}
-                label={bulkMode ? String(selectionCount) : singleSendLabel}
-                mainDisabled={!sendReady || submitting}
-                menu={sendMenu}
-                menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
-                title={bulkMode ? bulkSendLabel : undefined}
-                // Filled primary is the single-send CTA. The selection counter stays
-                // tonal secondary even when it is ready to fire (Figma 1165:16407
-                // selection variant): it is a state display with actions hanging off
-                // it, not the page's call to action.
-                variant={!bulkMode && sendReady ? 'primary' : 'secondary'}
-                collapseLabel={t('links.bulk.clearSelection', 'Auswahl aufheben')}
-                onClick={bulkMode ? onBulkSend : handleSend}
-                onCollapse={bulkMode ? onClearSelection : undefined}
-            />
-        </GlobalSearchBar>
+                <SplitButton
+                    icon={bulkMode ? <SelectAllIcon fontSize="small" /> : renderSendGlyph()}
+                    label={bulkMode ? String(selectionCount) : singleSendLabel}
+                    mainDisabled={!sendReady || submitting}
+                    mainDescribedBy={sendBlockedReason ? sendHintId : undefined}
+                    menu={sendMenu}
+                    menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
+                    title={bulkMode ? bulkSendLabel : undefined}
+                    // Filled primary is the single-send CTA. The selection counter stays
+                    // tonal secondary even when it is ready to fire (Figma 1165:16407
+                    // selection variant): it is a state display with actions hanging off
+                    // it, not the page's call to action.
+                    variant={!bulkMode && sendReady ? 'primary' : 'secondary'}
+                    collapseLabel={t('links.bulk.clearSelection', 'Auswahl aufheben')}
+                    onClick={bulkMode ? onBulkSend : handleSend}
+                    onCollapse={bulkMode ? onClearSelection : undefined}
+                />
+            </GlobalSearchBar>
+            {sendBlockedReason && (
+                <p className={styles.sendHint} id={sendHintId} role="status">
+                    {sendBlockedReason}
+                </p>
+            )}
+        </div>
     );
 };
 

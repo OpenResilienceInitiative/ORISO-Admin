@@ -42,6 +42,12 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
         isGroupchatConsultant,
         tenantId,
         publicSlug,
+        displayName,
+        internalDisplayName,
+        salutation,
+        position,
+        title,
+        adminRemarks,
     } = counselorData;
 
     const topicIds = parseTopicIds(counselorData);
@@ -60,6 +66,14 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
         isGroupchatConsultant,
         tenantId: parseInt(tenantId, 10),
         publicSlug,
+        ...(displayName !== undefined && { displayName }),
+        ...(internalDisplayName !== undefined && { internalDisplayName }),
+        salutation,
+        position,
+        title,
+        // Only send remarks when the form rendered the field (tenant-level admins);
+        // the backend ignores it for other callers anyway.
+        ...(adminRemarks !== undefined && { adminRemarks }),
         ...(topicIds && { topicIds }),
         ...(agencyIds && { agencyIds }),
     };

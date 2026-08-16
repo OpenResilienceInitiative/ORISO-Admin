@@ -1,0 +1,181 @@
+.board {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 24px;
+    gap: 16px;
+}
+
+/* Summary strip: four filter tiles, equal widths, 2×2 on phones. */
+.summary {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(4, minmax(128px, 1fr));
+}
+
+.summaryTile {
+    width: 100%;
+}
+
+/* ── Identity cell ───────────────────────────────────────────────────────── */
+.identity {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.identityName {
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
+    overflow-wrap: anywhere;
+}
+
+.identityEmail {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 12px/16px var(--m3-body-font-family);
+    overflow-wrap: anywhere;
+}
+
+.identityMeta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 2px;
+    gap: 8px;
+}
+
+.roleChip {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 30px;
+    color: var(--m3-on-surface-variant, #444748);
+    font: 500 11px/16px var(--m3-body-font-family);
+    letter-spacing: 0.5px;
+}
+
+.idHint {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 11px/16px var(--m3-body-font-family);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+}
+
+/* ── Meta / status cells ─────────────────────────────────────────────────── */
+.date {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Tonal status chip (owner call 2026-07-29: chips are tonal, not traffic
+   lights); dead states carry the magenta error role — the one exception. */
+
+.statusChip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border: 1px solid var(--admin-table-chip-border, #c4c7c8);
+    border-radius: 30px;
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    color: var(--admin-table-chip-text, #444748);
+    font: 500 12px/16px var(--m3-body-font-family);
+    letter-spacing: 0.25px;
+    white-space: nowrap;
+}
+
+.statusChipDead {
+    border-color: color-mix(in srgb, var(--m3-error, #b1005e) 35%, transparent);
+    background: color-mix(in srgb, var(--m3-error, #b1005e) 10%, var(--m3-surface-container-low, #f6f3f3));
+    color: var(--m3-error, #b1005e);
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────────── */
+.actions {
+    display: inline-flex;
+    gap: 2px;
+    white-space: nowrap;
+}
+
+.revokeAction:not(:disabled) {
+    color: var(--m3-error, #b1005e);
+}
+
+/* Per-cell labels only exist in the stacked (mobile) layout. */
+.cellLabel {
+    display: none;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+.empty {
+    display: flex;
+    max-width: 420px;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.emptyGraphic {
+    width: 96px;
+    height: 96px;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.emptyTitle {
+    margin: 8px 0 0;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 500 16px/24px var(--m3-body-font-family);
+}
+
+.emptyBody {
+    margin: 0 0 8px;
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 14px/20px var(--m3-body-font-family);
+}
+
+/* ── Stacked cards (~390px): identity leads, mini stepper follows, meta gets
+      its labels back, actions close the card. ──────────────────────────────── */
+
+@media (max-width: 767px) {
+    .summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .row {
+        position: relative;
+    }
+
+    /* The checkbox floats to the card corner instead of eating a full row.
+       width needs !important against the stacked layout's full-width cells. */
+
+    .selectCell {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: auto !important;
+        padding: 0 !important;
+    }
+
+    .identityCell {
+        padding-right: 56px !important;
+    }
+
+    .metaCell {
+        display: flex !important;
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    .cellLabel {
+        display: inline;
+        min-width: 112px;
+        color: var(--m3-on-surface-variant, #444748);
+        font: 500 11px/16px var(--m3-body-font-family);
+        letter-spacing: 0.5px;
+    }
+
+    .actionsCell {
+        display: flex !important;
+        justify-content: flex-end;
+    }
+}

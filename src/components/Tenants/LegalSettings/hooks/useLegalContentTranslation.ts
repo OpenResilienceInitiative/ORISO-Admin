@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { TranslateRequest, TranslateResponse } from '../../../../types/translation';
 import { isEmptyHtml, mergeLegalContentMap } from '../utils/legalContentLanguages';
 import {
@@ -14,7 +14,13 @@ interface UseLegalContentTranslationArgs {
     initialContentByLanguage: Record<string, string>;
     /** The languages offered for editing. */
     languages: string[];
-    /** The language shown first (usually the admin's UI language). */
+    /**
+     * Explicit override of the language shown first. Without it the editor opens on the
+     * legal source language ("Rechtssprache") — NOT on the admin's UI language: the legal
+     * texts are authored in the source language, and an editor that opens elsewhere lets
+     * an admin publish into a language their advice seekers never read (#718). When the
+     * source language is not offered either, the first offered language is shown.
+     */
     defaultLanguage?: string;
     /** Translate call (usually useTranslateLegalContent().translate). Absent = no translation UI. */
     onTranslate?: (request: TranslateRequest) => Promise<TranslateResponse>;
@@ -43,23 +49,39 @@ export const useLegalContentTranslation = ({
     onTranslate,
     onPublish,
 }: UseLegalContentTranslationArgs) => {
+    // v1: the platform's legal source language ("Rechtssprache") is always German.
+    const sourceLanguage = languages.includes(LEGAL_SOURCE_LANGUAGE) ? LEGAL_SOURCE_LANGUAGE : languages[0];
+    const preferredLanguage = defaultLanguage && languages.includes(defaultLanguage) ? defaultLanguage : sourceLanguage;
+
     const [edits, setEdits] = useState<Record<string, string>>({});
     const [freshMeta, setFreshMeta] = useState<Record<string, string>>({});
-    const [activeLanguage, setActiveLanguage] = useState(
-        defaultLanguage && languages.includes(defaultLanguage) ? defaultLanguage : languages[0],
-    );
+    const [activeLanguage, setActiveLanguage] = useState(preferredLanguage);
+    // Whether the admin engaged with the shown language (picked one or edited it) —
+    // only then may a late change of the offered languages not switch it away.
+    const [languageEngaged, setLanguageEngaged] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
+    const [sourceWarningOpen, setSourceWarningOpen] = useState(false);
     const [translating, setTranslating] = useState(false);
     const [modalErrorKey, setModalErrorKey] = useState<string | null>(null);
     const [fieldTranslating, setFieldTranslating] = useState(false);
     const [fieldErrorKey, setFieldErrorKey] = useState<string | null>(null);
-
-    // v1: the platform's legal source language ("Rechtssprache") is always German.
-    const sourceLanguage = languages.includes(LEGAL_SOURCE_LANGUAGE) ? LEGAL_SOURCE_LANGUAGE : languages[0];
     const targetLanguages = useMemo(
         () => languages.filter((language) => language !== sourceLanguage),
         [languages, sourceLanguage],
     );
+
+    // The offered languages can change after mount (tenant settings and stored content
+    // load asynchronously) while useState evaluates its initializer only once. Re-run
+    // the automatic selection then — but never switch away from a language the admin
+    // engaged with, unless it stopped being offered altogether.
+    useEffect(() => {
+        if (!languages.includes(activeLanguage)) {
+            setActiveLanguage(preferredLanguage);
+            setLanguageEngaged(false);
+        } else if (!languageEngaged && activeLanguage !== preferredLanguage) {
+            setActiveLanguage(preferredLanguage);
+        }
+    }, [languages, activeLanguage, preferredLanguage, languageEngaged]);
 
     const currentContent = edits[activeLanguage] ?? initialContentByLanguage[activeLanguage] ?? '';
     const sourceContent = edits[sourceLanguage] ?? initialContentByLanguage[sourceLanguage] ?? '';
@@ -79,7 +101,13 @@ export const useLegalContentTranslation = ({
         [initialContentByLanguage, editsWithMeta],
     );
 
+    const selectLanguage = (language: string) => {
+        setLanguageEngaged(true);
+        setActiveLanguage(language);
+    };
+
     const handleEditorChange = (html: string) => {
+        setLanguageEngaged(true);
         setEdits((prev) => ({ ...prev, [activeLanguage]: html }));
         // A manual edit replaces a translation made in this session, so its fresh
         // meta must not be published. Stored meta is untouched (backend clears it).
@@ -97,8 +125,20 @@ export const useLegalContentTranslation = ({
 
     const canTranslate = !!onTranslate && targetLanguages.length > 0 && !isEmptyHtml(sourceContent);
 
-    /** Publish entry point: opens the translate modal when translating is possible. */
-    const requestPublish = () => {
+    // Non-source languages the admin authored by hand this session. Machine
+    // translations (still carrying their fresh meta) came FROM the source text, so
+    // they are no evidence of authoring into the wrong language.
+    const editedNonSourceLanguages = useMemo(
+        () => Object.keys(edits).filter((language) => language !== sourceLanguage && !(language in freshMeta)),
+        [edits, freshMeta, sourceLanguage],
+    );
+    // The #718 failure shape: translations were edited while the variant the advice
+    // seekers actually read stayed untouched. Publishing stays possible — the warning
+    // modal only makes the gap explicit before it goes live (#720).
+    const sourceUntouchedOnPublish = editedNonSourceLanguages.length > 0 && !(sourceLanguage in edits);
+
+    /** Continues into the regular publish flow (translate modal when possible). */
+    const proceedToPublish = () => {
         if (!canTranslate) {
             onPublish(buildPublishMap());
             return;
@@ -106,6 +146,24 @@ export const useLegalContentTranslation = ({
         setModalErrorKey(null);
         setModalOpen(true);
     };
+
+    /** Publish entry point: warns first when the source language was left untouched. */
+    const requestPublish = () => {
+        if (sourceUntouchedOnPublish) {
+            setSourceWarningOpen(true);
+            return;
+        }
+        proceedToPublish();
+    };
+
+    /** Source-warning confirm: publish anyway. */
+    const confirmSourceWarning = () => {
+        setSourceWarningOpen(false);
+        proceedToPublish();
+    };
+
+    /** Source-warning cancel: back to the editor, nothing published. */
+    const cancelSourceWarning = () => setSourceWarningOpen(false);
 
     /** "Publish without translation" (modal skip button) — also used when nothing is selected. */
     const publishWithoutTranslation = () => {
@@ -180,7 +238,7 @@ export const useLegalContentTranslation = ({
 
     return {
         activeLanguage,
-        setActiveLanguage,
+        setActiveLanguage: selectLanguage,
         currentContent,
         sourceLanguage,
         targetLanguages,
@@ -189,6 +247,10 @@ export const useLegalContentTranslation = ({
         buildPublishMap,
         // publish + modal
         requestPublish,
+        sourceWarningOpen,
+        editedNonSourceLanguages,
+        confirmSourceWarning,
+        cancelSourceWarning,
         modalOpen,
         closeModal,
         translating,
