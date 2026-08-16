@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { M3Checkbox } from '../M3Checkbox';
 import {
@@ -21,6 +21,15 @@ export interface LegalConsentTemplateEditorProps {
     activeTemplateId?: number | string;
     onSelectTemplate: (id: number | string) => void;
     onCreateFromTemplate?: (id: number | string) => void;
+    /**
+     * Fixed, non-editable text rendered UNDER the sentence in the preview — the
+     * cookie/authentication notice the platform always appends (ADR-021 decision
+     * 2). It is part of what the help-seeker reads, so leaving it out of the
+     * preview would show the admin a sentence that does not exist in that form.
+     */
+    addendum?: ReactNode;
+    /** Optional label of the language this sentence belongs to (multilingual editors). */
+    languageLabel?: string;
 }
 
 /**
@@ -37,6 +46,8 @@ export const LegalConsentTemplateEditor = ({
     activeTemplateId,
     onSelectTemplate,
     onCreateFromTemplate,
+    addendum,
+    languageLabel,
 }: LegalConsentTemplateEditorProps) => {
     const { t } = useTranslation();
     const sentenceId = useId();
@@ -45,7 +56,14 @@ export const LegalConsentTemplateEditor = ({
     const samples = useMemo(() => sampleValues(LEGAL_CONSENT_TOKENS), []);
 
     const fields: PlaceholderTemplateFieldConfig<LegalConsentTemplateValues>[] = [
-        { name: 'text', label: t('placeholderTemplate.legal.text', 'Einwilligungstext'), multiline: true, rows: 6 },
+        {
+            name: 'text',
+            label: languageLabel
+                ? `${t('placeholderTemplate.legal.text', 'Einwilligungstext')} (${languageLabel})`
+                : t('placeholderTemplate.legal.text', 'Einwilligungstext'),
+            multiline: true,
+            rows: 6,
+        },
     ];
 
     return (
@@ -72,6 +90,7 @@ export const LegalConsentTemplateEditor = ({
                             <TokenizedText text={fillPlaceholders(values.text, samples)} />
                         </span>
                     </div>
+                    {addendum}
                 </section>
             }
             templates={templates}

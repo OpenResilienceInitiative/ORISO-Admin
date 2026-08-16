@@ -1,5 +1,5 @@
 import set from 'lodash.set';
-import { Spin } from 'antd';
+import { Alert, Spin } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
@@ -8,7 +8,11 @@ import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
 import { useLegalHelp } from '../../hooks/useLegalHelp';
 import { useLegalDraft } from '../../hooks/useLegalDraft';
+import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
+import { LegalConsentField } from '../LegalConsentField';
 import { LegalDraftNotice } from '../LegalDraftNotice';
+import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
+import { toEditorVersions } from '../../utils/legalVersionOptions';
 import { isEmptyLegalContent } from '../../utils/legalHelpTexts';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { useUserData } from '../../../../../hooks/useUserData.hook';
@@ -87,7 +91,8 @@ export const LegalText = ({
     showConfirmationModal,
     placeholders,
 }: LegalTextProps) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const locale = i18n?.language?.split('-')[0] || 'de';
     const { can } = useUserPermissions();
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const { data, isLoading, mutate: updateTenant, isPending } = useTenantAppearanceFormData(`${tenantId}`);
@@ -101,6 +106,16 @@ export const LegalText = ({
     const [hintHidden, setHintHidden] = useState(() =>
         legalType && dismissalScope ? isHintDismissed(legalType, dismissalScope) : false,
     );
+    const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
+    const [publishBlocked, setPublishBlocked] = useState(false);
+
+    // Version look-back for the Träger-level text (ADR-021 decision 3). Empty
+    // until the history endpoints of #250 are deployed — the card then behaves
+    // exactly as it did before.
+    const { data: versions = [] } = useLegalTextVersions(
+        { level: 'tenant', tenantId: Number(tenantId), kind: legalType === 'imprint' ? 'imprint' : 'privacy' },
+        !!legalType,
+    );
 
     const languages = useMemo(() => {
         const configured = data?.settings?.activeLanguages;
@@ -112,6 +127,8 @@ export const LegalText = ({
     const editorIdentity = `${tenantId}:${fieldName.join('.')}:${dismissalScope ?? ''}`;
     useEffect(() => {
         setEdits({});
+        setConsentEdits({});
+        setPublishBlocked(false);
         setPendingFormData(undefined);
         setModalVisible(false);
         setActiveLanguage('de');
@@ -161,6 +178,33 @@ export const LegalText = ({
         return { ...base, ...(draft?.content ?? {}), ...edits };
     }, [canEditLegalText, storedContent, draft, edits, languages]);
 
+    /**
+     * The consent sentence that belongs to the Träger privacy policy (ADR-021
+     * decision 4 — a FIELD of the policy, not a document of its own).
+     *
+     * TODO(#250): `content.privacyConsent` is the TenantService counterpart of the
+     * AgencyService field built on branch `feat/legal-text-versioning-250`; align
+     * the property name once that PR settles the contract. `undefined` means the
+     * deployed backend has no such field, and the consent editor is not offered —
+     * an input that cannot be persisted is worse than none.
+     */
+    const storedConsent = (data?.content as Record<string, unknown> | undefined)?.privacyConsent;
+    const consentEnabled = legalType === 'privacy' && storedConsent !== undefined;
+    const consentByLanguage = useMemo<Record<string, string>>(() => {
+        const base =
+            storedConsent && typeof storedConsent === 'object' ? (storedConsent as Record<string, string>) : {};
+        return { ...base, ...consentEdits };
+    }, [storedConsent, consentEdits]);
+    const blockedLanguages = useMemo(
+        () => (consentEnabled ? consentPublicationBlockers(consentByLanguage) : []),
+        [consentEnabled, consentByLanguage],
+    );
+
+    const editorVersions = useMemo(
+        () => toEditorVersions(versions, activeLanguage, locale, t('tenants.legal.version.current')),
+        [versions, activeLanguage, locale, t],
+    );
+
     // Discarding drops the stored draft AND this session's unsaved edits — otherwise the
     // editor would still show the text the admin just asked to throw away. If the draft
     // could NOT be removed, the edits stay: the error says the draft is still there, so
@@ -197,15 +241,35 @@ export const LegalText = ({
     }, [pendingFormData, publishedOptions, showConfirmationModal, updateTenant]);
 
     const onPublish = useCallback(() => {
+        // Refuse before the request: an authored consent sentence without
+        // `{{legal_links}}` is rejected server-side (ADR-021 decision 2), and the
+        // admin should learn that from the editor, not from a failed publish.
+        if (blockedLanguages.length > 0) {
+            setPublishBlocked(true);
+            return;
+        }
+        setPublishBlocked(false);
         // The COMPLETE map goes out — languages the admin did not touch survive.
         const formData = set({}, fieldName, { ...contentByLanguage });
+        if (consentEnabled) {
+            set(formData, ['content', 'privacyConsent'], { ...consentByLanguage });
+        }
         if (showConfirmationModal) {
             setPendingFormData(formData);
             setModalVisible(true);
         } else {
             updateTenant(formData, publishedOptions);
         }
-    }, [contentByLanguage, fieldName, publishedOptions, showConfirmationModal, updateTenant]);
+    }, [
+        blockedLanguages,
+        consentByLanguage,
+        consentEnabled,
+        contentByLanguage,
+        fieldName,
+        publishedOptions,
+        showConfirmationModal,
+        updateTenant,
+    ]);
 
     const onSaveDraft = useCallback(() => saveDraft({ ...contentByLanguage }), [contentByLanguage, saveDraft]);
 
@@ -230,6 +294,14 @@ export const LegalText = ({
                 readOnly={!canEditLegalText}
                 publishing={isPending}
                 versionLabel={t('legal.m3Editor.versionLabel')}
+                versions={editorVersions}
+                // Restore = copy into the active language's draft; the published
+                // chain stays append-only.
+                onRestoreVersion={
+                    canEditLegalText
+                        ? (html) => setEdits((current) => ({ ...current, [activeLanguage]: html }))
+                        : undefined
+                }
                 languages={languages.map((language) => ({
                     value: language,
                     label: t(`language.${language}`),
@@ -266,8 +338,34 @@ export const LegalText = ({
                 onPublish={canEditLegalText ? onPublish : undefined}
                 onSaveDraft={canEditLegalText && legalType && dismissalScope ? onSaveDraft : undefined}
                 belowSlot={
-                    showConfirmationModal &&
-                    modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
+                    <>
+                        {consentEnabled && (
+                            <LegalConsentField
+                                language={activeLanguage}
+                                readOnly={!canEditLegalText}
+                                value={consentByLanguage[activeLanguage] ?? ''}
+                                onChange={(next) => {
+                                    setPublishBlocked(false);
+                                    setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
+                                }}
+                            />
+                        )}
+                        {publishBlocked && (
+                            <Alert
+                                type="error"
+                                showIcon
+                                data-testid="consent-publish-blocked"
+                                message={t('legal.consent.publishBlocked.title')}
+                                description={t('legal.consent.publishBlocked.description', {
+                                    token: `{{${MANDATORY_CONSENT_TOKEN}}}`,
+                                    languages: blockedLanguages.join(', '),
+                                })}
+                            />
+                        )}
+                        {showConfirmationModal && modalVisible && (
+                            <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
+                        )}
+                    </>
                 }
             />
         </div>

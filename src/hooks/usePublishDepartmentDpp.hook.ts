@@ -7,14 +7,16 @@ interface PublishDepartmentDppVariables {
     content: Record<string, string>;
     /** true = publish (final), false = draft-save. */
     publish: boolean;
+    /** Language → consent sentence; omitted when the backend has no consent field yet. */
+    consentText?: Record<string, string>;
 }
 
 /** Publishes or draft-saves a Fachbereich's (agency × topic) own data privacy policy. */
 export const usePublishDepartmentDpp = (agencyId: number, topicId: number) => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ content, publish }: PublishDepartmentDppVariables) =>
-            publishDepartmentDpp(agencyId, topicId, content, publish),
+        mutationFn: ({ content, publish, consentText }: PublishDepartmentDppVariables) =>
+            publishDepartmentDpp(agencyId, topicId, content, publish, consentText),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: [DEPARTMENT_DPP_KEY, agencyId, topicId] }),
     });
 };

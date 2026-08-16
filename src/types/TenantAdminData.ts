@@ -15,6 +15,16 @@ export interface TenantAdminData extends BasicTenantData {
     content: {
         impressum: Record<string, string>;
         privacy: Record<string, string>;
+        /**
+         * The consent sentence belonging to `privacy` (ADR-021 decision 4 — a field
+         * of the data-protection policy, not a document of its own), as a
+         * language → sentence map.
+         *
+         * TODO(#250): TenantService counterpart of the AgencyService field built on
+         * branch `feat/legal-text-versioning-250`. `undefined` = the deployed
+         * backend does not know it yet, and the Admin hides the consent editor.
+         */
+        privacyConsent?: Record<string, string>;
         termsAndConditions: Record<string, string>;
         claim: Record<string, string>;
         confirmTermsAndConditions: boolean;

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useDepartmentDpp } from '../../../../../hooks/useDepartmentDpp.hook';
+import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
 import { usePublishDepartmentDpp } from '../../../../../hooks/usePublishDepartmentDpp.hook';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
@@ -28,8 +29,15 @@ export const DepartmentDataProtectionContainer = ({
     const { mutate: publish, isPending } = usePublishDepartmentDpp(agencyId, topicId);
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
+    const { data: versions = [] } = useLegalTextVersions({ level: 'department', agencyId, topicId, kind: 'dpp' });
 
     const contentByLanguage = useMemo(() => parseLegalContentMap(data?.content), [data?.content]);
+    // `undefined` (backend without the field) must stay `undefined` — the card uses
+    // exactly that to decide whether the consent editor may be offered at all.
+    const consentByLanguage = useMemo(
+        () => (data && data.consentText !== undefined ? parseLegalContentMap(data.consentText) : undefined),
+        [data],
+    );
     const languages = useMemo(
         () => getEditableLanguages(tenantData?.settings?.activeLanguages, contentByLanguage),
         [tenantData?.settings?.activeLanguages, contentByLanguage],
@@ -45,9 +53,13 @@ export const DepartmentDataProtectionContainer = ({
             key={`${agencyId}-${topicId}-${data?.content ?? ''}`}
             departmentName={departmentName}
             initialContentByLanguage={contentByLanguage}
+            consentByLanguage={consentByLanguage}
             languages={languages}
             publicationStatus={data?.publicationStatus}
-            onSave={(contentByLang, doPublish) => publish({ content: contentByLang, publish: doPublish })}
+            versions={versions}
+            onSave={(contentByLang, doPublish, consentByLang) =>
+                publish({ content: contentByLang, publish: doPublish, consentText: consentByLang })
+            }
             saving={isPending}
             onTranslate={translate}
         />

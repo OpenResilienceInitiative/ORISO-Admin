@@ -1,11 +1,16 @@
+import { useMemo, useState } from 'react';
 import { Alert, Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
+import { LegalConsentField } from '../LegalConsentField';
 import { PublishSourceWarningModal } from '../PublishSourceWarningModal';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
+import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
+import { toEditorVersions } from '../../utils/legalVersionOptions';
+import { LegalTextVersion } from '../../../../../types/legalVersion';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
 import styles from './styles.module.scss';
 
@@ -28,10 +33,30 @@ interface DepartmentDataProtectionCardProps {
     /**
      * Persist the edited content: publish=true finalises it, publish=false stores a draft.
      * Always receives the COMPLETE merged content map — loaded content plus the edited
-     * languages — so languages the admin did not touch are never dropped.
+     * languages — so languages the admin did not touch are never dropped. The third
+     * argument carries the consent sentences when the card edits them (see
+     * `consentByLanguage`); it is `undefined` whenever the consent field is not shown.
      */
-    onSave: (contentByLanguage: Record<string, string>, publish: boolean) => void;
+    onSave: (
+        contentByLanguage: Record<string, string>,
+        publish: boolean,
+        consentByLanguage?: Record<string, string>,
+    ) => void;
     saving?: boolean;
+    /**
+     * Previously published versions of THIS text, newest first (ADR-021 decision 3) —
+     * browsable read-only through the editor's version select. Empty while the
+     * AgencyService history endpoints of #250 are not deployed yet.
+     */
+    versions?: LegalTextVersion[];
+    /**
+     * The consent sentences (language → sentence) stored with this data-protection
+     * policy. `undefined` means the backend does not carry the field yet, and the
+     * consent editor is not offered at all — the DPP card behaves exactly as before.
+     * ADR-021 decision 4: the consent text is a FIELD of the policy, so it lives in
+     * this card and is published with it.
+     */
+    consentByLanguage?: Record<string, string>;
     /**
      * Machine-translation call (wired by the container). When present, publishing offers
      * the translate-on-publish modal and non-source languages get a per-field
@@ -65,9 +90,25 @@ export const DepartmentDataProtectionCard = ({
     onTranslate,
     documentType = 'privacy',
     departmentSlot,
+    versions = [],
+    consentByLanguage,
 }: DepartmentDataProtectionCardProps) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const locale = i18n?.language?.split('-')[0] || 'de';
     const published = publicationStatus === 'PUBLISHED';
+    // The consent sentence belongs to the policy, never to the imprint (ADR-021
+    // decision 7 — the imprint is an information duty and never a consent gate).
+    const consentEnabled = documentType === 'privacy' && consentByLanguage !== undefined;
+    const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
+    const [publishBlocked, setPublishBlocked] = useState(false);
+    const consentMap = useMemo(
+        () => ({ ...(consentByLanguage ?? {}), ...consentEdits }),
+        [consentByLanguage, consentEdits],
+    );
+    const blockedLanguages = useMemo(
+        () => (consentEnabled ? consentPublicationBlockers(consentMap) : []),
+        [consentEnabled, consentMap],
+    );
     const {
         activeLanguage,
         setActiveLanguage,
@@ -98,8 +139,32 @@ export const DepartmentDataProtectionCard = ({
         languages,
         defaultLanguage,
         onTranslate,
-        onPublish: (contentByLanguage) => onSave(contentByLanguage, true),
+        // The third argument is passed ONLY when this card owns the consent field —
+        // a consumer without it must not be handed an `undefined` consent map it
+        // would then have to distinguish from "cleared".
+        onPublish: (contentByLanguage) =>
+            consentEnabled ? onSave(contentByLanguage, true, consentMap) : onSave(contentByLanguage, true),
     });
+
+    const editorVersions = useMemo(
+        () => toEditorVersions(versions, activeLanguage, locale, t('tenants.legal.version.current')),
+        [versions, activeLanguage, locale, t],
+    );
+
+    /**
+     * Publishing is refused while an authored consent sentence lacks
+     * `{{legal_links}}` (ADR-021 decision 2). The server rejects it too — running
+     * the same check here means the admin is told which languages are affected
+     * instead of losing the round trip to a generic 400.
+     */
+    const handlePublish = () => {
+        if (blockedLanguages.length > 0) {
+            setPublishBlocked(true);
+            return;
+        }
+        setPublishBlocked(false);
+        requestPublish();
+    };
 
     return (
         <div className={styles.card}>
@@ -114,6 +179,10 @@ export const DepartmentDataProtectionCard = ({
                 onChange={handleEditorChange}
                 publishing={saving}
                 versionLabel={t('legal.m3Editor.versionLabel')}
+                versions={editorVersions}
+                // Restore = copy: the version's text becomes the active language's
+                // draft; the published chain stays append-only and untouched.
+                onRestoreVersion={handleEditorChange}
                 languageSlot={
                     <LegalContentLanguageSelect
                         languages={languages}
@@ -160,10 +229,34 @@ export const DepartmentDataProtectionCard = ({
                         </div>
                     )
                 }
-                onPublish={() => requestPublish()}
-                onSaveDraft={() => onSave(buildPublishMap(), false)}
+                onPublish={handlePublish}
+                onSaveDraft={() =>
+                    consentEnabled ? onSave(buildPublishMap(), false, consentMap) : onSave(buildPublishMap(), false)
+                }
                 belowSlot={
                     <>
+                        {consentEnabled && (
+                            <LegalConsentField
+                                language={activeLanguage}
+                                value={consentMap[activeLanguage] ?? ''}
+                                onChange={(next) => {
+                                    setPublishBlocked(false);
+                                    setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
+                                }}
+                            />
+                        )}
+                        {publishBlocked && (
+                            <Alert
+                                type="error"
+                                showIcon
+                                data-testid="consent-publish-blocked"
+                                message={t('legal.consent.publishBlocked.title')}
+                                description={t('legal.consent.publishBlocked.description', {
+                                    token: `{{${MANDATORY_CONSENT_TOKEN}}}`,
+                                    languages: blockedLanguages.join(', '),
+                                })}
+                            />
+                        )}
                         <PublishSourceWarningModal
                             open={sourceWarningOpen}
                             sourceLanguage={sourceLanguage}

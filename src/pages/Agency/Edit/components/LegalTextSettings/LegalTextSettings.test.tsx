@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
     activeLanguages: ['de', 'en'] as string[],
 }));
 
+// The version history is an independent react-query call; this suite has no client.
+vi.mock('../../../../../hooks/useLegalTextVersions.hook', () => ({ useLegalTextVersions: () => ({ data: [] }) }));
 vi.mock('../../../../../hooks/useSingleTenantData', () => ({
     useSingleTenantData: () => ({
         data: {

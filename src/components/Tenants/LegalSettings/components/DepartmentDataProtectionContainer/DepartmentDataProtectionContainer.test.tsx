@@ -14,6 +14,8 @@ const { useDepartmentDpp, publishMutate, useTranslation, useTenantAdminData } = 
 vi.mock('react-i18next', () => ({ useTranslation }));
 vi.mock('../../../../../hooks/useDepartmentDpp.hook', () => ({ useDepartmentDpp }));
 vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminData }));
+// The version history is an independent react-query call; this suite has no client.
+vi.mock('../../../../../hooks/useLegalTextVersions.hook', () => ({ useLegalTextVersions: () => ({ data: [] }) }));
 vi.mock('../../../../../hooks/usePublishDepartmentDpp.hook', () => ({
     usePublishDepartmentDpp: () => ({ mutate: publishMutate, isPending: false }),
 }));
