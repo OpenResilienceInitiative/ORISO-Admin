@@ -17,6 +17,7 @@ vi.mock('react-i18next', () => ({
             }
             return key;
         },
+        i18n: { language: 'de' },
     }),
 }));
 
@@ -31,6 +32,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         readOnly,
         publishing,
         onPublish,
+        onSaveDraft,
         languageSlot,
         helpSlot,
         snackbarSlot,
@@ -44,6 +46,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         readOnly?: boolean;
         publishing?: boolean;
         onPublish?: (html: string) => void;
+        onSaveDraft?: (html: string) => void;
         languageSlot?: React.ReactNode;
         helpSlot?: React.ReactNode;
         snackbarSlot?: React.ReactNode;
@@ -65,6 +68,11 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
             {!readOnly && onPublish && (
                 <button type="button" disabled={publishing} onClick={() => onPublish(value)}>
                     legal.m3Editor.publish
+                </button>
+            )}
+            {!readOnly && onSaveDraft && (
+                <button type="button" onClick={() => onSaveDraft(value)}>
+                    legal.m3Editor.saveDraft
                 </button>
             )}
             {(versions ?? []).map((version) => (
@@ -122,6 +130,8 @@ describe('DataProcessingAgreementCard', () => {
 
         await user.click(screen.getByRole('button', { name: 'edit' }));
         await user.click(screen.getByRole('button', { name: publishButtonName }));
+        // Only the non-source language was edited — the source warning is confirmed away (#720).
+        await user.click(await screen.findByRole('button', { name: 'legal.publishWarning.confirm' }));
 
         expect(onPublish).toHaveBeenCalledWith({ de: '<p>DE</p>', en: '<p>edited</p>' });
     });
@@ -299,6 +309,8 @@ describe('DataProcessingAgreementCard — version select wiring (#268)', () => {
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN v2</p>');
 
         await user.click(screen.getByRole('button', { name: publishButtonName }));
+        // The restore only changed the non-source draft — the source warning is confirmed away (#720).
+        await user.click(await screen.findByRole('button', { name: 'legal.publishWarning.confirm' }));
         // Only the active language's draft was replaced — the other languages stay untouched.
         expect(onPublish).toHaveBeenCalledWith({ de: '<p>DE</p>', en: '<p>EN v2</p>' });
     });
@@ -558,6 +570,8 @@ describe('DataProcessingAgreementCard — per-field translate', () => {
         await user.click(screen.getByRole('button', { name: 'edit' }));
 
         await user.click(screen.getByRole('button', { name: publishButtonName }));
+        // The manual edit made EN a hand-authored change again → source warning first (#720).
+        await user.click(await screen.findByRole('button', { name: 'legal.publishWarning.confirm' }));
         await user.click(await screen.findByRole('button', { name: skipButtonName }));
 
         const published = onPublish.mock.calls[0][0];
@@ -597,5 +611,112 @@ describe('DataProcessingAgreementCard — per-field translate', () => {
         );
 
         expect(screen.queryByRole('button', { name: fieldButtonName })).not.toBeInTheDocument();
+    });
+});
+
+describe('DataProcessingAgreementCard — local draft', () => {
+    const draftButtonName = 'legal.m3Editor.saveDraft';
+
+    it('offers no draft action when the container wires none', () => {
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                versions={[]}
+                onPublish={vi.fn()}
+            />,
+        );
+
+        expect(screen.queryByRole('button', { name: draftButtonName })).not.toBeInTheDocument();
+    });
+
+    it('hands the complete edited map to the draft store without publishing', async () => {
+        const user = userEvent.setup();
+        const onSaveDraft = vi.fn();
+        const onPublish = vi.fn();
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                defaultLanguage="de"
+                versions={[]}
+                onPublish={onPublish}
+                onSaveDraft={onSaveDraft}
+                onDiscardDraft={vi.fn()}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: draftButtonName }));
+
+        expect(onSaveDraft).toHaveBeenCalledWith({ de: '<p>edited</p>', en: '<p>EN</p>' });
+        expect(onPublish).not.toHaveBeenCalled();
+    });
+
+    it('gives a read-only viewer neither a draft action nor the notice', () => {
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                versions={[]}
+                onPublish={vi.fn()}
+                onSaveDraft={vi.fn()}
+                onDiscardDraft={vi.fn()}
+                draftSavedAt="2026-08-12T08:30:00.000Z"
+                readOnly
+            />,
+        );
+
+        expect(screen.queryByRole('button', { name: draftButtonName })).not.toBeInTheDocument();
+        expect(screen.queryByText('legal.draft.notice.title')).not.toBeInTheDocument();
+    });
+
+    it('announces a restored draft and lets the admin discard it', async () => {
+        const user = userEvent.setup();
+        const onDiscardDraft = vi.fn();
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>Entwurf</p>' }}
+                versions={[]}
+                onPublish={vi.fn()}
+                onSaveDraft={vi.fn()}
+                draftSavedAt="2026-08-12T08:30:00.000Z"
+                onDiscardDraft={onDiscardDraft}
+            />,
+        );
+
+        expect(screen.getByText('legal.draft.notice.title')).toBeInTheDocument();
+        expect(screen.queryByText('legal.draft.notice.stale')).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'legal.draft.discard' }));
+        expect(onDiscardDraft).toHaveBeenCalledTimes(1);
+    });
+
+    it('warns when a newer version was published after the draft was saved', () => {
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>Entwurf</p>' }}
+                versions={[]}
+                onPublish={vi.fn()}
+                onSaveDraft={vi.fn()}
+                draftSavedAt="2026-08-12T08:30:00.000Z"
+                draftStale
+                onDiscardDraft={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText('legal.draft.notice.stale')).toBeInTheDocument();
+    });
+
+    it('shows no notice while there is no stored draft', () => {
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                versions={[]}
+                onPublish={vi.fn()}
+                onSaveDraft={vi.fn()}
+                onDiscardDraft={vi.fn()}
+            />,
+        );
+
+        expect(screen.queryByText('legal.draft.notice.title')).not.toBeInTheDocument();
     });
 });

@@ -45,7 +45,7 @@ export const DescriptionWithBoldHint: Story = {
     args: { text: description, hint: cta },
 };
 
-const PanelDemo = ({ readOnly }: { readOnly?: boolean }) => {
+const PanelDemo = ({ readOnly, snackbarTone }: { readOnly?: boolean; snackbarTone?: 'blocker' | 'success' }) => {
     const [hidden, setHidden] = useState(false);
     // Back both split controls with local state so the language and topic
     // selection can be exercised interactively in Storybook.
@@ -82,7 +82,16 @@ const PanelDemo = ({ readOnly }: { readOnly?: boolean }) => {
             helpSlot={<EditorHelpText text={description} hint={hidden ? cta : undefined} />}
             snackbarSlot={
                 !hidden && (
-                    <EditorHintSnackbar text={cta} onClose={() => setHidden(true)} onDismiss={() => setHidden(true)} />
+                    <EditorHintSnackbar
+                        tone={snackbarTone}
+                        text={
+                            snackbarTone === 'success'
+                                ? 'Die Vereinbarung wurde unterschrieben. Beratungsstellen können nun angelegt werden.'
+                                : cta
+                        }
+                        onClose={() => setHidden(true)}
+                        onDismiss={() => setHidden(true)}
+                    />
                 )
             }
             onPublish={() => undefined}
@@ -104,4 +113,13 @@ export const PanelWriteMode = {
 /** Read mode (Figma 1261-51137): text without box, outline or padding; toolbar inert. */
 export const PanelReadMode = {
     render: () => <PanelDemo readOnly />,
+};
+
+/**
+ * Success tone of the same snackbar (Figma 1261-51137): blue secondary container,
+ * dark text, check affordance instead of the X. Used for the signed-DPA
+ * confirmation, which used to be a separate green alert below the card.
+ */
+export const PanelSignedConfirmation = {
+    render: () => <PanelDemo snackbarTone="success" />,
 };

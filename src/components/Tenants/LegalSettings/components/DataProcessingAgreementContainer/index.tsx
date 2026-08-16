@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, Button, Input, Space } from 'antd';
+import { Alert, Button, Input, Space, Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useDpaVersions } from '../../../../../hooks/useDpaVersions.hook';
 import { usePublishDpa } from '../../../../../hooks/usePublishDpa.hook';
@@ -14,6 +14,7 @@ import { useDpaGate } from '../../../../../hooks/useDpaGate.hook';
 import { useCreateDpaInvite } from '../../../../../hooks/useCreateDpaInvite.hook';
 import { resolveDpaSignLink } from '../../../../../api/tenant/createDpaSignInvite';
 import { useDpaSignatures } from '../../../../../hooks/useDpaSignatures.hook';
+import { useLegalDraft } from '../../hooks/useLegalDraft';
 import { useSendDpaInviteEmail } from '../../../../../hooks/useSendDpaInviteEmail.hook';
 
 interface DataProcessingAgreementContainerProps {
@@ -33,15 +34,17 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     const id = Number(tenantId);
     const lang = i18n.language?.split('-')[0] || 'de';
 
+    const versionsEnabled = Number.isFinite(id) && id > 0;
     const {
         data: versions = [],
+        isLoading: isVersionsLoading,
         isError: versionsError,
         refetch: refetchVersions,
-    } = useDpaVersions(id, Number.isFinite(id) && id > 0);
+    } = useDpaVersions(id, versionsEnabled);
     const { mutate: publish, isPending } = usePublishDpa(id);
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
-    const { data: userData } = useUserData();
+    const { data: userData, isLoading: isUserLoading } = useUserData();
     const { isTenantScopedAdmin } = useUserRoles();
     const {
         data: dpaGate,
@@ -64,13 +67,23 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     // must not remount the editor (which would discard an in-progress draft).
     const dismissalScope = userData?.id ? `${id}:${userData.id}` : undefined;
 
+    const latestVersionId = (versions as DpaVersion[])[0]?.activationDate;
     const latestContentByLanguage = useMemo(
         () => parseLegalContentMap((versions as DpaVersion[])[0]?.content),
         [versions],
     );
+    // Publishing the DPA stamps a new version every tenant must sign again, so the
+    // admin needs a way to stop mid-text. Until the backend has draft state this is
+    // device-local — the card says so via LegalDraftNotice.
+    const { draft, savedAt, isStale, saveDraft, discardDraft } = useLegalDraft(
+        'dpa',
+        effectiveReadOnly ? undefined : dismissalScope,
+        latestVersionId,
+    );
+    const editorContentByLanguage = draft?.content ?? latestContentByLanguage;
     const languages = useMemo(
-        () => getEditableLanguages(tenantData?.settings?.activeLanguages, latestContentByLanguage),
-        [tenantData?.settings?.activeLanguages, latestContentByLanguage],
+        () => getEditableLanguages(tenantData?.settings?.activeLanguages, editorContentByLanguage),
+        [tenantData?.settings?.activeLanguages, editorContentByLanguage],
     );
 
     const mapped: LegalVersion[] = useMemo(
@@ -138,6 +151,23 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
         });
     };
 
+    // The versions ARE the content: rendering the card before they land shows an empty
+    // contract, and the arriving version flips the remount key — discarding edits and
+    // stamping any draft saved in that window with an undefined base version, which
+    // would make the stale warning permanently blind for it. A disabled query (no
+    // usable tenant id) is not "loading" in react-query v5, so it does not block here.
+    if (versionsEnabled && isVersionsLoading) {
+        return <Spin />;
+    }
+
+    // The draft scope needs the opaque user id, and an EDITABLE card mounted before it
+    // arrives would be remounted the moment the draft hydrates — throwing away anything
+    // typed in between. A read-only viewer never gets a draft, so withholding the
+    // published contract from them behind an unrelated query would be a regression.
+    if (isUserLoading && !effectiveReadOnly) {
+        return <Spin />;
+    }
+
     // A failed version load must not masquerade as "no versions yet": editing a
     // legal text on an unknown current state could silently overwrite it, so we
     // withhold the editor and offer a retry instead.
@@ -159,18 +189,23 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     return (
         <>
             <DataProcessingAgreementCard
-                // remount when the stored content changes (e.g. after a publish) so the editor resets to it
-                key={(versions as DpaVersion[])[0]?.activationDate ?? ''}
-                initialContentByLanguage={latestContentByLanguage}
+                // Remount when the stored content changes (e.g. after a publish) so the editor
+                // resets to it, and when a stored draft appears or is discarded. Saving a draft
+                // deliberately does NOT change this key — it would reset the editor mid-edit.
+                key={`${latestVersionId ?? ''}|${draft?.savedAt ?? ''}`}
+                initialContentByLanguage={editorContentByLanguage}
                 languages={languages}
-                defaultLanguage={lang}
                 versions={mapped}
-                onPublish={publish}
+                onPublish={(contentByLanguage) => publish(contentByLanguage, { onSuccess: () => discardDraft() })}
                 publishing={isPending}
                 onTranslate={readOnly ? undefined : translate}
                 readOnly={effectiveReadOnly}
                 dpaSigned={dpaGate?.dpaSigned}
                 dismissalScope={dismissalScope}
+                onSaveDraft={effectiveReadOnly || !dismissalScope ? undefined : saveDraft}
+                draftSavedAt={savedAt}
+                draftStale={isStale}
+                onDiscardDraft={effectiveReadOnly || !dismissalScope ? undefined : discardDraft}
             />
             {isTenantScopedAdmin && dpaGateError && (
                 <Alert
@@ -231,11 +266,14 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                     action={null}
                 />
             )}
-            {isTenantScopedAdmin && dpaGate?.dpaSigned && (
+            {/* The "agreement signed" confirmation itself now lives in the editor's own
+                success snackbar (Figma 1261-51137). What stays here is the audit detail —
+                who signed and when — which only makes sense once a signature exists. */}
+            {isTenantScopedAdmin && dpaGate?.dpaSigned && latestSignedDpa && (
                 <Alert
                     type="success"
                     showIcon
-                    message={t('legal.dpa.sign.complete')}
+                    message={t('legal.dpa.sign.signedBy')}
                     description={
                         latestSignedDpa && (
                             <div>

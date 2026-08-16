@@ -55,7 +55,10 @@ export interface TenantSettings {
         port?: number | null;
         secure?: boolean | null;
         username?: string | null;
+        /** Write-only: sent to set/rotate the password, never returned by the API (#730). */
         password?: string | null;
+        /** Read-only: whether an SMTP password is stored for this tenant. */
+        passwordSet?: boolean | null;
         from?: string | null;
         emailThemeColor?: string | null;
     };

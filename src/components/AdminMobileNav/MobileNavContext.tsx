@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { M3ConnectedButtonGroupItem } from '../M3ConnectedButtonGroup';
 
 export interface MobileNavRegistration {
@@ -50,28 +50,30 @@ export const MobileNavProvider = ({ children }: { children: ReactNode }) => {
         }, {});
     }, [entries]);
 
-    const value = useMemo<MobileNavContextValue>(
-        () => ({
-            registration,
-            register: (id, entry) =>
-                setEntries((current) => {
-                    if (!entry) {
-                        if (!(id in current)) {
-                            return current;
-                        }
+    // `register` must never change identity: `useRegisterMobileNav` lists it in its
+    // effect dependencies, so rebuilding it here (it used to be recreated whenever
+    // `registration` changed) made every registration invalidate the callback that had
+    // just performed it — an endless register → re-render → register loop that React
+    // aborts with "Maximum update depth exceeded" (ORISO-Admin#702).
+    const register = useCallback<MobileNavContextValue['register']>((id, entry) => {
+        setEntries((current) => {
+            if (!entry) {
+                if (!(id in current)) {
+                    return current;
+                }
 
-                        const rest = { ...current };
+                const rest = { ...current };
 
-                        delete rest[id];
+                delete rest[id];
 
-                        return rest;
-                    }
+                return rest;
+            }
 
-                    return { ...current, [id]: entry };
-                }),
-        }),
-        [registration],
-    );
+            return { ...current, [id]: entry };
+        });
+    }, []);
+
+    const value = useMemo<MobileNavContextValue>(() => ({ registration, register }), [registration, register]);
 
     return <MobileNavContext.Provider value={value}>{children}</MobileNavContext.Provider>;
 };

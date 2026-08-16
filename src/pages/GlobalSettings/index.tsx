@@ -22,6 +22,7 @@ import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.h
 import { useUserData } from '../../hooks/useUserData.hook';
 import { sendGlobalSmtpTestEmail } from '../../api/settings/sendGlobalSmtpTestEmail';
 import { TranslationApiKeysCardContainer } from '../../components/GlobalSettings/TranslationApiKeysCardContainer';
+import { DocumentMasterDataCardContainer } from '../../components/GlobalSettings/DocumentMasterDataCardContainer';
 import styles from './styles.module.scss';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
 
@@ -95,6 +96,11 @@ export const GlobalLoginSettingsPage = () => {
             </section>
             <section className={styles.translationCardSlot}>
                 <TranslationApiKeysCardContainer />
+            </section>
+            {/* ORISO-Admin#735: operator master data for the living DPIA and the other legal
+                documents. Spans the full grid width — it carries four field groups. */}
+            <section className={styles.documentMasterDataCardSlot}>
+                <DocumentMasterDataCardContainer />
             </section>
         </div>
     );
