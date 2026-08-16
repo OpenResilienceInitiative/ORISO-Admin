@@ -92,6 +92,58 @@ describe('DocumentMasterDataCard', () => {
         expect(screen.getByRole('button', { name: 'card.edit.cancel' })).toBeInTheDocument();
     });
 
+    /**
+     * A refetch can replace the record while the card is mounted and neither `isLoading` nor
+     * `disabled` changes. Because the card saves the whole record, showing the stale copy
+     * would mean the next save silently writes it back over the newer one.
+     */
+    it('picks up a record that changed after mount', async () => {
+        const user = userEvent.setup({ delay: null });
+        const onSave = vi.fn();
+        const { rerender } = render(<DocumentMasterDataCard data={storedData} onSave={onSave} />);
+
+        const refetched: DpiaMasterData = {
+            ...storedData,
+            operator: { ...storedData.operator, legalName: 'Caritas Bundesverband e. V.' },
+            keyFigures: { tenants: { count: 15, asOfDate: '2026-07-01' } },
+        };
+        rerender(<DocumentMasterDataCard data={refetched} onSave={onSave} />);
+
+        await waitFor(() =>
+            expect(screen.getByLabelText(label('operator.legalName'))).toHaveValue('Caritas Bundesverband e. V.'),
+        );
+        expect(screen.getByLabelText(label('keyFigures.tenants'))).toHaveValue(15);
+
+        // The refreshed record — not the one from mount — is what a save now writes back.
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+        expect(onSave.mock.calls[0][0]).toMatchObject({
+            operator: { legalName: 'Caritas Bundesverband e. V.' },
+            keyFigures: { tenants: { count: 15 } },
+        });
+    });
+
+    it('keeps an in-flight edit when the record changes underneath it', async () => {
+        const user = userEvent.setup({ delay: null });
+        const { rerender } = render(<DocumentMasterDataCard data={storedData} onSave={() => undefined} />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const shortName = screen.getByLabelText(label('operator.shortName'));
+        await user.clear(shortName);
+        await user.type(shortName, 'Half-typed');
+
+        rerender(
+            <DocumentMasterDataCard
+                data={{ ...storedData, operator: { ...storedData.operator, shortName: 'From the server' } }}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByLabelText(label('operator.shortName'))).toHaveValue('Half-typed');
+    });
+
     it('saves the edited values in the grouped shape the endpoint expects', async () => {
         const user = userEvent.setup({ delay: null });
         const onSave = vi.fn();

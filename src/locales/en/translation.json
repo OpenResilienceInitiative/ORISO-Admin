@@ -1802,7 +1802,7 @@
     "globalSettings.documentMasterData.legalFramework": "Legal framework",
     "globalSettings.documentMasterData.legalFramework.help": "Determines which norms the documents cite.",
     "globalSettings.documentMasterData.legalFramework.kdg": "KDG — church data protection",
-    "globalSettings.documentMasterData.legalFramework.gdpr": "GDPR — state data protection",
+    "globalSettings.documentMasterData.legalFramework.gdpr": "GDPR — general data protection",
     "globalSettings.documentMasterData.document.title": "Document",
     "globalSettings.documentMasterData.document.documentDate": "Document date",
     "globalSettings.documentMasterData.document.nextReviewDate": "Next review",
