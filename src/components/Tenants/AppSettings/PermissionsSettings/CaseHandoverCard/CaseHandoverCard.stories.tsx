@@ -99,9 +99,9 @@ export const Editable: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        for (const language of ['German', 'English', 'French', 'Russian', 'Turkish', 'Ukrainian', 'Tigrinya']) {
-            await expect(canvas.getByRole('tab', { name: language })).toBeInTheDocument();
-        }
+        ['German', 'English', 'French', 'Russian', 'Turkish', 'Ukrainian', 'Tigrinya'].forEach((language) => {
+            expect(canvas.getByRole('tab', { name: language })).toBeInTheDocument();
+        });
     },
 };
 

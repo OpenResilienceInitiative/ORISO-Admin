@@ -20,7 +20,7 @@ describe('PermissionPolicyControl', () => {
         const title = screen.getByText('Supervision');
         const status = screen.getByText('tenants.permissions.policy.suggestion');
         expect(title.parentElement).toContainElement(status);
-        expect(title.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(title.compareDocumentPosition(status)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
     it('offers all four states to upper roles and auto-reports the selection', async () => {
