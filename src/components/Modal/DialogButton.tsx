@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import { ButtonHTMLAttributes, ReactNode } from 'react';
+import { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
 import styles from './styles.module.scss';
 
 interface DialogButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -13,6 +13,12 @@ interface DialogButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     destructive?: boolean;
     /** Shows a spinner and disables the button. */
     loading?: boolean;
+    /**
+     * Forwarded to the underlying `<button>` — React 19 passes `ref` as a normal
+     * prop, so no `forwardRef` wrapper is needed. Used e.g. to move focus onto the
+     * safe action when a dialog switches into a confirmation state.
+     */
+    ref?: Ref<HTMLButtonElement>;
     children: ReactNode;
 }
 

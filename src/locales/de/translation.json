@@ -420,7 +420,7 @@
     "links.templates.saveIncomplete": "Vorlagenname, Betreff und Inhalt ausfüllen, um zu speichern.",
     "links.templates.discardTitle": "Änderungen verwerfen?",
     "links.templates.discardDescription": "Ihre nicht gespeicherten Änderungen gehen verloren.",
-    "links.templates.discardBody": "Betreff und Inhalt dieser Vorlage wurden geändert, aber noch nicht gespeichert.",
+    "links.templates.discardBody": "Diese Vorlage wurde geändert, aber noch nicht gespeichert.",
     "links.templates.discardCancel": "Abbrechen",
     "links.templates.discardConfirm": "Verwerfen",
     "links.templates.kind.TENANT_INVITE": "Träger-Invite",

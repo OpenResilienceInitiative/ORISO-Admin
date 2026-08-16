@@ -12,6 +12,12 @@ export interface EmailKitPreviewProps {
     body: string;
     /** Accessible name of the preview region (also the iframe title). */
     previewLabel: string;
+    /**
+     * BCP-47 tag of the TEMPLATE being edited (e.g. an English template edited in
+     * a German session). Drives the document `lang` and the language the preview's
+     * own boilerplate is resolved in. Falls back to the admin UI locale.
+     */
+    language?: string;
 }
 
 /** The tenant primary from the admin theme, as a literal the e-mail kit can inline. */
@@ -61,11 +67,12 @@ const useFittedFrame = (dependency: string) => {
  * media query that must react to the *frame* width — which also makes the
  * stacked mobile layout honest at 320px.
  */
-export const EmailKitPreview = ({ subject, body, previewLabel }: EmailKitPreviewProps) => {
+export const EmailKitPreview = ({ subject, body, previewLabel, language }: EmailKitPreviewProps) => {
     const { t, i18n } = useTranslation();
-    // The preview document mirrors the admin's active locale — the real mail's
-    // language is the template's own concern (#727 review: no hardcoded "de").
-    const lang = i18n?.language || 'de';
+    // The template's own language wins: previewing an English template in a German
+    // session must render English boilerplate and lang="en" (#746 review). Only
+    // without one does the preview fall back to the admin UI locale.
+    const lang = language?.trim() || i18n?.language || 'de';
     // Read once per mount: the admin theme applies the tenant palette to the
     // document root before any editor screen renders.
     const primaryColor = useMemo(readTenantPrimary, []);
@@ -83,23 +90,27 @@ export const EmailKitPreview = ({ subject, body, previewLabel }: EmailKitPreview
                 brand,
                 lang,
                 strings: {
-                    subjectHint: t('links.templates.previewSubjectHint', 'Betreff der E-Mail'),
-                    bodyHint: t('links.templates.previewBodyHint', 'Inhalt der E-Mail'),
+                    // `lng` pins every string to the TEMPLATE's language, not the UI's.
+                    subjectHint: t('links.templates.previewSubjectHint', 'Betreff der E-Mail', { lng: lang }),
+                    bodyHint: t('links.templates.previewBodyHint', 'Inhalt der E-Mail', { lng: lang }),
                     assurance: t(
                         'placeholderTemplate.preview.assurance',
                         'Wir fragen Sie nie per E-Mail nach Ihrem Passwort. Geben Sie diesen Link an niemanden weiter.',
+                        { lng: lang },
                     ),
                     offeredBy: t('placeholderTemplate.preview.offeredBy', '{{platform}} ist ein Angebot von {{org}}.', {
                         platform: brand.platformName,
                         org: brand.orgName,
+                        lng: lang,
                     }),
                     linkLabels: [
-                        t('placeholderTemplate.preview.privacy', 'Datenschutz'),
-                        t('placeholderTemplate.preview.imprint', 'Impressum'),
+                        t('placeholderTemplate.preview.privacy', 'Datenschutz', { lng: lang }),
+                        t('placeholderTemplate.preview.imprint', 'Impressum', { lng: lang }),
                     ],
                     automatedNote: t(
                         'placeholderTemplate.preview.automatedNote',
                         'Diese E-Mail wurde automatisch versendet. Bitte antworten Sie nicht darauf.',
+                        { lng: lang },
                     ),
                 },
             }),

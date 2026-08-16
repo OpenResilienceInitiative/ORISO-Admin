@@ -60,6 +60,24 @@ describe('EmailKitPreview', () => {
         expect(srcDoc(preview)).toContain('<html lang="en">');
     });
 
+    /*
+     * #751 review: an English template edited in a German session must preview as
+     * English — the draft's language wins over the admin UI locale.
+     */
+    it('prefers the template language over the admin UI locale', () => {
+        i18nMock.language = 'de';
+        render(<EmailKitPreview subject="A" body="B" language="en" previewLabel="E-Mail-Vorschau" />);
+        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
+        expect(srcDoc(preview)).toContain('<html lang="en">');
+    });
+
+    it('falls back to the UI locale when the template has no language', () => {
+        i18nMock.language = 'en';
+        render(<EmailKitPreview subject="A" body="B" language="  " previewLabel="E-Mail-Vorschau" />);
+        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
+        expect(srcDoc(preview)).toContain('<html lang="en">');
+    });
+
     it('falls back to German when no locale is resolvable', () => {
         i18nMock.language = '';
         render(<EmailKitPreview subject="A" body="B" previewLabel="E-Mail-Vorschau" />);

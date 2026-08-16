@@ -95,6 +95,8 @@ export const EmailTemplatesDialog = ({
     const fieldId = useId();
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
     const [loading, setLoading] = useState(false);
+    /** Set once the first template request settled — success, empty or failure alike. */
+    const [loadCompleted, setLoadCompleted] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [view, setView] = useState<'list' | 'form'>('list');
     const [editingTemplate, setEditingTemplate] = useState<InviteEmailTemplateDTO | null>(null);
@@ -128,6 +130,10 @@ export const EmailTemplatesDialog = ({
             message.error(t('links.templates.loadFailed', 'Could not load templates'));
         } finally {
             setLoading(false);
+            // "The request finished", independent of what (or whether) it returned:
+            // `templates.length` cannot express a successful empty load or a failed
+            // one, and the create deep link must open in both cases.
+            setLoadCompleted(true);
         }
     }, [t]);
 
@@ -204,13 +210,14 @@ export const EmailTemplatesDialog = ({
         if (source) {
             createDeepLinkDone.current = true;
             openCreateFromTemplate(source);
-        } else if (templates.length > 0) {
-            // The referenced template no longer exists — a blank create form
-            // is still better than silently staying on the list.
+        } else if (loadCompleted) {
+            // The referenced template no longer exists (or the load returned
+            // nothing / failed) — a blank create form is still better than
+            // silently staying on the list the caller did not ask for.
             createDeepLinkDone.current = true;
             openCreateForm();
         }
-    }, [initialView, initialTemplateId, templates, openCreateForm, openCreateFromTemplate]);
+    }, [initialView, initialTemplateId, templates, loadCompleted, openCreateForm, openCreateFromTemplate]);
 
     // The composer only offers active templates of its own tab's kind, so those are the
     // only rows that can be picked — selecting anything else would put a name on the
@@ -259,6 +266,9 @@ export const EmailTemplatesDialog = ({
         },
         [draftDirty],
     );
+
+    /** Answers the discard question with "keep editing": drops the parked intent, keeps the draft. */
+    const cancelDiscardPrompt = useCallback(() => setDiscardPrompt(null), []);
 
     // Templates of the draft's kind feed the editor's split button: switching
     // loads a stored template, "Neu aus" starts a fresh one from it.
@@ -444,7 +454,14 @@ export const EmailTemplatesDialog = ({
      */
     const discardFooter = discardPrompt ? (
         <div className={styles.footerActions}>
-            <DialogButton onClick={() => setDiscardPrompt(null)}>
+            <DialogButton
+                // The form wrapper goes `inert` with the prompt, which drops the
+                // previously focused control out of the focus path — without this
+                // the browser blurs to <body> and keyboard users land outside the
+                // dialog. Focus the SAFE action, never the destructive one.
+                ref={(button: HTMLButtonElement | null) => button?.focus()}
+                onClick={cancelDiscardPrompt}
+            >
                 {t('links.templates.discardCancel', 'Abbrechen')}
             </DialogButton>
             <DialogButton
@@ -476,17 +493,16 @@ export const EmailTemplatesDialog = ({
                 width={1180}
                 // Abbrechen steps back to the list; X/Escape/mask keep closing
                 // the whole dialog, as they did before the module wiring. Both
-                // ask first when the draft carries unsaved edits.
-                onClose={() => guardDraft(backToList)}
-                onDismiss={() => guardDraft(onClose)}
+                // ask first when the draft carries unsaved edits — and while the
+                // question is up, either gesture answers it with "Abbrechen"
+                // instead of parking a second intent over the pending one.
+                onClose={() => (discardPrompt ? cancelDiscardPrompt() : guardDraft(backToList))}
+                onDismiss={() => (discardPrompt ? cancelDiscardPrompt() : guardDraft(onClose))}
                 onSave={onSave}
             >
                 {discardPrompt && (
                     <p className={styles.discardBody} role="status">
-                        {t(
-                            'links.templates.discardBody',
-                            'Betreff und Inhalt dieser Vorlage wurden geändert, aber noch nicht gespeichert.',
-                        )}
+                        {t('links.templates.discardBody', 'Diese Vorlage wurde geändert, aber noch nicht gespeichert.')}
                     </p>
                 )}
                 {/* While the discard question is up, the form stays MOUNTED but
@@ -546,6 +562,8 @@ export const EmailTemplatesDialog = ({
                     </div>
                     <InviteEmailTemplateEditor
                         activeTemplateId={editingTemplate?.id}
+                        // The preview follows the template's own language, not the admin UI locale.
+                        language={draftMeta.language}
                         templates={editorTemplates}
                         tokens={inviteEmailTokensForKind(draftMeta.kind)}
                         values={draftValues}

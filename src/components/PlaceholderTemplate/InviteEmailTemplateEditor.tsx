@@ -28,6 +28,11 @@ export interface InviteEmailTemplateEditorProps {
      * for the per-kind wiring (#746).
      */
     tokens?: PlaceholderTokenDef[];
+    /**
+     * BCP-47 tag of the template being edited; forwarded to the preview so an
+     * English template does not render German boilerplate (#746 review).
+     */
+    language?: string;
 }
 
 /**
@@ -46,6 +51,7 @@ export const InviteEmailTemplateEditor = ({
     onCreateFromTemplate,
     onManageTemplates,
     tokens = INVITE_EMAIL_TOKENS,
+    language,
 }: InviteEmailTemplateEditorProps) => {
     const { t } = useTranslation();
     const samples = useMemo(() => sampleValues(tokens), [tokens]);
@@ -63,6 +69,7 @@ export const InviteEmailTemplateEditor = ({
             preview={
                 <EmailKitPreview
                     body={fillPlaceholders(values.body, samples)}
+                    language={language}
                     previewLabel={t('placeholderTemplate.invite.previewLabel', 'E-Mail-Vorschau')}
                     subject={fillPlaceholders(values.subject, samples)}
                 />

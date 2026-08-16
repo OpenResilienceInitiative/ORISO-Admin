@@ -2,7 +2,7 @@ import React from 'react';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -128,6 +128,12 @@ const previewSrcDoc = () =>
     within(screen.getByRole('dialog')).getByTitle('E-Mail-Vorschau').getAttribute('srcdoc') ?? '';
 
 describe('EmailTemplatesDialog', () => {
+    // Any spy a test installs (e.g. on window.confirm) is undone here, so a failing
+    // assertion cannot leak it into the tests that follow.
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     beforeEach(() => {
         mocks.listInviteEmailTemplates.mockReset();
         mocks.createInviteEmailTemplate.mockReset();
@@ -389,6 +395,8 @@ describe('EmailTemplatesDialog', () => {
      */
     it('never uses a native window.confirm for the discard question', async () => {
         const user = userEvent.setup();
+        // Restored in afterEach, not here: a failing assertion below would otherwise
+        // leak the mocked confirm into every later test.
         const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
         renderDialog();
 
@@ -402,7 +410,6 @@ describe('EmailTemplatesDialog', () => {
 
         expect(confirmSpy).not.toHaveBeenCalled();
         expect(withinDialog.getByText('links.templates.discardTitle')).toBeInTheDocument();
-        confirmSpy.mockRestore();
     });
 
     it('keeps X closing the whole dialog while Abbrechen steps back to the list', async () => {
@@ -413,8 +420,10 @@ describe('EmailTemplatesDialog', () => {
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
         fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
 
-        // Cancel: back to the template list, the dialog itself stays open.
+        // Cancel: back to the template list, the dialog itself stays open — and with a
+        // clean draft nothing may ask for confirmation on the way.
         await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'cancel' }));
+        expect(screen.queryByText('links.templates.discardTitle')).not.toBeInTheDocument();
         expect(onClose).not.toHaveBeenCalled();
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
 
@@ -422,6 +431,7 @@ describe('EmailTemplatesDialog', () => {
         // the pre-module form, where every dismiss gesture reached the parent).
         fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
         await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }));
+        expect(screen.queryByText('links.templates.discardTitle')).not.toBeInTheDocument();
         expect(onClose).toHaveBeenCalledTimes(1);
     });
 
@@ -443,6 +453,56 @@ describe('EmailTemplatesDialog', () => {
         // …and only Verwerfen closes the whole dialog.
         await user.click(withinDialog.getByRole('button', { name: 'Verwerfen' }));
         expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    /*
+     * #751 review (Major): a dismiss gesture while the question is up used to run
+     * guardDraft(onClose) again — the draft was still dirty, so it parked a SECOND
+     * intent over the pending one. Escape then "Verwerfen" closed the whole dialog
+     * instead of performing the switch the admin had asked for.
+     */
+    it('treats X while the discard question is open as Abbrechen, keeping draft and parked intent', async () => {
+        const user = userEvent.setup();
+        const onClose = vi.fn();
+        renderDialog({ onClose });
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const withinDialog = within(screen.getByRole('dialog'));
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
+
+        // Park a template switch, then dismiss the question with X.
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.click(withinDialog.getByRole('button', { name: 'Close' }));
+
+        // Question gone, dialog still open, draft intact — and no second intent parked.
+        expect(withinDialog.queryByText('links.templates.discardTitle')).not.toBeInTheDocument();
+        expect(onClose).not.toHaveBeenCalled();
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Edited subject');
+
+        // Asking again and confirming performs the ORIGINAL intent (switch), not a close.
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.click(withinDialog.getByRole('button', { name: 'Verwerfen' }));
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('moves focus to the safe action when the discard question appears', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const withinDialog = within(screen.getByRole('dialog'));
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
+
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+
+        // Not <body>: the form wrapper goes inert, so focus has to be moved deliberately.
+        expect(withinDialog.getByRole('button', { name: 'Abbrechen' })).toHaveFocus();
     });
 
     it('describes the disabled save button with the incomplete hint', async () => {

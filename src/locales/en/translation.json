@@ -479,7 +479,7 @@
     "links.templates.saveIncomplete": "Fill in template name, subject and body to save.",
     "links.templates.discardTitle": "Discard changes?",
     "links.templates.discardDescription": "Your unsaved changes will be lost.",
-    "links.templates.discardBody": "The subject and body of this template were changed but not saved yet.",
+    "links.templates.discardBody": "This template was changed but not saved yet.",
     "links.templates.discardCancel": "Cancel",
     "links.templates.discardConfirm": "Discard",
     "links.templates.kind.TENANT_INVITE": "Tenant invite",
