@@ -47,7 +47,7 @@ export const AgencyLegalTextContainer = ({
     onSaveAgencyWide,
     saving,
 }: AgencyLegalTextContainerProps) => {
-    const { i18n, t } = useTranslation();
+    const { t } = useTranslation();
     const [selected, setSelected] = useState<number | typeof ALL_DEPARTMENTS>(ALL_DEPARTMENTS);
 
     const agencyId = Number(agencyData?.id);
@@ -170,7 +170,6 @@ export const AgencyLegalTextContainer = ({
             departmentName={selectedDepartment?.name}
             initialContentByLanguage={contentByLanguage}
             languages={languages}
-            defaultLanguage={i18n.language?.split('-')[0] || 'de'}
             publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : undefined}
             onSave={onSave}
             saving={saving || departmentPublish.isPending}

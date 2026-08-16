@@ -11,6 +11,7 @@ vi.mock('./updateAgencyPostCodeRange', () => ({ default: mocks.updateAgencyPostC
 vi.mock('../consultingtype/getConsultingType4Tenant', () => ({ default: vi.fn().mockResolvedValue('1') }));
 
 import { updateAgencyData } from './updateAgencyData';
+import { FETCH_ERRORS, FETCH_SUCCESS } from '../fetchData';
 
 const agencyModel: any = { id: '55', consultingType: '1' };
 
@@ -35,6 +36,31 @@ describe('updateAgencyData — ADR-014 multi-topic departments', () => {
         expect(sentBody().topicIds).toEqual(['3', '9', '12']);
     });
 
+    it('leaves visibility alone when the patch carries no online field', async () => {
+        // ORISO-Admin#715: publishing a department's legal document sends a narrow
+        // card patch with no `online` field. `offline: !formInput.online` read that
+        // absence as false and took the agency out of registration — an agency admin
+        // publishing their imprint made their own counselling centre disappear.
+        // Delete rather than simply omit: spreading the fixture would silently stop
+        // exercising the undefined branch the day `online` is added to it, and the
+        // test would keep passing while proving nothing.
+        const patch: Record<string, unknown> = { ...agencyModel };
+        delete patch.online;
+
+        await updateAgencyData(agencyModel, patch as any);
+        expect(sentBody()).not.toHaveProperty('offline');
+    });
+
+    it('still hides an agency that is explicitly switched offline', async () => {
+        await updateAgencyData(agencyModel, { ...agencyModel, online: false } as any);
+        expect(sentBody().offline).toBe(true);
+    });
+
+    it('still publishes an agency that is explicitly switched online', async () => {
+        await updateAgencyData(agencyModel, { ...agencyModel, online: true } as any);
+        expect(sentBody().offline).toBe(false);
+    });
+
     it('still accepts a lone Option from the former single-select shape', async () => {
         await updateAgencyData(agencyModel, {
             ...agencyModel,
@@ -57,6 +83,23 @@ describe('updateAgencyData — ADR-014 multi-topic departments', () => {
         const withoutTopics: any = { id: '55', consultingType: '1', name: 'Caritas Neukölln' };
         await updateAgencyData(agencyModel, withoutTopics);
         expect(sentBody()).not.toHaveProperty('topicIds');
+    });
+});
+
+describe('updateAgencyData — validation errors', () => {
+    beforeEach(() => {
+        mocks.fetchData.mockReset();
+        mocks.fetchData.mockResolvedValue({ _embedded: {} });
+    });
+
+    it('returns the 400 response to the form so it can render field errors', async () => {
+        await updateAgencyData(agencyModel, { ...agencyModel } as any);
+
+        expect(mocks.fetchData.mock.calls[0][0].responseHandling).toEqual([
+            FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+            FETCH_ERRORS.CATCH_ALL,
+            FETCH_SUCCESS.CONTENT,
+        ]);
     });
 });
 

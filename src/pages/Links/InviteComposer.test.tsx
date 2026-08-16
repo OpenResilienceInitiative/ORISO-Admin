@@ -132,12 +132,13 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         // alone must keep the action gated and in the outlined (non-primary) look.
         expect(await screen.findByRole('button', { name: /Standard/ })).toBeInTheDocument();
         expect(sendButton).toBeDisabled();
-        expect(wrapper).not.toHaveClass(splitButtonStyles.primary);
+        // `primary` is an alias of the sheet's `filled` variant since #741.
+        expect(wrapper).not.toHaveClass(splitButtonStyles.filled);
 
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
 
         await waitFor(() => expect(sendButton).toBeEnabled());
-        expect(wrapper).toHaveClass(splitButtonStyles.primary);
+        expect(wrapper).toHaveClass(splitButtonStyles.filled);
     });
 
     it('persists the chosen send mode per tab and swaps the main label', async () => {
@@ -263,6 +264,31 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         // mocked `t` returns raw fallbacks, so the count stays uninterpolated here.
         expect(await screen.findByRole('button', { name: '{{count}} Empfänger anlegen' })).toBeInTheDocument();
         expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+    });
+
+    /*
+     * #713: Pre-Dev carries TWO active TENANT_INVITE templates, so the tab's
+     * "exactly one active template" auto-select never fires and nothing is
+     * preselected. That is a genuine precondition — but the composer used to
+     * show a silently greyed-out send button with no validation text at all
+     * (`.ant-form-item-explain` and `[role="alert"]` both empty). Disable
+     * rather than hide, but ALWAYS explain.
+     */
+    it('names the missing precondition while the send action is disabled (#713)', async () => {
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE, { ...TEMPLATE, id: 8, name: 'Zweite Vorlage' }]);
+
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        const sendButton = await findSendButton('Direkt Versenden');
+        await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
+
+        // E-mail is valid and the Träger-ID rests on Auto, yet send stays off:
+        // no template is selected because two are active.
+        await waitFor(() => expect(sendButton).toBeDisabled());
+        const hint = await screen.findByText('Bitte zuerst eine E-Mail-Vorlage auswählen.');
+        expect(hint).toBeInTheDocument();
+        expect(sendButton).toHaveAccessibleDescription('Bitte zuerst eine E-Mail-Vorlage auswählen.');
     });
 
     it('opens the templates dialog in list view from the template pill', async () => {

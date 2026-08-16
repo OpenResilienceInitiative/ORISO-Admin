@@ -141,12 +141,15 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         );
         await renderCounsellorTab();
 
-        expect(await screen.findByText('Draft')).toBeInTheDocument();
-        expect(screen.getByText('Gesendet')).toBeInTheDocument();
-        expect(screen.getByText('Angenommen')).toBeInTheDocument();
-        expect(screen.getByText('Widerrufen')).toBeInTheDocument();
-        expect(screen.getByText('Abgelaufen')).toBeInTheDocument();
-        expect(screen.getByText('Ersetzt')).toBeInTheDocument();
+        // Scoped to the table: the same labels also exist as filter chips above it.
+        await screen.findByText('person21@example.org');
+        const table = within(screen.getByRole('table'));
+        expect(table.getByText('Draft')).toBeInTheDocument();
+        expect(table.getByText('Gesendet')).toBeInTheDocument();
+        expect(table.getByText('Angenommen')).toBeInTheDocument();
+        expect(table.getByText('Widerrufen')).toBeInTheDocument();
+        expect(table.getByText('Abgelaufen')).toBeInTheDocument();
+        expect(table.getByText('Ersetzt')).toBeInTheDocument();
     });
 
     it('only offers checkboxes for DRAFT and EMAIL_SENT rows; terminal rows are disabled', async () => {
@@ -158,23 +161,30 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         expect(await rowCheckbox('person24@example.org')).toBeDisabled();
     });
 
-    it('disables "Ausgewählte löschen" without a selection and surfaces the selection count', async () => {
-        await renderCounsellorTab();
-        const user = userEvent.setup();
+    // Same headroom as the revocation chain below: this drives two antd menus
+    // plus row checkboxes and has hit the 30s default on slow CI runners
+    // (flaked on the #997 PR with the identical commit green in sibling runs).
+    it(
+        'disables "Ausgewählte löschen" without a selection and surfaces the selection count',
+        { timeout: 90_000 },
+        async () => {
+            await renderCounsellorTab();
+            const user = userEvent.setup();
 
-        await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }));
-        const disabledEntry = await screen.findByRole('menuitem', { name: /Ausgewählte löschen/ });
-        expect(disabledEntry).toHaveAttribute('aria-disabled', 'true');
-        await user.keyboard('{Escape}');
+            await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }));
+            const disabledEntry = await screen.findByRole('menuitem', { name: /Ausgewählte löschen/ });
+            expect(disabledEntry).toHaveAttribute('aria-disabled', 'true');
+            await user.keyboard('{Escape}');
 
-        await user.click(await rowCheckbox('person21@example.org'));
-        await user.click(await rowCheckbox('person22@example.org'));
-        expect(await screen.findByText('2 ausgewählt')).toBeInTheDocument();
+            await user.click(await rowCheckbox('person21@example.org'));
+            await user.click(await rowCheckbox('person22@example.org'));
+            expect(await screen.findByText('2 ausgewählt')).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }));
-        const enabledEntry = await screen.findByRole('menuitem', { name: /Ausgewählte löschen/ });
-        expect(enabledEntry).not.toHaveAttribute('aria-disabled', 'true');
-    });
+            await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }));
+            const enabledEntry = await screen.findByRole('menuitem', { name: /Ausgewählte löschen/ });
+            expect(enabledEntry).not.toHaveAttribute('aria-disabled', 'true');
+        },
+    );
 
     // Longest interaction chain in the file — CI runners need headroom beyond the 30s default.
     it(

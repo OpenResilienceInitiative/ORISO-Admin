@@ -1,0 +1,130 @@
+.editor {
+    display: grid;
+    min-width: 0;
+    gap: 20px;
+}
+
+.header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.heading {
+    margin: 0;
+    color: var(--m3-on-surface, #1d1b20);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+/* Fields left, live preview right — same 920px stacking point as the
+   invite template dialog (EmailTemplatesDialog.module.scss). */
+
+.formAndPreview {
+    display: grid;
+    align-items: start;
+    gap: 24px;
+    grid-template-columns: minmax(280px, 5fr) minmax(300px, 6fr);
+}
+
+@media (max-width: 920px) {
+    .formAndPreview {
+        grid-template-columns: 1fr;
+    }
+}
+
+.fields {
+    display: grid;
+    min-width: 0;
+    gap: 16px;
+}
+
+.preview {
+    min-width: 0;
+}
+
+.field {
+    display: grid;
+    min-width: 0;
+    gap: 6px;
+}
+
+.fieldHead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.fieldLabel {
+    color: var(--m3-on-surface, #1d1b20);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.tokenMenuRow {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.tokenCode,
+.tokenChip {
+    padding: 2px 5px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, #ffffff);
+    color: var(--m3-primary, #a5000a);
+    font-family: SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.9em;
+    font-weight: 700;
+}
+
+.templateMenuRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.templateMenuSpacer {
+    display: inline-block;
+    width: 20px;
+}
+
+/* Consent preview: the sentence exactly as registration renders it —
+   a checkbox with the (substituted) template as its label. */
+
+.consentPreview {
+    display: grid;
+    padding: 16px 18px;
+    border: 1px solid var(--m3-outline-variant, #cac4d0);
+    border-radius: 12px;
+    background: var(--m3-surface, #ffffff);
+    gap: 10px;
+}
+
+.consentPreviewCaption {
+    color: var(--m3-on-surface-variant, #49454f);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.consentRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.consentSentence {
+    padding-top: 9px;
+    color: var(--m3-on-surface, #1d1b20);
+    font-size: 15px;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}

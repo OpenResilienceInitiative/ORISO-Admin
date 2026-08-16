@@ -80,7 +80,9 @@ describe('DepartmentDataProtectionContainer', () => {
         });
         // active languages + stored fr, but never the metadata key
         expect(card).toHaveAttribute('data-languages', 'de,en,fr');
-        expect(card).toHaveAttribute('data-default-language', 'de');
+        // The container no longer forces the admin's UI language on the editor — the card
+        // opens on the legal source language itself (#718).
+        expect(card).not.toHaveAttribute('data-default-language');
         expect(card).toHaveAttribute('data-status', 'PUBLISHED');
         expect(card).toHaveAttribute('data-name', 'Sucht');
     });
