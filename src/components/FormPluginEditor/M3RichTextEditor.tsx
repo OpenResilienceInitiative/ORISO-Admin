@@ -1088,8 +1088,13 @@ export const M3RichTextEditor = ({
                             <button
                                 type="button"
                                 className={`${styles.textBtn} ${styles.draft}`}
-                                disabled={imageUpload.uploading}
-                                aria-busy={imageUpload.uploading}
+                                // `publishing` means "a submit is in flight" for every consumer
+                                // of this shell (see LegalText/DataProcessingAgreement*/Dpia*),
+                                // not specifically "the publish button was clicked" — so it must
+                                // also block a second, overlapping draft save while one is
+                                // already pending, the same way it already blocks Publish.
+                                disabled={publishing || imageUpload.uploading}
+                                aria-busy={publishing || imageUpload.uploading}
                                 onClick={() => onSaveDraft(html())}
                             >
                                 <EditIcon />
