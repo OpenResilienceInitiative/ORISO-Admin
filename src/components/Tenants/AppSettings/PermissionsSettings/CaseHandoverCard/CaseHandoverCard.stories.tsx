@@ -157,10 +157,10 @@ export const PolicyMenuOpen: Story = {
             canvas.getByRole('button', { name: /^(Deactivation enforced|Deaktivierung erzwungen)$/i }),
         ).toBeVisible();
         await expect(
-            canvas.getByRole('button', { name: /^(Activation recommendation|Empfehlung: Aktivierung)$/i }),
+            canvas.getByRole('button', { name: /^(Activation \(adjustable\)|Aktivierung \(anpassbar\))$/i }),
         ).toBeVisible();
         await expect(
-            canvas.getByRole('button', { name: /^(Deactivation recommendation|Empfehlung: Deaktivierung)$/i }),
+            canvas.getByRole('button', { name: /^(Deactivation \(adjustable\)|Deaktivierung \(anpassbar\))$/i }),
         ).toBeVisible();
         await expect(canvas.getByRole('button', { name: /^(More information|Weitere Informationen)$/i })).toBeVisible();
     },

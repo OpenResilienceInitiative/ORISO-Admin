@@ -42,7 +42,7 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         const control = policy('featureAnonymousChatEnabled');
         await user.click(within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }));
         expect(
-            within(control).getByRole('button', { name: /Empfehlung: Deaktivierung|deactivation recommendation/i }),
+            within(control).getByRole('button', { name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i }),
         ).toHaveAttribute('aria-current', 'page');
     });
 
@@ -57,7 +57,7 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         await user.click(within(control).getByRole('button', { name: /Weitere Informationen|more information/i }));
         expect(screen.getByRole('dialog')).toBeInTheDocument();
         expect(
-            within(control).queryByText(/Empfehlung: Aktivierung|activation recommendation/i),
+            within(control).queryByText(/Aktivierung \(anpassbar\)|activation \(adjustable\)/i),
         ).not.toBeInTheDocument();
     });
 
@@ -74,7 +74,7 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         const control = policy('featureThreadsOneOnOneEnabled');
         await user.click(within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }));
         await user.click(
-            within(control).getByRole('button', { name: /Empfehlung: Deaktivierung|deactivation recommendation/i }),
+            within(control).getByRole('button', { name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i }),
         );
 
         expect(mocks.mutate).toHaveBeenCalledTimes(1);
