@@ -4,6 +4,7 @@
    never narrower than a small phone (375), never wider than a long-form text column.
    `min(375px, 100%)` instead of a fixed 375px: a container padded below 375px (e.g. the
    390px mobile viewport) must still be able to shrink the card to fit, not overflow it. */
+
 .card {
     min-width: min(375px, 100%);
     max-width: 960px;
