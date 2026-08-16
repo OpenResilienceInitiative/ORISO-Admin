@@ -1,7 +1,6 @@
 module.exports = {
   "extends": [
     "stylelint-config-standard",
-    "stylelint-config-prettier",
     "stylelint-config-idiomatic-order",
   ],
   "plugins": [
@@ -24,7 +23,12 @@ module.exports = {
     "plugin/no-unsupported-browser-features": [
       true,
       {
-        "severity": "warning"
+        "severity": "warning",
+        // Sass and Less flatten nesting at build time, so it never reaches a
+        // browser. Neither plain .css file in this repo nests natively.
+        "ignore": [
+          "css-nesting"
+        ]
       }
     ],
     "declaration-block-no-redundant-longhand-properties": null,
@@ -35,14 +39,39 @@ module.exports = {
     "color-hex-length": "long",
     "selector-pseudo-element-colon-notation": "single",
     "property-no-vendor-prefix": true,
-    "max-empty-lines": [
-      2,
+
+    // SCSS/Less `@import` takes a bare string, not `url()`.
+    "import-notation": "string",
+
+    // Rules added by stylelint-config-standard v40 that cannot see through
+    // preprocessor variables: every report is a `$var` / `@var` in a value,
+    // media query or @font-face descriptor. Sass and Less resolve these long
+    // before a browser sees them.
+    "declaration-property-value-no-unknown": null,
+    "media-query-no-invalid": null,
+    "at-rule-descriptor-value-no-unknown": null,
+
+    // Keep the notations the codebase already uses. Range syntax in
+    // particular does not survive the Less breakpoint mixins, which
+    // interpolate a variable into `(min-width: @min)`.
+    "media-feature-range-notation": "prefix",
+
+    // Neither notation fits: the SVG rules chain `:not()` for the widest
+    // browser support, but pass a complex argument (`:not(mask *)`) that the
+    // simple notation cannot express.
+    "selector-not-notation": null,
+
+    // `clip` is the intentional legacy companion to `clip-path: inset(50%)`
+    // in the visually-hidden pattern; both are always declared together.
+    "property-no-deprecated": [
+      true,
       {
-        "ignore": [
-          "comments"
+        "ignoreProperties": [
+          "clip"
         ]
       }
     ],
+
     "rule-empty-line-before": [
       "always-multi-line",
       {
