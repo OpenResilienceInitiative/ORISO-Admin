@@ -1,7 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createInstance } from 'i18next';
+import { I18nextProvider, initReactI18next } from 'react-i18next';
 import { describe, expect, it, vi } from 'vitest';
 import { PermissionPolicyControl } from './PermissionPolicyControl';
+import translationDe from '../../locales/de/translation.json';
+import translationEn from '../../locales/en/translation.json';
 
 describe('PermissionPolicyControl', () => {
     it('renders the feature title directly above its policy status', () => {
@@ -42,7 +46,7 @@ describe('PermissionPolicyControl', () => {
         expect(onChange).toHaveBeenCalledWith({ value: false, mode: 'ENFORCED' });
     });
 
-    it('uses the right-opening ORISO lock variants for suggested policies', () => {
+    it('uses filled right-opening ORISO locks throughout the active suggestion menu', () => {
         render(
             <PermissionPolicyControl
                 featureKey="featureSupervisionEnabled"
@@ -67,7 +71,54 @@ describe('PermissionPolicyControl', () => {
         const alternativeSuggestion = screen.getByRole('button', {
             name: 'tenants.permissions.policy.deactivationSuggested',
         });
-        expect(alternativeSuggestion.querySelector('[data-icon="lock-open-right-400"]')).toBeInTheDocument();
+        expect(alternativeSuggestion.querySelector('[data-icon="lock-open-right-filled"]')).toBeInTheDocument();
+        expect(alternativeSuggestion.querySelector('[data-icon="lock-open-right-400"]')).not.toBeInTheDocument();
+    });
+
+    it.each([
+        {
+            language: 'de',
+            status: 'Empfehlung (änderbar)',
+            activation: 'Empfehlung: Aktivierung',
+            deactivation: 'Empfehlung: Deaktivierung',
+        },
+        {
+            language: 'en',
+            status: 'Recommendation (can be adjusted)',
+            activation: 'Activation recommendation',
+            deactivation: 'Deactivation recommendation',
+        },
+    ])('presents suggested policies as recommendations in $language', async (copy) => {
+        const i18n = createInstance().use(initReactI18next);
+        await i18n.init({
+            lng: copy.language,
+            fallbackLng: 'en',
+            keySeparator: false,
+            ns: ['translations'],
+            defaultNS: 'translations',
+            resources: {
+                de: { translations: translationDe },
+                en: { translations: translationEn },
+            },
+        });
+
+        render(
+            <I18nextProvider i18n={i18n}>
+                <PermissionPolicyControl
+                    featureKey="featureSupervisionEnabled"
+                    label="Supervision"
+                    level="tenant"
+                    policy={{ value: true, mode: 'SUGGESTED' }}
+                    open
+                    onOpenChange={vi.fn()}
+                    onChange={vi.fn()}
+                />
+            </I18nextProvider>,
+        );
+
+        expect(screen.getByText(copy.status)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: copy.activation })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: copy.deactivation })).toBeInTheDocument();
     });
 
     it('opens information directly for inherited enforced values', async () => {

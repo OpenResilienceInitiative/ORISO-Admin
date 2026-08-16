@@ -35,7 +35,7 @@ describe('M3FabMenu', () => {
         render(
             <MemoryRouter>
                 <M3FabMenu
-                    items={[{ key: 'enabled-suggested', label: 'Aktivierung vorgeschlagen', icon: <span>open</span> }]}
+                    items={[{ key: 'enabled-suggested', label: 'Empfehlung: Aktivierung', icon: <span>open</span> }]}
                     activeKey="enabled-suggested"
                     triggerIcon={<span>check</span>}
                     open={false}

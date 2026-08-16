@@ -52,7 +52,7 @@ export const SuggestedActive: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const title = canvas.getByText('Supervision');
-        const status = canvas.getByText(/Suggestion/i);
+        const status = canvas.getByText(/Recommendation|Empfehlung/i);
         await expect(title.parentElement).toContainElement(status);
         await expect(canvas.getByTestId('CheckIcon')).toBeInTheDocument();
     },

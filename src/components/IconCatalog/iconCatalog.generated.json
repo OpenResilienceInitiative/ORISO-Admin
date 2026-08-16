@@ -1836,8 +1836,8 @@
         "fileName": "lock_open_right_400_20px.svg",
         "sourcePath": "src/resources/img/svg/oriso/lock_open_right_400_20px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/PermissionPolicyControl/PermissionPolicyControl.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:oriso:lock-open-right:filled",
