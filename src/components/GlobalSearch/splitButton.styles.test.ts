@@ -49,6 +49,8 @@ describe('SplitButton style contract (#741, Figma 57994-15744)', () => {
     it('keeps the sub-48px sizes touch-target compliant', () => {
         expect(source.match(/^\.xsmall\s*\{([^{}]*)\}/ms)?.[1]).toMatch(/--sb-touch-extend:\s*8px/);
         expect(source.match(/^\.small\s*\{([^{}]*)\}/ms)?.[1]).toMatch(/--sb-touch-extend:\s*4px/);
-        expect(source).toMatch(/\.segment::before/);
+        // Either colon notation: the repo lints pseudo-elements to the single
+        // colon it uses everywhere else, and `:before` === `::before` here.
+        expect(source).toMatch(/\.segment::?before/);
     });
 });

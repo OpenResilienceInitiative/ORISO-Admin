@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { M3Checkbox } from '../M3Checkbox';
 import {
@@ -21,6 +21,23 @@ export interface LegalConsentTemplateEditorProps {
     activeTemplateId?: number | string;
     onSelectTemplate: (id: number | string) => void;
     onCreateFromTemplate?: (id: number | string) => void;
+    /**
+     * Fixed, non-editable text rendered UNDER the sentence in the preview — the
+     * cookie/authentication notice the platform always appends (ADR-021 decision
+     * 2). It is part of what the help-seeker reads, so leaving it out of the
+     * preview would show the admin a sentence that does not exist in that form.
+     */
+    addendum?: ReactNode;
+    /** Optional label of the language this sentence belongs to (multilingual editors). */
+    languageLabel?: string;
+    /**
+     * Read-only surface: the sentence field, its token picker, the template
+     * chooser and the preview checkbox all go inert. Without this the controls
+     * stay focusable and typing snaps back — an editable-looking field for
+     * someone who lacks the legal-text permission, or who is looking at an
+     * archived version.
+     */
+    readOnly?: boolean;
 }
 
 /**
@@ -37,6 +54,9 @@ export const LegalConsentTemplateEditor = ({
     activeTemplateId,
     onSelectTemplate,
     onCreateFromTemplate,
+    addendum,
+    languageLabel,
+    readOnly = false,
 }: LegalConsentTemplateEditorProps) => {
     const { t } = useTranslation();
     const sentenceId = useId();
@@ -45,7 +65,14 @@ export const LegalConsentTemplateEditor = ({
     const samples = useMemo(() => sampleValues(LEGAL_CONSENT_TOKENS), []);
 
     const fields: PlaceholderTemplateFieldConfig<LegalConsentTemplateValues>[] = [
-        { name: 'text', label: t('placeholderTemplate.legal.text', 'Einwilligungstext'), multiline: true, rows: 6 },
+        {
+            name: 'text',
+            label: languageLabel
+                ? `${t('placeholderTemplate.legal.text', 'Einwilligungstext')} (${languageLabel})`
+                : t('placeholderTemplate.legal.text', 'Einwilligungstext'),
+            multiline: true,
+            rows: 6,
+        },
     ];
 
     return (
@@ -61,6 +88,10 @@ export const LegalConsentTemplateEditor = ({
                     <span className={styles.consentPreviewCaption}>
                         {t('placeholderTemplate.legal.previewCaption', 'So sieht der Satz in der Registrierung aus:')}
                     </span>
+                    {/* The preview checkbox stays live even on a read-only surface: it
+                        demonstrates the registration form and writes nothing. Disabling
+                        it would show a greyed-out box that is not what the help-seeker
+                        gets — the preview would then misrepresent the real sentence. */}
                     <div className={styles.consentRow}>
                         <M3Checkbox
                             checked={accepted}
@@ -72,8 +103,10 @@ export const LegalConsentTemplateEditor = ({
                             <TokenizedText text={fillPlaceholders(values.text, samples)} />
                         </span>
                     </div>
+                    {addendum}
                 </section>
             }
+            readOnly={readOnly}
             templates={templates}
             tokens={LEGAL_CONSENT_TOKENS}
             values={values}

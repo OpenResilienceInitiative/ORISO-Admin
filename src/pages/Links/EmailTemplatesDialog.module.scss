@@ -61,12 +61,14 @@
 /* A leading accent bar, not a row fill: ListingTable owns every row background with
    `!important`, and out-bidding it would only trade one override war for another. The
    bar plus the red name and check is enough to say "this one is chosen". */
+
 .selectedRow > td:first-child {
     box-shadow: inset 3px 0 0 var(--m3-primary, #a5000a);
 }
 
 /* Create/edit form beside its live preview. Below the breakpoint the preview
    drops underneath so neither column falls under its reading width. */
+
 .formAndPreview {
     display: grid;
     align-items: start;

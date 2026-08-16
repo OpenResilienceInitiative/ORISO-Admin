@@ -22,6 +22,8 @@
     -   `npm run lint:js`
     -   `npm run lint:css`
     -   `npm run build`
+-   All `lint:*` scripts are check-only and never write to the working tree, so they are safe to use as gates. The mutating variants are explicit: `lint:css:fix` and `lint:formatting:fix`.
+-   `lint:css` reports `order/properties-order` as a warning. Warnings do not fail the gate; only errors do.
 -   If a full command is too expensive or blocked by existing unrelated failures, run the narrowest relevant command and state the blocker precisely.
 
 ## Review Expectations

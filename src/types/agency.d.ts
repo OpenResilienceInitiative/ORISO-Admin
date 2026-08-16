@@ -82,6 +82,13 @@ export interface AgencyData {
     content?: {
         impressum?: Record<string, string>;
         privacy?: Record<string, string>;
+        /**
+         * Beratungsstelle-level consent sentence belonging to `privacy` (ADR-021
+         * decision 4), language → sentence. TODO(#250): built by ORISO-AgencyService
+         * branch `feat/legal-text-versioning-250`; `undefined` means the deployed
+         * backend has no such field and the consent editor stays hidden.
+         */
+        privacyConsent?: Record<string, string>;
         termsAndConditions?: Record<string, string>;
         confirmPrivacy?: boolean;
         confirmTermsAndConditions?: boolean;

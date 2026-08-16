@@ -26,6 +26,7 @@
 
 .dialogContentClassName {
     min-height: 0;
+
     /* The dialog card is a flex column with a min-height; height:100% on the
        content wrapper resolves to auto there, so flex the wrapper instead —
        the body then absorbs the free space and a footer sits at the bottom. */
@@ -130,6 +131,7 @@
            intact so stroke-based icons don't get flattened, and never touch
            <mask> internals: repainting a luminance mask's bounding box would
            fade the whole icon (case_handover.svg). */
+
         svg [fill]:not([fill='none']):not(mask *) {
             fill: currentcolor;
         }
@@ -216,6 +218,7 @@
 
 /* Shared card action row (M3): a top divider then right-aligned text buttons.
    Used by every wizard/settings card — Back/Next, Cancel/Save, Edit. */
+
 .footer {
     display: flex;
     align-items: center;
@@ -228,6 +231,7 @@
 
 /* Dialog cards zero out the Box padding (their body carries its own), so the
    footer needs explicit inset — divider spans the full card, actions inset. */
+
 /* Figma 1285-80496, "XR Dialog → Actions": a 64px action row under the divider. */
 .dialogCard .footer {
     min-height: var(--admin-dialog-card-footer-height, 64px);

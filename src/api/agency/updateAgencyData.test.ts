@@ -11,6 +11,7 @@ vi.mock('./updateAgencyPostCodeRange', () => ({ default: mocks.updateAgencyPostC
 vi.mock('../consultingtype/getConsultingType4Tenant', () => ({ default: vi.fn().mockResolvedValue('1') }));
 
 import { updateAgencyData } from './updateAgencyData';
+import { FETCH_ERRORS, FETCH_SUCCESS } from '../fetchData';
 
 const agencyModel: any = { id: '55', consultingType: '1' };
 
@@ -82,6 +83,23 @@ describe('updateAgencyData — ADR-014 multi-topic departments', () => {
         const withoutTopics: any = { id: '55', consultingType: '1', name: 'Caritas Neukölln' };
         await updateAgencyData(agencyModel, withoutTopics);
         expect(sentBody()).not.toHaveProperty('topicIds');
+    });
+});
+
+describe('updateAgencyData — validation errors', () => {
+    beforeEach(() => {
+        mocks.fetchData.mockReset();
+        mocks.fetchData.mockResolvedValue({ _embedded: {} });
+    });
+
+    it('returns the 400 response to the form so it can render field errors', async () => {
+        await updateAgencyData(agencyModel, { ...agencyModel } as any);
+
+        expect(mocks.fetchData.mock.calls[0][0].responseHandling).toEqual([
+            FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+            FETCH_ERRORS.CATCH_ALL,
+            FETCH_SUCCESS.CONTENT,
+        ]);
     });
 });
 

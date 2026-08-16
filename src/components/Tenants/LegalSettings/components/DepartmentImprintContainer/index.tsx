@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useDepartmentImprint } from '../../../../../hooks/useDepartmentImprint.hook';
+import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
 import { usePublishDepartmentImprint } from '../../../../../hooks/usePublishDepartmentImprint.hook';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
@@ -19,6 +20,12 @@ export const DepartmentImprintContainer = ({
     const { mutate: publish, isPending } = usePublishDepartmentImprint(agencyId, topicId);
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
+    const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions({
+        level: 'department',
+        agencyId,
+        topicId,
+        kind: 'imprint',
+    });
     const contentByLanguage = useMemo(() => parseLegalContentMap(data?.content), [data?.content]);
     const languages = useMemo(
         () => getEditableLanguages(tenantData?.settings?.activeLanguages, contentByLanguage),
@@ -35,6 +42,8 @@ export const DepartmentImprintContainer = ({
             initialContentByLanguage={contentByLanguage}
             languages={languages}
             publicationStatus={data?.publicationStatus}
+            versions={versions}
+            versionsUnavailable={versionsUnavailable}
             onSave={(content, doPublish) => publish({ content, publish: doPublish })}
             saving={isPending}
             onTranslate={translate}
