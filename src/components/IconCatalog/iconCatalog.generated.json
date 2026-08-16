@@ -945,6 +945,19 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:dpia:base",
+        "family": "dpia",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "dpia.svg",
+        "sourcePath": "src/resources/img/svg/dpia.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:edit:filled",
         "family": "edit",
         "state": "filled",
