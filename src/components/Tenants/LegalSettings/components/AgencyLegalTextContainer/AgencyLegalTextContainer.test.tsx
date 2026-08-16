@@ -6,6 +6,7 @@ const h = vi.hoisted(() => ({
     useDepartmentDpp: vi.fn(),
     refetch: vi.fn(),
     card: vi.fn(),
+    canEditLegalText: vi.fn(() => true),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -25,6 +26,9 @@ vi.mock('../../../../../hooks/useSingleTenantData', () => ({ useSingleTenantData
 vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminData: () => ({ data: undefined }) }));
 vi.mock('../../../../../hooks/useTranslateLegalContent.hook', () => ({
     useTranslateLegalContent: () => ({ translate: vi.fn() }),
+}));
+vi.mock('../../../../../hooks/useUserPermission', () => ({
+    useUserPermissions: () => ({ can: h.canEditLegalText, permissions: {} }),
 }));
 vi.mock('../DepartmentDataProtectionCard', () => ({
     DepartmentDataProtectionCard: (props: any) => {
@@ -57,6 +61,7 @@ describe('AgencyLegalTextContainer', () => {
     beforeEach(() => {
         h.useDepartmentDpp.mockReset();
         h.card.mockReset();
+        h.canEditLegalText.mockReset().mockReturnValue(true);
     });
 
     it('edits the agency-wide text before a department is chosen', () => {
@@ -156,5 +161,26 @@ describe('AgencyLegalTextContainer', () => {
         await selectDepartment('U25 Suizidprävention');
 
         expect(h.card.mock.calls.at(-1)?.[0].initialContentByLanguage).toEqual({ de: '<p>agency wide</p>' });
+    });
+
+    /**
+     * #609: this editor shipped without any permission check, so an admin who may not
+     * change legal content was still offered publish and draft-save.
+     */
+    it('hands the card a read-only state when the admin may not change legal content', () => {
+        h.canEditLegalText.mockReturnValue(false);
+        h.useDepartmentDpp.mockReturnValue({ data: undefined, isLoading: false, isError: false, isSuccess: true });
+
+        renderContainer();
+
+        expect(h.card.mock.calls.at(-1)?.[0].readOnly).toBe(true);
+    });
+
+    it('leaves the card editable when the admin may', () => {
+        h.useDepartmentDpp.mockReturnValue({ data: undefined, isLoading: false, isError: false, isSuccess: true });
+
+        renderContainer();
+
+        expect(h.card.mock.calls.at(-1)?.[0].readOnly).toBe(false);
     });
 });

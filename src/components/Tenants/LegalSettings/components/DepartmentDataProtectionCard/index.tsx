@@ -77,6 +77,13 @@ interface DepartmentDataProtectionCardProps {
      * (Figma 1261:52149). Absent when the card edits a single fixed department.
      */
     departmentSlot?: React.ReactNode;
+    /**
+     * The signed-in admin may not change legal content (#609). The card then reads —
+     * editor, publish, draft-save and the consent sentence all inert — instead of
+     * offering actions the server would refuse. Disabled rather than hidden, so it
+     * stays visible which document the Fachbereich has.
+     */
+    readOnly?: boolean;
 }
 
 /**
@@ -100,6 +107,7 @@ export const DepartmentDataProtectionCard = ({
     versions = [],
     versionsUnavailable = false,
     consentByLanguage,
+    readOnly = false,
 }: DepartmentDataProtectionCardProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language?.split('-')[0] || 'de';
@@ -186,7 +194,8 @@ export const DepartmentDataProtectionCard = ({
                 )}
                 icon={documentType === 'imprint' ? ImprintIcon : GdprIcon}
                 value={currentContent}
-                onChange={handleEditorChange}
+                readOnly={readOnly}
+                onChange={readOnly ? undefined : handleEditorChange}
                 publishing={saving}
                 versionLabel={t('legal.m3Editor.versionLabel')}
                 versions={editorVersions}
@@ -229,7 +238,9 @@ export const DepartmentDataProtectionCard = ({
                             <Button
                                 size="small"
                                 loading={fieldTranslating}
-                                disabled={fieldTranslateDisabled}
+                                // Translating writes into the editor, so it is an edit
+                                // like any other and follows the same gate (#609).
+                                disabled={fieldTranslateDisabled || readOnly}
                                 onClick={translateActiveField}
                             >
                                 {t('legal.translation.field.button')}
@@ -240,9 +251,14 @@ export const DepartmentDataProtectionCard = ({
                         </div>
                     )
                 }
-                onPublish={handlePublish}
-                onSaveDraft={() =>
-                    consentEnabled ? onSave(buildPublishMap(), false, consentMap) : onSave(buildPublishMap(), false)
+                onPublish={readOnly ? undefined : handlePublish}
+                onSaveDraft={
+                    readOnly
+                        ? undefined
+                        : () =>
+                              consentEnabled
+                                  ? onSave(buildPublishMap(), false, consentMap)
+                                  : onSave(buildPublishMap(), false)
                 }
                 belowSlot={
                     <>
@@ -273,7 +289,7 @@ export const DepartmentDataProtectionCard = ({
             {consentEnabled && (
                 <LegalConsentField
                     language={activeLanguage}
-                    readOnly={isViewingVersion}
+                    readOnly={readOnly || isViewingVersion}
                     value={(viewedConsent ?? consentMap)[activeLanguage] ?? ''}
                     onChange={(next) => {
                         setPublishBlocked(false);
