@@ -116,12 +116,13 @@ export const Editable: Story = {
             }),
         ).getAllByRole('tab');
         await expect(languageTabs).toHaveLength(7);
-        for (const tab of languageTabs) {
+        await languageTabs.reduce(async (previousTab, tab) => {
+            await previousTab;
             await userEvent.click(tab);
             const input = canvas.getByTestId('case-handover-template-input') as HTMLTextAreaElement;
             await expect(input.value).toContain('{{newAdvisor}}');
             await expect(input.value).toContain('{{duration}}');
-        }
+        }, Promise.resolve());
         await userEvent.click(languageTabs[0]);
     },
 };
