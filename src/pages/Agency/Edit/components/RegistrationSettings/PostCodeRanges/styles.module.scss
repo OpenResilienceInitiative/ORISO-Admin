@@ -15,21 +15,23 @@
     align-items: center;
     justify-content: center;
     border-radius: 50px;
+
     --webkit-appearance: none;
+
     padding: 0;
     border: 0;
     flex-shrink: 0;
 
     path {
         fill: var(--white);
-        fill-opacity: 1;
+        fill-opacity: 100%;
     }
 }
 
 .disabled {
     path {
         fill: black;
-        fill-opacity: 0.4;
+        fill-opacity: 40%;
     }
 }
 
@@ -65,7 +67,7 @@
 
 .addButton {
     padding: 2px 21px;
-    border: 2px solid rgba(0, 0, 0, 0.9);
+    border: 2px solid rgb(0 0 0 / 90%);
     margin-right: 15px;
     margin-bottom: 20px;
 }
