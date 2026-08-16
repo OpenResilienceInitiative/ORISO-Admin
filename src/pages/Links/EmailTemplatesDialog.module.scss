@@ -68,6 +68,7 @@
 
 /* Persistence metadata (kind, name, language, active) above the module editor.
    Labels mirror the module's field-label metrics so both halves read as one form. */
+
 .metaFields {
     display: grid;
     align-items: start;
@@ -80,6 +81,7 @@
     display: grid;
     min-width: 0;
     gap: 6px;
+
     /* The Switch is inline content; keep it from stretching to cell width. */
     justify-items: start;
 
@@ -98,6 +100,7 @@
 /* Discard-changes state of the open dialog: the form stays mounted (draft,
    caret and preview frame survive an "Abbrechen") but is taken out of view
    and out of the a11y tree via `inert`. */
+
 .formHidden {
     display: none;
 }

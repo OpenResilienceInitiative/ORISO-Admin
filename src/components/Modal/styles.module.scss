@@ -194,6 +194,7 @@
 /* Destructive action (discard, delete) — the M3 error role, which in this
    scheme is magenta, deliberately distinct from the red brand primary so
    "confirm" and "lose data" never read as the same button. */
+
 .actionButtonDestructive {
     color: var(--m3-error, #b1005e);
 }
