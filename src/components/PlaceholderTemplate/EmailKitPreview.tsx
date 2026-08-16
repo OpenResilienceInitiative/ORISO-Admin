@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TokenizedText } from './TokenizedText';
-import { emailColor, type EmailKitBrand } from './emailKit';
+import { emailColor, safeLanguageTag, type EmailKitBrand } from './emailKit';
 import { ADMIN_EMAIL_SAMPLE_BRAND, renderInviteEmailPreviewHtml } from './invitePreviewMarkup';
 import styles from './EmailKitPreview.module.scss';
 
@@ -12,6 +12,12 @@ export interface EmailKitPreviewProps {
     body: string;
     /** Accessible name of the preview region (also the iframe title). */
     previewLabel: string;
+    /**
+     * BCP-47 tag of the TEMPLATE being edited (e.g. an English template edited in
+     * a German session). Drives the document `lang` and the language the preview's
+     * own boilerplate is resolved in. Falls back to the admin UI locale.
+     */
+    language?: string;
 }
 
 /** The tenant primary from the admin theme, as a literal the e-mail kit can inline. */
@@ -61,8 +67,16 @@ const useFittedFrame = (dependency: string) => {
  * media query that must react to the *frame* width — which also makes the
  * stacked mobile layout honest at 320px.
  */
-export const EmailKitPreview = ({ subject, body, previewLabel }: EmailKitPreviewProps) => {
-    const { t } = useTranslation();
+export const EmailKitPreview = ({ subject, body, previewLabel, language }: EmailKitPreviewProps) => {
+    const { t, i18n } = useTranslation();
+    // The template's own language wins: previewing an English template in a German
+    // session must render English boilerplate and lang="en" (#746 review). Only
+    // without one does the preview fall back to the admin UI locale.
+    //
+    // Validated here as well as at the sink: the template language is free text an
+    // admin types, and a malformed value should degrade to the UI locale rather
+    // than to the kit's blanket "de" default (#751 review).
+    const lang = safeLanguageTag(language, safeLanguageTag(i18n?.language));
     // Read once per mount: the admin theme applies the tenant palette to the
     // document root before any editor screen renders.
     const primaryColor = useMemo(readTenantPrimary, []);
@@ -78,29 +92,33 @@ export const EmailKitPreview = ({ subject, body, previewLabel }: EmailKitPreview
                 subject,
                 body,
                 brand,
-                lang: 'de',
+                lang,
                 strings: {
-                    subjectHint: t('links.templates.previewSubjectHint', 'Betreff der E-Mail'),
-                    bodyHint: t('links.templates.previewBodyHint', 'Inhalt der E-Mail'),
+                    // `lng` pins every string to the TEMPLATE's language, not the UI's.
+                    subjectHint: t('links.templates.previewSubjectHint', 'Betreff der E-Mail', { lng: lang }),
+                    bodyHint: t('links.templates.previewBodyHint', 'Inhalt der E-Mail', { lng: lang }),
                     assurance: t(
                         'placeholderTemplate.preview.assurance',
                         'Wir fragen Sie nie per E-Mail nach Ihrem Passwort. Geben Sie diesen Link an niemanden weiter.',
+                        { lng: lang },
                     ),
                     offeredBy: t('placeholderTemplate.preview.offeredBy', '{{platform}} ist ein Angebot von {{org}}.', {
                         platform: brand.platformName,
                         org: brand.orgName,
+                        lng: lang,
                     }),
                     linkLabels: [
-                        t('placeholderTemplate.preview.privacy', 'Datenschutz'),
-                        t('placeholderTemplate.preview.imprint', 'Impressum'),
+                        t('placeholderTemplate.preview.privacy', 'Datenschutz', { lng: lang }),
+                        t('placeholderTemplate.preview.imprint', 'Impressum', { lng: lang }),
                     ],
                     automatedNote: t(
                         'placeholderTemplate.preview.automatedNote',
                         'Diese E-Mail wurde automatisch versendet. Bitte antworten Sie nicht darauf.',
+                        { lng: lang },
                     ),
                 },
             }),
-        [subject, body, brand, t],
+        [subject, body, brand, lang, t],
     );
 
     const { ref, height, measure } = useFittedFrame(html);
@@ -120,6 +138,10 @@ export const EmailKitPreview = ({ subject, body, previewLabel }: EmailKitPreview
             <iframe
                 ref={ref}
                 title={previewLabel}
+                // Same-origin is required for useFittedFrame's contentDocument
+                // measuring; everything else — scripts above all — stays off
+                // (#727 review).
+                sandbox="allow-same-origin"
                 srcDoc={html}
                 onLoad={measure}
                 className={styles.frame}
