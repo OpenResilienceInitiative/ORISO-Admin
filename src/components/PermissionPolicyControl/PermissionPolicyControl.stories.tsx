@@ -1,5 +1,7 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+// eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves for TypeScript and Vite
+import { expect, within } from 'storybook/test';
 import { PermissionPolicyControl } from './PermissionPolicyControl';
 import type { PolicyValue } from '../../types/permissionPolicy';
 
@@ -7,7 +9,15 @@ const Preview = ({ initial, level }: { initial: PolicyValue<boolean>; level: 'pl
     const [policy, setPolicy] = useState(initial);
     const [open, setOpen] = useState(false);
     return (
-        <div style={{ minHeight: 420, padding: 180 }}>
+        <div
+            style={{
+                width: 360,
+                minHeight: 180,
+                padding: 24,
+                background: 'var(--m3-surface-container-high, #eae7e8)',
+                borderRadius: 28,
+            }}
+        >
             <PermissionPolicyControl
                 featureKey="featureSupervisionEnabled"
                 label="Supervision"
@@ -39,6 +49,13 @@ type Story = StoryObj<typeof meta>;
 
 export const SuggestedActive: Story = {
     render: () => <Preview initial={{ value: true, mode: 'SUGGESTED' }} level="tenant" />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const title = canvas.getByText('Supervision');
+        const status = canvas.getByText(/Suggestion/i);
+        await expect(title.parentElement).toContainElement(status);
+        await expect(canvas.getByTestId('CheckIcon')).toBeInTheDocument();
+    },
 };
 export const EnforcedInactive: Story = {
     render: () => <Preview initial={{ value: false, mode: 'ENFORCED' }} level="platform" />,

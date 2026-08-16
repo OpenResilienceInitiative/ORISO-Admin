@@ -97,6 +97,12 @@ export const Editable: Story = {
         canEdit: true,
         moduleEnabled: true,
     },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        for (const language of ['German', 'English', 'French', 'Russian', 'Turkish', 'Ukrainian', 'Tigrinya']) {
+            await expect(canvas.getByRole('tab', { name: language })).toBeInTheDocument();
+        }
+    },
 };
 
 /** Read-only ceiling: admins without policy-edit permission see the same card

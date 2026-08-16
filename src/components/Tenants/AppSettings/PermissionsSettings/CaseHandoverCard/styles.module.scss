@@ -28,16 +28,6 @@
     gap: 16px;
 }
 
-.featureLabel {
-    min-width: 0;
-    flex: 1;
-    color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
-    font-size: 16px;
-    font-weight: 400;
-    letter-spacing: 0.5px;
-    line-height: 24px;
-}
-
 /* M3 body-medium helper line under the master row. */
 .helperText {
     margin: 4px 0 12px;
@@ -198,13 +188,6 @@
     }
 }
 
-.notificationFieldHint {
-    margin: 6px 0 0;
-    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
-    font-size: 12px;
-    line-height: 16px;
-}
-
 .notificationFieldText {
     margin: 0;
     color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
@@ -214,16 +197,14 @@
     overflow-wrap: anywhere;
 }
 
-.enforceHint {
+.templateHintBelow {
     margin: 14px 0 4px;
-
-    /* Figma M3/sys/light/on-primary-fixed (#410001), body-medium-emphasized. */
-    color: var(--m3-on-primary-fixed, #410001);
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.25px;
-    line-height: 20px;
-    text-align: center;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+    text-align: left;
 }
 
 .footerActions {

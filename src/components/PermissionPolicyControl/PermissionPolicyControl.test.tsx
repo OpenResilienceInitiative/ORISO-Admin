@@ -4,6 +4,25 @@ import { describe, expect, it, vi } from 'vitest';
 import { PermissionPolicyControl } from './PermissionPolicyControl';
 
 describe('PermissionPolicyControl', () => {
+    it('renders the feature title directly above its policy status', () => {
+        render(
+            <PermissionPolicyControl
+                featureKey="featureSupervisionEnabled"
+                label="Supervision"
+                level="tenant"
+                policy={{ value: true, mode: 'SUGGESTED' }}
+                open={false}
+                onOpenChange={vi.fn()}
+                onChange={vi.fn()}
+            />,
+        );
+
+        const title = screen.getByText('Supervision');
+        const status = screen.getByText('tenants.permissions.policy.suggestion');
+        expect(title.parentElement).toContainElement(status);
+        expect(title.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it('offers all four states to upper roles and auto-reports the selection', async () => {
         const onChange = vi.fn();
         const user = userEvent.setup();

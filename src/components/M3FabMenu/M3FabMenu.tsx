@@ -35,6 +35,8 @@ export interface M3FabMenuProps {
     variant?: 'navigation' | 'action';
     /** Closed/action colour communicates the selected boolean value without relying on the glyph. */
     tone?: 'primary' | 'neutral';
+    /** Optional value glyph for an action FAB; menu entries retain their own policy-mode glyphs. */
+    triggerIcon?: ReactNode;
     disabled?: boolean;
 }
 
@@ -61,6 +63,7 @@ export const M3FabMenu = ({
     openLabel,
     variant = 'navigation',
     tone = 'primary',
+    triggerIcon,
     disabled = false,
 }: M3FabMenuProps) => {
     const menuId = useId();
@@ -231,7 +234,7 @@ export const M3FabMenu = ({
                 disabled={disabled}
                 onClick={() => onOpenChange(!open)}
             >
-                {open ? <CloseIcon className={styles.fabGlyph} /> : activeItem?.icon ?? null}
+                {open ? <CloseIcon className={styles.fabGlyph} /> : triggerIcon ?? activeItem?.icon ?? null}
             </button>
         </div>
     );

@@ -112,7 +112,6 @@ export const CaseHandoverCardView = ({
             ) : (
                 <>
                     <div className={styles.featureRow}>
-                        <span className={styles.featureLabel}>{t('tenants.permissions.card.activated')}</span>
                         <PermissionPolicyControl
                             featureKey="caseHandoverEnabled"
                             label={t('tenants.permissions.card.activated')}
@@ -137,9 +136,6 @@ export const CaseHandoverCardView = ({
                     <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.description')}</p>
 
                     <div className={styles.featureRow}>
-                        <span className={styles.featureLabel}>
-                            {t('tenants.permissions.card.caseHandover.teamAccessOptOut')}
-                        </span>
                         <PermissionPolicyControl
                             featureKey="caseHandoverTeamAccessOptOut"
                             label={t('tenants.permissions.card.caseHandover.teamAccessOptOut')}
@@ -269,7 +265,7 @@ export const CaseHandoverCardView = ({
                                     className={`${styles.languageChip} ${isActive ? styles.languageChipActive : ''}`}
                                     onClick={() => setActiveLanguage(language)}
                                 >
-                                    {t(`tenants.permissions.card.caseHandover.language.${language}`)}
+                                    {t(`language.${language}`)}
                                 </button>
                             );
                         })}
@@ -278,11 +274,7 @@ export const CaseHandoverCardView = ({
                     {activeReason &&
                         (() => {
                             const draftKey = `${activeReason.code}|${activeLanguage}`;
-                            const storedTemplate = getNotificationTemplate(
-                                activePolicy,
-                                activeReason.code,
-                                activeLanguage,
-                            );
+                            const storedTemplate = getNotificationTemplate(activePolicy, activeLanguage);
                             const value = templateDrafts[draftKey] ?? storedTemplate;
                             const editable =
                                 canEdit &&
@@ -303,7 +295,7 @@ export const CaseHandoverCardView = ({
                                 });
                             };
                             const fieldLabel = `${t('tenants.permissions.card.caseHandover.systemNotification')} (${t(
-                                `tenants.permissions.card.caseHandover.language.${activeLanguage}`,
+                                `language.${activeLanguage}`,
                             )})`;
                             return (
                                 <div className={styles.notificationField}>
@@ -325,16 +317,15 @@ export const CaseHandoverCardView = ({
                                         }
                                         onBlur={commitDraft}
                                     />
-                                    <p className={styles.notificationFieldHint}>
-                                        {t('tenants.permissions.card.caseHandover.templateHint', {
-                                            newAdvisor: '{{newAdvisor}}',
-                                        })}
-                                    </p>
                                 </div>
                             );
                         })()}
 
-                    <p className={styles.enforceHint}>{t('tenants.permissions.card.caseHandover.enforceHint')}</p>
+                    <p className={styles.templateHintBelow}>
+                        {t('tenants.permissions.card.caseHandover.templateHint', {
+                            newAdvisor: '{{newAdvisor}}',
+                        })}
+                    </p>
 
                     <div className={styles.footerActions}>
                         <Tooltip title={comingSoon}>

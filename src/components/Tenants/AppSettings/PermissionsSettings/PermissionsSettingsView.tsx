@@ -154,9 +154,6 @@ export const PermissionsSettingsView = ({
                                                 titleKey={card.titleKey}
                                             >
                                                 <div className={styles.masterRow}>
-                                                    <span className={styles.masterLabel}>
-                                                        {t('tenants.permissions.card.activated')}
-                                                    </span>
                                                     {masterField ? (
                                                         <PermissionPolicyControl
                                                             featureKey={masterField[1]}
@@ -176,9 +173,14 @@ export const PermissionsSettingsView = ({
                                                             }
                                                         />
                                                     ) : (
-                                                        <span className={styles.masterRowPlaceholder} aria-hidden>
-                                                            —
-                                                        </span>
+                                                        <>
+                                                            <span className={styles.masterLabel}>
+                                                                {t('tenants.permissions.card.activated')}
+                                                            </span>
+                                                            <span className={styles.masterRowPlaceholder} aria-hidden>
+                                                                —
+                                                            </span>
+                                                        </>
                                                     )}
                                                 </div>
 
@@ -218,14 +220,6 @@ export const PermissionsSettingsView = ({
                                                                 key={toggle.field.join('.')}
                                                                 className={styles.toggleRow}
                                                             >
-                                                                <span className={styles.toggleLabel}>
-                                                                    {t(toggle.labelKey)}
-                                                                    {disabledHintKey && (
-                                                                        <span className={styles.toggleUnavailableHint}>
-                                                                            {t(disabledHintKey)}
-                                                                        </span>
-                                                                    )}
-                                                                </span>
                                                                 <PermissionPolicyControl
                                                                     featureKey={toggle.field[1]}
                                                                     label={t(toggle.labelKey)}
@@ -238,6 +232,9 @@ export const PermissionsSettingsView = ({
                                                                     pending={policyPending(toggle.field[1])}
                                                                     disabled={
                                                                         Boolean(unavailableHintKey) || disabledByMaster
+                                                                    }
+                                                                    supportingText={
+                                                                        disabledHintKey ? t(disabledHintKey) : undefined
                                                                     }
                                                                     onOpenChange={(open) =>
                                                                         setOpenPolicyMenu(open ? toggle.field[1] : null)

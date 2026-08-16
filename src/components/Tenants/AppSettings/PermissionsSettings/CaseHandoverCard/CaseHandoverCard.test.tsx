@@ -173,7 +173,7 @@ describe('CaseHandoverCard', () => {
 
         expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
         expect(screen.getByTestId('LockIcon')).toBeInTheDocument();
-        expect(screen.getByTestId('CheckIcon')).toBeInTheDocument();
+        expect(screen.getAllByTestId('CheckIcon')).not.toHaveLength(0);
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 

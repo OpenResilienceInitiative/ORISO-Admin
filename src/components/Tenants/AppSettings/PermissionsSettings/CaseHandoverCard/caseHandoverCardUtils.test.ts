@@ -3,12 +3,10 @@ import {
     applyClientConsent,
     applyModuleEnabled,
     buildDisplayReasons,
-    getNotificationTemplateSample,
     isAdvisorConsentImplicit,
     isHandoverModuleEnabled,
     LEGAL_VIOLATION_PLACEHOLDER_CODE,
     NOTIFICATION_LANGUAGES,
-    NOTIFICATION_TEMPLATE_SAMPLES,
     sortPoliciesByDisplayOrder,
     applyNotificationTemplate,
     getNotificationTemplate,
@@ -69,19 +67,14 @@ describe('caseHandoverCardUtils', () => {
         expect(isAdvisorConsentImplicit('COUNSELLOR_IS_ILL')).toBe(false);
     });
 
-    it('prefers the stored backend template over the sample', () => {
+    it('uses only stored backend templates and leaves missing translations empty', () => {
         const stored = policy({
             code: 'COUNSELLOR_IS_ILL',
             clientNotificationTemplates: { de: 'Eigener Text mit {{newAdvisor}}.' },
         });
-        expect(getNotificationTemplate(stored, 'COUNSELLOR_IS_ILL', 'de')).toEqual('Eigener Text mit {{newAdvisor}}.');
-        // missing language falls back to the sample copy
-        expect(getNotificationTemplate(stored, 'COUNSELLOR_IS_ILL', 'en')).toEqual(
-            getNotificationTemplateSample('COUNSELLOR_IS_ILL', 'en'),
-        );
-        expect(getNotificationTemplate(null, 'COUNSELLOR_IS_ILL', 'de')).toEqual(
-            getNotificationTemplateSample('COUNSELLOR_IS_ILL', 'de'),
-        );
+        expect(getNotificationTemplate(stored, 'de')).toEqual('Eigener Text mit {{newAdvisor}}.');
+        expect(getNotificationTemplate(stored, 'en')).toEqual('');
+        expect(getNotificationTemplate(null, 'de')).toEqual('');
     });
 
     it('writes, trims and clears per-language templates on the matching reason only', () => {
@@ -94,12 +87,7 @@ describe('caseHandoverCardUtils', () => {
         expect(cleared[0].clientNotificationTemplates).toBeNull();
     });
 
-    it('provides a notification sample for every seeded reason in every language', () => {
-        Object.keys(NOTIFICATION_TEMPLATE_SAMPLES).forEach((code) => {
-            NOTIFICATION_LANGUAGES.forEach((language) => {
-                expect(getNotificationTemplateSample(code, language)).not.toEqual('');
-            });
-        });
-        expect(getNotificationTemplateSample('UNKNOWN', 'de')).toEqual('');
+    it('uses the complete canonical language registry', () => {
+        expect(NOTIFICATION_LANGUAGES).toEqual(['de', 'en', 'fr', 'ru', 'tr', 'uk', 'ti']);
     });
 });

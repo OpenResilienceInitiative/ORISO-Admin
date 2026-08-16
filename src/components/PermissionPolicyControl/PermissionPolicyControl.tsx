@@ -20,6 +20,7 @@ type PermissionPolicyControlProps = {
     onChange: (policy: PolicyValue<boolean>) => void;
     pending?: boolean;
     disabled?: boolean;
+    supportingText?: string;
 };
 
 const policyKey = ({ value, mode }: PolicyValue<boolean>) => `${value ? 'enabled' : 'disabled'}-${mode.toLowerCase()}`;
@@ -50,6 +51,7 @@ export const PermissionPolicyControl = ({
     onChange,
     pending = false,
     disabled = false,
+    supportingText,
 }: PermissionPolicyControlProps) => {
     const { t } = useTranslation();
     const [showInfo, setShowInfo] = useState(false);
@@ -81,10 +83,14 @@ export const PermissionPolicyControl = ({
 
     return (
         <div className={styles.control} data-feature-policy={featureKey}>
-            <span className={styles.meta}>
-                {policy.mode === 'ENFORCED' ? <LockIcon /> : <LockOpenIcon />}
-                {t(statusLabelKey(readOnly, policy.mode))}
-            </span>
+            <div className={styles.copy}>
+                <span className={styles.label}>{label}</span>
+                <span className={styles.meta}>
+                    {policy.mode === 'ENFORCED' ? <LockIcon /> : <LockOpenIcon />}
+                    {t(statusLabelKey(readOnly, policy.mode))}
+                </span>
+                {supportingText && <span className={styles.supportingText}>{supportingText}</span>}
+            </div>
             {readOnly ? (
                 <button
                     type="button"
@@ -98,6 +104,7 @@ export const PermissionPolicyControl = ({
                 <M3FabMenu
                     variant="action"
                     tone={policy.value ? 'primary' : 'neutral'}
+                    triggerIcon={policy.value ? <CheckIcon /> : <BlockIcon />}
                     items={items}
                     activeKey={policyKey(policy)}
                     open={open}

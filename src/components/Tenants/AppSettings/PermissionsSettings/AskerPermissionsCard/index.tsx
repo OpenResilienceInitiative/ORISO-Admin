@@ -88,7 +88,6 @@ export const AskerPermissionsCard = ({
 
             <div className={styles.setting}>
                 <div className={styles.settingHeader}>
-                    <span className={styles.settingLabel}>{t('tenants.permissions.asker.displayName.label')}</span>
                     {policyControl('featureDisplayNameEditable', 'tenants.permissions.asker.displayName.label')}
                 </div>
                 <p className={styles.settingDescription}>{t('tenants.permissions.asker.displayName.description')}</p>
@@ -97,7 +96,6 @@ export const AskerPermissionsCard = ({
 
             <div className={styles.setting}>
                 <div className={styles.settingHeader}>
-                    <span className={styles.settingLabel}>{t('tenants.permissions.asker.email.label')}</span>
                     {policyControl('featureAskerEmailEnabled', 'tenants.permissions.asker.email.label')}
                 </div>
                 <p className={styles.settingDescription}>{t('tenants.permissions.asker.email.description')}</p>

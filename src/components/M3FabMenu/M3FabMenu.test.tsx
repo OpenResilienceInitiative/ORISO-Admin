@@ -31,6 +31,27 @@ const Harness = (props: Partial<M3FabMenuProps>) => {
 };
 
 describe('M3FabMenu', () => {
+    it('uses an explicit action trigger glyph without changing the selected item glyph', async () => {
+        render(
+            <MemoryRouter>
+                <M3FabMenu
+                    items={[{ key: 'enabled-suggested', label: 'Aktivierung vorgeschlagen', icon: <span>open</span> }]}
+                    activeKey="enabled-suggested"
+                    triggerIcon={<span>check</span>}
+                    open={false}
+                    openLabel="Policy öffnen"
+                    closeLabel="Policy schließen"
+                    variant="action"
+                    onOpenChange={vi.fn()}
+                />
+            </MemoryRouter>,
+        );
+
+        const toggle = screen.getByRole('button', { name: 'Policy öffnen' });
+        expect(toggle).toHaveTextContent('check');
+        expect(toggle).not.toHaveTextContent('open');
+    });
+
     it('opens an action stack downward when there is not enough room above the toggle', () => {
         const originalInnerHeight = window.innerHeight;
         const rect = (values: Partial<DOMRect>): DOMRect =>
