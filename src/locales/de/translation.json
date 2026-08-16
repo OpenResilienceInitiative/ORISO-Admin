@@ -1229,7 +1229,7 @@
     "tenants.permissions.card.advanced": "Erweitert",
     "tenants.permissions.card.caseHandover.title": "Fallübergabe",
     "tenants.permissions.card.caseHandover.description": "Verwalten Sie hier die Berechtigungen, Benachrichtigungen und Zustimmungsregeln.",
-    "tenants.permissions.card.caseHandover.teamAccessOptOut": "Opt-out für Teamzugriff",
+    "tenants.permissions.card.caseHandover.enabled": "Fallübergabe aktiv",
     "tenants.permissions.card.caseHandover.maxSessionDuration": "Maximale Sitzungsdauer",
     "tenants.permissions.card.caseHandover.consentClient": "Zustimmung Ratsuchende*r",
     "tenants.permissions.card.caseHandover.consentAdvisor": "Zustimmung Berater*in",

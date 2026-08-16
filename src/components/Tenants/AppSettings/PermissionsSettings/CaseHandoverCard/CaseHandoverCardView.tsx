@@ -111,10 +111,12 @@ export const CaseHandoverCardView = ({
                 <Skeleton active paragraph={{ rows: 6 }} />
             ) : (
                 <>
+                    <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.description')}</p>
+
                     <div className={styles.featureRow}>
                         <PermissionPolicyControl
                             featureKey="caseHandoverEnabled"
-                            label={t('tenants.permissions.card.activated')}
+                            label={t('tenants.permissions.card.caseHandover.enabled')}
                             level={policyLevel}
                             policy={
                                 permissionPolicies?.caseHandoverEnabled ?? {
@@ -130,27 +132,6 @@ export const CaseHandoverCardView = ({
                                 onFeaturePolicyChange?.('caseHandoverEnabled', next);
                                 onModuleEnabledChange(next.value);
                             }}
-                        />
-                    </div>
-
-                    <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.description')}</p>
-
-                    <div className={styles.featureRow}>
-                        <PermissionPolicyControl
-                            featureKey="caseHandoverTeamAccessOptOut"
-                            label={t('tenants.permissions.card.caseHandover.teamAccessOptOut')}
-                            level={policyLevel}
-                            policy={
-                                permissionPolicies?.caseHandoverTeamAccessOptOut ?? {
-                                    value: true,
-                                    mode: 'ENFORCED',
-                                    inherited: policyLevel !== 'platform',
-                                }
-                            }
-                            open={currentOpenPolicyMenu === 'caseHandoverTeamAccessOptOut'}
-                            pending={pendingPolicyFields?.has('caseHandoverTeamAccessOptOut')}
-                            onOpenChange={(open) => setOpenPolicyMenu(open ? 'caseHandoverTeamAccessOptOut' : null)}
-                            onChange={(next) => onFeaturePolicyChange?.('caseHandoverTeamAccessOptOut', next)}
                         />
                     </div>
 

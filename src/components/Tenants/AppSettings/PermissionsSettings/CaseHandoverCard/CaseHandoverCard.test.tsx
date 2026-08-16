@@ -75,7 +75,7 @@ describe('CaseHandoverCard', () => {
 
         await user.click(
             screen.getByRole('button', {
-                name: 'tenants.permissions.card.activated: tenants.permissions.policy.openMenu – tenants.permissions.policy.activationSuggested',
+                name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.openMenu – tenants.permissions.policy.activationSuggested',
             }),
         );
         await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));
@@ -153,28 +153,51 @@ describe('CaseHandoverCard', () => {
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
-    it('keeps advisor consent disabled and opens opt-out information as inherited read-only policy', async () => {
-        const user = userEvent.setup();
+    it('keeps advisor consent disabled without adding a standalone team-access policy', () => {
         render(<CaseHandoverCard />);
 
         expect(
             screen.getByRole('switch', { name: /tenants.permissions.card.caseHandover.consentAdvisor/ }),
         ).toBeDisabled();
-        await user.click(
-            screen.getByRole('button', {
-                name: 'tenants.permissions.card.caseHandover.teamAccessOptOut: tenants.permissions.policy.moreInformation',
+        expect(
+            screen.queryByRole('button', {
+                name: /tenants.permissions.card.caseHandover.teamAccessOptOut/,
             }),
-        );
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        ).not.toBeInTheDocument();
     });
 
-    it('removes the former global enforce checkboxes and defaults team access opt-out to enforced on', () => {
+    it('removes the former global enforce checkboxes', () => {
         render(<CaseHandoverCard />);
 
         expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
-        expect(screen.getByTestId('LockIcon')).toBeInTheDocument();
         expect(screen.getAllByTestId('CheckIcon')).not.toHaveLength(0);
         expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('places the card description before the specifically named master policy', () => {
+        render(<CaseHandoverCard />);
+
+        const description = screen.getByText('tenants.permissions.card.caseHandover.description');
+        const masterPolicy = screen.getByText('tenants.permissions.card.caseHandover.enabled');
+
+        expect(description.compareDocumentPosition(masterPolicy) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    });
+
+    it('opens all four policy choices plus information from the master policy button', async () => {
+        const user = userEvent.setup();
+        render(<CaseHandoverCard />);
+
+        await user.click(
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.openMenu/,
+            }),
+        );
+
+        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.activationEnforced' })).toBeVisible();
+        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationEnforced' })).toBeVisible();
+        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.activationSuggested' })).toBeVisible();
+        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' })).toBeVisible();
+        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.moreInformation' })).toBeVisible();
     });
 
     it('rolls back the optimistic toggle when the save fails', async () => {
@@ -186,7 +209,7 @@ describe('CaseHandoverCard', () => {
 
         const openMasterMenu = () =>
             screen.getByRole('button', {
-                name: 'tenants.permissions.card.activated: tenants.permissions.policy.openMenu – tenants.permissions.policy.activationSuggested',
+                name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.openMenu – tenants.permissions.policy.activationSuggested',
             });
         await user.click(openMasterMenu());
         await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));

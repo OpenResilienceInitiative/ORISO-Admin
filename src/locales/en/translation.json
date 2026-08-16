@@ -1598,7 +1598,7 @@
     "tenants.permissions.card.advanced": "Advanced",
     "tenants.permissions.card.caseHandover.title": "Case handover",
     "tenants.permissions.card.caseHandover.description": "Manage permissions, notifications, and consent rules here.",
-    "tenants.permissions.card.caseHandover.teamAccessOptOut": "Team access opt-out",
+    "tenants.permissions.card.caseHandover.enabled": "Case handover active",
     "tenants.permissions.card.caseHandover.maxSessionDuration": "Maximum session duration",
     "tenants.permissions.card.caseHandover.consentClient": "Consent from advice seeker",
     "tenants.permissions.card.caseHandover.consentAdvisor": "Consent from advisor",

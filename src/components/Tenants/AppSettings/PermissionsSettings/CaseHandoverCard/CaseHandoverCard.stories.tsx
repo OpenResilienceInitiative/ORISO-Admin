@@ -6,13 +6,13 @@ import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandover
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
 
 const adviceNotificationTemplates = {
-    de: 'Du hast dem zeitlich begrenzten Teamzugriff zugestimmt. {{newAdvisor}} kann diese Sitzung für {{duration}} mitlesen. Deine bisherige Berater:in bleibt für dich zuständig.',
-    en: 'You agreed to time-limited team access. {{newAdvisor}} can read this session for {{duration}}. Your current counsellor remains responsible for you.',
-    fr: 'Vous avez accepté l’accès temporaire de l’équipe. {{newAdvisor}} peut consulter cette session pendant {{duration}}. Votre conseiller·ère habituel·le reste responsable de votre accompagnement.',
-    ru: 'Вы согласились на временный доступ команды. {{newAdvisor}} может просматривать эту консультацию в течение {{duration}}. Ваш текущий консультант по-прежнему отвечает за ваше консультирование.',
-    tr: 'Süreli ekip erişimini onayladınız. {{newAdvisor}} bu oturumu {{duration}} boyunca okuyabilir. Mevcut danışmanınız sizden sorumlu olmaya devam eder.',
-    uk: 'Ви погодилися на обмежений у часі доступ команди. {{newAdvisor}} може читати цю сесію протягом {{duration}}. Ваш поточний консультант залишається відповідальним за вас.',
-    ti: 'ንግዜኡ ዝተወሰነ ናይ ጋንታ ተበጻሕነት ተሰማሚዕኩም። {{newAdvisor}} ነዚ ክፍለ ግዜ ን{{duration}} ከንብቦ ይኽእል። እቲ ሕጂ ዘሎ ኣማኻሪኹም ብሓላፍነት ይቕጽል።',
+    de: 'Du hast einem zeitlich begrenzten Einblick zugestimmt. {{newAdvisor}} kann diese Sitzung für {{duration}} mitlesen. Deine bisherige Berater:in bleibt für dich zuständig.',
+    en: 'You agreed to a time-limited review. {{newAdvisor}} can read this session for {{duration}}. Your current counsellor remains responsible for you.',
+    fr: 'Vous avez accepté une consultation temporaire. {{newAdvisor}} peut consulter cette session pendant {{duration}}. Votre conseiller·ère habituel·le reste responsable de votre accompagnement.',
+    ru: 'Вы согласились на временный просмотр консультации. {{newAdvisor}} может просматривать её в течение {{duration}}. Ваш текущий консультант по-прежнему отвечает за ваше консультирование.',
+    tr: 'Süreli incelemeyi onayladınız. {{newAdvisor}} bu oturumu {{duration}} boyunca okuyabilir. Mevcut danışmanınız sizden sorumlu olmaya devam eder.',
+    uk: 'Ви погодилися на тимчасовий перегляд консультації. {{newAdvisor}} може читати цю сесію протягом {{duration}}. Ваш поточний консультант залишається відповідальним за вас.',
+    ti: 'ንግዜኡ ዝተወሰነ ምርኣይ ተሰማሚዕኩም። {{newAdvisor}} ነዚ ክፍለ ግዜ ን{{duration}} ከንብቦ ይኽእል። እቲ ሕጂ ዘሎ ኣማኻሪኹም ብሓላፍነት ይቕጽል።',
 };
 
 const policies: CaseHandoverReasonPolicy[] = [
@@ -99,8 +99,8 @@ type Story = StoryObj<typeof meta>;
 
 /** Platform admin editing the case-handover ("Fallübernahme") policy: master
  *  toggle, per-reason client-consent toggles and the per-language notification
- *  templates are live; advisor consent, opt-out message and footer actions
- *  remain disabled until their backend lands (disable, don't hide). */
+ *  templates are live; advisor consent and footer actions remain disabled
+ *  until their backend lands (disable, don't hide). */
 export const Editable: Story = {
     args: {
         policies,
@@ -135,6 +135,34 @@ export const ReadOnly: Story = {
         isLoading: false,
         canEdit: false,
         moduleEnabled: true,
+    },
+};
+
+/** Figma 1789:11645 — clicking the master policy FAB reveals the four
+ * policy states and the information action. Kept open for visual review. */
+export const PolicyMenuOpen: Story = {
+    args: {
+        policies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        openPolicyMenu: 'caseHandoverEnabled',
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(
+            canvas.getByRole('button', { name: /^(Activation enforced|Aktivierung erzwungen)$/i }),
+        ).toBeVisible();
+        await expect(
+            canvas.getByRole('button', { name: /^(Deactivation enforced|Deaktivierung erzwungen)$/i }),
+        ).toBeVisible();
+        await expect(
+            canvas.getByRole('button', { name: /^(Activation suggested|Aktivierung vorgeschlagen)$/i }),
+        ).toBeVisible();
+        await expect(
+            canvas.getByRole('button', { name: /^(Deactivation suggested|Deaktivierung vorgeschlagen)$/i }),
+        ).toBeVisible();
+        await expect(canvas.getByRole('button', { name: /^(More information|Weitere Informationen)$/i })).toBeVisible();
     },
 };
 
