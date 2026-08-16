@@ -1,3 +1,6 @@
+@use '../../../styles/breakpoints' as bp;
+@use '../../../styles/muiSpacing' as mui;
+
 .card {
     width: 100%;
 }
@@ -5,7 +8,7 @@
 .sections {
     display: flex;
     flex-direction: column;
-    gap: 32px;
+    gap: mui.$mui-unit * 4;
 }
 
 .section {
@@ -13,9 +16,13 @@
     flex-direction: column;
 }
 
+/* Type scale stays literal: the SCSS modules have no typography partial (only
+   `_muiSpacing` and `_breakpoints` exist), and the house pattern is a literal
+   size paired with `var(--m3-body-font-family)`. Only the colour has a token. */
+
 .sectionTitle {
-    margin-bottom: 12px;
-    color: #1b1b1c;
+    margin-bottom: mui.$mui-unit * 1.5;
+    color: var(--m3-on-surface, #1b1b1c);
     font-family: var(--m3-body-font-family);
     font-size: 16px;
     font-weight: 700;
@@ -24,7 +31,7 @@
 }
 
 .sectionHint {
-    margin: 0 0 12px;
+    margin: 0 0 mui.$mui-unit * 1.5;
     color: var(--m3-on-surface-variant, #444748);
     font-family: var(--m3-body-font-family);
     font-size: 14px;
@@ -34,9 +41,10 @@
 /* The row gap is load-bearing, not cosmetic: MUI floats the shrunk field label above the
    input's top edge, so with a zero row gap it renders over the helper text of the field in
    the row above ("Kurzname" hint vs. "Anschrift" label). */
+
 .fieldGrid {
     display: grid;
-    gap: 12px 24px;
+    gap: mui.$mui-unit * 1.5 mui.$mui-unit * 3;
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -48,12 +56,12 @@
 /* Each key figure is a count plus the date it was accurate on; they belong together. */
 .keyFigureRow {
     display: grid;
-    gap: 12px 16px;
+    gap: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
     grid-column: 1 / -1;
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-@media only screen and (max-width: 760px) {
+@media only screen and (max-width: bp.$to-mobile) {
     .fieldGrid,
     .keyFigureRow {
         grid-template-columns: minmax(0, 1fr);
