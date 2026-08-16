@@ -46,7 +46,7 @@ describe('M3FabMenu', () => {
                 ...values,
             } as DOMRect);
         const getBoundingClientRect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect');
-        getBoundingClientRect.mockImplementation(function () {
+        getBoundingClientRect.mockImplementation(function getElementBoundingClientRect() {
             if (this instanceof HTMLUListElement) return rect({ height: 300 });
             if (this instanceof HTMLButtonElement) return rect({ top: 100, bottom: 156 });
             return rect({});
