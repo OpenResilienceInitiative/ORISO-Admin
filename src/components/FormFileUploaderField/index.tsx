@@ -22,6 +22,25 @@ interface FormRichTextEditorProps {
     disabled?: boolean;
 }
 
+const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png'];
+// Browsers disagree about .ico: Chrome reports image/vnd.microsoft.icon, Firefox
+// image/x-icon, and a host without a mapping for the extension reports an empty
+// string. The card offers ICO for the favicon, so the extension has to count too.
+const ICON_MIME_TYPES = ['image/x-icon', 'image/vnd.microsoft.icon'];
+
+const isAcceptedFile = (file: UploadFileProps, allowIcon: boolean) => {
+    if (PHOTO_MIME_TYPES.includes(file.type)) {
+        return true;
+    }
+
+    return allowIcon && (ICON_MIME_TYPES.includes(file.type) || /\.ico$/i.test(file.name ?? ''));
+};
+
+// Keeps the file picker in step with what beforeUpload accepts, so a rejected
+// file is the exception rather than the way users discover the rules.
+const acceptedFormats = (allowIcon: boolean) =>
+    allowIcon ? '.jpg,.jpeg,.png,.ico,image/jpeg,image/png,image/x-icon' : '.jpg,.jpeg,.png,image/jpeg,image/png';
+
 const FormFileUploaderLocal = ({ onChange, value, allowIcon, disabled }: FormRichTextEditorProps) => {
     const { t } = useTranslation();
     // CardEditable disables its <Form> while the card is in view mode, which antd
@@ -36,11 +55,7 @@ const FormFileUploaderLocal = ({ onChange, value, allowIcon, disabled }: FormRic
         if (isDisabled) {
             return false;
         }
-        const isJpgOrPng =
-            file.type === 'image/jpeg' ||
-            file.type === 'image/png' ||
-            (allowIcon && (file.type === 'image/x-icon' || file.type === 'image/vnd.microsoft.icon'));
-        if (!isJpgOrPng) {
+        if (!isAcceptedFile(file, allowIcon)) {
             message.error(t('message.error.upload.filetype'));
             return false;
         }
@@ -60,6 +75,7 @@ const FormFileUploaderLocal = ({ onChange, value, allowIcon, disabled }: FormRic
             name="upload"
             listType="picture-card"
             className="fileUploader"
+            accept={acceptedFormats(allowIcon)}
             showUploadList={false}
             beforeUpload={beforeUpload}
             disabled={isDisabled}
