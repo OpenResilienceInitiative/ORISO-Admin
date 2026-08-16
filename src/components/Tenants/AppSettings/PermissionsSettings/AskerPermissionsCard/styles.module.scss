@@ -38,13 +38,6 @@
     gap: mui.$mui-unit * 1.5;
 }
 
-.settingLabel {
-    font-size: 16px;
-    line-height: 24px;
-    font-weight: 500;
-    color: var(--m3-on-surface, #1b1b1c);
-}
-
 .settingDescription {
     margin: mui.$mui-unit 0 0;
     color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));

@@ -9,8 +9,10 @@ import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { canEditCaseHandoverReasonPolicies } from '../../../../../constants/caseHandoverAccess';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+import type { PolicyValue } from '../../../../../types/permissionPolicy';
 import {
     applyClientConsent,
+    applyMaxAccessDuration,
     applyModuleEnabled,
     applyNotificationTemplate,
     isHandoverModuleEnabled,
@@ -22,7 +24,23 @@ import { CaseHandoverCardView } from './CaseHandoverCardView';
  *  into the permissions card. Policies are platform-scoped — tenant-level
  *  overrides are a backend follow-up, so non-privileged admins see the card
  *  read-only (disable, don't hide). */
-export const CaseHandoverCard = () => {
+export type CaseHandoverCardProps = {
+    policyLevel?: 'platform' | 'tenant' | 'agency';
+    permissionPolicies?: Record<string, PolicyValue<boolean>>;
+    pendingPolicyFields?: ReadonlySet<string>;
+    openPolicyMenu?: string | null;
+    onOpenPolicyMenu?: (fieldKey: string | null) => void;
+    onFeaturePolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
+};
+
+export const CaseHandoverCard = ({
+    policyLevel,
+    permissionPolicies,
+    pendingPolicyFields,
+    openPolicyMenu,
+    onOpenPolicyMenu,
+    onFeaturePolicyChange,
+}: CaseHandoverCardProps = {}) => {
     const { t } = useTranslation();
     const { can } = useUserPermissions();
     const { isSuperAdmin } = useUserRoles();
@@ -78,6 +96,11 @@ export const CaseHandoverCard = () => {
         [persist, policies],
     );
 
+    const handleMaxAccessDurationChange = useCallback(
+        (code: string, minutes: number) => persist(applyMaxAccessDuration(policies, code, minutes)),
+        [persist, policies],
+    );
+
     if (isError) {
         return <Alert type="error" message={t('error.loading')} showIcon data-testid="case-handover-card-error" />;
     }
@@ -86,11 +109,19 @@ export const CaseHandoverCard = () => {
         <CaseHandoverCardView
             policies={policies}
             isLoading={isLoading}
+            isSaving={updateReasonPolicies.isPending}
             canEdit={canEdit}
             moduleEnabled={moduleEnabled}
             onModuleEnabledChange={handleModuleEnabledChange}
             onClientConsentChange={handleClientConsentChange}
             onNotificationTemplateChange={handleNotificationTemplateChange}
+            onMaxAccessDurationChange={handleMaxAccessDurationChange}
+            policyLevel={policyLevel}
+            permissionPolicies={permissionPolicies}
+            pendingPolicyFields={pendingPolicyFields}
+            openPolicyMenu={openPolicyMenu}
+            onOpenPolicyMenu={onOpenPolicyMenu}
+            onFeaturePolicyChange={onFeaturePolicyChange}
         />
     );
 };

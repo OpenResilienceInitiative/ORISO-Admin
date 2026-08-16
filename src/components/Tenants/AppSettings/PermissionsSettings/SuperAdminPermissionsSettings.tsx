@@ -1,61 +1,100 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { notification } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
 import { useTenantAdminControlsMutation } from '../../../../hooks/useTenantAdminControlsMutation.hook';
 import { buildTogglePayload } from './permissionsToggleLogic';
-import {
-    applyVisibleTogglesAsValues,
-    buildTenantAdminControlsPayload,
-    enforcedFieldsToToggles,
-    getEnforcedOnFields,
-} from './permissionsSettingsUtils';
+import { applyVisibleTogglesAsValues, buildTenantAdminControlsPayload } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
-import { EnforceModeSwitch } from './EnforceModeSwitch';
-import type { EnforceChangeHandler, PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
+import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
+import type { PolicyValue } from '../../../../types/permissionPolicy';
+import type { TenantAdminControls } from '../../../../types/TenantAdminControls';
 
 export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
+    const { t } = useTranslation();
     const { data: platformControls, isLoading } = useTenantAdminControls(true);
-    const { mutate: updateTenantAdminControls } = useTenantAdminControlsMutation({ successMessageKey: false });
-    // Defaults to plain "Configure" mode — the enforce checkboxes used to render permanently;
-    // see ORISO-Admin#297.
-    const [enforceMode, setEnforceMode] = useState(false);
+    const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
+    const [effectivePlatformControls, setEffectivePlatformControls] = useState<TenantAdminControls | undefined>(
+        platformControls,
+    );
+    const confirmedPlatformControls = useRef<TenantAdminControls | undefined>(platformControls);
+    const pendingPolicyOperations = useRef<{ id: number; fieldKey: string; policy: PolicyValue<boolean> }[]>([]);
+    const nextPolicyOperationId = useRef(0);
+    const policyMutationQueue = useRef<Promise<void>>(Promise.resolve());
+    const updateTenantAdminControls = useTenantAdminControlsMutation({
+        successMessageKey: false,
+        onError: () => notification.error({ message: t('tenants.permissions.policy.saveError') }),
+    });
+
+    useEffect(() => {
+        if (platformControls && pendingPolicyOperations.current.length === 0) {
+            confirmedPlatformControls.current = platformControls;
+            setEffectivePlatformControls(platformControls);
+        }
+    }, [platformControls]);
+
+    const rebuildEffectivePlatformControls = useCallback(() => {
+        const confirmed = confirmedPlatformControls.current;
+        if (!confirmed) return;
+        const permissionPolicies = pendingPolicyOperations.current.reduce(
+            (current, operation) => ({ ...current, [operation.fieldKey]: operation.policy }),
+            { ...confirmed.permissionPolicies },
+        );
+        setEffectivePlatformControls({ ...confirmed, permissionPolicies });
+        setPendingPolicyFields(new Set(pendingPolicyOperations.current.map(({ fieldKey }) => fieldKey)));
+    }, []);
 
     const allowedPermissionToggles = platformControls?.allowedPermissionToggles;
     const enforcedPermissionToggles = platformControls?.enforcedPermissionToggles;
     const restrictedFields = useMemo(() => new Set<string>(), []);
 
-    // Which features the platform has locked on for tenants. Seeded from the server, then edited
-    // locally via the enforce checkboxes.
-    const [enforcedFields, setEnforcedFields] = useState<Set<string>>(new Set());
-    useEffect(() => {
-        setEnforcedFields(getEnforcedOnFields(enforcedPermissionToggles));
-    }, [enforcedPermissionToggles]);
-
     const persistPlatformControls = useCallback(
-        (formData: { settings?: Record<string, unknown> }, nextEnforcedFields: Set<string> = enforcedFields) => {
-            updateTenantAdminControls(
+        (formData: { settings?: Record<string, unknown> }) => {
+            updateTenantAdminControls.mutate(
                 buildTenantAdminControlsPayload(
                     formData,
                     allowedPermissionToggles,
                     platformControls?.permissionsPageEnabled ?? true,
-                    enforcedFieldsToToggles(nextEnforcedFields),
+                    enforcedPermissionToggles,
                 ),
             );
         },
-        [updateTenantAdminControls, allowedPermissionToggles, platformControls?.permissionsPageEnabled, enforcedFields],
+        [
+            updateTenantAdminControls.mutate,
+            allowedPermissionToggles,
+            platformControls?.permissionsPageEnabled,
+            enforcedPermissionToggles,
+        ],
     );
 
-    const handleEnforceChange = useCallback<EnforceChangeHandler>(
-        (fieldKey, enforced) => {
-            const next = new Set(enforcedFields);
-            if (enforced) {
-                next.add(fieldKey);
-            } else {
-                next.delete(fieldKey);
-            }
-            setEnforcedFields(next);
-            persistPlatformControls({ settings: applyVisibleTogglesAsValues(allowedPermissionToggles) }, next);
+    const handlePolicyChange = useCallback(
+        (fieldKey: string, policy: PolicyValue<boolean>) => {
+            if (!confirmedPlatformControls.current) return;
+            const operation = { id: nextPolicyOperationId.current, fieldKey, policy };
+            nextPolicyOperationId.current += 1;
+            pendingPolicyOperations.current.push(operation);
+            rebuildEffectivePlatformControls();
+            const run = async () => {
+                const confirmed = confirmedPlatformControls.current;
+                if (!confirmed) return;
+                const next = {
+                    ...confirmed,
+                    permissionPolicies: { ...confirmed.permissionPolicies, [fieldKey]: policy },
+                };
+                try {
+                    confirmedPlatformControls.current = await updateTenantAdminControls.mutateAsync(next);
+                } catch {
+                    // The mutation hook reports the error. Rebuild below rolls back this operation only.
+                } finally {
+                    pendingPolicyOperations.current = pendingPolicyOperations.current.filter(
+                        ({ id }) => id !== operation.id,
+                    );
+                    rebuildEffectivePlatformControls();
+                }
+            };
+            policyMutationQueue.current = policyMutationQueue.current.then(run, run);
         },
-        [enforcedFields, allowedPermissionToggles, persistPlatformControls],
+        [rebuildEffectivePlatformControls, updateTenantAdminControls],
     );
 
     const initialValues = useMemo(
@@ -79,29 +118,19 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
         [allowedPermissionToggles, persistPlatformControls],
     );
 
-    const handleSave = useCallback(
-        (formData: unknown) => {
-            persistPlatformControls(formData as { settings?: Record<string, unknown> });
-        },
-        [persistPlatformControls],
-    );
-
     return (
-        <>
-            <EnforceModeSwitch enforceMode={enforceMode} onChange={setEnforceMode} />
-            <PermissionsSettingsView
-                tenantId={tenantId}
-                excludeCardKeys={excludeCardKeys}
-                isLoading={isLoading}
-                initialValues={initialValues}
-                formStateKey="platform"
-                restrictedFields={restrictedFields}
-                onToggleUpdate={handleToggleUpdate}
-                onSave={handleSave}
-                enforceMode={enforceMode}
-                enforcedFields={enforcedFields}
-                onEnforceChange={handleEnforceChange}
-            />
-        </>
+        <PermissionsSettingsView
+            tenantId={tenantId}
+            excludeCardKeys={excludeCardKeys}
+            isLoading={isLoading}
+            initialValues={initialValues}
+            formStateKey="platform"
+            restrictedFields={restrictedFields}
+            onToggleUpdate={handleToggleUpdate}
+            policyLevel="platform"
+            permissionPolicies={effectivePlatformControls?.permissionPolicies}
+            pendingPolicyFields={pendingPolicyFields}
+            onPolicyChange={handlePolicyChange}
+        />
     );
 };

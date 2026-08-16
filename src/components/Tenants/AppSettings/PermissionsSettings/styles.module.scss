@@ -1,3 +1,5 @@
+@use '../../../../styles/muiSpacing' as mui;
+
 /* Wrapper override: remove the outer white CardEditable background & title header */
 .transparentCardWrapper {
     background: transparent !important;
@@ -52,7 +54,7 @@
     border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 30%, transparent);
     box-shadow: var(--m3-elevation-1, 0 1px 2px rgb(0 0 0 / 30%));
     border-radius: 28px;
-    padding: 32px;
+    padding: calc(mui.$mui-unit * 4);
     display: flex;
     flex-direction: column;
     min-height: auto;
@@ -127,15 +129,6 @@
     margin-left: -8px;
 }
 
-.enforceFooterNote {
-    margin: 0 0 20px;
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 1.33;
-    text-align: center;
-    color: var(--admin-control-selected, var(--m3-primary, #a5000a));
-}
-
 .masterRowPlaceholder {
     font-size: 14px;
     color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
@@ -204,11 +197,11 @@
 }
 
 .toggleLabel {
-    font-size: 15px;
-    color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
-    font-weight: 500;
-    flex: 1;
     min-width: 0;
+    flex: 1;
+    color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
+    font-size: 15px;
+    font-weight: 500;
 }
 
 /**
@@ -216,15 +209,6 @@
  * tooltip: the reason has to be readable without hovering, on touch as well,
  * and it explains an absent capability rather than decorating a control.
  */
-
-.toggleUnavailableHint {
-    display: block;
-    margin-top: 2px;
-    font-size: 13px;
-    font-weight: 400;
-    line-height: 1.35;
-    color: var(--m3-on-surface-variant, #45464f);
-}
 
 .cardFooterActions {
     margin: auto -32px 0;

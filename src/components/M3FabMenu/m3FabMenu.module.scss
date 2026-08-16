@@ -83,6 +83,11 @@
         text-decoration: none;
     }
 
+    &:disabled {
+        cursor: wait;
+        opacity: 0.55;
+    }
+
     &:focus-visible {
         box-shadow: 0 0 0 3px var(--admin-nav-indicator-surface, #410001);
     }
@@ -150,4 +155,44 @@
 
 .fabGlyph {
     fill: currentcolor;
+}
+
+.action {
+    align-items: flex-end;
+
+    .stack {
+        right: 0;
+        left: auto;
+        z-index: 20;
+        align-items: flex-end;
+    }
+
+    .item {
+        background: var(--m3-primary, #a5000a);
+        color: var(--m3-on-primary, #ffffff);
+    }
+
+    .itemActive {
+        box-shadow: inset 0 0 0 2px currentcolor;
+    }
+
+    .fab {
+        background: var(--m3-primary, #a5000a);
+        color: var(--m3-on-primary, #ffffff);
+    }
+}
+
+.action.neutral {
+    .item,
+    .fab {
+        background: var(--m3-secondary, #555f6b);
+        color: var(--m3-on-secondary, #ffffff);
+    }
+}
+
+.action.openDownward {
+    .stack {
+        top: calc(100% + 6px);
+        bottom: auto;
+    }
 }

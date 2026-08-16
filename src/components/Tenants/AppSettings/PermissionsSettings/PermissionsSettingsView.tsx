@@ -1,22 +1,18 @@
-import { Form } from 'antd';
+import { Form, type FormInstance } from 'antd';
+import { useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Card } from '../../../Card';
 import { CardDeck } from '../../../CardDeck';
 import { CardEditable } from '../../../CardEditable';
-import { EditButton } from '../../../EditButton';
 import { CHAT_TYPE_CARDS } from './chatTypeCards';
 import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
-import { CheckToggle } from './CheckToggle';
-import { M3Checkbox } from '../../../M3Checkbox';
-import { isSubToggleDisabled } from './permissionsSettingsUtils';
+import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
+import { isSubToggleDisabled, resolvePermissionPolicy } from './permissionsSettingsUtils';
+import { syncMasterChildTogglesInForm } from './permissionsToggleLogic';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
-import type {
-    ChatTypeCardKey,
-    EnforceChangeHandler,
-    PermissionToggleCapability,
-    ToggleAfterChangeHandler,
-} from './types';
+import type { ChatTypeCardKey, PermissionToggleCapability, ToggleAfterChangeHandler } from './types';
+import type { PolicyValue } from '../../../../types/permissionPolicy';
 import styles from './styles.module.scss';
 
 /**
@@ -43,16 +39,10 @@ export type PermissionsSettingsViewProps = {
     formStateKey: string;
     restrictedFields: Set<string>;
     onToggleUpdate: ToggleAfterChangeHandler;
-    onSave: (formData: unknown) => void;
-    /**
-     * "Enforce active states" mode (upper roles only). Each feature row gains a checkbox; a
-     * checked feature is locked on for every lower role (platform → tenant → agency) and can no
-     * longer be hidden by them. Maps to Figma node 105:11334.
-     */
-    enforceMode?: boolean;
-    /** Field keys (settings.<key>) currently enforced-on. */
-    enforcedFields?: Set<string>;
-    onEnforceChange?: EnforceChangeHandler;
+    policyLevel?: 'platform' | 'tenant' | 'agency';
+    permissionPolicies?: Record<string, PolicyValue<boolean>>;
+    pendingPolicyFields?: ReadonlySet<string>;
+    onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
 };
 
 export const PermissionsSettingsView = ({
@@ -63,15 +53,41 @@ export const PermissionsSettingsView = ({
     formStateKey,
     restrictedFields,
     onToggleUpdate,
-    onSave,
-    enforceMode = false,
-    enforcedFields,
-    onEnforceChange,
+    policyLevel = 'tenant',
+    permissionPolicies,
+    pendingPolicyFields,
+    onPolicyChange,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
+    const [openPolicyMenu, setOpenPolicyMenu] = useState<string | null>(null);
     const cardsToRender = excludeCardKeys?.length
         ? CHAT_TYPE_CARDS.filter((card) => !excludeCardKeys.includes(card.key))
         : CHAT_TYPE_CARDS;
+
+    const policyFor = useCallback(
+        (fieldKey: string, currentValue: unknown): PolicyValue<boolean> =>
+            resolvePermissionPolicy(permissionPolicies, fieldKey, currentValue, restrictedFields),
+        [permissionPolicies, restrictedFields],
+    );
+    const policyPending = useCallback(
+        (fieldKey: string) => pendingPolicyFields?.has(fieldKey) === true,
+        [pendingPolicyFields],
+    );
+
+    const changePolicy = useCallback(
+        (fieldKey: string, next: PolicyValue<boolean>, form: FormInstance) => {
+            const fieldPath = ['settings', fieldKey];
+            form.setFieldValue(fieldPath, next.value);
+            syncMasterChildTogglesInForm(form, fieldPath, next.value);
+            const currentFormData = form.getFieldsValue(true);
+            if (onPolicyChange) {
+                onPolicyChange(fieldKey, next);
+                return;
+            }
+            onToggleUpdate(fieldPath, next.value, currentFormData);
+        },
+        [onPolicyChange, onToggleUpdate],
+    );
 
     return (
         <CardEditable
@@ -80,9 +96,11 @@ export const PermissionsSettingsView = ({
             isLoading={isLoading}
             initialValues={initialValues}
             titleKey="tenants.permissions.title"
-            onSave={onSave}
+            editMode
+            hideSaveButton
+            hideCancelButton
         >
-            {({ editing, startEditing }) => (
+            {({ form }) => (
                 <div className={styles.cardGridOuter}>
                     <CardDeck
                         ariaLabel={t('tenants.permissions.title')}
@@ -95,10 +113,26 @@ export const PermissionsSettingsView = ({
                             settings govern the advice seeker's own account, so they come
                             before the per-chat-type feature cards. */}
                         <CardDeck.Item className={styles.chatTypeCardSlot}>
-                            <AskerPermissionsCard restrictedFields={restrictedFields} onToggleUpdate={onToggleUpdate} />
+                            <AskerPermissionsCard
+                                restrictedFields={restrictedFields}
+                                policyLevel={policyLevel}
+                                permissionPolicies={permissionPolicies}
+                                fallbackValues={initialValues.settings as Record<string, unknown> | undefined}
+                                pendingPolicyFields={pendingPolicyFields}
+                                openPolicyMenu={openPolicyMenu}
+                                onOpenPolicyMenu={setOpenPolicyMenu}
+                                onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
+                            />
                         </CardDeck.Item>
                         <CardDeck.Item className={styles.chatTypeCardSlot}>
-                            <CaseHandoverCard />
+                            <CaseHandoverCard
+                                policyLevel={policyLevel}
+                                permissionPolicies={permissionPolicies}
+                                pendingPolicyFields={pendingPolicyFields}
+                                openPolicyMenu={openPolicyMenu}
+                                onOpenPolicyMenu={setOpenPolicyMenu}
+                                onFeaturePolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
+                            />
                         </CardDeck.Item>
                         {cardsToRender.map((card) => (
                             <CardDeck.Item key={card.key} className={styles.chatTypeCardSlot}>
@@ -118,40 +152,35 @@ export const PermissionsSettingsView = ({
                                             <Card
                                                 headerIcon={<CardIcon width={40} height={40} />}
                                                 titleKey={card.titleKey}
-                                                footer={
-                                                    !editing ? (
-                                                        <EditButton
-                                                            className={styles.cardFooterEditButton}
-                                                            onClick={startEditing}
-                                                        />
-                                                    ) : undefined
-                                                }
                                             >
                                                 <div className={styles.masterRow}>
-                                                    {enforceMode && masterField && (
-                                                        <M3Checkbox
-                                                            className={styles.enforceCheckbox}
-                                                            label={t('tenants.permissions.enforce.checkboxLabel', {
-                                                                feature: t('tenants.permissions.card.activated'),
-                                                            })}
-                                                            checked={enforcedFields?.has(masterField[1]) ?? false}
-                                                            onChange={(next) => onEnforceChange?.(masterField[1], next)}
-                                                        />
-                                                    )}
-                                                    <span className={styles.masterLabel}>
-                                                        {t('tenants.permissions.card.activated')}
-                                                    </span>
                                                     {masterField ? (
-                                                        <CheckToggle
-                                                            name={masterField}
+                                                        <PermissionPolicyControl
+                                                            featureKey={masterField[1]}
                                                             label={t('tenants.permissions.card.activated')}
-                                                            disabled={restrictedFields.has(masterField[1])}
-                                                            onAfterChange={onToggleUpdate}
+                                                            level={policyLevel}
+                                                            policy={policyFor(
+                                                                masterField[1],
+                                                                getFieldValue(masterField),
+                                                            )}
+                                                            open={openPolicyMenu === masterField[1]}
+                                                            pending={policyPending(masterField[1])}
+                                                            onOpenChange={(open) =>
+                                                                setOpenPolicyMenu(open ? masterField[1] : null)
+                                                            }
+                                                            onChange={(next) =>
+                                                                changePolicy(masterField[1], next, form)
+                                                            }
                                                         />
                                                     ) : (
-                                                        <span className={styles.masterRowPlaceholder} aria-hidden>
-                                                            —
-                                                        </span>
+                                                        <>
+                                                            <span className={styles.masterLabel}>
+                                                                {t('tenants.permissions.card.activated')}
+                                                            </span>
+                                                            <span className={styles.masterRowPlaceholder} aria-hidden>
+                                                                —
+                                                            </span>
+                                                        </>
                                                     )}
                                                 </div>
 
@@ -176,61 +205,48 @@ export const PermissionsSettingsView = ({
                                                         const unavailableHintKey = unavailableCapabilityHintKey(
                                                             toggle.requiresCapability,
                                                         );
+                                                        const disabledByMaster = isSubToggleDisabled(
+                                                            card,
+                                                            toggle.field,
+                                                            masterEnabled,
+                                                        );
+                                                        const disabledHintKey =
+                                                            unavailableHintKey ||
+                                                            (disabledByMaster
+                                                                ? 'tenants.permissions.feature.requiresMaster'
+                                                                : null);
                                                         return (
                                                             <div
                                                                 key={toggle.field.join('.')}
                                                                 className={styles.toggleRow}
                                                             >
-                                                                {enforceMode && (
-                                                                    <M3Checkbox
-                                                                        className={styles.enforceCheckbox}
-                                                                        label={t(
-                                                                            'tenants.permissions.enforce.checkboxLabel',
-                                                                            {
-                                                                                feature: t(toggle.labelKey),
-                                                                            },
-                                                                        )}
-                                                                        checked={
-                                                                            enforcedFields?.has(toggle.field[1]) ??
-                                                                            false
-                                                                        }
-                                                                        onChange={(next) =>
-                                                                            onEnforceChange?.(toggle.field[1], next)
-                                                                        }
-                                                                    />
-                                                                )}
-                                                                <span className={styles.toggleLabel}>
-                                                                    {t(toggle.labelKey)}
-                                                                    {unavailableHintKey && (
-                                                                        <span className={styles.toggleUnavailableHint}>
-                                                                            {t(unavailableHintKey)}
-                                                                        </span>
-                                                                    )}
-                                                                </span>
-                                                                <CheckToggle
-                                                                    name={toggle.field}
+                                                                <PermissionPolicyControl
+                                                                    featureKey={toggle.field[1]}
                                                                     label={t(toggle.labelKey)}
+                                                                    level={policyLevel}
+                                                                    policy={policyFor(
+                                                                        toggle.field[1],
+                                                                        getFieldValue(toggle.field),
+                                                                    )}
+                                                                    open={openPolicyMenu === toggle.field[1]}
+                                                                    pending={policyPending(toggle.field[1])}
                                                                     disabled={
-                                                                        Boolean(unavailableHintKey) ||
-                                                                        restrictedFields.has(toggle.field[1]) ||
-                                                                        isSubToggleDisabled(
-                                                                            card,
-                                                                            toggle.field,
-                                                                            masterEnabled,
-                                                                        )
+                                                                        Boolean(unavailableHintKey) || disabledByMaster
                                                                     }
-                                                                    onAfterChange={onToggleUpdate}
+                                                                    supportingText={
+                                                                        disabledHintKey ? t(disabledHintKey) : undefined
+                                                                    }
+                                                                    onOpenChange={(open) =>
+                                                                        setOpenPolicyMenu(open ? toggle.field[1] : null)
+                                                                    }
+                                                                    onChange={(next) =>
+                                                                        changePolicy(toggle.field[1], next, form)
+                                                                    }
                                                                 />
                                                             </div>
                                                         );
                                                     })}
                                                 </div>
-
-                                                {enforceMode && (
-                                                    <p className={styles.enforceFooterNote}>
-                                                        {t('tenants.permissions.enforce.footerNote')}
-                                                    </p>
-                                                )}
                                             </Card>
                                         );
                                     }}

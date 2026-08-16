@@ -1,8 +1,9 @@
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+import { SUPPORTED_LANGUAGE_CODES, type SupportedLanguageCode } from '../../../../../constants/supportedLanguages';
 
-export type NotificationLanguage = 'de' | 'en' | 'tr' | 'uk';
+export type NotificationLanguage = SupportedLanguageCode;
 
-export const NOTIFICATION_LANGUAGES: NotificationLanguage[] = ['de', 'en', 'tr', 'uk'];
+export const NOTIFICATION_LANGUAGES: readonly NotificationLanguage[] = SUPPORTED_LANGUAGE_CODES;
 
 /** Reasons where the previous counsellor is absent — their consent is structurally
  *  excluded (they cannot be asked), per CONTEXT.md "Approval role (consent axis)". */
@@ -63,57 +64,18 @@ export const applyClientConsent = (
     clientConsentRequired: boolean,
 ) => policies.map((policy) => (policy.code === code ? { ...policy, clientConsentRequired } : policy));
 
-/** Sample system-notification templates per reason and client language.
- *  Display-only until the backend stores real templates (multilingual template
- *  storage is a planned follow-up; see epic task "System-Nachrichten-Template"). */
-export const NOTIFICATION_TEMPLATE_SAMPLES: Record<string, Partial<Record<NotificationLanguage, string>>> = {
-    COUNSELLOR_IS_ILL: {
-        de: 'Die vorherige Berater*in ist leider krank. Deshalb wurde dein Fall an {neue Berater*in} übergeben.',
-        en: 'The previous advisor is unfortunately ill. Therefore, your case has been handed over to {new advisor}.',
-        tr: 'Önceki danışmanınız maalesef hasta. Bu nedenle vakanız {yeni danışman} adlı danışmana devredildi.',
-        uk: 'На жаль, попередній консультант захворів. Тому вашу справу передано {новий консультант}.',
-    },
-    COUNSELLOR_ON_HOLIDAY: {
-        de: 'Die vorherige Berater*in ist im Urlaub. Deshalb wurde dein Fall an {neue Berater*in} übergeben.',
-        en: 'The previous advisor is on holiday. Therefore, your case has been handed over to {new advisor}.',
-        tr: 'Önceki danışmanınız izinde. Bu nedenle vakanız {yeni danışman} adlı danışmana devredildi.',
-        uk: 'Попередній консультант у відпустці. Тому вашу справу передано {новий консультант}.',
-    },
-    COUNSELLOR_ASKED_FOR_ADVICE: {
-        de: 'Deine Berater*in hat eine Kolleg*in um fachlichen Rat gebeten. {Berater*in} kann den Verlauf vorübergehend einsehen.',
-        en: 'Your advisor has asked a colleague for professional advice. {advisor} can temporarily view the conversation.',
-        tr: 'Danışmanınız bir meslektaşından uzman görüşü istedi. {danışman} görüşmeyi geçici olarak görüntüleyebilir.',
-        uk: 'Ваш консультант звернувся до колеги за фаховою порадою. {консультант} може тимчасово переглядати розмову.',
-    },
-    COUNSELLOR_LEFT: {
-        de: 'Die vorherige Berater*in ist nicht mehr für uns tätig. Deshalb wurde dein Fall an {neue Berater*in} übergeben.',
-        en: 'The previous advisor no longer works here. Therefore, your case has been handed over to {new advisor}.',
-        tr: 'Önceki danışmanınız artık bizimle çalışmıyor. Bu nedenle vakanız {yeni danışman} adlı danışmana devredildi.',
-        uk: 'Попередній консультант більше не працює в нас. Тому вашу справу передано {новий консультант}.',
-    },
-    OTHER_EMERGENCY: {
-        de: 'Aufgrund eines Notfalls wurde dein Fall an {neue Berater*in} übergeben.',
-        en: 'Due to an emergency, your case has been handed over to {new advisor}.',
-        tr: 'Acil bir durum nedeniyle vakanız {yeni danışman} adlı danışmana devredildi.',
-        uk: 'Через надзвичайну ситуацію вашу справу передано {новий консультант}.',
-    },
-    LEGAL_VIOLATION: {
-        de: 'Aus rechtlichen Gründen wurde dein Fall an {neue Berater*in} übergeben.',
-        en: 'For legal reasons, your case has been handed over to {new advisor}.',
-        tr: 'Yasal nedenlerle vakanız {yeni danışman} adlı danışmana devredildi.',
-        uk: 'З юридичних причин вашу справу передано {новий консультант}.',
-    },
-};
-
-export const getNotificationTemplateSample = (code: string, language: NotificationLanguage) =>
-    NOTIFICATION_TEMPLATE_SAMPLES[code]?.[language] ?? '';
-
-/** Effective template: backend-stored value first, sample copy as fallback. */
-export const getNotificationTemplate = (
-    policy: CaseHandoverReasonPolicy | null,
+export const applyMaxAccessDuration = (
+    policies: CaseHandoverReasonPolicy[],
     code: string,
-    language: NotificationLanguage,
-) => policy?.clientNotificationTemplates?.[language] ?? getNotificationTemplateSample(code, language);
+    maxAccessDurationMinutes: number,
+) =>
+    policies.map((policy) =>
+        policy.code === code ? { ...policy, maxAccessDurationMinutes: Math.max(15, maxAccessDurationMinutes) } : policy,
+    );
+
+/** Effective template: only backend-stored copy is rendered in production. */
+export const getNotificationTemplate = (policy: CaseHandoverReasonPolicy | null, language: NotificationLanguage) =>
+    policy?.clientNotificationTemplates?.[language] ?? '';
 
 /** Writes one language's template on the given reason; blank text clears the override. */
 export const applyNotificationTemplate = (

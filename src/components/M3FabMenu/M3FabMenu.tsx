@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import CloseIcon from '@mui/icons-material/Close';
 import classNames from 'classnames';
 import { Link } from 'react-router-dom';
@@ -31,6 +31,13 @@ export interface M3FabMenuProps {
     closeLabel: string;
     onSelect?: (key: string) => void;
     className?: string;
+    /** Navigation keeps the existing palette; action menus use the compact policy-control palette. */
+    variant?: 'navigation' | 'action';
+    /** Closed/action colour communicates the selected boolean value without relying on the glyph. */
+    tone?: 'primary' | 'neutral';
+    /** Optional value glyph for an action FAB; menu entries retain their own policy-mode glyphs. */
+    triggerIcon?: ReactNode;
+    disabled?: boolean;
 }
 
 /**
@@ -54,10 +61,17 @@ export const M3FabMenu = ({
     onSelect,
     open,
     openLabel,
+    variant = 'navigation',
+    tone = 'primary',
+    triggerIcon,
+    disabled = false,
 }: M3FabMenuProps) => {
     const menuId = useId();
     const rootRef = useRef<HTMLDivElement>(null);
     const fabRef = useRef<HTMLButtonElement>(null);
+    const stackRef = useRef<HTMLUListElement>(null);
+    const [opensDownward, setOpensDownward] = useState(false);
+    const [stackMaxHeight, setStackMaxHeight] = useState<number>();
     // The account entries are destinations too: standing on "Konto" and closing
     // the menu left the FAB empty, because only `items` was searched.
     const activeItem = [...items, ...footerItems].find((item) => item.key === activeKey);
@@ -72,6 +86,36 @@ export const M3FabMenu = ({
         },
         [onOpenChange],
     );
+
+    useLayoutEffect(() => {
+        if (!open || variant !== 'action') {
+            setOpensDownward(false);
+            setStackMaxHeight(undefined);
+            return undefined;
+        }
+
+        const updatePlacement = () => {
+            const stackRect = stackRef.current?.getBoundingClientRect();
+            const fabRect = fabRef.current?.getBoundingClientRect();
+            if (!stackRect || !fabRect) return;
+
+            const spaceAbove = Math.max(0, fabRect.top - 8);
+            const spaceBelow = Math.max(0, window.innerHeight - fabRect.bottom - 8);
+            const downward = stackRect.height > spaceAbove && spaceBelow > spaceAbove;
+            setOpensDownward(downward);
+            setStackMaxHeight(downward ? spaceBelow : spaceAbove);
+        };
+
+        updatePlacement();
+        window.addEventListener('resize', updatePlacement);
+        return () => window.removeEventListener('resize', updatePlacement);
+    }, [items.length, footerItems.length, open, variant]);
+
+    useEffect(() => {
+        if (!open || disabled) return;
+
+        stackRef.current?.querySelector<HTMLElement>('a:not([aria-disabled="true"]), button:not(:disabled)')?.focus();
+    }, [disabled, footerItems.length, items.length, open]);
 
     // Escape and a click outside close the menu. Pointer-down rather than click,
     // so a tap that starts outside never also activates what is underneath.
@@ -126,7 +170,13 @@ export const M3FabMenu = ({
                         className={itemClassName}
                         to={item.to}
                         aria-current={isActive ? 'page' : undefined}
-                        onClick={() => {
+                        aria-disabled={disabled || undefined}
+                        tabIndex={disabled ? -1 : undefined}
+                        onClick={(event) => {
+                            if (disabled) {
+                                event.preventDefault();
+                                return;
+                            }
                             onSelect?.(item.key);
                             close(false);
                         }}
@@ -145,6 +195,7 @@ export const M3FabMenu = ({
                     // Also on the button branch: which destination you are on
                     // must not depend on whether it was given a route.
                     aria-current={isActive ? 'page' : undefined}
+                    disabled={disabled}
                     onClick={() => {
                         onSelect?.(item.key);
                         close(false);
@@ -157,9 +208,22 @@ export const M3FabMenu = ({
     };
 
     return (
-        <div className={classNames(styles.root, className)} ref={rootRef}>
+        <div
+            className={classNames(styles.root, className, {
+                [styles.action]: variant === 'action',
+                [styles.neutral]: tone === 'neutral',
+                [styles.openDownward]: variant === 'action' && opensDownward,
+            })}
+            ref={rootRef}
+        >
             {open && (
-                <ul className={styles.stack} id={menuId} data-admin-fab-menu-stack>
+                <ul
+                    className={styles.stack}
+                    id={menuId}
+                    data-admin-fab-menu-stack
+                    ref={stackRef}
+                    style={stackMaxHeight === undefined ? undefined : { maxHeight: stackMaxHeight }}
+                >
                     {items.map((item) => renderItem(item, false))}
                     {footerItems.map((item) => renderItem(item, true))}
                 </ul>
@@ -173,9 +237,10 @@ export const M3FabMenu = ({
                 aria-controls={open ? menuId : undefined}
                 aria-haspopup="menu"
                 data-admin-fab-menu-toggle
+                disabled={disabled}
                 onClick={() => onOpenChange(!open)}
             >
-                {open ? <CloseIcon className={styles.fabGlyph} /> : activeItem?.icon ?? null}
+                {open ? <CloseIcon className={styles.fabGlyph} /> : triggerIcon ?? activeItem?.icon ?? null}
             </button>
         </div>
     );

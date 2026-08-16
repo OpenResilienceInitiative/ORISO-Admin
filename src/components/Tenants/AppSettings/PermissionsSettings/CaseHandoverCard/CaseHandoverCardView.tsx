@@ -4,8 +4,10 @@ import { Skeleton, Tooltip } from 'antd';
 import { ReactComponent as CaseHandoverIcon } from '../../../../../resources/img/svg/permissions/case_handover.svg';
 import { Card } from '../../../../Card';
 import { M3Switch } from '../../../../M3Switch';
-import { M3Checkbox } from '../../../../M3Checkbox';
+import { M3DurationField } from '../../../../M3NumberField';
+import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+import type { PolicyValue } from '../../../../../types/permissionPolicy';
 import {
     buildDisplayReasons,
     DisplayReason,
@@ -29,12 +31,20 @@ import styles from './styles.module.scss';
 export type CaseHandoverCardViewProps = {
     policies: CaseHandoverReasonPolicy[];
     isLoading: boolean;
+    isSaving?: boolean;
     /** false = user may not edit platform reason policies → everything read-only. */
     canEdit: boolean;
     moduleEnabled: boolean;
     onModuleEnabledChange: (enabled: boolean) => void;
     onClientConsentChange: (code: string, clientConsentRequired: boolean) => void;
     onNotificationTemplateChange: (code: string, language: NotificationLanguage, text: string) => void;
+    onMaxAccessDurationChange: (code: string, minutes: number) => void;
+    policyLevel?: 'platform' | 'tenant' | 'agency';
+    permissionPolicies?: Record<string, PolicyValue<boolean>>;
+    pendingPolicyFields?: ReadonlySet<string>;
+    openPolicyMenu?: string | null;
+    onOpenPolicyMenu?: (fieldKey: string | null) => void;
+    onFeaturePolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
 };
 
 const ConfigureIcon = () => (
@@ -46,23 +56,22 @@ const ConfigureIcon = () => (
     </svg>
 );
 
-const EnforceIcon = () => (
-    <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-        <path
-            d="M2.5 17.5v-3.02l9.32-9.3 3.02 3-9.32 9.32H2.5Zm11.4-10.38-3-3.02 1.44-1.44a.98.98 0 0 1 .72-.29c.29 0 .53.1.72.29l1.58 1.58c.19.2.29.44.29.72 0 .29-.1.53-.29.72l-1.46 1.44Z"
-            fill="currentColor"
-        />
-    </svg>
-);
-
 export const CaseHandoverCardView = ({
     policies,
     isLoading,
+    isSaving = false,
     canEdit,
     moduleEnabled,
     onModuleEnabledChange,
     onClientConsentChange,
     onNotificationTemplateChange,
+    onMaxAccessDurationChange,
+    policyLevel = 'tenant',
+    permissionPolicies,
+    pendingPolicyFields,
+    openPolicyMenu,
+    onOpenPolicyMenu,
+    onFeaturePolicyChange,
 }: CaseHandoverCardViewProps) => {
     const { t, i18n } = useTranslation();
     const displayReasons = useMemo(() => buildDisplayReasons(policies), [policies]);
@@ -76,6 +85,9 @@ export const CaseHandoverCardView = ({
     });
 
     const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({});
+    const [localOpenPolicyMenu, setLocalOpenPolicyMenu] = useState<string | null>(null);
+    const currentOpenPolicyMenu = openPolicyMenu === undefined ? localOpenPolicyMenu : openPolicyMenu;
+    const setOpenPolicyMenu = onOpenPolicyMenu ?? setLocalOpenPolicyMenu;
 
     const activeReason: DisplayReason | null =
         displayReasons.find((reason) => reason.code === activeReasonCode) ?? displayReasons[0] ?? null;
@@ -99,53 +111,29 @@ export const CaseHandoverCardView = ({
                 <Skeleton active paragraph={{ rows: 6 }} />
             ) : (
                 <>
-                    <div className={styles.featureRow}>
-                        <Tooltip title={comingSoon}>
-                            <span tabIndex={0}>
-                                <M3Checkbox
-                                    checked={false}
-                                    disabled
-                                    label={`${t('tenants.permissions.card.caseHandover.enforceOption')}: ${t(
-                                        'tenants.permissions.card.activated',
-                                    )}`}
-                                />
-                            </span>
-                        </Tooltip>
-                        <span className={styles.featureLabel}>{t('tenants.permissions.card.activated')}</span>
-                        <M3Switch
-                            checked={moduleEnabled}
-                            disabled={!canEdit}
-                            label={t('tenants.permissions.card.activated')}
-                            onChange={onModuleEnabledChange}
-                        />
-                    </div>
-
                     <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.description')}</p>
 
                     <div className={styles.featureRow}>
-                        <Tooltip title={comingSoon}>
-                            <span tabIndex={0}>
-                                <M3Checkbox
-                                    checked={false}
-                                    disabled
-                                    label={`${t('tenants.permissions.card.caseHandover.enforceOption')}: ${t(
-                                        'tenants.permissions.card.caseHandover.optOutMessage',
-                                    )}`}
-                                />
-                            </span>
-                        </Tooltip>
-                        <span className={styles.featureLabel}>
-                            {t('tenants.permissions.card.caseHandover.optOutMessage')}
-                        </span>
-                        <Tooltip title={comingSoon}>
-                            <span tabIndex={0}>
-                                <M3Switch
-                                    checked={false}
-                                    disabled
-                                    label={t('tenants.permissions.card.caseHandover.optOutMessage')}
-                                />
-                            </span>
-                        </Tooltip>
+                        <PermissionPolicyControl
+                            featureKey="caseHandoverEnabled"
+                            label={t('tenants.permissions.card.caseHandover.enabled')}
+                            level={policyLevel}
+                            policy={
+                                permissionPolicies?.caseHandoverEnabled ?? {
+                                    value: moduleEnabled,
+                                    mode: canEdit ? 'SUGGESTED' : 'ENFORCED',
+                                    inherited: !canEdit,
+                                }
+                            }
+                            open={currentOpenPolicyMenu === 'caseHandoverEnabled'}
+                            pending={pendingPolicyFields?.has('caseHandoverEnabled')}
+                            disabled={isSaving}
+                            onOpenChange={(open) => setOpenPolicyMenu(open ? 'caseHandoverEnabled' : null)}
+                            onChange={(next) => {
+                                onFeaturePolicyChange?.('caseHandoverEnabled', next);
+                                onModuleEnabledChange(next.value);
+                            }}
+                        />
                     </div>
 
                     <div
@@ -186,7 +174,8 @@ export const CaseHandoverCardView = ({
                                                 activeReason.isPlaceholder ||
                                                 !activePolicy ||
                                                 !canEdit ||
-                                                !moduleEnabled
+                                                !moduleEnabled ||
+                                                isSaving
                                             }
                                             label={`${t(
                                                 'tenants.permissions.card.caseHandover.consentClient',
@@ -198,6 +187,26 @@ export const CaseHandoverCardView = ({
                                     </span>
                                 </Tooltip>
                             </div>
+                            {activeReason.code === 'COUNSELLOR_ASKED_FOR_ADVICE' && (
+                                <div className={styles.durationField}>
+                                    <M3DurationField
+                                        label={t('tenants.permissions.card.caseHandover.maxSessionDuration')}
+                                        value={activePolicy?.maxAccessDurationMinutes ?? 180}
+                                        readOnly={
+                                            !activePolicy ||
+                                            !canEdit ||
+                                            !moduleEnabled ||
+                                            activeReason.isPlaceholder ||
+                                            isSaving
+                                        }
+                                        onChange={(minutes) => {
+                                            if (activePolicy && minutes !== undefined) {
+                                                onMaxAccessDurationChange(activePolicy.code, minutes);
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            )}
                             <div className={cardStyles.toggleRow}>
                                 <span className={cardStyles.toggleLabel}>
                                     {t('tenants.permissions.card.caseHandover.consentAdvisor')}
@@ -238,7 +247,7 @@ export const CaseHandoverCardView = ({
                                     className={`${styles.languageChip} ${isActive ? styles.languageChipActive : ''}`}
                                     onClick={() => setActiveLanguage(language)}
                                 >
-                                    {t(`tenants.permissions.card.caseHandover.language.${language}`)}
+                                    {t(`language.${language}`)}
                                 </button>
                             );
                         })}
@@ -247,14 +256,14 @@ export const CaseHandoverCardView = ({
                     {activeReason &&
                         (() => {
                             const draftKey = `${activeReason.code}|${activeLanguage}`;
-                            const storedTemplate = getNotificationTemplate(
-                                activePolicy,
-                                activeReason.code,
-                                activeLanguage,
-                            );
+                            const storedTemplate = getNotificationTemplate(activePolicy, activeLanguage);
                             const value = templateDrafts[draftKey] ?? storedTemplate;
                             const editable =
-                                canEdit && moduleEnabled && !activeReason.isPlaceholder && Boolean(activePolicy);
+                                canEdit &&
+                                moduleEnabled &&
+                                !activeReason.isPlaceholder &&
+                                Boolean(activePolicy) &&
+                                !isSaving;
                             const commitDraft = () => {
                                 const draft = templateDrafts[draftKey];
                                 if (draft === undefined || draft.trim() === storedTemplate.trim()) {
@@ -268,7 +277,7 @@ export const CaseHandoverCardView = ({
                                 });
                             };
                             const fieldLabel = `${t('tenants.permissions.card.caseHandover.systemNotification')} (${t(
-                                `tenants.permissions.card.caseHandover.language.${activeLanguage}`,
+                                `language.${activeLanguage}`,
                             )})`;
                             return (
                                 <div className={styles.notificationField}>
@@ -290,16 +299,15 @@ export const CaseHandoverCardView = ({
                                         }
                                         onBlur={commitDraft}
                                     />
-                                    <p className={styles.notificationFieldHint}>
-                                        {t('tenants.permissions.card.caseHandover.templateHint', {
-                                            newAdvisor: '{{newAdvisor}}',
-                                        })}
-                                    </p>
                                 </div>
                             );
                         })()}
 
-                    <p className={styles.enforceHint}>{t('tenants.permissions.card.caseHandover.enforceHint')}</p>
+                    <p className={styles.templateHintBelow}>
+                        {t('tenants.permissions.card.caseHandover.templateHint', {
+                            newAdvisor: '{{newAdvisor}}',
+                        })}
+                    </p>
 
                     <div className={styles.footerActions}>
                         <Tooltip title={comingSoon}>
@@ -307,18 +315,6 @@ export const CaseHandoverCardView = ({
                                 <button type="button" className={styles.footerTextButton} disabled>
                                     <ConfigureIcon />
                                     {t('tenants.permissions.card.caseHandover.configure')}
-                                </button>
-                            </span>
-                        </Tooltip>
-                        <Tooltip title={comingSoon}>
-                            <span tabIndex={0}>
-                                <button
-                                    type="button"
-                                    className={`${styles.footerTextButton} ${styles.footerTextButtonPrimary}`}
-                                    disabled
-                                >
-                                    <EnforceIcon />
-                                    {t('tenants.permissions.card.caseHandover.enforce')}
                                 </button>
                             </span>
                         </Tooltip>
