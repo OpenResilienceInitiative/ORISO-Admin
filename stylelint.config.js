@@ -78,6 +78,13 @@ module.exports = {
         "except": [
           "after-single-line-comment",
           "first-nested"
+        ],
+        // A comment directly above a rule documents it; forcing a blank line
+        // between them separates the explanation from its subject. "except"
+        // only covers single-line comments, so multi-line doc comments need
+        // this ignore.
+        "ignore": [
+          "after-comment"
         ]
       }
     ],
