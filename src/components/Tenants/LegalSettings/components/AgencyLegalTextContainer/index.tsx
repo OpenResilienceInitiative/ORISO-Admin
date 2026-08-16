@@ -8,6 +8,9 @@ import { usePublishDepartmentImprint } from '../../../../../hooks/usePublishDepa
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
+import { useUserPermissions } from '../../../../../hooks/useUserPermission';
+import { PermissionAction } from '../../../../../enums/PermissionAction';
+import { Resource } from '../../../../../enums/Resource';
 import { AgencyData } from '../../../../../types/agency';
 import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '../DepartmentSelect';
@@ -48,6 +51,10 @@ export const AgencyLegalTextContainer = ({
     saving,
 }: AgencyLegalTextContainerProps) => {
     const { t } = useTranslation();
+    const { can } = useUserPermissions();
+    // #609: this editor used to have no permission check at all. It is the same
+    // right the Träger-level cards ask for, one rung down the ladder.
+    const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const [selected, setSelected] = useState<number | typeof ALL_DEPARTMENTS>(ALL_DEPARTMENTS);
 
     const agencyId = Number(agencyData?.id);
@@ -171,6 +178,7 @@ export const AgencyLegalTextContainer = ({
             initialContentByLanguage={contentByLanguage}
             languages={languages}
             publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : undefined}
+            readOnly={!canEditLegalText}
             onSave={onSave}
             saving={saving || departmentPublish.isPending}
             onTranslate={translate}

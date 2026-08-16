@@ -4,6 +4,9 @@ import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.
 import { usePublishDepartmentImprint } from '../../../../../hooks/usePublishDepartmentImprint.hook';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
+import { useUserPermissions } from '../../../../../hooks/useUserPermission';
+import { PermissionAction } from '../../../../../enums/PermissionAction';
+import { Resource } from '../../../../../enums/Resource';
 import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
 
@@ -20,6 +23,8 @@ export const DepartmentImprintContainer = ({
     const { mutate: publish, isPending } = usePublishDepartmentImprint(agencyId, topicId);
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
+    const { can } = useUserPermissions();
+    const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions({
         level: 'department',
         agencyId,
@@ -44,6 +49,7 @@ export const DepartmentImprintContainer = ({
             publicationStatus={data?.publicationStatus}
             versions={versions}
             versionsUnavailable={versionsUnavailable}
+            readOnly={!canEditLegalText}
             onSave={(content, doPublish) => publish({ content, publish: doPublish })}
             saving={isPending}
             onTranslate={translate}
