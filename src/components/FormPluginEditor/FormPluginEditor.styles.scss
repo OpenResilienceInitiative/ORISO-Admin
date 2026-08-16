@@ -14,8 +14,8 @@
 
 .RichEditor {
     &-root {
-        background: #fff;
-        border-color: #0009 !important;
+        background: #ffffff;
+        border-color: #00000099 !important;
         font-size: 14px;
     }
 
@@ -37,17 +37,17 @@
         }
 
         .RichEditor-blockquote {
-            border-left: 5px solid #eee;
-            color: #666;
-            font-family: 'Hoefler Text', 'Georgia', serif;
+            border-left: 5px solid #eeeeee;
+            color: #666666;
+            font-family: 'Hoefler Text', Georgia, serif;
             font-style: italic;
             margin: 16px 0;
             padding: 10px 20px;
         }
 
         .public-DraftStyleDefault-pre {
-            background-color: rgba(0, 0, 0, 0.05);
-            font-family: 'Inconsolata', 'Menlo', 'Consolas', monospace;
+            background-color: rgb(0 0 0 / 5%);
+            font-family: Inconsolata, Menlo, Consolas, monospace;
             font-size: 16px;
             padding: 20px;
         }
@@ -68,7 +68,7 @@
 
         &-placeholder {
             &-tooltip .ant-tooltip-inner {
-                color: #000;
+                color: #000000;
             }
         }
 
@@ -83,7 +83,7 @@
     &-controls {
         width: 100%;
         padding: 15px 20px;
-        border-bottom: 1px solid #0009;
+        border-bottom: 1px solid #00000099;
     }
 
     &-control-group,
@@ -97,7 +97,7 @@
 
     &-controls,
     &-control-group {
-        font-family: 'Helvetica', sans-serif;
+        font-family: Helvetica, sans-serif;
         font-size: 14px;
         user-select: none;
         display: flex;
@@ -119,7 +119,7 @@
     }
 
     &-styleButton {
-        color: #999;
+        color: #999999;
         cursor: pointer;
         margin-right: 16px;
         padding: 2px 0;
@@ -131,13 +131,19 @@
     }
 
     &-activeButton {
-        background: rgba(0, 0, 0, 0.1);
+        background: rgb(0 0 0 / 10%);
     }
 }
 
 // Anchor navigation: horizontal, scrollable chip row above the editor
 // content (turns into a swipeable tag row on narrow screens) + the
 // BubbleMenu box for linking selected text to an anchor.
+//
+// Not a real duplicate of the `.RichEditor` block above: both contain only
+// `&-…` rules, so the emitted selectors are disjoint and `.RichEditor`
+// itself is never emitted. stylelint compares the literal selector because
+// postcss-scss does not resolve `&` concatenation.
+// stylelint-disable-next-line no-duplicate-selectors
 .RichEditor {
     &-anchorNav {
         display: flex;
@@ -145,7 +151,7 @@
         flex-wrap: nowrap;
         gap: 4px;
         padding: 8px 12px;
-        border-bottom: 1px solid #0009;
+        border-bottom: 1px solid #00000099;
 
         .ant-tag {
             margin-inline-end: 0;
@@ -195,7 +201,7 @@
         }
 
         &:hover {
-            background: rgba(68, 71, 72, 0.08);
+            background: rgb(68 71 72 / 8%);
         }
     }
 
@@ -258,11 +264,11 @@
     }
 
     &-anchorBubble {
-        background: #fff;
+        background: #ffffff;
         border: 1px solid #d9d9d9;
         border-radius: 6px;
         padding: 4px;
-        box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08);
+        box-shadow: 0 3px 6px -4px rgb(0 0 0 / 12%), 0 6px 16px 0 rgb(0 0 0 / 8%);
     }
 }
 
@@ -276,7 +282,7 @@
 // Inline code chip vs dark code-block panel (same look as the M3 editor).
 .ProseMirror code {
     padding: 1px 6px;
-    background: rgba(100, 109, 120, 0.15);
+    background: rgb(100 109 120 / 15%);
     border-radius: 6px;
     font-family: 'SF Mono', 'Cascadia Mono', Consolas, Menlo, monospace;
     font-size: 0.85em;
@@ -338,10 +344,10 @@
     }
 }
 
-.ProseMirror p.is-editor-empty:first-child::before {
+.ProseMirror p.is-editor-empty:first-child:before {
     content: attr(data-placeholder);
     float: left;
     height: 0;
-    color: rgba(0, 0, 0, 0.4);
+    color: rgb(0 0 0 / 40%);
     pointer-events: none;
 }

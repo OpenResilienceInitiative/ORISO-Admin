@@ -35,6 +35,7 @@ import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
+import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -237,14 +238,28 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     );
 
     const onSaveCard = useCallback(
-        (formData, options?: { onError?: () => void }) => {
+        (formData, options?: { onError?: () => void; form?: ReturnType<typeof Form.useForm>[0] }) => {
             // Card forms deliberately submit only their own nested fields. Passing a
             // full snapshot here lets a fast follow-up card save re-send stale nulls
             // before the invalidated agency query has completed, wiping the previous
             // card. useAgencyUpdate merges this narrow patch into its latest cache.
             mutate(formData, {
-                onError: () => {
+                onError: async (error) => {
                     options?.onError?.();
+                    const validationError = await parseAgencyFieldValidationError(error);
+                    if (validationError && options?.form) {
+                        const message = t(validationError.translationKey);
+                        options.form.setFields([{ name: validationError.fieldName, errors: [message] }]);
+                        options.form.scrollToField(validationError.fieldName, { focus: true });
+                        return;
+                    }
+
+                    if (error instanceof Response && error.status === 400) {
+                        notification.error({
+                            message: t('message.error.default'),
+                            duration: 8,
+                        });
+                    }
                 },
                 onSuccess: () => {
                     notification.success({

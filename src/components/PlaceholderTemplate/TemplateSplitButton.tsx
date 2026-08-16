@@ -20,6 +20,8 @@ export interface TemplateSplitButtonProps {
     onCreateFromTemplate?: (id: number | string) => void;
     /** Main-segment press (e.g. open a manage dialog). Optional in the pure picker. */
     onMainClick?: () => void;
+    /** Read-only surfaces keep the chooser visible but inert. */
+    disabled?: boolean;
 }
 
 const SELECT_PREFIX = 'select:';
@@ -38,6 +40,7 @@ export const TemplateSplitButton = ({
     onSelectTemplate,
     onCreateFromTemplate,
     onMainClick,
+    disabled = false,
 }: TemplateSplitButtonProps) => {
     const { t } = useTranslation();
     const active = templates.find((template) => template.id === activeTemplateId);
@@ -106,6 +109,7 @@ export const TemplateSplitButton = ({
 
     return (
         <SplitButton
+            disabled={disabled}
             icon={<DescriptionOutlinedIcon />}
             label={active?.name ?? t('placeholderTemplate.template.none', 'Vorlage wählen')}
             menu={menu}

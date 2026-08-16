@@ -37,6 +37,12 @@ export interface PlaceholderTemplateEditorProps<V extends Record<string, string>
     onManageTemplates?: () => void;
     /** Live preview column, computed by the variant from the current values. */
     preview: ReactNode;
+    /**
+     * Read-only surface (no edit permission, or looking at an archived version):
+     * fields, token pickers and the template chooser go inert. They stay visible —
+     * hiding them would also hide what this level offers.
+     */
+    readOnly?: boolean;
 }
 
 /**
@@ -58,12 +64,14 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
     onCreateFromTemplate,
     onManageTemplates,
     preview,
+    readOnly = false,
 }: PlaceholderTemplateEditorProps<V>) => (
     <section aria-label={heading} className={styles.editor}>
         <header className={styles.header}>
             <h3 className={styles.heading}>{heading}</h3>
             <TemplateSplitButton
                 activeTemplateId={activeTemplateId}
+                disabled={readOnly}
                 templates={templates}
                 onCreateFromTemplate={onCreateFromTemplate}
                 onMainClick={onManageTemplates}
@@ -75,6 +83,7 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
                 {fields.map((field) => (
                     <PlaceholderTextField
                         key={field.name}
+                        disabled={readOnly}
                         label={field.label}
                         multiline={field.multiline}
                         rows={field.rows}

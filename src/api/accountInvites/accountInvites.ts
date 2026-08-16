@@ -140,16 +140,24 @@ export interface TemplateRequestDTO {
 export const accountInviteAcceptBaseUrl = `${appURL.replace(/\/$/, '')}/account-invite`;
 /** Public Admin onboarding page — the accept target for tenant-admin invites (TEN-INV U8, #571). */
 export const tenantAdminOnboardingAcceptBaseUrl = `${appURL.replace(/\/$/, '')}${routePathNames.tenantOnboarding}`;
+/** Public Admin wizard — the accept target for counsellor invites (#997). */
+export const counsellorOnboardingAcceptBaseUrl = `${appURL.replace(/\/$/, '')}${routePathNames.counsellorOnboarding}`;
 
 /**
- * Accept base URL by invited role (TEN-INV U6/U8, #569/#571/UserService#890):
- * the emailed link is `{acceptBaseUrl}/{rawToken}`. A tenant admin completes
- * the invite on the PUBLIC ADMIN onboarding route (the tenant is an
- * organisation, not an app user); every other role keeps the app-layer
- * `/account-invite` route.
+ * Accept base URL by invited role (TEN-INV U6/U8, #569/#571/UserService#890;
+ * #997): the emailed link is `{acceptBaseUrl}/{rawToken}`. A tenant admin
+ * completes the invite on the PUBLIC ADMIN onboarding route (the tenant is an
+ * organisation, not an app user); a counsellor completes it on the PUBLIC
+ * ADMIN wizard (#997 product decision — step-by-step in the Admin SPA); every
+ * other role keeps the app-layer `/account-invite` route. NOTE: the backend
+ * decides the real link server-side (TEN-INV-U6) — this mirror exists for the
+ * UI's link previews and must stay in sync with InviteAcceptUrlBuilder.
  */
-export const acceptBaseUrlForRole = (targetRole: AccountInviteTargetRole): string =>
-    targetRole === 'TENANT_ADMIN' ? tenantAdminOnboardingAcceptBaseUrl : accountInviteAcceptBaseUrl;
+export const acceptBaseUrlForRole = (targetRole: AccountInviteTargetRole): string => {
+    if (targetRole === 'TENANT_ADMIN') return tenantAdminOnboardingAcceptBaseUrl;
+    if (targetRole === 'COUNSELLOR') return counsellorOnboardingAcceptBaseUrl;
+    return accountInviteAcceptBaseUrl;
+};
 export { accountInvitesEndpoint };
 
 const normalizeAllocatedId = (

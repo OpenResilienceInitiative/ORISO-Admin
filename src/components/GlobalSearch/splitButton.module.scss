@@ -7,6 +7,7 @@
  * geometry. Sizes measured off the Figma symbols (node ids 57994:15752/16184/
  * 15860/15968/16076).
  */
+
 .splitButton {
     /* Medium (default): 56px pill, Figma 57994:15860 */
     --sb-height: 56px;
@@ -23,7 +24,7 @@
     --sb-icon: 24px;
     --sb-chevron-width: 56px;
     --sb-chevron-icon: 26px;
-    --sb-touch-extend: 0px; /* XS/S visuals are < 48px; the hit area is not */
+    --sb-touch-extend: 0; /* XS/S visuals are < 48px; the hit area is not */
 
     display: inline-flex;
     align-items: stretch;
@@ -31,7 +32,6 @@
 }
 
 /* ---- Size scale (Figma 57994-15744) ------------------------------------- */
-
 .xsmall {
     --sb-height: 32px;
     --sb-radius: 16px;
@@ -70,6 +70,7 @@
 
 /* Medium is the base rule set above; the class still exists so the size is
    always explicit in the DOM (and testable). */
+
 .medium {
     --sb-height: 56px;
 }
@@ -109,7 +110,6 @@
 }
 
 /* ---- Segments ------------------------------------------------------------ */
-
 .segment {
     position: relative;
     display: inline-flex;
@@ -129,7 +129,7 @@
 }
 
 /* XS/S render below 48px but must keep the 48px M3 touch target. */
-.segment::before {
+.segment:before {
     content: '';
     position: absolute;
     inset: calc(var(--sb-touch-extend) * -1) 0;
@@ -202,6 +202,7 @@
 
 /* Pressed: 10% state layer + the spec's shape morph — the pressed segment's
    inner corners round up (Figma "Leading/Trailing state=Pressed"). */
+
 .splitButton:not(.disabled) .segment:not(:disabled):active {
     background: color-mix(in srgb, var(--m3-on-surface-variant, #444748) 10%, transparent);
 }
@@ -216,12 +217,14 @@
 
 /* A single-action pill has no inner corners, so the pressed morph does not
    apply — it stays fully rounded. */
+
 .splitButton:not(:has(.chevron)):not(.disabled) .main:not(:disabled):active {
     border-radius: var(--sb-radius);
 }
 
 /* Open: the chevron flips up and its segment morphs to the fully rounded
    shape (Figma "Trailing state=Selected"). */
+
 .open .chevronIcon {
     transform: rotate(180deg);
 }
@@ -235,9 +238,10 @@
    shadow so button and sheet read as one surface. A permanently raised button
    claimed a state it was not in. The one exception is the `elevated` VARIANT
    below, whose identity per the spec sheet is a resting shadow. */
+
 .open .segment {
-    box-shadow: 0 1px 3px 1px color-mix(in srgb, var(--m3-shadow, #000) 15%, transparent),
-        0 1px 2px color-mix(in srgb, var(--m3-shadow, #000) 30%, transparent);
+    box-shadow: 0 1px 3px 1px color-mix(in srgb, var(--m3-shadow, #000000) 15%, transparent),
+        0 1px 2px color-mix(in srgb, var(--m3-shadow, #000000) 30%, transparent);
 }
 
 /* ---- Colour variants (sheet: Filled / Tonal / Outlined / Elevated) ------- */
@@ -255,16 +259,17 @@
 }
 
 .filled:not(.disabled) .segment:not(:disabled):hover {
-    background: color-mix(in srgb, var(--m3-on-primary, #fff) 8%, var(--m3-primary, #a5000a));
+    background: color-mix(in srgb, var(--m3-on-primary, #ffffff) 8%, var(--m3-primary, #a5000a));
 }
 
 .filled:not(.disabled) .segment:not(:disabled):active {
-    background: color-mix(in srgb, var(--m3-on-primary, #fff) 10%, var(--m3-primary, #a5000a));
+    background: color-mix(in srgb, var(--m3-on-primary, #ffffff) 10%, var(--m3-primary, #a5000a));
 }
 
 /* Tonal: the M3 secondary container (alias: `secondary`). Everything that is
    NOT the selected item / main CTA rests here — the send button before the
    form is valid, and the bulk-selection counter. */
+
 .tonal .segment {
     border-color: transparent;
     background: var(--m3-secondary-container, #646d78);
@@ -274,6 +279,7 @@
 /* Not-ready is still the secondary container (owner call), so the disabled
    treatment dims the CONTENT instead of fading the whole pill — at 38% opacity
    on a slate fill the label and the send glyph vanished altogether. */
+
 .tonal .segment:disabled {
     opacity: 1;
     color: color-mix(in srgb, var(--m3-on-secondary-container, #e7effc) 78%, var(--m3-secondary-container, #646d78));
@@ -298,12 +304,13 @@
 /* Elevated: light container with primary content AND a resting shadow — the
    only variant that rests raised, because that is its point (spec sheet
    "Style=Elevated"). Do not use it for pickers that merely sit on a bar. */
+
 .elevated .segment {
     border-color: transparent;
     background: var(--m3-surface-container-low, #f6f3f3);
     color: var(--m3-primary, #a5000a);
-    box-shadow: 0 1px 3px 1px color-mix(in srgb, var(--m3-shadow, #000) 15%, transparent),
-        0 1px 2px color-mix(in srgb, var(--m3-shadow, #000) 30%, transparent);
+    box-shadow: 0 1px 3px 1px color-mix(in srgb, var(--m3-shadow, #000000) 15%, transparent),
+        0 1px 2px color-mix(in srgb, var(--m3-shadow, #000000) 30%, transparent);
 }
 
 .elevated:not(.disabled) .segment:not(:disabled):hover {
@@ -323,13 +330,14 @@
 
 /* The dropdown sheet. antd renders it in a portal, so everything below is
    scoped through the overlay class the SplitButton hands to `Dropdown`. */
+
 .menuOverlay {
     :global(.ant-dropdown-menu) {
         padding: 8px;
         border-radius: 16px;
         background: var(--m3-surface-container-low, #f6f3f3);
-        box-shadow: 0 4px 8px 3px color-mix(in srgb, var(--m3-shadow, #000) 15%, transparent),
-            0 1px 3px color-mix(in srgb, var(--m3-shadow, #000) 30%, transparent);
+        box-shadow: 0 4px 8px 3px color-mix(in srgb, var(--m3-shadow, #000000) 15%, transparent),
+            0 1px 3px color-mix(in srgb, var(--m3-shadow, #000000) 30%, transparent);
     }
 
     /* Two-line group header: what the list is for, then what it lists. */
@@ -352,6 +360,7 @@
 
 /* Ordinal badge before each selectable entry, so a list of user-named
    templates can still be referred to by position. */
+
 .menuIndex {
     display: inline-flex;
     width: 20px;
@@ -370,11 +379,12 @@
 
 /* "Create new …" is the one entry that adds something, so it is the one entry
    that carries a container instead of sitting flush like the rest. */
+
 .menuCreate {
     /* Derived from the secondary container rather than a new hex: the light
        slate-blue of the Figma sheet without adding a token the scheme has no
        role for. */
-    background: color-mix(in srgb, var(--m3-secondary-container, #646d78) 18%, #fff) !important;
+    background: color-mix(in srgb, var(--m3-secondary-container, #646d78) 18%, #ffffff) !important;
     color: var(--m3-primary, #a5000a) !important;
     font-weight: 500;
 }
@@ -386,6 +396,7 @@
 
 /* Third segment: the pill's right end moves to it, so the middle chevron
    becomes a straight-sided divider between the two. */
+
 .splitButton .collapse {
     border-radius: var(--sb-radius-inner) var(--sb-radius) var(--sb-radius) var(--sb-radius-inner);
 }
