@@ -1,5 +1,5 @@
 import { FormInstance, Typography } from 'antd';
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ThemeProvider } from '@mui/material/styles';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
@@ -14,8 +14,11 @@ interface DocumentMasterDataCardProps {
     /** Stored master data; undefined while loading. */
     data?: DpiaMasterData;
     isLoading?: boolean;
-    /** Persists the whole record (the endpoint replaces it as one document). */
-    onSave: (data: DpiaMasterData) => void;
+    /**
+     * Persists the whole record (the endpoint replaces it as one document).
+     * `options.onError` is handed down by `CardEditable` to reopen editing on a failed save.
+     */
+    onSave: (data: DpiaMasterData, options?: { onError?: () => void }) => void;
     /**
      * ORISO design rule: superadmin-only settings are never hidden, only disabled.
      * Pass true for everyone else — the card renders greyed out and read-only.
@@ -30,17 +33,24 @@ interface DocumentMasterDataCardProps {
  * remount once the 60s staleTime expired, or the sanitized record the save returns — never
  * reaches the fields on its own. Since the card saves the *whole* record, stale fields are
  * not just a display bug: saving would write the outdated copy back over someone else's
- * change. Syncing only outside editing keeps an in-flight edit safe, and the ref guard means
- * merely leaving edit mode never re-pushes values the admin has just submitted.
+ * change.
+ *
+ * Two records must never be pushed. One that arrives mid-edit would overwrite what the admin
+ * is typing, so syncing pauses while `editing`. And the record that was current when they hit
+ * save is the copy their submission supersedes — applying it on the way out of edit mode
+ * would visibly revert the save until the response lands. `skipped` names that exact object,
+ * so any genuinely newer record still syncs, whatever order the updates arrive in.
  */
 const SyncLoadedRecord = ({
     form,
     values,
     editing,
+    skipped,
 }: {
     form: FormInstance;
     values: Record<string, unknown>;
     editing: boolean;
+    skipped: React.MutableRefObject<Record<string, unknown> | null>;
 }) => {
     const lastSynced = useRef(values);
 
@@ -49,8 +59,11 @@ const SyncLoadedRecord = ({
             return;
         }
         lastSynced.current = values;
+        if (values === skipped.current) {
+            return;
+        }
         form.setFieldsValue(values);
-    }, [form, values, editing]);
+    }, [form, values, editing, skipped]);
 
     return null;
 };
@@ -81,6 +94,16 @@ export const DocumentMasterDataCard = ({ data, isLoading, onSave, disabled }: Do
     // `SyncLoadedRecord` pushes them into the live form.
     const seedKey = `dpia-master-data-${isLoading ? 'loading' : 'ready'}-${disabled ? 'ro' : 'rw'}`;
 
+    // The record the submission supersedes — see `SyncLoadedRecord`.
+    const supersededRecord = useRef<Record<string, unknown> | null>(null);
+    const handleSave = useCallback(
+        (formData: DpiaMasterData, options?: { onError?: () => void }) => {
+            supersededRecord.current = initialValues;
+            onSave(formData, options);
+        },
+        [onSave, initialValues],
+    );
+
     const legalFrameworkOptions = useMemo(
         () => [
             { value: 'KDG', label: t('globalSettings.documentMasterData.legalFramework.kdg') },
@@ -100,14 +123,19 @@ export const DocumentMasterDataCard = ({ data, isLoading, onSave, disabled }: Do
                 initialValues={initialValues}
                 titleKey="globalSettings.documentMasterData.title"
                 subTitleKey="globalSettings.documentMasterData.description"
-                onSave={onSave}
+                onSave={handleSave}
                 editButtonPlacement="footer"
                 allowEdit={!disabled}
                 allowUnsavedChanges
             >
                 {({ form, editing }) => (
                     <>
-                        <SyncLoadedRecord form={form} values={initialValues} editing={editing} />
+                        <SyncLoadedRecord
+                            form={form}
+                            values={initialValues}
+                            editing={editing}
+                            skipped={supersededRecord}
+                        />
                         <div className={styles.sections}>
                             <section className={styles.section}>
                                 <Typography.Text strong className={styles.sectionTitle}>
@@ -230,7 +258,19 @@ export const DocumentMasterDataCard = ({ data, isLoading, onSave, disabled }: Do
                                                 <MuiNumberFormField
                                                     label={figureLabel}
                                                     name={['keyFigures', figure, 'count']}
+                                                    // `min` is only the native input attribute, which a
+                                                    // scripted submit walks straight past — the rule is what
+                                                    // actually keeps a negative count out of the record.
                                                     min={0}
+                                                    rules={[
+                                                        {
+                                                            type: 'number',
+                                                            min: 0,
+                                                            message: t(
+                                                                'globalSettings.documentMasterData.keyFigures.count.negative',
+                                                            ),
+                                                        },
+                                                    ]}
                                                 />
                                                 <MuiFormField
                                                     // Each of the four date fields needs its own accessible name — a

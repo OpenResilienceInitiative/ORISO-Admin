@@ -144,6 +144,35 @@ describe('DocumentMasterDataCard', () => {
         expect(screen.getByLabelText(label('operator.shortName'))).toHaveValue('Half-typed');
     });
 
+    /**
+     * A refetch that lands *while* the admin is editing is held back, and must stay held back
+     * once they save: applying it on the way out of edit mode would drop what they submitted
+     * back to the pre-save record until the response arrives.
+     */
+    it('does not fall back to the pre-save record after saving', async () => {
+        const user = userEvent.setup({ delay: null });
+        const onSave = vi.fn();
+        const { rerender } = render(<DocumentMasterDataCard data={storedData} onSave={onSave} />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const shortName = screen.getByLabelText(label('operator.shortName'));
+        await user.clear(shortName);
+        await user.type(shortName, 'Caritas');
+
+        // A refetch lands mid-edit and is deferred.
+        rerender(
+            <DocumentMasterDataCard
+                data={{ ...storedData, operator: { ...storedData.operator, shortName: 'Stale server copy' } }}
+                onSave={onSave}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+
+        expect(screen.getByLabelText(label('operator.shortName'))).toHaveValue('Caritas');
+    });
+
     it('saves the edited values in the grouped shape the endpoint expects', async () => {
         const user = userEvent.setup({ delay: null });
         const onSave = vi.fn();
@@ -163,6 +192,23 @@ describe('DocumentMasterDataCard', () => {
             document: { nextReviewDate: '2027-06-01' },
             keyFigures: { tenants: { count: 12 } },
         });
+    });
+
+    /** The native `min` attribute does not survive a scripted submit, so the rule has to. */
+    it('rejects a negative key figure instead of saving it', async () => {
+        const user = userEvent.setup({ delay: null });
+        const onSave = vi.fn();
+        render(<DocumentMasterDataCard data={storedData} onSave={onSave} />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+
+        const tenants = screen.getByLabelText(label('keyFigures.tenants'));
+        await user.clear(tenants);
+        await user.type(tenants, '-1');
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        await waitFor(() => expect(screen.getByText(label('keyFigures.count.negative'))).toBeInTheDocument());
+        expect(onSave).not.toHaveBeenCalled();
     });
 
     it('rejects an invalid contact address instead of saving it', async () => {

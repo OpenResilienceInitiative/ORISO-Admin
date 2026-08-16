@@ -1813,6 +1813,7 @@
     "globalSettings.documentMasterData.keyFigures.activeCounsellors": "Aktive Beratende",
     "globalSettings.documentMasterData.keyFigures.registeredClients": "Registrierte Ratsuchende",
     "globalSettings.documentMasterData.keyFigures.asOfDate": "Stichtag — {{figure}}",
+    "globalSettings.documentMasterData.keyFigures.count.negative": "Bitte null oder eine positive Zahl eingeben.",
     "tenants.erstantwort.title": "Erstantwort",
     "tenants.erstantwort.description": "Diese Texte schreibt Ihr Träger in eigener Stimme. Alles andere in der Erstantwort — die Antwortfrist als Satz, der Hinweis „keine persönlichen Daten senden“ und die Notfallnummern — wird aus der Konfiguration erzeugt und lässt sich hier bewusst nicht überschreiben: Was das System weiß, schreibt das System.",
     "tenants.erstantwort.deadline.label": "Antwortfrist in Werktagen",

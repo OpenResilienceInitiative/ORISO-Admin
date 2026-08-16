@@ -1813,6 +1813,7 @@
     "globalSettings.documentMasterData.keyFigures.activeCounsellors": "Active counsellors",
     "globalSettings.documentMasterData.keyFigures.registeredClients": "Registered clients",
     "globalSettings.documentMasterData.keyFigures.asOfDate": "As of date — {{figure}}",
+    "globalSettings.documentMasterData.keyFigures.count.negative": "Enter zero or a positive number.",
     "tenants.erstantwort.title": "First response",
     "tenants.erstantwort.description": "Your organisation writes these texts in its own voice. Everything else in the first response — the deadline sentence, the \"send us no personal data\" notice and the emergency numbers — is rendered from configuration and deliberately cannot be overridden here: what the system knows, the system writes.",
     "tenants.erstantwort.deadline.label": "Response deadline in working days",
