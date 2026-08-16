@@ -14,3 +14,10 @@
  */
 
 $from-xl: 1200px;
+
+/* The width at which multi-column form and table layouts collapse to a single
+ * column. 767px is already the de-facto value across the modules (the DataTable
+ * family calls it "the app-wide mobile breakpoint"); naming it here stops the
+ * next surface from picking its own 760 or 770 and collapsing a few pixels away
+ * from everything else on the same page. */
+$to-mobile: 767px;

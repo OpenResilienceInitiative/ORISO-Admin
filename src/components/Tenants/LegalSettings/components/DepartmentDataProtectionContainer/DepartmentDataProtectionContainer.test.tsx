@@ -14,8 +14,15 @@ const { useDepartmentDpp, publishMutate, useTranslation, useTenantAdminData } = 
 vi.mock('react-i18next', () => ({ useTranslation }));
 vi.mock('../../../../../hooks/useDepartmentDpp.hook', () => ({ useDepartmentDpp }));
 vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminData }));
+// The version history is an independent react-query call; this suite has no client.
+vi.mock('../../../../../hooks/useLegalTextVersions.hook', () => ({ useLegalTextVersions: () => ({ data: [] }) }));
 vi.mock('../../../../../hooks/usePublishDepartmentDpp.hook', () => ({
     usePublishDepartmentDpp: () => ({ mutate: publishMutate, isPending: false }),
+}));
+// #609: the container now asks whether the admin may change legal content. The real
+// hook needs tenant data and app config; this suite is about the content mapping.
+vi.mock('../../../../../hooks/useUserPermission', () => ({
+    useUserPermissions: () => ({ can: () => true, permissions: {} }),
 }));
 
 // Stub the card to a plain node that echoes props and exposes onSave.
@@ -80,7 +87,9 @@ describe('DepartmentDataProtectionContainer', () => {
         });
         // active languages + stored fr, but never the metadata key
         expect(card).toHaveAttribute('data-languages', 'de,en,fr');
-        expect(card).toHaveAttribute('data-default-language', 'de');
+        // The container no longer forces the admin's UI language on the editor — the card
+        // opens on the legal source language itself (#718).
+        expect(card).not.toHaveAttribute('data-default-language');
         expect(card).toHaveAttribute('data-status', 'PUBLISHED');
         expect(card).toHaveAttribute('data-name', 'Sucht');
     });

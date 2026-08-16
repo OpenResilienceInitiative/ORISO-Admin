@@ -2,6 +2,7 @@
  * Fixing the bar to the viewport is the layout's job, not the component's —
  * the same split the desktop sidebar uses (protectedLayout.less).
  */
+
 .bar {
     position: fixed;
     // Above the page's own sticky header (z-index 900) — a paginator scrolling

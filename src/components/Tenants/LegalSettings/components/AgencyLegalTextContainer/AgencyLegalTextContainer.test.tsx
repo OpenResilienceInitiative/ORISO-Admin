@@ -6,6 +6,7 @@ const h = vi.hoisted(() => ({
     useDepartmentDpp: vi.fn(),
     refetch: vi.fn(),
     card: vi.fn(),
+    canEditLegalText: vi.fn(() => true),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -25,6 +26,9 @@ vi.mock('../../../../../hooks/useSingleTenantData', () => ({ useSingleTenantData
 vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminData: () => ({ data: undefined }) }));
 vi.mock('../../../../../hooks/useTranslateLegalContent.hook', () => ({
     useTranslateLegalContent: () => ({ translate: vi.fn() }),
+}));
+vi.mock('../../../../../hooks/useUserPermission', () => ({
+    useUserPermissions: () => ({ can: h.canEditLegalText, permissions: {} }),
 }));
 vi.mock('../DepartmentDataProtectionCard', () => ({
     DepartmentDataProtectionCard: (props: any) => {
@@ -57,6 +61,7 @@ describe('AgencyLegalTextContainer', () => {
     beforeEach(() => {
         h.useDepartmentDpp.mockReset();
         h.card.mockReset();
+        h.canEditLegalText.mockReset().mockReturnValue(true);
     });
 
     it('edits the agency-wide text before a department is chosen', () => {
@@ -156,5 +161,70 @@ describe('AgencyLegalTextContainer', () => {
         await selectDepartment('U25 Suizidprävention');
 
         expect(h.card.mock.calls.at(-1)?.[0].initialContentByLanguage).toEqual({ de: '<p>agency wide</p>' });
+    });
+
+    /**
+     * #609: this editor shipped without any permission check, so an admin who may not
+     * change legal content was still offered publish and draft-save.
+     */
+    it('hands the card a read-only state when the admin may not change legal content', () => {
+        h.canEditLegalText.mockReturnValue(false);
+        h.useDepartmentDpp.mockReturnValue({ data: undefined, isLoading: false, isError: false, isSuccess: true });
+
+        renderContainer();
+
+        expect(h.card.mock.calls.at(-1)?.[0].readOnly).toBe(true);
+    });
+
+    it('leaves the card editable when the admin may', () => {
+        h.useDepartmentDpp.mockReturnValue({ data: undefined, isLoading: false, isError: false, isSuccess: true });
+
+        renderContainer();
+
+        expect(h.card.mock.calls.at(-1)?.[0].readOnly).toBe(false);
+    });
+
+    /**
+     * #583: the switcher marks who has left the inherited text. The two kinds have separate
+     * flags — a Fachbereich with its own imprint may still inherit the privacy policy, and
+     * showing the wrong one would tell the admin the opposite of the truth.
+     */
+    describe('marks departments that carry their own text', () => {
+        const withDepartments = (field: 'privacy' | 'imprint') => {
+            h.useDepartmentDpp.mockReturnValue({ data: undefined, isLoading: false, isError: false, isSuccess: true });
+            return render(
+                <AgencyLegalTextContainer
+                    agencyData={{
+                        ...agencyData,
+                        topics: [
+                            { id: 3, name: 'U25 Suizidprävention' },
+                            { id: 4, name: 'Schuldnerberatung' },
+                        ],
+                        departments: [
+                            { topicId: 3, hasPublishedDpp: true, hasPublishedImprint: false },
+                            { topicId: 4, hasPublishedDpp: false, hasPublishedImprint: true },
+                        ],
+                    }}
+                    field={field}
+                    onSaveAgencyWide={vi.fn()}
+                />,
+            );
+        };
+
+        it('uses the data-protection flag on the privacy editor', async () => {
+            withDepartments('privacy');
+            await userEvent.click(screen.getByRole('button', { name: /agency.legal.department.choose/i }));
+
+            expect(await screen.findByTestId('own-text-3')).toBeInTheDocument();
+            expect(screen.queryByTestId('own-text-4')).not.toBeInTheDocument();
+        });
+
+        it('uses the imprint flag on the imprint editor', async () => {
+            withDepartments('imprint');
+            await userEvent.click(screen.getByRole('button', { name: /agency.legal.department.choose/i }));
+
+            expect(await screen.findByTestId('own-text-4')).toBeInTheDocument();
+            expect(screen.queryByTestId('own-text-3')).not.toBeInTheDocument();
+        });
     });
 });

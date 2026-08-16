@@ -40,7 +40,8 @@ export const DEFAULT_PERMISSION_SETTINGS = {
     featureMediaInlineDisplayOneOnOneChatsEnabled: true,
     featureMediaInlineDisplayGroupChatsEnabled: true,
     featureMediaInlineDisplaySupervisionChatsEnabled: true,
-    // AI scan is opt-in: off until the content-scanner pipeline is deployed (ADR-014/015)
+    // AI scan is opt-in: off until the content-scanner pipeline is deployed and
+    // its sub-processor agreement is signed (ADR-019/015, docs/media-ai-scan-enablement.md)
     featureMediaAiScanEnabled: false,
     featureMediaAiScanAnonymousChatsEnabled: false,
     featureMediaAiScanOneOnOneChatsEnabled: false,

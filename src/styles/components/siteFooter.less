@@ -46,6 +46,7 @@
        under a grey page. */
     padding: @spacing-sm;
     background: transparent;
+
     /* Inherited by the standalone language trigger, whose hover tint and focus
        ring follow `currentColor`. Below @screen-xl the stage variant is an
        ordinary in-flow footer on the light surface, so it takes the light
@@ -55,6 +56,7 @@
     .footerMenu {
         padding-left: 0;
         border-bottom: 0;
+
         /*
          * ONE row — the defect the 100%-zoom review found was the MENU folding
          * ("Impressum Datenschutz" on one line, the language entry on the next).
@@ -82,8 +84,8 @@
  */
 
 .layoutFooter .footerMenu.ant-menu-horizontal {
-    > .ant-menu-item::after,
-    > .ant-menu-submenu::after {
+    > .ant-menu-item:after,
+    > .ant-menu-submenu:after {
         border-bottom: 0;
     }
 }
@@ -98,6 +100,7 @@
         left: 0;
         width: 40vw;
         justify-content: flex-start;
+
         /* Same gutter as the stage panel's own padding (`@stage-gutter`), so the
            footer stays flush under the claim. It tightens below ~1500px because
            40vw is simply not wide enough there for a fixed 80px gutter AND a

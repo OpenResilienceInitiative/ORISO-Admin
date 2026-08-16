@@ -32,6 +32,7 @@ import { initObservability } from './observability/initObservability';
 import { PasswordResetRequestPage } from './pages/PasswordReset/PasswordResetRequestPage';
 import { PasswordResetConfirmPage } from './pages/PasswordReset/PasswordResetConfirmPage';
 import { TenantAdminOnboardingPage } from './pages/TenantOnboarding/TenantAdminOnboardingPage';
+import { CounsellorOnboardingPage } from './pages/CounsellorOnboarding/CounsellorOnboardingPage';
 
 // OBS-P8 (ORISO-Helm#62): start Real User Monitoring (Core Web Vitals) export
 // to SigNoz as early as possible, before the app renders.
@@ -131,6 +132,16 @@ root.render(
                                     element={<TenantAdminOnboardingPage />}
                                 />
                                 <Route path={routePathNames.tenantOnboarding} element={<TenantAdminOnboardingPage />} />
+                                {/* Public counsellor onboarding wizard (#997): reached from the
+                                    emailed counsellor invite link {base}/{rawToken}. */}
+                                <Route
+                                    path={`${routePathNames.counsellorOnboarding}/:token`}
+                                    element={<CounsellorOnboardingPage />}
+                                />
+                                <Route
+                                    path={routePathNames.counsellorOnboarding}
+                                    element={<CounsellorOnboardingPage />}
+                                />
                                 <Route path="/admin/404" element={<Error404 />} />
                                 <Route path="/admin/access-denied" element={<AccessDenied />} />
 

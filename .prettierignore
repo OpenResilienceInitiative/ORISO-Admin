@@ -11,6 +11,9 @@ stylelint.config.js
 craco.config.js
 src/resources/animations
 build
+storybook-static
+.claude/settings.local.json
+.claude/worktrees
 .understand-anything
 # Backend-generated e-mail fixtures (ORISO-UserService#914). They are byte-for-byte what the
 # UserService renders and sends; reformatting them here would be exactly the post-processing the

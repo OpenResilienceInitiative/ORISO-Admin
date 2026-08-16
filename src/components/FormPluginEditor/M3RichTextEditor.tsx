@@ -85,6 +85,14 @@ export type M3RichTextEditorProps = {
     versions?: EditorVersion[];
     /** Called with a version's content when the admin restores it as a new draft (copy). */
     onRestoreVersion?: (content: string) => void;
+    /**
+     * The version currently being looked at, or `null` for the editable draft.
+     * A card whose document has more fields than this editor's body — the DPP and
+     * its consent sentence (ADR-021 decision 4) — needs this to switch those fields
+     * to the same version, so a look-back never shows an archived policy next to
+     * today's consent wording.
+     */
+    onViewVersionChange?: (versionId: string | null) => void;
     onChange?: (html: string) => void;
     placeholder?: string;
     /**
@@ -610,6 +618,7 @@ export const M3RichTextEditor = ({
     value = '',
     versions = [],
     onRestoreVersion,
+    onViewVersionChange,
     onChange,
     placeholder = 'Text eingeben …',
     placeholders,
@@ -654,6 +663,13 @@ export const M3RichTextEditor = ({
         });
     // Which saved version is being viewed (null = the editable current draft).
     const [viewingVersionId, setViewingVersionId] = useState<string | null>(null);
+    // Single entry point for the switch, so every path that changes what the editor
+    // shows also tells the card — a version selected here but not there would put an
+    // archived body next to a live consent sentence.
+    const viewVersion = (versionId: string | null) => {
+        setViewingVersionId(versionId);
+        onViewVersionChange?.(versionId);
+    };
     const viewingVersion = versions.find((v) => v.id === viewingVersionId) ?? null;
     // What the editor surface shows: a looked-at version, else the live draft.
     const displayedContent = viewingVersion ? viewingVersion.content : value;
@@ -711,7 +727,11 @@ export const M3RichTextEditor = ({
     useEffect(() => {
         if (viewingVersionId && !versions.some((v) => v.id === viewingVersionId)) {
             setViewingVersionId(null);
+            onViewVersionChange?.(null);
         }
+        // `onViewVersionChange` is intentionally not a dependency: an inline callback
+        // would re-run this reset on every render of the parent.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [versions, viewingVersionId]);
 
     useEffect(() => {
@@ -842,13 +862,13 @@ export const M3RichTextEditor = ({
                                 className={styles.outlineBtn}
                                 onClick={() => {
                                     onRestoreVersion(viewingVersion.content);
-                                    setViewingVersionId(null);
+                                    viewVersion(null);
                                 }}
                             >
                                 {t('legal.m3Editor.restoreVersion')}
                             </button>
                         )}
-                        <button type="button" className={styles.outlineBtn} onClick={() => setViewingVersionId(null)}>
+                        <button type="button" className={styles.outlineBtn} onClick={() => viewVersion(null)}>
                             {t('legal.m3Editor.backToDraft')}
                         </button>
                     </div>
@@ -1026,8 +1046,21 @@ export const M3RichTextEditor = ({
                                                   };
                                               }),
                                           ]
-                                        : [{ key: 'latest', label: t('legal.m3Editor.versionLatest') }],
-                                onClick: ({ key }) => setViewingVersionId(key === 'current' ? null : key),
+                                        : // Never published: say so explicitly instead of
+                                          // offering a menu that looks broken (#768).
+                                          [
+                                              {
+                                                  key: 'empty',
+                                                  disabled: true,
+                                                  label: (
+                                                      <span className={styles.versionMenuHeader}>
+                                                          {t('legal.m3Editor.versionEmpty')}
+                                                      </span>
+                                                  ),
+                                              },
+                                              { key: 'latest', label: t('legal.m3Editor.versionLatest') },
+                                          ],
+                                onClick: ({ key }) => viewVersion(key === 'current' ? null : key),
                             }}
                         />
                     )}
@@ -1055,8 +1088,13 @@ export const M3RichTextEditor = ({
                             <button
                                 type="button"
                                 className={`${styles.textBtn} ${styles.draft}`}
-                                disabled={imageUpload.uploading}
-                                aria-busy={imageUpload.uploading}
+                                // `publishing` means "a submit is in flight" for every consumer
+                                // of this shell (see LegalText/DataProcessingAgreement*/Dpia*),
+                                // not specifically "the publish button was clicked" — so it must
+                                // also block a second, overlapping draft save while one is
+                                // already pending, the same way it already blocks Publish.
+                                disabled={publishing || imageUpload.uploading}
+                                aria-busy={publishing || imageUpload.uploading}
                                 onClick={() => onSaveDraft(html())}
                             >
                                 <EditIcon />
