@@ -87,7 +87,7 @@
     .appearancePage {
         --dialog-card-height: clamp(500px, 64vh, 640px);
         --card-deck-gap: 16px;
-        --card-deck-item-max-width: calc(100vw - 144px);
+        --card-deck-item-max-width: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
 
         min-height: auto;
         justify-content: flex-start;

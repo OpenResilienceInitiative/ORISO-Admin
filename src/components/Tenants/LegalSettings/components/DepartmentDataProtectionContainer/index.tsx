@@ -1,9 +1,12 @@
 import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useDepartmentDpp } from '../../../../../hooks/useDepartmentDpp.hook';
+import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
 import { usePublishDepartmentDpp } from '../../../../../hooks/usePublishDepartmentDpp.hook';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
+import { useUserPermissions } from '../../../../../hooks/useUserPermission';
+import { PermissionAction } from '../../../../../enums/PermissionAction';
+import { Resource } from '../../../../../enums/Resource';
 import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
 
@@ -25,15 +28,26 @@ export const DepartmentDataProtectionContainer = ({
     topicId,
     departmentName,
 }: DepartmentDataProtectionContainerProps) => {
-    const { i18n } = useTranslation();
-    const lang = i18n.language?.split('-')[0] || 'de';
-
     const { data, isLoading } = useDepartmentDpp(agencyId, topicId);
     const { mutate: publish, isPending } = usePublishDepartmentDpp(agencyId, topicId);
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
+    const { can } = useUserPermissions();
+    const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
+    const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions({
+        level: 'department',
+        agencyId,
+        topicId,
+        kind: 'dpp',
+    });
 
     const contentByLanguage = useMemo(() => parseLegalContentMap(data?.content), [data?.content]);
+    // `undefined` (backend without the field) must stay `undefined` — the card uses
+    // exactly that to decide whether the consent editor may be offered at all.
+    const consentByLanguage = useMemo(
+        () => (data && data.consentText !== undefined ? parseLegalContentMap(data.consentText) : undefined),
+        [data],
+    );
     const languages = useMemo(
         () => getEditableLanguages(tenantData?.settings?.activeLanguages, contentByLanguage),
         [tenantData?.settings?.activeLanguages, contentByLanguage],
@@ -49,10 +63,15 @@ export const DepartmentDataProtectionContainer = ({
             key={`${agencyId}-${topicId}-${data?.content ?? ''}`}
             departmentName={departmentName}
             initialContentByLanguage={contentByLanguage}
+            consentByLanguage={consentByLanguage}
             languages={languages}
-            defaultLanguage={lang}
             publicationStatus={data?.publicationStatus}
-            onSave={(contentByLang, doPublish) => publish({ content: contentByLang, publish: doPublish })}
+            versions={versions}
+            versionsUnavailable={versionsUnavailable}
+            readOnly={!canEditLegalText}
+            onSave={(contentByLang, doPublish, consentByLang) =>
+                publish({ content: contentByLang, publish: doPublish, consentText: consentByLang })
+            }
             saving={isPending}
             onTranslate={translate}
         />

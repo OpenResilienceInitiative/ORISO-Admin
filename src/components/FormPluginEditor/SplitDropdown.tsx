@@ -9,6 +9,12 @@ export type SplitDropdownProps = {
     label: React.ReactNode;
     menu: MenuProps;
     title?: string;
+    /**
+     * Read-only surfaces keep the control visible but inert (admin design rule:
+     * disable, never hide — a picker that vanishes hides what the level offers).
+     * Also blocks opening the menu while a save that a switch could race is in flight.
+     */
+    disabled?: boolean;
 };
 
 /**
@@ -17,16 +23,17 @@ export type SplitDropdownProps = {
  * button switches to the elevated state (Figma 1280-73042). Used for the lower
  * function bar of the legal editors (language / topic / version).
  */
-export const SplitDropdown = ({ icon, label, menu, title }: SplitDropdownProps) => {
+export const SplitDropdown = ({ icon, label, menu, title, disabled = false }: SplitDropdownProps) => {
     const [open, setOpen] = useState(false);
     return (
-        <Dropdown trigger={['click']} menu={menu} onOpenChange={setOpen}>
+        <Dropdown trigger={['click']} menu={menu} onOpenChange={setOpen} disabled={disabled}>
             <button
                 type="button"
-                className={`${styles.versionSplit} ${open ? styles.splitOpen : ''}`}
+                className={`${styles.versionSplit} ${open && !disabled ? styles.splitOpen : ''}`}
                 title={title}
+                disabled={disabled}
                 aria-label={typeof title === 'string' ? title : undefined}
-                aria-expanded={open}
+                aria-expanded={open && !disabled}
             >
                 <span className={styles.versionLeading}>
                     {icon}

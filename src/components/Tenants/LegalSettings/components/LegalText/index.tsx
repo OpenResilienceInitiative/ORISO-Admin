@@ -1,5 +1,5 @@
 import set from 'lodash.set';
-import { Spin } from 'antd';
+import { Alert, Spin } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
@@ -7,6 +7,13 @@ import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor'
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
 import { useLegalHelp } from '../../hooks/useLegalHelp';
+import { useLegalDraft } from '../../hooks/useLegalDraft';
+import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
+import { LegalConsentField } from '../LegalConsentField';
+import { LegalDraftNotice } from '../LegalDraftNotice';
+import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
+import { toEditorVersions } from '../../utils/legalVersionOptions';
+import { useViewedLegalVersion } from '../../hooks/useViewedLegalVersion';
 import { isEmptyLegalContent } from '../../utils/legalHelpTexts';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { useUserData } from '../../../../../hooks/useUserData.hook';
@@ -85,11 +92,12 @@ export const LegalText = ({
     showConfirmationModal,
     placeholders,
 }: LegalTextProps) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const locale = i18n?.language?.split('-')[0] || 'de';
     const { can } = useUserPermissions();
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const { data, isLoading, mutate: updateTenant, isPending } = useTenantAppearanceFormData(`${tenantId}`);
-    const { data: userData } = useUserData();
+    const { data: userData, isLoading: isUserLoading } = useUserData();
     // Persist dismissal only once the opaque user id is known (same pattern as DPA).
     const dismissalScope = userData?.id ? `${tenantId}:${userData.id}` : undefined;
     const [activeLanguage, setActiveLanguage] = useState('de');
@@ -99,19 +107,42 @@ export const LegalText = ({
     const [hintHidden, setHintHidden] = useState(() =>
         legalType && dismissalScope ? isHintDismissed(legalType, dismissalScope) : false,
     );
+    const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
+    const [publishBlocked, setPublishBlocked] = useState(false);
+
+    // Version look-back for the Träger-level text (ADR-021 decision 3). Empty
+    // until the history endpoints of #250 are deployed — the card then behaves
+    // exactly as it did before. A genuine failure (403, 500, network) is NOT an
+    // empty history and is reported as such.
+    const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions(
+        { level: 'tenant', tenantId: Number(tenantId), kind: legalType === 'imprint' ? 'imprint' : 'privacy' },
+        !!legalType,
+    );
+    // Keeps the consent sentence on the same version as the body shown above it.
+    const {
+        onViewVersionChange,
+        viewedConsent,
+        isViewingVersion,
+        reset: resetViewedVersion,
+    } = useViewedLegalVersion(versions);
 
     const languages = useMemo(() => {
         const configured = data?.settings?.activeLanguages;
         return configured && configured.length > 0 ? configured : ['de'];
     }, [data?.settings?.activeLanguages]);
 
-    const editorIdentity = `${tenantId}:${fieldName.join('.')}`;
+    // The signed-in account is part of the editor identity: a user change must drop
+    // this session's edits, never hand them to the next account.
+    const editorIdentity = `${tenantId}:${fieldName.join('.')}:${dismissalScope ?? ''}`;
     useEffect(() => {
         setEdits({});
+        setConsentEdits({});
+        setPublishBlocked(false);
         setPendingFormData(undefined);
         setModalVisible(false);
         setActiveLanguage('de');
-    }, [editorIdentity]);
+        resetViewedVersion();
+    }, [editorIdentity, resetViewedVersion]);
 
     // The initial 'de' can be unavailable once the tenant's languages arrive (e.g.
     // an English-only tenant); fall back to the first configured language then.
@@ -128,10 +159,19 @@ export const LegalText = ({
         [data, fieldName],
     );
 
-    // The complete language map: stored languages (unknown keys included) with the
-    // local edits on top. Legacy plain-string content has no language split — keep
-    // it under the first configured language so it is shown and preserved on publish
-    // (otherwise an untouched card would overwrite the stored string with {}).
+    // Writing here publishes straight to the live text, so the admin needs somewhere to
+    // park unfinished wording. Until the backend has draft state this is device-local —
+    // LegalDraftNotice says so. Without a legalType (no card identity) there is no draft.
+    const { draft, savedAt, saveDraft, discardDraft } = useLegalDraft(
+        legalType ?? 'privacy',
+        legalType ? dismissalScope : undefined,
+    );
+
+    // The complete language map: stored languages (unknown keys included), then the
+    // saved draft, then this session's edits on top. Legacy plain-string content has no
+    // language split — keep it under the first configured language so it is shown and
+    // preserved on publish (otherwise an untouched card would overwrite the stored
+    // string with {}).
     const contentByLanguage = useMemo<Record<string, string>>(() => {
         let base: Record<string, string> = {};
         if (storedContent && typeof storedContent === 'object') {
@@ -139,8 +179,66 @@ export const LegalText = ({
         } else if (typeof storedContent === 'string' && storedContent !== '') {
             base = { [languages[0]]: storedContent };
         }
-        return { ...base, ...edits };
-    }, [storedContent, edits, languages]);
+        // A viewer who may not edit must never see unpublished local content: the
+        // draft notice and its discard action are hidden for them, so they could
+        // neither recognise nor remove it. Show the published text only.
+        if (!canEditLegalText) {
+            return base;
+        }
+        return { ...base, ...(draft?.content ?? {}), ...edits };
+    }, [canEditLegalText, storedContent, draft, edits, languages]);
+
+    /**
+     * The consent sentence that belongs to the Träger privacy policy (ADR-021
+     * decision 4 — a FIELD of the policy, not a document of its own).
+     *
+     * TODO(#250): `content.privacyConsent` is the TenantService counterpart of the
+     * AgencyService field built on branch `feat/legal-text-versioning-250`; align
+     * the property name once that PR settles the contract. `undefined` means the
+     * deployed backend has no such field, and the consent editor is not offered —
+     * an input that cannot be persisted is worse than none.
+     */
+    const storedConsent = (data?.content as Record<string, unknown> | undefined)?.privacyConsent;
+    const consentEnabled = legalType === 'privacy' && storedConsent !== undefined;
+    const consentByLanguage = useMemo<Record<string, string>>(() => {
+        const base =
+            storedConsent && typeof storedConsent === 'object' ? (storedConsent as Record<string, string>) : {};
+        // Same rule as the policy body: a viewer who may not edit sees the published
+        // sentence only — they can neither recognise nor discard a local draft.
+        if (!canEditLegalText) {
+            return base;
+        }
+        return { ...base, ...(draft?.consent ?? {}), ...consentEdits };
+    }, [canEditLegalText, storedConsent, draft, consentEdits]);
+    const blockedLanguages = useMemo(
+        () => (consentEnabled ? consentPublicationBlockers(consentByLanguage) : []),
+        [consentEnabled, consentByLanguage],
+    );
+
+    // Looking back means looking back at the WHOLE document: the consent sentence
+    // archived with that policy version, not today's. Read-only, because the
+    // published chain is append-only — editing happens on the current draft.
+    const consentDisplay = viewedConsent ?? consentByLanguage;
+    const consentReadOnly = !canEditLegalText || isViewingVersion;
+
+    const editorVersions = useMemo(
+        () => toEditorVersions(versions, activeLanguage, locale, t('tenants.legal.version.current')),
+        [versions, activeLanguage, locale, t],
+    );
+
+    // Discarding drops the stored draft AND this session's unsaved edits — otherwise the
+    // editor would still show the text the admin just asked to throw away. If the draft
+    // could NOT be removed, the edits stay: the error says the draft is still there, so
+    // silently wiping the work typed since the last save would be the worse lie.
+    const discardDraftAndEdits = useCallback(() => {
+        if (discardDraft()) {
+            setEdits({});
+            // The consent sentence is part of the same draft — leaving the in-memory
+            // edit behind would keep showing exactly the wording just discarded.
+            setConsentEdits({});
+            setPublishBlocked(false);
+        }
+    }, [discardDraft]);
 
     const help = useLegalHelp(legalType ?? 'privacy', {
         empty: isEmptyLegalContent(storedContent),
@@ -153,28 +251,63 @@ export const LegalText = ({
 
     const showHintSnackbar = !!legalType && !hintHidden;
 
+    // A published text supersedes the draft it came from — keeping it would offer the
+    // admin a "restore" of what is already live.
+    const publishedOptions = useMemo(() => ({ onSuccess: () => discardDraft() }), [discardDraft]);
+
     const onConfirm = useCallback(() => {
-        updateTenant(set(pendingFormData, showConfirmationModal.field, false));
+        updateTenant(set(pendingFormData, showConfirmationModal.field, false), publishedOptions);
         setModalVisible(false);
-    }, [pendingFormData, showConfirmationModal, updateTenant]);
+    }, [pendingFormData, publishedOptions, showConfirmationModal, updateTenant]);
 
     const onCancel = useCallback(() => {
-        updateTenant(set(pendingFormData, showConfirmationModal.field, true));
+        updateTenant(set(pendingFormData, showConfirmationModal.field, true), publishedOptions);
         setModalVisible(false);
-    }, [pendingFormData, showConfirmationModal, updateTenant]);
+    }, [pendingFormData, publishedOptions, showConfirmationModal, updateTenant]);
 
     const onPublish = useCallback(() => {
+        // Refuse before the request: an authored consent sentence without
+        // `{{legal_links}}` is rejected server-side (ADR-021 decision 2), and the
+        // admin should learn that from the editor, not from a failed publish.
+        if (blockedLanguages.length > 0) {
+            setPublishBlocked(true);
+            return;
+        }
+        setPublishBlocked(false);
         // The COMPLETE map goes out — languages the admin did not touch survive.
         const formData = set({}, fieldName, { ...contentByLanguage });
+        if (consentEnabled) {
+            set(formData, ['content', 'privacyConsent'], { ...consentByLanguage });
+        }
         if (showConfirmationModal) {
             setPendingFormData(formData);
             setModalVisible(true);
         } else {
-            updateTenant(formData);
+            updateTenant(formData, publishedOptions);
         }
-    }, [contentByLanguage, fieldName, showConfirmationModal, updateTenant]);
+    }, [
+        blockedLanguages,
+        consentByLanguage,
+        consentEnabled,
+        contentByLanguage,
+        fieldName,
+        publishedOptions,
+        showConfirmationModal,
+        updateTenant,
+    ]);
 
-    if (isLoading) {
+    // The consent map travels with the draft: storing only the body while reporting
+    // a successful save would silently drop the consent wording on the next reload.
+    const onSaveDraft = useCallback(
+        () => saveDraft({ ...contentByLanguage }, consentEnabled ? { ...consentByLanguage } : undefined),
+        [consentByLanguage, consentEnabled, contentByLanguage, saveDraft],
+    );
+
+    // Wait for the opaque user id too, but only where a draft is possible: mounting the
+    // editor first and letting the draft arrive later would remount it mid-edit and offer
+    // a save action that silently does nothing. A viewer without edit permission has no
+    // draft, so the published text must not wait on that query.
+    if (isLoading || (isUserLoading && canEditLegalText)) {
         return (
             <div className={styles.card}>
                 <Spin />
@@ -184,12 +317,22 @@ export const LegalText = ({
 
     return (
         <div className={styles.card}>
+            {canEditLegalText && <LegalDraftNotice savedAt={savedAt} onDiscard={discardDraftAndEdits} />}
             <M3RichTextEditor
                 title={t(titleKey)}
                 icon={icon}
                 readOnly={!canEditLegalText}
                 publishing={isPending}
                 versionLabel={t('legal.m3Editor.versionLabel')}
+                versions={editorVersions}
+                // Restore = copy into the active language's draft; the published
+                // chain stays append-only.
+                onRestoreVersion={
+                    canEditLegalText
+                        ? (html) => setEdits((current) => ({ ...current, [activeLanguage]: html }))
+                        : undefined
+                }
+                onViewVersionChange={onViewVersionChange}
                 languages={languages.map((language) => ({
                     value: language,
                     label: t(`language.${language}`),
@@ -224,11 +367,54 @@ export const LegalText = ({
                         : undefined
                 }
                 onPublish={canEditLegalText ? onPublish : undefined}
+                onSaveDraft={canEditLegalText && legalType && dismissalScope ? onSaveDraft : undefined}
                 belowSlot={
                     showConfirmationModal &&
                     modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
                 }
             />
+            {/* Under the editor, not inside its `belowSlot`: the M3 card is a fixed
+                800×740 deck card and clips visible slot content (same trap as the
+                aboveEditorSlot banner in #708). Still one card — policy + consent. */}
+            {consentEnabled && (
+                <LegalConsentField
+                    language={activeLanguage}
+                    readOnly={consentReadOnly}
+                    value={consentDisplay[activeLanguage] ?? ''}
+                    onChange={(next) => {
+                        setPublishBlocked(false);
+                        setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
+                    }}
+                />
+            )}
+            {/* A history that failed to load is not an empty history. Saying "no
+                version published yet" for a 403 or a 500 would be a false answer to
+                the exact question the look-back exists for. Editing stays possible. */}
+            {versionsUnavailable && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    data-testid="legal-versions-unavailable"
+                    message={t('legal.versions.unavailable.title')}
+                    description={t('legal.versions.unavailable.description')}
+                />
+            )}
+            {publishBlocked && (
+                <Alert
+                    type="error"
+                    showIcon
+                    data-testid="consent-publish-blocked"
+                    message={t('legal.consent.publishBlocked.title')}
+                    description={
+                        <>
+                            {t('legal.consent.publishBlocked.description', {
+                                languages: blockedLanguages.join(', '),
+                            })}{' '}
+                            <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
+                        </>
+                    }
+                />
+            )}
         </div>
     );
 };

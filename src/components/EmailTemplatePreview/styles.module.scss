@@ -74,7 +74,7 @@
 .token {
     display: inline;
     padding: 2px 5px;
-    background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, #fff);
+    background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, #ffffff);
     border-radius: 4px;
     color: var(--m3-primary, #a5000a);
     font-family: SFMono-Regular, Consolas, 'Liberation Mono', monospace;
@@ -86,7 +86,7 @@
     padding: 20px 16px;
     border: 1px solid color-mix(in srgb, var(--m3-primary, #a5000a) 30%, transparent);
     margin: 24px 0 12px;
-    background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, #fff);
+    background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, #ffffff);
     border-radius: 9px;
     color: var(--m3-primary, #a5000a);
     font-family: SFMono-Regular, Consolas, 'Liberation Mono', monospace;

@@ -50,6 +50,21 @@ export const WithMachineTranslation: Story = {
     render: (args) => <StatefulLanguageSelect {...args} />,
 };
 
+/**
+ * Languages that carry no content yet are labelled "… (noch kein Inhalt)" in the menu,
+ * so an admin sees the gap before publishing into the wrong language (#718).
+ */
+export const WithEmptyLanguage: Story = {
+    args: {
+        languages: ['de', 'en', 'ru'],
+        contentMap: {
+            de: '<p>Original</p>',
+            en: '',
+        } as Record<string, string>,
+    },
+    render: (args) => <StatefulLanguageSelect {...args} />,
+};
+
 /** With only one language the component renders nothing (nothing to switch). */
 export const SingleLanguageHidden: Story = {
     args: { languages: ['de'] },
