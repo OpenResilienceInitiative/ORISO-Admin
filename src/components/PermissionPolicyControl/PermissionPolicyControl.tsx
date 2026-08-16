@@ -102,7 +102,9 @@ export const PermissionPolicyControl = ({
                     disabled={pending}
                     onOpenChange={onOpenChange}
                     onSelect={select}
-                    openLabel={`${label}: ${t('tenants.permissions.policy.openMenu')}`}
+                    openLabel={`${label}: ${t('tenants.permissions.policy.openMenu')} – ${t(
+                        actionLabelKey(policy.value, policy.mode),
+                    )}`}
                     closeLabel={t('tenants.permissions.policy.closeMenu')}
                 />
             )}

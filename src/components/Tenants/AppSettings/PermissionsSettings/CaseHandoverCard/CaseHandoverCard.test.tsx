@@ -75,7 +75,7 @@ describe('CaseHandoverCard', () => {
 
         await user.click(
             screen.getByRole('button', {
-                name: 'tenants.permissions.card.activated: tenants.permissions.policy.openMenu',
+                name: 'tenants.permissions.card.activated: tenants.permissions.policy.openMenu – tenants.permissions.policy.activationSuggested',
             }),
         );
         await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));
@@ -186,7 +186,7 @@ describe('CaseHandoverCard', () => {
 
         const openMasterMenu = () =>
             screen.getByRole('button', {
-                name: 'tenants.permissions.card.activated: tenants.permissions.policy.openMenu',
+                name: 'tenants.permissions.card.activated: tenants.permissions.policy.openMenu – tenants.permissions.policy.activationSuggested',
             });
         await user.click(openMasterMenu());
         await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));

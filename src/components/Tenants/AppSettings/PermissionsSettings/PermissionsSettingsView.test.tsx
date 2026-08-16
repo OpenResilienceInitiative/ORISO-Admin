@@ -128,4 +128,36 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
         expect(screen.getByRole('dialog')).toBeTruthy();
         expect(document.querySelector('[data-admin-fab-menu-stack]')).toBeNull();
     });
+
+    it('uses false form values when an asker policy is absent from a partial response', () => {
+        render(
+            <PermissionsSettingsView
+                tenantId="t1"
+                excludeCardKeys={['liveChat', 'group', 'groupInternal']}
+                isLoading={false}
+                initialValues={{
+                    settings: {
+                        featureDisplayNameEditable: false,
+                        featureAskerEmailEnabled: false,
+                    },
+                }}
+                formStateKey="partial-asker"
+                restrictedFields={new Set()}
+                onToggleUpdate={vi.fn()}
+                onSave={vi.fn()}
+                permissionPolicies={{}}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.asker.displayName.label:.*tenants.permissions.policy.deactivationSuggested/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.asker.email.label:.*tenants.permissions.policy.deactivationSuggested/,
+            }),
+        ).toBeInTheDocument();
+    });
 });

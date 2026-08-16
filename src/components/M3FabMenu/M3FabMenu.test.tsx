@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { M3FabMenu, type M3FabMenuProps } from './M3FabMenu';
 
@@ -9,6 +9,8 @@ const items = [
     { key: 'settings', label: 'Einstellungen', to: '/admin/settings' },
     { key: 'tenants', label: 'Träger', to: '/admin/tenants' },
 ];
+
+const LocationProbe = () => <output data-testid="location">{useLocation().pathname}</output>;
 
 const Harness = (props: Partial<M3FabMenuProps>) => {
     const [open, setOpen] = useState(false);
@@ -108,6 +110,38 @@ describe('M3FabMenu', () => {
 
         expect(onSelect).toHaveBeenCalledWith('tenants');
         expect(screen.queryByRole('link', { name: 'Träger' })).not.toBeInTheDocument();
+    });
+
+    it('blocks open action items while a mutation is pending', async () => {
+        const onSelect = vi.fn();
+        render(
+            <MemoryRouter initialEntries={['/start']}>
+                <M3FabMenu
+                    items={[...items, { key: 'plain', label: 'Aktion' }]}
+                    open
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    variant="action"
+                    disabled
+                    onOpenChange={vi.fn()}
+                    onSelect={onSelect}
+                />
+                <LocationProbe />
+            </MemoryRouter>,
+        );
+
+        const link = screen.getByRole('link', { name: 'Träger' });
+        expect(link).toHaveAttribute('aria-disabled', 'true');
+        expect(link).toHaveAttribute('tabindex', '-1');
+        expect(screen.getByTestId('location')).toHaveTextContent('/start');
+        await userEvent.click(link);
+        expect(onSelect).not.toHaveBeenCalled();
+        expect(screen.getByTestId('location')).toHaveTextContent('/start');
+        link.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(onSelect).not.toHaveBeenCalled();
+        expect(screen.getByTestId('location')).toHaveTextContent('/start');
+        expect(screen.getByRole('button', { name: 'Aktion' })).toBeDisabled();
     });
 
     it('renders account entries after the destinations', async () => {

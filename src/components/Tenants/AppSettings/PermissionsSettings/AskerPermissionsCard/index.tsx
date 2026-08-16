@@ -36,7 +36,9 @@ export type AskerPermissionsCardProps = {
     restrictedFields: Set<string>;
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
+    fallbackValues?: Record<string, unknown>;
     pendingPolicyField?: string | null;
+    pendingPolicyFields?: ReadonlySet<string>;
     openPolicyMenu?: string | null;
     onOpenPolicyMenu?: (fieldKey: string | null) => void;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
@@ -46,7 +48,9 @@ export const AskerPermissionsCard = ({
     restrictedFields,
     policyLevel = 'tenant',
     permissionPolicies,
+    fallbackValues,
     pendingPolicyField,
+    pendingPolicyFields,
     openPolicyMenu,
     onOpenPolicyMenu,
     onPolicyChange,
@@ -58,7 +62,7 @@ export const AskerPermissionsCard = ({
        says who actually holds the decision. */
     const policyFor = (field: string): PolicyValue<boolean> =>
         permissionPolicies?.[field] ?? {
-            value: true,
+            value: fallbackValues?.[field] !== false,
             mode: restrictedFields.has(field) ? 'ENFORCED' : 'SUGGESTED',
             inherited: restrictedFields.has(field),
         };
@@ -70,7 +74,7 @@ export const AskerPermissionsCard = ({
             level={policyLevel}
             policy={policyFor(field)}
             open={openPolicyMenu === field}
-            pending={pendingPolicyField === field}
+            pending={pendingPolicyField === field || pendingPolicyFields?.has(field)}
             onOpenChange={(open) => onOpenPolicyMenu?.(open ? field : null)}
             onChange={(next) => onPolicyChange?.(field, next)}
         />

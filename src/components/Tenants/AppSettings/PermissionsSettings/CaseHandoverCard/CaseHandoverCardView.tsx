@@ -41,6 +41,7 @@ export type CaseHandoverCardViewProps = {
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     pendingPolicyField?: string | null;
+    pendingPolicyFields?: ReadonlySet<string>;
     openPolicyMenu?: string | null;
     onOpenPolicyMenu?: (fieldKey: string | null) => void;
     onFeaturePolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
@@ -67,6 +68,7 @@ export const CaseHandoverCardView = ({
     policyLevel = 'tenant',
     permissionPolicies,
     pendingPolicyField,
+    pendingPolicyFields,
     openPolicyMenu,
     onOpenPolicyMenu,
     onFeaturePolicyChange,
@@ -123,7 +125,10 @@ export const CaseHandoverCardView = ({
                                 }
                             }
                             open={currentOpenPolicyMenu === 'caseHandoverEnabled'}
-                            pending={pendingPolicyField === 'caseHandoverEnabled'}
+                            pending={
+                                pendingPolicyField === 'caseHandoverEnabled' ||
+                                pendingPolicyFields?.has('caseHandoverEnabled')
+                            }
                             onOpenChange={(open) => setOpenPolicyMenu(open ? 'caseHandoverEnabled' : null)}
                             onChange={(next) => {
                                 onFeaturePolicyChange?.('caseHandoverEnabled', next);
@@ -150,7 +155,10 @@ export const CaseHandoverCardView = ({
                                 }
                             }
                             open={currentOpenPolicyMenu === 'caseHandoverTeamAccessOptOut'}
-                            pending={pendingPolicyField === 'caseHandoverTeamAccessOptOut'}
+                            pending={
+                                pendingPolicyField === 'caseHandoverTeamAccessOptOut' ||
+                                pendingPolicyFields?.has('caseHandoverTeamAccessOptOut')
+                            }
                             onOpenChange={(open) => setOpenPolicyMenu(open ? 'caseHandoverTeamAccessOptOut' : null)}
                             onChange={(next) => onFeaturePolicyChange?.('caseHandoverTeamAccessOptOut', next)}
                         />

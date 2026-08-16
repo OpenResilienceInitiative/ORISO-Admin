@@ -1,4 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import {
@@ -13,17 +15,47 @@ import {
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
-import type { PolicyValue } from '../../../../types/permissionPolicy';
+import type { PolicyValue, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
 
 export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
+    const { t } = useTranslation();
     const { data: tenantData, isLoading } = useSingleTenantData({ id: tenantId });
-    const { data: permissionPolicyData, isLoading: policiesLoading } = useTenantPermissionPolicies(tenantId);
+    const {
+        data: permissionPolicyData,
+        isLoading: policiesLoading,
+        isError: policiesError,
+    } = useTenantPermissionPolicies(tenantId);
     const updatePermissionPolicies = useTenantPermissionPoliciesMutation(tenantId);
-    const [pendingPolicyField, setPendingPolicyField] = useState<string | null>(null);
+    const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
+    const [effectivePolicyData, setEffectivePolicyData] = useState<TenantPermissionPolicies | undefined>(
+        permissionPolicyData,
+    );
+    const confirmedPolicyData = useRef<TenantPermissionPolicies | undefined>(permissionPolicyData);
+    const pendingPolicyOperations = useRef<{ id: number; fieldKey: string; policy: PolicyValue<boolean> }[]>([]);
+    const nextPolicyOperationId = useRef(0);
+    const policyMutationQueue = useRef<Promise<void>>(Promise.resolve());
     const { mutate: updateTenantSettings } = useTenantAdminDataMutation({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
+
+    useEffect(() => {
+        if (permissionPolicyData && pendingPolicyOperations.current.length === 0) {
+            confirmedPolicyData.current = permissionPolicyData;
+            setEffectivePolicyData(permissionPolicyData);
+        }
+    }, [permissionPolicyData]);
+
+    const rebuildEffectivePolicyData = useCallback(() => {
+        const confirmed = confirmedPolicyData.current;
+        if (!confirmed) return;
+        const policies = pendingPolicyOperations.current.reduce(
+            (current, operation) => ({ ...current, [operation.fieldKey]: operation.policy }),
+            { ...confirmed.policies },
+        );
+        setEffectivePolicyData({ ...confirmed, policies });
+        setPendingPolicyFields(new Set(pendingPolicyOperations.current.map(({ fieldKey }) => fieldKey)));
+    }, []);
 
     const allowedPermissionToggles = tenantData?.settings?.tenantAdminControls?.allowedPermissionToggles;
     const enforcedPermissionToggles = tenantData?.settings?.tenantAdminControls?.enforcedPermissionToggles;
@@ -85,18 +117,38 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
 
     const handlePolicyChange = useCallback(
         (fieldKey: string, policy: PolicyValue<boolean>) => {
-            if (!permissionPolicyData) return;
-            setPendingPolicyField(fieldKey);
-            updatePermissionPolicies.mutate(
-                {
-                    ...permissionPolicyData,
-                    policies: { ...permissionPolicyData.policies, [fieldKey]: policy },
-                },
-                { onSettled: () => setPendingPolicyField(null) },
-            );
+            if (!confirmedPolicyData.current) return;
+            const operation = { id: nextPolicyOperationId.current, fieldKey, policy };
+            nextPolicyOperationId.current += 1;
+            pendingPolicyOperations.current.push(operation);
+            rebuildEffectivePolicyData();
+            const run = async () => {
+                const confirmed = confirmedPolicyData.current;
+                if (!confirmed) return;
+                const next = {
+                    ...confirmed,
+                    policies: { ...confirmed.policies, [fieldKey]: policy },
+                };
+                try {
+                    const saved = await updatePermissionPolicies.mutateAsync(next);
+                    confirmedPolicyData.current = saved;
+                } catch {
+                    // The mutation hook reports the error. Only confirmed server data is retained here.
+                } finally {
+                    pendingPolicyOperations.current = pendingPolicyOperations.current.filter(
+                        ({ id }) => id !== operation.id,
+                    );
+                    rebuildEffectivePolicyData();
+                }
+            };
+            policyMutationQueue.current = policyMutationQueue.current.then(run, run);
         },
-        [permissionPolicyData, updatePermissionPolicies],
+        [rebuildEffectivePolicyData, updatePermissionPolicies],
     );
+
+    if (policiesError) {
+        return <Alert type="error" message={t('error.loading')} showIcon role="alert" />;
+    }
 
     return (
         <PermissionsSettingsView
@@ -109,8 +161,8 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
             onToggleUpdate={handleToggleUpdate}
             onSave={handleSave}
             policyLevel="tenant"
-            permissionPolicies={permissionPolicyData?.policies}
-            pendingPolicyField={pendingPolicyField}
+            permissionPolicies={effectivePolicyData?.policies}
+            pendingPolicyFields={pendingPolicyFields}
             onPolicyChange={handlePolicyChange}
         />
     );

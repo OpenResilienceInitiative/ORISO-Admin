@@ -42,6 +42,7 @@ export type PermissionsSettingsViewProps = {
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     pendingPolicyField?: string | null;
+    pendingPolicyFields?: ReadonlySet<string>;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
 };
 
@@ -57,6 +58,7 @@ export const PermissionsSettingsView = ({
     policyLevel = 'tenant',
     permissionPolicies,
     pendingPolicyField,
+    pendingPolicyFields,
     onPolicyChange,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
@@ -73,6 +75,10 @@ export const PermissionsSettingsView = ({
                 inherited: restrictedFields.has(fieldKey),
             },
         [permissionPolicies, restrictedFields],
+    );
+    const policyPending = useCallback(
+        (fieldKey: string) => pendingPolicyField === fieldKey || pendingPolicyFields?.has(fieldKey) === true,
+        [pendingPolicyField, pendingPolicyFields],
     );
 
     const changePolicy = useCallback(
@@ -115,7 +121,9 @@ export const PermissionsSettingsView = ({
                                 restrictedFields={restrictedFields}
                                 policyLevel={policyLevel}
                                 permissionPolicies={permissionPolicies}
+                                fallbackValues={initialValues.settings as Record<string, unknown> | undefined}
                                 pendingPolicyField={pendingPolicyField}
+                                pendingPolicyFields={pendingPolicyFields}
                                 openPolicyMenu={openPolicyMenu}
                                 onOpenPolicyMenu={setOpenPolicyMenu}
                                 onPolicyChange={(fieldKey, next) =>
@@ -128,6 +136,7 @@ export const PermissionsSettingsView = ({
                                 policyLevel={policyLevel}
                                 permissionPolicies={permissionPolicies}
                                 pendingPolicyField={pendingPolicyField}
+                                pendingPolicyFields={pendingPolicyFields}
                                 openPolicyMenu={openPolicyMenu}
                                 onOpenPolicyMenu={setOpenPolicyMenu}
                                 onFeaturePolicyChange={(fieldKey, next) =>
@@ -168,7 +177,7 @@ export const PermissionsSettingsView = ({
                                                                 getFieldValue(masterField),
                                                             )}
                                                             open={openPolicyMenu === masterField[1]}
-                                                            pending={pendingPolicyField === masterField[1]}
+                                                            pending={policyPending(masterField[1])}
                                                             onOpenChange={(open) =>
                                                                 setOpenPolicyMenu(open ? masterField[1] : null)
                                                             }
@@ -231,7 +240,7 @@ export const PermissionsSettingsView = ({
                                                                     )}
                                                                     open={openPolicyMenu === toggle.field[1]}
                                                                     pending={
-                                                                        pendingPolicyField === toggle.field[1] ||
+                                                                        policyPending(toggle.field[1]) ||
                                                                         Boolean(unavailableHintKey) ||
                                                                         isSubToggleDisabled(
                                                                             card,

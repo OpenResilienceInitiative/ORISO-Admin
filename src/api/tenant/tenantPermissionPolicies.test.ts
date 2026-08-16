@@ -22,7 +22,11 @@ describe('tenant permission policy API', () => {
         );
         expect(fetchData).toHaveBeenNthCalledWith(
             2,
-            expect.objectContaining({ url: `${tenantAdminEndpoint}/7/permission-policies`, method: 'PUT' }),
+            expect.objectContaining({
+                url: `${tenantAdminEndpoint}/7/permission-policies`,
+                method: 'PUT',
+                bodyData: JSON.stringify({ tenantId: 7, policies: {} }),
+            }),
         );
     });
 });

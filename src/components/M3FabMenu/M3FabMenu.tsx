@@ -151,7 +151,13 @@ export const M3FabMenu = ({
                         className={itemClassName}
                         to={item.to}
                         aria-current={isActive ? 'page' : undefined}
-                        onClick={() => {
+                        aria-disabled={disabled || undefined}
+                        tabIndex={disabled ? -1 : undefined}
+                        onClick={(event) => {
+                            if (disabled) {
+                                event.preventDefault();
+                                return;
+                            }
                             onSelect?.(item.key);
                             close(false);
                         }}
@@ -170,6 +176,7 @@ export const M3FabMenu = ({
                     // Also on the button branch: which destination you are on
                     // must not depend on whether it was given a route.
                     aria-current={isActive ? 'page' : undefined}
+                    disabled={disabled}
                     onClick={() => {
                         onSelect?.(item.key);
                         close(false);
