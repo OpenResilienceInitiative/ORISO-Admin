@@ -13,6 +13,7 @@ import { LegalConsentField } from '../LegalConsentField';
 import { LegalDraftNotice } from '../LegalDraftNotice';
 import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
 import { toEditorVersions } from '../../utils/legalVersionOptions';
+import { useViewedLegalVersion } from '../../hooks/useViewedLegalVersion';
 import { isEmptyLegalContent } from '../../utils/legalHelpTexts';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { useUserData } from '../../../../../hooks/useUserData.hook';
@@ -111,11 +112,19 @@ export const LegalText = ({
 
     // Version look-back for the Träger-level text (ADR-021 decision 3). Empty
     // until the history endpoints of #250 are deployed — the card then behaves
-    // exactly as it did before.
-    const { data: versions = [] } = useLegalTextVersions(
+    // exactly as it did before. A genuine failure (403, 500, network) is NOT an
+    // empty history and is reported as such.
+    const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions(
         { level: 'tenant', tenantId: Number(tenantId), kind: legalType === 'imprint' ? 'imprint' : 'privacy' },
         !!legalType,
     );
+    // Keeps the consent sentence on the same version as the body shown above it.
+    const {
+        onViewVersionChange,
+        viewedConsent,
+        isViewingVersion,
+        reset: resetViewedVersion,
+    } = useViewedLegalVersion(versions);
 
     const languages = useMemo(() => {
         const configured = data?.settings?.activeLanguages;
@@ -132,7 +141,8 @@ export const LegalText = ({
         setPendingFormData(undefined);
         setModalVisible(false);
         setActiveLanguage('de');
-    }, [editorIdentity]);
+        resetViewedVersion();
+    }, [editorIdentity, resetViewedVersion]);
 
     // The initial 'de' can be unavailable once the tenant's languages arrive (e.g.
     // an English-only tenant); fall back to the first configured language then.
@@ -193,12 +203,23 @@ export const LegalText = ({
     const consentByLanguage = useMemo<Record<string, string>>(() => {
         const base =
             storedConsent && typeof storedConsent === 'object' ? (storedConsent as Record<string, string>) : {};
-        return { ...base, ...consentEdits };
-    }, [storedConsent, consentEdits]);
+        // Same rule as the policy body: a viewer who may not edit sees the published
+        // sentence only — they can neither recognise nor discard a local draft.
+        if (!canEditLegalText) {
+            return base;
+        }
+        return { ...base, ...(draft?.consent ?? {}), ...consentEdits };
+    }, [canEditLegalText, storedConsent, draft, consentEdits]);
     const blockedLanguages = useMemo(
         () => (consentEnabled ? consentPublicationBlockers(consentByLanguage) : []),
         [consentEnabled, consentByLanguage],
     );
+
+    // Looking back means looking back at the WHOLE document: the consent sentence
+    // archived with that policy version, not today's. Read-only, because the
+    // published chain is append-only — editing happens on the current draft.
+    const consentDisplay = viewedConsent ?? consentByLanguage;
+    const consentReadOnly = !canEditLegalText || isViewingVersion;
 
     const editorVersions = useMemo(
         () => toEditorVersions(versions, activeLanguage, locale, t('tenants.legal.version.current')),
@@ -212,6 +233,10 @@ export const LegalText = ({
     const discardDraftAndEdits = useCallback(() => {
         if (discardDraft()) {
             setEdits({});
+            // The consent sentence is part of the same draft — leaving the in-memory
+            // edit behind would keep showing exactly the wording just discarded.
+            setConsentEdits({});
+            setPublishBlocked(false);
         }
     }, [discardDraft]);
 
@@ -271,7 +296,12 @@ export const LegalText = ({
         updateTenant,
     ]);
 
-    const onSaveDraft = useCallback(() => saveDraft({ ...contentByLanguage }), [contentByLanguage, saveDraft]);
+    // The consent map travels with the draft: storing only the body while reporting
+    // a successful save would silently drop the consent wording on the next reload.
+    const onSaveDraft = useCallback(
+        () => saveDraft({ ...contentByLanguage }, consentEnabled ? { ...consentByLanguage } : undefined),
+        [consentByLanguage, consentEnabled, contentByLanguage, saveDraft],
+    );
 
     // Wait for the opaque user id too, but only where a draft is possible: mounting the
     // editor first and letting the draft arrive later would remount it mid-edit and offer
@@ -302,6 +332,7 @@ export const LegalText = ({
                         ? (html) => setEdits((current) => ({ ...current, [activeLanguage]: html }))
                         : undefined
                 }
+                onViewVersionChange={onViewVersionChange}
                 languages={languages.map((language) => ({
                     value: language,
                     label: t(`language.${language}`),
@@ -348,12 +379,24 @@ export const LegalText = ({
             {consentEnabled && (
                 <LegalConsentField
                     language={activeLanguage}
-                    readOnly={!canEditLegalText}
-                    value={consentByLanguage[activeLanguage] ?? ''}
+                    readOnly={consentReadOnly}
+                    value={consentDisplay[activeLanguage] ?? ''}
                     onChange={(next) => {
                         setPublishBlocked(false);
                         setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
                     }}
+                />
+            )}
+            {/* A history that failed to load is not an empty history. Saying "no
+                version published yet" for a 403 or a 500 would be a false answer to
+                the exact question the look-back exists for. Editing stays possible. */}
+            {versionsUnavailable && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    data-testid="legal-versions-unavailable"
+                    message={t('legal.versions.unavailable.title')}
+                    description={t('legal.versions.unavailable.description')}
                 />
             )}
             {publishBlocked && (

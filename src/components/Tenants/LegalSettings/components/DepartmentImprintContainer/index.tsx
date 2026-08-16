@@ -20,7 +20,12 @@ export const DepartmentImprintContainer = ({
     const { mutate: publish, isPending } = usePublishDepartmentImprint(agencyId, topicId);
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
-    const { data: versions = [] } = useLegalTextVersions({ level: 'department', agencyId, topicId, kind: 'imprint' });
+    const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions({
+        level: 'department',
+        agencyId,
+        topicId,
+        kind: 'imprint',
+    });
     const contentByLanguage = useMemo(() => parseLegalContentMap(data?.content), [data?.content]);
     const languages = useMemo(
         () => getEditableLanguages(tenantData?.settings?.activeLanguages, contentByLanguage),
@@ -38,6 +43,7 @@ export const DepartmentImprintContainer = ({
             languages={languages}
             publicationStatus={data?.publicationStatus}
             versions={versions}
+            versionsUnavailable={versionsUnavailable}
             onSave={(content, doPublish) => publish({ content, publish: doPublish })}
             saving={isPending}
             onTranslate={translate}

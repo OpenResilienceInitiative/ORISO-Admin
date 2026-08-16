@@ -10,6 +10,7 @@ import {
     MANDATORY_CONSENT_TOKEN,
 } from '../../../../../components/Tenants/LegalSettings/utils/consentTextValidation';
 import { toEditorVersions } from '../../../../../components/Tenants/LegalSettings/utils/legalVersionOptions';
+import { useViewedLegalVersion } from '../../../../../components/Tenants/LegalSettings/hooks/useViewedLegalVersion';
 import { FeatureFlag } from '../../../../../enums/FeatureFlag';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
@@ -61,11 +62,18 @@ export const LegalTextSettings = ({ agencyData, field, onSave, saving }: LegalTe
     const [publishBlocked, setPublishBlocked] = useState(false);
     const editorIdentity = `${agencyData?.id ?? ''}:${agencyData?.tenantId ?? ''}:${field}`;
     const agencyOverrides = useMemo(() => agencyData?.content?.[field] || {}, [agencyData, field]);
-    const { data: versions = [] } = useLegalTextVersions({
+    const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions({
         level: 'agency',
         agencyId: Number(agencyData?.id),
         kind: isPrivacy ? 'dpp' : 'imprint',
     });
+    // Keeps the consent sentence on the same version as the body shown above it.
+    const {
+        onViewVersionChange,
+        viewedConsent,
+        isViewingVersion,
+        reset: resetViewedVersion,
+    } = useViewedLegalVersion(versions);
 
     const languages = useMemo(() => {
         const configured = tenantData?.settings?.activeLanguages;
@@ -77,7 +85,8 @@ export const LegalTextSettings = ({ agencyData, field, onSave, saving }: LegalTe
         setConsentEdits({});
         setPublishBlocked(false);
         setActiveLanguage('de');
-    }, [editorIdentity]);
+        resetViewedVersion();
+    }, [editorIdentity, resetViewedVersion]);
 
     // The initial 'de' can be unavailable once the tenant's languages arrive; fall
     // back to the first configured language so the editor never sits on an empty one.
@@ -164,6 +173,7 @@ export const LegalTextSettings = ({ agencyData, field, onSave, saving }: LegalTe
                         ? (html) => setEdits((current) => ({ ...current, [activeLanguage]: html }))
                         : undefined
                 }
+                onViewVersionChange={onViewVersionChange}
                 languages={languages.map((language) => ({
                     value: language,
                     label: t(`language.${language}`),
@@ -194,17 +204,30 @@ export const LegalTextSettings = ({ agencyData, field, onSave, saving }: LegalTe
             {consentEnabled && (
                 <LegalConsentField
                     inheritedFrom={
-                        agencyConsentOverrides?.[activeLanguage] === undefined
+                        // The inheritance notice describes the CURRENT state; while an
+                        // archived version is on screen it would answer a question
+                        // nobody asked about the version being read.
+                        !isViewingVersion && agencyConsentOverrides?.[activeLanguage] === undefined
                             ? t('legal.consent.level.tenant')
                             : undefined
                     }
                     language={activeLanguage}
-                    readOnly={!canEditLegalText}
-                    value={consentByLanguage[activeLanguage] ?? ''}
+                    readOnly={!canEditLegalText || isViewingVersion}
+                    value={(viewedConsent ?? consentByLanguage)[activeLanguage] ?? ''}
                     onChange={(next) => {
                         setPublishBlocked(false);
                         setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
                     }}
+                />
+            )}
+            {/* A history that failed to load is not an empty history — see LegalText. */}
+            {versionsUnavailable && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    data-testid="legal-versions-unavailable"
+                    message={t('legal.versions.unavailable.title')}
+                    description={t('legal.versions.unavailable.description')}
                 />
             )}
             {consentEnabled && publishBlocked && (

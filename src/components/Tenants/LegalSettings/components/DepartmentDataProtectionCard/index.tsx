@@ -10,6 +10,7 @@ import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
 import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
 import { toEditorVersions } from '../../utils/legalVersionOptions';
+import { useViewedLegalVersion } from '../../hooks/useViewedLegalVersion';
 import { LegalTextVersion } from '../../../../../types/legalVersion';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
 import styles from './styles.module.scss';
@@ -49,6 +50,12 @@ interface DepartmentDataProtectionCardProps {
      * AgencyService history endpoints of #250 are not deployed yet.
      */
     versions?: LegalTextVersion[];
+    /**
+     * The history request FAILED (403, 500, network) — as opposed to an empty
+     * history. The card says so instead of showing a menu that claims nothing was
+     * ever published, which is the one answer the look-back must never invent.
+     */
+    versionsUnavailable?: boolean;
     /**
      * The consent sentences (language → sentence) stored with this data-protection
      * policy. `undefined` means the backend does not carry the field yet, and the
@@ -91,6 +98,7 @@ export const DepartmentDataProtectionCard = ({
     documentType = 'privacy',
     departmentSlot,
     versions = [],
+    versionsUnavailable = false,
     consentByLanguage,
 }: DepartmentDataProtectionCardProps) => {
     const { t, i18n } = useTranslation();
@@ -150,6 +158,8 @@ export const DepartmentDataProtectionCard = ({
         () => toEditorVersions(versions, activeLanguage, locale, t('tenants.legal.version.current')),
         [versions, activeLanguage, locale, t],
     );
+    // Keeps the consent sentence on the same version as the body shown above it.
+    const { onViewVersionChange, viewedConsent, isViewingVersion } = useViewedLegalVersion(versions);
 
     /**
      * Publishing is refused while an authored consent sentence lacks
@@ -183,6 +193,7 @@ export const DepartmentDataProtectionCard = ({
                 // Restore = copy: the version's text becomes the active language's
                 // draft; the published chain stays append-only and untouched.
                 onRestoreVersion={handleEditorChange}
+                onViewVersionChange={onViewVersionChange}
                 languageSlot={
                     <LegalContentLanguageSelect
                         languages={languages}
@@ -262,11 +273,22 @@ export const DepartmentDataProtectionCard = ({
             {consentEnabled && (
                 <LegalConsentField
                     language={activeLanguage}
-                    value={consentMap[activeLanguage] ?? ''}
+                    readOnly={isViewingVersion}
+                    value={(viewedConsent ?? consentMap)[activeLanguage] ?? ''}
                     onChange={(next) => {
                         setPublishBlocked(false);
                         setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
                     }}
+                />
+            )}
+            {/* A history that failed to load is not an empty history — see LegalText. */}
+            {versionsUnavailable && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    data-testid="legal-versions-unavailable"
+                    message={t('legal.versions.unavailable.title')}
+                    description={t('legal.versions.unavailable.description')}
                 />
             )}
             {publishBlocked && (

@@ -29,7 +29,12 @@ export const DepartmentDataProtectionContainer = ({
     const { mutate: publish, isPending } = usePublishDepartmentDpp(agencyId, topicId);
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
-    const { data: versions = [] } = useLegalTextVersions({ level: 'department', agencyId, topicId, kind: 'dpp' });
+    const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions({
+        level: 'department',
+        agencyId,
+        topicId,
+        kind: 'dpp',
+    });
 
     const contentByLanguage = useMemo(() => parseLegalContentMap(data?.content), [data?.content]);
     // `undefined` (backend without the field) must stay `undefined` — the card uses
@@ -57,6 +62,7 @@ export const DepartmentDataProtectionContainer = ({
             languages={languages}
             publicationStatus={data?.publicationStatus}
             versions={versions}
+            versionsUnavailable={versionsUnavailable}
             onSave={(contentByLang, doPublish, consentByLang) =>
                 publish({ content: contentByLang, publish: doPublish, consentText: consentByLang })
             }

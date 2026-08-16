@@ -1012,6 +1012,8 @@
     "legal.consent.publishBlocked.description": "In folgenden Sprachen fehlt der Pflicht-Platzhalter im Einwilligungssatz: {{languages}}. Ergänzen Sie ihn dort und veröffentlichen Sie erneut:",
     "legal.consent.template.platform.name": "Plattformvorlage",
     "legal.consent.template.platform.text": "Ich habe die {{legal_links}} der {{Beratungsstelle}} zum Thema {{Thema}} zur Kenntnis genommen.",
+    "legal.versions.unavailable.title": "Versionsverlauf konnte nicht geladen werden",
+    "legal.versions.unavailable.description": "Ältere Fassungen dieses Dokuments sind gerade nicht abrufbar. Der aktuelle Text lässt sich weiterhin bearbeiten und veröffentlichen.",
     "legal.draft.discard": "Entwurf verwerfen",
     "legal.m3Editor.chooseLanguage": "Sprache wählen",
     "legal.m3Editor.versionOnlineSince": "Fassung seit {{date}} online",

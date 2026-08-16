@@ -1461,6 +1461,8 @@
     "legal.consent.publishBlocked.description": "The mandatory placeholder is missing from the consent sentence in these languages: {{languages}}. Add it there and publish again:",
     "legal.consent.template.platform.name": "Platform template",
     "legal.consent.template.platform.text": "I have read the {{legal_links}} of {{Beratungsstelle}} regarding {{Thema}}.",
+    "legal.versions.unavailable.title": "Version history could not be loaded",
+    "legal.versions.unavailable.description": "Earlier versions of this document are currently unavailable. The current text can still be edited and published.",
     "legal.draft.discard": "Discard draft",
     "legal.m3Editor.chooseLanguage": "Choose language",
     "legal.m3Editor.versionOnlineSince": "Version online since {{date}}",

@@ -34,7 +34,12 @@ export interface UseLegalDraftResult {
     savedAt?: string;
     /** A newer version was published after the draft was last saved. */
     isStale: boolean;
-    saveDraft: (contentByLanguage: Record<string, string>) => void;
+    /**
+     * Saves the whole editable state of the document. The consent map is part of
+     * it, not an extra: a draft that stored only the body while reporting success
+     * would lose the consent wording on the next reload.
+     */
+    saveDraft: (contentByLanguage: Record<string, string>, consentByLanguage?: Record<string, string>) => void;
     /** Returns whether the draft is really gone — callers must not drop further state otherwise. */
     discardDraft: () => boolean;
 }
@@ -70,11 +75,11 @@ export const useLegalDraft = (
     const { draft, savedAt, savedBaseVersionId } = current;
 
     const saveDraft = useCallback(
-        (contentByLanguage: Record<string, string>) => {
+        (contentByLanguage: Record<string, string>, consentByLanguage?: Record<string, string>) => {
             if (!key) {
                 return;
             }
-            if (!writeLegalDraft(key, contentByLanguage, baseVersionId)) {
+            if (!writeLegalDraft(key, contentByLanguage, baseVersionId, consentByLanguage)) {
                 // Quota exceeded or storage disabled: nothing was stored, so say so
                 // instead of confirming a save the admin would rely on.
                 notification.error({ message: t('legal.draft.saveError'), duration: 8 });

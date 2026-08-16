@@ -31,14 +31,27 @@ export const legalTextVersionsUrl = (scope: LegalVersionScope): string => {
 /**
  * Published versions of one legal text, newest first.
  *
- * Errors are reported silently: a missing history is additive information on
- * cards that worked without it before, so a failure must not raise the global
- * toast or bounce the admin out of the settings deck.
+ * Errors are silent in the sense that they raise no global toast and never bounce
+ * the admin out of the settings deck — but they REJECT. A history that failed to
+ * load and a history that is genuinely empty are different statements, and an
+ * admin answering "which policy was in force in March" must not be told "none"
+ * because a 403 or a 500 was swallowed.
+ *
+ * The one failure folded into "empty" is 404: until the generic endpoints of #250
+ * are deployed every level legitimately has no history, and an error banner on
+ * four cards would be noise about a feature that has not shipped yet.
  */
-export const getLegalTextVersions = (scope: LegalVersionScope) =>
-    fetchData({
-        url: legalTextVersionsUrl(scope),
-        method: FETCH_METHODS.GET,
-        skipAuth: false,
-        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_SILENT],
-    }) as Promise<LegalTextVersion[]>;
+export const getLegalTextVersions = (scope: LegalVersionScope): Promise<LegalTextVersion[]> =>
+    (
+        fetchData({
+            url: legalTextVersionsUrl(scope),
+            method: FETCH_METHODS.GET,
+            skipAuth: false,
+            responseHandling: [FETCH_ERRORS.NO_MATCH, FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_SILENT],
+        }) as Promise<LegalTextVersion[]>
+    ).catch((error: unknown) => {
+        if (error instanceof Error && error.message === FETCH_ERRORS.NO_MATCH) {
+            return [] as LegalTextVersion[];
+        }
+        throw error;
+    });

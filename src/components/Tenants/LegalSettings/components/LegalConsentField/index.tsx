@@ -94,6 +94,7 @@ export const LegalConsentField = ({ value, language, onChange, readOnly, inherit
                     </p>
                 }
                 languageLabel={t(`language.${language}`, language.toUpperCase())}
+                readOnly={readOnly}
                 templates={templates}
                 values={{ text: value }}
                 onChange={(next) => {

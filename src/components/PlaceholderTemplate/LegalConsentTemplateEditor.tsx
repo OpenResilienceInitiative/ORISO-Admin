@@ -30,6 +30,14 @@ export interface LegalConsentTemplateEditorProps {
     addendum?: ReactNode;
     /** Optional label of the language this sentence belongs to (multilingual editors). */
     languageLabel?: string;
+    /**
+     * Read-only surface: the sentence field, its token picker, the template
+     * chooser and the preview checkbox all go inert. Without this the controls
+     * stay focusable and typing snaps back — an editable-looking field for
+     * someone who lacks the legal-text permission, or who is looking at an
+     * archived version.
+     */
+    readOnly?: boolean;
 }
 
 /**
@@ -48,6 +56,7 @@ export const LegalConsentTemplateEditor = ({
     onCreateFromTemplate,
     addendum,
     languageLabel,
+    readOnly = false,
 }: LegalConsentTemplateEditorProps) => {
     const { t } = useTranslation();
     const sentenceId = useId();
@@ -79,6 +88,10 @@ export const LegalConsentTemplateEditor = ({
                     <span className={styles.consentPreviewCaption}>
                         {t('placeholderTemplate.legal.previewCaption', 'So sieht der Satz in der Registrierung aus:')}
                     </span>
+                    {/* The preview checkbox stays live even on a read-only surface: it
+                        demonstrates the registration form and writes nothing. Disabling
+                        it would show a greyed-out box that is not what the help-seeker
+                        gets — the preview would then misrepresent the real sentence. */}
                     <div className={styles.consentRow}>
                         <M3Checkbox
                             checked={accepted}
@@ -93,6 +106,7 @@ export const LegalConsentTemplateEditor = ({
                     {addendum}
                 </section>
             }
+            readOnly={readOnly}
             templates={templates}
             tokens={LEGAL_CONSENT_TOKENS}
             values={values}

@@ -22,18 +22,18 @@ const hasUsableIds = (scope: LegalVersionScope): boolean => {
 /**
  * Published versions of one legal text, newest first (ADR-021 decision 3).
  *
- * A failure resolves to an EMPTY history instead of rejecting. Unlike the AVV
- * card — where the versions ARE the content and a load error must withhold the
- * editor — version look-back is additive on the privacy/imprint/DPP cards: they
- * edited the live text without any history before this feature. Degrading to
- * "nothing to look back at" therefore keeps the card fully usable while the
- * AgencyService endpoints of #250 are still in flight, and it is the same
- * behaviour once a level genuinely has no archived version yet.
+ * A failure REJECTS and surfaces as `isError`. Unlike the AVV card — where the
+ * versions ARE the content and a load error must withhold the editor — version
+ * look-back is additive here, so the card stays fully editable; but the caller
+ * has to say "history unavailable" rather than show an empty menu that claims
+ * nothing was ever published. `getLegalTextVersions` already folds a 404 into an
+ * empty list, so a level whose endpoint has not shipped yet reports "no versions"
+ * instead of an error.
  */
 export const useLegalTextVersions = (scope: LegalVersionScope, enabled = true) =>
     useQuery<LegalTextVersion[]>({
         queryKey: legalTextVersionsKey(scope),
-        queryFn: () => getLegalTextVersions(scope).catch(() => [] as LegalTextVersion[]),
+        queryFn: () => getLegalTextVersions(scope),
         enabled: enabled && hasUsableIds(scope),
         staleTime: 60_000,
         retry: false,
