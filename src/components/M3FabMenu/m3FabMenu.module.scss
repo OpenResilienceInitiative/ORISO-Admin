@@ -99,7 +99,7 @@
     position: relative;
     margin-top: 4px;
 
-    &::before {
+    &:before {
         position: absolute;
         top: -6px;
         right: 24px;
@@ -112,7 +112,7 @@
     & + .itemFooter {
         margin-top: 0;
 
-        &::before {
+        &:before {
             content: none;
         }
     }

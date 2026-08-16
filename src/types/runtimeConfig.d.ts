@@ -18,6 +18,12 @@ export interface AppRuntimeConfig {
     CSRF_WHITELIST_HEADER?: string;
     COOKIES_ALLOWEDLIST?: string;
     OBSERVABILITY_ENABLED?: string;
+    /**
+     * "true" only where a media content scanner is deployed AND the signed
+     * zero-retention sub-processor agreement is on record (ADR-019, #734).
+     * Absent or anything else keeps the AI media toggles disabled.
+     */
+    MEDIA_AI_SCAN_AVAILABLE?: string;
     OTEL_METRICS_URL?: string;
     OTEL_EXPORT_INTERVAL_MS?: string;
     PLATFORM_VERSION?: string;

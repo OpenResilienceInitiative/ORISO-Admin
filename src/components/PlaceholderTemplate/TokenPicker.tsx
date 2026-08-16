@@ -9,6 +9,8 @@ export interface TokenPickerProps {
     tokens: PlaceholderTokenDef[];
     /** Fired with the token key — the field owns caret handling and value updates. */
     onInsert: (key: string) => void;
+    /** Read-only surfaces keep the picker visible but inert. */
+    disabled?: boolean;
 }
 
 /**
@@ -17,12 +19,13 @@ export interface TokenPickerProps {
  * available tokens with their human labels. Picking an entry inserts `{{key}}`
  * — replacing the hardcoded `<code>` token hint under the old template forms.
  */
-export const TokenPicker = ({ tokens, onInsert }: TokenPickerProps) => {
+export const TokenPicker = ({ tokens, onInsert, disabled = false }: TokenPickerProps) => {
     const { t } = useTranslation();
     const label = t('placeholderTemplate.insertToken', 'Platzhalter einfügen');
 
     return (
         <SplitDropdown
+            disabled={disabled}
             icon={<DataObjectIcon />}
             label={label}
             title={label}

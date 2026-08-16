@@ -27,7 +27,7 @@
     align-items: start;
     justify-content: start;
     margin-bottom: 16px;
-    padding: 0px 0 12px;
+    padding: 0 0 12px;
     gap: 10px 12px;
     grid-template-columns: minmax(0, 499px);
 }
@@ -503,6 +503,16 @@
         outline: 2px solid #6ba6ff;
         outline-offset: 2px;
     }
+
+    strong {
+        flex: 0 0 auto;
+        color: #5c6672;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 22px;
+        text-transform: none;
+        white-space: nowrap;
+    }
 }
 
 .protectedLayout button.statisticDashboard__cardMenuItem:not(.ant-btn-link) {
@@ -559,18 +569,6 @@
     font-weight: 400;
     letter-spacing: 0.25px;
     line-height: 20px;
-}
-
-.statisticDashboard__cardMenuItem {
-    strong {
-        flex: 0 0 auto;
-        color: #5c6672;
-        font-size: 14px;
-        font-weight: 800;
-        line-height: 22px;
-        text-transform: none;
-        white-space: nowrap;
-    }
 }
 
 .statisticDashboard__cardMenuItem--active,
@@ -1049,6 +1047,10 @@
     }
 
     .statisticDashboard__donutCenterLabel {
+        /* -webkit-box is the only cross-browser line-clamp idiom; the */
+
+        /* unprefixed `box` value is a dead 2009 spec no engine implements. */
+        /* stylelint-disable-next-line value-no-vendor-prefix */
         display: -webkit-box;
         overflow: hidden;
         max-width: 76px;
@@ -1190,7 +1192,7 @@
 .statisticDashboard__legendItem--active:hover,
 .statisticDashboard__legendItem--active:focus-visible {
     background: #111923;
-    box-shadow: 0 0 0 2px rgba(17, 25, 35, 0.22);
+    box-shadow: 0 0 0 2px rgb(17 25 35 / 22%);
 
     p,
     .statisticDashboard__legendMeta strong {

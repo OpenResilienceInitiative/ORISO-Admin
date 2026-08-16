@@ -38,12 +38,29 @@ export interface AgencyContact {
     email: string;
 }
 
+/**
+ * Whether one Fachbereich (agency × topic) carries legal texts of its own, i.e. has left the
+ * inherited agency-wide text. Mirrors `AgencyAdminDepartmentDTO` on the admin agency read.
+ */
+export interface AgencyDepartmentPublicationState {
+    topicId: number;
+    hasPublishedDpp?: boolean;
+    hasPublishedImprint?: boolean;
+}
+
 export interface AgencyData {
     id: string | null;
     name: string;
     city: string;
     counsellingRelations: CounsellingRelation[];
     topics: TopicData[];
+    /**
+     * One entry per assigned topic with the publication state of that Fachbereich's OWN legal
+     * texts (ORISO-AgencyService#259). Lets the Fachbereich switcher mark who has left the
+     * inherited text and will therefore not receive a change to the agency-wide one (#583).
+     * Absent while that endpoint is not deployed — the switcher then simply shows no markers.
+     */
+    departments?: AgencyDepartmentPublicationState[];
     // ADR-014: multi-select topic picker — the form field holds the agency's departments as
     // labelInValue Options (or undefined when the field never rendered, which is distinct from an
     // empty array). The lone-Option shape from the former single-select stays accepted.
@@ -82,6 +99,13 @@ export interface AgencyData {
     content?: {
         impressum?: Record<string, string>;
         privacy?: Record<string, string>;
+        /**
+         * Beratungsstelle-level consent sentence belonging to `privacy` (ADR-021
+         * decision 4), language → sentence. TODO(#250): built by ORISO-AgencyService
+         * branch `feat/legal-text-versioning-250`; `undefined` means the deployed
+         * backend has no such field and the consent editor stays hidden.
+         */
+        privacyConsent?: Record<string, string>;
         termsAndConditions?: Record<string, string>;
         confirmPrivacy?: boolean;
         confirmTermsAndConditions?: boolean;
