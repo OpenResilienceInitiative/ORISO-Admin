@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // CardDeck measures/scrolls on mount; jsdom has no scrollTo.
@@ -39,13 +39,20 @@ const renderOneOnOne = async () => {
             formStateKey="k1"
             restrictedFields={new Set()}
             onToggleUpdate={vi.fn()}
-            onSave={vi.fn()}
         />,
     );
 };
 
-const policyButton = (field: string) =>
-    document.querySelector(`[data-feature-policy="${field}"] button`) as HTMLButtonElement;
+const labelsByField: Record<string, string> = {
+    featureMediaAiScanOneOnOneChatsEnabled: 'tenants.permissions.feature.mediaAiScan',
+    featureMediaUploadOneOnOneChatsEnabled: 'tenants.permissions.feature.mediaUpload',
+    featureMediaInlineDisplayOneOnOneChatsEnabled: 'tenants.permissions.feature.mediaInlineDisplay',
+};
+
+const policyButton = (field: string) => {
+    const control = document.querySelector(`[data-feature-policy="${field}"]`) as HTMLElement;
+    return within(control).getByRole('button', { name: new RegExp(labelsByField[field]) });
+};
 
 const aiScanControl = () => policyButton('featureMediaAiScanOneOnOneChatsEnabled');
 

@@ -2,6 +2,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Card } from '../../../../Card';
 import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
+import { resolvePermissionPolicy } from '../permissionsSettingsUtils';
 import styles from './styles.module.scss';
 
 /**
@@ -37,7 +38,6 @@ export type AskerPermissionsCardProps = {
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     fallbackValues?: Record<string, unknown>;
-    pendingPolicyField?: string | null;
     pendingPolicyFields?: ReadonlySet<string>;
     openPolicyMenu?: string | null;
     onOpenPolicyMenu?: (fieldKey: string | null) => void;
@@ -49,7 +49,6 @@ export const AskerPermissionsCard = ({
     policyLevel = 'tenant',
     permissionPolicies,
     fallbackValues,
-    pendingPolicyField,
     pendingPolicyFields,
     openPolicyMenu,
     onOpenPolicyMenu,
@@ -61,11 +60,7 @@ export const AskerPermissionsCard = ({
        with no explanation tells an admin they did something wrong. The reason
        says who actually holds the decision. */
     const policyFor = (field: string): PolicyValue<boolean> =>
-        permissionPolicies?.[field] ?? {
-            value: fallbackValues?.[field] !== false,
-            mode: restrictedFields.has(field) ? 'ENFORCED' : 'SUGGESTED',
-            inherited: restrictedFields.has(field),
-        };
+        resolvePermissionPolicy(permissionPolicies, field, fallbackValues?.[field], restrictedFields);
 
     const policyControl = (field: string, labelKey: string) => (
         <PermissionPolicyControl
@@ -74,7 +69,7 @@ export const AskerPermissionsCard = ({
             level={policyLevel}
             policy={policyFor(field)}
             open={openPolicyMenu === field}
-            pending={pendingPolicyField === field || pendingPolicyFields?.has(field)}
+            pending={pendingPolicyFields?.has(field)}
             onOpenChange={(open) => onOpenPolicyMenu?.(open ? field : null)}
             onChange={(next) => onPolicyChange?.(field, next)}
         />

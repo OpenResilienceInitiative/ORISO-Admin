@@ -82,4 +82,28 @@ describe('AskerPermissionsCard per-feature policies', () => {
         expect(screen.getByText('tenants.permissions.asker.email.label')).toBeTruthy();
         expect(screen.getByText('tenants.permissions.asker.restrictedReason')).toBeTruthy();
     });
+
+    it('locks only the feature whose autosave is pending', async () => {
+        const user = userEvent.setup();
+        const onOpenPolicyMenu = vi.fn();
+        const onPolicyChange = vi.fn();
+        renderCard({
+            pendingPolicyFields: new Set(['featureDisplayNameEditable']),
+            onOpenPolicyMenu,
+            onPolicyChange,
+        });
+
+        const pendingButton = screen.getByRole('button', {
+            name: /tenants.permissions.asker.displayName.label: tenants.permissions.policy.openMenu/,
+        });
+        expect(pendingButton).toBeDisabled();
+        await user.click(pendingButton);
+        expect(onOpenPolicyMenu).not.toHaveBeenCalled();
+        expect(onPolicyChange).not.toHaveBeenCalled();
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.asker.email.label: tenants.permissions.policy.openMenu/,
+            }),
+        ).toBeEnabled();
+    });
 });

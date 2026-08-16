@@ -293,7 +293,7 @@ export const M3DurationField = ({
         min={15}
         step={15}
         disabled={disabled}
-        readOnly
+        readOnly={readOnly}
         stepUpDisabled={readOnly}
         stepDownDisabled={readOnly}
         onChange={onChange}

@@ -31,6 +31,7 @@ import styles from './styles.module.scss';
 export type CaseHandoverCardViewProps = {
     policies: CaseHandoverReasonPolicy[];
     isLoading: boolean;
+    isSaving?: boolean;
     /** false = user may not edit platform reason policies → everything read-only. */
     canEdit: boolean;
     moduleEnabled: boolean;
@@ -40,7 +41,6 @@ export type CaseHandoverCardViewProps = {
     onMaxAccessDurationChange: (code: string, minutes: number) => void;
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
-    pendingPolicyField?: string | null;
     pendingPolicyFields?: ReadonlySet<string>;
     openPolicyMenu?: string | null;
     onOpenPolicyMenu?: (fieldKey: string | null) => void;
@@ -59,6 +59,7 @@ const ConfigureIcon = () => (
 export const CaseHandoverCardView = ({
     policies,
     isLoading,
+    isSaving = false,
     canEdit,
     moduleEnabled,
     onModuleEnabledChange,
@@ -67,7 +68,6 @@ export const CaseHandoverCardView = ({
     onMaxAccessDurationChange,
     policyLevel = 'tenant',
     permissionPolicies,
-    pendingPolicyField,
     pendingPolicyFields,
     openPolicyMenu,
     onOpenPolicyMenu,
@@ -125,10 +125,7 @@ export const CaseHandoverCardView = ({
                                 }
                             }
                             open={currentOpenPolicyMenu === 'caseHandoverEnabled'}
-                            pending={
-                                pendingPolicyField === 'caseHandoverEnabled' ||
-                                pendingPolicyFields?.has('caseHandoverEnabled')
-                            }
+                            pending={pendingPolicyFields?.has('caseHandoverEnabled')}
                             onOpenChange={(open) => setOpenPolicyMenu(open ? 'caseHandoverEnabled' : null)}
                             onChange={(next) => {
                                 onFeaturePolicyChange?.('caseHandoverEnabled', next);
@@ -141,11 +138,11 @@ export const CaseHandoverCardView = ({
 
                     <div className={styles.featureRow}>
                         <span className={styles.featureLabel}>
-                            {t('tenants.permissions.card.caseHandover.optOutMessage')}
+                            {t('tenants.permissions.card.caseHandover.teamAccessOptOut')}
                         </span>
                         <PermissionPolicyControl
                             featureKey="caseHandoverTeamAccessOptOut"
-                            label={t('tenants.permissions.card.caseHandover.optOutMessage')}
+                            label={t('tenants.permissions.card.caseHandover.teamAccessOptOut')}
                             level={policyLevel}
                             policy={
                                 permissionPolicies?.caseHandoverTeamAccessOptOut ?? {
@@ -155,10 +152,7 @@ export const CaseHandoverCardView = ({
                                 }
                             }
                             open={currentOpenPolicyMenu === 'caseHandoverTeamAccessOptOut'}
-                            pending={
-                                pendingPolicyField === 'caseHandoverTeamAccessOptOut' ||
-                                pendingPolicyFields?.has('caseHandoverTeamAccessOptOut')
-                            }
+                            pending={pendingPolicyFields?.has('caseHandoverTeamAccessOptOut')}
                             onOpenChange={(open) => setOpenPolicyMenu(open ? 'caseHandoverTeamAccessOptOut' : null)}
                             onChange={(next) => onFeaturePolicyChange?.('caseHandoverTeamAccessOptOut', next)}
                         />
@@ -202,7 +196,8 @@ export const CaseHandoverCardView = ({
                                                 activeReason.isPlaceholder ||
                                                 !activePolicy ||
                                                 !canEdit ||
-                                                !moduleEnabled
+                                                !moduleEnabled ||
+                                                isSaving
                                             }
                                             label={`${t(
                                                 'tenants.permissions.card.caseHandover.consentClient',
@@ -219,7 +214,13 @@ export const CaseHandoverCardView = ({
                                     <M3DurationField
                                         label={t('tenants.permissions.card.caseHandover.maxSessionDuration')}
                                         value={activePolicy?.maxAccessDurationMinutes ?? 180}
-                                        readOnly={!canEdit || !moduleEnabled || activeReason.isPlaceholder}
+                                        readOnly={
+                                            !activePolicy ||
+                                            !canEdit ||
+                                            !moduleEnabled ||
+                                            activeReason.isPlaceholder ||
+                                            isSaving
+                                        }
                                         onChange={(minutes) => {
                                             if (activePolicy && minutes !== undefined) {
                                                 onMaxAccessDurationChange(activePolicy.code, minutes);
@@ -284,7 +285,11 @@ export const CaseHandoverCardView = ({
                             );
                             const value = templateDrafts[draftKey] ?? storedTemplate;
                             const editable =
-                                canEdit && moduleEnabled && !activeReason.isPlaceholder && Boolean(activePolicy);
+                                canEdit &&
+                                moduleEnabled &&
+                                !activeReason.isPlaceholder &&
+                                Boolean(activePolicy) &&
+                                !isSaving;
                             const commitDraft = () => {
                                 const draft = templateDrafts[draftKey];
                                 if (draft === undefined || draft.trim() === storedTemplate.trim()) {

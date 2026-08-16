@@ -19,6 +19,7 @@ type PermissionPolicyControlProps = {
     onOpenChange: (open: boolean) => void;
     onChange: (policy: PolicyValue<boolean>) => void;
     pending?: boolean;
+    disabled?: boolean;
 };
 
 const policyKey = ({ value, mode }: PolicyValue<boolean>) => `${value ? 'enabled' : 'disabled'}-${mode.toLowerCase()}`;
@@ -48,6 +49,7 @@ export const PermissionPolicyControl = ({
     onOpenChange,
     onChange,
     pending = false,
+    disabled = false,
 }: PermissionPolicyControlProps) => {
     const { t } = useTranslation();
     const [showInfo, setShowInfo] = useState(false);
@@ -99,7 +101,7 @@ export const PermissionPolicyControl = ({
                     items={items}
                     activeKey={policyKey(policy)}
                     open={open}
-                    disabled={pending}
+                    disabled={pending || disabled}
                     onOpenChange={onOpenChange}
                     onSelect={select}
                     openLabel={`${label}: ${t('tenants.permissions.policy.openMenu')} – ${t(

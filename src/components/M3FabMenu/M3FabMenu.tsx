@@ -68,6 +68,7 @@ export const M3FabMenu = ({
     const fabRef = useRef<HTMLButtonElement>(null);
     const stackRef = useRef<HTMLUListElement>(null);
     const [opensDownward, setOpensDownward] = useState(false);
+    const [stackMaxHeight, setStackMaxHeight] = useState<number>();
     // The account entries are destinations too: standing on "Konto" and closing
     // the menu left the FAB empty, because only `items` was searched.
     const activeItem = [...items, ...footerItems].find((item) => item.key === activeKey);
@@ -86,16 +87,25 @@ export const M3FabMenu = ({
     useLayoutEffect(() => {
         if (!open || variant !== 'action') {
             setOpensDownward(false);
-            return;
+            setStackMaxHeight(undefined);
+            return undefined;
         }
 
-        const stackRect = stackRef.current?.getBoundingClientRect();
-        const fabRect = fabRef.current?.getBoundingClientRect();
-        if (!stackRect || !fabRect) return;
+        const updatePlacement = () => {
+            const stackRect = stackRef.current?.getBoundingClientRect();
+            const fabRect = fabRef.current?.getBoundingClientRect();
+            if (!stackRect || !fabRect) return;
 
-        const spaceAbove = fabRect.top - 8;
-        const spaceBelow = window.innerHeight - fabRect.bottom - 8;
-        setOpensDownward(spaceAbove < stackRect.height && spaceBelow > spaceAbove);
+            const spaceAbove = Math.max(0, fabRect.top - 8);
+            const spaceBelow = Math.max(0, window.innerHeight - fabRect.bottom - 8);
+            const downward = stackRect.height > spaceAbove && spaceBelow > spaceAbove;
+            setOpensDownward(downward);
+            setStackMaxHeight(downward ? spaceBelow : spaceAbove);
+        };
+
+        updatePlacement();
+        window.addEventListener('resize', updatePlacement);
+        return () => window.removeEventListener('resize', updatePlacement);
     }, [items.length, footerItems.length, open, variant]);
 
     // Escape and a click outside close the menu. Pointer-down rather than click,
@@ -198,7 +208,13 @@ export const M3FabMenu = ({
             ref={rootRef}
         >
             {open && (
-                <ul className={styles.stack} id={menuId} data-admin-fab-menu-stack ref={stackRef}>
+                <ul
+                    className={styles.stack}
+                    id={menuId}
+                    data-admin-fab-menu-stack
+                    ref={stackRef}
+                    style={stackMaxHeight === undefined ? undefined : { maxHeight: stackMaxHeight }}
+                >
                     {items.map((item) => renderItem(item, false))}
                     {footerItems.map((item) => renderItem(item, true))}
                 </ul>

@@ -1,4 +1,4 @@
-import { Form } from 'antd';
+import { Form, type FormInstance } from 'antd';
 import { useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Card } from '../../../Card';
@@ -8,7 +8,8 @@ import { CHAT_TYPE_CARDS } from './chatTypeCards';
 import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
 import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
-import { isSubToggleDisabled } from './permissionsSettingsUtils';
+import { isSubToggleDisabled, resolvePermissionPolicy } from './permissionsSettingsUtils';
+import { syncMasterChildTogglesInForm } from './permissionsToggleLogic';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
 import type { ChatTypeCardKey, PermissionToggleCapability, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
@@ -38,10 +39,8 @@ export type PermissionsSettingsViewProps = {
     formStateKey: string;
     restrictedFields: Set<string>;
     onToggleUpdate: ToggleAfterChangeHandler;
-    onSave: (formData: unknown) => void;
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
-    pendingPolicyField?: string | null;
     pendingPolicyFields?: ReadonlySet<string>;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
 };
@@ -54,10 +53,8 @@ export const PermissionsSettingsView = ({
     formStateKey,
     restrictedFields,
     onToggleUpdate,
-    onSave,
     policyLevel = 'tenant',
     permissionPolicies,
-    pendingPolicyField,
     pendingPolicyFields,
     onPolicyChange,
 }: PermissionsSettingsViewProps) => {
@@ -69,25 +66,25 @@ export const PermissionsSettingsView = ({
 
     const policyFor = useCallback(
         (fieldKey: string, currentValue: unknown): PolicyValue<boolean> =>
-            permissionPolicies?.[fieldKey] ?? {
-                value: currentValue !== false,
-                mode: restrictedFields.has(fieldKey) ? 'ENFORCED' : 'SUGGESTED',
-                inherited: restrictedFields.has(fieldKey),
-            },
+            resolvePermissionPolicy(permissionPolicies, fieldKey, currentValue, restrictedFields),
         [permissionPolicies, restrictedFields],
     );
     const policyPending = useCallback(
-        (fieldKey: string) => pendingPolicyField === fieldKey || pendingPolicyFields?.has(fieldKey) === true,
-        [pendingPolicyField, pendingPolicyFields],
+        (fieldKey: string) => pendingPolicyFields?.has(fieldKey) === true,
+        [pendingPolicyFields],
     );
 
     const changePolicy = useCallback(
-        (fieldKey: string, next: PolicyValue<boolean>, currentFormData: unknown) => {
+        (fieldKey: string, next: PolicyValue<boolean>, form: FormInstance) => {
+            const fieldPath = ['settings', fieldKey];
+            form.setFieldValue(fieldPath, next.value);
+            syncMasterChildTogglesInForm(form, fieldPath, next.value);
+            const currentFormData = form.getFieldsValue(true);
             if (onPolicyChange) {
                 onPolicyChange(fieldKey, next);
                 return;
             }
-            onToggleUpdate(['settings', fieldKey], next.value, currentFormData);
+            onToggleUpdate(fieldPath, next.value, currentFormData);
         },
         [onPolicyChange, onToggleUpdate],
     );
@@ -99,7 +96,6 @@ export const PermissionsSettingsView = ({
             isLoading={isLoading}
             initialValues={initialValues}
             titleKey="tenants.permissions.title"
-            onSave={onSave}
             editMode
             hideSaveButton
             hideCancelButton
@@ -122,26 +118,20 @@ export const PermissionsSettingsView = ({
                                 policyLevel={policyLevel}
                                 permissionPolicies={permissionPolicies}
                                 fallbackValues={initialValues.settings as Record<string, unknown> | undefined}
-                                pendingPolicyField={pendingPolicyField}
                                 pendingPolicyFields={pendingPolicyFields}
                                 openPolicyMenu={openPolicyMenu}
                                 onOpenPolicyMenu={setOpenPolicyMenu}
-                                onPolicyChange={(fieldKey, next) =>
-                                    changePolicy(fieldKey, next, form.getFieldsValue(true))
-                                }
+                                onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
                             />
                         </CardDeck.Item>
                         <CardDeck.Item className={styles.chatTypeCardSlot}>
                             <CaseHandoverCard
                                 policyLevel={policyLevel}
                                 permissionPolicies={permissionPolicies}
-                                pendingPolicyField={pendingPolicyField}
                                 pendingPolicyFields={pendingPolicyFields}
                                 openPolicyMenu={openPolicyMenu}
                                 onOpenPolicyMenu={setOpenPolicyMenu}
-                                onFeaturePolicyChange={(fieldKey, next) =>
-                                    changePolicy(fieldKey, next, form.getFieldsValue(true))
-                                }
+                                onFeaturePolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
                             />
                         </CardDeck.Item>
                         {cardsToRender.map((card) => (
@@ -182,11 +172,7 @@ export const PermissionsSettingsView = ({
                                                                 setOpenPolicyMenu(open ? masterField[1] : null)
                                                             }
                                                             onChange={(next) =>
-                                                                changePolicy(
-                                                                    masterField[1],
-                                                                    next,
-                                                                    form.getFieldsValue(true),
-                                                                )
+                                                                changePolicy(masterField[1], next, form)
                                                             }
                                                         />
                                                     ) : (
@@ -217,6 +203,16 @@ export const PermissionsSettingsView = ({
                                                         const unavailableHintKey = unavailableCapabilityHintKey(
                                                             toggle.requiresCapability,
                                                         );
+                                                        const disabledByMaster = isSubToggleDisabled(
+                                                            card,
+                                                            toggle.field,
+                                                            masterEnabled,
+                                                        );
+                                                        const disabledHintKey =
+                                                            unavailableHintKey ||
+                                                            (disabledByMaster
+                                                                ? 'tenants.permissions.feature.requiresMaster'
+                                                                : null);
                                                         return (
                                                             <div
                                                                 key={toggle.field.join('.')}
@@ -224,9 +220,9 @@ export const PermissionsSettingsView = ({
                                                             >
                                                                 <span className={styles.toggleLabel}>
                                                                     {t(toggle.labelKey)}
-                                                                    {unavailableHintKey && (
+                                                                    {disabledHintKey && (
                                                                         <span className={styles.toggleUnavailableHint}>
-                                                                            {t(unavailableHintKey)}
+                                                                            {t(disabledHintKey)}
                                                                         </span>
                                                                     )}
                                                                 </span>
@@ -239,24 +235,15 @@ export const PermissionsSettingsView = ({
                                                                         getFieldValue(toggle.field),
                                                                     )}
                                                                     open={openPolicyMenu === toggle.field[1]}
-                                                                    pending={
-                                                                        policyPending(toggle.field[1]) ||
-                                                                        Boolean(unavailableHintKey) ||
-                                                                        isSubToggleDisabled(
-                                                                            card,
-                                                                            toggle.field,
-                                                                            masterEnabled,
-                                                                        )
+                                                                    pending={policyPending(toggle.field[1])}
+                                                                    disabled={
+                                                                        Boolean(unavailableHintKey) || disabledByMaster
                                                                     }
                                                                     onOpenChange={(open) =>
                                                                         setOpenPolicyMenu(open ? toggle.field[1] : null)
                                                                     }
                                                                     onChange={(next) =>
-                                                                        changePolicy(
-                                                                            toggle.field[1],
-                                                                            next,
-                                                                            form.getFieldsValue(true),
-                                                                        )
+                                                                        changePolicy(toggle.field[1], next, form)
                                                                     }
                                                                 />
                                                             </div>

@@ -182,4 +182,50 @@ describe('TenantPermissionsSettings policy loading and serialization', () => {
             second: { value: true, mode: 'ENFORCED' },
         });
     });
+
+    it('isolates queued writes when the active tenant changes', async () => {
+        const tenantEightPolicies = { ...basePolicies, tenantId: 8 };
+        vi.mocked(useTenantPermissionPolicies).mockImplementation(
+            (tenantId) =>
+                ({
+                    data: tenantId === '8' ? tenantEightPolicies : basePolicies,
+                    isLoading: false,
+                    isError: false,
+                } as ReturnType<typeof useTenantPermissionPolicies>),
+        );
+        let resolveTenantSeven: (value: typeof basePolicies) => void = () => undefined;
+        const tenantSevenRequest = new Promise<typeof basePolicies>((resolve) => {
+            resolveTenantSeven = resolve;
+        });
+        const mutateTenantSeven = vi.fn().mockReturnValue(tenantSevenRequest);
+        const mutateTenantEight = vi.fn().mockImplementation(async (value) => value);
+        vi.mocked(useTenantPermissionPoliciesMutation).mockImplementation(
+            (tenantId) =>
+                ({
+                    mutateAsync: tenantId === '8' ? mutateTenantEight : mutateTenantSeven,
+                } as ReturnType<typeof useTenantPermissionPoliciesMutation>),
+        );
+
+        const view = render(<TenantPermissionsSettings tenantId="7" />);
+        fireEvent.click(screen.getByRole('button', { name: 'first' }));
+        await waitFor(() => expect(mutateTenantSeven).toHaveBeenCalledTimes(1));
+
+        view.rerender(<TenantPermissionsSettings tenantId="8" />);
+        fireEvent.click(screen.getByRole('button', { name: 'second' }));
+
+        await waitFor(() => expect(mutateTenantEight).toHaveBeenCalledTimes(1));
+        expect(mutateTenantEight.mock.calls[0][0]).toMatchObject({
+            tenantId: 8,
+            policies: {
+                first: { value: false, mode: 'SUGGESTED' },
+                second: { value: true, mode: 'ENFORCED' },
+            },
+        });
+
+        await act(async () => {
+            resolveTenantSeven(basePolicies);
+            await tenantSevenRequest;
+        });
+        expect(mutateTenantEight).toHaveBeenCalledTimes(1);
+    });
 });

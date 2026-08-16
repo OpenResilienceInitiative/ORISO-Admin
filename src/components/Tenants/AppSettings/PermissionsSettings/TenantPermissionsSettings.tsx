@@ -31,20 +31,40 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
         permissionPolicyData,
     );
     const confirmedPolicyData = useRef<TenantPermissionPolicies | undefined>(permissionPolicyData);
-    const pendingPolicyOperations = useRef<{ id: number; fieldKey: string; policy: PolicyValue<boolean> }[]>([]);
+    const pendingPolicyOperations = useRef<
+        { id: number; tenantId: string; fieldKey: string; policy: PolicyValue<boolean> }[]
+    >([]);
     const nextPolicyOperationId = useRef(0);
     const policyMutationQueue = useRef<Promise<void>>(Promise.resolve());
+    const activeTenantId = useRef(tenantId);
     const { mutate: updateTenantSettings } = useTenantAdminDataMutation({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
 
     useEffect(() => {
-        if (permissionPolicyData && pendingPolicyOperations.current.length === 0) {
+        activeTenantId.current = tenantId;
+        pendingPolicyOperations.current = [];
+        policyMutationQueue.current = Promise.resolve();
+        const matchingPolicyData =
+            permissionPolicyData && String(permissionPolicyData.tenantId) === tenantId
+                ? permissionPolicyData
+                : undefined;
+        confirmedPolicyData.current = matchingPolicyData;
+        setEffectivePolicyData(matchingPolicyData);
+        setPendingPolicyFields(new Set());
+    }, [tenantId]);
+
+    useEffect(() => {
+        if (
+            permissionPolicyData &&
+            String(permissionPolicyData.tenantId) === tenantId &&
+            pendingPolicyOperations.current.length === 0
+        ) {
             confirmedPolicyData.current = permissionPolicyData;
             setEffectivePolicyData(permissionPolicyData);
         }
-    }, [permissionPolicyData]);
+    }, [permissionPolicyData, tenantId]);
 
     const rebuildEffectivePolicyData = useCallback(() => {
         const confirmed = confirmedPolicyData.current;
@@ -101,49 +121,41 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
         [tenantData, updateTenantSettings, allowedPermissionToggles, enforcedPermissionToggles],
     );
 
-    const handleSave = useCallback(
-        (formData: unknown) => {
-            const savedFormData = formData as { settings?: Record<string, unknown> };
-            updateTenantSettings({
-                settings: applyPermissionConstraintsToSettings(
-                    savedFormData.settings,
-                    allowedPermissionToggles,
-                    enforcedPermissionToggles,
-                ),
-            });
-        },
-        [updateTenantSettings, allowedPermissionToggles, enforcedPermissionToggles],
-    );
-
     const handlePolicyChange = useCallback(
         (fieldKey: string, policy: PolicyValue<boolean>) => {
             if (!confirmedPolicyData.current) return;
-            const operation = { id: nextPolicyOperationId.current, fieldKey, policy };
+            if (String(confirmedPolicyData.current.tenantId) !== tenantId) return;
+            const operation = { id: nextPolicyOperationId.current, tenantId, fieldKey, policy };
             nextPolicyOperationId.current += 1;
             pendingPolicyOperations.current.push(operation);
             rebuildEffectivePolicyData();
             const run = async () => {
+                if (activeTenantId.current !== operation.tenantId) return;
                 const confirmed = confirmedPolicyData.current;
-                if (!confirmed) return;
+                if (!confirmed || String(confirmed.tenantId) !== operation.tenantId) return;
                 const next = {
                     ...confirmed,
                     policies: { ...confirmed.policies, [fieldKey]: policy },
                 };
                 try {
                     const saved = await updatePermissionPolicies.mutateAsync(next);
-                    confirmedPolicyData.current = saved;
+                    if (activeTenantId.current === operation.tenantId) {
+                        confirmedPolicyData.current = saved;
+                    }
                 } catch {
                     // The mutation hook reports the error. Only confirmed server data is retained here.
                 } finally {
-                    pendingPolicyOperations.current = pendingPolicyOperations.current.filter(
-                        ({ id }) => id !== operation.id,
-                    );
-                    rebuildEffectivePolicyData();
+                    if (activeTenantId.current === operation.tenantId) {
+                        pendingPolicyOperations.current = pendingPolicyOperations.current.filter(
+                            ({ id }) => id !== operation.id,
+                        );
+                        rebuildEffectivePolicyData();
+                    }
                 }
             };
             policyMutationQueue.current = policyMutationQueue.current.then(run, run);
         },
-        [rebuildEffectivePolicyData, updatePermissionPolicies],
+        [rebuildEffectivePolicyData, tenantId, updatePermissionPolicies],
     );
 
     if (policiesError) {
@@ -159,7 +171,6 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
             formStateKey={formStateKey}
             restrictedFields={restrictedFields}
             onToggleUpdate={handleToggleUpdate}
-            onSave={handleSave}
             policyLevel="tenant"
             permissionPolicies={effectivePolicyData?.policies}
             pendingPolicyFields={pendingPolicyFields}

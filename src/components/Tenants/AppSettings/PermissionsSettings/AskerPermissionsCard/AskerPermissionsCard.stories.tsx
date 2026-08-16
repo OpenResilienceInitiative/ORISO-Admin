@@ -1,5 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { useState, type ComponentProps } from 'react';
 import { AskerPermissionsCard } from './index';
+import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
+
+const ControlledAskerPermissionsCard = (args: ComponentProps<typeof AskerPermissionsCard>) => {
+    const [openPolicyMenu, setOpenPolicyMenu] = useState<string | null>(null);
+    return <AskerPermissionsCard {...args} openPolicyMenu={openPolicyMenu} onOpenPolicyMenu={setOpenPolicyMenu} />;
+};
 
 /**
  * **ORISO-Admin#602** — the first card under Einstellungen/Berechtigungen.
@@ -19,13 +26,14 @@ import { AskerPermissionsCard } from './index';
 const meta = {
     title: 'Tenants/Permissions/AskerPermissionsCard',
     component: AskerPermissionsCard,
+    render: (args) => <ControlledAskerPermissionsCard {...args} />,
     tags: ['autodocs'],
     parameters: { layout: 'padded' },
     decorators: [
         (Story) => (
-            <div style={{ maxWidth: 480 }}>
+            <PermissionsStoryFrame wide>
                 <Story />
-            </div>
+            </PermissionsStoryFrame>
         ),
     ],
     args: {
@@ -96,5 +104,12 @@ export const RestrictedByPlatform: Story = {
             featureDisplayNameEditable: { value: true, mode: 'SUGGESTED' },
             featureAskerEmailEnabled: { value: false, mode: 'ENFORCED', inherited: true },
         },
+    },
+};
+
+/** The display-name policy is locked while its autosave request is in flight. */
+export const PendingAutosave: Story = {
+    args: {
+        pendingPolicyFields: new Set(['featureDisplayNameEditable']),
     },
 };

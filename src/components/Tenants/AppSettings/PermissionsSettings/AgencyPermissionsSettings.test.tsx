@@ -81,6 +81,9 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         expect(payload.settings.featureVideoCallsEnabled).toBe(false);
         expect(payload.settings.featureVideoCallsOneOnOneChatsEnabled).toBe(false);
         expect(payload.settings.agencyAdminControls).toBeUndefined();
+        expect(
+            within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }),
+        ).toBeDisabled();
     });
 
     it('projects tenant-enforced-on values as locked active controls', () => {

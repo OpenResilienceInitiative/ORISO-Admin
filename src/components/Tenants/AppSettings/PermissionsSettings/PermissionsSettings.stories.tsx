@@ -35,7 +35,6 @@ const meta = {
         formStateKey: 'story',
         restrictedFields: new Set<string>(),
         onToggleUpdate: fn(),
-        onSave: fn(),
     },
     decorators: [
         (Story) => (

@@ -162,7 +162,7 @@ describe('CaseHandoverCard', () => {
         ).toBeDisabled();
         await user.click(
             screen.getByRole('button', {
-                name: 'tenants.permissions.card.caseHandover.optOutMessage: tenants.permissions.policy.moreInformation',
+                name: 'tenants.permissions.card.caseHandover.teamAccessOptOut: tenants.permissions.policy.moreInformation',
             }),
         );
         expect(screen.getByRole('dialog')).toBeInTheDocument();

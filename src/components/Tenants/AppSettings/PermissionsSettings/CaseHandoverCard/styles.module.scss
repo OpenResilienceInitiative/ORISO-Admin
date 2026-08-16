@@ -1,3 +1,5 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
 /* Case-handover specific pieces inside the shared chat-type card shell:
    reason tabs (M3 primary tabs), consent rows, language chips, notification
    sample field, footer text actions. */
@@ -155,7 +157,7 @@
 .durationField {
     display: flex;
     justify-content: center;
-    margin: 16px 0 8px;
+    margin: calc(mui.$mui-unit * 2) 0 mui.$mui-unit;
 
     > * {
         width: min(100%, 420px);

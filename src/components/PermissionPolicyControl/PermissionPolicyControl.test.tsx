@@ -40,4 +40,28 @@ describe('PermissionPolicyControl', () => {
         await user.click(screen.getByRole('button', { name: /Supervision/i }));
         expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
+
+    it.each([{ pending: true }, { disabled: true }])('locks the menu while unavailable: %o', async (lock) => {
+        const user = userEvent.setup();
+        const onOpenChange = vi.fn();
+        const onChange = vi.fn();
+        render(
+            <PermissionPolicyControl
+                featureKey="featureSupervisionEnabled"
+                label="Supervision"
+                level="tenant"
+                policy={{ value: true, mode: 'SUGGESTED' }}
+                open={false}
+                onOpenChange={onOpenChange}
+                onChange={onChange}
+                {...lock}
+            />,
+        );
+
+        const button = screen.getByRole('button', { name: /Supervision/ });
+        expect(button).toBeDisabled();
+        await user.click(button);
+        expect(onOpenChange).not.toHaveBeenCalled();
+        expect(onChange).not.toHaveBeenCalled();
+    });
 });

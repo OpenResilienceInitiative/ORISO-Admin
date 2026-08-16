@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -32,6 +32,7 @@ const Harness = (props: Partial<M3FabMenuProps>) => {
 
 describe('M3FabMenu', () => {
     it('opens an action stack downward when there is not enough room above the toggle', () => {
+        const originalInnerHeight = window.innerHeight;
         const rect = (values: Partial<DOMRect>): DOMRect =>
             ({
                 bottom: 0,
@@ -65,7 +66,14 @@ describe('M3FabMenu', () => {
             </MemoryRouter>,
         );
 
-        expect(screen.getByRole('list').parentElement?.className).toContain('openDownward');
+        const stack = screen.getByRole('list');
+        expect(stack.parentElement?.className).toContain('openDownward');
+        expect(stack).toHaveStyle({ maxHeight: '604px' });
+
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: 400 });
+        act(() => window.dispatchEvent(new Event('resize')));
+        expect(stack).toHaveStyle({ maxHeight: '236px' });
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight });
         getBoundingClientRect.mockRestore();
     });
 

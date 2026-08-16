@@ -27,7 +27,6 @@ import { CaseHandoverCardView } from './CaseHandoverCardView';
 export type CaseHandoverCardProps = {
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
-    pendingPolicyField?: string | null;
     pendingPolicyFields?: ReadonlySet<string>;
     openPolicyMenu?: string | null;
     onOpenPolicyMenu?: (fieldKey: string | null) => void;
@@ -37,7 +36,6 @@ export type CaseHandoverCardProps = {
 export const CaseHandoverCard = ({
     policyLevel,
     permissionPolicies,
-    pendingPolicyField,
     pendingPolicyFields,
     openPolicyMenu,
     onOpenPolicyMenu,
@@ -111,6 +109,7 @@ export const CaseHandoverCard = ({
         <CaseHandoverCardView
             policies={policies}
             isLoading={isLoading}
+            isSaving={updateReasonPolicies.isPending}
             canEdit={canEdit}
             moduleEnabled={moduleEnabled}
             onModuleEnabledChange={handleModuleEnabledChange}
@@ -119,7 +118,6 @@ export const CaseHandoverCard = ({
             onMaxAccessDurationChange={handleMaxAccessDurationChange}
             policyLevel={policyLevel}
             permissionPolicies={permissionPolicies}
-            pendingPolicyField={pendingPolicyField}
             pendingPolicyFields={pendingPolicyFields}
             openPolicyMenu={openPolicyMenu}
             onOpenPolicyMenu={onOpenPolicyMenu}

@@ -1,4 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { notification } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
 import { useTenantAdminControlsMutation } from '../../../../hooks/useTenantAdminControlsMutation.hook';
 import { buildTogglePayload } from './permissionsToggleLogic';
@@ -6,11 +8,41 @@ import { applyVisibleTogglesAsValues, buildTenantAdminControlsPayload } from './
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
+import type { TenantAdminControls } from '../../../../types/TenantAdminControls';
 
 export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
+    const { t } = useTranslation();
     const { data: platformControls, isLoading } = useTenantAdminControls(true);
-    const [pendingPolicyField, setPendingPolicyField] = useState<string | null>(null);
-    const { mutate: updateTenantAdminControls } = useTenantAdminControlsMutation({ successMessageKey: false });
+    const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
+    const [effectivePlatformControls, setEffectivePlatformControls] = useState<TenantAdminControls | undefined>(
+        platformControls,
+    );
+    const confirmedPlatformControls = useRef<TenantAdminControls | undefined>(platformControls);
+    const pendingPolicyOperations = useRef<{ id: number; fieldKey: string; policy: PolicyValue<boolean> }[]>([]);
+    const nextPolicyOperationId = useRef(0);
+    const policyMutationQueue = useRef<Promise<void>>(Promise.resolve());
+    const updateTenantAdminControls = useTenantAdminControlsMutation({
+        successMessageKey: false,
+        onError: () => notification.error({ message: t('tenants.permissions.policy.saveError') }),
+    });
+
+    useEffect(() => {
+        if (platformControls && pendingPolicyOperations.current.length === 0) {
+            confirmedPlatformControls.current = platformControls;
+            setEffectivePlatformControls(platformControls);
+        }
+    }, [platformControls]);
+
+    const rebuildEffectivePlatformControls = useCallback(() => {
+        const confirmed = confirmedPlatformControls.current;
+        if (!confirmed) return;
+        const permissionPolicies = pendingPolicyOperations.current.reduce(
+            (current, operation) => ({ ...current, [operation.fieldKey]: operation.policy }),
+            { ...confirmed.permissionPolicies },
+        );
+        setEffectivePlatformControls({ ...confirmed, permissionPolicies });
+        setPendingPolicyFields(new Set(pendingPolicyOperations.current.map(({ fieldKey }) => fieldKey)));
+    }, []);
 
     const allowedPermissionToggles = platformControls?.allowedPermissionToggles;
     const enforcedPermissionToggles = platformControls?.enforcedPermissionToggles;
@@ -18,7 +50,7 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
 
     const persistPlatformControls = useCallback(
         (formData: { settings?: Record<string, unknown> }) => {
-            updateTenantAdminControls(
+            updateTenantAdminControls.mutate(
                 buildTenantAdminControlsPayload(
                     formData,
                     allowedPermissionToggles,
@@ -28,7 +60,7 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
             );
         },
         [
-            updateTenantAdminControls,
+            updateTenantAdminControls.mutate,
             allowedPermissionToggles,
             platformControls?.permissionsPageEnabled,
             enforcedPermissionToggles,
@@ -37,17 +69,32 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
 
     const handlePolicyChange = useCallback(
         (fieldKey: string, policy: PolicyValue<boolean>) => {
-            if (!platformControls) return;
-            setPendingPolicyField(fieldKey);
-            updateTenantAdminControls(
-                {
-                    ...platformControls,
-                    permissionPolicies: { ...platformControls.permissionPolicies, [fieldKey]: policy },
-                },
-                { onSettled: () => setPendingPolicyField(null) },
-            );
+            if (!confirmedPlatformControls.current) return;
+            const operation = { id: nextPolicyOperationId.current, fieldKey, policy };
+            nextPolicyOperationId.current += 1;
+            pendingPolicyOperations.current.push(operation);
+            rebuildEffectivePlatformControls();
+            const run = async () => {
+                const confirmed = confirmedPlatformControls.current;
+                if (!confirmed) return;
+                const next = {
+                    ...confirmed,
+                    permissionPolicies: { ...confirmed.permissionPolicies, [fieldKey]: policy },
+                };
+                try {
+                    confirmedPlatformControls.current = await updateTenantAdminControls.mutateAsync(next);
+                } catch {
+                    // The mutation hook reports the error. Rebuild below rolls back this operation only.
+                } finally {
+                    pendingPolicyOperations.current = pendingPolicyOperations.current.filter(
+                        ({ id }) => id !== operation.id,
+                    );
+                    rebuildEffectivePlatformControls();
+                }
+            };
+            policyMutationQueue.current = policyMutationQueue.current.then(run, run);
         },
-        [platformControls, updateTenantAdminControls],
+        [rebuildEffectivePlatformControls, updateTenantAdminControls],
     );
 
     const initialValues = useMemo(
@@ -71,13 +118,6 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
         [allowedPermissionToggles, persistPlatformControls],
     );
 
-    const handleSave = useCallback(
-        (formData: unknown) => {
-            persistPlatformControls(formData as { settings?: Record<string, unknown> });
-        },
-        [persistPlatformControls],
-    );
-
     return (
         <PermissionsSettingsView
             tenantId={tenantId}
@@ -87,10 +127,9 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
             formStateKey="platform"
             restrictedFields={restrictedFields}
             onToggleUpdate={handleToggleUpdate}
-            onSave={handleSave}
             policyLevel="platform"
-            permissionPolicies={platformControls?.permissionPolicies}
-            pendingPolicyField={pendingPolicyField}
+            permissionPolicies={effectivePlatformControls?.permissionPolicies}
+            pendingPolicyFields={pendingPolicyFields}
             onPolicyChange={handlePolicyChange}
         />
     );

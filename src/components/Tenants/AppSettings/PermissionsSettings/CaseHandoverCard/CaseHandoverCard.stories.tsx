@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { CaseHandoverCardView } from './CaseHandoverCardView';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
 
 const policies: CaseHandoverReasonPolicy[] = [
     {
@@ -75,9 +76,9 @@ const meta = {
     },
     decorators: [
         (Story) => (
-            <div style={{ width: '100%', maxWidth: 425 }}>
+            <PermissionsStoryFrame>
                 <Story />
-            </div>
+            </PermissionsStoryFrame>
         ),
     ],
 } satisfies Meta<typeof CaseHandoverCardView>;
