@@ -1,63 +1,107 @@
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
-import { ALL_DEPARTMENTS, DepartmentSelect } from '.';
+import { ALL_DEPARTMENTS, DepartmentSelect } from './index';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
-        t: (_key: string, fallback?: any, options?: any) => {
-            if (typeof fallback === 'string' && options?.name) {
-                return fallback.replace('{{name}}', options.name);
+        t: (key: string, options?: unknown) => {
+            if (options && typeof options === 'object' && 'count' in (options as Record<string, unknown>)) {
+                return `${key}:${(options as { count: number }).count}`;
             }
-            return typeof fallback === 'string' ? fallback : _key;
+            return key;
         },
     }),
 }));
 
-const departments = [
-    { id: 3, name: 'U25 Suizidprävention' },
-    { id: 12, name: 'Schwangerschaft' },
-];
-
-const openMenu = async () => {
-    await userEvent.click(screen.getByRole('button', { name: /Fachbereich wählen/i }));
+const open = async () => {
+    await userEvent.click(screen.getByRole('button', { name: /agency.legal.department.choose/i }));
 };
 
-describe('DepartmentSelect', () => {
-    it('shows the agency-wide entry as the label when nothing is selected', () => {
-        render(<DepartmentSelect departments={departments} value={ALL_DEPARTMENTS} onChange={vi.fn()} />);
+/**
+ * #583: an admin editing the agency-wide text has to see which Fachbereiche have
+ * left the inherited text — they will NOT receive the correction being written.
+ */
+describe('DepartmentSelect — who still inherits', () => {
+    it('marks the departments that carry their own published text', async () => {
+        render(
+            <DepartmentSelect
+                departments={[
+                    { id: 3, name: 'U25', hasOwnText: true },
+                    { id: 4, name: 'Sucht', hasOwnText: false },
+                ]}
+                value={ALL_DEPARTMENTS}
+                onChange={() => undefined}
+            />,
+        );
+        await open();
 
-        expect(screen.getByText('Alle Fachbereiche')).toBeInTheDocument();
+        expect(await screen.findByTestId('own-text-3')).toBeInTheDocument();
+        expect(screen.queryByTestId('own-text-4')).not.toBeInTheDocument();
     });
 
-    it('shows the selected department name as the label', () => {
-        render(<DepartmentSelect departments={departments} value={3} onChange={vi.fn()} />);
+    it('says on "Alle Fachbereiche" how many will not receive the change', async () => {
+        render(
+            <DepartmentSelect
+                departments={[
+                    { id: 3, name: 'U25', hasOwnText: true },
+                    { id: 4, name: 'Sucht', hasOwnText: true },
+                    { id: 5, name: 'Schulden', hasOwnText: false },
+                ]}
+                value={ALL_DEPARTMENTS}
+                onChange={() => undefined}
+            />,
+        );
+        await open();
 
-        expect(screen.getByText('U25 Suizidprävention')).toBeInTheDocument();
+        expect(await screen.findByTestId('departments-with-own-text')).toHaveTextContent(
+            'agency.legal.department.notInheriting:2',
+        );
     });
 
-    it('renders nothing when the agency has no departments', () => {
-        // A switcher with a single possible value is noise, not a choice.
-        const { container } = render(<DepartmentSelect departments={[]} value={ALL_DEPARTMENTS} onChange={vi.fn()} />);
+    it('stays quiet when every department still inherits', async () => {
+        render(
+            <DepartmentSelect
+                departments={[{ id: 3, name: 'U25', hasOwnText: false }]}
+                value={ALL_DEPARTMENTS}
+                onChange={() => undefined}
+            />,
+        );
+        await open();
 
-        expect(container).toBeEmptyDOMElement();
+        expect(await screen.findByText('U25')).toBeInTheDocument();
+        expect(screen.queryByTestId('departments-with-own-text')).not.toBeInTheDocument();
     });
 
-    it('reports a chosen department as a numeric topic id', async () => {
+    it('claims nothing when the backend does not report the state', async () => {
+        // An older deployment sends no `departments[]`. A missing marker must not be
+        // read as "still inherits" — so the entry carries no claim either way.
+        render(
+            <DepartmentSelect
+                departments={[{ id: 3, name: 'U25' }]}
+                value={ALL_DEPARTMENTS}
+                onChange={() => undefined}
+            />,
+        );
+        await open();
+
+        expect(await screen.findByText('U25')).toBeInTheDocument();
+        expect(screen.queryByTestId('own-text-3')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('departments-with-own-text')).not.toBeInTheDocument();
+    });
+
+    it('still switches department when a marker is rendered', async () => {
         const onChange = vi.fn();
-        render(<DepartmentSelect departments={departments} value={ALL_DEPARTMENTS} onChange={onChange} />);
-        await openMenu();
-        await userEvent.click(await screen.findByText('U25 Suizidprävention'));
+        render(
+            <DepartmentSelect
+                departments={[{ id: 3, name: 'U25', hasOwnText: true }]}
+                value={ALL_DEPARTMENTS}
+                onChange={onChange}
+            />,
+        );
+        await open();
+        await userEvent.click(await screen.findByText('U25'));
 
         expect(onChange).toHaveBeenCalledWith(3);
-    });
-
-    it('reports the agency-wide entry as the sentinel, not as a number', async () => {
-        const onChange = vi.fn();
-        render(<DepartmentSelect departments={departments} value={3} onChange={onChange} />);
-        await openMenu();
-        await userEvent.click(await screen.findByText('Alle Fachbereiche'));
-
-        expect(onChange).toHaveBeenCalledWith(ALL_DEPARTMENTS);
     });
 });

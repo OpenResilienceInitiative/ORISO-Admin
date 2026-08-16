@@ -61,12 +61,31 @@ export const AgencyLegalTextContainer = ({
     const isDepartment = selected !== ALL_DEPARTMENTS;
     const topicId = isDepartment ? (selected as number) : undefined;
 
+    // Which Fachbereich has left the inherited text, per kind: the switcher marks it so an admin
+    // editing the agency-wide text sees who will NOT receive the change (#583). Keyed by topicId
+    // because `departments[]` and `topics[]` are separate lists on the agency read; a department
+    // the admin never opened is covered, since the state comes with the agency, not with a click.
+    const ownTextByTopic = useMemo(() => {
+        const state = new Map<number, boolean>();
+        (agencyData?.departments || []).forEach((department) => {
+            const hasOwn = field === 'privacy' ? department.hasPublishedDpp : department.hasPublishedImprint;
+            if (hasOwn !== undefined) {
+                state.set(Number(department.topicId), hasOwn);
+            }
+        });
+        return state;
+    }, [agencyData?.departments, field]);
+
     const departments = useMemo(
         () =>
             (agencyData?.topics || [])
                 .filter((topic) => topic.id != null)
-                .map((topic) => ({ id: topic.id as number, name: topic.name })),
-        [agencyData?.topics],
+                .map((topic) => ({
+                    id: topic.id as number,
+                    name: topic.name,
+                    hasOwnText: ownTextByTopic.get(topic.id as number),
+                })),
+        [agencyData?.topics, ownTextByTopic],
     );
 
     // Tenant text is the root of the inheritance chain: Träger → Agentur → Fachbereich.
