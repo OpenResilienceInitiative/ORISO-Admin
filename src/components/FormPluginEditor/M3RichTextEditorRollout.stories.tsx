@@ -1,4 +1,6 @@
+import classNames from 'classnames';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import styles from './M3RichTextEditorRollout.module.scss';
 
 /**
  * Where the M3 Rich Text Editor should be adopted next, and what each surface needs.
@@ -27,7 +29,7 @@ const SURFACES: Surface[] = [
         path: 'components/Tenants/LegalSettings/*',
         today: 'M3 Rich Text Editor',
         verdict: 'adopted',
-        note: 'The reference implementation: per-language content map, help text, blocker and success snackbars, version split button, department selector, device-local draft.',
+        note: 'The reference implementation: the card owns the per-language content map and feeds the editor one string at a time, plus help text, blocker and success snackbars, version split button, department selector and the draft.',
     },
     {
         name: 'Agency legal texts',
@@ -82,88 +84,56 @@ const REUSABLE = [
     ],
 ];
 
-const VERDICT_STYLE: Record<Surface['verdict'], { label: string; background: string; color: string }> = {
-    adopted: {
-        label: 'already on it',
-        background: 'var(--m3-surface-container-high, #eae7e8)',
-        color: 'var(--m3-on-surface-variant, #444748)',
-    },
-    candidate: { label: 'candidate', background: 'var(--m3-on-secondary-container, #e7effc)', color: '#000' },
-    out: { label: 'out of scope', background: 'transparent', color: 'var(--m3-outline, #747878)' },
+const VERDICT: Record<Surface['verdict'], { label: string; className: string }> = {
+    adopted: { label: 'already on it', className: styles.verdictAdopted },
+    candidate: { label: 'candidate', className: styles.verdictCandidate },
+    out: { label: 'out of scope', className: styles.verdictOut },
 };
 
 const RolloutPlan = () => (
-    <div style={{ maxWidth: 900, color: 'var(--m3-on-surface, #1b1b1c)', fontSize: 14, lineHeight: 1.5 }}>
-        <h2 style={{ fontSize: 24, fontWeight: 400, margin: '0 0 4px' }}>M3 Rich Text Editor — rollout plan</h2>
-        <p style={{ margin: '0 0 24px', color: 'var(--m3-on-surface-variant, #444748)' }}>
+    <div className={styles.page}>
+        <h2 className={styles.title}>M3 Rich Text Editor — rollout plan</h2>
+        <p className={styles.lead}>
             Every multiline text field in the admin panel, and whether the editor belongs there. Taken from the code, so
             two surfaces that looked like candidates turned out not to be: the agency legal texts already use the
             editor, and the demo cards are not mounted anywhere.
         </p>
 
         {SURFACES.map((surface) => {
-            const style = VERDICT_STYLE[surface.verdict];
+            const verdict = VERDICT[surface.verdict];
             return (
                 <section
                     key={surface.path}
-                    style={{
-                        marginBottom: 12,
-                        padding: '12px 16px',
-                        border: '1px solid var(--m3-outline-variant, #c4c7c8)',
-                        borderRadius: 12,
-                        opacity: surface.verdict === 'out' ? 0.65 : 1,
-                    }}
+                    className={classNames(styles.surface, { [styles.surfaceOut]: surface.verdict === 'out' })}
                 >
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>
-                        <strong style={{ flex: '1 1 260px' }}>{surface.name}</strong>
-                        <span
-                            style={{
-                                padding: '2px 10px',
-                                borderRadius: 100,
-                                background: style.background,
-                                color: style.color,
-                                fontSize: 12,
-                                border: surface.verdict === 'out' ? '1px solid currentColor' : 'none',
-                            }}
-                        >
-                            {style.label}
-                        </span>
+                    <div className={styles.surfaceHead}>
+                        <strong className={styles.surfaceName}>{surface.name}</strong>
+                        <span className={classNames(styles.verdict, verdict.className)}>{verdict.label}</span>
                     </div>
-                    <code
-                        style={{
-                            display: 'block',
-                            margin: '6px 0',
-                            fontSize: 12,
-                            color: 'var(--m3-on-surface-variant, #444748)',
-                        }}
-                    >
-                        {surface.path}
-                    </code>
-                    <div style={{ fontSize: 13, color: 'var(--m3-on-surface-variant, #444748)' }}>
+                    <code className={styles.path}>{surface.path}</code>
+                    <div className={styles.today}>
                         <em>today:</em> {surface.today}
                     </div>
-                    <p style={{ margin: '6px 0 0' }}>{surface.note}</p>
+                    <p className={styles.note}>{surface.note}</p>
                 </section>
             );
         })}
 
-        <h3 style={{ fontSize: 18, fontWeight: 400, margin: '28px 0 8px' }}>What comes with the editor</h3>
-        <p style={{ margin: '0 0 12px', color: 'var(--m3-on-surface-variant, #444748)' }}>
+        <h3 className={styles.sectionHeading}>What comes with the editor</h3>
+        <p className={styles.leadTight}>
             These are the parts worth reusing in other molecules and atoms, not just inside the legal cards.
         </p>
-        <dl style={{ margin: 0 }}>
+        <dl className={styles.reusableList}>
             {REUSABLE.map(([name, what]) => (
-                <div key={name} style={{ marginBottom: 10 }}>
-                    <dt style={{ fontWeight: 600 }}>{name}</dt>
-                    <dd style={{ margin: '2px 0 0', color: 'var(--m3-on-surface-variant, #444748)' }}>{what}</dd>
+                <div key={name} className={styles.reusableItem}>
+                    <dt className={styles.reusableName}>{name}</dt>
+                    <dd className={styles.reusableWhat}>{what}</dd>
                 </div>
             ))}
         </dl>
 
-        <h3 style={{ fontSize: 18, fontWeight: 400, margin: '28px 0 8px' }}>
-            Open questions before the first migration
-        </h3>
-        <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--m3-on-surface-variant, #444748)' }}>
+        <h3 className={styles.sectionHeading}>Open questions before the first migration</h3>
+        <ul className={styles.questions}>
             <li>
                 Does the target store plain text today? Switching to HTML needs a read path that survives the old
                 values.
@@ -177,8 +147,10 @@ const RolloutPlan = () => (
                 want image upload.
             </li>
             <li>
-                Per-language already, or single value? The editor expects a language map; a single string needs a
-                decision, not a default.
+                Per-language already, or single value? The editor itself takes a single HTML <code>value</code> — the
+                language map lives in the host, which picks the current string and passes <code>languages</code> /{' '}
+                <code>language</code> / <code>onLanguageChange</code> to get the switcher. A surface with one value can
+                adopt the editor without any of that; whether it should become multilingual is a separate decision.
             </li>
         </ul>
     </div>
