@@ -127,6 +127,7 @@ export const CaseHandoverCardView = ({
                             }
                             open={currentOpenPolicyMenu === 'caseHandoverEnabled'}
                             pending={pendingPolicyFields?.has('caseHandoverEnabled')}
+                            disabled={isSaving}
                             onOpenChange={(open) => setOpenPolicyMenu(open ? 'caseHandoverEnabled' : null)}
                             onChange={(next) => {
                                 onFeaturePolicyChange?.('caseHandoverEnabled', next);

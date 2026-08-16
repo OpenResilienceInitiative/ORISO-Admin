@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
         },
     ],
     dataState: { isError: false },
+    mutationState: { isPending: false },
 }));
 
 const t = (key: string) => key;
@@ -46,7 +47,7 @@ vi.mock('../../../../../hooks/useCaseHandoverReasonPolicies', () => ({
         isError: mocks.dataState.isError,
     }),
     useCaseHandoverReasonPoliciesMutation: () => ({
-        isPending: false,
+        isPending: mocks.mutationState.isPending,
         mutate: mocks.mutate,
     }),
 }));
@@ -67,6 +68,7 @@ describe('CaseHandoverCard', () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
         mocks.dataState.isError = false;
+        mocks.mutationState.isPending = false;
     });
 
     it('master policy selection writes enabled on every reason and normalizes empty policyAuthority to null', async () => {
@@ -198,6 +200,18 @@ describe('CaseHandoverCard', () => {
         expect(screen.getByRole('button', { name: 'tenants.permissions.policy.activationSuggested' })).toBeVisible();
         expect(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' })).toBeVisible();
         expect(screen.getByRole('button', { name: 'tenants.permissions.policy.moreInformation' })).toBeVisible();
+    });
+
+    it('locks the master policy while a reason-policy save is pending', () => {
+        mocks.mutationState.isPending = true;
+
+        render(<CaseHandoverCard />);
+
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.openMenu/,
+            }),
+        ).toBeDisabled();
     });
 
     it('rolls back the optimistic toggle when the save fails', async () => {

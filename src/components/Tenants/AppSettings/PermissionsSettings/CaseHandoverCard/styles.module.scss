@@ -157,7 +157,7 @@
 .notificationFieldLabel {
     display: block;
     margin-bottom: 2px;
-    padding: 8px 16px 0;
+    padding: mui.$mui-unit calc(mui.$mui-unit * 2) 0;
     color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
     font-size: 12px;
     letter-spacing: 0.4px;
@@ -170,7 +170,7 @@
     width: 100%;
     box-sizing: border-box;
     margin: 0;
-    padding: 0 16px 10px;
+    padding: 0 calc(mui.$mui-unit * 2) 10px;
     border: 0;
     background: transparent;
     resize: vertical;

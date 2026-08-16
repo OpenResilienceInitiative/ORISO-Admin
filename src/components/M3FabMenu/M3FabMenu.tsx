@@ -111,6 +111,12 @@ export const M3FabMenu = ({
         return () => window.removeEventListener('resize', updatePlacement);
     }, [items.length, footerItems.length, open, variant]);
 
+    useEffect(() => {
+        if (!open || disabled) return;
+
+        stackRef.current?.querySelector<HTMLElement>('a:not([aria-disabled="true"]), button:not(:disabled)')?.focus();
+    }, [disabled, footerItems.length, items.length, open]);
+
     // Escape and a click outside close the menu. Pointer-down rather than click,
     // so a tap that starts outside never also activates what is underneath.
     // Both listeners sit on the document: Escape has to work while focus is on

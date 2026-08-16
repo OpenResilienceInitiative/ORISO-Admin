@@ -109,6 +109,14 @@ describe('M3FabMenu', () => {
         expect(screen.getByRole('button', { name: 'Menü schließen' })).toHaveAttribute('aria-expanded', 'true');
     });
 
+    it('moves focus to the first enabled action when the menu opens', async () => {
+        render(<Harness />);
+
+        await userEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }));
+
+        expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveFocus();
+    });
+
     it('marks the destination you are on', async () => {
         render(<Harness />);
         await userEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }));
