@@ -129,14 +129,16 @@
     .protectedLayout {
         padding-bottom: 0;
 
+        // Sidebar raster from Figma 1285-80496: 128px wide with a 16px inset
+        // around the nav icons.
         .ant-layout-sider {
             position: sticky;
             top: 0;
             left: 0;
-            width: 96px;
-            min-width: 96px !important;
-            max-width: 96px !important;
-            flex: 0 0 96px !important;
+            width: var(--admin-sidebar-width, 128px);
+            min-width: var(--admin-sidebar-width, 128px) !important;
+            max-width: var(--admin-sidebar-width, 128px) !important;
+            flex: 0 0 var(--admin-sidebar-width, 128px) !important;
             height: 100vh;
             background-color: var(--m3-on-background, #281715);
         }
@@ -150,7 +152,7 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 12px 4px;
+            padding: 16px;
 
             ul {
                 display: flex;
@@ -184,7 +186,7 @@
             }
 
             .menuSectionLabel {
-                max-width: 76px;
+                max-width: 96px;
                 margin-bottom: 4px;
                 color: rgba(231, 239, 252, 0.62);
                 font-size: 9px;

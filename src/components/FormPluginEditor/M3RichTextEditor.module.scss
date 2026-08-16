@@ -768,6 +768,26 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 }
 
+/* Success tone (Figma 1261-51137): same snackbar, secondary-container blue with
+   dark text. Used when the message confirms something that happened rather than
+   blocking an action — e.g. the DPA was signed. */
+.hintSnackbarSuccess {
+    background: var(--m3-on-secondary-container, #e7effc);
+    color: #000000;
+
+    .hintSnackbarAction {
+        color: var(--m3-error, #b1005e);
+
+        &:hover {
+            background: rgba(177, 0, 94, 0.12);
+        }
+    }
+
+    .hintSnackbarClose {
+        color: #000000;
+    }
+}
+
 // In read mode the dismiss label may wrap onto two lines.
 // With a chapter chip footer the snackbar floats above it.
 .hasAnchors .hintSnackbar {
@@ -1331,8 +1351,10 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     color: $m3-on-surface-variant;
 }
 
+// Figma 1285-80496, "Footer Legal Editor": the publish/edit row is 68px tall.
 .actions {
     display: flex;
+    min-height: var(--admin-card-footer-height, 68px);
     gap: 8px;
     align-items: center;
     justify-content: flex-end;

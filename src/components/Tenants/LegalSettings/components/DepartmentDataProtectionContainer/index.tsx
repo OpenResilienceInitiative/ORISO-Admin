@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useDepartmentDpp } from '../../../../../hooks/useDepartmentDpp.hook';
 import { usePublishDepartmentDpp } from '../../../../../hooks/usePublishDepartmentDpp.hook';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
@@ -25,9 +24,6 @@ export const DepartmentDataProtectionContainer = ({
     topicId,
     departmentName,
 }: DepartmentDataProtectionContainerProps) => {
-    const { i18n } = useTranslation();
-    const lang = i18n.language?.split('-')[0] || 'de';
-
     const { data, isLoading } = useDepartmentDpp(agencyId, topicId);
     const { mutate: publish, isPending } = usePublishDepartmentDpp(agencyId, topicId);
     const { data: tenantData } = useTenantAdminData();
@@ -50,7 +46,6 @@ export const DepartmentDataProtectionContainer = ({
             departmentName={departmentName}
             initialContentByLanguage={contentByLanguage}
             languages={languages}
-            defaultLanguage={lang}
             publicationStatus={data?.publicationStatus}
             onSave={(contentByLang, doPublish) => publish({ content: contentByLang, publish: doPublish })}
             saving={isPending}
