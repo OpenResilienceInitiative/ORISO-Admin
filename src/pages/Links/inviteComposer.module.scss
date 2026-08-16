@@ -14,6 +14,7 @@
  * fall under their nominal width on narrow viewports — a hard `width` plus
  * `flex: 0 0 auto` made the e-mail field alone wider than a 390px phone.
  */
+
 .emailField {
     width: 304px;
     max-width: 100%;
@@ -30,6 +31,7 @@
  * The reason the send action is off (#713). Project rule: disable rather than
  * hide, but ALWAYS explain — a silently greyed-out primary action is the bug.
  */
+
 .sendHint {
     margin: 0 0 8px;
     padding: 0 4px;
@@ -40,6 +42,7 @@
 
 /* "⋮" more-menu trigger before the search pill (#315) — same 48px round icon
  * geometry as the search pill's own icon buttons. */
+
 .moreButton {
     display: inline-flex;
     width: 48px;

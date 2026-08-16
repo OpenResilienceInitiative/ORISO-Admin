@@ -104,6 +104,13 @@ export const useUserRolesToPermission = () => {
         [UserRole.AgencyAdmin]: {
             Agency: { read: true, create: true, update: true, delete: true },
             Statistic: { read: true },
+            // #609: the Fachbereich legal editors had NO permission check at all —
+            // any admin who owned the agency could publish a data-protection policy
+            // regardless of role or delegation. This mirrors the tenant-level rule
+            // one rung down the ladder: reading is always allowed, changing follows
+            // the same delegation switch. In a deployment without single-domain
+            // multitenancy `singleCanEditLegalText` is true, so nothing changes there.
+            LegalText: { read: true, update: singleCanEditLegalText },
         },
         [UserRole.TenantAdmin]: {
             // Tenant-scoped admins can manage tenant settings, but only super-admins may create/delete tenants.

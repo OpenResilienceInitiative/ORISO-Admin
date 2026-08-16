@@ -25,6 +25,12 @@ runs:
           shell: bash
           run: npx eslint . --max-warnings=0
 
+        - name: Lint (Stylelint)
+          shell: bash
+          # Check-only on purpose: `lint:css:fix` is the mutating variant and
+          # must never run in CI.
+          run: npm run lint:css
+
         - name: Check formatting (Prettier)
           shell: bash
           run: npx prettier . --check --ignore-unknown
