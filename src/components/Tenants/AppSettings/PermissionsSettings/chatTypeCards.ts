@@ -43,6 +43,7 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             {
                 labelKey: 'tenants.permissions.feature.mediaAiScan',
                 field: ['settings', 'featureMediaAiScanOneOnOneChatsEnabled'],
+                requiresCapability: 'mediaAiScan',
             },
         ],
     },
@@ -84,6 +85,7 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             {
                 labelKey: 'tenants.permissions.feature.mediaAiScan',
                 field: ['settings', 'featureMediaAiScanAnonymousChatsEnabled'],
+                requiresCapability: 'mediaAiScan',
             },
         ],
     },
@@ -121,6 +123,7 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             {
                 labelKey: 'tenants.permissions.feature.mediaAiScan',
                 field: ['settings', 'featureMediaAiScanGroupChatsEnabled'],
+                requiresCapability: 'mediaAiScan',
             },
         ],
     },
@@ -158,6 +161,7 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             {
                 labelKey: 'tenants.permissions.feature.mediaAiScan',
                 field: ['settings', 'featureMediaAiScanSupervisionChatsEnabled'],
+                requiresCapability: 'mediaAiScan',
             },
         ],
     },
