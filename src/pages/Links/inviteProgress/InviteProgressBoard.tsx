@@ -72,6 +72,13 @@ const BUCKET_FALLBACK_LABELS: Record<InviteBucket, string> = {
 /** One active filter at a time: a summary tile (bucket) or a status chip. */
 type InviteFilter = { kind: 'bucket'; bucket: InviteBucket } | { kind: 'status'; status: AccountInviteStatus };
 
+/** The single predicate behind both the rendered rows and the selection pruning. */
+const matchesFilter = (invite: AccountInviteDTO, filter: InviteFilter | null) => {
+    if (!filter) return true;
+    if (filter.kind === 'status') return invite.inviteStatus === filter.status;
+    return deriveInviteBucket(invite) === filter.bucket;
+};
+
 /** An invite still able to change can be resent/revoked (terminal states cannot). */
 const isActionable = (invite: AccountInviteDTO) =>
     invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
@@ -127,11 +134,29 @@ export const InviteProgressBoard = ({
 
     const bucketCounts = useMemo(() => countInviteBuckets(invites), [invites]);
 
-    const filtered = useMemo(() => {
-        if (!filter) return invites;
-        if (filter.kind === 'status') return invites.filter((invite) => invite.inviteStatus === filter.status);
-        return invites.filter((invite) => deriveInviteBucket(invite) === filter.bucket);
-    }, [invites, filter]);
+    const filtered = useMemo(
+        () => (filter ? invites.filter((invite) => matchesFilter(invite, filter)) : invites),
+        [invites, filter],
+    );
+
+    /**
+     * Switching a tile or a chip also prunes the selection down to the rows the
+     * new filter still shows. The bulk actions above the board act on the
+     * selection, NOT on what is on screen — a row hidden by a filter would
+     * otherwise stay silently checked and get resent or revoked without the
+     * admin ever seeing it. This mirrors the pruning `AccountInvitesTab` already
+     * does when a reload drops a row from the list.
+     */
+    const applyFilter = (next: InviteFilter | null) => {
+        setFilter(next);
+        if (selectedIds.length === 0) return;
+        const stillVisible = selectedIds.filter((id) =>
+            invites.some((invite) => invite.id === id && matchesFilter(invite, next)),
+        );
+        if (stillVisible.length !== selectedIds.length) {
+            onSelectionChange(stillVisible);
+        }
+    };
 
     const sorted = useMemo(() => {
         if (!sort) return filtered;
@@ -148,6 +173,14 @@ export const InviteProgressBoard = ({
     const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
     const effectivePage = Math.min(page, pageCount);
     const pageRows = sorted.slice((effectivePage - 1) * pageSize, effectivePage * pageSize);
+
+    // The clamp above only fixes what is rendered. Writing it back keeps the
+    // state honest: a shrinking list (revoke + refetch) that grows again would
+    // otherwise snap back to the old, higher page without the admin touching
+    // the pager.
+    useEffect(() => {
+        if (page > pageCount) setPage(pageCount);
+    }, [page, pageCount]);
 
     const columns = useMemo(
         () => [
@@ -194,8 +227,8 @@ export const InviteProgressBoard = ({
                         tone={bucket === 'problem' ? 'error' : 'default'}
                         active={filter?.kind === 'bucket' && filter.bucket === bucket}
                         onClick={() =>
-                            setFilter((current) =>
-                                current?.kind === 'bucket' && current.bucket === bucket
+                            applyFilter(
+                                filter?.kind === 'bucket' && filter.bucket === bucket
                                     ? null
                                     : { kind: 'bucket', bucket },
                             )
@@ -210,7 +243,7 @@ export const InviteProgressBoard = ({
                         key={status}
                         label={t(`links.accountInvites.status.${status}`, INVITE_STATUS_FALLBACK_LABELS[status])}
                         selected={filter?.kind === 'status' && filter.status === status}
-                        onChange={(next) => setFilter(next ? { kind: 'status', status } : null)}
+                        onChange={(next) => applyFilter(next ? { kind: 'status', status } : null)}
                     />
                 ))}
             />

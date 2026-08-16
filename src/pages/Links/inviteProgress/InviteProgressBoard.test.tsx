@@ -147,6 +147,61 @@ describe('InviteProgressBoard', () => {
         expect(screen.getByRole('checkbox', { name: 'Einladung für person4@example.org auswählen' })).toBeDisabled();
     });
 
+    /*
+     * The bulk actions above the board act on the SELECTION, not on what is on
+     * screen. A row hidden by a filter must therefore not stay checked — it
+     * would be resent or revoked without the admin ever seeing it.
+     */
+    describe('selection across a filter change', () => {
+        /** The board is controlled; the harness holds the selection like the tab does. */
+        const ControlledBoard = ({ onSelectionChange, ...rest }: ReturnType<typeof baseProps>) => {
+            const [selectedIds, setSelectedIds] = React.useState<number[]>([]);
+            return (
+                <InviteProgressBoard
+                    {...rest}
+                    selectedIds={selectedIds}
+                    onSelectionChange={(ids) => {
+                        onSelectionChange(ids);
+                        setSelectedIds(ids);
+                    }}
+                />
+            );
+        };
+
+        it('prunes ids the new filter hides', async () => {
+            const user = userEvent.setup();
+            const props = baseProps();
+            render(<ControlledBoard {...props} />);
+
+            const rowCheckbox = 'Einladung für person1@example.org auswählen';
+            await user.click(screen.getByRole('checkbox', { name: rowCheckbox }));
+            expect(props.onSelectionChange).toHaveBeenLastCalledWith([1]);
+
+            // person1 is EMAIL_SENT, so the "Angenommen" chip hides it.
+            await user.click(screen.getByRole('checkbox', { name: 'Angenommen' }));
+            expect(props.onSelectionChange).toHaveBeenLastCalledWith([]);
+
+            // Really deselected, not just reported: it comes back unchecked.
+            await user.click(screen.getByRole('checkbox', { name: 'Angenommen' }));
+            expect(screen.getByRole('checkbox', { name: rowCheckbox })).not.toBeChecked();
+        });
+
+        it('keeps ids the new filter still shows', async () => {
+            const user = userEvent.setup();
+            const props = baseProps();
+            render(<ControlledBoard {...props} />);
+
+            const rowCheckbox = 'Einladung für person1@example.org auswählen';
+            await user.click(screen.getByRole('checkbox', { name: rowCheckbox }));
+            props.onSelectionChange.mockClear();
+
+            // The "Eingeladen" bucket contains person1 — nothing to prune.
+            await user.click(screen.getByRole('button', { name: '1 Eingeladen' }));
+            expect(props.onSelectionChange).not.toHaveBeenCalled();
+            expect(screen.getByRole('checkbox', { name: rowCheckbox })).toBeChecked();
+        });
+    });
+
     it('shows the friendly empty state with the invite CTA when nothing exists', async () => {
         const user = userEvent.setup();
         const props = { ...baseProps(), invites: [], onInviteCta: vi.fn() };
@@ -177,6 +232,24 @@ describe('InviteProgressBoard', () => {
         await user.click(screen.getByRole('button', { name: 'Nächste Seite' }));
         expect(screen.getByText('21–25 von 25')).toBeInTheDocument();
         expect(screen.getByText('person25@example.org')).toBeInTheDocument();
+    });
+
+    it('does not snap back to a stale page when the list shrinks and grows again', async () => {
+        const user = userEvent.setup();
+        const many = Array.from({ length: 25 }, (_, index) => invite(index + 1));
+        const { rerender } = render(<InviteProgressBoard {...baseProps()} invites={many} />);
+
+        await user.click(screen.getByRole('button', { name: 'Nächste Seite' }));
+        expect(screen.getByText('21–25 von 25')).toBeInTheDocument();
+
+        // A bulk revoke plus the refetch leaves a single page.
+        rerender(<InviteProgressBoard {...baseProps()} invites={many.slice(0, 3)} />);
+        expect(screen.getByText('1–3 von 3')).toBeInTheDocument();
+
+        // Growing again must not resurrect page 2 behind the admin's back:
+        // clamping only the rendered page would leave the state at 2.
+        rerender(<InviteProgressBoard {...baseProps()} invites={many} />);
+        expect(screen.getByText('1–20 von 25')).toBeInTheDocument();
     });
 
     it('sorts "Empfänger" by the displayed name, not by the e-mail behind it', async () => {
