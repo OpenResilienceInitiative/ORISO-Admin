@@ -180,7 +180,7 @@ describe('CaseHandoverCard', () => {
         const description = screen.getByText('tenants.permissions.card.caseHandover.description');
         const masterPolicy = screen.getByText('tenants.permissions.card.caseHandover.enabled');
 
-        expect(description.compareDocumentPosition(masterPolicy) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+        expect(description.compareDocumentPosition(masterPolicy)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
     it('opens all four policy choices plus information from the master policy button', async () => {
