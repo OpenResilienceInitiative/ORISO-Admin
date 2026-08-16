@@ -137,7 +137,7 @@
 .notificationField {
     min-height: 128px;
     box-sizing: border-box;
-    padding: 8px 16px 10px;
+    padding: 0;
     border: 1px solid var(--input-border-color, var(--m3-outline, #747878));
     background: var(--input-bg, var(--m3-surface-container-low, #f6f3f3));
     border-radius: 4px;
@@ -157,6 +157,7 @@
 .notificationFieldLabel {
     display: block;
     margin-bottom: 2px;
+    padding: 8px 16px 0;
     color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
     font-size: 12px;
     letter-spacing: 0.4px;
@@ -164,9 +165,12 @@
 }
 
 .notificationFieldInput {
+    display: block;
+    min-height: 102px;
     width: 100%;
+    box-sizing: border-box;
     margin: 0;
-    padding: 0;
+    padding: 0 16px 10px;
     border: 0;
     background: transparent;
     resize: vertical;

@@ -5,6 +5,16 @@ import { CaseHandoverCardView } from './CaseHandoverCardView';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
 
+const adviceNotificationTemplates = {
+    de: 'Du hast dem zeitlich begrenzten Teamzugriff zugestimmt. {{newAdvisor}} kann diese Sitzung für {{duration}} mitlesen. Deine bisherige Berater:in bleibt für dich zuständig.',
+    en: 'You agreed to time-limited team access. {{newAdvisor}} can read this session for {{duration}}. Your current counsellor remains responsible for you.',
+    fr: 'Vous avez accepté l’accès temporaire de l’équipe. {{newAdvisor}} peut consulter cette session pendant {{duration}}. Votre conseiller·ère habituel·le reste responsable de votre accompagnement.',
+    ru: 'Вы согласились на временный доступ команды. {{newAdvisor}} может просматривать эту консультацию в течение {{duration}}. Ваш текущий консультант по-прежнему отвечает за ваше консультирование.',
+    tr: 'Süreli ekip erişimini onayladınız. {{newAdvisor}} bu oturumu {{duration}} boyunca okuyabilir. Mevcut danışmanınız sizden sorumlu olmaya devam eder.',
+    uk: 'Ви погодилися на обмежений у часі доступ команди. {{newAdvisor}} може читати цю сесію протягом {{duration}}. Ваш поточний консультант залишається відповідальним за вас.',
+    ti: 'ንግዜኡ ዝተወሰነ ናይ ጋንታ ተበጻሕነት ተሰማሚዕኩም። {{newAdvisor}} ነዚ ክፍለ ግዜ ን{{duration}} ከንብቦ ይኽእል። እቲ ሕጂ ዘሎ ኣማኻሪኹም ብሓላፍነት ይቕጽል።',
+};
+
 const policies: CaseHandoverReasonPolicy[] = [
     {
         code: 'COUNSELLOR_ASKED_FOR_ADVICE',
@@ -15,6 +25,7 @@ const policies: CaseHandoverReasonPolicy[] = [
         displayOrder: 10,
         policyAuthority: 'platform-admin-default-case-handover-policy',
         maxAccessDurationMinutes: 180,
+        clientNotificationTemplates: adviceNotificationTemplates,
     },
     {
         code: 'COUNSELLOR_ON_HOLIDAY',
@@ -99,9 +110,19 @@ export const Editable: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        ['German', 'English', 'French', 'Russian', 'Turkish', 'Ukrainian', 'Tigrinya'].forEach((language) => {
-            expect(canvas.getByRole('tab', { name: language })).toBeInTheDocument();
-        });
+        const languageTabs = within(
+            canvas.getByRole('tablist', {
+                name: /Sprachen der Systembenachrichtigung|System notification languages/i,
+            }),
+        ).getAllByRole('tab');
+        await expect(languageTabs).toHaveLength(7);
+        for (const tab of languageTabs) {
+            await userEvent.click(tab);
+            const input = canvas.getByTestId('case-handover-template-input') as HTMLTextAreaElement;
+            await expect(input.value).toContain('{{newAdvisor}}');
+            await expect(input.value).toContain('{{duration}}');
+        }
+        await userEvent.click(languageTabs[0]);
     },
 };
 
