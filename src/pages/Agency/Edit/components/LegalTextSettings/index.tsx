@@ -187,39 +187,42 @@ export const LegalTextSettings = ({ agencyData, field, onSave, saving }: LegalTe
                         : undefined
                 }
                 onPublish={canEditLegalText ? onPublish : undefined}
-                belowSlot={
-                    consentEnabled && (
-                        <>
-                            <LegalConsentField
-                                inheritedFrom={
-                                    agencyConsentOverrides?.[activeLanguage] === undefined
-                                        ? t('legal.consent.level.tenant')
-                                        : undefined
-                                }
-                                language={activeLanguage}
-                                readOnly={!canEditLegalText}
-                                value={consentByLanguage[activeLanguage] ?? ''}
-                                onChange={(next) => {
-                                    setPublishBlocked(false);
-                                    setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
-                                }}
-                            />
-                            {publishBlocked && (
-                                <Alert
-                                    type="error"
-                                    showIcon
-                                    data-testid="consent-publish-blocked"
-                                    message={t('legal.consent.publishBlocked.title')}
-                                    description={t('legal.consent.publishBlocked.description', {
-                                        token: `{{${MANDATORY_CONSENT_TOKEN}}}`,
-                                        languages: blockedLanguages.join(', '),
-                                    })}
-                                />
-                            )}
-                        </>
-                    )
-                }
             />
+            {/* Under the editor, not inside its `belowSlot`: the M3 card is a fixed
+                800×740 deck card and clips visible slot content (same trap as the
+                aboveEditorSlot banner in #708). Still one card — policy + consent. */}
+            {consentEnabled && (
+                <LegalConsentField
+                    inheritedFrom={
+                        agencyConsentOverrides?.[activeLanguage] === undefined
+                            ? t('legal.consent.level.tenant')
+                            : undefined
+                    }
+                    language={activeLanguage}
+                    readOnly={!canEditLegalText}
+                    value={consentByLanguage[activeLanguage] ?? ''}
+                    onChange={(next) => {
+                        setPublishBlocked(false);
+                        setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
+                    }}
+                />
+            )}
+            {consentEnabled && publishBlocked && (
+                <Alert
+                    type="error"
+                    showIcon
+                    data-testid="consent-publish-blocked"
+                    message={t('legal.consent.publishBlocked.title')}
+                    description={
+                        <>
+                            {t('legal.consent.publishBlocked.description', {
+                                languages: blockedLanguages.join(', '),
+                            })}{' '}
+                            <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
+                        </>
+                    }
+                />
+            )}
         </div>
     );
 };

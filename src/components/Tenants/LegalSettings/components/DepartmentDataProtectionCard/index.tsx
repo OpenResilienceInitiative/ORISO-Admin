@@ -235,28 +235,6 @@ export const DepartmentDataProtectionCard = ({
                 }
                 belowSlot={
                     <>
-                        {consentEnabled && (
-                            <LegalConsentField
-                                language={activeLanguage}
-                                value={consentMap[activeLanguage] ?? ''}
-                                onChange={(next) => {
-                                    setPublishBlocked(false);
-                                    setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
-                                }}
-                            />
-                        )}
-                        {publishBlocked && (
-                            <Alert
-                                type="error"
-                                showIcon
-                                data-testid="consent-publish-blocked"
-                                message={t('legal.consent.publishBlocked.title')}
-                                description={t('legal.consent.publishBlocked.description', {
-                                    token: `{{${MANDATORY_CONSENT_TOKEN}}}`,
-                                    languages: blockedLanguages.join(', '),
-                                })}
-                            />
-                        )}
                         <PublishSourceWarningModal
                             open={sourceWarningOpen}
                             sourceLanguage={sourceLanguage}
@@ -277,6 +255,36 @@ export const DepartmentDataProtectionCard = ({
                     </>
                 }
             />
+            {/* The consent sentence sits UNDER the editor, not in its `belowSlot`:
+                the M3 card is a fixed 800×740 deck card, so visible content inside
+                it is clipped (the same trap the aboveEditorSlot banner hit in #708).
+                It stays part of THIS card — one card, policy plus its consent field. */}
+            {consentEnabled && (
+                <LegalConsentField
+                    language={activeLanguage}
+                    value={consentMap[activeLanguage] ?? ''}
+                    onChange={(next) => {
+                        setPublishBlocked(false);
+                        setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
+                    }}
+                />
+            )}
+            {publishBlocked && (
+                <Alert
+                    type="error"
+                    showIcon
+                    data-testid="consent-publish-blocked"
+                    message={t('legal.consent.publishBlocked.title')}
+                    description={
+                        <>
+                            {t('legal.consent.publishBlocked.description', {
+                                languages: blockedLanguages.join(', '),
+                            })}{' '}
+                            <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
+                        </>
+                    }
+                />
+            )}
         </div>
     );
 };

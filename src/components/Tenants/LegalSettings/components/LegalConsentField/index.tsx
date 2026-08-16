@@ -70,12 +70,19 @@ export const LegalConsentField = ({ value, language, onChange, readOnly, inherit
     return (
         <section aria-label={t('legal.consent.section.label')} className={styles.consentField}>
             <p className={styles.description}>{t('legal.consent.description')}</p>
-            {inheritedFrom && (
+            {/* An empty field is a valid state, not a gap: it means the level above
+                still governs. Saying so beats leaving an ambiguous blank box (#769). */}
+            {(inheritedFrom || isBlankConsentText(value)) && (
                 <Alert
                     className={styles.notice}
                     type="info"
                     showIcon
-                    message={t('legal.consent.inherited', { level: inheritedFrom })}
+                    data-testid="consent-inherited-notice"
+                    message={
+                        inheritedFrom
+                            ? t('legal.consent.inherited', { level: inheritedFrom })
+                            : t('legal.consent.emptyMeansInherited')
+                    }
                 />
             )}
             <LegalConsentTemplateEditor
@@ -101,9 +108,15 @@ export const LegalConsentField = ({ value, language, onChange, readOnly, inherit
                     showIcon
                     data-testid="consent-missing-token-error"
                     message={t('legal.consent.error.missingLegalLinks.title')}
-                    description={t('legal.consent.error.missingLegalLinks.description', {
-                        token: `{{${MANDATORY_CONSENT_TOKEN}}}`,
-                    })}
+                    description={
+                        <>
+                            {t('legal.consent.error.missingLegalLinks.description')}{' '}
+                            {/* The token is composed in JSX, never interpolated: i18next
+                                treats `{{…}}` inside a translation as its own syntax and
+                                would swallow the very string we are naming. */}
+                            <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
+                        </>
+                    }
                 />
             )}
         </section>

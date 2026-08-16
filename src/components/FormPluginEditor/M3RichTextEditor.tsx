@@ -1026,7 +1026,20 @@ export const M3RichTextEditor = ({
                                                   };
                                               }),
                                           ]
-                                        : [{ key: 'latest', label: t('legal.m3Editor.versionLatest') }],
+                                        : // Never published: say so explicitly instead of
+                                          // offering a menu that looks broken (#768).
+                                          [
+                                              {
+                                                  key: 'empty',
+                                                  disabled: true,
+                                                  label: (
+                                                      <span className={styles.versionMenuHeader}>
+                                                          {t('legal.m3Editor.versionEmpty')}
+                                                      </span>
+                                                  ),
+                                              },
+                                              { key: 'latest', label: t('legal.m3Editor.versionLatest') },
+                                          ],
                                 onClick: ({ key }) => setViewingVersionId(key === 'current' ? null : key),
                             }}
                         />
