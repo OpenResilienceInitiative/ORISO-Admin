@@ -42,6 +42,34 @@ describe('PermissionPolicyControl', () => {
         expect(onChange).toHaveBeenCalledWith({ value: false, mode: 'ENFORCED' });
     });
 
+    it('uses the right-opening ORISO lock variants for suggested policies', () => {
+        render(
+            <PermissionPolicyControl
+                featureKey="featureSupervisionEnabled"
+                label="Supervision"
+                level="tenant"
+                policy={{ value: true, mode: 'SUGGESTED' }}
+                open
+                onOpenChange={vi.fn()}
+                onChange={vi.fn()}
+            />,
+        );
+
+        const status = screen.getByText('tenants.permissions.policy.suggestion');
+        expect(status.parentElement?.querySelector('[data-icon="lock-open-right-filled"]')).toBeInTheDocument();
+
+        const selectedSuggestion = screen.getByRole('button', {
+            name: 'tenants.permissions.policy.activationSuggested',
+        });
+        expect(selectedSuggestion).toHaveAttribute('aria-current', 'page');
+        expect(selectedSuggestion.querySelector('[data-icon="lock-open-right-filled"]')).toBeInTheDocument();
+
+        const alternativeSuggestion = screen.getByRole('button', {
+            name: 'tenants.permissions.policy.deactivationSuggested',
+        });
+        expect(alternativeSuggestion.querySelector('[data-icon="lock-open-right-400"]')).toBeInTheDocument();
+    });
+
     it('opens information directly for inherited enforced values', async () => {
         const user = userEvent.setup();
         render(

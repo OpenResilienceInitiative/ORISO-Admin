@@ -3,8 +3,9 @@ import BlockIcon from '@mui/icons-material/Block';
 import CheckIcon from '@mui/icons-material/Check';
 import InfoIcon from '@mui/icons-material/Info';
 import LockIcon from '@mui/icons-material/Lock';
-import LockOpenIcon from '@mui/icons-material/LockOpen';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as LockOpenRight400Icon } from '../../resources/img/svg/oriso/lock_open_right_400_20px.svg';
+import { ReactComponent as LockOpenRightFilledIcon } from '../../resources/img/svg/oriso/lock_open_right_filled_20px.svg';
 import { M3FabMenu, type M3FabMenuItem } from '../M3FabMenu';
 import { Modal } from '../Modal';
 import type { PermissionPolicyMode, PolicyValue } from '../../types/permissionPolicy';
@@ -59,7 +60,11 @@ export const PermissionPolicyControl = ({
     const option = (value: boolean, mode: PermissionPolicyMode): M3FabMenuItem => ({
         key: policyKey({ value, mode }),
         label: t(actionLabelKey(value, mode)),
-        icon: mode === 'ENFORCED' ? <LockIcon /> : <LockOpenIcon />,
+        icon: mode === 'ENFORCED' ? <LockIcon /> : <LockOpenRight400Icon aria-hidden data-icon="lock-open-right-400" />,
+        selectedIcon:
+            mode === 'SUGGESTED' ? (
+                <LockOpenRightFilledIcon aria-hidden data-icon="lock-open-right-filled" />
+            ) : undefined,
     });
     const items: M3FabMenuItem[] =
         level === 'agency'
@@ -86,7 +91,11 @@ export const PermissionPolicyControl = ({
             <div className={styles.copy}>
                 <span className={styles.label}>{label}</span>
                 <span className={styles.meta}>
-                    {policy.mode === 'ENFORCED' ? <LockIcon /> : <LockOpenIcon />}
+                    {policy.mode === 'ENFORCED' ? (
+                        <LockIcon />
+                    ) : (
+                        <LockOpenRightFilledIcon aria-hidden data-icon="lock-open-right-filled" />
+                    )}
                     {t(statusLabelKey(readOnly, policy.mode))}
                 </span>
                 {supportingText && <span className={styles.supportingText}>{supportingText}</span>}

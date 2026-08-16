@@ -10,6 +10,8 @@ export interface M3FabMenuItem {
     label: string;
     /** Single-colour glyph — it inherits the pill's text colour. */
     icon?: ReactNode;
+    /** Filled glyph for the currently selected item; falls back to `icon`. */
+    selectedIcon?: ReactNode;
     /** Route. Without it the pill renders as a plain button. */
     to?: string;
 }
@@ -154,7 +156,7 @@ export const M3FabMenu = ({
         const isActive = item.key === activeKey;
         const content = (
             <>
-                {item.icon}
+                {isActive ? item.selectedIcon ?? item.icon : item.icon}
                 <span className={styles.itemLabel}>{item.label}</span>
             </>
         );
