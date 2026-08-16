@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import React from 'react';
 import { Form } from 'antd';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -6,9 +8,20 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from './index';
 
+const muiFormFieldSource = readFileSync(resolve(__dirname, './index.tsx'), 'utf8');
+const sharedFieldSxSource = readFileSync(resolve(__dirname, '../fieldSx.ts'), 'utf8');
+
 const renderWithForm = (children: React.ReactNode) => render(<Form>{children}</Form>);
 
 describe('MuiFormField', () => {
+    it('leaves outlined notch legend sizing to MUI', () => {
+        const legendRule = (source: string) =>
+            source.match(/'& \.MuiOutlinedInput-notchedOutline legend':\s*{([^}]*)}/s)?.[1] ?? '';
+
+        expect(legendRule(muiFormFieldSource)).not.toMatch(/\bwidth\s*:/);
+        expect(legendRule(sharedFieldSxSource)).not.toMatch(/\bwidth\s*:/);
+    });
+
     it('uses the surrounding surface only for filled fields', () => {
         render(
             <div style={{ '--input-bg': 'rgb(252, 249, 249)' } as React.CSSProperties}>
@@ -147,6 +160,16 @@ describe('MuiFormField', () => {
         );
 
         expect(screen.getByLabelText('Address')).toHaveAttribute('id', 'onboarding_address');
+    });
+
+    it('honors antd Form disabled context (CardEditable view mode)', () => {
+        render(
+            <Form disabled>
+                <MuiFormField name="name" label="Name" />
+            </Form>,
+        );
+
+        expect(screen.getByLabelText('Name')).toBeDisabled();
     });
 
     it('keeps an explicitly passed id', () => {

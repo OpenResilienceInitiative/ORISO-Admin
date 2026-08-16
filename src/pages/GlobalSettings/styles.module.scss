@@ -11,6 +11,13 @@
     min-width: 0;
 }
 
+/* ORISO-Admin#735: the document master data card has four field groups, so it takes the
+   full width of the grid rather than sharing a row. */
+.documentMasterDataCardSlot {
+    min-width: 0;
+    grid-column: 1 / -1;
+}
+
 .loginFunctionCard {
     width: 100%;
     min-height: 240px;
@@ -56,8 +63,6 @@
     --card-deck-gap: 24px;
     --card-deck-item-width: 425px;
     --card-deck-item-max-width: 425px;
-    --card-deck-footer-margin-top: 40px;
-    --card-deck-footer-padding: 0 24px;
 }
 
 .smtpCardSlot {
@@ -209,10 +214,7 @@
 
 @media only screen and (max-width: 1000px) {
     .smtpPage {
-        --card-deck-item-max-width: calc(100vw - 144px);
-        --card-deck-footer-padding: 0 8px;
-        --side-scroller-button-width: 88px;
-        --side-scroller-button-height: 56px;
+        --card-deck-item-max-width: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
     }
 }
 
@@ -228,4 +230,15 @@
     .smtpCard {
         --dialog-card-height: auto;
     }
+}
+
+/* ORISO-Admin#602: the "Login-Funktion" switch now shows what it actually does.
+   Secondary weight, because it is an explanation rather than a second control. */
+
+.settingDescription {
+    margin: 8px 0 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    line-height: 20px;
 }

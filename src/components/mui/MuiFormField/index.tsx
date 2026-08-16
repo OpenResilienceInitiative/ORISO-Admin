@@ -1,8 +1,6 @@
 import * as React from 'react';
-import { useContext } from 'react';
-import { Form } from 'antd';
+import { ConfigProvider, Form } from 'antd';
 import type { Rule } from 'antd/lib/form';
-import DisabledContext from 'antd/es/config-provider/DisabledContext';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -68,8 +66,8 @@ const MuiControl = ({
     variant = 'outlined',
     className,
 }: MuiControlProps) => {
-    const contextDisabled = useContext(DisabledContext);
-    const isDisabled = contextDisabled || disabled;
+    const { componentDisabled } = ConfigProvider.useConfig();
+    const isDisabled = componentDisabled || disabled;
     const { status } = Form.Item.useStatus();
     const form = Form.useFormInstance();
     const isError = status === 'error';
@@ -215,7 +213,6 @@ const MuiControl = ({
                     borderColor: 'var(--input-border-color)',
                 },
                 '& .MuiOutlinedInput-notchedOutline legend': {
-                    width: 'fit-content',
                     marginBottom: 0,
                     borderBottom: 'none',
                     fontSize: '0.75em',

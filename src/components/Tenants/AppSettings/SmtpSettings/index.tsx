@@ -1,6 +1,7 @@
-import { Card } from 'antd';
+import { Card, Form } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { CardEditable } from '../../../CardEditable';
 import { FormSwitchField } from '../../../FormSwitchField';
 import { FormInputField } from '../../../FormInputField';
@@ -8,8 +9,9 @@ import { FormInputNumberField } from '../../../FormInputNumberField';
 import { FormInputPasswordField } from '../../../FormInputPasswordField';
 import { MuiColorField } from '../../../mui/MuiColorField';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
-import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
+import { useSingleTenantData, TENANT_QUERY_KEY } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
+import { TENANT_ADMIN_DATA_KEY } from '../../../../hooks/useTenantAdminData.hook';
 import styles from './styles.module.scss';
 
 const DEFAULT_SMTP_SETTINGS = {
@@ -50,9 +52,18 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
     const { t } = useTranslation();
     const { settings } = useAppConfigContext();
     const { data, isLoading } = useSingleTenantData({ id: tenantId });
+    const [form] = Form.useForm();
+    const queryClient = useQueryClient();
     const { mutate } = useTenantAdminDataMutation({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
+        onSuccess: () => {
+            // never keep the typed secret around: clear the field and drop the cached
+            // PUT payload so the next read comes from the write-only API (#730)
+            form.resetFields([['settings', 'smtp', 'password']]);
+            queryClient.invalidateQueries({ queryKey: [TENANT_ADMIN_DATA_KEY] });
+            queryClient.invalidateQueries({ queryKey: [TENANT_QUERY_KEY, Number(tenantId)] });
+        },
     });
     const systemEmailsAllowed = settings.globalFeatureSystemNotificationEmailsEnabled !== false;
     const smtpAllowed = settings.globalSmtpEnabled !== false;
@@ -67,7 +78,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                 port: normalizeSmtpPort(settings.globalSmtpPort),
                 secure: settings.globalSmtpSecure ?? DEFAULT_SMTP_SETTINGS.smtp.secure,
                 username: settings.globalSmtpUsername ?? DEFAULT_SMTP_SETTINGS.smtp.username,
-                password: settings.globalSmtpPassword ?? DEFAULT_SMTP_SETTINGS.smtp.password,
+                // the password is write-only (#730): no stored secret is ever inherited into the form
                 from: settings.globalSmtpFrom ?? DEFAULT_SMTP_SETTINGS.smtp.from,
                 emailThemeColor: settings.globalSmtpEmailThemeColor ?? DEFAULT_SMTP_SETTINGS.smtp.emailThemeColor,
             },
@@ -78,7 +89,6 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
             settings.globalSmtpEnabled,
             settings.globalSmtpFrom,
             settings.globalSmtpHost,
-            settings.globalSmtpPassword,
             settings.globalSmtpPort,
             settings.globalSmtpSecure,
             settings.globalSmtpUsername,
@@ -100,6 +110,12 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
         }),
         [smtpAllowed, systemEmailsAllowed],
     );
+    const tenantSmtpPasswordSet = useMemo(() => {
+        const tenantSmtpSettings = data?.settings?.smtp ?? {};
+        // passwordSet comes from the write-only API (#730); tolerate older backends
+        // that still return the password value itself without ever displaying it.
+        return Boolean(tenantSmtpSettings.passwordSet ?? !isBlank(tenantSmtpSettings.password));
+    }, [data]);
     const initialValues = useMemo(() => {
         const tenantSettings = data?.settings ?? {};
         const tenantSmtpSettings = tenantSettings.smtp ?? {};
@@ -123,7 +139,8 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                     port: inheritNumber(tenantSmtpSettings.port, inheritedSettings.smtp.port),
                     secure: inheritBoolean(tenantSmtpSettings.secure, inheritedSettings.smtp.secure),
                     username: inheritString(tenantSmtpSettings.username, inheritedSettings.smtp.username),
-                    password: inheritString(tenantSmtpSettings.password, inheritedSettings.smtp.password),
+                    // set-only semantics (#730): the field always starts empty; blank = keep stored password
+                    password: '',
                     from: inheritString(tenantSmtpSettings.from, inheritedSettings.smtp.from),
                     emailThemeColor: inheritString(
                         tenantSmtpSettings.emailThemeColor,
@@ -146,7 +163,6 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                 inheritedSettings.smtp.port,
                 inheritedSettings.smtp.secure,
                 inheritedSettings.smtp.username,
-                inheritedSettings.smtp.password,
                 inheritedSettings.smtp.from,
                 inheritedSettings.smtp.emailThemeColor,
                 data?.settings?.featureSystemNotificationEmailsEnabled,
@@ -155,11 +171,11 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                 data?.settings?.smtp?.port,
                 data?.settings?.smtp?.secure,
                 data?.settings?.smtp?.username,
-                data?.settings?.smtp?.password,
+                tenantSmtpPasswordSet,
                 data?.settings?.smtp?.from,
                 data?.settings?.smtp?.emailThemeColor,
             ].join('|'),
-        [data, inheritedSettings, smtpAllowed, systemEmailsAllowed, tenantId],
+        [data, inheritedSettings, smtpAllowed, systemEmailsAllowed, tenantId, tenantSmtpPasswordSet],
     );
     const renderSwitchLabel = useCallback(
         (titleKey: string, descriptionKey?: string) => (
@@ -174,6 +190,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
     return (
         <CardEditable
             key={formKey}
+            formProp={form}
             isLoading={isLoading}
             initialValues={initialValues}
             titleKey="tenants.appSettings.smtp.title"
@@ -227,10 +244,18 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         disabled={!smtpAllowed}
                     />
                     <FormInputPasswordField
-                        labelKey="tenants.appSettings.smtp.password"
+                        labelKey="tenants.appSettings.smtp.passwordNew"
                         name={['settings', 'smtp', 'password']}
                         disabled={!smtpAllowed}
+                        autoComplete="new-password"
                     />
+                    <span className={styles.passwordHint}>
+                        {t(
+                            tenantSmtpPasswordSet
+                                ? 'tenants.appSettings.smtp.passwordStored'
+                                : 'tenants.appSettings.smtp.passwordNotSet',
+                        )}
+                    </span>
                     <FormInputField
                         labelKey="tenants.appSettings.smtp.from"
                         name={['settings', 'smtp', 'from']}

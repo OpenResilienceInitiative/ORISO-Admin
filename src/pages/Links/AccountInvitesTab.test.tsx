@@ -49,8 +49,13 @@ const mocks = vi.hoisted(() => ({
     revokeAccountInvite: vi.fn(),
     listInviteEmailTemplates: vi.fn(),
     searchTenantData: vi.fn(),
+    getAgencyDataById: vi.fn(),
     parseUserAuthInfo: vi.fn(),
     acceptBaseUrlForRole: vi.fn(),
+    checkTenantIdAvailability: vi.fn(),
+    nextFreeTenantId: vi.fn(),
+    checkAgencyIdAvailability: vi.fn(),
+    nextFreeAgencyId: vi.fn(),
 }));
 
 vi.mock('../../api/accountInvites/accountInvites', () => ({
@@ -67,20 +72,28 @@ vi.mock('../../api/tenant/searchTenantData', () => ({
     searchTenantData: mocks.searchTenantData,
 }));
 
+// Keep the REAL AgencyAccessError class: the tab's instanceof check must see
+// the same identity the tests reject with.
+vi.mock('../../api/agency/getAgencyById', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../../api/agency/getAgencyById')>()),
+    default: mocks.getAgencyDataById,
+}));
+
 vi.mock('../../utils/parseUserAuthInfo', () => ({
     parseUserAuthInfo: mocks.parseUserAuthInfo,
 }));
 
-// The composer's ID fields talk to the allocation endpoints (#570); keep them
-// inert here — the field behaviour has its own test files.
+// The composer's ID fields talk to the allocation endpoints (#570); the field
+// behaviour has its own test files, but tests that TYPE a manual id need the
+// availability check to answer, so the clients are wired to hoisted mocks.
 vi.mock('../../api/idAllocation/idAllocation', () => ({
     tenantIdAllocationClient: {
-        checkIdAvailability: vi.fn(),
-        nextFreeId: vi.fn(),
+        checkIdAvailability: mocks.checkTenantIdAvailability,
+        nextFreeId: mocks.nextFreeTenantId,
     },
     agencyIdAllocationClient: {
-        checkIdAvailability: vi.fn(),
-        nextFreeId: vi.fn(),
+        checkIdAvailability: mocks.checkAgencyIdAvailability,
+        nextFreeId: mocks.nextFreeAgencyId,
     },
 }));
 
@@ -213,6 +226,145 @@ describe('TenantInvitesTab Träger-ID field', () => {
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
         expect(field).toHaveValue('');
         expect(mocks.searchTenantData).not.toHaveBeenCalled();
+    });
+});
+
+/*
+ * Department routing on counsellor invites (#384): when the pinned
+ * Beratungsstellen-ID resolves to an EXISTING agency, the invite adopts the
+ * agency's single canonical topic as the department — after checking tenant
+ * scope. A fresh reservation (the id resolves to nothing, TEN-INV-U2) carries
+ * no department; provisioning assigns routing when the agency is created.
+ * Every refusal must surface as a visible toast, not just a rejected promise.
+ */
+describe('CounsellorInvitesTab department routing (#384)', () => {
+    const agencyPayload = (topics: { id: unknown; name: string }[], tenantId: number | string = 79) => ({
+        _embedded: {
+            id: '275',
+            tenantId,
+            topics,
+        },
+    });
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: 79 });
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+        mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
+        mocks.createAccountInvite.mockResolvedValue(invite(99, 79, 'EMAIL_SENT'));
+        // The manual Beratungsstellen-ID only becomes submittable once the U2
+        // availability check confirms it (canSubmit gates the send button).
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'FREE' });
+    });
+
+    /** Fill the composer for a complete counsellor invite and press send. */
+    const fillAndSend = async () => {
+        const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@oriso.org');
+        await user.type(screen.getByLabelText('Vorname'), 'Lisa');
+        await user.type(screen.getByLabelText('Name'), 'Simpson');
+        await user.type(screen.getByLabelText('Beratungsstellen-ID'), '275');
+        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+        return user;
+    };
+
+    it('routes a counsellor invite to the agency single topic', async () => {
+        mocks.getAgencyDataById.mockResolvedValue(agencyPayload([{ id: 2, name: 'U25 Suizidprävention' }]));
+
+        await fillAndSend();
+
+        await waitFor(() =>
+            expect(mocks.createAccountInvite).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    targetRole: 'COUNSELLOR',
+                    tenantId: 79,
+                    agencyId: 275,
+                    agencyIdAllocationMode: 'MANUAL',
+                    departmentId: 2,
+                    firstName: 'Lisa',
+                    lastName: 'Simpson',
+                    recipientEmail: 'lisa.simpson@oriso.org',
+                }),
+            ),
+        );
+        expect(mocks.getAgencyDataById).toHaveBeenCalledWith('275');
+    });
+
+    it('refuses with a visible error when the agency has no topic', async () => {
+        mocks.getAgencyDataById.mockResolvedValue(agencyPayload([]));
+
+        await fillAndSend();
+
+        expect(
+            await screen.findByText('Die Beratungsstelle hat kein Thema — die Einladung kann nicht zugeordnet werden.'),
+        ).toBeInTheDocument();
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+    });
+
+    it('refuses with a visible error when the agency has multiple topics (no picker yet)', async () => {
+        mocks.getAgencyDataById.mockResolvedValue(
+            agencyPayload([
+                { id: 2, name: 'U25 Suizidprävention' },
+                { id: 5, name: 'Angehörigenberatung' },
+            ]),
+        );
+
+        await fillAndSend();
+
+        expect(
+            await screen.findByText(
+                'Die Beratungsstelle hat mehrere Themen — die Einladung kann noch keinem Thema zugeordnet werden.',
+            ),
+        ).toBeInTheDocument();
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+    });
+
+    it('refuses with a visible error when the agency belongs to another tenant', async () => {
+        mocks.getAgencyDataById.mockResolvedValue(agencyPayload([{ id: 2, name: 'U25 Suizidprävention' }], 80));
+
+        await fillAndSend();
+
+        expect(
+            await screen.findByText('Die Beratungsstelle gehört nicht zum Träger dieser Einladung.'),
+        ).toBeInTheDocument();
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+    });
+
+    it('refuses with a visible error when the topic id is not numeric', async () => {
+        mocks.getAgencyDataById.mockResolvedValue(agencyPayload([{ id: 'not-a-number', name: 'Kaputt' }]));
+
+        await fillAndSend();
+
+        expect(
+            await screen.findByText('Die Beratungsstelle hat kein Thema — die Einladung kann nicht zugeordnet werden.'),
+        ).toBeInTheDocument();
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+    });
+
+    it('keeps the reservation flow working: a free id resolves to no agency and submits without a department', async () => {
+        const { AgencyAccessError } = await import('../../api/agency/getAgencyById');
+        mocks.getAgencyDataById.mockRejectedValue(new AgencyAccessError());
+
+        await fillAndSend();
+
+        await waitFor(() =>
+            expect(mocks.createAccountInvite).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    targetRole: 'COUNSELLOR',
+                    tenantId: 79,
+                    agencyId: 275,
+                    agencyIdAllocationMode: 'MANUAL',
+                }),
+            ),
+        );
+        expect(mocks.createAccountInvite.mock.calls[0][0].departmentId).toBeUndefined();
     });
 });
 

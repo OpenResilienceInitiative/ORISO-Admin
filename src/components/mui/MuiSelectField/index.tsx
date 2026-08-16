@@ -1,9 +1,8 @@
 import * as React from 'react';
-import { useContext, useMemo } from 'react';
-import { Form } from 'antd';
+import { useMemo } from 'react';
+import { ConfigProvider, Form } from 'antd';
 import type { Rule } from 'antd/lib/form';
 import type { ValidateStatus } from 'antd/es/form/FormItem';
-import DisabledContext from 'antd/es/config-provider/DisabledContext';
 import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -105,8 +104,8 @@ const MuiSelectControl = ({
     validateStatus,
     className,
 }: MuiSelectControlProps) => {
-    const contextDisabled = useContext(DisabledContext);
-    const isDisabled = contextDisabled || disabled;
+    const { componentDisabled } = ConfigProvider.useConfig();
+    const isDisabled = componentDisabled || disabled;
     const { status } = Form.Item.useStatus();
     const form = Form.useFormInstance();
     const isError = (validateStatus ?? status) === 'error';

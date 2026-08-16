@@ -97,3 +97,37 @@ export const ReadOnly: Story = {
         readOnly: true,
     },
 };
+
+/**
+ * The draft action (ORISO-Admin#708): "Entwurf bearbeiten" sits next to
+ * "Veröffentlichen" so unfinished wording can be parked without stamping a new
+ * published DPA version that every tenant would have to sign again.
+ */
+export const WithDraftAction: Story = {
+    args: {
+        initialContentByLanguage: {
+            de: '<h1>Auftragsverarbeitungsvertrag</h1><p>Halbfertiger Text, noch nicht zum Veröffentlichen …</p>',
+        },
+        languages: ['de'],
+        defaultLanguage: 'de',
+        versions,
+        onSaveDraft: () => undefined,
+        onDiscardDraft: () => undefined,
+    },
+};
+
+/** A restored draft: the notice names the save time and that it is device-local. */
+export const WithRestoredDraft: Story = {
+    args: {
+        ...WithDraftAction.args,
+        draftSavedAt: '2026-08-12T08:30:00.000Z',
+    },
+};
+
+/** A newer version was published after the draft was saved — publishing would overwrite it. */
+export const WithStaleDraft: Story = {
+    args: {
+        ...WithRestoredDraft.args,
+        draftStale: true,
+    },
+};

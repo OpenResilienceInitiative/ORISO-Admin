@@ -37,6 +37,18 @@ describe('permissions settings utils', () => {
         expect(singleAiScan.size).toBe(1);
     });
 
+    it('lets an explicitly enabled AI scan child override the disabled hidden family master', () => {
+        const forcedOffFields = getForcedOffFields({
+            mediaAiScan: false,
+            mediaAiScanOneOnOneChats: true,
+            mediaAiScanGroupChats: false,
+        } as any);
+
+        expect(forcedOffFields.has('featureMediaAiScanEnabled')).toBe(true);
+        expect(forcedOffFields.has('featureMediaAiScanOneOnOneChatsEnabled')).toBe(false);
+        expect(forcedOffFields.has('featureMediaAiScanGroupChatsEnabled')).toBe(true);
+    });
+
     it('defaults media upload and inline display on, AI scan off', () => {
         expect(DEFAULT_PERMISSION_SETTINGS.featureMediaUploadEnabled).toBe(true);
         expect(DEFAULT_PERMISSION_SETTINGS.featureMediaInlineDisplayEnabled).toBe(true);

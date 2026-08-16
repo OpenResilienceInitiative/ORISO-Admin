@@ -5,7 +5,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
+import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
 import { FETCH_ERRORS, X_REASON } from '../../../api/fetchData';
+import { passwordFormRules, usernameFormRules } from '../../../utils/consultantCredentialRules';
 import { Card } from '../../../components/Card';
 import { MuiFormField, MuiMultilineFormField, MuiPasswordFormField } from '../../../components/mui/MuiFormField';
 import { MuiSwitchField } from '../../../components/mui/MuiSwitchField';
@@ -23,6 +25,7 @@ import { convertToOptions } from '../../../utils/convertToOptions';
 import { decodeUsername } from '../../../utils/encryptionHelpers';
 import styles from './styles.module.scss';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { UserRole } from '../../../enums/UserRole';
 import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { searchTenantData } from '../../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
@@ -35,11 +38,31 @@ import { CreateAgencyModal } from '../../../components/CreateAgencyModal';
 import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
+import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
+
+/**
+ * antd prefixes every bound control id with the form name, and
+ * `focusFirstInvalidField` resolves that same id. Keep them in lockstep.
+ */
+const FORM_NAME = 'consultantOrAdmin';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
     const seen = new Set(current.map(({ value }) => value));
     return [...current, ...incoming.filter(({ value }) => !seen.has(value))];
 };
+
+/**
+ * Stable salutation keys (#994) — persisted as-is, rendered via i18n.
+ * Wording of the option list follows the Counsellor Setup Wizard design:
+ * Beraterin, Berater, Beratende Person, Berater*in, keine Angabe.
+ */
+const SALUTATION_KEYS = [
+    'counsellor_female',
+    'counsellor_male',
+    'counselling_person',
+    'counsellor_gender_neutral',
+    'not_specified',
+] as const;
 
 export const UserEditOrAdd = () => {
     const navigate = useNavigate();
@@ -47,7 +70,11 @@ export const UserEditOrAdd = () => {
     const [form] = Form.useForm();
     const { can } = useUserPermissions();
     const { t } = useTranslation();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, hasRole } = useUserRoles();
+    // Mirrors the backend gate (AuthenticatedUser#hasTenantLevelAdminRole): remarks are
+    // tenant-level-admin only. For any other role the field is omitted entirely — the
+    // caller could neither read nor write it.
+    const canManageAdminRemarks = hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin]);
 
     const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
     const isEditing = id !== 'add';
@@ -172,6 +199,23 @@ export const UserEditOrAdd = () => {
         prevAgencyIdsRef.current = (form.getFieldValue('agencies') || []).map(({ value }) => String(value));
     }, [consultantById, isEditing, isConsultantForm, form]);
 
+    // Personal-info fields (#994) are only served by the get-by-id endpoint, not by the
+    // search result the rest of the form prefills from.
+    useEffect(() => {
+        if (!isEditing || !isConsultantForm || !consultantById) {
+            return;
+        }
+
+        form.setFieldsValue({
+            displayName: consultantById.displayName || '',
+            internalDisplayName: consultantById.internalDisplayName || '',
+            salutation: consultantById.salutation || undefined,
+            position: consultantById.position || '',
+            title: consultantById.title || '',
+            ...(canManageAdminRemarks ? { adminRemarks: consultantById.adminRemarks || '' } : {}),
+        });
+    }, [consultantById, isEditing, isConsultantForm, canManageAdminRemarks, form]);
+
     const { mutate } = useAddOrUpdateConsultantOrAdmin({
         id: isEditing ? id : null,
         typeOfUser: typeOfUsers,
@@ -265,6 +309,10 @@ export const UserEditOrAdd = () => {
         },
         [isConsultantForm, filteredAgencies, form, mutate, t],
     );
+    const onFinishFailed = useCallback(({ errorFields }: ValidateErrorEntity) => {
+        // Keep values; jump to the field that blocked save (#717 / #594.6).
+        focusFirstInvalidField(errorFields, FORM_NAME);
+    }, []);
     const onCancel = useCallback(() => navigate(`/admin/users/${typeOfUsers}`), []);
     const isAbsentEnabled = useWatch('absent', form);
     const activePublicSlug = publicSlug || consultantById?.publicSlug;
@@ -356,7 +404,9 @@ export const UserEditOrAdd = () => {
                     labelWrap
                     layout="vertical"
                     form={form}
+                    name={FORM_NAME}
                     onFinish={onSave}
+                    onFinishFailed={onFinishFailed}
                     initialValues={{
                         ...(singleData || {
                             formalLanguage: true,
@@ -391,6 +441,65 @@ export const UserEditOrAdd = () => {
                                     rules={[requiredRule]}
                                 />
 
+                                {isConsultantForm && (
+                                    <>
+                                        <MuiFormField
+                                            name="displayName"
+                                            label={t('counselor.displayName')}
+                                            placeholder={t('counselor.displayName.placeholder')}
+                                            helpText={t('counselor.displayName.hint')}
+                                        />
+
+                                        <MuiFormField
+                                            name="internalDisplayName"
+                                            label={t('counselor.internalDisplayName')}
+                                            placeholder={t('counselor.internalDisplayName.placeholder')}
+                                            helpText={t('counselor.internalDisplayName.hint')}
+                                        />
+
+                                        {/*
+                                          Deliberately not clearable. Clearing the select yields
+                                          `undefined`, which the API layer omits and the backend
+                                          reads as "leave unchanged" — so the clear affordance
+                                          would silently fail to persist. `not_specified` ("keine
+                                          Angabe") is the canonical way to say "no salutation", so
+                                          nothing is lost by removing it. Sending `''` instead
+                                          would introduce a second representation of "none" and
+                                          would wipe a stored salutation whenever the form is
+                                          submitted before getConsultantById has prefilled it.
+                                        */}
+                                        <MuiSelectField
+                                            name="salutation"
+                                            label="counselor.salutation"
+                                            placeholder="plsSelect"
+                                            options={SALUTATION_KEYS.map((key) => ({
+                                                value: key,
+                                                label: t(`counselor.salutation.option.${key}`),
+                                            }))}
+                                        />
+
+                                        <MuiFormField
+                                            name="position"
+                                            label={t('counselor.position')}
+                                            placeholder={t('counselor.position.placeholder')}
+                                        />
+
+                                        <MuiFormField
+                                            name="title"
+                                            label={t('counselor.personalTitle')}
+                                            placeholder={t('counselor.personalTitle.placeholder')}
+                                        />
+
+                                        {canManageAdminRemarks && (
+                                            <MuiMultilineFormField
+                                                name="adminRemarks"
+                                                label={t('counselor.adminRemarks')}
+                                                helpText={t('counselor.adminRemarks.hint')}
+                                            />
+                                        )}
+                                    </>
+                                )}
+
                                 <MuiFormField
                                     name="email"
                                     label={t('email')}
@@ -409,16 +518,8 @@ export const UserEditOrAdd = () => {
                                     label={t('counselor.username')}
                                     placeholder={t('placeholder.username')}
                                     disabled={isEditing}
-                                    rules={[
-                                        {
-                                            required: true,
-                                            message: t('message.error.username.required'),
-                                        },
-                                        {
-                                            pattern: /^[a-z0-9_-]+$/,
-                                            message: t('message.error.username.format'),
-                                        },
-                                    ]}
+                                    helpText={t('message.error.username.format')}
+                                    rules={usernameFormRules(t)}
                                 />
 
                                 {!isEditing &&
@@ -430,18 +531,7 @@ export const UserEditOrAdd = () => {
                                                 label={t('counselor.password')}
                                                 placeholder={t('placeholder.password')}
                                                 required
-                                                rules={[
-                                                    requiredRule,
-                                                    {
-                                                        min: 8,
-                                                        message: t('message.error.password.minLength'),
-                                                    },
-                                                    {
-                                                        pattern:
-                                                            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-                                                        message: t('message.error.password.policy'),
-                                                    },
-                                                ]}
+                                                rules={[requiredRule, ...passwordFormRules(t)]}
                                             />
                                             <MuiPasswordFormField
                                                 name="passwordConfirmation"

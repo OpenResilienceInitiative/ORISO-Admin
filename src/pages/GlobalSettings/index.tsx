@@ -22,6 +22,7 @@ import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.h
 import { useUserData } from '../../hooks/useUserData.hook';
 import { sendGlobalSmtpTestEmail } from '../../api/settings/sendGlobalSmtpTestEmail';
 import { TranslationApiKeysCardContainer } from '../../components/GlobalSettings/TranslationApiKeysCardContainer';
+import { DocumentMasterDataCardContainer } from '../../components/GlobalSettings/DocumentMasterDataCardContainer';
 import styles from './styles.module.scss';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
 
@@ -78,12 +79,28 @@ export const GlobalLoginSettingsPage = () => {
                                 label={t('tenants.permissions.anonymousChat.title')}
                                 name={['settings', 'featureAnonymousChatEnabled']}
                             />
+                            {/* ORISO-Admin#602: this switch used to carry no visible
+                                description at all, while the string behind it promised
+                                "wird auf der Login-Seite nicht angezeigt" — behaviour
+                                nothing implements (`featureAnonymousChatEnabled` is read
+                                by no consumer in Frontend or UserService). Rather than
+                                invent the behaviour, the description now says what the
+                                switch actually does, and it is rendered so an admin can
+                                read it before deciding. */}
+                            <p className={styles.settingDescription}>
+                                {t('tenants.permissions.anonymousChat.description')}
+                            </p>
                         </div>
                     </CardEditable>
                 </ThemeProvider>
             </section>
             <section className={styles.translationCardSlot}>
                 <TranslationApiKeysCardContainer />
+            </section>
+            {/* ORISO-Admin#735: operator master data for the living DPIA and the other legal
+                documents. Spans the full grid width — it carries four field groups. */}
+            <section className={styles.documentMasterDataCardSlot}>
+                <DocumentMasterDataCardContainer />
             </section>
         </div>
     );

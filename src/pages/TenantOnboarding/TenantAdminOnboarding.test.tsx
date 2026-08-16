@@ -74,7 +74,9 @@ describe('TenantAdminOnboarding', () => {
         renderFlow(client);
 
         // Step 1: organisation + existing DPA text (rendered, not authored here).
-        expect(await screen.findByTestId('dpa-text')).toHaveTextContent('AVV-Text des Betreibers');
+        // The reader wrapper mounts with title/description first; TipTap then
+        // applies the published HTML — wait for the body, not just the shell.
+        await waitFor(() => expect(screen.getByTestId('dpa-text')).toHaveTextContent('AVV-Text des Betreibers'));
         // Signer fields are prefilled from the invite.
         expect(screen.getByLabelText('tenantOnboarding.dpa.signerName')).toHaveValue('Erika Beispiel');
         expect(screen.getByLabelText('tenantOnboarding.dpa.signerEmail')).toHaveValue('admin@tenant.example');
