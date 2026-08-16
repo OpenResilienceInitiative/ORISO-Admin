@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { PHONE_390 } from '../DpaLegalForm/dpaStoryText';
 import { DpaPendingSignatureDialog } from './DpaPendingSignatureDialog';
+import { DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 
 const LINK = {
     signUrl: 'https://app.oriso-dev.site/dpa-sign/3f2c6d1e-8b1a-4b8e-9f47-demoforward',
@@ -38,7 +39,9 @@ const meta = {
             await wait(300);
             return LINK;
         },
-        forward: async () => {
+        // Annotated for the same reason as in DpaForwardDialog.stories.tsx:
+        // keep `mailFailed` a boolean rather than this literal `false`.
+        forward: async (): Promise<DpaForwardOutcome> => {
             await wait(400);
             return { link: LINK, mailFailed: false };
         },

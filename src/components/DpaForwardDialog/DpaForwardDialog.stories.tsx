@@ -5,7 +5,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { PHONE_390 } from '../DpaLegalForm/dpaStoryText';
 import { DpaForwardDialog } from './DpaForwardDialog';
-import { DpaForwardError, DpaForwardLink } from '../../api/tenantOnboarding/dpaForward';
+import { DpaForwardError, DpaForwardLink, DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 
 const LINK: DpaForwardLink = {
     signUrl: 'https://app.oriso-dev.site/dpa-sign/3f2c6d1e-8b1a-4b8e-9f47-demoforward',
@@ -37,7 +37,11 @@ const meta = {
         ),
     ],
     args: {
-        forward: async (request) => {
+        // The return type is annotated so `satisfies Meta<…>` infers
+        // `mailFailed: boolean` instead of the literal `false` of this one
+        // implementation — otherwise a story overriding it with a computed
+        // flag (MailFailedLinkReady) is not assignable to the meta args.
+        forward: async (request): Promise<DpaForwardOutcome> => {
             await wait(request.recipientEmail ? 600 : 400);
             return { link: LINK, mailFailed: false };
         },
@@ -84,7 +88,7 @@ export const NoDpaPublished: Story = {
  */
 export const MailFailedLinkReady: Story = {
     args: {
-        forward: async (request) => {
+        forward: async (request): Promise<DpaForwardOutcome> => {
             await wait(400);
             return { link: LINK, mailFailed: !!request.recipientEmail };
         },
