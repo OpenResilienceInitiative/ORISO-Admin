@@ -1,5 +1,6 @@
 /* Menu entry of the Fachbereich switcher: name on the left, "has its own text"
    marker pushed to the right so the markers line up down the menu (#583). */
+
 .entry {
     display: flex;
     align-items: center;
@@ -11,6 +12,7 @@
 /* Deliberately a neutral outline chip, not a status colour: "has its own text" is
    a fact about inheritance, not a problem. Traffic-light chips were called out in
    the design review (#607). */
+
 .ownTextTag {
     flex: 0 0 auto;
     padding: 0 8px;
