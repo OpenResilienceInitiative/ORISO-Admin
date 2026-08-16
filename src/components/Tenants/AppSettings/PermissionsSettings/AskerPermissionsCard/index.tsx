@@ -1,8 +1,7 @@
 import { Trans, useTranslation } from 'react-i18next';
 import { Card } from '../../../../Card';
-import { M3Checkbox } from '../../../../M3Checkbox';
-import { CheckToggle } from '../CheckToggle';
-import type { EnforceChangeHandler, ToggleAfterChangeHandler } from '../types';
+import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
+import type { PolicyValue } from '../../../../../types/permissionPolicy';
 import styles from './styles.module.scss';
 
 /**
@@ -35,41 +34,47 @@ import styles from './styles.module.scss';
 export type AskerPermissionsCardProps = {
     /** Field keys the current role may not change — rendered disabled, never hidden. */
     restrictedFields: Set<string>;
-    onToggleUpdate?: ToggleAfterChangeHandler;
-    /**
-     * "Enforce active states" mode, same contract as the chat-type cards. Without it these two
-     * settings would be the only permissions on the page an upper role could not lock for the
-     * roles below — a silent hole in the enforcement model rather than a deliberate exemption.
-     */
-    enforceMode?: boolean;
-    enforcedFields?: Set<string>;
-    onEnforceChange?: EnforceChangeHandler;
+    policyLevel?: 'platform' | 'tenant' | 'agency';
+    permissionPolicies?: Record<string, PolicyValue<boolean>>;
+    pendingPolicyField?: string | null;
+    openPolicyMenu?: string | null;
+    onOpenPolicyMenu?: (fieldKey: string | null) => void;
+    onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
 };
-
-const DISPLAY_NAME_FIELD = ['settings', 'featureDisplayNameEditable'];
-const ASKER_EMAIL_FIELD = ['settings', 'featureAskerEmailEnabled'];
 
 export const AskerPermissionsCard = ({
     restrictedFields,
-    onToggleUpdate,
-    enforceMode = false,
-    enforcedFields,
-    onEnforceChange,
+    policyLevel = 'tenant',
+    permissionPolicies,
+    pendingPolicyField,
+    openPolicyMenu,
+    onOpenPolicyMenu,
+    onPolicyChange,
 }: AskerPermissionsCardProps) => {
     const { t } = useTranslation();
 
     /* "Disable, never hide" is only half the rule — a switch that is greyed out
        with no explanation tells an admin they did something wrong. The reason
        says who actually holds the decision. */
-    const enforceCheckbox = (field: string, labelKey: string) =>
-        enforceMode ? (
-            <M3Checkbox
-                className={styles.enforceCheckbox}
-                label={t('tenants.permissions.enforce.checkboxLabel', { feature: t(labelKey) })}
-                checked={enforcedFields?.has(field) ?? false}
-                onChange={(next) => onEnforceChange?.(field, next)}
-            />
-        ) : null;
+    const policyFor = (field: string): PolicyValue<boolean> =>
+        permissionPolicies?.[field] ?? {
+            value: true,
+            mode: restrictedFields.has(field) ? 'ENFORCED' : 'SUGGESTED',
+            inherited: restrictedFields.has(field),
+        };
+
+    const policyControl = (field: string, labelKey: string) => (
+        <PermissionPolicyControl
+            featureKey={field}
+            label={t(labelKey)}
+            level={policyLevel}
+            policy={policyFor(field)}
+            open={openPolicyMenu === field}
+            pending={pendingPolicyField === field}
+            onOpenChange={(open) => onOpenPolicyMenu?.(open ? field : null)}
+            onChange={(next) => onPolicyChange?.(field, next)}
+        />
+    );
 
     const restrictedNote = (field: string) =>
         restrictedFields.has(field) ? (
@@ -84,14 +89,8 @@ export const AskerPermissionsCard = ({
 
             <div className={styles.setting}>
                 <div className={styles.settingHeader}>
-                    {enforceCheckbox('featureDisplayNameEditable', 'tenants.permissions.asker.displayName.label')}
                     <span className={styles.settingLabel}>{t('tenants.permissions.asker.displayName.label')}</span>
-                    <CheckToggle
-                        name={DISPLAY_NAME_FIELD}
-                        label={t('tenants.permissions.asker.displayName.label')}
-                        disabled={restrictedFields.has('featureDisplayNameEditable')}
-                        onAfterChange={onToggleUpdate}
-                    />
+                    {policyControl('featureDisplayNameEditable', 'tenants.permissions.asker.displayName.label')}
                 </div>
                 <p className={styles.settingDescription}>{t('tenants.permissions.asker.displayName.description')}</p>
                 {restrictedNote('featureDisplayNameEditable')}
@@ -99,14 +98,8 @@ export const AskerPermissionsCard = ({
 
             <div className={styles.setting}>
                 <div className={styles.settingHeader}>
-                    {enforceCheckbox('featureAskerEmailEnabled', 'tenants.permissions.asker.email.label')}
                     <span className={styles.settingLabel}>{t('tenants.permissions.asker.email.label')}</span>
-                    <CheckToggle
-                        name={ASKER_EMAIL_FIELD}
-                        label={t('tenants.permissions.asker.email.label')}
-                        disabled={restrictedFields.has('featureAskerEmailEnabled')}
-                        onAfterChange={onToggleUpdate}
-                    />
+                    {policyControl('featureAskerEmailEnabled', 'tenants.permissions.asker.email.label')}
                 </div>
                 <p className={styles.settingDescription}>{t('tenants.permissions.asker.email.description')}</p>
                 {restrictedNote('featureAskerEmailEnabled')}

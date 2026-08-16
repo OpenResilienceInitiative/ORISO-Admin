@@ -1,61 +1,53 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
 import { useTenantAdminControlsMutation } from '../../../../hooks/useTenantAdminControlsMutation.hook';
 import { buildTogglePayload } from './permissionsToggleLogic';
-import {
-    applyVisibleTogglesAsValues,
-    buildTenantAdminControlsPayload,
-    enforcedFieldsToToggles,
-    getEnforcedOnFields,
-} from './permissionsSettingsUtils';
+import { applyVisibleTogglesAsValues, buildTenantAdminControlsPayload } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
-import { EnforceModeSwitch } from './EnforceModeSwitch';
-import type { EnforceChangeHandler, PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
+import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
+import type { PolicyValue } from '../../../../types/permissionPolicy';
 
 export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
     const { data: platformControls, isLoading } = useTenantAdminControls(true);
+    const [pendingPolicyField, setPendingPolicyField] = useState<string | null>(null);
     const { mutate: updateTenantAdminControls } = useTenantAdminControlsMutation({ successMessageKey: false });
-    // Defaults to plain "Configure" mode — the enforce checkboxes used to render permanently;
-    // see ORISO-Admin#297.
-    const [enforceMode, setEnforceMode] = useState(false);
 
     const allowedPermissionToggles = platformControls?.allowedPermissionToggles;
     const enforcedPermissionToggles = platformControls?.enforcedPermissionToggles;
     const restrictedFields = useMemo(() => new Set<string>(), []);
 
-    // Which features the platform has locked on for tenants. Seeded from the server, then edited
-    // locally via the enforce checkboxes.
-    const [enforcedFields, setEnforcedFields] = useState<Set<string>>(new Set());
-    useEffect(() => {
-        setEnforcedFields(getEnforcedOnFields(enforcedPermissionToggles));
-    }, [enforcedPermissionToggles]);
-
     const persistPlatformControls = useCallback(
-        (formData: { settings?: Record<string, unknown> }, nextEnforcedFields: Set<string> = enforcedFields) => {
+        (formData: { settings?: Record<string, unknown> }) => {
             updateTenantAdminControls(
                 buildTenantAdminControlsPayload(
                     formData,
                     allowedPermissionToggles,
                     platformControls?.permissionsPageEnabled ?? true,
-                    enforcedFieldsToToggles(nextEnforcedFields),
+                    enforcedPermissionToggles,
                 ),
             );
         },
-        [updateTenantAdminControls, allowedPermissionToggles, platformControls?.permissionsPageEnabled, enforcedFields],
+        [
+            updateTenantAdminControls,
+            allowedPermissionToggles,
+            platformControls?.permissionsPageEnabled,
+            enforcedPermissionToggles,
+        ],
     );
 
-    const handleEnforceChange = useCallback<EnforceChangeHandler>(
-        (fieldKey, enforced) => {
-            const next = new Set(enforcedFields);
-            if (enforced) {
-                next.add(fieldKey);
-            } else {
-                next.delete(fieldKey);
-            }
-            setEnforcedFields(next);
-            persistPlatformControls({ settings: applyVisibleTogglesAsValues(allowedPermissionToggles) }, next);
+    const handlePolicyChange = useCallback(
+        (fieldKey: string, policy: PolicyValue<boolean>) => {
+            if (!platformControls) return;
+            setPendingPolicyField(fieldKey);
+            updateTenantAdminControls(
+                {
+                    ...platformControls,
+                    permissionPolicies: { ...platformControls.permissionPolicies, [fieldKey]: policy },
+                },
+                { onSettled: () => setPendingPolicyField(null) },
+            );
         },
-        [enforcedFields, allowedPermissionToggles, persistPlatformControls],
+        [platformControls, updateTenantAdminControls],
     );
 
     const initialValues = useMemo(
@@ -87,21 +79,19 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
     );
 
     return (
-        <>
-            <EnforceModeSwitch enforceMode={enforceMode} onChange={setEnforceMode} />
-            <PermissionsSettingsView
-                tenantId={tenantId}
-                excludeCardKeys={excludeCardKeys}
-                isLoading={isLoading}
-                initialValues={initialValues}
-                formStateKey="platform"
-                restrictedFields={restrictedFields}
-                onToggleUpdate={handleToggleUpdate}
-                onSave={handleSave}
-                enforceMode={enforceMode}
-                enforcedFields={enforcedFields}
-                onEnforceChange={handleEnforceChange}
-            />
-        </>
+        <PermissionsSettingsView
+            tenantId={tenantId}
+            excludeCardKeys={excludeCardKeys}
+            isLoading={isLoading}
+            initialValues={initialValues}
+            formStateKey="platform"
+            restrictedFields={restrictedFields}
+            onToggleUpdate={handleToggleUpdate}
+            onSave={handleSave}
+            policyLevel="platform"
+            permissionPolicies={platformControls?.permissionPolicies}
+            pendingPolicyField={pendingPolicyField}
+            onPolicyChange={handlePolicyChange}
+        />
     );
 };

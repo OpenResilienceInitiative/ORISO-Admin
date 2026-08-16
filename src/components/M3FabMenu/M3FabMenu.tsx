@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import CloseIcon from '@mui/icons-material/Close';
 import classNames from 'classnames';
 import { Link } from 'react-router-dom';
@@ -31,6 +31,11 @@ export interface M3FabMenuProps {
     closeLabel: string;
     onSelect?: (key: string) => void;
     className?: string;
+    /** Navigation keeps the existing palette; action menus use the compact policy-control palette. */
+    variant?: 'navigation' | 'action';
+    /** Closed/action colour communicates the selected boolean value without relying on the glyph. */
+    tone?: 'primary' | 'neutral';
+    disabled?: boolean;
 }
 
 /**
@@ -54,10 +59,15 @@ export const M3FabMenu = ({
     onSelect,
     open,
     openLabel,
+    variant = 'navigation',
+    tone = 'primary',
+    disabled = false,
 }: M3FabMenuProps) => {
     const menuId = useId();
     const rootRef = useRef<HTMLDivElement>(null);
     const fabRef = useRef<HTMLButtonElement>(null);
+    const stackRef = useRef<HTMLUListElement>(null);
+    const [opensDownward, setOpensDownward] = useState(false);
     // The account entries are destinations too: standing on "Konto" and closing
     // the menu left the FAB empty, because only `items` was searched.
     const activeItem = [...items, ...footerItems].find((item) => item.key === activeKey);
@@ -72,6 +82,21 @@ export const M3FabMenu = ({
         },
         [onOpenChange],
     );
+
+    useLayoutEffect(() => {
+        if (!open || variant !== 'action') {
+            setOpensDownward(false);
+            return;
+        }
+
+        const stackRect = stackRef.current?.getBoundingClientRect();
+        const fabRect = fabRef.current?.getBoundingClientRect();
+        if (!stackRect || !fabRect) return;
+
+        const spaceAbove = fabRect.top - 8;
+        const spaceBelow = window.innerHeight - fabRect.bottom - 8;
+        setOpensDownward(spaceAbove < stackRect.height && spaceBelow > spaceAbove);
+    }, [items.length, footerItems.length, open, variant]);
 
     // Escape and a click outside close the menu. Pointer-down rather than click,
     // so a tap that starts outside never also activates what is underneath.
@@ -157,9 +182,16 @@ export const M3FabMenu = ({
     };
 
     return (
-        <div className={classNames(styles.root, className)} ref={rootRef}>
+        <div
+            className={classNames(styles.root, className, {
+                [styles.action]: variant === 'action',
+                [styles.neutral]: tone === 'neutral',
+                [styles.openDownward]: variant === 'action' && opensDownward,
+            })}
+            ref={rootRef}
+        >
             {open && (
-                <ul className={styles.stack} id={menuId} data-admin-fab-menu-stack>
+                <ul className={styles.stack} id={menuId} data-admin-fab-menu-stack ref={stackRef}>
                     {items.map((item) => renderItem(item, false))}
                     {footerItems.map((item) => renderItem(item, true))}
                 </ul>
@@ -173,6 +205,7 @@ export const M3FabMenu = ({
                 aria-controls={open ? menuId : undefined}
                 aria-haspopup="menu"
                 data-admin-fab-menu-toggle
+                disabled={disabled}
                 onClick={() => onOpenChange(!open)}
             >
                 {open ? <CloseIcon className={styles.fabGlyph} /> : activeItem?.icon ?? null}

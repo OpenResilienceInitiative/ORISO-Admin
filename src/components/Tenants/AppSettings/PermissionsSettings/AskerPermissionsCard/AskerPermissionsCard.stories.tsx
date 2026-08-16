@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Form } from 'antd';
 import { AskerPermissionsCard } from './index';
 
 /**
@@ -23,24 +22,27 @@ const meta = {
     tags: ['autodocs'],
     parameters: { layout: 'padded' },
     decorators: [
-        (Story, context) => (
-            <Form initialValues={{ settings: context.parameters.settings }}>
-                <div style={{ maxWidth: 480 }}>
-                    <Story />
-                </div>
-            </Form>
+        (Story) => (
+            <div style={{ maxWidth: 480 }}>
+                <Story />
+            </div>
         ),
     ],
-    args: { restrictedFields: new Set<string>() },
+    args: {
+        restrictedFields: new Set<string>(),
+        policyLevel: 'tenant',
+        permissionPolicies: {
+            featureDisplayNameEditable: { value: true, mode: 'SUGGESTED' },
+            featureAskerEmailEnabled: { value: true, mode: 'SUGGESTED' },
+        },
+    },
 } satisfies Meta<typeof AskerPermissionsCard>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** Both permissions granted — the default for every tenant, since both settings are opt-out. */
-export const BothEnabled: Story = {
-    parameters: { settings: { featureDisplayNameEditable: true, featureAskerEmailEnabled: true } },
-};
+export const BothEnabled: Story = {};
 
 /**
  * **The U25 configuration.** Free name entry off and no e-mail invitation. Note what the e-mail
@@ -48,7 +50,12 @@ export const BothEnabled: Story = {
  * which makes credential saving the only remaining safeguard rather than a nice-to-have.
  */
 export const U25Configuration: Story = {
-    parameters: { settings: { featureDisplayNameEditable: false, featureAskerEmailEnabled: false } },
+    args: {
+        permissionPolicies: {
+            featureDisplayNameEditable: { value: false, mode: 'SUGGESTED' },
+            featureAskerEmailEnabled: { value: false, mode: 'SUGGESTED' },
+        },
+    },
 };
 
 /**
@@ -57,18 +64,24 @@ export const U25Configuration: Story = {
  * permissions on the page that could not be locked, which is a hole in the model
  * rather than a deliberate exemption.
  */
-export const EnforceMode: Story = {
+export const PerFeatureEnforcement: Story = {
     args: {
-        enforceMode: true,
-        enforcedFields: new Set(['featureAskerEmailEnabled']),
-        onEnforceChange: () => undefined,
+        policyLevel: 'platform',
+        permissionPolicies: {
+            featureDisplayNameEditable: { value: true, mode: 'SUGGESTED' },
+            featureAskerEmailEnabled: { value: true, mode: 'ENFORCED' },
+        },
     },
-    parameters: { settings: { featureDisplayNameEditable: true, featureAskerEmailEnabled: true } },
 };
 
 /** Free name entry withheld, e-mail still offered. */
 export const DisplayNameLocked: Story = {
-    parameters: { settings: { featureDisplayNameEditable: false, featureAskerEmailEnabled: true } },
+    args: {
+        permissionPolicies: {
+            featureDisplayNameEditable: { value: false, mode: 'ENFORCED', inherited: true },
+            featureAskerEmailEnabled: { value: true, mode: 'SUGGESTED' },
+        },
+    },
 };
 
 /**
@@ -77,6 +90,11 @@ export const DisplayNameLocked: Story = {
  * somebody above them holds it.
  */
 export const RestrictedByPlatform: Story = {
-    args: { restrictedFields: new Set(['featureAskerEmailEnabled']) },
-    parameters: { settings: { featureDisplayNameEditable: true, featureAskerEmailEnabled: true } },
+    args: {
+        restrictedFields: new Set(['featureAskerEmailEnabled']),
+        permissionPolicies: {
+            featureDisplayNameEditable: { value: true, mode: 'SUGGESTED' },
+            featureAskerEmailEnabled: { value: false, mode: 'ENFORCED', inherited: true },
+        },
+    },
 };

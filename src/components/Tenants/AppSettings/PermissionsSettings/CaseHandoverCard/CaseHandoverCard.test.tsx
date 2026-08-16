@@ -69,11 +69,16 @@ describe('CaseHandoverCard', () => {
         mocks.dataState.isError = false;
     });
 
-    it('master toggle writes enabled on every reason and normalizes empty policyAuthority to null', async () => {
+    it('master policy selection writes enabled on every reason and normalizes empty policyAuthority to null', async () => {
         const user = userEvent.setup();
         render(<CaseHandoverCard />);
 
-        await user.click(screen.getByRole('switch', { name: 'tenants.permissions.card.activated' }));
+        await user.click(
+            screen.getByRole('button', {
+                name: 'tenants.permissions.card.activated: tenants.permissions.policy.openMenu',
+            }),
+        );
+        await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));
 
         await waitFor(() => {
             expect(mocks.mutate).toHaveBeenCalledWith(
@@ -148,39 +153,27 @@ describe('CaseHandoverCard', () => {
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
-    it('advisor consent and opt-out controls are visible but disabled (backend pending)', () => {
+    it('keeps advisor consent disabled and opens opt-out information as inherited read-only policy', async () => {
+        const user = userEvent.setup();
         render(<CaseHandoverCard />);
 
         expect(
             screen.getByRole('switch', { name: /tenants.permissions.card.caseHandover.consentAdvisor/ }),
         ).toBeDisabled();
-        expect(
-            screen.getByRole('switch', { name: 'tenants.permissions.card.caseHandover.optOutMessage' }),
-        ).toBeDisabled();
+        await user.click(
+            screen.getByRole('button', {
+                name: 'tenants.permissions.card.caseHandover.optOutMessage: tenants.permissions.policy.moreInformation',
+            }),
+        );
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
-    it('renders the Figma enforce checkboxes disabled and unchecked without persisting anything', async () => {
-        const user = userEvent.setup();
+    it('removes the former global enforce checkboxes and defaults team access opt-out to enforced on', () => {
         render(<CaseHandoverCard />);
 
-        // One M3 checkbox per feature row (master "Activated" + opt-out message),
-        // both coming-soon previews: disabled, unchecked, keyboard-reachable tooltip wrapper.
-        const activatedCheckbox = screen.getByRole('checkbox', {
-            name: 'tenants.permissions.card.caseHandover.enforceOption: tenants.permissions.card.activated',
-        });
-        const optOutCheckbox = screen.getByRole('checkbox', {
-            name: 'tenants.permissions.card.caseHandover.enforceOption: tenants.permissions.card.caseHandover.optOutMessage',
-        });
-
-        [activatedCheckbox, optOutCheckbox].forEach((checkbox) => {
-            expect(checkbox).toBeDisabled();
-            expect(checkbox).toHaveAttribute('aria-checked', 'false');
-            // The tooltip wrapper keeps the disabled control reachable by keyboard.
-            expect(checkbox.parentElement).toHaveAttribute('tabindex', '0');
-        });
-
-        await user.click(activatedCheckbox);
-        await user.click(optOutCheckbox);
+        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+        expect(screen.getByTestId('LockIcon')).toBeInTheDocument();
+        expect(screen.getByTestId('CheckIcon')).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
@@ -191,16 +184,34 @@ describe('CaseHandoverCard', () => {
         const user = userEvent.setup();
         render(<CaseHandoverCard />);
 
-        const masterSwitch = screen.getByRole('switch', { name: 'tenants.permissions.card.activated' });
-        expect(masterSwitch).toBeChecked();
-
-        await user.click(masterSwitch);
+        const openMasterMenu = () =>
+            screen.getByRole('button', {
+                name: 'tenants.permissions.card.activated: tenants.permissions.policy.openMenu',
+            });
+        await user.click(openMasterMenu());
+        await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));
 
         await waitFor(() => {
             expect(mocks.mutate).toHaveBeenCalled();
         });
-        // Failed save must not leave the UI showing a false success.
-        expect(masterSwitch).toBeChecked();
+        await user.click(openMasterMenu());
+        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.activationSuggested' })).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+    });
+
+    it('steps Advice Needed duration by 15 minutes from the three-hour default without a maximum', async () => {
+        const user = userEvent.setup();
+        render(<CaseHandoverCard />);
+
+        await user.click(screen.getByRole('button', { name: 'm3NumberField.increase' }));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalled());
+        const payload = mocks.mutate.mock.calls.at(-1)?.[0];
+        expect(payload.find((policy: { code: string }) => policy.code === 'COUNSELLOR_ASKED_FOR_ADVICE')).toEqual(
+            expect.objectContaining({ maxAccessDurationMinutes: 195 }),
+        );
     });
 
     it('shows an admin-visible error instead of disappearing when the reason policies fail to load', () => {

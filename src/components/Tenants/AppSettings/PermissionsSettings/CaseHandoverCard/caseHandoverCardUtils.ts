@@ -63,6 +63,15 @@ export const applyClientConsent = (
     clientConsentRequired: boolean,
 ) => policies.map((policy) => (policy.code === code ? { ...policy, clientConsentRequired } : policy));
 
+export const applyMaxAccessDuration = (
+    policies: CaseHandoverReasonPolicy[],
+    code: string,
+    maxAccessDurationMinutes: number,
+) =>
+    policies.map((policy) =>
+        policy.code === code ? { ...policy, maxAccessDurationMinutes: Math.max(15, maxAccessDurationMinutes) } : policy,
+    );
+
 /** Sample system-notification templates per reason and client language.
  *  Display-only until the backend stores real templates (multilingual template
  *  storage is a planned follow-up; see epic task "System-Nachrichten-Template"). */

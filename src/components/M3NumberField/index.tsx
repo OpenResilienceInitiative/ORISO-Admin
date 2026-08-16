@@ -1,4 +1,5 @@
 import { ChangeEvent, KeyboardEvent, ReactNode, useEffect, useId, useState } from 'react';
+import AccessTimeFilledIcon from '@mui/icons-material/AccessTimeFilled';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ChevronDownIcon } from '../../resources/img/svg/oriso/keyboard_arrow_down_24px.svg';
@@ -19,6 +20,8 @@ interface M3NumberFieldProps {
     icon?: ReactNode;
     variant?: M3NumberFieldVariant;
     disabled?: boolean;
+    /** Keeps the value non-editable while preserving the stepper controls. */
+    readOnly?: boolean;
     className?: string;
     /** Accessible name for the input; falls back to `label`. */
     'aria-label'?: string;
@@ -79,6 +82,7 @@ export const M3NumberField = ({
     icon,
     variant = 'outlined',
     disabled = false,
+    readOnly = false,
     className,
     'aria-label': ariaLabel,
     displayText,
@@ -209,13 +213,14 @@ export const M3NumberField = ({
                             aria-invalid={error || undefined}
                             aria-describedby={supportingText != null ? supportingTextId : undefined}
                             disabled={disabled}
+                            readOnly={readOnly}
                             onChange={handleInputChange}
                             onBlur={handleInputBlur}
                             onKeyDown={handleInputKeyDown}
                         />
                     </span>
+                    {trailing && <span className={styles.trailing}>{trailing}</span>}
                 </label>
-                {trailing && <span className={styles.trailing}>{trailing}</span>}
                 <button
                     type="button"
                     className={styles.stepper}
@@ -248,3 +253,49 @@ export const M3NumberField = ({
         </div>
     );
 };
+
+export type M3DurationFieldProps = {
+    value?: number;
+    onChange?: (minutes: number | undefined) => void;
+    label: string;
+    disabled?: boolean;
+    readOnly?: boolean;
+    className?: string;
+};
+
+const formatDuration = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const remainder = minutes % 60;
+    if (hours === 0) return `${remainder} min`;
+    if (remainder === 0) return `${hours} h`;
+    return `${hours} h ${remainder} min`;
+};
+
+/**
+ * Case-handover duration control: 15 minute minimum/step, 180 minute default and deliberately
+ * no product maximum. The value is formatted for reading while the split buttons remain the
+ * single editing path, matching the Figma timer field.
+ */
+export const M3DurationField = ({
+    value = 180,
+    onChange,
+    label,
+    disabled = false,
+    readOnly = false,
+    className,
+}: M3DurationFieldProps) => (
+    <M3NumberField
+        className={className}
+        label={label}
+        value={value}
+        displayText={formatDuration(value)}
+        icon={<AccessTimeFilledIcon />}
+        min={15}
+        step={15}
+        disabled={disabled}
+        readOnly
+        stepUpDisabled={readOnly}
+        stepDownDisabled={readOnly}
+        onChange={onChange}
+    />
+);

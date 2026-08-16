@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { M3NumberField } from './index';
+import { M3DurationField, M3NumberField } from './index';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string, defaultValue?: string) => defaultValue ?? key }),
@@ -160,7 +160,38 @@ describe('M3NumberField', () => {
 
     it('renders a trailing action inside the main segment', () => {
         render(<M3NumberField label="Träger-ID" trailing={<button type="button">Auto</button>} />);
-        expect(screen.getByRole('button', { name: 'Auto' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Auto' }).closest('label')).toBeInTheDocument();
+    });
+
+    it('steps a duration in 15 minute increments from the three-hour default', async () => {
+        const onChange = vi.fn();
+        const user = userEvent.setup();
+        render(<M3DurationField label="Maximum Session Duration" onChange={onChange} />);
+
+        expect(screen.getByRole('textbox', { name: 'Maximum Session Duration' })).toHaveValue('3 h');
+        await user.click(screen.getByRole('button', { name: 'Wert erhöhen' }));
+        expect(onChange).toHaveBeenCalledWith(195);
+    });
+
+    it('has a 15 minute minimum and accepts large values without a product maximum', async () => {
+        const onChange = vi.fn();
+        const user = userEvent.setup();
+        const { rerender } = render(
+            <M3DurationField label="Maximum Session Duration" value={15} onChange={onChange} />,
+        );
+        expect(screen.getByRole('button', { name: 'Wert verringern' })).toBeDisabled();
+
+        rerender(<M3DurationField label="Maximum Session Duration" value={10080} onChange={onChange} />);
+        expect(screen.getByRole('button', { name: 'Wert erhöhen' })).toBeEnabled();
+        await user.click(screen.getByRole('button', { name: 'Wert erhöhen' }));
+        expect(onChange).toHaveBeenLastCalledWith(10095);
+    });
+
+    it('renders duration policy values read-only when inherited', () => {
+        render(<M3DurationField label="Maximum Session Duration" value={180} readOnly />);
+        expect(screen.getByRole('textbox', { name: 'Maximum Session Duration' })).toHaveAttribute('readonly');
+        expect(screen.getByRole('button', { name: 'Wert erhöhen' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Wert verringern' })).toBeDisabled();
     });
 
     it('does nothing when disabled', async () => {

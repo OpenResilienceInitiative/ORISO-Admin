@@ -29,6 +29,44 @@ const Harness = (props: Partial<M3FabMenuProps>) => {
 };
 
 describe('M3FabMenu', () => {
+    it('opens an action stack downward when there is not enough room above the toggle', () => {
+        const rect = (values: Partial<DOMRect>): DOMRect =>
+            ({
+                bottom: 0,
+                height: 0,
+                left: 0,
+                right: 0,
+                top: 0,
+                width: 0,
+                x: 0,
+                y: 0,
+                toJSON: () => ({}),
+                ...values,
+            } as DOMRect);
+        const getBoundingClientRect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect');
+        getBoundingClientRect.mockImplementation(function () {
+            if (this instanceof HTMLUListElement) return rect({ height: 300 });
+            if (this instanceof HTMLButtonElement) return rect({ top: 100, bottom: 156 });
+            return rect({});
+        });
+
+        render(
+            <MemoryRouter>
+                <M3FabMenu
+                    items={items}
+                    open
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    variant="action"
+                    onOpenChange={vi.fn()}
+                />
+            </MemoryRouter>,
+        );
+
+        expect(screen.getByRole('list').parentElement?.className).toContain('openDownward');
+        getBoundingClientRect.mockRestore();
+    });
+
     it('keeps the destinations out of the tree until the menu is opened', async () => {
         render(<Harness />);
 

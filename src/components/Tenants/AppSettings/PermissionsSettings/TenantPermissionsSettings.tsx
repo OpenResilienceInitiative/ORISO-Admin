@@ -1,6 +1,10 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
+import {
+    useTenantPermissionPolicies,
+    useTenantPermissionPoliciesMutation,
+} from '../../../../hooks/useTenantPermissionPolicies';
 import { buildTogglePayload } from './permissionsToggleLogic';
 import {
     applyPermissionConstraintsToSettings,
@@ -9,9 +13,13 @@ import {
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
+import type { PolicyValue } from '../../../../types/permissionPolicy';
 
 export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
     const { data: tenantData, isLoading } = useSingleTenantData({ id: tenantId });
+    const { data: permissionPolicyData, isLoading: policiesLoading } = useTenantPermissionPolicies(tenantId);
+    const updatePermissionPolicies = useTenantPermissionPoliciesMutation(tenantId);
+    const [pendingPolicyField, setPendingPolicyField] = useState<string | null>(null);
     const { mutate: updateTenantSettings } = useTenantAdminDataMutation({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
@@ -75,16 +83,35 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
         [updateTenantSettings, allowedPermissionToggles, enforcedPermissionToggles],
     );
 
+    const handlePolicyChange = useCallback(
+        (fieldKey: string, policy: PolicyValue<boolean>) => {
+            if (!permissionPolicyData) return;
+            setPendingPolicyField(fieldKey);
+            updatePermissionPolicies.mutate(
+                {
+                    ...permissionPolicyData,
+                    policies: { ...permissionPolicyData.policies, [fieldKey]: policy },
+                },
+                { onSettled: () => setPendingPolicyField(null) },
+            );
+        },
+        [permissionPolicyData, updatePermissionPolicies],
+    );
+
     return (
         <PermissionsSettingsView
             tenantId={tenantId}
             excludeCardKeys={excludeCardKeys}
-            isLoading={isLoading}
+            isLoading={isLoading || policiesLoading}
             initialValues={initialValues}
             formStateKey={formStateKey}
             restrictedFields={restrictedFields}
             onToggleUpdate={handleToggleUpdate}
             onSave={handleSave}
+            policyLevel="tenant"
+            permissionPolicies={permissionPolicyData?.policies}
+            pendingPolicyField={pendingPolicyField}
+            onPolicyChange={handlePolicyChange}
         />
     );
 };

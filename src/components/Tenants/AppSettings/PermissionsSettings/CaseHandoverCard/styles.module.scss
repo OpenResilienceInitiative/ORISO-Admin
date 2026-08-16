@@ -152,6 +152,16 @@
     overflow-wrap: anywhere;
 }
 
+.durationField {
+    display: flex;
+    justify-content: center;
+    margin: 16px 0 8px;
+
+    > * {
+        width: min(100%, 420px);
+    }
+}
+
 .notificationFieldLabel {
     display: block;
     margin-bottom: 2px;

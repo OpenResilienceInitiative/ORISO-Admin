@@ -1,31 +1,11 @@
-import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { fn } from 'storybook/test';
 import { UseAppConfigProvider } from '../../../../context/useAppConfig';
-import { PermissionsSettingsView, type PermissionsSettingsViewProps } from './PermissionsSettingsView';
+import { PermissionsSettingsView } from './PermissionsSettingsView';
 import { DEFAULT_PERMISSION_SETTINGS, getForcedOffFields } from './permissionsSettingsUtils';
 
 const filledSettings = { ...DEFAULT_PERMISSION_SETTINGS };
-
-/** Stateful wrapper so the enforce checkboxes toggle in isolation (no backend). */
-const EnforcePermissionsCard = (args: PermissionsSettingsViewProps) => {
-    const [enforced, setEnforced] = useState<Set<string>>(new Set(['featureVoiceMessagesOneOnOneChatsEnabled']));
-    return (
-        <PermissionsSettingsView
-            {...args}
-            enforcedFields={enforced}
-            onEnforceChange={(fieldKey, next) => {
-                setEnforced((prev) => {
-                    const nextSet = new Set(prev);
-                    if (next) nextSet.add(fieldKey);
-                    else nextSet.delete(fieldKey);
-                    return nextSet;
-                });
-            }}
-        />
-    );
-};
 
 const meta = {
     title: 'Organisms/Permissions/PermissionsSettings',
@@ -117,33 +97,24 @@ export const SuperAdminView: Story = {
  *  master is enabled again, matching tenant and agency behavior. */
 export const SuperAdminMasterOff: Story = {
     args: {
-        enforceMode: true,
+        policyLevel: 'platform',
+        permissionPolicies: {
+            featureCallsEnabled: { value: false, mode: 'SUGGESTED' },
+        },
         initialValues: { settings: { ...filledSettings, featureCallsEnabled: false } },
     },
 };
 
-/** "Enforce active states" mode (Figma 105:11334): an upper role checks the box next to a
- *  feature to lock it on for every lower role, so it can no longer be hidden. */
-export const EnforceActiveStates: Story = {
+/** Each visible feature carries its own value and inheritance mode; no global enforcement mode. */
+export const PerFeaturePolicies: Story = {
     args: {
-        enforceMode: true,
+        policyLevel: 'platform',
+        permissionPolicies: {
+            featureCallsEnabled: { value: true, mode: 'ENFORCED' },
+            featureVideoCallsOneOnOneChatsEnabled: { value: false, mode: 'ENFORCED' },
+            featureAudioCallsOneOnOneChatsEnabled: { value: true, mode: 'SUGGESTED' },
+            featureVoiceMessagesOneOnOneChatsEnabled: { value: false, mode: 'SUGGESTED' },
+        },
         initialValues: { settings: filledSettings },
-    },
-    render: (args) => <EnforcePermissionsCard {...args} />,
-    play: async ({ canvasElement, step }) => {
-        const canvas = within(canvasElement);
-        await step('start editing so the card controls are interactive', async () => {
-            await userEvent.click((await canvas.findAllByRole('button', { name: 'Edit' }))[0]);
-        });
-        await step('enforce checkboxes are rendered for each feature', async () => {
-            const checkboxes = await canvas.findAllByRole('checkbox');
-            expect(checkboxes.length).toBeGreaterThan(0);
-        });
-        await step('checking a video-calls feature enforces it on for lower roles', async () => {
-            const videoEnforce = (await canvas.findAllByRole('checkbox', { name: /Video calls/i }))[0];
-            expect(videoEnforce).toHaveAttribute('aria-checked', 'false');
-            await userEvent.click(videoEnforce);
-            expect(videoEnforce).toHaveAttribute('aria-checked', 'true');
-        });
     },
 };

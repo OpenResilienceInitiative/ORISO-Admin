@@ -12,6 +12,7 @@ import {
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import type { ChatTypeCardKey, ToggleAfterChangeHandler } from './types';
+import type { PolicyValue } from '../../../../types/permissionPolicy';
 
 type AgencyPermissionsSettingsProps = {
     agencyId: string;
@@ -51,6 +52,22 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
     );
 
     const formStateKey = useMemo(() => Array.from(restrictedFields).sort().join('|'), [restrictedFields]);
+    const permissionPolicies = useMemo(
+        () =>
+            Object.fromEntries(
+                Object.entries((initialValues.settings ?? {}) as Record<string, unknown>)
+                    .filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean')
+                    .map(([fieldKey, value]) => [
+                        fieldKey,
+                        {
+                            value,
+                            mode: restrictedFields.has(fieldKey) ? 'ENFORCED' : 'SUGGESTED',
+                            inherited: restrictedFields.has(fieldKey),
+                        } satisfies PolicyValue<boolean>,
+                    ]),
+            ),
+        [initialValues, restrictedFields],
+    );
 
     const saveSettings = useCallback(
         (settings: Record<string, unknown> | undefined) => {
@@ -104,6 +121,8 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
             restrictedFields={restrictedFields}
             onToggleUpdate={handleToggleUpdate}
             onSave={handleSave}
+            policyLevel="agency"
+            permissionPolicies={permissionPolicies}
         />
     );
 };

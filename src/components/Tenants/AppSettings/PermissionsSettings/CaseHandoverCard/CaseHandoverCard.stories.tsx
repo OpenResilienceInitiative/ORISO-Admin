@@ -13,6 +13,7 @@ const policies: CaseHandoverReasonPolicy[] = [
         enabled: true,
         displayOrder: 10,
         policyAuthority: 'platform-admin-default-case-handover-policy',
+        maxAccessDurationMinutes: 180,
     },
     {
         code: 'COUNSELLOR_ON_HOLIDAY',
@@ -70,10 +71,11 @@ const meta = {
         onModuleEnabledChange: () => undefined,
         onClientConsentChange: () => undefined,
         onNotificationTemplateChange: () => undefined,
+        onMaxAccessDurationChange: () => undefined,
     },
     decorators: [
         (Story) => (
-            <div style={{ width: 425 }}>
+            <div style={{ width: '100%', maxWidth: 425 }}>
                 <Story />
             </div>
         ),
