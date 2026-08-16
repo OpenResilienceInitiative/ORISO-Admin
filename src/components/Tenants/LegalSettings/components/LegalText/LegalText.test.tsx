@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
     userLoading: false,
 }));
 
+// The version history is an independent react-query call; this suite has no client.
+vi.mock('../../../../../hooks/useLegalTextVersions.hook', () => ({ useLegalTextVersions: () => ({ data: [] }) }));
 vi.mock('../../../../../hooks/useTenantAppearanceFormData', () => ({
     useTenantAppearanceFormData: () => ({
         data: {

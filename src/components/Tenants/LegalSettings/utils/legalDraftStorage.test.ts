@@ -42,6 +42,26 @@ describe('readLegalDraft', () => {
         expect(readLegalDraft(key)?.content).toEqual({ de: '<p>ok</p>' });
     });
 
+    it('reads back the consent map and applies the same string filter to it', () => {
+        window.localStorage.setItem(
+            key,
+            JSON.stringify({
+                content: { de: '<p>ok</p>' },
+                consent: { de: 'Satz mit {{legal_links}}', en: 7 },
+                savedAt: '2026-08-12T10:00:00.000Z',
+            }),
+        );
+        expect(readLegalDraft(key)?.consent).toEqual({ de: 'Satz mit {{legal_links}}' });
+    });
+
+    it('treats a draft without a consent map as "no consent stored", not as an empty one', () => {
+        window.localStorage.setItem(
+            key,
+            JSON.stringify({ content: { de: '<p>ok</p>' }, savedAt: '2026-08-12T10:00:00.000Z' }),
+        );
+        expect(readLegalDraft(key)?.consent).toBeUndefined();
+    });
+
     it('survives a localStorage that throws (private mode)', () => {
         vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
             throw new Error('denied');
@@ -57,6 +77,11 @@ describe('writeLegalDraft', () => {
         expect(draft?.content).toEqual({ de: '<p>Entwurf</p>' });
         expect(draft?.baseVersionId).toBe('2026-08-01T09:00:00.000Z');
         expect(Number.isNaN(Date.parse(draft!.savedAt))).toBe(false);
+    });
+
+    it('round-trips the consent map with the body it belongs to', () => {
+        writeLegalDraft(key, { de: '<p>Entwurf</p>' }, undefined, { de: 'Satz mit {{legal_links}}' });
+        expect(readLegalDraft(key)?.consent).toEqual({ de: 'Satz mit {{legal_links}}' });
     });
 
     it('does nothing without a key, so an unknown user never writes a shared draft', () => {
