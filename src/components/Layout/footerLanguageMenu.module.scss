@@ -13,6 +13,7 @@
     background: transparent;
     color: inherit;
     cursor: pointer;
+
     /* Typography is inherited from the footer row it sits in — the stage panel
        makes it white/bold/uppercase like its menu entries, the in-flow footer
        leaves it plain. Setting it here would make the control the odd one out
@@ -48,12 +49,12 @@
 }
 
 /* Popup: centred over the trigger by antd's `top` placement. */
-
 .popup {
     :global(.ant-dropdown-menu) {
         min-width: 160px;
         padding: 8px 0;
         border-radius: 12px;
+
         /* The M3 menu surface, so the sheet reads as product chrome on the dark
            panel instead of antd's default white card. */
         background: var(--m3-surface-container-high, #eae7e8);

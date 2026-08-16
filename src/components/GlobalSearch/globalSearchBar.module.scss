@@ -40,6 +40,7 @@
  * The row now wraps onto as many lines as it needs; `.scroller` stays as the
  * last-resort escape for a single control wider than its container.
  */
+
 .row {
     display: flex;
     width: 100%;
@@ -70,6 +71,7 @@
  * collapsed (4px padding + two 40px icon slots), a lowest-tier surface so it
  * reads as raised against the bar, and M3's pressed-in inner shadow.
  */
+
 .pillScroller {
     width: 100%;
     min-width: 0;
@@ -78,6 +80,7 @@
 
 /* The bottom bar is one control plus a fixed 48px overflow slot inside a
    fixed-height bar — wrapping there would push "Mehr" onto a second line. */
+
 .pillRow {
     width: 100%;
     min-width: 0;
@@ -103,6 +106,7 @@
  * slot for the overflow ("Mehr") button, so however long the search gets, that
  * one icon stays reachable and the search does not have to close to get to it.
  */
+
 .pillSearchExpanded {
     width: 100%;
     min-width: 0;
