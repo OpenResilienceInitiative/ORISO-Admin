@@ -104,6 +104,26 @@ export const safeEmailColor = (value: string, fallback: string = FALLBACK_EMAIL_
 };
 
 /**
+ * BCP-47 language tag: a primary subtag of 2–8 letters plus alphanumeric subtags.
+ * The template language is free text an admin types into the "Sprache" field, and
+ * it lands unescaped in `<html lang="…">`, so a value like
+ * `de"><img src="https://example.test/x">` would break out of the attribute
+ * (#751 review). A language tag has a narrow legal grammar — anything outside it
+ * is a bug or an attack, not something to sanitise into shape, so this rejects
+ * rather than escapes.
+ */
+const BCP47_PATTERN = /^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$/;
+
+/** Language used when a template carries no valid tag. */
+export const FALLBACK_EMAIL_LANGUAGE = 'de';
+
+/** Returns the trimmed tag if it is a well-formed BCP-47 value, else the fallback. */
+export const safeLanguageTag = (value: string | undefined, fallback = FALLBACK_EMAIL_LANGUAGE): string => {
+    const trimmed = value?.trim() ?? '';
+    return BCP47_PATTERN.test(trimmed) ? trimmed : fallback;
+};
+
+/**
  * Normalises a brand at the kit boundary: every colour is forced through
  * {@link safeEmailColor} before any markup interpolates it. Text fields need
  * no treatment here — they are escaped per-use via {@link emailEscape}.
@@ -315,8 +335,10 @@ export interface EmailKitDocumentOptions {
 }
 
 export const emailKitDocument = ({ lang, subject, body }: EmailKitDocumentOptions): string =>
+    // `lang` lands in a quoted attribute, so it is validated at the sink itself —
+    // no caller can reach the attribute with unchecked input (#751 review).
     `<!DOCTYPE html>
-<html lang="${lang}">
+<html lang="${safeLanguageTag(lang)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

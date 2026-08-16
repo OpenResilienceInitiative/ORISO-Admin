@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TokenizedText } from './TokenizedText';
-import { emailColor, type EmailKitBrand } from './emailKit';
+import { emailColor, safeLanguageTag, type EmailKitBrand } from './emailKit';
 import { ADMIN_EMAIL_SAMPLE_BRAND, renderInviteEmailPreviewHtml } from './invitePreviewMarkup';
 import styles from './EmailKitPreview.module.scss';
 
@@ -72,7 +72,11 @@ export const EmailKitPreview = ({ subject, body, previewLabel, language }: Email
     // The template's own language wins: previewing an English template in a German
     // session must render English boilerplate and lang="en" (#746 review). Only
     // without one does the preview fall back to the admin UI locale.
-    const lang = language?.trim() || i18n?.language || 'de';
+    //
+    // Validated here as well as at the sink: the template language is free text an
+    // admin types, and a malformed value should degrade to the UI locale rather
+    // than to the kit's blanket "de" default (#751 review).
+    const lang = safeLanguageTag(language, safeLanguageTag(i18n?.language));
     // Read once per mount: the admin theme applies the tenant palette to the
     // document root before any editor screen renders.
     const primaryColor = useMemo(readTenantPrimary, []);

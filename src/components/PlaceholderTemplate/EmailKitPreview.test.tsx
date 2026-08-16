@@ -78,6 +78,29 @@ describe('EmailKitPreview', () => {
         expect(srcDoc(preview)).toContain('<html lang="en">');
     });
 
+    /*
+     * #751 review: the template language is free text an admin types, and it lands
+     * in <html lang="…">. A payload that breaks out of the attribute must never
+     * reach the srcDoc — the sandbox blocks scripts but not CSS or outbound
+     * resource requests.
+     */
+    it('rejects a poisoned template language instead of injecting it into the document', () => {
+        i18nMock.language = 'en';
+        render(
+            <EmailKitPreview
+                subject="A"
+                body="B"
+                language='de"><img src="https://example.test/x">'
+                previewLabel="E-Mail-Vorschau"
+            />,
+        );
+        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
+        // Falls back to the (valid) UI locale, and the payload is nowhere in the document.
+        expect(srcDoc(preview)).toContain('<html lang="en">');
+        expect(srcDoc(preview)).not.toContain('example.test');
+        expect(srcDoc(preview)).not.toContain('<img');
+    });
+
     it('falls back to German when no locale is resolvable', () => {
         i18nMock.language = '';
         render(<EmailKitPreview subject="A" body="B" previewLabel="E-Mail-Vorschau" />);
