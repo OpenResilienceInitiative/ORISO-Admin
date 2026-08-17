@@ -1,34 +1,41 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import React from 'react';
 import { Form } from 'antd';
+import antdResetCss from 'antd/dist/reset.css?inline';
 import InputAdornment from '@mui/material/InputAdornment';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { MuiSelectField } from '../MuiSelectField';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from './index';
-
-const muiFormFieldSource = readFileSync(resolve(__dirname, './index.tsx'), 'utf8');
-const sharedFieldSxSource = readFileSync(resolve(__dirname, '../fieldSx.ts'), 'utf8');
 
 const renderWithForm = (children: React.ReactNode) => render(<Form>{children}</Form>);
 
 describe('MuiFormField', () => {
     it('neutralizes the global Ant legend width without overriding MUI notch expansion', () => {
-        const legendRule = (source: string) =>
-            source.match(/'& \.MuiOutlinedInput-notchedOutline legend':\s*{([^}]*)}/s)?.[1] ?? '';
+        const resetStyle = document.createElement('style');
+        resetStyle.textContent = antdResetCss;
+        document.head.prepend(resetStyle);
 
-        expect(legendRule(muiFormFieldSource)).toMatch(/\bwidth\s*:\s*'auto'/);
-        expect(legendRule(sharedFieldSxSource)).toMatch(/\bwidth\s*:\s*'auto'/);
-        expect(legendRule(muiFormFieldSource)).not.toMatch(/\bmaxWidth\s*:/);
-        expect(legendRule(sharedFieldSxSource)).not.toMatch(/\bmaxWidth\s*:/);
+        render(
+            <Form component={false}>
+                <MuiFormField name="title" label="Title" />
+                <MuiSelectField name="category" label="Category" options={[{ value: 'general', label: 'General' }]} />
+            </Form>,
+        );
+
+        const legends = document.querySelectorAll<HTMLLegendElement>('.MuiOutlinedInput-notchedOutline legend');
+
+        expect(legends).toHaveLength(2);
+        expect(Array.from(legends, (legend) => getComputedStyle(legend).width)).toEqual(['auto', 'auto']);
+
+        resetStyle.remove();
     });
 
     it('floats an empty native date label before the field receives focus', () => {
         renderWithForm(<MuiFormField name="reviewDate" label="Review date" type="date" />);
 
-        const input = screen.getByLabelText('Review date');
-        expect(document.getElementById(`${input.id}-label`)).toHaveAttribute('data-shrink', 'true');
+        const input = screen.getByLabelText<HTMLInputElement>('Review date');
+        expect(input.labels?.[0]).toHaveAttribute('data-shrink', 'true');
     });
 
     it('uses the surrounding surface only for filled fields', () => {
