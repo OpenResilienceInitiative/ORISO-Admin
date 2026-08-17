@@ -13,6 +13,7 @@
 
 /* ORISO-Admin#735: the document master data card has four field groups, so it takes the
    full width of the grid rather than sharing a row. */
+
 .documentMasterDataCardSlot {
     min-width: 0;
     grid-column: 1 / -1;
