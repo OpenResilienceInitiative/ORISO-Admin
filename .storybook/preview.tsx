@@ -56,6 +56,8 @@ const preview: Preview = {
                 phoneSmall: { name: 'Phone 360', styles: { width: '360px', height: '740px' } },
                 phone: { name: 'Phone 390', styles: { width: '390px', height: '844px' } },
                 tablet: { name: 'Tablet 768', styles: { width: '768px', height: '1024px' } },
+                responsive640: { name: 'Responsive 640', styles: { width: '640px', height: '900px' } },
+                responsive1100: { name: 'Responsive 1100', styles: { width: '1100px', height: '900px' } },
                 laptop: { name: 'Laptop 1280', styles: { width: '1280px', height: '800px' } },
                 desktop: { name: 'Desktop 1440', styles: { width: '1440px', height: '900px' } },
             },

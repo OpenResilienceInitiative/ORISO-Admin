@@ -1,3 +1,5 @@
+@use '../../../styles/muiSpacing' as mui;
+
 .card {
     overflow: visible;
     width: 100%;
@@ -7,8 +9,8 @@
 .provider {
     display: grid;
     align-items: start;
-    padding: 12px 24px;
-    gap: 8px 12px;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 3;
+    gap: mui.$mui-unit mui.$mui-unit * 1.5;
     grid-template-columns: minmax(0, 1fr) auto;
 
     & + .provider {

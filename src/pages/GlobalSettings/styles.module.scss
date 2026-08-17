@@ -1,17 +1,30 @@
+@use '../../styles/muiSpacing' as mui;
+
+.globalConfigViewport {
+    width: 100%;
+    min-width: 0;
+    container-name: global-settings;
+    container-type: inline-size;
+}
+
 .globalConfigGrid {
     display: grid;
+    width: 100%;
+    min-width: 0;
     max-width: 1164px;
     align-items: start;
-    gap: 24px;
-    grid-template-areas: 'compact document';
-    grid-template-columns: minmax(360px, 400px) minmax(520px, 740px);
+    gap: mui.$mui-unit * 3;
+    grid-template-areas:
+        'compact'
+        'document';
+    grid-template-columns: minmax(280px, 1fr);
 }
 
 .compactCardColumn {
     display: grid;
     min-width: 0;
     align-content: start;
-    gap: 24px;
+    gap: mui.$mui-unit * 3;
     grid-area: compact;
 }
 
@@ -199,13 +212,10 @@
     margin-top: 4px;
 }
 
-@media only screen and (max-width: 1100px) {
+@container global-settings (min-width: 904px) {
     .globalConfigGrid {
-        max-width: 100%;
-        grid-template-areas:
-            'compact'
-            'document';
-        grid-template-columns: minmax(280px, 1fr);
+        grid-template-areas: 'compact document';
+        grid-template-columns: minmax(360px, 400px) minmax(520px, 740px);
     }
 }
 
@@ -215,9 +225,9 @@
     }
 }
 
-@media only screen and (max-width: 640px) {
+@container global-settings (max-width: 640px) {
     .globalConfigGrid {
-        gap: 16px;
+        gap: mui.$mui-unit * 2;
     }
 
     .smtpPage {

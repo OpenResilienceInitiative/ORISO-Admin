@@ -61,26 +61,27 @@ export const GlobalLoginSettingsPage = () => {
     const initialValues = useMemo(() => ({ ...data }), [data]);
 
     return (
-        <div className={styles.globalConfigGrid}>
-            <div className={styles.compactCardColumn}>
-                <section className={styles.globalConfigCardSlot}>
-                    <ThemeProvider theme={orisoMuiTheme}>
-                        <CardEditable
-                            className={styles.loginFunctionCard}
-                            isLoading={isLoading}
-                            initialValues={initialValues}
-                            titleKey="tenants.globalSettings.anonymousChat.title"
-                            onSave={mutate}
-                            variant="dialog"
-                            editButtonPlacement="footer"
-                            headerIcon={<LoginOutlinedIcon />}
-                        >
-                            <div className={styles.checkGroup}>
-                                <MuiSwitchField
-                                    label={t('tenants.permissions.anonymousChat.title')}
-                                    name={['settings', 'featureAnonymousChatEnabled']}
-                                />
-                                {/* ORISO-Admin#602: this switch used to carry no visible
+        <div className={styles.globalConfigViewport}>
+            <div className={styles.globalConfigGrid}>
+                <div className={styles.compactCardColumn}>
+                    <section className={styles.globalConfigCardSlot}>
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <CardEditable
+                                className={styles.loginFunctionCard}
+                                isLoading={isLoading}
+                                initialValues={initialValues}
+                                titleKey="tenants.globalSettings.anonymousChat.title"
+                                onSave={mutate}
+                                variant="dialog"
+                                editButtonPlacement="footer"
+                                headerIcon={<LoginOutlinedIcon />}
+                            >
+                                <div className={styles.checkGroup}>
+                                    <MuiSwitchField
+                                        label={t('tenants.permissions.anonymousChat.title')}
+                                        name={['settings', 'featureAnonymousChatEnabled']}
+                                    />
+                                    {/* ORISO-Admin#602: this switch used to carry no visible
                                     description at all, while the string behind it promised
                                     "wird auf der Login-Seite nicht angezeigt" — behaviour
                                     nothing implements (`featureAnonymousChatEnabled` is read
@@ -88,22 +89,23 @@ export const GlobalLoginSettingsPage = () => {
                                     invent the behaviour, the description now says what the
                                     switch actually does, and it is rendered so an admin can
                                     read it before deciding. */}
-                                <p className={styles.settingDescription}>
-                                    {t('tenants.permissions.anonymousChat.description')}
-                                </p>
-                            </div>
-                        </CardEditable>
-                    </ThemeProvider>
-                </section>
-                <section className={styles.translationCardSlot}>
-                    <TranslationApiKeysCardContainer />
+                                    <p className={styles.settingDescription}>
+                                        {t('tenants.permissions.anonymousChat.description')}
+                                    </p>
+                                </div>
+                            </CardEditable>
+                        </ThemeProvider>
+                    </section>
+                    <section className={styles.translationCardSlot}>
+                        <TranslationApiKeysCardContainer />
+                    </section>
+                </div>
+                {/* ORISO-Admin#735: operator master data for the living DPIA and the other legal
+                    documents. The desktop grid keeps it beside the two compact configuration cards. */}
+                <section className={styles.documentMasterDataCardSlot}>
+                    <DocumentMasterDataCardContainer />
                 </section>
             </div>
-            {/* ORISO-Admin#735: operator master data for the living DPIA and the other legal
-                documents. The desktop grid keeps it beside the two compact configuration cards. */}
-            <section className={styles.documentMasterDataCardSlot}>
-                <DocumentMasterDataCardContainer />
-            </section>
         </div>
     );
 };
