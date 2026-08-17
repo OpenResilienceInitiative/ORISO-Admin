@@ -53,16 +53,22 @@ const expectMenuColours = async (
         name: /Close policy choices|Policy-Auswahl schließen/i,
     });
 
-    for (const [action, backgroundColor] of [
-        [adjustableAction, itemBackgroundColor],
-        [closeAction, fabBackgroundColor],
-    ] as const) {
+    const colourExpectations = (
+        [
+            [adjustableAction, itemBackgroundColor],
+            [closeAction, fabBackgroundColor],
+        ] as const
+    ).flatMap(([action, backgroundColor]) => {
         const computed = window.getComputedStyle(action);
-        await expect(computed.backgroundColor).toBe(backgroundColor);
-        await expect(computed.color).toBe(foregroundColor);
-        await expect(computed.borderTopStyle).toBe('none');
-        await expect(computed.outlineStyle).toBe('none');
-    }
+        return [
+            expect(computed.backgroundColor).toBe(backgroundColor),
+            expect(computed.color).toBe(foregroundColor),
+            expect(computed.borderTopStyle).toBe('none'),
+            expect(computed.outlineStyle).toBe('none'),
+        ];
+    });
+
+    await Promise.all(colourExpectations);
 
     await expect(window.getComputedStyle(adjustableAction).boxShadow).toBe('none');
 };
