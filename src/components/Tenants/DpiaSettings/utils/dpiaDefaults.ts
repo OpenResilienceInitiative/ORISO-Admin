@@ -125,11 +125,23 @@ export const DSFA_EDITOR_DEFAULTS: DpiaTextMap = {
     ].join(''),
 };
 
-/** Markup-insensitive fingerprint: tags and whitespace differences (TipTap re-serialisation) do not count as edits. */
+/**
+ * Fingerprint that ignores only what TipTap is known to change when it re-serialises the very
+ * same document — attributes (e.g. a class on a blockquote), tag-name case, whitespace between
+ * tags, and raw no-break spaces vs `&nbsp;` — while keeping the element structure and inline
+ * marks. A formatting-only edit (a list, emphasis, a link, a heading) therefore changes the
+ * fingerprint and counts as operator text; only an untouched draft matches its default.
+ */
 const fingerprint = (html: string): string =>
     html
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/&nbsp;/g, ' ')
+        // <tag attr="…"> -> <tag>, </tag> stays; tag names lower-cased
+        .replace(
+            /<\s*(\/?)\s*([a-zA-Z][\w-]*)[^>]*>/g,
+            (_m, slash: string, tag: string) => `<${slash}${tag.toLowerCase()}>`,
+        )
+        .replace(/\u00a0|\u202f|&nbsp;/g, ' ')
+        // whitespace between tags is layout, whitespace inside text is content (collapsed)
+        .replace(/>\s+</g, '><')
         .replace(/\s+/g, ' ')
         .trim();
 

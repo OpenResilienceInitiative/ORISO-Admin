@@ -51,6 +51,25 @@ describe('dpiaDefaults', () => {
         expect(isDpiaDefaultText('unknown-slot', '<p>x</p>')).toBe(false);
     });
 
+    it('a formatting-only edit (emphasis, list, link, heading) is an edit — never mistaken for the default', () => {
+        const base = DSFA_EDITOR_DEFAULTS.governance;
+        const bold = base.replace('<p>Die Plattform wird von', '<p><strong>Die Plattform</strong> wird von');
+        const list = base.replace(
+            '<p>Träger und Beratungsstellen sind rechtlich selbstständige Organisationen;',
+            '<ul><li><p>Träger und Beratungsstellen sind rechtlich selbstständige Organisationen;',
+        );
+        const link = base.replace(
+            '[Name des Gremiums, z.&nbsp;B. Lenkungsausschuss]',
+            '<a href="https://example.org">[Name des Gremiums, z.&nbsp;B. Lenkungsausschuss]</a>',
+        );
+        const heading = `<h2>Governance</h2>${base}`;
+        [bold, list, link, heading].forEach((html) => {
+            expect(isDpiaDefaultText('governance', html)).toBe(false);
+            expect(hasOperatorDpiaText('governance', html)).toBe(true);
+        });
+        expect(stripDpiaDefaults({ governance: bold }).governance).toBe(bold);
+    });
+
     it('a default does not count as operator text', () => {
         expect(hasOperatorDpiaText('governance', DSFA_EDITOR_DEFAULTS.governance)).toBe(false);
         expect(hasOperatorDpiaText('governance', '<p>Eigener Text</p>')).toBe(true);
