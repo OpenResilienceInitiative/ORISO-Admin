@@ -53,15 +53,15 @@ describe('dpiaDefaults', () => {
 
     it('a formatting-only edit (emphasis, list, link, heading) is an edit — never mistaken for the default', () => {
         const base = DSFA_EDITOR_DEFAULTS.governance;
-        const bold = base.replace('<p>Die Plattform wird von', '<p><strong>Die Plattform</strong> wird von');
-        // complete TipTap list markup: the paragraph becomes <ul><li><p>…</p></li></ul>
-        const listParagraph = base.match(/<p>Träger und Beratungsstellen[^<]*<\/p>/)![0];
-        const list = base.replace(listParagraph, `<ul><li>${listParagraph}</li></ul>`);
-        const link = base.replace(
-            '[Name des Gremiums, z.&nbsp;B. Lenkungsausschuss]',
-            '<a href="https://example.org">[Name des Gremiums, z.&nbsp;B. Lenkungsausschuss]</a>',
-        );
-        const heading = `<h2>Governance</h2>${base}`;
+        // Every fixture re-wraps EXISTING default text in different markup — the words stay the
+        // same, only the structure/marks change — so a detector that ignored markup would fail.
+        const firstParagraph = base.slice(0, base.indexOf('</p>') + '</p>'.length); // <p>…</p>
+        const firstText = firstParagraph.slice('<p>'.length, -'</p>'.length);
+        const bold = base.replace(firstParagraph, `<p><strong>${firstText}</strong></p>`);
+        const list = base.replace(firstParagraph, `<ul><li>${firstParagraph}</li></ul>`);
+        const link = base.replace(firstParagraph, `<p><a href="https://example.org">${firstText}</a></p>`);
+        const heading = base.replace(firstParagraph, `<h2>${firstText}</h2>`);
+        expect(firstText.length).toBeGreaterThan(20);
         [bold, list, link, heading].forEach((html) => {
             expect(html).not.toBe(base);
             expect(isDpiaDefaultText('governance', html)).toBe(false);
@@ -83,5 +83,14 @@ describe('dpiaDefaults', () => {
             accountability: '<p>Eigener Text</p>',
         });
         expect(stripped).toEqual({ governance: '', accountability: '<p>Eigener Text</p>' });
+    });
+
+    it('strips a default even after TipTap re-serialised it (attributes, whitespace, nbsp)', () => {
+        const reserialised = DSFA_EDITOR_DEFAULTS.governance
+            .replace(/<\/p><p>/g, '</p>\n<p>')
+            .replace('<blockquote>', '<blockquote class="x">')
+            .replace(/&nbsp;/g, '\u00a0');
+        expect(reserialised).not.toBe(DSFA_EDITOR_DEFAULTS.governance);
+        expect(stripDpiaDefaults({ governance: reserialised }).governance).toBe('');
     });
 });
