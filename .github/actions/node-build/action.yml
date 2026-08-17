@@ -21,6 +21,26 @@ runs:
           # not rely on any dependency lifecycle script to build.
           run: npm ci --ignore-scripts
 
+        # src/components/IconCatalog/iconCatalog.generated.json has to stay
+        # committed — ESLint resolves the Storybook page's import of it long
+        # before `build-storybook` would generate it (#711) — so it rots
+        # silently whenever a PR touches icon assets or icon references without
+        # re-running the generator. The next contributor to start Storybook
+        # then finds the drift in their own `git status` (#681 caused exactly
+        # that). Catch it on the PR that introduces it instead. Runs before the
+        # slower gates so a stale catalog fails in seconds.
+        - name: Check the generated icon catalog is up to date
+          shell: bash
+          run: |
+              set -euo pipefail
+              npm run generate:icon-catalog
+              if ! git diff --quiet; then
+                echo "::error::The committed icon catalog is stale. Run 'npm run generate:icon-catalog' and commit the diff."
+                git --no-pager diff --stat
+                git --no-pager diff
+                exit 1
+              fi
+
         - name: Lint (ESLint, zero warnings)
           shell: bash
           run: npx eslint . --max-warnings=0
