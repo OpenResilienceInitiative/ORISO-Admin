@@ -71,18 +71,21 @@ describe('DpiaDocumentPage', () => {
         expect(screen.getByText('1')).toBeInTheDocument();
     });
 
-    it('documents the platform-admin tier with the full role bundle it actually needs (agency-admin + tenant-admin + user-admin)', () => {
+    it('documents every admin tier with the full role bundle userRolesToPermissions.ts actually requires for what the matrix claims', () => {
         render(<DpiaDocumentPage />);
 
-        // useUserRoles.hook.ts: isSuperAdmin = hasRole(AgencyAdmin) && hasRole(TenantAdmin) &&
-        // tenantId === 0 identifies the tier, but userRolesToPermissions.ts only grants Consultant
-        // CRUD (the matrix's "Beratende anlegen / einladen") to UserRole.UserAdmin — dropping it
-        // would make that matrix cell false. agency-admin/tenant-admin tags are shared with the
-        // tenant-admin tier below (same roles, different scope), so assert presence, not a single
-        // match; user-admin is unique to the platform tier.
-        expect(screen.getAllByText('agency-admin').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('tenant-admin').length).toBeGreaterThan(0);
-        expect(screen.getByText('user-admin')).toBeInTheDocument();
+        // Every admin tier's realm-role tags are cross-checked against
+        // src/constants/userRolesToPermissions.ts (see the dpiaContent.ts header comment):
+        // - useUserRoles.hook.ts: isSuperAdmin = agency-admin + tenant-admin + tenantId 0.
+        // - Agency.create/read is granted ONLY by agency-admin (AdminSidebar.stories.tsx's
+        //   TenantAdmin story: "lacking Agency read" without it).
+        // - Consultant.create (the matrix's "Beratende anlegen / einladen") is granted ONLY by
+        //   user-admin.
+        // Tags are shared across tiers (same underlying Keycloak roles, different scope), so
+        // assert presence per role rather than a single exact match per tier.
+        expect(screen.getAllByText('agency-admin').length).toBeGreaterThanOrEqual(3); // platform, tenant, agency tiers
+        expect(screen.getAllByText('tenant-admin').length).toBeGreaterThanOrEqual(2); // platform, tenant tiers
+        expect(screen.getAllByText('user-admin').length).toBe(3); // platform, tenant, agency tiers
     });
 
     it('marks 2FA deferral as a platform-admin-only affordance, not for tenant admins', () => {
