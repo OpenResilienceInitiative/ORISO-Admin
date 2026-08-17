@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import routePathNames from '../../appConfig';
 import { getDefaultSettingsPath } from '../../constants/settingsTabs';
-import SiteFooter from './SiteFooter';
 import { handleTokenRefresh } from '../../api/auth/auth';
 import logout from '../../api/auth/logout';
 import getLocationVariables from '../../utils/getLocationVariables';
@@ -150,14 +149,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                 )}
 
                 <Layout className={classNames(styles.mainContent)}>
-                    <Content className={styles.content}>
-                        {children}
-                        {/* Imprint and privacy belong to the public area: inside
-                            the admin they cost a full band of vertical space,
-                            add a second background tone and repeat links every
-                            signed-in user already accepted (Frank, 2026-08-07). */}
-                        {isDesktopLayout && <SiteFooter />}
-                    </Content>
+                    <Content className={styles.content}>{children}</Content>
                 </Layout>
             </Layout>
             {isEnabled(FeatureFlag.Developer) && <ReactQueryDevtools />}
