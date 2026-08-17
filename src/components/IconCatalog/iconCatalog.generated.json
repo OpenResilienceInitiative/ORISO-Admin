@@ -1827,6 +1827,32 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:oriso:lock-open-right:400",
+        "family": "lock-open-right",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 20,
+        "fileName": "lock_open_right_400_20px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/lock_open_right_400_20px.svg",
+        "exportNames": [],
+        "usageFiles": [],
+        "usage": "catalogued-only"
+    },
+    {
+        "id": "ui-icon:oriso:lock-open-right:filled",
+        "family": "lock-open-right",
+        "state": "filled",
+        "role": "selected",
+        "kind": "ui-icon",
+        "size": 20,
+        "fileName": "lock_open_right_filled_20px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/lock_open_right_filled_20px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/PermissionPolicyControl/PermissionPolicyControl.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:oriso:mail:base",
         "family": "mail",
         "state": "base",
@@ -3073,6 +3099,7 @@
             "src/components/GlobalSearch/SplitButton.tsx",
             "src/components/M3NumberField/index.tsx",
             "src/components/overlay/Overlay.tsx",
+            "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx",
             "src/components/PillSelect/index.tsx",
             "src/pages/Links/index.tsx",
             "src/pages/Links/InviteComposer.tsx",

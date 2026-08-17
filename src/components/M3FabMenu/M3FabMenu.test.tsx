@@ -1,9 +1,16 @@
 import { useState } from 'react';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { M3FabMenu, type M3FabMenuProps } from './M3FabMenu';
+
+const initialInnerHeight = window.innerHeight;
+
+afterEach(() => {
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: initialInnerHeight });
+    vi.restoreAllMocks();
+});
 
 const items = [
     { key: 'settings', label: 'Einstellungen', to: '/admin/settings' },
@@ -35,7 +42,7 @@ describe('M3FabMenu', () => {
         render(
             <MemoryRouter>
                 <M3FabMenu
-                    items={[{ key: 'enabled-suggested', label: 'Aktivierung vorgeschlagen', icon: <span>open</span> }]}
+                    items={[{ key: 'enabled-suggested', label: 'Aktivierung (anpassbar)', icon: <span>open</span> }]}
                     activeKey="enabled-suggested"
                     triggerIcon={<span>check</span>}
                     open={false}
@@ -52,8 +59,7 @@ describe('M3FabMenu', () => {
         expect(toggle).not.toHaveTextContent('open');
     });
 
-    it('opens an action stack downward when there is not enough room above the toggle', () => {
-        const originalInnerHeight = window.innerHeight;
+    it('opens an action stack downward when there is not enough room above the toggle', async () => {
         const rect = (values: Partial<DOMRect>): DOMRect =>
             ({
                 bottom: 0,
@@ -93,9 +99,110 @@ describe('M3FabMenu', () => {
 
         Object.defineProperty(window, 'innerHeight', { configurable: true, value: 400 });
         act(() => window.dispatchEvent(new Event('resize')));
-        expect(stack).toHaveStyle({ maxHeight: '236px' });
-        Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight });
-        getBoundingClientRect.mockRestore();
+        await waitFor(() => expect(stack).toHaveStyle({ maxHeight: '236px' }));
+    });
+
+    it('flips an open action stack upward before it collides with the bottom viewport edge', async () => {
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: 760 });
+        let fabTop = 100;
+        const rect = (values: Partial<DOMRect>): DOMRect =>
+            ({
+                bottom: 0,
+                height: 0,
+                left: 0,
+                right: 0,
+                top: 0,
+                width: 0,
+                x: 0,
+                y: 0,
+                toJSON: () => ({}),
+                ...values,
+            } as DOMRect);
+        const getBoundingClientRect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect');
+        getBoundingClientRect.mockImplementation(function getElementBoundingClientRect() {
+            if (this instanceof HTMLUListElement) return rect({ height: 300 });
+            if (this instanceof HTMLButtonElement) return rect({ top: fabTop, bottom: fabTop + 56 });
+            return rect({});
+        });
+
+        render(
+            <MemoryRouter>
+                <M3FabMenu
+                    items={items}
+                    open
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    variant="action"
+                    onOpenChange={vi.fn()}
+                />
+            </MemoryRouter>,
+        );
+
+        const stack = screen.getByRole('list');
+        expect(stack.parentElement?.className).toContain('openDownward');
+
+        fabTop = 640;
+        act(() => stack.parentElement?.dispatchEvent(new Event('scroll', { bubbles: false })));
+
+        await waitFor(() => {
+            expect(stack.parentElement?.className).not.toContain('openDownward');
+            expect(stack).toHaveStyle({ maxHeight: '632px' });
+        });
+    });
+
+    it('uses the uncapped menu height to choose the larger side when neither direction fits', async () => {
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: 300 });
+        let fabTop = 20;
+        const rect = (values: Partial<DOMRect>): DOMRect =>
+            ({
+                bottom: 0,
+                height: 0,
+                left: 0,
+                right: 0,
+                top: 0,
+                width: 0,
+                x: 0,
+                y: 0,
+                toJSON: () => ({}),
+                ...values,
+            } as DOMRect);
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+            function getElementBoundingClientRect() {
+                if (this instanceof HTMLUListElement) return rect({ height: 80 });
+                if (this instanceof HTMLButtonElement) return rect({ top: fabTop, bottom: fabTop + 56 });
+                return rect({});
+            },
+        );
+        vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(function getElementScrollHeight() {
+            return this instanceof HTMLUListElement ? 500 : 0;
+        });
+
+        render(
+            <MemoryRouter>
+                <M3FabMenu
+                    items={items}
+                    open
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    variant="action"
+                    onOpenChange={vi.fn()}
+                />
+            </MemoryRouter>,
+        );
+
+        const stack = screen.getByRole('list');
+        expect(stack.parentElement?.className).toContain('openDownward');
+
+        // The rendered stack is already capped to 80 px. Its natural 500 px
+        // height still does not fit on either side, so the larger 136 px gap
+        // below the FAB must win over the 92 px gap above it.
+        fabTop = 100;
+        act(() => stack.parentElement?.dispatchEvent(new Event('scroll', { bubbles: false })));
+
+        await waitFor(() => {
+            expect(stack.parentElement?.className).toContain('openDownward');
+            expect(stack).toHaveStyle({ maxHeight: '136px' });
+        });
     });
 
     it('keeps the destinations out of the tree until the menu is opened', async () => {

@@ -158,6 +158,14 @@
 }
 
 .action {
+    // The shared Admin palette still carries historical inverted container
+    // names. Keep the Figma roles local to this component so the policy menu
+    // can match M3 without changing unrelated sidebar and field surfaces.
+    --m3-fab-menu-primary-container: var(--oriso-app-action, #cc1e1c);
+    --m3-fab-menu-on-primary-container: var(--oriso-app-accent-light, #ffe2de);
+    --m3-fab-menu-secondary: var(--m3-secondary, #4c555f);
+    --m3-fab-menu-on-secondary-container: var(--m3-on-secondary-container, #e7effc);
+
     align-items: flex-end;
 
     .stack {
@@ -168,25 +176,36 @@
     }
 
     .item {
-        background: var(--m3-primary, #a5000a);
-        color: var(--m3-on-primary, #ffffff);
+        background: var(--m3-fab-menu-primary-container);
+        color: var(--m3-fab-menu-on-primary-container);
     }
 
-    .itemActive {
-        box-shadow: inset 0 0 0 2px currentcolor;
+    .item:focus-visible {
+        // M3 focus state-layer: visible to keyboard users without introducing
+        // the border-like ring that is absent from both Figma variants.
+        background: color-mix(
+            in srgb,
+            var(--m3-fab-menu-on-primary-container) 8%,
+            var(--m3-fab-menu-primary-container)
+        );
+        box-shadow: none;
     }
 
     .fab {
         background: var(--m3-primary, #a5000a);
-        color: var(--m3-on-primary, #ffffff);
+        color: var(--m3-fab-menu-on-primary-container);
     }
 }
 
 .action.neutral {
     .item,
     .fab {
-        background: var(--m3-secondary, #555f6b);
-        color: var(--m3-on-secondary, #ffffff);
+        background: var(--m3-fab-menu-secondary);
+        color: var(--m3-fab-menu-on-secondary-container);
+    }
+
+    .item:focus-visible {
+        background: color-mix(in srgb, var(--m3-fab-menu-on-secondary-container) 8%, var(--m3-fab-menu-secondary));
     }
 }
 
