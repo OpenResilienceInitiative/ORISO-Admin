@@ -3,11 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { Skeleton, Tooltip } from 'antd';
 import { ReactComponent as CaseHandoverIcon } from '../../../../../resources/img/svg/permissions/case_handover.svg';
 import { Card } from '../../../../Card';
-import { M3Switch } from '../../../../M3Switch';
 import { M3DurationField } from '../../../../M3NumberField';
+import { CaseHandoverConsentPolicyControl } from '../../../../CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl';
 import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
-import type { PolicyValue } from '../../../../../types/permissionPolicy';
+import type { CaseHandoverConsentPolicy, PolicyValue } from '../../../../../types/permissionPolicy';
 import {
     buildDisplayReasons,
     DisplayReason,
@@ -15,6 +15,7 @@ import {
     isAdvisorConsentImplicit,
     NOTIFICATION_LANGUAGES,
     NotificationLanguage,
+    resolvedClientConsentPolicy,
 } from './caseHandoverCardUtils';
 import cardStyles from '../styles.module.scss';
 import styles from './styles.module.scss';
@@ -36,7 +37,7 @@ export type CaseHandoverCardViewProps = {
     canEdit: boolean;
     moduleEnabled: boolean;
     onModuleEnabledChange: (enabled: boolean) => void;
-    onClientConsentChange: (code: string, clientConsentRequired: boolean) => void;
+    onClientConsentPolicyChange: (code: string, clientConsent: CaseHandoverConsentPolicy) => void;
     onNotificationTemplateChange: (code: string, language: NotificationLanguage, text: string) => void;
     onMaxAccessDurationChange: (code: string, minutes: number) => void;
     policyLevel?: 'platform' | 'tenant' | 'agency';
@@ -63,7 +64,7 @@ export const CaseHandoverCardView = ({
     canEdit,
     moduleEnabled,
     onModuleEnabledChange,
-    onClientConsentChange,
+    onClientConsentPolicyChange,
     onNotificationTemplateChange,
     onMaxAccessDurationChange,
     policyLevel = 'tenant',
@@ -163,29 +164,20 @@ export const CaseHandoverCardView = ({
                     {activeReason && (
                         <div className={styles.consentRows}>
                             <div className={cardStyles.toggleRow}>
-                                <span className={cardStyles.toggleLabel}>
-                                    {t('tenants.permissions.card.caseHandover.consentClient')}
-                                </span>
-                                <Tooltip title={activeReason.isPlaceholder ? comingSoon : undefined}>
-                                    <span tabIndex={activeReason.isPlaceholder ? 0 : undefined}>
-                                        <M3Switch
-                                            checked={activePolicy?.clientConsentRequired ?? false}
-                                            disabled={
-                                                activeReason.isPlaceholder ||
-                                                !activePolicy ||
-                                                !canEdit ||
-                                                !moduleEnabled ||
-                                                isSaving
-                                            }
-                                            label={`${t(
-                                                'tenants.permissions.card.caseHandover.consentClient',
-                                            )} (${reasonLabel(activeReason)})`}
-                                            onChange={(value) =>
-                                                activePolicy && onClientConsentChange(activePolicy.code, value)
-                                            }
-                                        />
-                                    </span>
-                                </Tooltip>
+                                <CaseHandoverConsentPolicyControl
+                                    label={t('tenants.permissions.card.caseHandover.consentClient')}
+                                    policy={resolvedClientConsentPolicy(activePolicy)}
+                                    level={policyLevel}
+                                    open={currentOpenPolicyMenu === `clientConsent:${activeReason.code}`}
+                                    pending={isSaving}
+                                    disabled={activeReason.isPlaceholder || !activePolicy || !canEdit || !moduleEnabled}
+                                    onOpenChange={(open) =>
+                                        setOpenPolicyMenu(open ? `clientConsent:${activeReason.code}` : null)
+                                    }
+                                    onChange={(next) =>
+                                        activePolicy && onClientConsentPolicyChange(activePolicy.code, next)
+                                    }
+                                />
                             </div>
                             {activeReason.code === 'COUNSELLOR_ASKED_FOR_ADVICE' && (
                                 <div className={styles.durationField}>
@@ -208,20 +200,19 @@ export const CaseHandoverCardView = ({
                                 </div>
                             )}
                             <div className={cardStyles.toggleRow}>
-                                <span className={cardStyles.toggleLabel}>
-                                    {t('tenants.permissions.card.caseHandover.consentAdvisor')}
-                                </span>
-                                <Tooltip title={comingSoon}>
-                                    <span tabIndex={0}>
-                                        <M3Switch
-                                            checked={isAdvisorConsentImplicit(activeReason.code)}
-                                            disabled
-                                            label={`${t(
-                                                'tenants.permissions.card.caseHandover.consentAdvisor',
-                                            )} (${reasonLabel(activeReason)})`}
-                                        />
-                                    </span>
-                                </Tooltip>
+                                <CaseHandoverConsentPolicyControl
+                                    label={t('tenants.permissions.card.caseHandover.consentAdvisor')}
+                                    policy={{
+                                        value: isAdvisorConsentImplicit(activeReason.code) ? 'OPT_IN' : 'NONE',
+                                        mode: 'ENFORCED',
+                                        inherited: true,
+                                    }}
+                                    level="tenant"
+                                    open={false}
+                                    disabled
+                                    onOpenChange={() => undefined}
+                                    onChange={() => undefined}
+                                />
                             </div>
                             {activeReason.isPlaceholder && (
                                 <p className={styles.placeholderHint}>

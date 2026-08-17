@@ -1,4 +1,5 @@
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+import type { CaseHandoverConsentPolicy } from '../../../../../types/permissionPolicy';
 import { SUPPORTED_LANGUAGE_CODES, type SupportedLanguageCode } from '../../../../../constants/supportedLanguages';
 
 export type NotificationLanguage = SupportedLanguageCode;
@@ -38,7 +39,9 @@ export type DisplayReason = {
 /** Tabs to render: all backend reasons in display order, plus the legal-violation
  *  placeholder as long as the backend does not seed it itself. */
 export const buildDisplayReasons = (policies: CaseHandoverReasonPolicy[]): DisplayReason[] => {
-    const sorted = sortPoliciesByDisplayOrder(policies);
+    // OTHER_EMERGENCY remains readable for historical requests but is no longer
+    // offered as a configurable reason (Frank, Figma follow-up 2026-08-17).
+    const sorted = sortPoliciesByDisplayOrder(policies).filter((policy) => policy.code !== 'OTHER_EMERGENCY');
     const reasons: DisplayReason[] = sorted.map((policy) => ({
         code: policy.code,
         policy,
@@ -63,6 +66,29 @@ export const applyClientConsent = (
     code: string,
     clientConsentRequired: boolean,
 ) => policies.map((policy) => (policy.code === code ? { ...policy, clientConsentRequired } : policy));
+
+export const resolvedClientConsentPolicy = (policy: CaseHandoverReasonPolicy | null): CaseHandoverConsentPolicy =>
+    policy?.clientConsent ?? {
+        value: policy?.clientConsentRequired ? 'OPT_IN' : 'NONE',
+        mode: 'SUGGESTED',
+    };
+
+export const applyClientConsentPolicy = (
+    policies: CaseHandoverReasonPolicy[],
+    code: string,
+    clientConsent: CaseHandoverConsentPolicy,
+) =>
+    policies.map((policy) =>
+        policy.code === code
+            ? {
+                  ...policy,
+                  clientConsent,
+                  // Transition response for services that still read only the
+                  // legacy boolean. OPT_OUT deliberately is not OPT_IN.
+                  clientConsentRequired: clientConsent.value === 'OPT_IN',
+              }
+            : policy,
+    );
 
 export const applyMaxAccessDuration = (
     policies: CaseHandoverReasonPolicy[],

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     applyClientConsent,
+    applyClientConsentPolicy,
     applyModuleEnabled,
     buildDisplayReasons,
     isAdvisorConsentImplicit,
@@ -10,6 +11,7 @@ import {
     sortPoliciesByDisplayOrder,
     applyNotificationTemplate,
     getNotificationTemplate,
+    resolvedClientConsentPolicy,
 } from './caseHandoverCardUtils';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
 
@@ -51,6 +53,29 @@ describe('caseHandoverCardUtils', () => {
         expect(result.find((p) => p.code === 'B')?.clientConsentRequired).toBe(true);
     });
 
+    it('maps legacy boolean consent to the canonical three-value policy and writes both during transition', () => {
+        expect(resolvedClientConsentPolicy(policy({ clientConsentRequired: true }))).toEqual({
+            value: 'OPT_IN',
+            mode: 'SUGGESTED',
+        });
+        expect(resolvedClientConsentPolicy(policy({ clientConsentRequired: false }))).toEqual({
+            value: 'NONE',
+            mode: 'SUGGESTED',
+        });
+
+        const result = applyClientConsentPolicy([policy({ code: 'A' }), policy({ code: 'B' })], 'B', {
+            value: 'OPT_OUT',
+            mode: 'ENFORCED',
+        });
+        expect(result[0].clientConsent).toBeUndefined();
+        expect(result[1]).toEqual(
+            expect.objectContaining({
+                clientConsent: { value: 'OPT_OUT', mode: 'ENFORCED' },
+                clientConsentRequired: false,
+            }),
+        );
+    });
+
     it('appends the legal-violation placeholder tab unless the backend seeds it', () => {
         const reasons = buildDisplayReasons([policy({ code: 'A', displayOrder: 10 })]);
         expect(reasons.map((r) => r.code)).toEqual(['A', LEGAL_VIOLATION_PLACEHOLDER_CODE]);
@@ -60,6 +85,17 @@ describe('caseHandoverCardUtils', () => {
         const seeded = buildDisplayReasons([policy({ code: LEGAL_VIOLATION_PLACEHOLDER_CODE, displayOrder: 60 })]);
         expect(seeded).toHaveLength(1);
         expect(seeded[0].isPlaceholder).toBe(false);
+    });
+
+    it('keeps legacy emergency data out of the current visible reason catalogue', () => {
+        const reasons = buildDisplayReasons([
+            policy({ code: 'COUNSELLOR_ASKED_FOR_ADVICE', displayOrder: 10 }),
+            policy({ code: 'OTHER_EMERGENCY', displayOrder: 20 }),
+            policy({ code: 'COUNSELLOR_IS_ILL', displayOrder: 30 }),
+        ]);
+
+        expect(reasons.map((reason) => reason.code)).not.toContain('OTHER_EMERGENCY');
+        expect(reasons.map((reason) => reason.code)).toContain('COUNSELLOR_IS_ILL');
     });
 
     it('advisor consent is implicit only for advice requests', () => {

@@ -97,16 +97,17 @@ describe('CaseHandoverCard', () => {
         });
     });
 
-    it('client-consent toggle updates only the active reason', async () => {
+    it('client-consent policy updates only the active reason', async () => {
         const user = userEvent.setup();
         render(<CaseHandoverCard />);
 
         // First tab (lowest displayOrder) is active by default.
         await user.click(
-            screen.getByRole('switch', {
-                name: /tenants.permissions.card.caseHandover.consentClient/,
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.caseHandover.consentClient: tenants.permissions.policy.openMenu/,
             }),
         );
+        await user.click(screen.getByRole('button', { name: 'tenants.permissions.consent.noneSuggested' }));
 
         await waitFor(() => {
             expect(mocks.mutate).toHaveBeenCalledWith(
@@ -114,6 +115,7 @@ describe('CaseHandoverCard', () => {
                     expect.objectContaining({
                         code: 'COUNSELLOR_ASKED_FOR_ADVICE',
                         clientConsentRequired: false,
+                        clientConsent: { value: 'NONE', mode: 'SUGGESTED' },
                     }),
                     expect.objectContaining({
                         code: 'COUNSELLOR_IS_ILL',
@@ -151,7 +153,11 @@ describe('CaseHandoverCard', () => {
         await user.click(screen.getByRole('tab', { name: 'LEGAL_VIOLATION' }));
 
         expect(screen.getByText('tenants.permissions.card.caseHandover.placeholderHint')).toBeInTheDocument();
-        expect(screen.getByRole('switch', { name: /caseHandover.consentClient.*LEGAL_VIOLATION/ })).toBeDisabled();
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.caseHandover.consentClient: tenants.permissions.policy.openMenu/,
+            }),
+        ).toBeDisabled();
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
@@ -159,8 +165,10 @@ describe('CaseHandoverCard', () => {
         render(<CaseHandoverCard />);
 
         expect(
-            screen.getByRole('switch', { name: /tenants.permissions.card.caseHandover.consentAdvisor/ }),
-        ).toBeDisabled();
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.caseHandover.consentAdvisor: tenants.permissions.policy.moreInformation/,
+            }),
+        ).toBeEnabled();
         expect(
             screen.queryByRole('button', {
                 name: /tenants.permissions.card.caseHandover.teamAccessOptOut/,

@@ -20,6 +20,7 @@ const policies: CaseHandoverReasonPolicy[] = [
         code: 'COUNSELLOR_ASKED_FOR_ADVICE',
         label: 'Counsellor asked for advice',
         clientConsentRequired: true,
+        clientConsent: { value: 'OPT_IN', mode: 'SUGGESTED' },
         accessAllowed: true,
         enabled: true,
         displayOrder: 10,
@@ -31,24 +32,17 @@ const policies: CaseHandoverReasonPolicy[] = [
         code: 'COUNSELLOR_ON_HOLIDAY',
         label: 'Counsellor is on holiday',
         clientConsentRequired: false,
+        clientConsent: { value: 'NONE', mode: 'SUGGESTED' },
         accessAllowed: true,
         enabled: true,
         displayOrder: 20,
         policyAuthority: 'platform-admin-default-case-handover-policy',
     },
     {
-        code: 'OTHER_EMERGENCY',
-        label: 'Other emergency',
-        clientConsentRequired: false,
-        accessAllowed: true,
-        enabled: true,
-        displayOrder: 30,
-        policyAuthority: 'platform-admin-default-case-handover-policy',
-    },
-    {
         code: 'COUNSELLOR_IS_ILL',
         label: 'Counsellor is ill',
-        clientConsentRequired: true,
+        clientConsentRequired: false,
+        clientConsent: { value: 'OPT_OUT', mode: 'SUGGESTED' },
         accessAllowed: true,
         enabled: true,
         displayOrder: 40,
@@ -62,6 +56,7 @@ const policies: CaseHandoverReasonPolicy[] = [
         code: 'COUNSELLOR_LEFT',
         label: 'Counsellor does not work here anymore',
         clientConsentRequired: false,
+        clientConsent: { value: 'OPT_OUT', mode: 'ENFORCED' },
         accessAllowed: true,
         enabled: true,
         displayOrder: 50,
@@ -81,7 +76,7 @@ const meta = {
     },
     args: {
         onModuleEnabledChange: () => undefined,
-        onClientConsentChange: () => undefined,
+        onClientConsentPolicyChange: () => undefined,
         onNotificationTemplateChange: () => undefined,
         onMaxAccessDurationChange: () => undefined,
     },
@@ -97,8 +92,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Platform admin editing the case-handover ("Fallübernahme") policy: master
- *  toggle, per-reason client-consent toggles and the per-language notification
+/** Platform admin editing the case-handover ("Fallübergabe") policy: master
+ *  policy, per-reason client-consent policies and the per-language notification
  *  templates are live; advisor consent and footer actions remain disabled
  *  until their backend lands (disable, don't hide). */
 export const Editable: Story = {
@@ -163,6 +158,41 @@ export const PolicyMenuOpen: Story = {
             canvas.getByRole('button', { name: /^(Deactivation \(adjustable\)|Deaktivierung \(anpassbar\))$/i }),
         ).toBeVisible();
         await expect(canvas.getByRole('button', { name: /^(More information|Weitere Informationen)$/i })).toBeVisible();
+    },
+};
+
+/** Figma 1812:12416 — the advice-seeker consent row reuses the FAB menu core,
+ * but exposes the five consent-specific states and the information action. */
+export const AdviceSeekerConsentMenuOpen: Story = {
+    parameters: {
+        design: {
+            type: 'figma',
+            url: 'https://www.figma.com/design/QfsgojtHQzBjbzU3Im9Cet/Admin.ORISO?node-id=1812-12416',
+        },
+    },
+    args: {
+        policies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        openPolicyMenu: 'clientConsent:COUNSELLOR_ASKED_FOR_ADVICE',
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const expectedLabels = [
+            /^(Consent opt-in \(enforced\)|Zustimmung Opt-In \(Vorgabe\))$/i,
+            /^(Consent opt-out \(enforced\)|Zustimmung Opt-Out \(Vorgabe\))$/i,
+            /^(No consent \(recommendation\)|keine Zustimmung \(Empfehlung\))$/i,
+            /^(Consent opt-in \(recommendation\)|Zustimmung Opt-In \(Empfehlung\))$/i,
+            /^(Consent opt-out \(recommendation\)|Zustimmung Opt-Out \(Empfehlung\))$/i,
+            /^(More information|Weitere Informationen)$/i,
+        ];
+
+        await Promise.all(
+            expectedLabels.map(async (name) => {
+                await expect(canvas.getByRole('button', { name })).toBeVisible();
+            }),
+        );
     },
 };
 

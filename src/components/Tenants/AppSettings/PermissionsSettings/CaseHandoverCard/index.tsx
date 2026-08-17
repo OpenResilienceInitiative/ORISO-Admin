@@ -9,9 +9,9 @@ import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { canEditCaseHandoverReasonPolicies } from '../../../../../constants/caseHandoverAccess';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
-import type { PolicyValue } from '../../../../../types/permissionPolicy';
+import type { CaseHandoverConsentPolicy, PolicyValue } from '../../../../../types/permissionPolicy';
 import {
-    applyClientConsent,
+    applyClientConsentPolicy,
     applyMaxAccessDuration,
     applyModuleEnabled,
     applyNotificationTemplate,
@@ -84,9 +84,9 @@ export const CaseHandoverCard = ({
         [persist, policies],
     );
 
-    const handleClientConsentChange = useCallback(
-        (code: string, clientConsentRequired: boolean) =>
-            persist(applyClientConsent(policies, code, clientConsentRequired)),
+    const handleClientConsentPolicyChange = useCallback(
+        (code: string, clientConsent: CaseHandoverConsentPolicy) =>
+            persist(applyClientConsentPolicy(policies, code, clientConsent)),
         [persist, policies],
     );
 
@@ -113,7 +113,7 @@ export const CaseHandoverCard = ({
             canEdit={canEdit}
             moduleEnabled={moduleEnabled}
             onModuleEnabledChange={handleModuleEnabledChange}
-            onClientConsentChange={handleClientConsentChange}
+            onClientConsentPolicyChange={handleClientConsentPolicyChange}
             onNotificationTemplateChange={handleNotificationTemplateChange}
             onMaxAccessDurationChange={handleMaxAccessDurationChange}
             policyLevel={policyLevel}

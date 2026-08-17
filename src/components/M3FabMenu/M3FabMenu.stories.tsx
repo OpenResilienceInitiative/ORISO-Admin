@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import InfoIcon from '@mui/icons-material/Info';
+import LockIcon from '@mui/icons-material/Lock';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves for TypeScript and Vite
 import { expect, waitFor, within } from 'storybook/test';
+import { ReactComponent as LockOpenRightFilledIcon } from '../../resources/img/svg/oriso/lock_open_right_filled_20px.svg';
 import { NavGlyph } from '../NavGlyph';
 import { M3FabMenu, type M3FabMenuProps } from './M3FabMenu';
 
@@ -20,11 +23,19 @@ const footerItems = [
 ];
 
 const policyItems = [
-    { key: 'enabled-enforced', label: 'Aktivierung erzwungen' },
-    { key: 'disabled-enforced', label: 'Deaktivierung erzwungen' },
-    { key: 'enabled-suggested', label: 'Aktivierung (anpassbar)' },
-    { key: 'disabled-suggested', label: 'Deaktivierung (anpassbar)' },
-    { key: 'info', label: 'Weitere Informationen' },
+    { key: 'enabled-enforced', label: 'Aktivierung erzwungen', icon: <LockIcon /> },
+    { key: 'disabled-enforced', label: 'Deaktivierung erzwungen', icon: <LockIcon /> },
+    {
+        key: 'enabled-suggested',
+        label: 'Aktivierung (anpassbar)',
+        icon: <LockOpenRightFilledIcon aria-hidden />,
+    },
+    {
+        key: 'disabled-suggested',
+        label: 'Deaktivierung (anpassbar)',
+        icon: <LockOpenRightFilledIcon aria-hidden />,
+    },
+    { key: 'info', label: 'Weitere Informationen', icon: <InfoIcon /> },
 ];
 
 /**
@@ -105,7 +116,7 @@ const meta = {
         layout: 'fullscreen',
         design: {
             type: 'figma',
-            url: 'https://www.figma.com/design/QfsgojtHQzBjbzU3Im9Cet/Admin.ORISO?node-id=1683-39454',
+            url: 'https://www.figma.com/design/RTUi1rcrEWECXz8rNFmj7Q/Design-System-M3_ORISO?node-id=61636-7431',
         },
     },
     render: (args) => <PhoneFrame {...args} />,

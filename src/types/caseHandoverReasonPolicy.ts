@@ -1,9 +1,12 @@
 import type { SupportedLanguageCode } from '../constants/supportedLanguages';
+import type { CaseHandoverConsentPolicy } from './permissionPolicy';
 
 export interface CaseHandoverReasonPolicy {
     code: string;
     label: string;
     clientConsentRequired: boolean;
+    /** Canonical reason-specific consent policy; boolean remains transition-read compatible. */
+    clientConsent?: CaseHandoverConsentPolicy;
     accessAllowed: boolean;
     enabled: boolean;
     displayOrder: number;

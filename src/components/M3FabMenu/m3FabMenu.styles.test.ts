@@ -6,6 +6,11 @@ const styles = readFileSync(resolve(__dirname, './m3FabMenu.module.scss'), 'utf8
 const actionBlock = styles.slice(styles.indexOf('.action {'), styles.indexOf('.action.openDownward'));
 
 describe('M3FabMenu action colour roles', () => {
+    it('uses the eight-pixel Figma gap for both Menu Top and Menu Bottom', () => {
+        expect(styles).toMatch(/bottom:\s*calc\(100% \+ 8px\)/i);
+        expect(styles).toMatch(/top:\s*calc\(100% \+ 8px\)/i);
+    });
+
     it('uses the Figma primary-container roles without a selected-item outline', () => {
         expect(actionBlock).toMatch(/--m3-fab-menu-primary-container:\s*var\(--oriso-app-action,\s*#cc1e1c\)/i);
         expect(actionBlock).toMatch(
@@ -27,5 +32,14 @@ describe('M3FabMenu action colour roles', () => {
             /\.action\.neutral\s*{[^}]*\.item,[^}]*\.fab\s*{[^}]*background:\s*var\(--m3-fab-menu-secondary\)/is,
         );
         expect(actionBlock).toMatch(/\.action\.neutral\s*{[^}]*color:\s*var\(--m3-fab-menu-on-secondary-container\)/is);
+    });
+
+    it('keeps long action labels inside a six-pixel smartphone inset', () => {
+        expect(styles).toMatch(
+            /@media screen and \(max-width:\s*767px\)[\s\S]*\.action[\s\S]*\.stack[\s\S]*max-width:\s*calc\(100vw - 12px\)/i,
+        );
+        expect(styles).toMatch(
+            /@media screen and \(max-width:\s*767px\)[\s\S]*\.action[\s\S]*\.item[\s\S]*max-width:\s*calc\(100vw - 12px\)/i,
+        );
     });
 });

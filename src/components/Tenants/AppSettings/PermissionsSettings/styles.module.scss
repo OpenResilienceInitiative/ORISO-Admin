@@ -45,6 +45,7 @@
 .cardGrid {
     --card-deck-gap: 48px;
     --card-deck-padding: 8px 4px 18px;
+    --card-deck-item-min-width: 425px;
     --card-deck-item-width: 425px;
     --card-deck-item-max-width: 425px;
 }
@@ -236,7 +237,7 @@
     .cardGrid {
         --card-deck-gap: 24px;
         --card-deck-mobile-gap: 24px;
-        --card-deck-mobile-padding: 0;
+        --card-deck-mobile-padding: 0 6px;
     }
 
     .chatTypeCard {

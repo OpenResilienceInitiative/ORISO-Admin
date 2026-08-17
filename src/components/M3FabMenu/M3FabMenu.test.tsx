@@ -6,9 +6,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { M3FabMenu, type M3FabMenuProps } from './M3FabMenu';
 
 const initialInnerHeight = window.innerHeight;
+const initialInnerWidth = window.innerWidth;
 
 afterEach(() => {
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: initialInnerHeight });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: initialInnerWidth });
     vi.restoreAllMocks();
 });
 
@@ -95,6 +97,7 @@ describe('M3FabMenu', () => {
 
         const stack = screen.getByRole('list');
         expect(stack.parentElement?.className).toContain('openDownward');
+        expect(stack).toHaveAttribute('data-placement', 'bottom');
         expect(stack).toHaveStyle({ maxHeight: '604px' });
 
         Object.defineProperty(window, 'innerHeight', { configurable: true, value: 400 });
@@ -146,6 +149,7 @@ describe('M3FabMenu', () => {
 
         await waitFor(() => {
             expect(stack.parentElement?.className).not.toContain('openDownward');
+            expect(stack).toHaveAttribute('data-placement', 'top');
             expect(stack).toHaveStyle({ maxHeight: '632px' });
         });
     });
@@ -203,6 +207,48 @@ describe('M3FabMenu', () => {
             expect(stack.parentElement?.className).toContain('openDownward');
             expect(stack).toHaveStyle({ maxHeight: '136px' });
         });
+    });
+
+    it('shifts a long action stack inside the six-pixel viewport inset', () => {
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: 320 });
+        const rect = (values: Partial<DOMRect>): DOMRect =>
+            ({
+                bottom: 0,
+                height: 0,
+                left: 0,
+                right: 0,
+                top: 0,
+                width: 0,
+                x: 0,
+                y: 0,
+                toJSON: () => ({}),
+                ...values,
+            } as DOMRect);
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+            function getElementBoundingClientRect() {
+                if (this instanceof HTMLUListElement) return rect({ height: 300, width: 305 });
+                if (this instanceof HTMLButtonElement) return rect({ top: 400, bottom: 456, right: 287 });
+                return rect({});
+            },
+        );
+        vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function getElementScrollWidth() {
+            return this instanceof HTMLUListElement ? 305 : 0;
+        });
+
+        render(
+            <MemoryRouter>
+                <M3FabMenu
+                    items={items}
+                    open
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    variant="action"
+                    onOpenChange={vi.fn()}
+                />
+            </MemoryRouter>,
+        );
+
+        expect(screen.getByRole('list')).toHaveStyle({ transform: 'translateX(24px)' });
     });
 
     it('keeps the destinations out of the tree until the menu is opened', async () => {

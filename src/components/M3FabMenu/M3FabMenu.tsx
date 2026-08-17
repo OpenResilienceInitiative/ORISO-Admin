@@ -43,7 +43,8 @@ export interface M3FabMenuProps {
 }
 
 /**
- * The page FAB and the destination stack it opens (Figma 1683:39454 / 1683:39456).
+ * The page FAB and the destination stack it opens. Action-menu placement follows
+ * the Design System Menu Top/Menu Bottom variants (Figma 61636:7431).
  *
  * Closed, the FAB carries the icon of the destination you are on — it is a
  * "you are here" marker as much as a menu handle. Open, it becomes the close
@@ -74,6 +75,7 @@ export const M3FabMenu = ({
     const stackRef = useRef<HTMLUListElement>(null);
     const [opensDownward, setOpensDownward] = useState(false);
     const [stackMaxHeight, setStackMaxHeight] = useState<number>();
+    const [stackInlineOffset, setStackInlineOffset] = useState(0);
     // The account entries are destinations too: standing on "Konto" and closing
     // the menu left the FAB empty, because only `items` was searched.
     const activeItem = [...items, ...footerItems].find((item) => item.key === activeKey);
@@ -93,6 +95,7 @@ export const M3FabMenu = ({
         if (!open || variant !== 'action') {
             setOpensDownward(false);
             setStackMaxHeight(undefined);
+            setStackInlineOffset(0);
             return undefined;
         }
 
@@ -111,6 +114,21 @@ export const M3FabMenu = ({
             const downward = naturalStackHeight > spaceAbove && spaceBelow > spaceAbove;
             setOpensDownward(downward);
             setStackMaxHeight(downward ? spaceBelow : spaceAbove);
+
+            // Action menus are right-aligned to their FAB. On narrow cards the
+            // longest translated label can therefore extend beyond the left
+            // viewport edge even though the card itself has the correct inset.
+            // Keep the whole stack between the same six-pixel mobile gutters.
+            const viewportInset = 6;
+            const availableWidth = Math.max(0, window.innerWidth - viewportInset * 2);
+            const naturalStackWidth = Math.min(
+                stack.scrollWidth || stack.getBoundingClientRect().width,
+                availableWidth,
+            );
+            const minimumRightEdge = viewportInset + naturalStackWidth;
+            const maximumRightEdge = window.innerWidth - viewportInset;
+            const targetRightEdge = Math.min(Math.max(fabRect.right, minimumRightEdge), maximumRightEdge);
+            setStackInlineOffset(targetRightEdge - fabRect.right);
         };
 
         // A scrollable settings deck can move the FAB from the top to the
@@ -129,8 +147,19 @@ export const M3FabMenu = ({
         updatePlacement();
         window.addEventListener('resize', schedulePlacement);
         window.addEventListener('scroll', schedulePlacement, true);
+        const stackResizeObserver =
+            typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedulePlacement);
+        if (stackRef.current) stackResizeObserver?.observe(stackRef.current);
+        let active = true;
+        document.fonts?.ready
+            .then(() => {
+                if (active) schedulePlacement();
+            })
+            .catch(() => undefined);
         return () => {
+            active = false;
             if (placementFrame !== undefined) window.cancelAnimationFrame(placementFrame);
+            stackResizeObserver?.disconnect();
             window.removeEventListener('resize', schedulePlacement);
             window.removeEventListener('scroll', schedulePlacement, true);
         };
@@ -246,8 +275,12 @@ export const M3FabMenu = ({
                     className={styles.stack}
                     id={menuId}
                     data-admin-fab-menu-stack
+                    data-placement={variant === 'action' && opensDownward ? 'bottom' : 'top'}
                     ref={stackRef}
-                    style={stackMaxHeight === undefined ? undefined : { maxHeight: stackMaxHeight }}
+                    style={{
+                        maxHeight: stackMaxHeight,
+                        transform: stackInlineOffset === 0 ? undefined : `translateX(${stackInlineOffset}px)`,
+                    }}
                 >
                     {items.map((item) => renderItem(item, false))}
                     {footerItems.map((item) => renderItem(item, true))}
