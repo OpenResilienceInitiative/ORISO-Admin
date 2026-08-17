@@ -54,20 +54,21 @@ describe('dpiaDefaults', () => {
     it('a formatting-only edit (emphasis, list, link, heading) is an edit — never mistaken for the default', () => {
         const base = DSFA_EDITOR_DEFAULTS.governance;
         const bold = base.replace('<p>Die Plattform wird von', '<p><strong>Die Plattform</strong> wird von');
-        const list = base.replace(
-            '<p>Träger und Beratungsstellen sind rechtlich selbstständige Organisationen;',
-            '<ul><li><p>Träger und Beratungsstellen sind rechtlich selbstständige Organisationen;',
-        );
+        // complete TipTap list markup: the paragraph becomes <ul><li><p>…</p></li></ul>
+        const listParagraph = base.match(/<p>Träger und Beratungsstellen[^<]*<\/p>/)![0];
+        const list = base.replace(listParagraph, `<ul><li>${listParagraph}</li></ul>`);
         const link = base.replace(
             '[Name des Gremiums, z.&nbsp;B. Lenkungsausschuss]',
             '<a href="https://example.org">[Name des Gremiums, z.&nbsp;B. Lenkungsausschuss]</a>',
         );
         const heading = `<h2>Governance</h2>${base}`;
         [bold, list, link, heading].forEach((html) => {
+            expect(html).not.toBe(base);
             expect(isDpiaDefaultText('governance', html)).toBe(false);
             expect(hasOperatorDpiaText('governance', html)).toBe(true);
+            // …and it is persisted as written, never stripped to empty
+            expect(stripDpiaDefaults({ governance: html }).governance).toBe(html);
         });
-        expect(stripDpiaDefaults({ governance: bold }).governance).toBe(bold);
     });
 
     it('a default does not count as operator text', () => {
