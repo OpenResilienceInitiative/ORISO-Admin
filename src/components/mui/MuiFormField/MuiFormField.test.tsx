@@ -14,12 +14,21 @@ const sharedFieldSxSource = readFileSync(resolve(__dirname, '../fieldSx.ts'), 'u
 const renderWithForm = (children: React.ReactNode) => render(<Form>{children}</Form>);
 
 describe('MuiFormField', () => {
-    it('leaves outlined notch legend sizing to MUI', () => {
+    it('neutralizes the global Ant legend width without overriding MUI notch expansion', () => {
         const legendRule = (source: string) =>
             source.match(/'& \.MuiOutlinedInput-notchedOutline legend':\s*{([^}]*)}/s)?.[1] ?? '';
 
-        expect(legendRule(muiFormFieldSource)).not.toMatch(/\bwidth\s*:/);
-        expect(legendRule(sharedFieldSxSource)).not.toMatch(/\bwidth\s*:/);
+        expect(legendRule(muiFormFieldSource)).toMatch(/\bwidth\s*:\s*'auto'/);
+        expect(legendRule(sharedFieldSxSource)).toMatch(/\bwidth\s*:\s*'auto'/);
+        expect(legendRule(muiFormFieldSource)).not.toMatch(/\bmaxWidth\s*:/);
+        expect(legendRule(sharedFieldSxSource)).not.toMatch(/\bmaxWidth\s*:/);
+    });
+
+    it('floats an empty native date label before the field receives focus', () => {
+        renderWithForm(<MuiFormField name="reviewDate" label="Review date" type="date" />);
+
+        const input = screen.getByLabelText('Review date');
+        expect(document.getElementById(`${input.id}-label`)).toHaveAttribute('data-shrink', 'true');
     });
 
     it('uses the surrounding surface only for filled fields', () => {
