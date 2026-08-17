@@ -11,37 +11,35 @@ import Superscript from '@tiptap/extension-superscript';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Dropdown, Modal } from 'antd';
-import {
-    Close,
-    Undo,
-    Redo,
-    Checklist as ChecklistIcon,
-    FormatColorReset,
-    FormatListBulleted,
-    FormatListNumbered,
-    FormatQuote,
-    DataObject,
-    Code,
-    FormatBold,
-    FormatItalic,
-    StrikethroughS,
-    FormatUnderlined,
-    BorderColor,
-    Link as LinkIcon,
-    Superscript as SuperscriptIcon,
-    Subscript as SubscriptIcon,
-    FormatAlignLeft,
-    FormatAlignCenter,
-    FormatAlignRight,
-    FormatAlignJustify,
-    Image as ImageIcon,
-    Restore,
-    Schedule,
-    Language,
-    ArrowDropDown,
-    Fingerprint,
-    TextFields,
-} from '@mui/icons-material';
+import Close from '@mui/icons-material/Close';
+import Undo from '@mui/icons-material/Undo';
+import Redo from '@mui/icons-material/Redo';
+import ChecklistIcon from '@mui/icons-material/Checklist';
+import FormatColorReset from '@mui/icons-material/FormatColorReset';
+import FormatListBulleted from '@mui/icons-material/FormatListBulleted';
+import FormatListNumbered from '@mui/icons-material/FormatListNumbered';
+import FormatQuote from '@mui/icons-material/FormatQuote';
+import DataObject from '@mui/icons-material/DataObject';
+import Code from '@mui/icons-material/Code';
+import FormatBold from '@mui/icons-material/FormatBold';
+import FormatItalic from '@mui/icons-material/FormatItalic';
+import StrikethroughS from '@mui/icons-material/StrikethroughS';
+import FormatUnderlined from '@mui/icons-material/FormatUnderlined';
+import BorderColor from '@mui/icons-material/BorderColor';
+import LinkIcon from '@mui/icons-material/Link';
+import SuperscriptIcon from '@mui/icons-material/Superscript';
+import SubscriptIcon from '@mui/icons-material/Subscript';
+import FormatAlignLeft from '@mui/icons-material/FormatAlignLeft';
+import FormatAlignCenter from '@mui/icons-material/FormatAlignCenter';
+import FormatAlignRight from '@mui/icons-material/FormatAlignRight';
+import FormatAlignJustify from '@mui/icons-material/FormatAlignJustify';
+import ImageIcon from '@mui/icons-material/Image';
+import Restore from '@mui/icons-material/Restore';
+import Schedule from '@mui/icons-material/Schedule';
+import Language from '@mui/icons-material/Language';
+import ArrowDropDown from '@mui/icons-material/ArrowDropDown';
+import Fingerprint from '@mui/icons-material/Fingerprint';
+import TextFields from '@mui/icons-material/TextFields';
 import { useTranslation } from 'react-i18next';
 import { ResolvingImage } from './createResolvingImage';
 import {

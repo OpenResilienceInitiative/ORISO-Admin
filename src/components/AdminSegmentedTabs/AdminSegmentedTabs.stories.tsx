@@ -1,10 +1,8 @@
-import {
-    AdminPanelSettingsOutlined,
-    BalanceOutlined,
-    CategoryOutlined,
-    EmailOutlined,
-    SettingsOutlined,
-} from '@mui/icons-material';
+import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined';
+import BalanceOutlined from '@mui/icons-material/BalanceOutlined';
+import CategoryOutlined from '@mui/icons-material/CategoryOutlined';
+import EmailOutlined from '@mui/icons-material/EmailOutlined';
+import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { AdminSegmentedTabs } from './AdminSegmentedTabs';
 

@@ -1,4 +1,4 @@
-import { InfoOutlined as InfoIcon } from '@mui/icons-material';
+import InfoIcon from '@mui/icons-material/InfoOutlined';
 import styles from './M3RichTextEditor.module.scss';
 
 export type EditorHelpTextProps = {

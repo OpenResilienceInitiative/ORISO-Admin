@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { ArrowDownward, ArrowUpward, MoreVert, NorthEast, SouthEast } from '@mui/icons-material';
+import ArrowDownward from '@mui/icons-material/ArrowDownward';
+import ArrowUpward from '@mui/icons-material/ArrowUpward';
+import MoreVert from '@mui/icons-material/MoreVert';
+import NorthEast from '@mui/icons-material/NorthEast';
+import SouthEast from '@mui/icons-material/SouthEast';
 import { ReactComponent as ConversationsIcon } from '../../resources/img/svg/statistics-dashboard/conversations.svg';
 import { ReactComponent as RequestsIcon } from '../../resources/img/svg/statistics-dashboard/requests.svg';
 import { useAnimatedDisplayValue } from '../../pages/Statistic/useAnimatedDisplayValue';

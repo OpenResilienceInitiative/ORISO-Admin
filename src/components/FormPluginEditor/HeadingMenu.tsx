@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react';
 import { Dropdown } from 'antd';
-import { ArrowDropDown, AutoStories, ExpandMore, Title } from '@mui/icons-material';
+import ArrowDropDown from '@mui/icons-material/ArrowDropDown';
+import AutoStories from '@mui/icons-material/AutoStories';
+import ExpandMore from '@mui/icons-material/ExpandMore';
+import Title from '@mui/icons-material/Title';
 import { useTranslation } from 'react-i18next';
 import type { Editor } from '@tiptap/react';
 import styles from './M3RichTextEditor.module.scss';

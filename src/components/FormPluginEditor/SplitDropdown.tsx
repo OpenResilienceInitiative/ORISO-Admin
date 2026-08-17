@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
-import { ArrowDropDown } from '@mui/icons-material';
+import ArrowDropDown from '@mui/icons-material/ArrowDropDown';
 import styles from './M3RichTextEditor.module.scss';
 
 export type SplitDropdownProps = {

@@ -4,15 +4,13 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import {
-    FormatBold,
-    FormatItalic,
-    FormatUnderlined,
-    FormatListBulleted,
-    FormatListNumbered,
-    Link as LinkIcon,
-    Image as ImageIcon,
-} from '@mui/icons-material';
+import FormatBold from '@mui/icons-material/FormatBold';
+import FormatItalic from '@mui/icons-material/FormatItalic';
+import FormatUnderlined from '@mui/icons-material/FormatUnderlined';
+import FormatListBulleted from '@mui/icons-material/FormatListBulleted';
+import FormatListNumbered from '@mui/icons-material/FormatListNumbered';
+import LinkIcon from '@mui/icons-material/Link';
+import ImageIcon from '@mui/icons-material/Image';
 import { Button, ConfigProvider, Select } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ResolvingImage } from './createResolvingImage';

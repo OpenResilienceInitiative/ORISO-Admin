@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { ColumnProps } from 'antd/lib/table';
-import { InterestsOutlined } from '@mui/icons-material';
+import InterestsOutlined from '@mui/icons-material/InterestsOutlined';
 import { useNavigate } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
 import { GlobalSearchBar } from '../../../components/GlobalSearch';

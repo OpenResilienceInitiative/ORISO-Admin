@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowBack, ArrowForward, AutoStories, Close } from '@mui/icons-material';
+import ArrowBack from '@mui/icons-material/ArrowBack';
+import ArrowForward from '@mui/icons-material/ArrowForward';
+import AutoStories from '@mui/icons-material/AutoStories';
+import Close from '@mui/icons-material/Close';
 import { useTranslation } from 'react-i18next';
 import type { HeadingAnchor } from './headingAnchors';
 // Base styles for the chip row + nav buttons (global .RichEditor-anchorNav* rules).

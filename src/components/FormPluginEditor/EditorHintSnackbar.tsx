@@ -1,4 +1,5 @@
-import { Check, Close } from '@mui/icons-material';
+import Check from '@mui/icons-material/Check';
+import Close from '@mui/icons-material/Close';
 import { useTranslation } from 'react-i18next';
 import styles from './M3RichTextEditor.module.scss';
 

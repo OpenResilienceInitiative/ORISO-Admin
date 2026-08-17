@@ -1,14 +1,12 @@
-import {
-    AdminPanelSettingsOutlined,
-    AppsOutlined,
-    BalanceOutlined,
-    CategoryOutlined,
-    ChevronLeft,
-    EmailOutlined,
-    ManageAccountsOutlined,
-    SettingsApplicationsOutlined,
-    SettingsOutlined,
-} from '@mui/icons-material';
+import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined';
+import AppsOutlined from '@mui/icons-material/AppsOutlined';
+import BalanceOutlined from '@mui/icons-material/BalanceOutlined';
+import CategoryOutlined from '@mui/icons-material/CategoryOutlined';
+import ChevronLeft from '@mui/icons-material/ChevronLeft';
+import EmailOutlined from '@mui/icons-material/EmailOutlined';
+import ManageAccountsOutlined from '@mui/icons-material/ManageAccountsOutlined';
+import SettingsApplicationsOutlined from '@mui/icons-material/SettingsApplicationsOutlined';
+import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import type { SvgIconComponent } from '@mui/icons-material';
 import { Spin } from 'antd';
 import classNames from 'classnames';

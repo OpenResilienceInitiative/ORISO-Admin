@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { GavelOutlined } from '@mui/icons-material';
+import GavelOutlined from '@mui/icons-material/GavelOutlined';
 import { M3RichTextEditor } from '../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../FormPluginEditor/EditorHelpText';
 import { ensureHeadingAnchorIds } from '../FormPluginEditor/headingAnchors';

@@ -97,6 +97,13 @@ vi.mock('../../api/idAllocation/idAllocation', () => ({
     },
 }));
 
+// Imported statically ON PURPOSE (do not go back to `await import(...)` inside a
+// test): the tab pulls a large module graph, and a dynamic import inside the
+// first `it()` charges that one-off load to that single test's `testTimeout`,
+// which is what made this file time out on CI while passing locally.
+// vi.mock() calls above are hoisted over this import, so the mocks still apply.
+import { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
+
 const invitesPage = (content: any[]) => ({
     content,
     totalElements: content.length,
@@ -142,10 +149,7 @@ const invite = (id: number, tenantId: number | null, inviteStatus: string) => ({
     createDate: '2026-07-01T00:00:00Z',
 });
 
-const renderTenantTab = async () => {
-    const { TenantInvitesTab } = await import('./AccountInvitesTab');
-    return render(<TenantInvitesTab />);
-};
+const renderTenantTab = async () => render(<TenantInvitesTab />);
 
 describe('TenantInvitesTab Träger-ID field', () => {
     beforeEach(() => {
@@ -219,7 +223,6 @@ describe('TenantInvitesTab Träger-ID field', () => {
 
     it('does not auto-fill the Träger-ID on the counsellor tab', async () => {
         mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
-        const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
         render(<CounsellorInvitesTab />);
 
         const field = await screen.findByLabelText('Träger-ID');
@@ -351,7 +354,6 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
 
     /** Fill the composer for a complete counsellor invite and press send. */
     const fillAndSend = async () => {
-        const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
@@ -505,7 +507,6 @@ describe('CSV import payload per tab', () => {
 
     it('sends the counsellor id column as a pinned agency reservation, auto for empty cells', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
-        const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
