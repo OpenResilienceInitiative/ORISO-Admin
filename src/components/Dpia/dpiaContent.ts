@@ -12,6 +12,14 @@
  *   contact calendar" (Accepted, 2026-08-12) — planned, nothing shipped yet
  *
  * Nothing may be added here that is not backed by one of those sources.
+ *
+ * ROLE_TIERS.realmRoles / MATRIX_ROWS cross-check (2026-08-14): every "yes" cell in MATRIX_ROWS
+ * was verified against `src/constants/userRolesToPermissions.ts` — each admin tier's realmRoles
+ * now lists every role actually required, per that file, for every capability the matrix claims
+ * that tier has (e.g. Agency.create only comes from `agency-admin`, Consultant.create only from
+ * `user-admin`; roles-permissions.mdx's narrative bundle per tier does not on its own guarantee
+ * the permission grants the matrix asserts). If either file changes, re-diff them before editing
+ * either.
  */
 import type { DpiaIconName } from './DpiaIcon';
 
@@ -75,8 +83,13 @@ export const ROLE_TIERS: RoleTier[] = [
         name: 'Träger-Admin',
         description:
             'Verantwortet einen Träger: legt Beratungsstellen und deren Administration an, pflegt ' +
-            'die Rechtstexte der Träger-Ebene. Von anderen Trägern vollständig isoliert.',
-        realmRoles: ['tenant-admin', 'single-tenant-admin'],
+            'die Rechtstexte der Träger-Ebene. Von anderen Trägern vollständig isoliert. Realm-' +
+            'Rolle tenant-admin/single-tenant-admin identifiziert die Stufe; agency-admin kommt ' +
+            'dazu, weil tenant-admin allein keine Agency-Berechtigung hat (kein Agency.create, ' +
+            'nicht mal Agency.read — siehe AdminSidebar.stories.tsx TenantAdmin-Story), und user-' +
+            'admin, weil nur diese Rolle Beratende anlegen/einladen darf (beides ' +
+            'userRolesToPermissions.ts).',
+        realmRoles: ['tenant-admin', 'single-tenant-admin', 'agency-admin', 'user-admin'],
         mfaMandatory: true,
     },
     {
@@ -86,8 +99,10 @@ export const ROLE_TIERS: RoleTier[] = [
         name: 'Beratungsstellen-Admin',
         description:
             'Leitet eine Beratungsstelle: lädt Beratende ein, konfiguriert Live-Chat-Link, Themen ' +
-            'und PLZ-Zuordnung, kann die Rechtstexte der eigenen Stelle überschreiben.',
-        realmRoles: ['agency-admin', 'restricted-agency-admin', 'restricted-consultant-admin'],
+            'und PLZ-Zuordnung, kann die Rechtstexte der eigenen Stelle überschreiben. agency-' +
+            'admin identifiziert die Stufe; user-admin kommt dazu, weil ausschließlich diese Rolle ' +
+            'Beratende anlegen/einladen darf (userRolesToPermissions.ts).',
+        realmRoles: ['agency-admin', 'restricted-agency-admin', 'restricted-consultant-admin', 'user-admin'],
         mfaMandatory: false,
     },
     {
