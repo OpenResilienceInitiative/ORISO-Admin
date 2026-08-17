@@ -6,6 +6,7 @@ on:
             - main
             - dev
             - pre-dev
+            - speed/admin-ui-regressions-17aug
 
 env:
     REGISTRY: ghcr.io
