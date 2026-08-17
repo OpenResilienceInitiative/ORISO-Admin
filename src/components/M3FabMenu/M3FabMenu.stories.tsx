@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves for TypeScript and Vite
+import { expect, waitFor, within } from 'storybook/test';
 import { NavGlyph } from '../NavGlyph';
 import { M3FabMenu, type M3FabMenuProps } from './M3FabMenu';
 
@@ -15,6 +17,14 @@ const items = [
 const footerItems = [
     { key: 'profile', label: 'Konto', icon: <NavGlyph name="profile" />, to: '/admin/profile' },
     { key: 'logout', label: 'Abmelden', icon: <NavGlyph name="logout" /> },
+];
+
+const policyItems = [
+    { key: 'enabled-enforced', label: 'Aktivierung erzwungen' },
+    { key: 'disabled-enforced', label: 'Deaktivierung erzwungen' },
+    { key: 'enabled-suggested', label: 'Aktivierung (anpassbar)' },
+    { key: 'disabled-suggested', label: 'Deaktivierung (anpassbar)' },
+    { key: 'info', label: 'Weitere Informationen' },
 ];
 
 /**
@@ -40,6 +50,50 @@ const PhoneFrame = (props: M3FabMenuProps) => {
             <M3FabMenu {...props} open={open} onOpenChange={setOpen} />
         </div>
     );
+};
+
+const ActionPlacementFrame = ({ edge }: { edge: 'top' | 'bottom' }) => (
+    <div
+        style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            justifyContent: edge === 'top' ? 'flex-start' : 'flex-end',
+            padding: 'var(--spacing-sm)',
+            background: 'var(--schemes-background)',
+            boxSizing: 'border-box',
+        }}
+    >
+        <M3FabMenu
+            items={policyItems}
+            activeKey="enabled-suggested"
+            open
+            openLabel="Policy-Auswahl öffnen"
+            closeLabel="Policy-Auswahl schließen"
+            variant="action"
+            tone="primary"
+            onOpenChange={() => undefined}
+        />
+    </div>
+);
+
+const expectPlacement = async (canvasElement: HTMLElement, direction: 'up' | 'down') => {
+    const canvas = within(canvasElement);
+    const toggle = canvas.getByRole('button', { name: 'Policy-Auswahl schließen' });
+    const stack = canvasElement.querySelector<HTMLElement>('[data-admin-fab-menu-stack]');
+    await expect(stack).not.toBeNull();
+
+    await waitFor(() => {
+        const stackRect = stack!.getBoundingClientRect();
+        const toggleRect = toggle.getBoundingClientRect();
+        if (direction === 'down') {
+            expect(stackRect.top).toBeGreaterThan(toggleRect.bottom);
+        } else {
+            expect(stackRect.bottom).toBeLessThan(toggleRect.top);
+        }
+    });
 };
 
 const meta = {
@@ -85,4 +139,22 @@ export const OpenWithAccount: Story = {
 /** The active destination is further down the list, not the first entry. */
 export const OpenDeepInTheList: Story = {
     args: { open: true, activeKey: 'statistics', footerItems },
+};
+
+/** Five policy actions near the top edge expand down into the available space. */
+export const ActionNearTopOpensDownward: Story = {
+    args: { open: true },
+    render: () => <ActionPlacementFrame edge="top" />,
+    play: async ({ canvasElement }) => {
+        await expectPlacement(canvasElement, 'down');
+    },
+};
+
+/** The same five actions near the bottom edge flip above the FAB before collision. */
+export const ActionNearBottomOpensUpward: Story = {
+    args: { open: true },
+    render: () => <ActionPlacementFrame edge="bottom" />,
+    play: async ({ canvasElement }) => {
+        await expectPlacement(canvasElement, 'up');
+    },
 };

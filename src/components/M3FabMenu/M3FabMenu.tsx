@@ -97,20 +97,43 @@ export const M3FabMenu = ({
         }
 
         const updatePlacement = () => {
-            const stackRect = stackRef.current?.getBoundingClientRect();
+            const stack = stackRef.current;
             const fabRect = fabRef.current?.getBoundingClientRect();
-            if (!stackRect || !fabRect) return;
+            if (!stack || !fabRect) return;
 
             const spaceAbove = Math.max(0, fabRect.top - 8);
             const spaceBelow = Math.max(0, window.innerHeight - fabRect.bottom - 8);
-            const downward = stackRect.height > spaceAbove && spaceBelow > spaceAbove;
+            // `scrollHeight` stays at the natural five-action height even when
+            // the stack is already capped by a previous placement. Comparing
+            // the rendered rectangle would otherwise make a clipped menu look
+            // as though it fitted and could select the smaller viewport gap.
+            const naturalStackHeight = stack.scrollHeight || stack.getBoundingClientRect().height;
+            const downward = naturalStackHeight > spaceAbove && spaceBelow > spaceAbove;
             setOpensDownward(downward);
             setStackMaxHeight(downward ? spaceBelow : spaceAbove);
         };
 
+        // A scrollable settings deck can move the FAB from the top to the
+        // bottom edge without resizing the viewport. Capture scroll events
+        // from nested containers as well, then flip before the stack collides.
+        let placementFrame: number | undefined;
+        const schedulePlacement = () => {
+            if (placementFrame !== undefined) return;
+
+            placementFrame = window.requestAnimationFrame(() => {
+                placementFrame = undefined;
+                updatePlacement();
+            });
+        };
+
         updatePlacement();
-        window.addEventListener('resize', updatePlacement);
-        return () => window.removeEventListener('resize', updatePlacement);
+        window.addEventListener('resize', schedulePlacement);
+        window.addEventListener('scroll', schedulePlacement, true);
+        return () => {
+            if (placementFrame !== undefined) window.cancelAnimationFrame(placementFrame);
+            window.removeEventListener('resize', schedulePlacement);
+            window.removeEventListener('scroll', schedulePlacement, true);
+        };
     }, [items.length, footerItems.length, open, variant]);
 
     useEffect(() => {
