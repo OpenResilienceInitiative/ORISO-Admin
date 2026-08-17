@@ -73,7 +73,10 @@ export const DesktopWithChapters: Story = {
         );
         await userEvent.click(chip!);
         await waitFor(() =>
-            expect(canvasElement.querySelector('#4-pflichten-des-auftragnehmers')).toBe(document.activeElement),
+            // Attribute selector, not `#4-…`: an id starting with a digit is legal
+            // HTML but an invalid CSS selector, so `#4-…` throws a SyntaxError.
+            // useHeadingAnchorNav.ts escapes it the same way for the same reason.
+            expect(canvasElement.querySelector('[id="4-pflichten-des-auftragnehmers"]')).toBe(document.activeElement),
         );
     },
 };

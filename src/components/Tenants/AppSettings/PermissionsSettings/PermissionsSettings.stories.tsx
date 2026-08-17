@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
-import { fn } from 'storybook/test';
+import { expect, fn, userEvent, within } from 'storybook/test';
 import { UseAppConfigProvider } from '../../../../context/useAppConfig';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import { DEFAULT_PERMISSION_SETTINGS, getForcedOffFields } from './permissionsSettingsUtils';
@@ -115,5 +115,24 @@ export const PerFeaturePolicies: Story = {
             featureVoiceMessagesOneOnOneChatsEnabled: { value: false, mode: 'SUGGESTED' },
         },
         initialValues: { settings: filledSettings },
+    },
+    play: async ({ canvasElement, step }) => {
+        const canvas = within(canvasElement);
+        await step('start editing so the card controls are interactive', async () => {
+            // Both spellings: the component test pins the browser locale to de-DE
+            // (see vitest.config.ts), while a reviewer opening Storybook may be on
+            // en. The story asserts behaviour, so it must not assert one language.
+            await userEvent.click((await canvas.findAllByRole('button', { name: /^(Edit|Bearbeiten)$/ }))[0]);
+        });
+        await step('enforce checkboxes are rendered for each feature', async () => {
+            const checkboxes = await canvas.findAllByRole('checkbox');
+            expect(checkboxes.length).toBeGreaterThan(0);
+        });
+        await step('checking a video-calls feature enforces it on for lower roles', async () => {
+            const videoEnforce = (await canvas.findAllByRole('checkbox', { name: /Video ?calls|Videoanrufe/i }))[0];
+            expect(videoEnforce).toHaveAttribute('aria-checked', 'false');
+            await userEvent.click(videoEnforce);
+            expect(videoEnforce).toHaveAttribute('aria-checked', 'true');
+        });
     },
 };
