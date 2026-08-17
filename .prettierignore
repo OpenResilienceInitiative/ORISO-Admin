@@ -4,7 +4,6 @@ node_modules
 public
 package.json
 package-lock.json
-yarn.lock
 tsconfig.json
 stylelint.config.js
 .eslintrc.js
