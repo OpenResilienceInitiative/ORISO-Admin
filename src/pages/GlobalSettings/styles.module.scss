@@ -11,6 +11,13 @@
     min-width: 0;
 }
 
+/* ORISO-Admin#735: the document master data card has four field groups, so it takes the
+   full width of the grid rather than sharing a row. */
+.documentMasterDataCardSlot {
+    min-width: 0;
+    grid-column: 1 / -1;
+}
+
 .loginFunctionCard {
     width: 100%;
     min-height: 240px;
@@ -227,6 +234,7 @@
 
 /* ORISO-Admin#602: the "Login-Funktion" switch now shows what it actually does.
    Secondary weight, because it is an explanation rather than a second control. */
+
 .settingDescription {
     margin: 8px 0 0;
     color: var(--m3-on-surface-variant, #444748);

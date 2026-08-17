@@ -74,7 +74,7 @@
 }
 
 .filled:not(:disabled):hover {
-    background: color-mix(in srgb, var(--m3-primary, #a5000a) 90%, #000);
+    background: color-mix(in srgb, var(--m3-primary, #a5000a) 90%, #000000);
 }
 
 /* tonal — secondary emphasis. */
@@ -84,5 +84,5 @@
 }
 
 .tonal:not(:disabled):hover {
-    background: color-mix(in srgb, var(--m3-secondary-container, #646d78) 90%, #000);
+    background: color-mix(in srgb, var(--m3-secondary-container, #646d78) 90%, #000000);
 }

@@ -67,6 +67,27 @@ describe('useLegalDraft', () => {
         expect(result.current.savedAt).toBe(stored?.savedAt);
     });
 
+    // ADR-021 decision 4: the consent sentence is part of the privacy policy, so it
+    // is part of its draft. Storing only the body while reporting a successful save
+    // lost the consent wording on the next reload.
+    it('stores the consent sentence alongside the body', () => {
+        const { result } = renderHook(() => useLegalDraft('privacy', '1:user-abc'));
+        act(() =>
+            result.current.saveDraft({ de: '<p>Richtlinie</p>' }, { de: 'Ich habe die {{legal_links}} gelesen.' }),
+        );
+
+        const stored = readLegalDraft(legalDraftKey('privacy', '1:user-abc'));
+        expect(stored?.content).toEqual({ de: '<p>Richtlinie</p>' });
+        expect(stored?.consent).toEqual({ de: 'Ich habe die {{legal_links}} gelesen.' });
+    });
+
+    it('reads back a draft written before the consent field existed', () => {
+        writeLegalDraft(legalDraftKey('privacy', '1:user-abc'), { de: '<p>alt</p>' });
+        const { result } = renderHook(() => useLegalDraft('privacy', '1:user-abc'));
+        expect(result.current.draft?.content).toEqual({ de: '<p>alt</p>' });
+        expect(result.current.draft?.consent).toBeUndefined();
+    });
+
     it('keeps the loaded draft stable across a save, so the editor is never remounted mid-edit', () => {
         writeLegalDraft(legalDraftKey('dpa', '1:user-abc'), { de: '<p>alt</p>' });
         const { result } = renderHook(() => useLegalDraft('dpa', '1:user-abc'));

@@ -14,8 +14,15 @@ const { useDepartmentDpp, publishMutate, useTranslation, useTenantAdminData } = 
 vi.mock('react-i18next', () => ({ useTranslation }));
 vi.mock('../../../../../hooks/useDepartmentDpp.hook', () => ({ useDepartmentDpp }));
 vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminData }));
+// The version history is an independent react-query call; this suite has no client.
+vi.mock('../../../../../hooks/useLegalTextVersions.hook', () => ({ useLegalTextVersions: () => ({ data: [] }) }));
 vi.mock('../../../../../hooks/usePublishDepartmentDpp.hook', () => ({
     usePublishDepartmentDpp: () => ({ mutate: publishMutate, isPending: false }),
+}));
+// #609: the container now asks whether the admin may change legal content. The real
+// hook needs tenant data and app config; this suite is about the content mapping.
+vi.mock('../../../../../hooks/useUserPermission', () => ({
+    useUserPermissions: () => ({ can: () => true, permissions: {} }),
 }));
 
 // Stub the card to a plain node that echoes props and exposes onSave.

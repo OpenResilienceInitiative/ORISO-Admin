@@ -14,6 +14,14 @@
 export interface LegalDraft {
     /** The complete content map (language -> HTML) as it stood when saved. */
     content: Record<string, string>;
+    /**
+     * The consent sentence map (language -> plain text) that belongs to this draft
+     * of the data-protection policy (ADR-021 decision 4 — the consent text is a
+     * FIELD of the policy). Kept in the same record so "save draft" cannot store
+     * half of what the admin sees and report success. `undefined` on documents
+     * that have no consent field (imprint, DPA) and on drafts written before it.
+     */
+    consent?: Record<string, string>;
     /** ISO timestamp of the save, shown to the admin. */
     savedAt: string;
     /**
@@ -56,11 +64,14 @@ export const readLegalDraft = (key: string | undefined): LegalDraft | undefined 
             return undefined;
         }
         // Only string entries reach the editor — a stored non-string would render as "[object Object]".
-        const content = Object.fromEntries(
-            Object.entries(parsed.content).filter(([, html]) => typeof html === 'string'),
-        ) as Record<string, string>;
+        const onlyStrings = (map: Record<string, unknown>): Record<string, string> =>
+            Object.fromEntries(Object.entries(map).filter(([, entry]) => typeof entry === 'string')) as Record<
+                string,
+                string
+            >;
         return {
-            content,
+            content: onlyStrings(parsed.content),
+            consent: isContentMap(parsed.consent) ? onlyStrings(parsed.consent) : undefined,
             savedAt: parsed.savedAt,
             baseVersionId: typeof parsed.baseVersionId === 'string' ? parsed.baseVersionId : undefined,
         };
@@ -78,11 +89,12 @@ export const writeLegalDraft = (
     key: string | undefined,
     content: Record<string, string>,
     baseVersionId?: string,
+    consent?: Record<string, string>,
 ): boolean => {
     if (!key) {
         return false;
     }
-    const draft: LegalDraft = { content, savedAt: new Date().toISOString(), baseVersionId };
+    const draft: LegalDraft = { content, consent, savedAt: new Date().toISOString(), baseVersionId };
     try {
         window.localStorage.setItem(key, JSON.stringify(draft));
         return true;
