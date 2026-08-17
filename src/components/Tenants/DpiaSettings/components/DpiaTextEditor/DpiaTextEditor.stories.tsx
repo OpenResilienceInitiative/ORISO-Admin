@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DpiaTextEditor } from './index';
+import { seedDpiaDefaults } from '../../utils/dpiaDefaults';
 
 /**
  * Editor for the operator-specific free texts of the Datenschutz-Folgenabschätzung (DSFA).
@@ -31,6 +32,18 @@ const ESCALATION =
 /** Nothing written yet: every chapter is empty and the placeholder states what belongs in it. */
 export const Default: Story = {
     args: {},
+};
+
+/**
+ * What the container actually mounts for a tenant that has not written anything: every chapter
+ * opens with its pre-filled draft (placeholders in square brackets, KDG norm with the DSGVO
+ * counterpart, closing hint block). Defaults do not count as written — no bullet in the dropdown,
+ * status stays DRAFT — until the operator edits the text.
+ */
+export const PreFilledDrafts: Story = {
+    args: {
+        initialTexts: seedDpiaDefaults({}),
+    },
 };
 
 /**

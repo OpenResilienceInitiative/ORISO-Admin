@@ -5,13 +5,8 @@ import { DpiaIcon } from '../../../../CustomIcons/LegalIcons';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { DpiaSectionSelect } from '../DpiaSectionSelect';
-import {
-    DEFAULT_DPIA_SECTION_ID,
-    DpiaPublicationStatus,
-    DpiaTextMap,
-    findDpiaSection,
-    hasDpiaText,
-} from '../../utils/dpiaSections';
+import { DEFAULT_DPIA_SECTION_ID, DpiaPublicationStatus, DpiaTextMap, findDpiaSection } from '../../utils/dpiaSections';
+import { hasOperatorDpiaText } from '../../utils/dpiaDefaults';
 import styles from './styles.module.scss';
 
 // Re-exported for existing consumers: the type is owned by the data layer (`dpiaSections.ts`)
@@ -76,7 +71,7 @@ export const DpiaTextEditor = ({
     const filledSectionIds = useMemo(
         () =>
             Object.entries(texts)
-                .filter(([, html]) => hasDpiaText(html))
+                .filter(([id, html]) => hasOperatorDpiaText(id, html))
                 .map(([id]) => id),
         [texts],
     );
