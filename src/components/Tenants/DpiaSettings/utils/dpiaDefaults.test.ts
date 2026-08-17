@@ -85,12 +85,17 @@ describe('dpiaDefaults', () => {
         expect(stripped).toEqual({ governance: '', accountability: '<p>Eigener Text</p>' });
     });
 
-    it('strips a default even after TipTap re-serialised it (attributes, whitespace, nbsp)', () => {
-        const reserialised = DSFA_EDITOR_DEFAULTS.governance
-            .replace(/<\/p><p>/g, '</p>\n<p>')
-            .replace('<blockquote>', '<blockquote class="x">')
-            .replace(/&nbsp;/g, '\u00a0');
-        expect(reserialised).not.toBe(DSFA_EDITOR_DEFAULTS.governance);
-        expect(stripDpiaDefaults({ governance: reserialised }).governance).toBe('');
+    it('strips a default even after TipTap re-serialised it — each normalisation rule on its own', () => {
+        const base = DSFA_EDITOR_DEFAULTS.governance;
+        const variants = {
+            whitespaceBetweenTags: base.replace(/<\/p><p>/g, '</p>\n<p>'),
+            attributeOnBlockquote: base.replace('<blockquote>', '<blockquote class="x">'),
+            rawNoBreakSpace: base.replace(/&nbsp;/g, '\u00a0'),
+        };
+        Object.entries(variants).forEach(([, html]) => {
+            expect(html).not.toBe(base); // the fixture really differs from the stored default
+            expect(isDpiaDefaultText('governance', html)).toBe(true);
+            expect(stripDpiaDefaults({ governance: html }).governance).toBe('');
+        });
     });
 });
