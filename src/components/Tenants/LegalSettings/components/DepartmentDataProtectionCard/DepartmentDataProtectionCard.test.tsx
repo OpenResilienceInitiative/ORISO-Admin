@@ -43,7 +43,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         aboveEditorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
     }) => (
-        <div data-testid="editor" data-value={value}>
+        <div data-testid="editor" data-value={value} data-has-language-slot={languageSlot ? 'true' : 'false'}>
             {languageSlot}
             {helpSlot}
             {aboveEditorSlot}
@@ -93,6 +93,18 @@ const publishButtonName = 'legal.m3Editor.publish';
 const draftButtonName = 'legal.m3Editor.saveDraft';
 
 describe('DepartmentDataProtectionCard', () => {
+    it('omits the language control entirely when only one content language exists', () => {
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                languages={['de']}
+                onSave={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-has-language-slot', 'false');
+    });
+
     it('publishes the complete content map (publish=true)', async () => {
         const user = userEvent.setup();
         const onSave = vi.fn();

@@ -204,13 +204,15 @@ export const DepartmentDataProtectionCard = ({
                 onRestoreVersion={handleEditorChange}
                 onViewVersionChange={onViewVersionChange}
                 languageSlot={
-                    <LegalContentLanguageSelect
-                        languages={languages}
-                        value={activeLanguage}
-                        onChange={setActiveLanguage}
-                        sourceLanguage={sourceLanguage}
-                        contentMap={contentMapWithEdits}
-                    />
+                    languages.length > 1 ? (
+                        <LegalContentLanguageSelect
+                            languages={languages}
+                            value={activeLanguage}
+                            onChange={setActiveLanguage}
+                            sourceLanguage={sourceLanguage}
+                            contentMap={contentMapWithEdits}
+                        />
+                    ) : undefined
                 }
                 topicSlot={departmentSlot}
                 helpSlot={
