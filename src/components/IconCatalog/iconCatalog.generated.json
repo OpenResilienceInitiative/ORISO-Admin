@@ -867,6 +867,19 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:clock-arrow-down:base",
+        "family": "clock-arrow-down",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "clock-arrow-down.svg",
+        "sourcePath": "src/resources/img/svg/clock-arrow-down.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/EditorIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:copy:base",
         "family": "copy",
         "state": "base",
@@ -940,6 +953,19 @@
         "size": null,
         "fileName": "dpa.svg",
         "sourcePath": "src/resources/img/svg/dpa.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:dpia:base",
+        "family": "dpia",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "dpia.svg",
+        "sourcePath": "src/resources/img/svg/dpia.svg",
         "exportNames": [],
         "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
         "usage": "app-used"
@@ -1754,7 +1780,7 @@
         "fileName": "empty_state_96px.svg",
         "sourcePath": "src/resources/img/svg/oriso/empty_state_96px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/AdminEmpty/index.tsx"],
+        "usageFiles": ["src/components/AdminEmpty/index.tsx", "src/pages/Links/inviteProgress/InviteProgressBoard.tsx"],
         "usage": "app-used"
     },
     {
@@ -3062,7 +3088,8 @@
             "src/components/overlay/Overlay.tsx",
             "src/components/PillSelect/index.tsx",
             "src/pages/Links/index.tsx",
-            "src/pages/Links/InviteComposer.tsx"
+            "src/pages/Links/InviteComposer.tsx",
+            "src/pages/Links/inviteProgress/InviteProgressBoard.tsx"
         ],
         "usage": "app-used"
     }
