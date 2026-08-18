@@ -856,7 +856,13 @@ export const M3RichTextEditor = ({
                 </div>
             )}
 
-            {helpSlot}
+            {/* `helpSlot` is part of the SAME header block `hideHeader` promises
+                to drop (Figma 1227-17235 places it directly under the icon +
+                title row it is documented against) — a host that hides the
+                header but still passes a help slot must not have it reappear
+                on its own (owner report 2026-08-18, H3/I2: the info line is
+                explicitly part of "alles innerhalb blauer area"). */}
+            {!hideHeader && helpSlot}
 
             {!hideHeader && <hr className={`${styles.divider} ${styles.headerDivider}`} />}
 
