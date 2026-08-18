@@ -2,11 +2,11 @@ import React from 'react';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-const t = (key: string, fallback?: string) => fallback ?? key;
+const t = (key: string, fallback?: unknown) => (typeof fallback === 'string' ? fallback : key);
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t }),
@@ -41,18 +41,23 @@ const mocks = vi.hoisted(() => ({
     listInviteEmailTemplates: vi.fn(),
     createInviteEmailTemplate: vi.fn(),
     updateInviteEmailTemplate: vi.fn(),
+    previewInviteEmailTemplateContent: vi.fn(),
 }));
 
 vi.mock('../../api/accountInvites/accountInvites', () => ({
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
     createInviteEmailTemplate: mocks.createInviteEmailTemplate,
     updateInviteEmailTemplate: mocks.updateInviteEmailTemplate,
+    // E2: the editor's preview is rendered by the backend, so every test that
+    // mounts the editor now touches this call — omitting it throws for the whole
+    // file, not just the preview tests.
+    previewInviteEmailTemplateContent: mocks.previewInviteEmailTemplateContent,
 }));
 
 // antd's real Select relies on rc-select's virtual-list/portal machinery, which is
 // flaky to drive under jsdom (no real layout/scroll). Swap it for a native <select>
-// that Form.Item still controls the same way (via the value/onChange it injects),
-// so the Kind field stays fully exercised through Form validation and submission.
+// that stays controlled the same way (value/onChange), so the Kind field remains
+// fully exercised through selection and submission.
 vi.mock('antd', async () => {
     const actual = await vi.importActual<typeof import('antd')>('antd');
     return {
@@ -70,7 +75,7 @@ vi.mock('antd', async () => {
     };
 });
 
-// antd's Modal relies on matchMedia, which jsdom does not implement.
+// antd's Modal and Dropdown rely on matchMedia, which jsdom does not implement.
 Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
@@ -99,6 +104,18 @@ const tenantTemplate = {
     updateDate: '2026-07-02T10:00:00Z',
 };
 
+const tenantTemplateShort = {
+    id: 4,
+    kind: 'TENANT_INVITE',
+    name: 'Short tenant template',
+    language: 'de',
+    subject: 'Kurz',
+    body: 'Link: {{inviteLink}}',
+    active: true,
+    createDate: '2026-07-03T10:00:00Z',
+    updateDate: null,
+};
+
 const counsellorTemplate = {
     id: 2,
     kind: 'COUNSELLOR_INVITE',
@@ -111,13 +128,34 @@ const counsellorTemplate = {
     updateDate: null,
 };
 
+/** The srcDoc of the email-kit preview frame inside the currently open dialog. */
+const previewSrcDoc = () =>
+    within(screen.getByRole('dialog')).getByTitle('E-Mail-Vorschau').getAttribute('srcdoc') ?? '';
+
 describe('EmailTemplatesDialog', () => {
+    // Any spy a test installs (e.g. on window.confirm) is undone here, so a failing
+    // assertion cannot leak it into the tests that follow.
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     beforeEach(() => {
         mocks.listInviteEmailTemplates.mockReset();
         mocks.createInviteEmailTemplate.mockReset();
         mocks.updateInviteEmailTemplate.mockReset();
+        mocks.previewInviteEmailTemplateContent.mockReset();
+        mocks.previewInviteEmailTemplateContent.mockResolvedValue({
+            templateId: null,
+            templateName: null,
+            kind: 'TENANT_INVITE',
+            language: 'de',
+            subject: 'Welcome to ORISO — as sent',
+            html: '<!doctype html><html><body>SERVER RENDERED</body></html>',
+            plainText: 'SERVER RENDERED',
+            sampleAcceptUrl: 'https://admin.example/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
+        });
         mocks.listInviteEmailTemplates.mockImplementation((kind: string) => {
-            if (kind === 'TENANT_INVITE') return Promise.resolve([tenantTemplate]);
+            if (kind === 'TENANT_INVITE') return Promise.resolve([tenantTemplate, tenantTemplateShort]);
             if (kind === 'COUNSELLOR_INVITE') return Promise.resolve([counsellorTemplate]);
             return Promise.resolve([]);
         });
@@ -128,13 +166,20 @@ describe('EmailTemplatesDialog', () => {
             <EmailTemplatesDialog templateKind="TENANT_INVITE" onClose={vi.fn()} onChanged={vi.fn()} {...overrides} />,
         );
 
+    const openCreateForm = async (user: ReturnType<typeof userEvent.setup>) => {
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+        return within(screen.getByRole('dialog'));
+    };
+
     it('lists templates of every kind, the opening tab kind first', async () => {
         renderDialog();
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
         const rows = screen.getAllByTestId('template-row');
         expect(within(rows[0]).getByText('Default tenant template')).toBeInTheDocument();
-        expect(within(rows[1]).getByText('Default counsellor template')).toBeInTheDocument();
+        expect(within(rows[1]).getByText('Short tenant template')).toBeInTheDocument();
+        expect(within(rows[2]).getByText('Default counsellor template')).toBeInTheDocument();
     });
 
     it('creates a template preset to the opening kind, notifies the opener, and refreshes', async () => {
@@ -144,21 +189,17 @@ describe('EmailTemplatesDialog', () => {
         mocks.createInviteEmailTemplate.mockResolvedValue(saved);
         renderDialog({ onChanged });
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
-
-        await user.click(screen.getByRole('button', { name: 'New template' }));
-        const dialog = screen.getByRole('dialog');
-        const withinDialog = within(dialog);
+        const withinDialog = await openCreateForm(user);
 
         // Kind is preset to the opening tab's kind — no manual selection needed.
         expect(withinDialog.getByLabelText('Kind')).toHaveValue('TENANT_INVITE');
 
         await user.type(withinDialog.getByLabelText('Vorlagenname'), 'New tenant welcome');
-        await user.type(withinDialog.getByLabelText('Subject'), 'Hi there');
+        await user.type(withinDialog.getByLabelText('Betreff'), 'Hi there');
         // fireEvent.change avoids userEvent's {{/}} key-sequence escaping for literal braces.
-        fireEvent.change(withinDialog.getByLabelText('Body'), { target: { value: 'Body {{email}}' } });
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Body {{email}}' } });
 
-        await user.click(withinDialog.getByRole('button', { name: 'Save' }));
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
 
         await waitFor(() => expect(mocks.createInviteEmailTemplate).toHaveBeenCalledTimes(1));
         expect(mocks.createInviteEmailTemplate).toHaveBeenCalledWith(
@@ -176,24 +217,122 @@ describe('EmailTemplatesDialog', () => {
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalledTimes(6));
     });
 
-    it('renders a live email preview from the subject and body fields', async () => {
+    it('disables save until name, subject and body are filled', async () => {
         const user = userEvent.setup();
         renderDialog();
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
-        await user.click(screen.getByRole('button', { name: 'New template' }));
+        const withinDialog = await openCreateForm(user);
+        expect(withinDialog.getByRole('button', { name: 'save' })).toBeDisabled();
 
-        const dialog = screen.getByRole('dialog');
-        const withinDialog = within(dialog);
-        await user.type(withinDialog.getByLabelText('Subject'), 'Welcome to ORISO');
-        fireEvent.change(withinDialog.getByLabelText('Body'), {
-            target: { value: 'Hello Hugo,\n\nUse {{inviteLink}} to finish setup.' },
+        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Name');
+        await user.type(withinDialog.getByLabelText('Betreff'), 'Betreff');
+        expect(withinDialog.getByRole('button', { name: 'save' })).toBeDisabled();
+
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Inhalt' } });
+        expect(withinDialog.getByRole('button', { name: 'save' })).toBeEnabled();
+    });
+
+    /*
+     * These three were #751's, asserting the composer's own client-side
+     * substitution. E2 removed that substitution — the backend renderer now does
+     * it for the preview AND for the sent mail — so they are re-pointed at the
+     * new boundary rather than deleted: what the composer hands the renderer, and
+     * what it does with the answer.
+     */
+    it('previews through the backend renderer, not a local re-implementation', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        const withinDialog = await openCreateForm(user);
+        await user.type(withinDialog.getByLabelText('Betreff'), 'Welcome to ORISO');
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), {
+            target: { value: 'Hello {{firstName}},\n\nuse the button to finish setup.' },
         });
 
-        const preview = withinDialog.getByRole('region', { name: 'Email preview' });
-        expect(within(preview).getByRole('heading', { name: 'Welcome to ORISO' })).toBeInTheDocument();
-        expect(within(preview).getByText(/Hello Hugo/)).toBeInTheDocument();
-        expect(within(preview).getByText('{{inviteLink}}')).toBeInTheDocument();
+        // Raw, tokens unresolved, with the kind that selects the sample content.
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    kind: 'TENANT_INVITE',
+                    subject: 'Welcome to ORISO',
+                    body: 'Hello {{firstName}},\n\nuse the button to finish setup.',
+                }),
+            ),
+        );
+
+        // …and the answer is shown verbatim, never rebuilt from the fields.
+        await waitFor(() => expect(previewSrcDoc()).toBe('<!doctype html><html><body>SERVER RENDERED</body></html>'));
+    });
+
+    it('sends a typoed token to the renderer untouched instead of judging it locally', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        const withinDialog = await openCreateForm(user);
+        await user.type(withinDialog.getByLabelText('Betreff'), 'S');
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Hallo {{typo}}' } });
+
+        // Which tokens are "unknown" is the renderer's call now — there is exactly
+        // one substitution implementation and the composer is not it.
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenCalledWith(
+                expect.objectContaining({ body: 'Hallo {{typo}}' }),
+            ),
+        );
+    });
+
+    it('inserts a picked token at the caret and previews the raw result', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        const withinDialog = await openCreateForm(user);
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Guten Tag ' } });
+
+        // D1: the subject no longer carries a picker, so the body's is the ONLY one.
+        const pickers = withinDialog.getAllByRole('button', { name: 'Platzhalter einfügen' });
+        expect(pickers).toHaveLength(1);
+        await user.click(pickers[0]);
+        await user.click(await screen.findByRole('menuitem', { name: /Vorname/ }));
+
+        await waitFor(() => expect(withinDialog.getByLabelText('Inhalt')).toHaveValue('Guten Tag {{firstName}}'));
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenCalledWith(
+                expect.objectContaining({ body: 'Guten Tag {{firstName}}' }),
+            ),
+        );
+    });
+
+    it('offers a retry instead of a blank panel when the preview cannot be rendered', async () => {
+        mocks.previewInviteEmailTemplateContent.mockRejectedValue(new Error('boom'));
+        const user = userEvent.setup();
+        renderDialog();
+
+        const withinDialog = await openCreateForm(user);
+        await user.type(withinDialog.getByLabelText('Betreff'), 'S');
+
+        expect(await screen.findByText('Preview could not be rendered.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    });
+
+    // D2 — „wieder ant stuff anstatt mui". Both libraries expose role="switch",
+    // so the discriminator is whose markup it is, not which role it reports.
+    it('uses the shared MUI switch for Active, not an antd one', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        await openCreateForm(user);
+        const dialog = screen.getByRole('dialog');
+        expect(dialog.querySelector('.ant-switch')).toBeNull();
+        const toggle = within(dialog).getByRole('switch', { name: 'Active' });
+        expect(toggle.closest('.MuiSwitch-root')).not.toBeNull();
+    });
+
+    it('no longer renders the hardcoded token code hint', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        await openCreateForm(user);
+        expect(screen.queryByText('Available placeholders:')).not.toBeInTheDocument();
     });
 
     it('opens a prefilled edit form on row double-click and updates the template', async () => {
@@ -201,15 +340,15 @@ describe('EmailTemplatesDialog', () => {
         mocks.updateInviteEmailTemplate.mockResolvedValue({ ...tenantTemplate, subject: 'Servus' });
         renderDialog();
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
         fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
 
         const dialog = screen.getByRole('dialog');
         const withinDialog = within(dialog);
         expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('Default tenant template');
 
-        fireEvent.change(withinDialog.getByLabelText('Subject'), { target: { value: 'Servus' } });
-        await user.click(withinDialog.getByRole('button', { name: 'Save' }));
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Servus' } });
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
 
         await waitFor(() =>
             expect(mocks.updateInviteEmailTemplate).toHaveBeenCalledWith(
@@ -219,12 +358,253 @@ describe('EmailTemplatesDialog', () => {
         );
     });
 
+    it('switches the loaded template via the split-button menu', async () => {
+        const user = userEvent.setup();
+        mocks.updateInviteEmailTemplate.mockResolvedValue(tenantTemplateShort);
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+
+        const withinDialog = within(screen.getByRole('dialog'));
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+
+        // The other template's stored values are loaded into the editor…
+        expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('Short tenant template');
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+        expect(withinDialog.getByLabelText('Inhalt')).toHaveValue('Link: {{inviteLink}}');
+
+        // …and saving persists against THAT template's id.
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
+        await waitFor(() =>
+            expect(mocks.updateInviteEmailTemplate).toHaveBeenCalledWith(
+                4,
+                expect.objectContaining({ subject: 'Kurz' }),
+            ),
+        );
+    });
+
+    it('starts a new template from an existing one via the split-button menu', async () => {
+        const user = userEvent.setup();
+        mocks.createInviteEmailTemplate.mockResolvedValue({ ...tenantTemplateShort, id: 9, name: 'Kopie' });
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+
+        const withinDialog = within(screen.getByRole('dialog'));
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Short tenant template“/ }));
+
+        // Contents are copied, but the name is empty — this will be a NEW template.
+        expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('');
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+
+        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Kopie');
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
+
+        await waitFor(() => expect(mocks.createInviteEmailTemplate).toHaveBeenCalledTimes(1));
+        expect(mocks.createInviteEmailTemplate).toHaveBeenCalledWith(
+            expect.objectContaining({ name: 'Kopie', subject: 'Kurz', body: 'Link: {{inviteLink}}' }),
+        );
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+    });
+
+    it('asks in the dialog before a template switch discards unsaved edits', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const withinDialog = within(screen.getByRole('dialog'));
+
+        // Make the draft dirty, then trigger the switch: the dialog itself turns
+        // into the discard question instead of navigating.
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        // The mocked `t` echoes keys that carry no fallback (the Modal title/description).
+        expect(withinDialog.getByText('links.templates.discardTitle')).toBeInTheDocument();
+        expect(withinDialog.getByText('links.templates.discardDescription')).toBeInTheDocument();
+
+        // Abbrechen returns to the untouched draft.
+        await user.click(withinDialog.getByRole('button', { name: 'Abbrechen' }));
+        expect(withinDialog.queryByText('links.templates.discardTitle')).not.toBeInTheDocument();
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Edited subject');
+
+        // Verwerfen performs the parked intent.
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.click(withinDialog.getByRole('button', { name: 'Verwerfen' }));
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+    });
+
+    it('switches without asking while the draft is clean', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const withinDialog = within(screen.getByRole('dialog'));
+
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+
+        expect(withinDialog.queryByText('links.templates.discardTitle')).not.toBeInTheDocument();
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+    });
+
+    /*
+     * The prompt must be a state of the open dialog (house M3 anatomy), never a
+     * native browser confirm — those cannot be styled and look broken next to
+     * the rest of the admin.
+     */
+    it('never uses a native window.confirm for the discard question', async () => {
+        const user = userEvent.setup();
+        // Restored in afterEach, not here: a failing assertion below would otherwise
+        // leak the mocked confirm into every later test.
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const withinDialog = within(screen.getByRole('dialog'));
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
+
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+
+        expect(confirmSpy).not.toHaveBeenCalled();
+        expect(withinDialog.getByText('links.templates.discardTitle')).toBeInTheDocument();
+    });
+
+    it('keeps X closing the whole dialog while Abbrechen steps back to the list', async () => {
+        const user = userEvent.setup();
+        const onClose = vi.fn();
+        renderDialog({ onClose });
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+
+        // Cancel: back to the template list, the dialog itself stays open — and with a
+        // clean draft nothing may ask for confirmation on the way.
+        await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'cancel' }));
+        expect(screen.queryByText('links.templates.discardTitle')).not.toBeInTheDocument();
+        expect(onClose).not.toHaveBeenCalled();
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+
+        // X in the form view: closes the whole templates dialog (parity with
+        // the pre-module form, where every dismiss gesture reached the parent).
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }));
+        expect(screen.queryByText('links.templates.discardTitle')).not.toBeInTheDocument();
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('asks before a dismiss gesture discards unsaved edits', async () => {
+        const user = userEvent.setup();
+        const onClose = vi.fn();
+        renderDialog({ onClose });
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const withinDialog = within(screen.getByRole('dialog'));
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
+
+        // X shows the question instead of closing…
+        await user.click(withinDialog.getByRole('button', { name: 'Close' }));
+        expect(withinDialog.getByText('links.templates.discardTitle')).toBeInTheDocument();
+        expect(onClose).not.toHaveBeenCalled();
+
+        // …and only Verwerfen closes the whole dialog.
+        await user.click(withinDialog.getByRole('button', { name: 'Verwerfen' }));
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    /*
+     * #751 review (Major): a dismiss gesture while the question is up used to run
+     * guardDraft(onClose) again — the draft was still dirty, so it parked a SECOND
+     * intent over the pending one. Escape then "Verwerfen" closed the whole dialog
+     * instead of performing the switch the admin had asked for.
+     */
+    it('treats X while the discard question is open as Abbrechen, keeping draft and parked intent', async () => {
+        const user = userEvent.setup();
+        const onClose = vi.fn();
+        renderDialog({ onClose });
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const withinDialog = within(screen.getByRole('dialog'));
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
+
+        // Park a template switch, then dismiss the question with X.
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.click(withinDialog.getByRole('button', { name: 'Close' }));
+
+        // Question gone, dialog still open, draft intact — and no second intent parked.
+        expect(withinDialog.queryByText('links.templates.discardTitle')).not.toBeInTheDocument();
+        expect(onClose).not.toHaveBeenCalled();
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Edited subject');
+
+        // Asking again and confirming performs the ORIGINAL intent (switch), not a close.
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.click(withinDialog.getByRole('button', { name: 'Verwerfen' }));
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('moves focus to the safe action when the discard question appears', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const withinDialog = within(screen.getByRole('dialog'));
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
+
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+
+        // Not <body>: the form wrapper goes inert, so focus has to be moved deliberately.
+        expect(withinDialog.getByRole('button', { name: 'Abbrechen' })).toHaveFocus();
+    });
+
+    it('describes the disabled save button with the incomplete hint', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        const withinDialog = await openCreateForm(user);
+        expect(withinDialog.getByRole('button', { name: 'save' })).toHaveAccessibleDescription(
+            'Vorlagenname, Betreff und Inhalt ausfüllen, um zu speichern.',
+        );
+
+        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Name');
+        await user.type(withinDialog.getByLabelText('Betreff'), 'Betreff');
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Inhalt' } });
+        expect(withinDialog.getByRole('button', { name: 'save' })).not.toHaveAccessibleDescription();
+    });
+
+    it('prefills the create deep link from initialTemplateId ("Neu aus …")', async () => {
+        renderDialog({ initialView: 'create', initialTemplateId: 4 });
+
+        // The list dialog shows first while templates load, then the form
+        // replaces it — query globally instead of pinning the first dialog node.
+        const subject = await screen.findByLabelText('Betreff');
+        await waitFor(() => expect(subject).toHaveValue('Kurz'));
+        expect(screen.getByLabelText('Inhalt')).toHaveValue('Link: {{inviteLink}}');
+        // Copied contents, but a NEW template: the name stays empty.
+        expect(screen.getByLabelText('Vorlagenname')).toHaveValue('');
+    });
+
     it('selects a template when its name is clicked in picker mode', async () => {
         const user = userEvent.setup();
         const onSelect = vi.fn();
         renderDialog({ onSelect });
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
 
         await user.click(screen.getByRole('button', { name: 'Default tenant template' }));
 
@@ -236,12 +616,12 @@ describe('EmailTemplatesDialog', () => {
         const onSelect = vi.fn();
         renderDialog({ onSelect });
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
 
         // Inactive COUNSELLOR_INVITE template in a TENANT_INVITE tab: plain text, and a
         // row click must not hand it to the composer either.
         expect(screen.queryByRole('button', { name: 'Default counsellor template' })).not.toBeInTheDocument();
-        await user.click(screen.getAllByTestId('template-row')[1]);
+        await user.click(screen.getAllByTestId('template-row')[2]);
 
         expect(onSelect).not.toHaveBeenCalled();
     });
@@ -251,7 +631,7 @@ describe('EmailTemplatesDialog', () => {
         const onSelect = vi.fn();
         renderDialog({ onSelect });
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
 
         await user.click(within(screen.getAllByTestId('template-row')[0]).getByRole('button', { name: 'Edit' }));
 
@@ -266,17 +646,13 @@ describe('EmailTemplatesDialog', () => {
         mocks.createInviteEmailTemplate.mockRejectedValue(new Error('CATCH_ALL'));
         renderDialog();
 
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
-
-        await user.click(screen.getByRole('button', { name: 'New template' }));
-        const dialog = screen.getByRole('dialog');
-        const withinDialog = within(dialog);
+        const withinDialog = await openCreateForm(user);
 
         await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Broken template');
-        await user.type(withinDialog.getByLabelText('Subject'), 'Subject');
-        await user.type(withinDialog.getByLabelText('Body'), 'Body');
+        await user.type(withinDialog.getByLabelText('Betreff'), 'Subject');
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Body' } });
 
-        await user.click(withinDialog.getByRole('button', { name: 'Save' }));
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
 
         expect(await screen.findByText('Could not create template')).toBeInTheDocument();
         expect(screen.queryByText('CATCH_ALL')).not.toBeInTheDocument();

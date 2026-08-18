@@ -157,6 +157,15 @@
     }
 }
 
+.cardDescriptionInfo {
+    width: 16px;
+    height: 16px;
+    margin: 4px 8px 2px 0;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    fill: currentcolor;
+    float: left;
+}
+
 .cardDescriptionSecondary {
     display: block;
     margin-top: 14px;

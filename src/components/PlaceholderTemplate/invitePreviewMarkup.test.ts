@@ -74,6 +74,30 @@ describe('renderInviteEmailPreviewHtml', () => {
         expect(html).toContain(strings.assurance);
     });
 
+    /*
+     * PR #727 post-merge review: brand colours are interpolated into quoted
+     * HTML/style attributes of the srcDoc document. A poisoned value like
+     * `#fff" onmouseover="…` must never reach the markup — the renderer
+     * normalises the brand at its boundary.
+     */
+    it('neutralises attribute-breakout attempts in the brand colours', () => {
+        const html = renderInviteEmailPreviewHtml({
+            subject: 'A',
+            body: 'B {{x}}',
+            brand: {
+                ...brand,
+                primaryColor: '#fff" onmouseover="alert(1)',
+                accentColor: "#fff' onmouseover='alert(1)",
+            },
+            strings,
+            lang: 'de',
+        });
+        expect(html).not.toContain('onmouseover');
+        expect(html).not.toContain('alert(1)');
+        // The document still renders, with the fallback colour in place.
+        expect(html).toContain('bgcolor="#a5000a"');
+    });
+
     it('escapes user-typed markup instead of executing it', () => {
         const html = render('<b>Betreff</b>', '<script>alert(1)</script>');
         expect(html).not.toContain('<script>alert(1)</script>');

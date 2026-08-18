@@ -115,7 +115,7 @@ describe('InviteProgressBoard', () => {
         expect(table.getByText('Registriert – fehlgeschlagen')).toBeInTheDocument();
     });
 
-    it('wires resend/copy/revoke and disables resend and revoke on terminal rows', async () => {
+    it('wires resend/copy/revoke and disables ALL THREE actions on terminal rows (C4/C5)', async () => {
         const user = userEvent.setup();
         const props = baseProps();
         render(<InviteProgressBoard {...props} />);
@@ -131,8 +131,68 @@ describe('InviteProgressBoard', () => {
         const deadRow = within(screen.getByText('person4@example.org').closest('tr') as HTMLElement);
         expect(deadRow.getByRole('button', { name: 'Erinnerung erneut senden' })).toBeDisabled();
         expect(deadRow.getByRole('button', { name: 'Einladung widerrufen' })).toBeDisabled();
-        // Copy stays available — the link may still be on the clipboard path.
-        expect(deadRow.getByRole('button', { name: 'Einladungslink kopieren' })).toBeEnabled();
+        // Copy used to stay live between two disabled neighbours and answered a
+        // press with "link only visible after send" — an enabled control whose
+        // only outcome is a refusal. It follows the same rule now.
+        expect(deadRow.getByRole('button', { name: 'Einladungslink kopieren' })).toBeDisabled();
+
+        // The state the owner marked: Angenommen — the invite is used up, so
+        // there is nothing left to copy either.
+        const acceptedRow = within(screen.getByText('person2@example.org').closest('tr') as HTMLElement);
+        expect(acceptedRow.getByRole('button', { name: 'Einladungslink kopieren' })).toBeDisabled();
+    });
+
+    // C4 asked why disabled actions "render as links". They do not, and this
+    // pins that down so a future global cascade cannot quietly make it true:
+    // every action is a real disabled <button>, never an anchor, and a disabled
+    // one is out of the tab order and has no href to follow.
+    it('renders every row action as a button, never an anchor, disabled included (C4)', () => {
+        render(<InviteProgressBoard {...baseProps()} />);
+
+        const acceptedRow = within(screen.getByText('person2@example.org').closest('tr') as HTMLElement);
+        const actions = [
+            acceptedRow.getByRole('button', { name: 'Erinnerung erneut senden' }),
+            acceptedRow.getByRole('button', { name: 'Einladungslink kopieren' }),
+            acceptedRow.getByRole('button', { name: 'Einladung widerrufen' }),
+        ];
+
+        actions.forEach((action) => {
+            expect(action.tagName).toBe('BUTTON');
+            expect(action).toBeDisabled();
+            expect(action).not.toHaveAttribute('href');
+        });
+        expect((acceptedRow.getByText('Angenommen').closest('td') as HTMLElement).querySelector('a')).toBeNull();
+    });
+
+    // C3: "Status ersetzt unklar" — broadened by the owner to every status, in
+    // both places it is shown: the filter chip and the row badge.
+    it('explains every status on hover, on the filter chip and on the row badge (C3)', async () => {
+        const user = userEvent.setup();
+        render(<InviteProgressBoard {...baseProps()} invites={[invite(9, { inviteStatus: 'SUPERSEDED' })]} />);
+
+        await user.hover(screen.getByRole('checkbox', { name: 'Ersetzt' }));
+        expect(await screen.findByRole('tooltip')).toHaveTextContent(
+            'Diese Einladung wurde durch ein erneutes Versenden ersetzt — es gilt die neuere Einladung.',
+        );
+        await user.unhover(screen.getByRole('checkbox', { name: 'Ersetzt' }));
+
+        const badge = within(screen.getByRole('table')).getByText('Ersetzt');
+        await user.hover(badge);
+        expect(await screen.findByRole('tooltip')).toHaveTextContent(
+            'Diese Einladung wurde durch ein erneutes Versenden ersetzt — es gilt die neuere Einladung.',
+        );
+        // Reachable without a mouse, too.
+        expect(badge).toHaveAttribute('tabindex', '0');
+    });
+
+    it('gives each of the six statuses its own explanation, not just Ersetzt (C3)', () => {
+        render(<InviteProgressBoard {...baseProps()} />);
+
+        // One chip per status, each carrying a distinct explanation.
+        const hints = ['Draft', 'Gesendet', 'Angenommen', 'Abgelaufen', 'Widerrufen', 'Ersetzt'].map(
+            (label) => screen.getByRole('checkbox', { name: label }).closest('span')?.textContent,
+        );
+        expect(new Set(hints).size).toBe(6);
     });
 
     it('reports selection changes through row checkboxes', async () => {
