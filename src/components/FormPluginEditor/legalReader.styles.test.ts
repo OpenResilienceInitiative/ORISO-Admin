@@ -79,8 +79,12 @@ describe('chapter-chip row — scrolls with a visible affordance (H4/I3, 2026-08
         // last visible chip hidden) with no hint of scrollability. The fade is
         // a mask, not an overlay, so it cannot tint the chips or cover the
         // click targets; AnchorChips toggles it per side alongside the arrows.
-        expect(globalStyles).toMatch(/&--fadeEnd\s*{[^}]*mask-image:\s*linear-gradient\(to right,\s*#000 calc\(100% - 32px\), transparent\);/);
-        expect(globalStyles).toMatch(/&--fadeStart\s*{[^}]*mask-image:\s*linear-gradient\(to right,\s*transparent,\s*#000 32px\);/);
+        expect(globalStyles).toMatch(
+            /&--fadeEnd\s*{[^}]*mask-image:\s*linear-gradient\(to right,\s*#000000 calc\(100% - 32px\), transparent\);/,
+        );
+        expect(globalStyles).toMatch(
+            /&--fadeStart\s*{[^}]*mask-image:\s*linear-gradient\(to right,\s*transparent,\s*#000000 32px\);/,
+        );
         // Both sides scrollable -> both edges fade (single combined mask; two
         // mask-image declarations would overwrite each other).
         expect(globalStyles).toMatch(/&--fadeStart#{&}--fadeEnd/);

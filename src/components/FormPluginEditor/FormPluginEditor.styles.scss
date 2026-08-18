@@ -187,19 +187,17 @@
            AnchorChips alongside the arrows). Mask, not a gradient overlay: an
            overlay would tint the chips, and it would sit on top of the click
            targets. */
+
         &--fadeEnd {
-            -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
-            mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+            mask-image: linear-gradient(to right, #000000 calc(100% - 32px), transparent);
         }
 
         &--fadeStart {
-            -webkit-mask-image: linear-gradient(to right, transparent, #000 32px);
-            mask-image: linear-gradient(to right, transparent, #000 32px);
+            mask-image: linear-gradient(to right, transparent, #000000 32px);
         }
 
         &--fadeStart#{&}--fadeEnd {
-            -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
-            mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+            mask-image: linear-gradient(to right, transparent, #000000 32px, #000000 calc(100% - 32px), transparent);
         }
     }
 

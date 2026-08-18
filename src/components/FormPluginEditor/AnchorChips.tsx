@@ -111,9 +111,9 @@ const AnchorChips = ({
                 "there is more". The fade only sits on a side that can actually
                 scroll further — like the arrows. */}
             <div
-                className={`RichEditor-anchorNavRow${nav.overflow && !nav.atStart ? ' RichEditor-anchorNavRow--fadeStart' : ''}${
-                    nav.overflow && !nav.atEnd ? ' RichEditor-anchorNavRow--fadeEnd' : ''
-                }`}
+                className={`RichEditor-anchorNavRow${
+                    nav.overflow && !nav.atStart ? ' RichEditor-anchorNavRow--fadeStart' : ''
+                }${nav.overflow && !nav.atEnd ? ' RichEditor-anchorNavRow--fadeEnd' : ''}`}
                 ref={rowRef}
             >
                 {anchors.map((anchor) => {

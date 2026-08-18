@@ -1202,6 +1202,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
        (its opaque sticky background masks text scrolling underneath). The
        vertical 8px comes from `.editor` above; the fluid variant's 56px
        bottom clearance wins by specificity, which is intended. */
+
     .editorContentScroll {
         padding-inline: 8px;
     }
