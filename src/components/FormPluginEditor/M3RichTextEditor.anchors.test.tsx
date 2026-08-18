@@ -125,6 +125,31 @@ describe('M3RichTextEditor — anchor navigation (read-only)', () => {
         expect(onChange).not.toHaveBeenCalled();
     });
 
+    it('writes the picked chapter into the URL hash (owner report 2026-08-18, F4/H4)', async () => {
+        // „die anchor tags werden nicht gesetzt": picking a chapter must be
+        // visible in the URL — it is the only feedback left when a short
+        // document has no scroll distance, and it makes the chapter shareable.
+        window.history.replaceState(null, '', '/read');
+        const { container } = render(<M3RichTextEditor value={content} readOnly />);
+        await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
+
+        fireEvent.click(container.querySelector('[data-anchor-chip="details"] .RichEditor-anchorChipLabel')!);
+
+        expect(window.location.hash).toBe('#details');
+        window.history.replaceState(null, '', '/');
+    });
+
+    it('never rewrites the URL while the author is editing', async () => {
+        window.history.replaceState(null, '', '/edit');
+        const { container } = render(<M3RichTextEditor value={content} />);
+        await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
+
+        fireEvent.click(container.querySelector('[data-anchor-chip="details"] .RichEditor-anchorChipLabel')!);
+
+        expect(window.location.hash).toBe('');
+        window.history.replaceState(null, '', '/');
+    });
+
     it('intercepts in-text #anchor links: scrolls instead of navigating', async () => {
         scrollIntoViewMock.mockClear();
         const { container } = render(<M3RichTextEditor value={content} readOnly />);

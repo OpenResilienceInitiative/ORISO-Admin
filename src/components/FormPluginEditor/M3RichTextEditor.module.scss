@@ -1192,11 +1192,28 @@ $m3-state-active: rgb(39 50 112 / 12%);
         }
     }
 
+    /* Owner call 2026-08-18 (before-state H1/H2), REVERSING the owner call of
+       2026-07-30 that made the reading text run edge to edge: „text braucht
+       padding min. 8px … an allen 4 Seiten!". Measured before this rule the
+       text sat 0-1px from its clipping frame (`editorContentScroll`) in every
+       read surface — wizard step, DPA blocker, fullscreen reader, settings
+       deck. The inset lives HERE and not on `.editor`, because the chapter bar
+       is a sibling inside `.editor` and must keep spanning the full surface
+       (its opaque sticky background masks text scrolling underneath). The
+       vertical 8px comes from `.editor` above; the fluid variant's 56px
+       bottom clearance wins by specificity, which is intended. */
+    .editorContentScroll {
+        padding-inline: 8px;
+    }
+
     // Owner call 2026-07-30, desktop AND mobile: with the outer box gone there
     // is no edge left for the text to keep its distance from, so the side inset
     // goes too — the reading measure gets those 16px back on both sides. The
     // chapter row lives in the same wrapper, which is why its arrows move out
     // to the edges with it.
+    // (Partially superseded 2026-08-18: the text now keeps an 8px inset — see
+    // `.editorContentScroll` above — while the chapter row still spans the
+    // full width with its own 16px control inset from #818.)
     .editorWrap {
         padding-inline: 0;
     }

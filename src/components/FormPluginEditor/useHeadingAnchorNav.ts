@@ -89,6 +89,17 @@ export const useHeadingAnchorNav = (
         if (target && !editor.isEditable) {
             target.setAttribute('tabindex', '-1');
             target.focus?.({ preventScroll: true });
+            // Reading mode ALSO writes the anchor into the URL (owner report
+            // 2026-08-18, before-state F4/H4: „die anchor tags werden nicht
+            // gesetzt"): picking a chapter must be visible and shareable even
+            // when a short document has no scroll distance left to move.
+            // `replaceState` with the CURRENT history state: it fires no
+            // popstate/hashchange, so the BrowserRouter never re-navigates, and
+            // preserving `history.state` keeps react-router's location state
+            // intact. Never in edit mode — authoring must not rewrite the URL.
+            if (typeof window !== 'undefined' && typeof window.history?.replaceState === 'function') {
+                window.history.replaceState(window.history.state, '', `#${encodeURIComponent(anchorId)}`);
+            }
         }
         setActiveAnchorId(anchorId);
     };

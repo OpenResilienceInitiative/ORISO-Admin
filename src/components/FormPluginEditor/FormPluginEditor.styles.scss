@@ -176,6 +176,31 @@
         &::-webkit-scrollbar {
             display: none;
         }
+
+        /* Edge fade for the scrolling chip row (owner request 2026-08-18,
+           before-state H4/I3). The row stays ONE scrollable line (Figma
+           1299-81676; wrapping 11 chips would stack three rows into the sticky
+           bottom bar at 390px and eat the reading space) — but a hard clip cut
+           the last chip mid-letter ("A|"), which reads as a rendering bug. The
+           32px fade makes the cut chip dissolve toward the edge instead, and it
+           only appears on a side that can still scroll (classes toggled by
+           AnchorChips alongside the arrows). Mask, not a gradient overlay: an
+           overlay would tint the chips, and it would sit on top of the click
+           targets. */
+        &--fadeEnd {
+            -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+            mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+        }
+
+        &--fadeStart {
+            -webkit-mask-image: linear-gradient(to right, transparent, #000 32px);
+            mask-image: linear-gradient(to right, transparent, #000 32px);
+        }
+
+        &--fadeStart#{&}--fadeEnd {
+            -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+            mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+        }
     }
 
     // Prev/next nav for an overflowing chip row (Chapter Navbar, Figma
