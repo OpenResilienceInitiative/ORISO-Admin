@@ -16,7 +16,6 @@ import { useAppConfigContext } from '../../context/useAppConfig';
 export interface LoginSurfaceProps {
     /** Platform logo from Theme settings → Appearance (#594.14). */
     logo?: string | null;
-    claim?: string | null;
 }
 
 /**
@@ -28,9 +27,9 @@ export interface LoginSurfaceProps {
  * route renders — #594 asks for the login and the onboarding page to be
  * comparable side by side, and a story that rebuilds the markup would drift.
  */
-export const LoginSurface = ({ logo, claim }: LoginSurfaceProps) => (
+export const LoginSurface = ({ logo }: LoginSurfaceProps) => (
     <PublicPageLayoutWrapper className="login flex-col flex" footerVariant="stage">
-        <Stage logo={logo} claim={claim} />
+        <Stage logo={logo} />
         <Row align="middle" style={{ flex: '1 0 auto' }}>
             <Col xs={{ span: 22, offset: 1 }} md={{ span: 6, offset: 3 }} xl={{ span: 4, offset: 6 }}>
                 <LoginForm />
@@ -52,7 +51,6 @@ export const Login = () => {
     const tokenExpiry = getTokenExpiryFromLocalStorage();
     const { data: tenantData } = usePublicTenantData();
     const logo = tenantData?.theming?.logo;
-    const claim = tenantData?.content?.claim;
     const { hasRole, isTechnicalAccount } = useUserRoles();
     const accessTokenValidInMs = tokenExpiry.accessTokenValidUntilTime - currentTime;
 
@@ -114,5 +112,5 @@ export const Login = () => {
         settings.mainTenantSubdomainForSingleDomainMultitenancy,
     ]);
 
-    return redirectUrl ? <Navigate to={redirectUrl} /> : <LoginSurface logo={logo} claim={claim} />;
+    return redirectUrl ? <Navigate to={redirectUrl} /> : <LoginSurface logo={logo} />;
 };
