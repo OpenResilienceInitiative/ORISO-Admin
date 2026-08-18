@@ -21,10 +21,10 @@ const areas = [
 ] as const;
 
 describe('in-memory Web Storage', () => {
+    // No storage cleanup here: ./setup.ts empties both areas after every test, and the
+    // describe at the bottom of this file is what proves it.
     afterEach(() => {
         vi.restoreAllMocks();
-        window.localStorage.clear();
-        window.sessionStorage.clear();
     });
 
     describe.each(areas)('%s', (_name, area) => {
@@ -98,5 +98,25 @@ describe('in-memory Web Storage', () => {
         window.localStorage.clear();
 
         expect(window.sessionStorage.getItem('shared-key')).toBe('session');
+    });
+});
+
+// Like the antd notice cleanup next door, the leak this prevents is cross-test, so the
+// assertions live in the test that FOLLOWS the one filling the storage. Nothing in this
+// file may clean up storage by hand — that would mask the very leak under test.
+describe('storage isolation between tests', () => {
+    it('fills both areas without cleaning up after itself', () => {
+        window.localStorage.setItem('leaked-key', 'local');
+        window.sessionStorage.setItem('leaked-key', 'session');
+
+        expect(window.localStorage.length).toBe(1);
+        expect(window.sessionStorage.length).toBe(1);
+    });
+
+    it('starts with both areas empty, whatever the previous test wrote', () => {
+        expect(window.localStorage.getItem('leaked-key')).toBeNull();
+        expect(window.sessionStorage.getItem('leaked-key')).toBeNull();
+        expect(window.localStorage.length).toBe(0);
+        expect(window.sessionStorage.length).toBe(0);
     });
 });

@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
 import { afterEach, vi } from 'vitest';
+import { installMemoryStorage, resetMemoryStorage } from './memoryStorage';
 
 if (typeof window !== 'undefined') {
     // jsdom does not implement matchMedia; antd responsive hooks need it.
@@ -17,77 +18,7 @@ if (typeof window !== 'undefined') {
         })),
     });
 
-    // jsdom (v23) implements no usable Web Storage: `window.localStorage` is absent,
-    // and the `sessionStorage` that is present comes from the host with a prototype of
-    // its own. Provide a minimal in-memory Storage so tests can read/write/clear
-    // without each hand-rolling its own stub. Defined as configurable + writable so
-    // tests that need a spy can still override it (`vi.stubGlobal('localStorage', …)`
-    // or `Object.defineProperty`).
-    //
-    // The implementation goes ON `Storage.prototype` (jsdom ships the interface
-    // object even though it ships no storage areas), NOT on a class of our own.
-    // Tests simulate a full or disabled storage with
-    // `vi.spyOn(Storage.prototype, 'setItem' | 'removeItem' | 'getItem')`; methods
-    // living on a separate class would shadow that prototype, so the spy would
-    // patch an object nothing ever calls and the code under test would quietly
-    // succeed where it is expected to report failure.
-    const memoryStores = new WeakMap<Storage, Map<string, string>>();
-    const storeOf = (storage: Storage): Map<string, string> => {
-        let store = memoryStores.get(storage);
-        if (!store) {
-            store = new Map<string, string>();
-            memoryStores.set(storage, store);
-        }
-        return store;
-    };
-
-    const method = (value: (this: Storage, ...args: never[]) => unknown): PropertyDescriptor => ({
-        configurable: true,
-        writable: true,
-        value,
-    });
-
-    Object.defineProperties(Storage.prototype, {
-        length: {
-            configurable: true,
-            get(this: Storage): number {
-                return storeOf(this).size;
-            },
-        },
-        clear: method(function clear(this: Storage): void {
-            storeOf(this).clear();
-        }),
-        getItem: method(function getItem(this: Storage, key: string): string | null {
-            const store = storeOf(this);
-            return store.has(key) ? (store.get(key) as string) : null;
-        }),
-        key: method(function key(this: Storage, index: number): string | null {
-            return Array.from(storeOf(this).keys())[index] ?? null;
-        }),
-        removeItem: method(function removeItem(this: Storage, key: string): void {
-            storeOf(this).delete(key);
-        }),
-        setItem: method(function setItem(this: Storage, key: string, value: string): void {
-            storeOf(this).set(key, String(value));
-        }),
-    });
-
-    // Installed unconditionally, NOT only when the area is missing — presence does not
-    // mean usable. Under Vitest's jsdom `window === globalThis`, so Node's built-in
-    // web-storage globals share one namespace with jsdom's DOM globals: the surviving
-    // `Storage` interface is jsdom's, while the surviving `sessionStorage` instance is
-    // Node's native one, and the two do not belong to each other (`localStorage` is
-    // absent only because Node needs --localstorage-file for it). A "polyfill what is
-    // absent" guard would therefore leave `sessionStorage` as an object that no
-    // `vi.spyOn(Storage.prototype, …)` can ever reach. See ./memoryStorage.test.ts.
-    (['localStorage', 'sessionStorage'] as const).forEach((name) => {
-        Object.defineProperty(window, name, {
-            configurable: true,
-            writable: true,
-            // A real `Storage` instance, so `vi.spyOn(Storage.prototype, …)` intercepts.
-            value: Object.create(Storage.prototype) as Storage,
-        });
-    });
+    installMemoryStorage();
 
     // jsdom does not implement scrolling; CardDeck calls scrollTo on its deck element.
     if (!Element.prototype.scrollTo) {
@@ -140,6 +71,12 @@ afterEach(async () => {
         message.destroy();
         notification.destroy();
     });
+});
+
+// Prevent storage leaking from one test into the next: the in-memory areas live for
+// the whole file, so without this a key written by one test is still there for the next.
+afterEach(() => {
+    resetMemoryStorage();
 });
 
 // Prevent fake-timer leakage between test files when a test forgets to restore.
