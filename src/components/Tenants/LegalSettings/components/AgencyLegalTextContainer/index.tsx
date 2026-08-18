@@ -136,6 +136,48 @@ export const AgencyLegalTextContainer = ({
         [departmentQuery.data?.content],
     );
 
+    /**
+     * The consent sentence (ADR-021 decision 4) is a FIELD of the data-protection policy, never of
+     * the imprint (decision 7), so it follows exactly the same source as the body above it: the
+     * Fachbereich's own sentence when one is selected, the agency-wide one otherwise.
+     *
+     * Like the history above, this reached the Beratungsstelle level only through the
+     * per-department containers #555 replaced; the switcher inherited the card but not the wiring,
+     * so the live editor offered no consent field at all.
+     *
+     * `undefined` in both branches is load-bearing — it is how the card decides not to offer the
+     * consent editor, which is what must happen while a backend has no such field.
+     */
+    const departmentConsent = useMemo(
+        () =>
+            dppQuery.data && dppQuery.data.consentText !== undefined
+                ? parseLegalContentMap(dppQuery.data.consentText)
+                : undefined,
+        [dppQuery.data],
+    );
+    const agencyWideConsent = useMemo(() => {
+        const inherited = tenantData?.content?.privacyConsent;
+        const own = agencyData?.content?.privacyConsent;
+        if (inherited === undefined && own === undefined) {
+            return undefined;
+        }
+        return { ...(inherited ?? {}), ...(own ?? {}) };
+    }, [tenantData?.content?.privacyConsent, agencyData?.content?.privacyConsent]);
+    const consentByLanguage = useMemo(() => {
+        if (field !== 'privacy') {
+            return undefined;
+        }
+        return isDepartment ? departmentConsent : agencyWideConsent;
+    }, [field, isDepartment, departmentConsent, agencyWideConsent]);
+    // Under "Alle Fachbereiche" the sentence shown may still be the Träger's, so the card says so
+    // on the languages this Beratungsstelle has not overridden. A Fachbereich reads its own stored
+    // sentence, which carries no such distinction.
+    const ownConsentByLanguage = isDepartment ? undefined : agencyData?.content?.privacyConsent;
+    const consentInheritedFrom =
+        !isDepartment && tenantData?.content?.privacyConsent !== undefined
+            ? t('legal.consent.level.tenant')
+            : undefined;
+
     // The draft copy: a department with no own text yet starts from what it currently shows, which
     // is the inherited agency-wide text. "Alle Fachbereiche" always edits that same agency-wide text.
     //
@@ -152,13 +194,25 @@ export const AgencyLegalTextContainer = ({
         [tenantAdminData?.settings?.activeLanguages, contentByLanguage],
     );
 
-    const onSave = (content: Record<string, string>, publish: boolean) => {
+    const onSave = (content: Record<string, string>, publish: boolean, consent?: Record<string, string>) => {
         if (isDepartment) {
-            departmentPublish.mutate({ content, publish });
+            // Only the policy carries a consent sentence (decision 7), and the publish call omits
+            // the property entirely when the card had none to give — a backend that does not know
+            // `consentText` never receives it.
+            if (field === 'privacy') {
+                publishDpp.mutate({ content, publish, ...(consent ? { consentText: consent } : {}) });
+            } else {
+                publishImprint.mutate({ content, publish });
+            }
             return;
         }
         // The agency-wide text has no draft state of its own — it is stored on the agency record.
-        onSaveAgencyWide({ content: { [agencyContentKey]: content } });
+        // NOTE: unlike the department publishes above, this path cannot invalidate the agency
+        // version history — it goes through the shared agency-card mutation, which has no legal
+        // hook. The look-back catches up on its own `staleTime` (60s).
+        onSaveAgencyWide({
+            content: { [agencyContentKey]: content, ...(consent ? { privacyConsent: consent } : {}) },
+        });
     };
 
     const selectedDepartment = departments.find(({ id }) => id === topicId);
@@ -211,6 +265,9 @@ export const AgencyLegalTextContainer = ({
             documentType={field}
             departmentName={selectedDepartment?.name}
             initialContentByLanguage={contentByLanguage}
+            consentByLanguage={consentByLanguage}
+            consentInheritedFrom={consentInheritedFrom}
+            ownConsentByLanguage={ownConsentByLanguage}
             languages={languages}
             publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : undefined}
             versions={versions}
