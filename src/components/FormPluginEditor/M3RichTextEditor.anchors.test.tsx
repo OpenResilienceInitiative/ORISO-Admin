@@ -211,6 +211,80 @@ describe('M3RichTextEditor — anchor HTML round-trip (contract)', () => {
     });
 });
 
+describe('M3RichTextEditor — scroll spy tracks the real scroll viewport, not the editor content (owner report 2026-08-18, F4/H4)', () => {
+    /**
+     * jsdom performs no real layout, so the geometry this bug lives in has
+     * to be modeled explicitly. Live measurement on pre-dev (#830 follow-up)
+     * showed `editor.view.dom` and every heading inside it move TOGETHER as
+     * some ancestor is scrolled — the fluid public reader's host sheet, or
+     * (proven separately, see PR) even the fixed-height card's own
+     * `.editorContentScroll` — while that ancestor's own on-screen position
+     * never changes. Only the designated `scroller` gets a fixed rect here;
+     * every placed element gets `docTop - scrollTop`, exactly like a real
+     * browser scrolling one ancestor past its still content.
+     */
+    const rect = (top: number) =>
+        ({
+            top,
+            bottom: top,
+            left: 0,
+            right: 0,
+            width: 0,
+            height: 0,
+            x: 0,
+            y: top,
+            toJSON: () => undefined,
+        } as DOMRect);
+
+    it('activates the heading nearest the scroller top — not nearest editor.view.dom, which moves with its own headings', async () => {
+        const scroller = document.createElement('div');
+        scroller.style.overflowY = 'auto';
+        document.body.appendChild(scroller);
+        // jsdom never reports real scroll/client heights — force real overflow
+        // so `findScrollViewport` recognises this as the actual scroller.
+        Object.defineProperty(scroller, 'scrollHeight', { value: 2000, configurable: true });
+        Object.defineProperty(scroller, 'clientHeight', { value: 500, configurable: true });
+
+        let scrollTop = 0;
+        const offsets = new Map<Element, number>();
+        const rectSpy = vi
+            .spyOn(Element.prototype, 'getBoundingClientRect')
+            .mockImplementation(function mockedRect(this: Element) {
+                if (this === scroller) return rect(100);
+                if (offsets.has(this)) return rect(100 + (offsets.get(this) as number) - scrollTop);
+                return rect(100);
+            });
+
+        try {
+            const { container } = render(<M3RichTextEditor value={content} readOnly fluid />);
+            scroller.appendChild(container);
+            await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
+
+            const pm = container.querySelector('.ProseMirror') as HTMLElement;
+            const intro = container.querySelector('#intro') as HTMLElement;
+            const details = container.querySelector('#details') as HTMLElement;
+            offsets.set(pm, 0);
+            offsets.set(intro, 0);
+            offsets.set(details, 600);
+
+            // Scroll far enough that "details" (600px into the document) has
+            // reached the scroller's top, well past the 32px threshold.
+            scrollTop = 590;
+            fireEvent.scroll(scroller);
+
+            await waitFor(() =>
+                expect(
+                    container.querySelector('[data-anchor-chip="details"].RichEditor-anchorChip--active'),
+                ).toBeTruthy(),
+            );
+            expect(container.querySelector('[data-anchor-chip="intro"].RichEditor-anchorChip--active')).toBeFalsy();
+        } finally {
+            rectSpy.mockRestore();
+            scroller.remove();
+        }
+    });
+});
+
 describe('M3RichTextEditor — anchors inside the fullscreen dialog', () => {
     it('keeps the anchor row available when maximized into the modal', async () => {
         const { container } = render(<M3RichTextEditor value={content} />);

@@ -271,7 +271,12 @@ export const OrganisationDpaStep = ({
                             <DpaFormSection
                                 dpaHtml={dpaHtml}
                                 textLabel={t('tenantOnboarding.dpa.title')}
-                                textDescription={t('tenantOnboarding.dpa.description')}
+                                // Owner annotation 2026-08-18 (I2): the reader's own icon +
+                                // title + info line goes in this view — mirrors DpaBlocker,
+                                // which withholds the same block for the same reason
+                                // (H3, same block, the "reader modal" this card becomes
+                                // when maximized).
+                                hideTextHeader
                                 accepted={dpaAccepted}
                                 acceptTouched={acceptTouched}
                                 onAcceptedChange={(value) => {

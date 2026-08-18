@@ -102,4 +102,21 @@ describe('DpaLegalReader', () => {
 
         expect(await screen.findByText('Bitte lesen Sie den Vertrag.')).toBeInTheDocument();
     });
+
+    /**
+     * Owner report 2026-08-18, H3/I2: "Alles innerhalb blauer area muss weg"
+     * named the icon, the title AND the info line as one block. `hideHeader`
+     * already existed and dropped the icon/title, but the info line kept
+     * rendering regardless — the plumbing existed without covering the whole
+     * block it was documented to hide.
+     */
+    it('hides the intro too when hideHeader is set — the whole header block goes together', async () => {
+        render(<DpaLegalReader html={LEGAL_HTML} label="AVV" description="Bitte lesen Sie den Vertrag." hideHeader />);
+
+        await screen.findByTestId('dpa-text');
+        expect(screen.queryByText('Bitte lesen Sie den Vertrag.')).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'AVV' })).not.toBeInTheDocument();
+        // The accessible name of the reading region is unaffected.
+        expect(screen.getByRole('region', { name: 'AVV' })).toBeInTheDocument();
+    });
 });
