@@ -150,6 +150,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         ...counsellingRelationsInitialValues,
         postCodeRangesActive: !hasOnlyDefaultRangeDefined(postCodes || []),
         online: agencyData?.id ? !agencyData?.offline : false,
+        teamAgency: Boolean(agencyData?.teamAgency),
         // ADR-014: load every department, not just the first. Taking [0] here was the entry point
         // of the data loss — the form then sent that single topic back and the backend deleted the
         // other agency_topic rows together with their published legal texts.

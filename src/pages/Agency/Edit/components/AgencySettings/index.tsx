@@ -1,4 +1,4 @@
-import { Form } from 'antd';
+import { Alert, Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { useFeatureContext } from '../../../../../context/FeatureContext';
@@ -8,6 +8,7 @@ import { convertToOptions } from '../../../../../utils/convertToOptions';
 import { Option, MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { Card } from '../../../../../components/Card';
 import { MuiSliderField } from '../../../../../components/mui/MuiSliderField';
+import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
 import { useTenantTopics } from '../../../../../hooks/useTenantTopics';
 import styles from './styles.module.scss';
 import { CounsellingRelation } from '../../../../../enums/CounsellingRelation';
@@ -23,6 +24,9 @@ interface AgencySettingsProps {
 
 export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) => {
     const [t] = useTranslation();
+    const teamAgency = Form.useWatch('teamAgency');
+    const [persistedTeamAgency, setPersistedTeamAgency] = useState<boolean | null>(null);
+    const showTeamToSingleWarning = isEditMode && persistedTeamAgency === true && teamAgency === false;
 
     const genders = Form.useWatch<Option[]>(['demographics', 'genders']) || [];
     const counsellingRelations = Form.useWatch<Option[]>('counsellingRelations') || [];
@@ -38,6 +42,12 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
     );
 
     useEffect(() => {
+        if (persistedTeamAgency === null && typeof teamAgency === 'boolean') {
+            setPersistedTeamAgency(teamAgency);
+        }
+    }, [persistedTeamAgency, teamAgency]);
+
+    useEffect(() => {
         if (isSuperAdmin) {
             searchTenantData({ perPage: 1000 })
                 .then(({ data }) => setTenantsData(data))
@@ -49,6 +59,19 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
 
     const fields = (
         <>
+            <MuiSwitchField
+                name="teamAgency"
+                label={t('agency.form.settings.teamAdviceCenter.title')}
+                helpText={t('agency.form.settings.teamAdviceCenter.description')}
+            />
+            {showTeamToSingleWarning && (
+                <Alert
+                    className={styles.warning}
+                    type="warning"
+                    description={t('agency.form.settings.teamAdviceCenter.changeWarning')}
+                />
+            )}
+
             {isSuperAdmin && (
                 <MuiSelectField
                     label="agency.edit.general.more_settings.tenant.title"

@@ -622,6 +622,7 @@
     "agency.form.settings.headline": "Einstellungen zum Beratungsangebot",
     "agency.form.settings.teamAdviceCenter.title": "Teamberatung anbieten",
     "agency.form.settings.teamAdviceCenter.description": "Alle Berater:innen einer Beratungsstelle können alle Chats mit Ratsuchenden einsehen und sich daran beteiligen.",
+    "agency.form.settings.teamAdviceCenter.changeWarning": "Wenn Sie Teamberatung deaktivieren, werden bestehende Teamchats in 1:1-Beratungen umgewandelt. Andere Berater:innen dieser Beratungsstelle können diese Chats dann nicht mehr einsehen.",
     "agency.form.registrationSettings.title": "Sichtbarkeit in der Registrierung",
     "agency.form.registrationSettings.createConsultant.button": "Neue:n Berater:in anlegen",
     "agency.form.registrationSettings.createConsultant.title": "Neue:n Berater:in anlegen",
