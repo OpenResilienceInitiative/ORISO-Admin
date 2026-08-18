@@ -186,6 +186,13 @@ export const ReadOnlyWithAnchors: Story = {
         languages: [{ value: 'de', label: 'Deutsch' }],
         language: 'de',
     },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByRole('navigation')).toBeInTheDocument());
+
+        const chapterNav = canvas.getByRole('navigation');
+        expect(window.getComputedStyle(chapterNav).paddingTop).toBe('16px');
+    },
 };
 
 // Opt-out state: no anchor row, headings stay untouched.

@@ -867,6 +867,19 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:clock-arrow-down:base",
+        "family": "clock-arrow-down",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "clock-arrow-down.svg",
+        "sourcePath": "src/resources/img/svg/clock-arrow-down.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/EditorIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:copy:base",
         "family": "copy",
         "state": "base",
@@ -940,6 +953,19 @@
         "size": null,
         "fileName": "dpa.svg",
         "sourcePath": "src/resources/img/svg/dpa.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:dpia:base",
+        "family": "dpia",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "dpia.svg",
+        "sourcePath": "src/resources/img/svg/dpia.svg",
         "exportNames": [],
         "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
         "usage": "app-used"
@@ -1036,7 +1062,11 @@
         "fileName": "i.svg",
         "sourcePath": "src/resources/img/svg/i.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/Card/index.tsx", "src/components/TwoFactorSetup/TwoFactorAuthTypeButtons.tsx"],
+        "usageFiles": [
+            "src/components/Card/index.tsx",
+            "src/components/Tenants/AppSettings/PermissionsSettings/PermissionsSettingsView.tsx",
+            "src/components/TwoFactorSetup/TwoFactorAuthTypeButtons.tsx"
+        ],
         "usage": "app-used"
     },
     {

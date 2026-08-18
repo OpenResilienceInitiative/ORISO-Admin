@@ -16,6 +16,7 @@ import { NameAndSlogan } from './components/NameAndSlogan';
 import { ThemeBuilder } from './components/ThemeBuilder';
 import { TypeOfLanguage } from './components/TypeOfLanguage';
 import { AppConfigInterface } from '../../../types/AppConfigInterface';
+import { resolveTenantId } from '../../../utils/resolveTenantId';
 import styles from './styles.module.scss';
 
 /**
@@ -52,7 +53,7 @@ const setStoredAppearanceAllowed = (value: boolean) => {
 export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsProps) => {
     const { t } = useTranslation();
     const { data } = useTenantData();
-    const finalTenantId = tenantId || `${data?.id || ''}`;
+    const finalTenantId = resolveTenantId(tenantId, data?.id);
     const { can } = useUserPermissions();
     const { isSuperAdmin } = useUserRoles();
     const showAppearance = section === 'all' || section === 'appearance';
