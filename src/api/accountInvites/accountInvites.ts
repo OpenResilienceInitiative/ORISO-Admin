@@ -219,6 +219,31 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
     return response.json();
 };
 
+/**
+ * First delivery of a never-sent invite (`POST .../{id}/send`).
+ *
+ * Deliberately NOT `resendAccountInvite`: `/resend` supersedes the invite it is
+ * given — the old row becomes `SUPERSEDED` ("Ersetzt") and a replacement id is
+ * created. That is correct for an invite whose mail already went out and wrong
+ * for a `DRAFT`, which has never been mailed at all. Callers dispatch by status.
+ */
+export const sendAccountInvite = async (
+    inviteId: number,
+    body: SendAccountInviteRequest,
+): Promise<AccountInviteDTO> => {
+    const response = await fetchData({
+        url: `${accountInvitesEndpoint}/${inviteId}/send`,
+        method: FETCH_METHODS.POST,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        bodyData: JSON.stringify({
+            acceptBaseUrl: body.acceptBaseUrl,
+            templateId: body.templateId,
+        }),
+    });
+    return response.json();
+};
+
 export const resendAccountInvite = async (
     inviteId: number,
     body: SendAccountInviteRequest,

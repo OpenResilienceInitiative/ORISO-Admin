@@ -13,6 +13,7 @@ import {
     listInviteEmailTemplates,
     resendAccountInvite,
     revokeAccountInvite,
+    sendAccountInvite,
 } from '../../api/accountInvites/accountInvites';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
@@ -438,11 +439,18 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     }, [loadInvites, selectedInvites, t]);
 
     // Bulk send (#316): the composer's send button acts on the selection — one
-    // resend per selected DRAFT/EMAIL_SENT row with the current template. Failed
-    // rows stay selected (their checkbox marks them for a retry); a full success
-    // clears the selection.
+    // request per selected DRAFT/EMAIL_SENT row with the current template.
+    // The VERB depends on the row's status, and getting it wrong destroys data:
+    // `/resend` supersedes the invite it is handed, so sending a never-mailed
+    // DRAFT through it left a dead "Ersetzt" row behind and minted a new invite
+    // id. A DRAFT's first delivery is `/send`; only an EMAIL_SENT row is resent.
+    // Failed rows stay selected (their checkbox marks them for a retry); a full
+    // success clears the selection.
     const onBulkSend = useCallback(async () => {
-        const templateId = selectedTemplateId ?? activeTemplates[0]?.id;
+        // No hidden fallback to activeTemplates[0] here: the composer is the ONE
+        // gate for bulk send and requires an explicitly chosen template (#713),
+        // so a silent second rule would send with a template nobody picked.
+        const templateId = selectedTemplateId;
         if (!templateId) {
             message.error(t('links.accountInvites.templateRequired', 'Select a template first.'));
             return;
@@ -453,12 +461,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         const failed: AccountInviteDTO[] = [];
         for (let i = 0; i < targets.length; i += 1) {
             try {
+                const deliver = targets[i].inviteStatus === 'DRAFT' ? sendAccountInvite : resendAccountInvite;
                 // eslint-disable-next-line no-await-in-loop -- sequential on purpose: per-row attribution, no mail burst
-                const resent = await resendAccountInvite(targets[i].id, {
+                const delivered = await deliver(targets[i].id, {
                     acceptBaseUrl: acceptBaseUrlForRole(targets[i].targetRole),
                     templateId,
                 });
-                rememberGeneratedLink(resent);
+                rememberGeneratedLink(delivered);
             } catch {
                 failed.push(targets[i]);
             }
@@ -480,7 +489,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             setSelectedIds(failed.map((invite) => invite.id));
         }
         await loadInvites();
-    }, [activeTemplates, loadInvites, rememberGeneratedLink, selectedInvites, selectedTemplateId, t]);
+    }, [loadInvites, rememberGeneratedLink, selectedInvites, selectedTemplateId, t]);
 
     // Empty-state CTA: the composer IS the invite entry point and sits right
     // above the board — bring it into view and focus its first field.
