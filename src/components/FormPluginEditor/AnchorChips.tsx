@@ -105,7 +105,17 @@ const AnchorChips = ({
                     <ArrowBack />
                 </button>
             )}
-            <div className="RichEditor-anchorNavRow" ref={rowRef}>
+            {/* Scroll-state classes drive an edge fade (owner request 2026-08-18,
+                before-state H4/I3): without it the row hard-clips mid-chip and a
+                chip cut down to a single letter reads as a rendering bug, not as
+                "there is more". The fade only sits on a side that can actually
+                scroll further — like the arrows. */}
+            <div
+                className={`RichEditor-anchorNavRow${
+                    nav.overflow && !nav.atStart ? ' RichEditor-anchorNavRow--fadeStart' : ''
+                }${nav.overflow && !nav.atEnd ? ' RichEditor-anchorNavRow--fadeEnd' : ''}`}
+                ref={rowRef}
+            >
                 {anchors.map((anchor) => {
                     const active = anchor.id === activeId;
                     return (
