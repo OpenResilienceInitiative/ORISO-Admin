@@ -23,9 +23,14 @@
     outline-offset: 2px;
 }
 
+/* Disabled is per-variant, NOT a blanket opacity on the control.
+   Fading the whole button keeps the brand colour and merely dilutes it — a
+   disabled `filled` then reads as a pale pink pill. M3 wants the opposite: the
+   container goes neutral (`on-surface` 12%) and only the label carries the 38%
+   emphasis drop. See `m3Button.styles.test.ts` for why this is pinned. */
+
 .button:disabled {
     cursor: not-allowed;
-    opacity: 0.38;
 }
 
 .block {
@@ -57,6 +62,10 @@
     background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, transparent);
 }
 
+.text:disabled {
+    color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 38%, transparent);
+}
+
 /* outlined — "+ additional postal code", "Link OTP App". */
 .outlined {
     border: 1px solid var(--m3-outline-variant, #c4c7c8);
@@ -65,6 +74,11 @@
 
 .outlined:not(:disabled):hover {
     background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+}
+
+.outlined:disabled {
+    border-color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 12%, transparent);
+    color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 38%, transparent);
 }
 
 /* filled — primary call to action ("Upload", "Send invitation"). */
@@ -77,6 +91,11 @@
     background: color-mix(in srgb, var(--m3-primary, #a5000a) 90%, #000000);
 }
 
+.filled:disabled {
+    background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 12%, transparent);
+    color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 38%, transparent);
+}
+
 /* tonal — secondary emphasis. */
 .tonal {
     background: var(--m3-secondary-container, #646d78);
@@ -85,4 +104,9 @@
 
 .tonal:not(:disabled):hover {
     background: color-mix(in srgb, var(--m3-secondary-container, #646d78) 90%, #000000);
+}
+
+.tonal:disabled {
+    background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 12%, transparent);
+    color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 38%, transparent);
 }
