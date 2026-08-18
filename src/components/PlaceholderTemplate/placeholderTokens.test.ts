@@ -3,6 +3,7 @@ import {
     fillPlaceholders,
     insertPlaceholder,
     INVITE_EMAIL_TOKENS,
+    inviteEmailTokensForKind,
     LEGAL_CONSENT_TOKENS,
     listPlaceholders,
     sampleValues,
@@ -81,6 +82,24 @@ describe('token presets', () => {
     it('legal consent tokens cover the registration consent sentence', () => {
         expect(LEGAL_CONSENT_TOKENS.map((token) => token.key)).toEqual(['Beratungsstelle', 'Thema', 'legal_links']);
     });
+
+    /*
+     * #746: every InviteEmailTemplateKind carries the exact key set the
+     * UserService `AccountInviteService.render` substitutes — one shared map
+     * today, and the per-kind seam Admin#723 (DPA forward) extends later.
+     */
+    it.each(['TENANT_INVITE', 'COUNSELLOR_INVITE', 'DPA_FORWARD'] as const)(
+        'tokens for %s match the AccountInviteService placeholder set',
+        (kind) => {
+            expect(inviteEmailTokensForKind(kind).map((token) => token.key)).toEqual([
+                'inviteLink',
+                'email',
+                'firstName',
+                'lastName',
+                'tenantId',
+            ]);
+        },
+    );
 
     it('sampleValues builds a key->sample map every token can be previewed with', () => {
         const samples = sampleValues(INVITE_EMAIL_TOKENS);
