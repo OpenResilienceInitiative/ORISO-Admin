@@ -54,3 +54,23 @@ describe('SplitButton style contract (#741, Figma 57994-15744)', () => {
         expect(source).toMatch(/\.segment::?before/);
     });
 });
+
+/*
+ * D3 — „Elevated state color — both are not the same" / „use this color also
+ * here from the menu in the button". Measured in Storybook at 1440px before the
+ * fix: the open button's segment was rgba(0, 0, 0, 0) while its menu sheet was
+ * rgb(246, 243, 243). One surface, two colours.
+ */
+describe('SplitButton open-state colour (D3)', () => {
+    it('fills the open outlined button with the menu sheet colour', () => {
+        const openOutlined = source.match(/\.outlined\.open \.segment\s*{([^}]*)}/s)?.[1] ?? '';
+        expect(openOutlined).toMatch(/background:\s*var\(--m3-surface-container-low/);
+    });
+
+    it('takes that colour from the same token the sheet uses', () => {
+        // If these ever drift apart the button and the sheet stop reading as one
+        // surface, which is exactly the finding.
+        const sheet = source.match(/\.menuOverlay\s*{[\s\S]*?ant-dropdown-menu\)\s*{([^}]*)}/)?.[1] ?? '';
+        expect(sheet).toMatch(/background:\s*var\(--m3-surface-container-low/);
+    });
+});
