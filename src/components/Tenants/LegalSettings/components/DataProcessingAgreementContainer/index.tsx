@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, Button, Input, Space, Spin } from 'antd';
+import { Alert, Button, Space, Spin } from 'antd';
 import Check from '@mui/icons-material/Check';
 import { useTranslation } from 'react-i18next';
 import { useDpaVersions } from '../../../../../hooks/useDpaVersions.hook';
@@ -12,11 +12,12 @@ import { DataProcessingAgreementCard, LegalVersion } from '../DataProcessingAgre
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
 import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../../../hooks/useDpaGate.hook';
-import { useCreateDpaInvite } from '../../../../../hooks/useCreateDpaInvite.hook';
-import { resolveDpaSignLink } from '../../../../../api/tenant/createDpaSignInvite';
+import { createDpaSignInvite, resolveDpaSignLink } from '../../../../../api/tenant/createDpaSignInvite';
+import { sendDpaInviteEmail } from '../../../../../api/tenant/sendDpaInviteEmail';
 import { useDpaSignatures } from '../../../../../hooks/useDpaSignatures.hook';
 import { useLegalDraft } from '../../hooks/useLegalDraft';
-import { useSendDpaInviteEmail } from '../../../../../hooks/useSendDpaInviteEmail.hook';
+import { DpaForwardDialog } from '../../../../DpaForwardDialog/DpaForwardDialog';
+import { DpaForwardLink, DpaForwardOutcome } from '../../../../../api/tenantOnboarding/dpaForward';
 
 interface DataProcessingAgreementContainerProps {
     tenantId: string | number;
@@ -52,16 +53,14 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
         isError: dpaGateError,
         refetch: refetchDpaGate,
     } = useDpaGate(id, isTenantScopedAdmin && Number.isFinite(id) && id > 0);
-    const { mutate: createSignInvite, isPending: isCreatingSignInvite } = useCreateDpaInvite(id);
-    const { mutate: sendSignInviteEmail, isPending: isSendingSignInviteEmail } = useSendDpaInviteEmail();
     const { data: dpaSignatures = [], isError: dpaSignaturesError } = useDpaSignatures(
         id,
         isTenantScopedAdmin && dpaGate?.dpaSigned === true,
     );
     const [signLink, setSignLink] = useState<string>();
     const [signInvite, setSignInvite] = useState<DpaSignInvite>();
-    const [recipientEmail, setRecipientEmail] = useState('');
-    const [inviteEmailStatus, setInviteEmailStatus] = useState<'idle' | 'invalid' | 'sent' | 'failed'>('idle');
+    const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
+    const [inviteEmailSentTo, setInviteEmailSentTo] = useState<string | null>(null);
     const effectiveReadOnly = !!readOnly || isTenantScopedAdmin;
     // Persist a dismissal only once the opaque user id is known. Usernames and
     // email addresses must not become storage keys, and late identity loading
@@ -118,38 +117,41 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
             : date.toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' });
     }, [lang, latestSignedDpa?.signedAt]);
 
-    const sendInvite = (invite: DpaSignInvite) => {
+    /**
+     * Shared forward dialog seam (#723). A created invite is reused for the
+     * lifetime of this view — every issued link stays valid until a signature
+     * lands, so repeated opens need not mint fresh tokens here.
+     */
+    const ensureSignLink = async (): Promise<DpaForwardLink> => {
+        if (signInvite && signLink) {
+            return { signUrl: signLink, expiresAt: signInvite.expiresAt };
+        }
+        const invite = await createDpaSignInvite(id);
         const resolvedSignLink = resolveDpaSignLink(invite.signLink);
         setSignInvite(invite);
         setSignLink(resolvedSignLink);
-        sendSignInviteEmail(
-            {
-                tenantId: id,
-                recipientEmail: recipientEmail.trim(),
-                signLink: resolvedSignLink,
-                expiresAt: invite.expiresAt,
-            },
-            {
-                onSuccess: () => setInviteEmailStatus('sent'),
-                onError: () => setInviteEmailStatus('failed'),
-            },
-        );
+        return { signUrl: resolvedSignLink, expiresAt: invite.expiresAt };
     };
 
-    const handleSendInvite = () => {
-        if (!/^\S+@\S+\.\S+$/.test(recipientEmail.trim())) {
-            setInviteEmailStatus('invalid');
-            return;
+    const forward = async ({ recipientEmail }: { recipientEmail?: string }): Promise<DpaForwardOutcome> => {
+        const link = await ensureSignLink();
+        if (!recipientEmail) {
+            return { link, mailFailed: false };
         }
-        setInviteEmailStatus('idle');
-        if (signInvite) {
-            sendInvite(signInvite);
-            return;
+        try {
+            // The authenticated delivery endpoint (UserService #530) carries no
+            // recipient name — the salutation falls back to the template default.
+            await sendDpaInviteEmail({
+                tenantId: id,
+                recipientEmail,
+                signLink: link.signUrl,
+                expiresAt: link.expiresAt ?? '',
+            });
+            return { link, mailFailed: false };
+        } catch {
+            // Same shape as the public 502: the link exists, the mail did not go.
+            return { link, mailFailed: true };
         }
-        createSignInvite(undefined, {
-            onSuccess: sendInvite,
-            onError: () => setInviteEmailStatus('failed'),
-        });
     };
 
     // The versions ARE the content: rendering the card before they land shows an empty
@@ -232,51 +234,45 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 />
             )}
             {isTenantScopedAdmin && dpaGate?.dpaPublished && !dpaGate.dpaSigned && (
-                <Alert
-                    type="warning"
-                    showIcon
-                    message={t('legal.dpa.sign.required')}
-                    description={
-                        <Space direction="vertical" size="middle" style={{ width: '100%', maxWidth: 520 }}>
-                            <span>{t('legal.dpa.sign.description')}</span>
-                            <Input
-                                type="email"
-                                aria-label={t('legal.dpa.sign.recipientEmail')}
-                                placeholder={t('legal.dpa.sign.recipientEmail')}
-                                value={recipientEmail}
-                                status={inviteEmailStatus === 'invalid' ? 'error' : undefined}
-                                onChange={(event) => {
-                                    setRecipientEmail(event.target.value);
-                                    setInviteEmailStatus('idle');
-                                }}
-                            />
-                            {inviteEmailStatus === 'invalid' && (
-                                <Alert type="error" showIcon message={t('legal.dpa.sign.invalidEmail')} />
-                            )}
-                            {inviteEmailStatus === 'failed' && (
-                                <Alert type="error" showIcon message={t('legal.dpa.sign.sendFailed')} />
-                            )}
-                            {inviteEmailStatus === 'sent' && (
-                                <Alert type="success" showIcon message={t('legal.dpa.sign.sent')} />
-                            )}
-                            <Space wrap>
-                                <Button
-                                    type="primary"
-                                    loading={isCreatingSignInvite || isSendingSignInviteEmail}
-                                    onClick={handleSendInvite}
-                                >
-                                    {t('legal.dpa.sign.sendLink')}
-                                </Button>
-                                {signLink && (
-                                    <Button onClick={() => window.location.assign(signLink)}>
-                                        {t('legal.dpa.sign.openLink')}
-                                    </Button>
+                <>
+                    <Alert
+                        type="warning"
+                        showIcon
+                        message={t('legal.dpa.sign.required')}
+                        description={
+                            <Space direction="vertical" size="middle" style={{ width: '100%', maxWidth: 520 }}>
+                                <span>{t('legal.dpa.sign.description')}</span>
+                                {inviteEmailSentTo && (
+                                    <Alert type="success" showIcon message={t('legal.dpa.sign.sent')} />
                                 )}
+                                <Space wrap>
+                                    {/* Opens the SHARED forward dialog (#723): copyable
+                                        link plus optional e-mail send with the actual
+                                        DPA_FORWARD mail preview. */}
+                                    <Button type="primary" onClick={() => setForwardDialogOpen(true)}>
+                                        {t('legal.dpa.sign.sendLink')}
+                                    </Button>
+                                    {signLink && (
+                                        <Button onClick={() => window.location.assign(signLink)}>
+                                            {t('legal.dpa.sign.openLink')}
+                                        </Button>
+                                    )}
+                                </Space>
                             </Space>
-                        </Space>
-                    }
-                    action={null}
-                />
+                        }
+                        action={null}
+                    />
+                    {forwardDialogOpen && (
+                        <DpaForwardDialog
+                            forward={forward}
+                            onClose={() => setForwardDialogOpen(false)}
+                            onForwarded={({ recipientEmail }) => {
+                                setForwardDialogOpen(false);
+                                setInviteEmailSentTo(recipientEmail);
+                            }}
+                        />
+                    )}
+                </>
             )}
             {isTenantScopedAdmin && dpaGate?.dpaSigned && dpaSignaturesError && (
                 <Alert type="error" showIcon message={t('legal.dpa.sign.detailsLoadError')} />

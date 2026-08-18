@@ -189,3 +189,83 @@ describe('deriveDpaGateDecision', () => {
         ).toEqual({ kind: 'blocked', reason: 'STATUS_UNAVAILABLE', signable: false });
     });
 });
+
+describe('deriveDpaGateDecision — forwarded-pending (#724)', () => {
+    it.each(['UNSIGNED', 'OUTDATED'] as const)(
+        'softens the %s block into forwarded-pending when the status reports forwardPending',
+        (status) => {
+            expect(
+                deriveDpaGateDecision({
+                    subjectKind: 'subject',
+                    status,
+                    isLoading: false,
+                    isError: false,
+                    forwardPending: true,
+                }),
+            ).toEqual({ kind: 'forwarded-pending', reason: status });
+        },
+    );
+
+    it('keeps the hard blocker when no forward is pending (#572 unchanged)', () => {
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'subject',
+                status: 'UNSIGNED',
+                isLoading: false,
+                isError: false,
+                forwardPending: false,
+            }),
+        ).toEqual({ kind: 'blocked', reason: 'UNSIGNED', signable: true });
+    });
+
+    it('keeps the hard blocker when the flag is absent (older backend, no PENDING_FORWARDED enum)', () => {
+        expect(
+            deriveDpaGateDecision({ subjectKind: 'subject', status: 'UNSIGNED', isLoading: false, isError: false }),
+        ).toEqual({ kind: 'blocked', reason: 'UNSIGNED', signable: true });
+    });
+
+    it('never softens the non-signable states, flag or not', () => {
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'subject',
+                status: 'MISSING',
+                isLoading: false,
+                isError: false,
+                forwardPending: true,
+            }),
+        ).toEqual({ kind: 'blocked', reason: 'MISSING', signable: false });
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'subject',
+                status: 'INCONSISTENT',
+                isLoading: false,
+                isError: false,
+                forwardPending: true,
+            }),
+        ).toEqual({ kind: 'blocked', reason: 'INCONSISTENT', signable: false });
+    });
+
+    it('never softens a valid signature', () => {
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'subject',
+                status: 'VALID',
+                isLoading: false,
+                isError: false,
+                forwardPending: true,
+            }),
+        ).toEqual({ kind: 'inactive' });
+    });
+
+    it('still fails closed on an errored status even with the flag set', () => {
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'subject',
+                status: undefined,
+                isLoading: false,
+                isError: true,
+                forwardPending: true,
+            }),
+        ).toEqual({ kind: 'blocked', reason: 'STATUS_UNAVAILABLE', signable: false });
+    });
+});
