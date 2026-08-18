@@ -92,6 +92,7 @@ vi.mock('../DataProcessingAgreementCard', () => ({
         draftSavedAt,
         draftStale,
         onDiscardDraft,
+        readOnlyFooter,
     }: any) => {
         const [draft, setDraft] = React.useState('');
         return (
@@ -108,6 +109,7 @@ vi.mock('../DataProcessingAgreementCard', () => ({
                 data-draft-stale={draftStale ? 'true' : 'false'}
                 data-has-draft-action={onSaveDraft ? 'true' : 'false'}
             >
+                <div data-testid="card-readonly-footer">{readOnlyFooter}</div>
                 <span data-testid="draft">{draft}</span>
                 <button type="button" onClick={() => setDraft('unsaved draft')}>
                     edit draft
@@ -336,11 +338,13 @@ describe('DataProcessingAgreementContainer', () => {
 
         render(<DataProcessingAgreementContainer tenantId={84} />);
 
-        expect(screen.getByText('Erika E2E Mustermann')).toBeInTheDocument();
-        expect(screen.getByText('Geschäftsführung')).toBeInTheDocument();
-        expect(screen.getByText('erika.e2e.mustermann@oriso.org')).toBeInTheDocument();
-        expect(screen.getByText('E2E Full Gate 202607191747')).toBeInTheDocument();
-        expect(screen.getByText(/19\.07\.2026/)).toBeInTheDocument();
+        const footer = screen.getByTestId('card-readonly-footer');
+        expect(footer).toHaveTextContent('legal.dpa.sign.confirmedAt');
+        expect(footer).toHaveTextContent('Erika E2E Mustermann');
+        expect(footer).toHaveTextContent(/19\.07\.2026/);
+        expect(screen.queryByText('Geschäftsführung')).not.toBeInTheDocument();
+        expect(screen.queryByText('erika.e2e.mustermann@oriso.org')).not.toBeInTheDocument();
+        expect(screen.queryByText('E2E Full Gate 202607191747')).not.toBeInTheDocument();
     });
 });
 

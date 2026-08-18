@@ -14,6 +14,11 @@ export interface PlaceholderTemplateFieldConfig<V extends Record<string, string>
     label: string;
     multiline?: boolean;
     rows?: number;
+    /**
+     * Whether this field carries a token picker. Defaults to `true`. A subject
+     * line is one short string — a picker hanging off it is noise (D1).
+     */
+    tokenPicker?: boolean;
 }
 
 export interface PlaceholderTemplateEditorProps<V extends Record<string, string>> {
@@ -29,6 +34,12 @@ export interface PlaceholderTemplateEditorProps<V extends Record<string, string>
     activeTemplateId?: number | string;
     onSelectTemplate: (id: number | string) => void;
     onCreateFromTemplate?: (id: number | string) => void;
+    /**
+     * Main-segment press of the template split button (e.g. open the template
+     * manager). Without it the segment is a pure label (and leaves the tab
+     * order, see TemplateSplitButton).
+     */
+    onManageTemplates?: () => void;
     /** Live preview column, computed by the variant from the current values. */
     preview: ReactNode;
     /**
@@ -56,6 +67,7 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
     activeTemplateId,
     onSelectTemplate,
     onCreateFromTemplate,
+    onManageTemplates,
     preview,
     readOnly = false,
 }: PlaceholderTemplateEditorProps<V>) => (
@@ -67,6 +79,7 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
                 disabled={readOnly}
                 templates={templates}
                 onCreateFromTemplate={onCreateFromTemplate}
+                onMainClick={onManageTemplates}
                 onSelectTemplate={onSelectTemplate}
             />
         </header>
@@ -79,7 +92,7 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
                         label={field.label}
                         multiline={field.multiline}
                         rows={field.rows}
-                        tokens={tokens}
+                        tokens={field.tokenPicker === false ? undefined : tokens}
                         value={values[field.name] ?? ''}
                         onChange={(next) => onChange({ ...values, [field.name]: next })}
                     />

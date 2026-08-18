@@ -114,10 +114,65 @@ describe('M3RichTextEditor — anchor navigation (read-only)', () => {
         );
     });
 
-    it('does not invent anchors for headings without ids (content stays untouched)', async () => {
-        const { container } = render(<M3RichTextEditor value="<h2>Ohne Anker</h2><p>Text</p>" readOnly />);
-        await waitFor(() => expect(container.querySelector('[data-testid="m3-editor"] h2')).toBeTruthy());
-        expect(container.querySelector(chipSelector)).toBeNull();
+    it('adds display-only anchors to legacy headings without emitting a content change', async () => {
+        const onChange = vi.fn();
+        const { container } = render(
+            <M3RichTextEditor value="<h2>Ohne Anker</h2><p>Text</p>" readOnly onChange={onChange} />,
+        );
+
+        await waitFor(() => expect(container.querySelector('[data-anchor-chip="ohne-anker"]')).toBeTruthy());
+        expect(container.querySelector('#ohne-anker')).toBeTruthy();
+        expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('writes the picked chapter into the URL hash (owner report 2026-08-18, F4/H4)', async () => {
+        // „die anchor tags werden nicht gesetzt": picking a chapter must be
+        // visible in the URL — it is the only feedback left when a short
+        // document has no scroll distance, and it makes the chapter shareable.
+        window.history.replaceState(null, '', '/read');
+        const { container } = render(<M3RichTextEditor value={content} readOnly />);
+        await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
+
+        fireEvent.click(container.querySelector('[data-anchor-chip="details"] .RichEditor-anchorChipLabel')!);
+
+        expect(window.location.hash).toBe('#details');
+        window.history.replaceState(null, '', '/');
+    });
+
+    it('never rewrites the URL while the author is editing', async () => {
+        window.history.replaceState(null, '', '/edit');
+        const { container } = render(<M3RichTextEditor value={content} />);
+        await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
+
+        fireEvent.click(container.querySelector('[data-anchor-chip="details"] .RichEditor-anchorChipLabel')!);
+
+        expect(window.location.hash).toBe('');
+        window.history.replaceState(null, '', '/');
+    });
+
+    it('arriving with a #hash jumps to that chapter and marks its chip (shared link)', async () => {
+        // The other half of the shareable URL: what the chip click writes must
+        // work when pasted into a fresh tab.
+        scrollIntoViewMock.mockClear();
+        window.history.replaceState(null, '', '/read#details');
+        const { container } = render(<M3RichTextEditor value={content} readOnly />);
+
+        await waitFor(() => expect(scrollIntoViewMock).toHaveBeenCalled());
+        await waitFor(() =>
+            expect(container.querySelector('[data-anchor-chip="details"].RichEditor-anchorChip--active')).toBeTruthy(),
+        );
+        window.history.replaceState(null, '', '/');
+    });
+
+    it('ignores a hash that matches no chapter (stale or foreign link): no throw, no jump', async () => {
+        scrollIntoViewMock.mockClear();
+        window.history.replaceState(null, '', '/read#does-not-exist');
+        const { container } = render(<M3RichTextEditor value={content} readOnly />);
+
+        await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
+        expect(scrollIntoViewMock).not.toHaveBeenCalled();
+        expect(container.querySelector('.RichEditor-anchorChip--active')).toBeFalsy();
+        window.history.replaceState(null, '', '/');
     });
 
     it('intercepts in-text #anchor links: scrolls instead of navigating', async () => {

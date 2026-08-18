@@ -109,11 +109,13 @@ const MuiControl = ({
                   ...(startAdornment ? { startAdornment } : {}),
               }
             : undefined;
+    const shrinkLabel = type === 'date';
     const slotProps =
-        inputSlotProps || inputProps
+        inputSlotProps || inputProps || shrinkLabel
             ? {
                   ...(inputSlotProps ? { input: inputSlotProps } : {}),
                   ...(inputProps ? { htmlInput: inputProps } : {}),
+                  ...(shrinkLabel ? { inputLabel: { shrink: true } } : {}),
               }
             : undefined;
 
@@ -213,6 +215,7 @@ const MuiControl = ({
                     borderColor: 'var(--input-border-color)',
                 },
                 '& .MuiOutlinedInput-notchedOutline legend': {
+                    width: 'auto',
                     marginBottom: 0,
                     borderBottom: 'none',
                     fontSize: '0.75em',

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, Button, Space, Spin } from 'antd';
+import Check from '@mui/icons-material/Check';
 import { useTranslation } from 'react-i18next';
 import { useDpaVersions } from '../../../../../hooks/useDpaVersions.hook';
 import { usePublishDpa } from '../../../../../hooks/usePublishDpa.hook';
@@ -208,6 +209,17 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 draftSavedAt={savedAt}
                 draftStale={isStale}
                 onDiscardDraft={effectiveReadOnly || !dismissalScope ? undefined : discardDraft}
+                readOnlyFooter={
+                    effectiveReadOnly && latestSignedDpa && signedAtLabel ? (
+                        <>
+                            <Check aria-hidden />
+                            <span>
+                                {t('legal.dpa.sign.confirmedAt')}: {signedAtLabel}, {t('legal.dpa.sign.by')}{' '}
+                                {latestSignedDpa.signerName}
+                            </span>
+                        </>
+                    ) : undefined
+                }
             />
             {isTenantScopedAdmin && dpaGateError && (
                 <Alert
@@ -261,31 +273,6 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                         />
                     )}
                 </>
-            )}
-            {/* The "agreement signed" confirmation itself now lives in the editor's own
-                success snackbar (Figma 1261-51137). What stays here is the audit detail —
-                who signed and when — which only makes sense once a signature exists. */}
-            {isTenantScopedAdmin && dpaGate?.dpaSigned && latestSignedDpa && (
-                <Alert
-                    type="success"
-                    showIcon
-                    message={t('legal.dpa.sign.signedBy')}
-                    description={
-                        latestSignedDpa && (
-                            <div>
-                                <strong>{latestSignedDpa.signerName}</strong>
-                                {latestSignedDpa.signerPosition && <div>{latestSignedDpa.signerPosition}</div>}
-                                {latestSignedDpa.signerEmail && <div>{latestSignedDpa.signerEmail}</div>}
-                                {latestSignedDpa.signerOrganisation && <div>{latestSignedDpa.signerOrganisation}</div>}
-                                {signedAtLabel && (
-                                    <div>
-                                        {t('legal.dpa.sign.confirmedAt')}: {signedAtLabel}
-                                    </div>
-                                )}
-                            </div>
-                        )
-                    }
-                />
             )}
             {isTenantScopedAdmin && dpaGate?.dpaSigned && dpaSignaturesError && (
                 <Alert type="error" showIcon message={t('legal.dpa.sign.detailsLoadError')} />

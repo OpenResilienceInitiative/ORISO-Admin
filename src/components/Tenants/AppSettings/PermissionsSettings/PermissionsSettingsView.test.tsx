@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { SVGProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 
@@ -26,6 +27,9 @@ vi.mock('../../../../resources/img/svg/permissions/one_on_one.svg', () => ({ Rea
 vi.mock('../../../../resources/img/svg/permissions/live_chat.svg', () => ({ ReactComponent: () => null }));
 vi.mock('../../../../resources/img/svg/permissions/group.svg', () => ({ ReactComponent: () => null }));
 vi.mock('../../../../resources/img/svg/permissions/group_internal.svg', () => ({ ReactComponent: () => null }));
+vi.mock('../../../../resources/img/svg/i.svg', () => ({
+    ReactComponent: (props: SVGProps<SVGSVGElement>) => <svg data-testid="permission-description-info" {...props} />,
+}));
 
 const MASTER = ['settings', 'featureCallsEnabled'];
 const VIDEO = ['settings', 'featureVideoCallsOneOnOneChatsEnabled'];
@@ -53,6 +57,21 @@ const renderOneOnOne = (initialSettings: Record<string, boolean>, onToggleUpdate
 };
 
 describe('PermissionsSettingsView data parity (1-on-1 card)', () => {
+    it('orders the title, leading description info, and activated control for quick scanning', () => {
+        renderOneOnOne({ featureCallsEnabled: true });
+
+        const title = screen.getByRole('heading', { name: 'tenants.permissions.card.oneOnOne.title' });
+        const description = screen.getByText('tenants.permissions.card.oneOnOne.description').closest('p');
+        const descriptionInfo = screen.getByTestId('permission-description-info');
+        const activated = screen.getByRole('switch', { name: 'tenants.permissions.card.activated' });
+
+        expect(description).not.toBeNull();
+        expect(description?.firstElementChild).toBe(descriptionInfo);
+        expect(descriptionInfo).toHaveAttribute('aria-hidden', 'true');
+        expect(title.compareDocumentPosition(description as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        expect((description as Node).compareDocumentPosition(activated)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
     it('reads: master + child toggles reflect initialValues', () => {
         renderOneOnOne({ featureCallsEnabled: true, featureVideoCallsOneOnOneChatsEnabled: false });
 

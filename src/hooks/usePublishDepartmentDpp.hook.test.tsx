@@ -28,7 +28,7 @@ const setup = () => {
     return { result, invalidate };
 };
 
-const versionsKey = legalTextVersionsKey({ level: 'department', agencyId: AGENCY, topicId: TOPIC, kind: 'dpp' });
+const versionsKey = legalTextVersionsKey({ level: 'department', agencyId: AGENCY, topicId: TOPIC, kind: 'DPP' });
 
 beforeEach(() => publishDepartmentDpp.mockClear());
 

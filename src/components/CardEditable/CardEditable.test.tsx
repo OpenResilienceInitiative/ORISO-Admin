@@ -80,4 +80,35 @@ describe('CardEditable', () => {
         await user.click(screen.getByRole('button', { name: 'card.edit.cancel' }));
         expect(await screen.findByText('overlay.unsaved.title')).toBeInTheDocument();
     });
+
+    it('ignores a failure that arrives after a newer save was sent', async () => {
+        const user = userEvent.setup();
+        const deferredErrors: (() => void)[] = [];
+        const onSave = vi.fn((_formData, options) => {
+            if (options?.onError) {
+                deferredErrors.push(options.onError);
+            }
+        });
+        render(
+            <CardEditable titleKey="card.title" onSave={onSave} initialValues={{ name: 'ACME' }}>
+                <MuiFormField name="name" label="Name" />
+            </CardEditable>,
+        );
+
+        const saveOnce = async (value: string) => {
+            await user.click(screen.getByRole('button', { name: 'edit' }));
+            await user.clear(screen.getByLabelText('Name'));
+            await user.type(screen.getByLabelText('Name'), value);
+            await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        };
+
+        await saveOnce('First edit');
+        await saveOnce('Second edit');
+        expect(deferredErrors).toHaveLength(2);
+
+        // The first save fails late, after the second one has already been sent.
+        deferredErrors[0]();
+
+        await waitFor(() => expect(screen.getByLabelText('Name')).toBeDisabled());
+    });
 });

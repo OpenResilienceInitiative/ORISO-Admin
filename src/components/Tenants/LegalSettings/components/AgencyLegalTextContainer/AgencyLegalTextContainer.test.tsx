@@ -30,6 +30,10 @@ vi.mock('../../../../../hooks/useTranslateLegalContent.hook', () => ({
 vi.mock('../../../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({ can: h.canEditLegalText, permissions: {} }),
 }));
+// The department-scoped history has its own suite (AgencyLegalTextContainer.versions.test.tsx).
+vi.mock('../../../../../hooks/useLegalTextVersions.hook', () => ({
+    useLegalTextVersions: () => ({ data: [], isError: false }),
+}));
 vi.mock('../DepartmentDataProtectionCard', () => ({
     DepartmentDataProtectionCard: (props: any) => {
         h.card(props);
