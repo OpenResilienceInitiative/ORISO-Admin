@@ -17,47 +17,74 @@ if (typeof window !== 'undefined') {
         })),
     });
 
-    // jsdom (v23) does not implement Web Storage, so `window.localStorage` /
-    // `sessionStorage` are undefined. Provide a minimal in-memory Storage so tests
-    // can read/write/clear without each hand-rolling its own stub. Defined as
-    // configurable + writable so tests that need a spy can still override it
-    // (`vi.stubGlobal('localStorage', …)` or `Object.defineProperty`).
-    class MemoryStorage implements Storage {
-        private store = new Map<string, string>();
-
-        get length(): number {
-            return this.store.size;
+    // jsdom (v23) implements no usable Web Storage: `window.localStorage` is absent,
+    // and the `sessionStorage` that is present comes from the host with a prototype of
+    // its own. Provide a minimal in-memory Storage so tests can read/write/clear
+    // without each hand-rolling its own stub. Defined as configurable + writable so
+    // tests that need a spy can still override it (`vi.stubGlobal('localStorage', …)`
+    // or `Object.defineProperty`).
+    //
+    // The implementation goes ON `Storage.prototype` (jsdom ships the interface
+    // object even though it ships no storage areas), NOT on a class of our own.
+    // Tests simulate a full or disabled storage with
+    // `vi.spyOn(Storage.prototype, 'setItem' | 'removeItem' | 'getItem')`; methods
+    // living on a separate class would shadow that prototype, so the spy would
+    // patch an object nothing ever calls and the code under test would quietly
+    // succeed where it is expected to report failure.
+    const memoryStores = new WeakMap<Storage, Map<string, string>>();
+    const storeOf = (storage: Storage): Map<string, string> => {
+        let store = memoryStores.get(storage);
+        if (!store) {
+            store = new Map<string, string>();
+            memoryStores.set(storage, store);
         }
+        return store;
+    };
 
-        clear(): void {
-            this.store.clear();
-        }
+    const method = (value: (this: Storage, ...args: never[]) => unknown): PropertyDescriptor => ({
+        configurable: true,
+        writable: true,
+        value,
+    });
 
-        getItem(key: string): string | null {
-            return this.store.has(key) ? (this.store.get(key) as string) : null;
-        }
+    Object.defineProperties(Storage.prototype, {
+        length: {
+            configurable: true,
+            get(this: Storage): number {
+                return storeOf(this).size;
+            },
+        },
+        clear: method(function clear(this: Storage): void {
+            storeOf(this).clear();
+        }),
+        getItem: method(function getItem(this: Storage, key: string): string | null {
+            const store = storeOf(this);
+            return store.has(key) ? (store.get(key) as string) : null;
+        }),
+        key: method(function key(this: Storage, index: number): string | null {
+            return Array.from(storeOf(this).keys())[index] ?? null;
+        }),
+        removeItem: method(function removeItem(this: Storage, key: string): void {
+            storeOf(this).delete(key);
+        }),
+        setItem: method(function setItem(this: Storage, key: string, value: string): void {
+            storeOf(this).set(key, String(value));
+        }),
+    });
 
-        key(index: number): string | null {
-            return Array.from(this.store.keys())[index] ?? null;
-        }
-
-        removeItem(key: string): void {
-            this.store.delete(key);
-        }
-
-        setItem(key: string, value: string): void {
-            this.store.set(key, String(value));
-        }
-    }
-
+    // Installed unconditionally, NOT only when the area is missing. jsdom/Node hand
+    // out a `sessionStorage` whose prototype is neither `Storage.prototype` nor
+    // `window.Storage.prototype` but a third, unreachable object — so a
+    // "polyfill only what is absent" guard would leave a storage area that no
+    // `vi.spyOn(Storage.prototype, …)` can ever reach. Owning both areas also keeps
+    // them symmetric and free of state carried in from the host.
     (['localStorage', 'sessionStorage'] as const).forEach((name) => {
-        if (!window[name]) {
-            Object.defineProperty(window, name, {
-                configurable: true,
-                writable: true,
-                value: new MemoryStorage(),
-            });
-        }
+        Object.defineProperty(window, name, {
+            configurable: true,
+            writable: true,
+            // A real `Storage` instance, so `vi.spyOn(Storage.prototype, …)` intercepts.
+            value: Object.create(Storage.prototype) as Storage,
+        });
     });
 
     // jsdom does not implement scrolling; CardDeck calls scrollTo on its deck element.
