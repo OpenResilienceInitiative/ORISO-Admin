@@ -72,12 +72,14 @@ if (typeof window !== 'undefined') {
         }),
     });
 
-    // Installed unconditionally, NOT only when the area is missing. jsdom/Node hand
-    // out a `sessionStorage` whose prototype is neither `Storage.prototype` nor
-    // `window.Storage.prototype` but a third, unreachable object — so a
-    // "polyfill only what is absent" guard would leave a storage area that no
-    // `vi.spyOn(Storage.prototype, …)` can ever reach. Owning both areas also keeps
-    // them symmetric and free of state carried in from the host.
+    // Installed unconditionally, NOT only when the area is missing — presence does not
+    // mean usable. Under Vitest's jsdom `window === globalThis`, so Node's built-in
+    // web-storage globals share one namespace with jsdom's DOM globals: the surviving
+    // `Storage` interface is jsdom's, while the surviving `sessionStorage` instance is
+    // Node's native one, and the two do not belong to each other (`localStorage` is
+    // absent only because Node needs --localstorage-file for it). A "polyfill what is
+    // absent" guard would therefore leave `sessionStorage` as an object that no
+    // `vi.spyOn(Storage.prototype, …)` can ever reach. See ./memoryStorage.test.ts.
     (['localStorage', 'sessionStorage'] as const).forEach((name) => {
         Object.defineProperty(window, name, {
             configurable: true,
