@@ -1,17 +1,17 @@
 name: Reusable Node Build steps
 
-inputs:
-    node_version:
-        required: true
-        type: string
-
 runs:
     using: 'composite'
     steps:
         - name: Set up Node.js
           uses: actions/setup-node@v4
           with:
-              node-version: ${{ inputs.node_version }}
+              # .nvmrc is the single source of truth for the Node version, shared with
+              # local development (`nvm use` / `fnm use`) and declared again as
+              # `engines.node` in package.json. Do NOT hardcode a version here: when CI
+              # and developer machines drift apart, the suite fails locally in ways CI
+              # never shows, and a red suite stops meaning anything.
+              node-version-file: .nvmrc
               cache: npm
 
         - name: Install dependencies

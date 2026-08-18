@@ -11,6 +11,7 @@ import { CheckToggle } from './CheckToggle';
 import { M3Checkbox } from '../../../M3Checkbox';
 import { isSubToggleDisabled } from './permissionsSettingsUtils';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
+import { ReactComponent as InfoIcon } from '../../../../resources/img/svg/i.svg';
 import type {
     ChatTypeCardKey,
     EnforceChangeHandler,
@@ -127,6 +128,21 @@ export const PermissionsSettingsView = ({
                                                     ) : undefined
                                                 }
                                             >
+                                                <p className={styles.cardDescription}>
+                                                    <InfoIcon
+                                                        aria-hidden="true"
+                                                        className={styles.cardDescriptionInfo}
+                                                        focusable="false"
+                                                    />
+                                                    <Trans
+                                                        i18nKey={card.descriptionKey}
+                                                        components={{
+                                                            strong: <strong />,
+                                                            small: <span className={styles.cardDescriptionSecondary} />,
+                                                        }}
+                                                    />
+                                                </p>
+
                                                 <div className={styles.masterRow}>
                                                     {enforceMode && masterField && (
                                                         <M3Checkbox
@@ -154,16 +170,6 @@ export const PermissionsSettingsView = ({
                                                         </span>
                                                     )}
                                                 </div>
-
-                                                <p className={styles.cardDescription}>
-                                                    <Trans
-                                                        i18nKey={card.descriptionKey}
-                                                        components={{
-                                                            strong: <strong />,
-                                                            small: <span className={styles.cardDescriptionSecondary} />,
-                                                        }}
-                                                    />
-                                                </p>
 
                                                 <div className={styles.cardDivider} />
 

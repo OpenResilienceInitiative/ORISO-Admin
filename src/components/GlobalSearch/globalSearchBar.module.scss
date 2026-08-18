@@ -43,10 +43,20 @@
 
 .row {
     display: flex;
-    width: 100%;
-    min-width: 0;
-    align-items: center;
-    flex-wrap: wrap;
+    width: max-content;
+    min-width: 100%;
+
+    /* A2 — „Muss eine höhe sein". Controls differ in TOTAL height because some
+       carry a supporting-text line (the Träger-ID group is 56 + 4 + 16 = 76px).
+       Centring them made their 56px field boxes sit on three different
+       baselines. Aligning to the start puts every field box on the same line
+       and lets the supporting text hang below it, which is the line the owner
+       drew across the toolbar. */
+    align-items: flex-start;
+
+    /* A1 — „Müssen wieder horizontal scroll row werden". See the contract test
+       next to this file for the measurement that justifies the reversal. */
+    flex-wrap: nowrap;
     padding: 4px 0 8px;
     gap: 8px;
 }

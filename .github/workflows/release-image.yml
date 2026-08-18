@@ -57,8 +57,6 @@ jobs:
 
             - name: Build admin application
               uses: ./.github/actions/node-build
-              with:
-                  node_version: '22.12.0'
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v4

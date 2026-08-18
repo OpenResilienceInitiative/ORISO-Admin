@@ -109,6 +109,8 @@ interface DataProcessingAgreementCardProps {
     /** A newer version was published after the restored draft was saved. */
     draftStale?: boolean;
     onDiscardDraft?: () => void;
+    /** Audit status rendered in the shared read-only footer. */
+    readOnlyFooter?: React.ReactNode;
 }
 
 /**
@@ -134,6 +136,7 @@ export const DataProcessingAgreementCard = ({
     draftSavedAt,
     draftStale,
     onDiscardDraft,
+    readOnlyFooter,
 }: DataProcessingAgreementCardProps) => {
     const { t } = useTranslation();
     const {
@@ -229,13 +232,15 @@ export const DataProcessingAgreementCard = ({
                 // the published version chain stays append-only and untouched.
                 onRestoreVersion={readOnly ? undefined : handleEditorChange}
                 languageSlot={
-                    <LegalContentLanguageSelect
-                        languages={languages}
-                        value={activeLanguage}
-                        onChange={setActiveLanguage}
-                        sourceLanguage={sourceLanguage}
-                        contentMap={contentMapWithEdits}
-                    />
+                    languages.length > 1 ? (
+                        <LegalContentLanguageSelect
+                            languages={languages}
+                            value={activeLanguage}
+                            onChange={setActiveLanguage}
+                            sourceLanguage={sourceLanguage}
+                            contentMap={contentMapWithEdits}
+                        />
+                    ) : undefined
                 }
                 helpSlot={<EditorHelpText text={help.text} hint={isPlatformAdmin ? undefined : help.hint} />}
                 snackbarSlot={
@@ -289,6 +294,7 @@ export const DataProcessingAgreementCard = ({
                 // Saving a draft must never reach the publish endpoint: it hands over the
                 // same complete map the publish would send, but only to local storage.
                 onSaveDraft={readOnly || !onSaveDraft ? undefined : () => onSaveDraft(contentMapWithEdits)}
+                readOnlyFooter={readOnlyFooter}
                 belowSlot={
                     !readOnly && (
                         <>

@@ -46,7 +46,10 @@
 .moreButton {
     display: inline-flex;
     width: 48px;
-    height: 48px;
+
+    /* A2: 48px round glyph, 56px box — it shares the toolbar's control band
+       instead of floating 8px above it. */
+    height: 56px;
     flex: 0 0 auto;
     align-items: center;
     justify-content: center;
