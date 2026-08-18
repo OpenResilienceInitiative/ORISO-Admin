@@ -170,6 +170,40 @@ type IdentityFacts = Pick<AccountInviteDTO, 'firstName' | 'lastName' | 'recipien
 export const inviteDisplayName = (invite: IdentityFacts): string =>
     [invite.firstName, invite.lastName].filter(Boolean).join(' ') || invite.recipientEmail;
 
+/** Lower-cased, diacritic-stripped form used by the search predicate. */
+const fold = (value: string): string =>
+    value
+        .toLocaleLowerCase('de')
+        .normalize('NFD')
+        // eslint-disable-next-line no-misleading-character-class -- combining marks are exactly what is stripped
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+
+type SearchableFacts = Pick<AccountInviteDTO, 'recipientEmail' | 'firstName' | 'lastName' | 'tenantId'>;
+
+/**
+ * Toolbar-search predicate for the invite board (A4/#376).
+ *
+ * Matches the fields the row actually shows: the e-mail, the first and last
+ * name, and the Träger-ID the identity cell prints. Case-insensitive and
+ * accent-insensitive, so "muller" finds "Müller" — an admin types what is on
+ * the keyboard, not what is in the database. All whitespace-separated terms
+ * must match, which is what makes "karla fischer" behave like one name rather
+ * than an OR over two words.
+ *
+ * A blank query matches everything: an empty search field is not a filter.
+ */
+export const matchesInviteQuery = (invite: SearchableFacts, query: string): boolean => {
+    const terms = fold(query).split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return true;
+    const haystack = fold(
+        [invite.recipientEmail, invite.firstName, invite.lastName, invite.tenantId?.toString()]
+            .filter(Boolean)
+            .join(' '),
+    );
+    return terms.every((term) => haystack.includes(term));
+};
+
 type ActivityFacts = Pick<AccountInviteDTO, 'createDate' | 'acceptedAt' | 'revokedAt' | 'supersededAt'>;
 
 /** Latest known activity timestamp of an invite (ISO string), for the "letzte Aktivität" column. */

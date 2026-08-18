@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
+import { M3Tooltip } from '../M3Tooltip';
 import styles from './phaseStepper.module.scss';
 
 export type PhaseStepperState = 'done' | 'current' | 'pending' | 'warning' | 'error';
@@ -25,6 +26,21 @@ const STATE_FALLBACKS: Record<PhaseStepperState, string> = {
     pending: 'ausstehend',
     warning: 'Zustellproblem',
     error: 'fehlgeschlagen',
+};
+
+/**
+ * What a bead MEANS (C1/C2). The track carried its states in colour and glyph
+ * only, so two rows both labelled „Eingeladen" differed by an orange „!" versus
+ * a black dot with nothing anywhere saying why. These sentences say it, on
+ * hover and on focus, for reached and not-yet-reached milestones alike. The
+ * fallbacks double as the German i18n defaults.
+ */
+const STATE_HINT_FALLBACKS: Record<PhaseStepperState, string> = {
+    done: 'dieser Schritt ist abgeschlossen.',
+    current: 'dieser Schritt ist gerade an der Reihe.',
+    pending: 'dieser Schritt wurde noch nicht erreicht.',
+    warning: 'die E-Mail konnte nicht zugestellt werden.',
+    error: 'dieser Schritt ist fehlgeschlagen.',
 };
 
 const DoneCheck = () => (
@@ -57,17 +73,30 @@ export const PhaseStepper = ({ phases, ariaLabel, showActiveLabel = true, classN
             <ol className={styles.track} aria-label={ariaLabel}>
                 {phases.map((phase) => (
                     <li key={phase.key} className={classNames(styles.phase, styles[phase.state])}>
-                        <span className={styles.dot} aria-hidden>
-                            {phase.state === 'done' && <DoneCheck />}
-                            {(phase.state === 'warning' || phase.state === 'error') && (
-                                <span className={styles.mark}>!</span>
-                            )}
-                        </span>
-                        <span className={styles.srOnly}>
-                            {phase.label}
-                            {' – '}
-                            {t(`dataTable.phase.state.${phase.state}`, STATE_FALLBACKS[phase.state])}
-                        </span>
+                        <M3Tooltip
+                            text={`${phase.label}: ${t(
+                                `dataTable.phase.stateHint.${phase.state}`,
+                                STATE_HINT_FALLBACKS[phase.state],
+                            )}`}
+                        >
+                            {/* The bead is the hover target AND the focus target:
+                                the explanation is the only place the colour code
+                                is written down, so it cannot be mouse-only. */}
+                            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger, see above */}
+                            <span className={styles.bead} tabIndex={0}>
+                                <span className={styles.dot} aria-hidden>
+                                    {phase.state === 'done' && <DoneCheck />}
+                                    {(phase.state === 'warning' || phase.state === 'error') && (
+                                        <span className={styles.mark}>!</span>
+                                    )}
+                                </span>
+                                <span className={styles.srOnly}>
+                                    {phase.label}
+                                    {' – '}
+                                    {t(`dataTable.phase.state.${phase.state}`, STATE_FALLBACKS[phase.state])}
+                                </span>
+                            </span>
+                        </M3Tooltip>
                     </li>
                 ))}
             </ol>
