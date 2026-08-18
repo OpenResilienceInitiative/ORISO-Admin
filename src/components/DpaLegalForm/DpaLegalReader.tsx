@@ -30,8 +30,8 @@ export interface DpaLegalReaderProps {
  * It owns no navigation of its own: the canonical read-only rich-text card
  * ({@link M3RichTextEditor}) brings the "Chapter Navbar" chip row
  * (`AnchorChips`, Figma 1299-81676), the fullscreen reading mode and the
- * in-text `#anchor` cross references. Picking a chapter scrolls the host
- * surface to that heading and moves keyboard focus to it.
+ * in-text `#anchor` cross references. Picking a chapter scrolls the reader's
+ * own viewport to that heading and moves keyboard focus to it.
  *
  * Scrolling (owner demo 2026-08-19, reversing #594.3): the card is `fluid`
  * for sizing, but the agreement scrolls inside its own bounded viewport — the
