@@ -192,7 +192,7 @@ describe('EmailKitPreview', () => {
             render(
                 <EmailKitPreview
                     body="B"
-                    language={'de"><img src="https://example.test/x">'}
+                    language='de"><img src="https://example.test/x">'
                     previewLabel="E-Mail-Vorschau"
                     subject="A"
                 />,
