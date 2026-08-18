@@ -41,12 +41,14 @@ const mocks = vi.hoisted(() => ({
     listInviteEmailTemplates: vi.fn(),
     createInviteEmailTemplate: vi.fn(),
     updateInviteEmailTemplate: vi.fn(),
+    previewInviteEmailTemplateContent: vi.fn(),
 }));
 
 vi.mock('../../api/accountInvites/accountInvites', () => ({
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
     createInviteEmailTemplate: mocks.createInviteEmailTemplate,
     updateInviteEmailTemplate: mocks.updateInviteEmailTemplate,
+    previewInviteEmailTemplateContent: mocks.previewInviteEmailTemplateContent,
 }));
 
 // antd's real Select relies on rc-select's virtual-list/portal machinery, which is
@@ -116,6 +118,17 @@ describe('EmailTemplatesDialog', () => {
         mocks.listInviteEmailTemplates.mockReset();
         mocks.createInviteEmailTemplate.mockReset();
         mocks.updateInviteEmailTemplate.mockReset();
+        mocks.previewInviteEmailTemplateContent.mockReset();
+        mocks.previewInviteEmailTemplateContent.mockResolvedValue({
+            templateId: null,
+            templateName: null,
+            kind: 'TENANT_INVITE',
+            language: 'de',
+            subject: 'Welcome to ORISO — as sent',
+            html: '<!doctype html><html><body>SERVER RENDERED</body></html>',
+            plainText: 'SERVER RENDERED',
+            sampleAcceptUrl: 'https://admin.example/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
+        });
         mocks.listInviteEmailTemplates.mockImplementation((kind: string) => {
             if (kind === 'TENANT_INVITE') return Promise.resolve([tenantTemplate]);
             if (kind === 'COUNSELLOR_INVITE') return Promise.resolve([counsellorTemplate]);
@@ -176,24 +189,55 @@ describe('EmailTemplatesDialog', () => {
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalledTimes(6));
     });
 
-    it('renders a live email preview from the subject and body fields', async () => {
+    // E2: the composer used to preview a hand-written React mock of a mail —
+    // its own frame, its own hardcoded ORISO brand, no CTA — while the sending
+    // path rendered something else entirely. The preview now comes from the very
+    // renderer the dispatcher uses, so "what I see" and "what is sent" are one
+    // document.
+    it('previews through the backend renderer, not a local re-implementation', async () => {
         const user = userEvent.setup();
         renderDialog();
 
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
         await user.click(screen.getByRole('button', { name: 'New template' }));
 
-        const dialog = screen.getByRole('dialog');
-        const withinDialog = within(dialog);
+        const withinDialog = within(screen.getByRole('dialog'));
         await user.type(withinDialog.getByLabelText('Subject'), 'Welcome to ORISO');
         fireEvent.change(withinDialog.getByLabelText('Body'), {
             target: { value: 'Hello Hugo,\n\nUse {{inviteLink}} to finish setup.' },
         });
 
-        const preview = withinDialog.getByRole('region', { name: 'Email preview' });
-        expect(within(preview).getByRole('heading', { name: 'Welcome to ORISO' })).toBeInTheDocument();
-        expect(within(preview).getByText(/Hello Hugo/)).toBeInTheDocument();
-        expect(within(preview).getByText('{{inviteLink}}')).toBeInTheDocument();
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    kind: 'TENANT_INVITE',
+                    subject: 'Welcome to ORISO',
+                    body: 'Hello Hugo,\n\nUse {{inviteLink}} to finish setup.',
+                }),
+            ),
+        );
+
+        // The returned document is shown verbatim in an isolated frame — never
+        // re-styled, never rebuilt from the fields.
+        const frame = await screen.findByTitle('Email preview');
+        expect(frame).toHaveAttribute('srcdoc', '<!doctype html><html><body>SERVER RENDERED</body></html>');
+        expect(frame).toHaveAttribute('sandbox', 'allow-same-origin');
+        expect(await screen.findByText('Welcome to ORISO — as sent')).toBeInTheDocument();
+    });
+
+    it('offers a retry instead of a blank panel when the preview cannot be rendered', async () => {
+        mocks.previewInviteEmailTemplateContent.mockRejectedValue(new Error('boom'));
+        const user = userEvent.setup();
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+
+        const withinDialog = within(screen.getByRole('dialog'));
+        await user.type(withinDialog.getByLabelText('Subject'), 'S');
+
+        expect(await screen.findByText('Preview could not be rendered.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
     });
 
     it('opens a prefilled edit form on row double-click and updates the template', async () => {

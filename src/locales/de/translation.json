@@ -1803,6 +1803,8 @@
     "placeholderTemplate.dialog.inviteDescription": "Vorlage wählen, Platzhalter einfügen und die E-Mail live in der Vorschau prüfen.",
     "placeholderTemplate.dialog.legalTitle": "Einwilligungstext",
     "placeholderTemplate.dialog.legalDescription": "Vorlage wählen und den Einwilligungssatz mit Platzhaltern anpassen.",
+    "placeholderTemplate.preview.failed": "Die Vorschau konnte nicht erzeugt werden.",
+    "placeholderTemplate.preview.retry": "Erneut versuchen",
     "placeholderTemplate.token.inviteLink": "Einladungslink",
     "placeholderTemplate.token.email": "E-Mail-Adresse",
     "placeholderTemplate.token.firstName": "Vorname",

@@ -38,3 +38,30 @@
     border: 1px solid;
     border-radius: 12px;
 }
+
+/* A failed render is shown as a failed render — never as a local approximation
+   that would look plausible and lie about what gets sent (finding E2). */
+
+.error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 120px;
+    padding: 16px;
+    border: 1px solid var(--m3-outline-variant, #cac4d0);
+    background: var(--m3-surface-container-low, #f7f2fa);
+    border-radius: 12px;
+    color: var(--m3-on-surface-variant, #49454f);
+    gap: 12px;
+}
+
+.retry {
+    padding: 8px 16px;
+    border: 1px solid var(--m3-outline, #79747e);
+    background: transparent;
+    border-radius: 20px;
+    color: var(--m3-primary, #a5000a);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 500;
+}

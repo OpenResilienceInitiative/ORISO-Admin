@@ -1803,6 +1803,8 @@
     "placeholderTemplate.dialog.inviteDescription": "Pick a template, insert placeholders and check the e-mail live in the preview.",
     "placeholderTemplate.dialog.legalTitle": "Consent text",
     "placeholderTemplate.dialog.legalDescription": "Pick a template and adjust the consent sentence with placeholders.",
+    "placeholderTemplate.preview.failed": "Preview could not be rendered.",
+    "placeholderTemplate.preview.retry": "Retry",
     "placeholderTemplate.token.inviteLink": "Invitation link",
     "placeholderTemplate.token.email": "E-mail address",
     "placeholderTemplate.token.firstName": "First name",

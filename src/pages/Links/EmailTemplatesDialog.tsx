@@ -12,7 +12,7 @@ import {
     TemplateRequestDTO,
     updateInviteEmailTemplate,
 } from '../../api/accountInvites/accountInvites';
-import { EmailTemplatePreview } from '../../components/EmailTemplatePreview';
+import { EmailKitPreview } from '../../components/PlaceholderTemplate';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { Modal, DialogButton } from '../../components/Modal';
 import styles from './EmailTemplatesDialog.module.scss';
@@ -79,6 +79,9 @@ export const EmailTemplatesDialog = ({
     // only way to read a live antd form value without controlling every field.
     const previewSubject = Form.useWatch('subject', form) ?? '';
     const previewBody = Form.useWatch('body', form) ?? '';
+    // The renderer needs the kind to pick its sample content; the form field is
+    // authoritative while editing, the opening tab's kind is the fallback.
+    const previewKind: InviteEmailTemplateKind = Form.useWatch('kind', form) ?? templateKind;
 
     const kindLabel = useCallback((kind: InviteEmailTemplateKind) => t(`links.templates.kind.${kind}`, kind), [t]);
 
@@ -431,8 +434,14 @@ export const EmailTemplatesDialog = ({
                                 <Switch />
                             </Form.Item>
                         </div>
-                        <EmailTemplatePreview
+                        {/* E2: the preview is rendered by the backend's own mail
+                            renderer — the one the dispatcher runs — so what is
+                            composed here and what the recipient receives are the
+                            same document. Tokens go over raw; the backend
+                            substitutes them. */}
+                        <EmailKitPreview
                             body={previewBody}
+                            kind={previewKind}
                             previewLabel={t('links.templates.previewLabel', 'Email preview')}
                             subject={previewSubject}
                         />
