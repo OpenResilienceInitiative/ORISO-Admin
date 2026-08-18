@@ -23,6 +23,7 @@ import {
 } from '../../../components/DataTable';
 import { FilterChip } from '../../../components/FilterChip';
 import { IconButton } from '../../../components/IconButton';
+import { M3Tooltip } from '../../../components/M3Tooltip';
 import { M3Button } from '../../../components/M3Button';
 import { M3Checkbox } from '../../../components/M3Checkbox';
 import {
@@ -52,6 +53,22 @@ export const INVITE_STATUS_FALLBACK_LABELS: Record<AccountInviteStatus, string> 
     EXPIRED: 'Abgelaufen',
     REVOKED: 'Widerrufen',
     SUPERSEDED: 'Ersetzt',
+};
+
+/**
+ * What each status MEANS (C3). The owner asked for this globally, not only for
+ * „Ersetzt": the labels are domain vocabulary, and a one-word chip cannot say
+ * whether a link still works or why a row went dead. Shown in both places the
+ * vocabulary appears — the filter chip and the row badge — and, like the labels
+ * themselves, the fallbacks double as the German i18n defaults.
+ */
+export const INVITE_STATUS_FALLBACK_HINTS: Record<AccountInviteStatus, string> = {
+    DRAFT: 'Angelegt, aber noch nicht versendet — es ist keine E-Mail herausgegangen.',
+    EMAIL_SENT: 'Die Einladungs-E-Mail wurde versendet und wartet darauf, angenommen zu werden.',
+    ACCEPTED: 'Die Einladung wurde angenommen — das Konto besteht, der Link ist verbraucht.',
+    EXPIRED: 'Die Gültigkeit der Einladung ist abgelaufen — der Link funktioniert nicht mehr.',
+    REVOKED: 'Die Einladung wurde zurückgezogen — der Link ist ungültig.',
+    SUPERSEDED: 'Diese Einladung wurde durch ein erneutes Versenden ersetzt — es gilt die neuere Einladung.',
 };
 
 const STATUS_FILTER_ORDER: AccountInviteStatus[] = [
@@ -222,6 +239,7 @@ export const InviteProgressBoard = ({
                     <FilterChip
                         key={status}
                         label={t(`links.accountInvites.status.${status}`, INVITE_STATUS_FALLBACK_LABELS[status])}
+                        tooltip={t(`links.accountInvites.statusHint.${status}`, INVITE_STATUS_FALLBACK_HINTS[status])}
                         selected={filter?.kind === 'status' && filter.status === status}
                         onChange={(next) => setFilter(next ? { kind: 'status', status } : null)}
                     />
@@ -284,6 +302,7 @@ export const InviteProgressBoard = ({
                     const displayName = inviteDisplayName(invite);
                     const hasName = displayName !== invite.recipientEmail;
                     const lastActivity = inviteLastActivity(invite);
+                    const statusChipClass = classNames(styles.statusChip, { [styles.statusChipDead]: dead });
                     const phases = derivePhases(invite).map((phase) => ({
                         key: phase.key,
                         state: phase.state,
@@ -354,12 +373,23 @@ export const InviteProgressBoard = ({
                                 </time>
                             </DataTableCell>
                             <DataTableCell className={styles.statusCell}>
-                                <span className={classNames(styles.statusChip, { [styles.statusChipDead]: dead })}>
-                                    {t(
-                                        `links.accountInvites.status.${invite.inviteStatus}`,
-                                        INVITE_STATUS_FALLBACK_LABELS[invite.inviteStatus],
+                                {/* tabIndex on a badge: the explanation is the only
+                                    place the vocabulary is defined, so it has to be
+                                    reachable without a mouse as well (C3). */}
+                                <M3Tooltip
+                                    text={t(
+                                        `links.accountInvites.statusHint.${invite.inviteStatus}`,
+                                        INVITE_STATUS_FALLBACK_HINTS[invite.inviteStatus],
                                     )}
-                                </span>
+                                >
+                                    {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge is the only place the status vocabulary is explained, so it must be reachable without a mouse */}
+                                    <span tabIndex={0} className={statusChipClass}>
+                                        {t(
+                                            `links.accountInvites.status.${invite.inviteStatus}`,
+                                            INVITE_STATUS_FALLBACK_LABELS[invite.inviteStatus],
+                                        )}
+                                    </span>
+                                </M3Tooltip>
                             </DataTableCell>
                             <DataTableCell align="right" className={styles.actionsCell}>
                                 <div className={styles.actions}>
@@ -369,9 +399,16 @@ export const InviteProgressBoard = ({
                                         disabled={!actionable}
                                         onClick={() => onResend(invite)}
                                     />
+                                    {/* C5: the copy icon used to stay live between
+                                        two disabled neighbours, and pressing it in a
+                                        terminal state only produced the "link only
+                                        visible after send" refusal. An action whose
+                                        single outcome is a refusal is a disabled
+                                        action, so it follows the same rule. */}
                                     <IconButton
                                         icon={<ContentCopyOutlinedIcon />}
                                         ariaLabel={t('links.inviteProgress.action.copyLink', 'Einladungslink kopieren')}
+                                        disabled={!actionable}
                                         onClick={() => onCopyLink(invite)}
                                     />
                                     <IconButton
