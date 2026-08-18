@@ -6,6 +6,37 @@ import { collectAnchors, HeadingAnchor } from './headingAnchors';
 export const escapeCssId = (id: string) =>
     typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(id) : id.replace(/["\\]/g, '\\$&');
 
+/**
+ * Nearest ancestor that is an actual scroll VIEWPORT — i.e. an element whose
+ * own on-screen position stays put while its content moves past it.
+ *
+ * `editor.view.dom` is never that viewport, it is content: whichever
+ * ancestor scrolls (the fixed-height card's `.editorContentScroll`, the
+ * fluid public reader's host sheet, or nothing at all so the page itself
+ * scrolls) moves the editor's DOM node and every heading inside it by the
+ * exact same amount, together, as one rigid block. Measuring a heading's
+ * distance from `editor.view.dom` itself is therefore invariant to that
+ * scrolling — it only ever reflects the heading's fixed offset within the
+ * document, never how far the user has actually scrolled (owner report
+ * 2026-08-18, F4/H4: chapter navigation not tracking the read position).
+ * The 32px "has this heading reached the top" check has to be taken against
+ * the element that does NOT move — the real scrolling ancestor — not against
+ * the content it scrolls.
+ */
+const findScrollViewport = (node: HTMLElement): HTMLElement | null => {
+    let el = node.parentElement;
+    while (el) {
+        const { overflowY } = window.getComputedStyle(el);
+        if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
+            return el;
+        }
+        el = el.parentElement;
+    }
+    // Nothing between the editor and the page scrolls: the browser viewport
+    // itself is the scroller, and its own top is always 0.
+    return null;
+};
+
 export type HeadingAnchorNav = {
     /** Current anchor list (source for the chip row). */
     anchors: HeadingAnchor[];
@@ -86,7 +117,11 @@ export const useHeadingAnchorNav = (
             frame = window.requestAnimationFrame(() => {
                 frame = 0;
                 const root = editor.view.dom as HTMLElement;
-                const rootTop = root.getBoundingClientRect().top;
+                // Recomputed every tick, not cached: which ancestor actually
+                // scrolls can change as content loads (anchors/chip bar
+                // altering layout) or the viewport crosses a breakpoint.
+                const scrollViewport = findScrollViewport(root);
+                const rootTop = scrollViewport ? scrollViewport.getBoundingClientRect().top : 0;
                 let current: string | null = null;
                 anchorsRef.current.forEach((anchor) => {
                     const el = root.querySelector(`[id="${escapeCssId(anchor.id)}"]`);
