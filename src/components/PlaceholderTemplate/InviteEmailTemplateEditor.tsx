@@ -5,7 +5,7 @@ import {
     type PlaceholderTemplateDefinition,
     type PlaceholderTemplateFieldConfig,
 } from './PlaceholderTemplateEditor';
-import { INVITE_EMAIL_TOKENS } from './placeholderTokens';
+import { INVITE_EMAIL_TOKENS, type PlaceholderTokenDef } from './placeholderTokens';
 import { type InviteEmailTemplateKind } from '../../api/accountInvites/accountInvites';
 
 export interface InviteEmailTemplateValues extends Record<string, string> {
@@ -20,6 +20,19 @@ export interface InviteEmailTemplateEditorProps {
     activeTemplateId?: number | string;
     onSelectTemplate: (id: number | string) => void;
     onCreateFromTemplate?: (id: number | string) => void;
+    /** Main-segment press of the template split button (e.g. show the template manager). */
+    onManageTemplates?: () => void;
+    /**
+     * Token set offered by the pickers.
+     * Defaults to the shared invite set; pass `inviteEmailTokensForKind(kind)`
+     * for the per-kind wiring (#746).
+     */
+    tokens?: PlaceholderTokenDef[];
+    /**
+     * BCP-47 tag of the template being edited; forwarded to the preview so an
+     * English template does not render German boilerplate (#746 review).
+     */
+    language?: string;
     /** Template kind handed to the renderer so it picks the matching samples. */
     kind?: InviteEmailTemplateKind;
 }
@@ -35,6 +48,8 @@ export interface InviteEmailTemplateEditorProps {
  * there is exactly one substitution implementation and it cannot drift. Doing it
  * here as well would put the author's view and the recipient's mail back on two
  * different code paths — a subtler version of the very defect E2 describes.
+ *
+ * `tokens` therefore only drives the PICKERS now, not the preview.
  */
 export const InviteEmailTemplateEditor = ({
     values,
@@ -43,6 +58,9 @@ export const InviteEmailTemplateEditor = ({
     activeTemplateId,
     onSelectTemplate,
     onCreateFromTemplate,
+    onManageTemplates,
+    tokens = INVITE_EMAIL_TOKENS,
+    language,
     kind,
 }: InviteEmailTemplateEditorProps) => {
     const { t } = useTranslation();
@@ -62,15 +80,17 @@ export const InviteEmailTemplateEditor = ({
                 <EmailKitPreview
                     body={values.body}
                     kind={kind}
+                    language={language}
                     previewLabel={t('placeholderTemplate.invite.previewLabel', 'E-Mail-Vorschau')}
                     subject={values.subject}
                 />
             }
             templates={templates}
-            tokens={INVITE_EMAIL_TOKENS}
+            tokens={tokens}
             values={values}
             onChange={onChange}
             onCreateFromTemplate={onCreateFromTemplate}
+            onManageTemplates={onManageTemplates}
             onSelectTemplate={onSelectTemplate}
         />
     );

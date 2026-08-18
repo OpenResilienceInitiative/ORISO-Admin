@@ -3,6 +3,7 @@ import {
     fillPlaceholders,
     insertPlaceholder,
     INVITE_EMAIL_TOKENS,
+    inviteEmailTokensForKind,
     LEGAL_CONSENT_TOKENS,
     listPlaceholders,
     sampleValues,
@@ -94,6 +95,35 @@ describe('token presets', () => {
     it('legal consent tokens cover the registration consent sentence', () => {
         expect(LEGAL_CONSENT_TOKENS.map((token) => token.key)).toEqual(['Beratungsstelle', 'Thema', 'legal_links']);
     });
+
+    /*
+     * #746: every InviteEmailTemplateKind carries the key set the UserService
+     * substitutes — one shared map today, and the per-kind seam Admin#723 (DPA
+     * forward) extends later.
+     *
+     * `inviteLink` is NOT in it, and that is not a drift from the backend: the
+     * branded layout renders the action link itself, so `renderBody` strips the
+     * token before substitution. What the picker offers is what an author may
+     * insert, and inserting the link could only ever duplicate it.
+     */
+    it.each(['TENANT_INVITE', 'COUNSELLOR_INVITE', 'DPA_FORWARD'] as const)(
+        'tokens for %s match the AccountInviteService placeholder set',
+        (kind) => {
+            expect(inviteEmailTokensForKind(kind).map((token) => token.key)).toEqual([
+                'email',
+                'firstName',
+                'lastName',
+                'tenantId',
+            ]);
+        },
+    );
+
+    it.each(['TENANT_INVITE', 'COUNSELLOR_INVITE', 'DPA_FORWARD'] as const)(
+        'never offers the action link for %s, whatever the kind',
+        (kind) => {
+            expect(inviteEmailTokensForKind(kind).map((token) => token.key)).not.toContain('inviteLink');
+        },
+    );
 
     it('sampleValues builds a key->sample map every token can be previewed with', () => {
         const samples = sampleValues(INVITE_EMAIL_TOKENS);

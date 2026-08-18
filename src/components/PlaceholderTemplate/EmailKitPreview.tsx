@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TokenizedText } from './TokenizedText';
-import { emailColor } from './emailKit';
+import { emailColor, safeLanguageTag } from './emailKit';
 import {
     previewInviteEmailTemplateContent,
     type InviteEmailPreviewDTO,
@@ -19,12 +19,17 @@ export interface EmailKitPreviewProps {
     body: string;
     /** Accessible name of the preview region (also the iframe title). */
     previewLabel: string;
+    /**
+     * BCP-47 tag of the TEMPLATE being edited (e.g. an English template edited in
+     * a German session). Drives the language the mail is rendered in. Falls back
+     * to the admin UI locale. Validated here because it is free text an admin
+     * types (#751 review), and now also because it goes over the wire.
+     */
+    language?: string;
     /** Template kind, so the backend picks the matching sample content. */
     kind?: InviteEmailTemplateKind;
     /** Preview a specific tenant's branding instead of the platform default. */
     tenantId?: number;
-    /** Locale of the rendered document. */
-    language?: string;
     /** Stored template the draft belongs to, for the renderer's context. */
     templateId?: number;
     /**
@@ -40,8 +45,9 @@ const PREVIEW_DEBOUNCE_MS = 300;
 
 /**
  * Grows the frame to fit the rendered document, so the preview shows the whole
- * mail instead of a scroll stub. Re-measures once late because fonts settle
- * after load. Requires `allow-same-origin` on the frame — see the attribute.
+ * mail instead of a scroll stub. Ported from the e-mail kit's Storybook
+ * harness (ORISO-Frontend `src/emails/preview/EmailPreview.tsx`); re-measures
+ * once late because fonts settle after load.
  */
 const useFittedFrame = (dependency: string) => {
     const ref = useRef<HTMLIFrameElement>(null);
@@ -69,9 +75,9 @@ const useFittedFrame = (dependency: string) => {
 
 /**
  * Invite-mail preview rendered by **the backend's own mail renderer**
- * (`POST /service/useradmin/invite-email-templates/preview`, `InviteEmailPreviewService`),
- * which is the very renderer `InviteMailDispatchService` runs when the mail is
- * actually sent.
+ * (`POST /service/useradmin/invite-email-templates/preview`,
+ * `InviteEmailPreviewService`), which is the very renderer
+ * `InviteMailDispatchService` runs when the mail is actually sent.
  *
  * This used to be a client-side re-implementation of the mail frame
  * (`invitePreviewMarkup.renderInviteEmailPreviewHtml`) with its own brand
@@ -93,13 +99,19 @@ export const EmailKitPreview = ({
     subject,
     body,
     previewLabel,
+    language,
     kind,
     tenantId,
-    language,
     templateId,
     renderPreview = previewInviteEmailTemplateContent,
 }: EmailKitPreviewProps) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    // The template's own language wins: previewing an English template in a German
+    // session must render an English mail (#746 review). Only without one does the
+    // preview fall back to the admin UI locale. Validated rather than forwarded
+    // raw — it is free text an admin types, and it now reaches a backend.
+    const lang = safeLanguageTag(language, safeLanguageTag(i18n?.language));
+
     const [preview, setPreview] = useState<InviteEmailPreviewDTO | null>(null);
     const [failed, setFailed] = useState(false);
     const [attempt, setAttempt] = useState(0);
@@ -107,7 +119,7 @@ export const EmailKitPreview = ({
     useEffect(() => {
         let cancelled = false;
         const timer = window.setTimeout(() => {
-            renderPreview({ body, kind, language, subject, templateId, tenantId })
+            renderPreview({ body, kind, language: lang, subject, templateId, tenantId })
                 .then((result) => {
                     if (cancelled) return;
                     setPreview(result);
@@ -126,7 +138,7 @@ export const EmailKitPreview = ({
         // The cleanup runs before every re-request, so a response that arrives
         // late for older input finds `cancelled` set and is dropped: a stale
         // render can never win the race against a newer one.
-    }, [attempt, body, kind, language, renderPreview, subject, templateId, tenantId]);
+    }, [attempt, body, kind, lang, renderPreview, subject, templateId, tenantId]);
 
     const retry = useCallback(() => {
         setFailed(false);
@@ -157,7 +169,6 @@ export const EmailKitPreview = ({
                     </button>
                 </div>
             ) : (
-                /* eslint-disable-next-line react/jsx-max-props-per-line -- see the sandbox note below */
                 <iframe
                     ref={ref}
                     className={styles.frame}
@@ -165,7 +176,8 @@ export const EmailKitPreview = ({
                      * DANGER, read before changing: `allow-same-origin` WITHOUT
                      * `allow-scripts` is the safe half of the pair — no script in
                      * the mail document ever executes, but the parent can read the
-                     * document to size the frame to its content.
+                     * document to size the frame to its content (useFittedFrame,
+                     * #727 review).
                      *
                      * Adding `allow-scripts` alongside it defeats the sandbox
                      * entirely: the frame would then be same-origin AND scriptable

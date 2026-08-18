@@ -78,6 +78,29 @@ export const INVITE_EMAIL_TOKENS: PlaceholderTokenDef[] = [
 ];
 
 /**
+ * The invite-template kinds the UserService knows. Kept as a string union
+ * (mirroring `api/accountInvites` `InviteEmailTemplateKind`) so this module
+ * stays importable outside the Links page without an API dependency.
+ */
+export type InviteEmailTokenKind = 'TENANT_INVITE' | 'COUNSELLOR_INVITE' | 'DPA_FORWARD';
+
+/**
+ * Token set per template kind (#746). `AccountInviteService.render` substitutes
+ * ONE shared placeholder map for every kind today, so all three entries point
+ * at {@link INVITE_EMAIL_TOKENS} — this map is the seam where per-kind extras
+ * (e.g. Admin#723's DPA-forward fields) land without touching any caller.
+ */
+export const INVITE_EMAIL_TOKENS_BY_KIND: Record<InviteEmailTokenKind, PlaceholderTokenDef[]> = {
+    TENANT_INVITE: INVITE_EMAIL_TOKENS,
+    COUNSELLOR_INVITE: INVITE_EMAIL_TOKENS,
+    DPA_FORWARD: INVITE_EMAIL_TOKENS,
+};
+
+/** Tokens the editor offers for a template of the given kind. */
+export const inviteEmailTokensForKind = (kind: InviteEmailTokenKind): PlaceholderTokenDef[] =>
+    INVITE_EMAIL_TOKENS_BY_KIND[kind];
+
+/**
  * Tokens of the registration consent sentence ("Ich habe die
  * Datenschutzerklärung … zur Kenntnis genommen"). Keys follow the wording the
  * legal texts already use, so a template reads naturally while editing.

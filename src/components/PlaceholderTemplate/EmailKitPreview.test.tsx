@@ -1,12 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EmailKitPreview } from './EmailKitPreview';
 
 const t = (key: string, fallback?: string) => fallback ?? key;
 
+// Mutable so single tests can switch the active locale (the preview derives the
+// language it asks the renderer for from it).
+const i18nMock = { language: 'de' };
+
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({ t }),
+    useTranslation: () => ({ t, i18n: i18nMock }),
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -31,12 +35,19 @@ const previewResponse = (overrides: Record<string, unknown> = {}) => ({
 
 const frameOf = (preview: HTMLElement): HTMLIFrameElement | null => preview.querySelector('iframe');
 
-describe('EmailKitPreview', () => {
-    beforeEach(() => {
-        mocks.previewInviteEmailTemplateContent.mockReset();
-        mocks.previewInviteEmailTemplateContent.mockResolvedValue(previewResponse());
-    });
+/** The language the component actually asked the renderer for. */
+const requestedLanguage = () => mocks.previewInviteEmailTemplateContent.mock.calls.at(-1)?.[0]?.language;
 
+beforeEach(() => {
+    mocks.previewInviteEmailTemplateContent.mockReset();
+    mocks.previewInviteEmailTemplateContent.mockResolvedValue(previewResponse());
+});
+
+afterEach(() => {
+    i18nMock.language = 'de';
+});
+
+describe('EmailKitPreview', () => {
     // The point of E2: the preview must be the send path's own output, not an
     // Admin-side re-implementation of the mail frame.
     it('renders the document the backend renderer returned, verbatim', async () => {
@@ -90,10 +101,12 @@ describe('EmailKitPreview', () => {
         expect(within(preview).queryByText('Einladung für {{firstName}}')).not.toBeInTheDocument();
     });
 
-    // A mail document is untrusted markup as far as the Admin app is concerned.
-    // `allow-same-origin` is present so the frame can be fitted to its content;
-    // `allow-scripts` must never join it, or the sandbox is defeated.
-    it('sandboxes the rendered document without ever allowing scripts', async () => {
+    /*
+     * PR #727 post-merge review: srcDoc documents inherit the parent origin, so
+     * scripts inside the frame could reach the admin session. The sandbox keeps
+     * same-origin (useFittedFrame needs contentDocument) but drops scripting.
+     */
+    it('sandboxes the preview frame to same-origin without script execution', async () => {
         render(<EmailKitPreview body="x" previewLabel="E-Mail-Vorschau" subject="y" />);
 
         const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
@@ -141,5 +154,59 @@ describe('EmailKitPreview', () => {
         resolveStale(previewResponse({ html: '<html><body>STALE</body></html>', subject: 'stale' }));
         await waitFor(() => expect(frameOf(preview)).toHaveAttribute('srcdoc', '<html><body>NEW</body></html>'));
         expect(within(preview).queryByText('stale')).not.toBeInTheDocument();
+    });
+
+    /*
+     * The four language cases below are #751's, kept alive across the E2 change.
+     * They used to assert `<html lang="…">` in a locally built document; the
+     * document now comes from the backend, so the same guarantees are asserted at
+     * the boundary that decides them — the language the renderer is asked for.
+     */
+    describe('language resolution (#746/#751, re-pointed at the renderer)', () => {
+        it('derives the language from the active locale instead of hardcoding de', async () => {
+            i18nMock.language = 'en';
+            render(<EmailKitPreview body="B" previewLabel="E-Mail-Vorschau" subject="A" />);
+            await waitFor(() => expect(requestedLanguage()).toBe('en'));
+        });
+
+        it('prefers the template language over the admin UI locale', async () => {
+            i18nMock.language = 'de';
+            render(<EmailKitPreview body="B" language="en" previewLabel="E-Mail-Vorschau" subject="A" />);
+            await waitFor(() => expect(requestedLanguage()).toBe('en'));
+        });
+
+        it('falls back to the UI locale when the template has no language', async () => {
+            i18nMock.language = 'en';
+            render(<EmailKitPreview body="B" language="  " previewLabel="E-Mail-Vorschau" subject="A" />);
+            await waitFor(() => expect(requestedLanguage()).toBe('en'));
+        });
+
+        /*
+         * #751 review: the template language is free text an admin types. It used
+         * to land in `<html lang="…">`; it now lands in a request to the backend,
+         * which is if anything a better reason to validate it. A payload must
+         * never leave this component.
+         */
+        it('rejects a poisoned template language instead of forwarding it', async () => {
+            i18nMock.language = 'en';
+            render(
+                <EmailKitPreview
+                    body="B"
+                    language={'de"><img src="https://example.test/x">'}
+                    previewLabel="E-Mail-Vorschau"
+                    subject="A"
+                />,
+            );
+
+            await waitFor(() => expect(requestedLanguage()).toBe('en'));
+            expect(requestedLanguage()).not.toContain('example.test');
+            expect(requestedLanguage()).not.toContain('<img');
+        });
+
+        it('falls back to German when no locale is resolvable', async () => {
+            i18nMock.language = '';
+            render(<EmailKitPreview body="B" previewLabel="E-Mail-Vorschau" subject="A" />);
+            await waitFor(() => expect(requestedLanguage()).toBe('de'));
+        });
     });
 });

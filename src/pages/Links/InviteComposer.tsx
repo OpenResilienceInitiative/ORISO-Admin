@@ -16,9 +16,9 @@ import { IdAllocationField, useIdAllocation } from '../../components/IdAllocatio
 import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { M3NumberField } from '../../components/M3NumberField';
+import { TemplateSplitButton } from '../../components/PlaceholderTemplate';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
-import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as FileSaveIcon } from '../../resources/img/svg/oriso/file_save_24px.svg';
 import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
 import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
@@ -75,6 +75,18 @@ export interface InviteComposerProps {
     onSubmit: (values: InviteComposerValues) => Promise<boolean> | boolean;
     /** Open the EmailTemplatesDialog in the requested view (`list` is the picker). */
     onManageTemplates: (intent: 'create' | 'delete' | 'list') => void;
+    /**
+     * #746: the template pill's chevron menu switches the active template
+     * directly (module split-button semantics); the selection stays lifted in
+     * the tab, same as picking in the dialog.
+     */
+    onSelectTemplate?: (templateId: number) => void;
+    /**
+     * "Neu aus „X"" in the pill menu: start a new template prefilled from the
+     * given one (opens the dialog's create view with that source). Omit to
+     * hide the menu's create group.
+     */
+    onCreateFromTemplate?: (templateId: number) => void;
     /**
      * Enables the "⋮" more-menu with the "CSV-Datei importieren" entry (#315).
      * Called with the client-side parse result and the send mode captured at
@@ -163,6 +175,8 @@ export const InviteComposer = ({
     persistKey,
     onSubmit,
     onManageTemplates,
+    onSelectTemplate,
+    onCreateFromTemplate,
     onCsvParsed,
     selectionCount = 0,
     onBulkSend,
@@ -485,15 +499,17 @@ export const InviteComposer = ({
                         label={t('links.accountInvites.agencyId', 'Beratungsstellen-ID')}
                     />
                 )}
-                <SplitButton
-                    icon={<MailFilledIcon />}
-                    label={selectedTemplate?.name ?? t('links.composer.templatePlaceholder', 'E-Mail-Vorlage')}
-                    // Outlined at rest (#741): the old `tonal` was the light
-                    // Elevated colourway, which claimed a raised state the resting
-                    // picker is not in. `tonal` now means the M3 secondary
-                    // container per the spec sheet.
-                    variant="outlined"
-                    onClick={() => onManageTemplates('list')}
+                {/* #746: the module's template split button — main segment opens the
+                    manage/pick dialog (as before), the chevron menu now switches the
+                    active template in place, check-marked like in the editor. */}
+                <TemplateSplitButton
+                    activeTemplateId={selectedTemplate?.id}
+                    templates={activeTemplates}
+                    onCreateFromTemplate={
+                        onCreateFromTemplate && ((id) => onCreateFromTemplate(typeof id === 'number' ? id : Number(id)))
+                    }
+                    onMainClick={() => onManageTemplates('list')}
+                    onSelectTemplate={(id) => onSelectTemplate?.(typeof id === 'number' ? id : Number(id))}
                 />
                 {/* Filled primary is reserved for the selected item / main CTA; every
                 other resting state is tonal M3 secondary (owner call). The icon
