@@ -117,6 +117,13 @@ export interface InviteComposerProps {
      */
     onDeleteSelected?: () => void;
     searchPlaceholder?: string;
+    /**
+     * Toolbar search (A4/#376). Controlled by the tab, which owns the invite
+     * list the query filters — the composer only renders the control. Without
+     * both props the search pill stays uncontrolled and, as before, inert.
+     */
+    searchQuery?: string;
+    onSearchQueryChange?: (query: string) => void;
     className?: string;
 }
 
@@ -176,6 +183,8 @@ export const InviteComposer = ({
     onClearSelection,
     onDeleteSelected,
     searchPlaceholder,
+    searchQuery,
+    onSearchQueryChange,
     className,
 }: InviteComposerProps) => {
     const { t } = useTranslation();
@@ -456,7 +465,16 @@ export const InviteComposer = ({
 
     return (
         <div className={classNames(styles.composer, className)}>
-            <GlobalSearchBar leading={moreButton} searchPlaceholder={searchPlaceholder}>
+            <GlobalSearchBar
+                leading={moreButton}
+                searchPlaceholder={searchPlaceholder}
+                // `onSearch` (Enter / magnifier) resolves to the same handler as
+                // `onSearchChange`: the list filters as you type, so submitting
+                // is a no-op rather than a second, different search.
+                value={onSearchQueryChange ? searchQuery ?? '' : undefined}
+                onSearch={onSearchQueryChange}
+                onSearchChange={onSearchQueryChange}
+            >
                 <FloatingLabelInput
                     className={styles.emailField}
                     error={showEmailError}
@@ -526,14 +544,26 @@ export const InviteComposer = ({
                     label={bulkMode ? String(selectionCount) : singleSendLabel}
                     mainDisabled={!sendReady || submitting}
                     mainDescribedBy={sendBlockedReason ? sendHintId : undefined}
-                    menu={sendMenu}
+                    // The send-mode menu switches "Direkt Versenden" vs "Empfänger
+                    // nur anlegen", which only ever applies to the single-create
+                    // flow (see handleSend). In bulk mode it changed nothing and
+                    // only put a second, inert chevron next to the collapse one.
+                    menu={bulkMode ? undefined : sendMenu}
                     menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
                     title={bulkMode ? bulkSendLabel : undefined}
-                    // Filled primary is the single-send CTA. The selection counter stays
-                    // tonal secondary even when it is ready to fire (Figma 1165:16407
-                    // selection variant): it is a state display with actions hanging off
-                    // it, not the page's call to action.
-                    variant={!bulkMode && sendReady ? 'primary' : 'secondary'}
+                    // Filled primary is the single-send CTA; the selection counter
+                    // stays tonal secondary even when ready (Figma 1165:16407
+                    // selection variant) — a state display with actions hanging off
+                    // it, not the page's call to action. What BOTH share: a filled
+                    // shape is a promise that pressing does something. The tonal
+                    // disabled rule keeps `opacity: 1`, so a dead tonal counter was
+                    // pixel-identical to a live one ("Number counter Button
+                    // funktioniert hier nicht"). Not-ready therefore rests
+                    // `outlined` — colour arrives with the ability to fire.
+                    variant={(() => {
+                        if (!sendReady) return 'outlined';
+                        return bulkMode ? 'secondary' : 'primary';
+                    })()}
                     collapseLabel={t('links.bulk.clearSelection', 'Auswahl aufheben')}
                     onClick={bulkMode ? onBulkSend : handleSend}
                     onCollapse={bulkMode ? onClearSelection : undefined}

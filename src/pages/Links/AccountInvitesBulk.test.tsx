@@ -5,6 +5,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { configure, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';
 
 // CI runners are heavily contended; the 1s default for findBy*/waitFor flakes there.
 configure({ asyncUtilTimeout: 10_000 });
@@ -42,8 +43,14 @@ vi.mock('./EmailTemplatesDialog', () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
+    previewInviteEmailTemplateContent: vi.fn().mockResolvedValue({
+        subject: 'preview',
+        html: '<html><body>preview</body></html>',
+        plainText: 'preview',
+    }),
     listAccountInvites: vi.fn(),
     createAccountInvite: vi.fn(),
+    sendAccountInvite: vi.fn(),
     resendAccountInvite: vi.fn(),
     revokeAccountInvite: vi.fn(),
     listInviteEmailTemplates: vi.fn(),
@@ -56,9 +63,14 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
     acceptBaseUrlForRole: () => 'https://admin.example/account-invite',
     listAccountInvites: mocks.listAccountInvites,
     createAccountInvite: mocks.createAccountInvite,
+    sendAccountInvite: mocks.sendAccountInvite,
     resendAccountInvite: mocks.resendAccountInvite,
     revokeAccountInvite: mocks.revokeAccountInvite,
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
+    // E2: the editor's preview is rendered by the backend. Without this the real
+    // fetch would run under jsdom — which is a load-dependent hang, not an
+    // honest failure. (Same omission #751 had; see the preview mock there.)
+    previewInviteEmailTemplateContent: mocks.previewInviteEmailTemplateContent,
 }));
 
 vi.mock('../../api/tenant/searchTenantData', () => ({
@@ -220,26 +232,102 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         },
     );
 
-    it('bulk send resends only the selected rows with the chosen template and clears the selection', async () => {
+    it('bulk send uses /send for a never-sent DRAFT and /resend only for an already sent invite', async () => {
+        mocks.sendAccountInvite.mockImplementation((id: number) => Promise.resolve(invite(id, 'EMAIL_SENT')));
         mocks.resendAccountInvite.mockImplementation((id: number) => Promise.resolve(invite(id, 'EMAIL_SENT')));
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowCheckbox('person21@example.org')); // DRAFT
+        await user.click(await rowCheckbox('person22@example.org')); // EMAIL_SENT
+
+        const sendButton = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        // A DRAFT has never been mailed, so /resend would SUPERSEDE it: the row
+        // dies as "Ersetzt" and a replacement invite id appears. Only /send is
+        // the first delivery of a draft.
+        await waitFor(() => expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.sendAccountInvite).toHaveBeenCalledWith(21, {
+            acceptBaseUrl: 'https://admin.example/account-invite',
+            templateId: 7,
+        });
+        expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(1);
+        expect(mocks.resendAccountInvite).toHaveBeenCalledWith(22, {
+            acceptBaseUrl: 'https://admin.example/account-invite',
+            templateId: 7,
+        });
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+        expect(await screen.findByText('2 Einladungen gesendet')).toBeInTheDocument();
+        await waitFor(() => expect(screen.queryByText('2 ausgewählt')).not.toBeInTheDocument());
+        // Back in single-create mode once nothing is selected.
+        expect(await screen.findByRole('button', { name: 'Direkt Versenden' })).toBeInTheDocument();
+    });
+    // A3 / B3 / B4: the counter is the ONLY send affordance in multi-select, so
+    // a dead one has to look dead. Tonal is reserved for "this can fire now".
+    it('renders the multi-select counter outlined + disabled and names why it cannot send', async () => {
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE, { ...TEMPLATE, id: 8, name: 'Zweite Vorlage' }]);
         await renderCounsellorTab();
         const user = userEvent.setup();
 
         await user.click(await rowCheckbox('person21@example.org'));
 
-        const sendButton = await screen.findByRole('button', { name: '1 ausgewählte senden' });
-        await waitFor(() => expect(sendButton).toBeEnabled());
-        await user.click(sendButton);
+        const counter = await screen.findByRole('button', { name: '1 ausgewählte senden' });
+        const wrapper = counter.closest(`.${splitButtonStyles.splitButton}`) as HTMLElement;
+        expect(counter).toBeDisabled();
+        expect(wrapper).toHaveClass(splitButtonStyles.outlined);
+        expect(wrapper).not.toHaveClass(splitButtonStyles.tonal);
+        expect(await screen.findByText('Bitte zuerst eine E-Mail-Vorlage auswählen.')).toBeInTheDocument();
+        expect(counter).toHaveAccessibleDescription('Bitte zuerst eine E-Mail-Vorlage auswählen.');
+    });
 
-        await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(1));
-        expect(mocks.resendAccountInvite).toHaveBeenCalledWith(21, {
-            acceptBaseUrl: 'https://admin.example/account-invite',
-            templateId: 7,
-        });
-        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
-        expect(await screen.findByText('1 Einladungen gesendet')).toBeInTheDocument();
-        await waitFor(() => expect(screen.queryByText('1 ausgewählt')).not.toBeInTheDocument());
-        // Back in single-create mode once nothing is selected.
-        expect(await screen.findByRole('button', { name: 'Direkt Versenden' })).toBeInTheDocument();
+    it('turns the counter tonal once a template is chosen and it can actually send', async () => {
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowCheckbox('person21@example.org'));
+
+        const counter = await screen.findByRole('button', { name: '1 ausgewählte senden' });
+        const wrapper = counter.closest(`.${splitButtonStyles.splitButton}`) as HTMLElement;
+        await waitFor(() => expect(counter).toBeEnabled());
+        expect(wrapper).toHaveClass(splitButtonStyles.tonal);
+        expect(wrapper).not.toHaveClass(splitButtonStyles.outlined);
+    });
+
+    // B5: the send-mode menu ("Direkt Versenden" / "Empfänger nur anlegen")
+    // only applies to the single-create flow, so its chevron is dead weight on
+    // the selection counter.
+    it('drops the send-mode chevron in multi-select and keeps the clear-selection one', async () => {
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        expect(await screen.findByRole('button', { name: 'Sendeoptionen' })).toBeInTheDocument();
+
+        await user.click(await rowCheckbox('person21@example.org'));
+
+        await screen.findByRole('button', { name: '1 ausgewählte senden' });
+        expect(screen.queryByRole('button', { name: 'Sendeoptionen' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Auswahl aufheben' })).toBeInTheDocument();
+    });
+    // A4: the toolbar search pill rendered, took input and threw it away — no
+    // value, no callback, no filtering anywhere. Frank's "Fish" returned nothing
+    // because nothing was ever asked.
+    it('filters the board by the toolbar search across e-mail, name and Träger-ID', async () => {
+        mocks.listAccountInvites.mockResolvedValue(
+            invitesPage([
+                { ...invite(31, 'EMAIL_SENT', 'karla.fischer@example.org'), firstName: 'Karla', lastName: 'Fischer' },
+                { ...invite(32, 'EMAIL_SENT', 'ronny.bauer@example.org'), firstName: 'Ronny', lastName: 'Bauer' },
+            ]),
+        );
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await screen.findByText('karla.fischer@example.org');
+        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
+        await user.type(await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }), 'fisch');
+
+        await waitFor(() => expect(screen.queryByText('ronny.bauer@example.org')).not.toBeInTheDocument());
+        expect(screen.getByText('Karla Fischer')).toBeInTheDocument();
     });
 });
