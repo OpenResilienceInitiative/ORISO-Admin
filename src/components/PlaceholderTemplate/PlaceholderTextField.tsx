@@ -11,7 +11,8 @@ export interface PlaceholderTextFieldProps {
     value: string;
     onChange: (next: string) => void;
     /** Tokens offered by the field's own picker. */
-    tokens: PlaceholderTokenDef[];
+    /** Tokens the field's picker offers; omit to render the field without a picker (D1). */
+    tokens?: PlaceholderTokenDef[];
     /** Renders a textarea instead of a single-line input. */
     multiline?: boolean;
     rows?: number;
@@ -82,7 +83,7 @@ export const PlaceholderTextField = ({
                 <label className={styles.fieldLabel} htmlFor={fieldId}>
                     {label}
                 </label>
-                <TokenPicker disabled={disabled} tokens={tokens} onInsert={handleInsert} />
+                {tokens ? <TokenPicker disabled={disabled} tokens={tokens} onInsert={handleInsert} /> : null}
             </div>
             {multiline ? (
                 <Input.TextArea

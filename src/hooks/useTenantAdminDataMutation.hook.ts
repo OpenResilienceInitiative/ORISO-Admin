@@ -61,5 +61,14 @@ export const useTenantAdminDataMutation = ({
             });
             options?.onSuccess?.(responseData, updatedData, onMutateResult, context);
         },
+        // `responseHandling: []` means fetchData rejects a 5xx without showing anything,
+        // so without this the only feedback the user ever gets is the success toast.
+        onError: (error, updatedData, onMutateResult, context) => {
+            notification.error({
+                message: t('message.error.default'),
+                duration: 8,
+            });
+            options?.onError?.(error, updatedData, onMutateResult, context);
+        },
     });
 };

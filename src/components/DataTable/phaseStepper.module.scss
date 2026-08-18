@@ -39,6 +39,29 @@
     background: color-mix(in srgb, var(--m3-secondary, #4c555f) 55%, transparent);
 }
 
+/* C1: the track had no hover state at all. The bead is the hover/focus target
+   and grows a soft state layer around itself, so a milestone visibly answers
+   the pointer before its tooltip arrives — reached or not. */
+
+.bead {
+    position: relative;
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 50%;
+    cursor: help;
+    transition: background 160ms ease;
+}
+
+.bead:hover,
+.bead:focus-visible {
+    background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+}
+
+.bead:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 1px;
+}
+
 .dot {
     display: inline-flex;
     width: 14px;

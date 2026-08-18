@@ -15,8 +15,23 @@ export interface PlaceholderTemplateDialogProps {
     children: ReactNode;
     onSave: () => void;
     onClose: () => void;
+    /**
+     * X button / Escape / mask click, when they must differ from the Cancel
+     * text button (e.g. Cancel steps back to a list while X closes the whole
+     * dialog). Defaults to `onClose`.
+     */
+    onDismiss?: () => void;
     /** Disables "Speichern" (e.g. while submitting or invalid). */
     saveDisabled?: boolean;
+    /** Id of an element explaining the save button (e.g. why it is disabled). */
+    saveDescribedBy?: string;
+    /**
+     * Replaces the standard Abbrechen/Speichern row — used when the dialog
+     * switches into a sub-state with its own actions (e.g. the discard-changes
+     * question), so that state stays inside THIS dialog instead of opening a
+     * second overlay.
+     */
+    footer?: ReactNode;
     width?: number | string;
 }
 
@@ -34,17 +49,23 @@ export const PlaceholderTemplateDialog = ({
     children,
     onSave,
     onClose,
+    onDismiss,
     saveDisabled = false,
+    saveDescribedBy,
+    footer,
     width = 1080,
 }: PlaceholderTemplateDialogProps) => (
     <Modal
         titleKey={titleKey}
         descriptionKey={descriptionKey}
+        footer={footer}
         okLabelKey="save"
         cancelLabelKey="cancel"
         onConfirm={onSave}
         onClose={onClose}
+        onDismiss={onDismiss}
         confirmDisabled={saveDisabled}
+        confirmDescribedBy={saveDescribedBy}
         width={width}
     >
         <div className={styles.body}>{children}</div>

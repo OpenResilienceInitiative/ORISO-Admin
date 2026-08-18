@@ -68,6 +68,34 @@ describe('DepartmentSelect', () => {
 });
 
 /**
+ * #812: the menu opens on a header naming the choice being made, so the list of Fachbereich
+ * names is not left to speak for itself.
+ */
+describe('DepartmentSelect — menu header', () => {
+    it('names the choice at the top of the menu', async () => {
+        render(<DepartmentSelect departments={departments} value={ALL_DEPARTMENTS} onChange={vi.fn()} />);
+        await openMenu();
+
+        expect(await screen.findByText('Fachbereich auswählen')).toBeInTheDocument();
+    });
+
+    it('labels the options as a group instead of offering the header as an option', async () => {
+        const onChange = vi.fn();
+        render(<DepartmentSelect departments={departments} value={ALL_DEPARTMENTS} onChange={onChange} />);
+        await openMenu();
+
+        const header = await screen.findByText('Fachbereich auswählen');
+        // The header titles the group of options; a screen reader announces it as the
+        // group's name rather than as a further, unusable menu item.
+        expect(header.closest('[role="menuitem"]')).toBeNull();
+        expect(header.parentElement?.parentElement?.querySelector('[role="group"]')).not.toBeNull();
+
+        await userEvent.click(header);
+        expect(onChange).not.toHaveBeenCalled();
+    });
+});
+
+/**
  * #583: an admin editing the agency-wide text has to see which Fachbereiche have left the
  * inherited text — they will NOT receive the correction being written.
  */

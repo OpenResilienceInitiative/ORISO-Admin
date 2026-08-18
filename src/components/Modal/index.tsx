@@ -29,6 +29,15 @@ export interface ModalProps {
     children?: ReactNode;
     onConfirm?: () => void;
     onClose?: () => void;
+    /**
+     * Dismiss gestures (X button, Escape, mask click) when they must behave
+     * differently from the Cancel text button — e.g. a sub-view whose Cancel
+     * goes back one step while X closes the whole dialog. Defaults to
+     * `onClose`, so existing dialogs keep one close path.
+     */
+    onDismiss?: () => void;
+    /** Id of an element describing the confirm button (e.g. why it is disabled). */
+    confirmDescribedBy?: string;
     /** Custom footer content; replaces the standard text-button actions. */
     footer?: ReactNode;
     width?: number | string;
@@ -63,6 +72,8 @@ export const Modal = ({
     children,
     onConfirm,
     onClose,
+    onDismiss,
+    confirmDescribedBy,
     contentKey,
     contentKeyOptions,
     footer,
@@ -87,6 +98,7 @@ export const Modal = ({
             {okLabelKey && (
                 <button
                     type="button"
+                    aria-describedby={confirmDescribedBy}
                     className={classNames(styles.actionButton, styles.actionButtonPrimary)}
                     disabled={confirmDisabled}
                     onClick={onConfirm}
@@ -128,7 +140,7 @@ export const Modal = ({
             maskClosable
             keyboard
             closable={closable}
-            onCancel={onClose}
+            onCancel={onDismiss ?? onClose}
             footer={
                 resolvedFooter ? (
                     <>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -36,7 +36,6 @@ import {
     FormatAlignJustify,
     Image as ImageIcon,
     Restore,
-    Schedule,
     Language,
     ArrowDropDown,
     Fingerprint,
@@ -51,9 +50,10 @@ import {
     MinimizeContentIcon,
     PublishedIcon,
     EditIcon,
+    VersionHistoryIcon,
 } from '../CustomIcons/EditorIcons';
 import { createImageDropPasteHandlers, useEditorImageUpload } from './useEditorImageUpload';
-import { HeadingAnchors } from './headingAnchors';
+import { ensureHeadingAnchorIds, HeadingAnchors } from './headingAnchors';
 import { HeadingMenu } from './HeadingMenu';
 import { SplitDropdown } from './SplitDropdown';
 import AnchorChips from './AnchorChips';
@@ -62,8 +62,15 @@ import styles from './M3RichTextEditor.module.scss';
 
 /** A saved, published version the editor can look back at (read-only). */
 export type EditorVersion = {
-    /** Stable id (e.g. the activation timestamp). */
+    /** Stable id (the AVV uses its activation timestamp, ADR-021 a surrogate id). */
     id: string;
+    /**
+     * When this version came into force (ISO). ADR-021 histories key a version by a
+     * surrogate id, so the date has to travel separately — feeding an id like `42`
+     * to `new Date()` would date the version to the year 2042. Absent for the AVV,
+     * whose id IS its activation timestamp.
+     */
+    publishedAt?: string;
     /** Human label shown in the version menu (e.g. a formatted date). */
     label: string;
     /** The version's HTML content. */
@@ -167,6 +174,12 @@ export type M3RichTextEditorProps = {
     editorSlot?: React.ReactNode;
     /** Rendered below the action footer (e.g. version history, modals). */
     belowSlot?: React.ReactNode;
+    /**
+     * Status shown in the persistent 68px footer of a read-only card. The row
+     * remains present when this is empty so the legal-card raster does not
+     * collapse while audit data is loading or unavailable.
+     */
+    readOnlyFooter?: React.ReactNode;
     /**
      * Anchor navigation (standard, ON by default): headings get persistent
      * `id`s, a horizontal chip row above the editor jumps to them, and
@@ -638,6 +651,7 @@ export const M3RichTextEditor = ({
     aboveEditorSlot,
     editorSlot,
     belowSlot,
+    readOnlyFooter,
     enableAnchors = true,
     onPublish,
     onSaveDraft,
@@ -678,6 +692,13 @@ export const M3RichTextEditor = ({
     // Anchors only make sense for the built-in editor; an editorSlot brings
     // its own TiptapEditor with its own anchor row.
     const anchorsEnabled = enableAnchors && !editorSlot;
+    // Published before chapter navigation existed, many legal documents have
+    // headings without ids. Editing may persist ids on change; a reader must
+    // stay non-mutating, so stamp them only into the display copy.
+    const editorContent = useMemo(
+        () => (!editorEditable && anchorsEnabled ? ensureHeadingAnchorIds(displayedContent) : displayedContent),
+        [anchorsEnabled, displayedContent, editorEditable],
+    );
 
     // Image upload (WP-3b): editor + handler live behind refs so the drop/paste
     // handlers captured at editor creation always see the current instances.
@@ -701,7 +722,7 @@ export const M3RichTextEditor = ({
             Placeholder.configure({ placeholder }),
             ...(anchorsEnabled ? [HeadingAnchors] : []),
         ],
-        content: value,
+        content: editorContent,
         editable: !readOnly,
         editorProps: {
             attributes: editorSurfaceAttributes(readOnly, title),
@@ -711,7 +732,9 @@ export const M3RichTextEditor = ({
                 }
             }),
         },
-        onUpdate: ({ editor: e }) => onChange?.(e.isEmpty ? '' : e.getHTML()),
+        onUpdate: ({ editor: e }) => {
+            if (e.isEditable) onChange?.(e.isEmpty ? '' : e.getHTML());
+        },
     });
 
     useEffect(() => {
@@ -761,17 +784,20 @@ export const M3RichTextEditor = ({
 
     useEffect(() => {
         if (!editor) return;
-        const incoming = displayedContent || '';
+        const incoming = editorContent || '';
         const current = editor.isEmpty ? '' : editor.getHTML();
         if (incoming !== current && !(isEmptyHtml(incoming) && editor.isEmpty)) {
             editor.commands.setContent(incoming, false);
         }
-    }, [displayedContent, editor]);
+    }, [editorContent, editor]);
 
     if (!editor) return null;
 
     const html = () => (editorSlot || editor.isEmpty ? '' : editor.getHTML());
-    const onlineSinceDate = versions.length > 0 ? parseVersionDate(versions[versions.length - 1].id) : null;
+    // Prefer the explicit publication timestamp; fall back to the id for the AVV,
+    // where the id is that timestamp.
+    const versionDate = (version: EditorVersion) => parseVersionDate(version.publishedAt ?? version.id);
+    const onlineSinceDate = versions.length > 0 ? versionDate(versions[versions.length - 1]) : null;
     // Read mode (published view / version look-back): text without box, outline
     // or padding (Figma 1261-51137). Only the built-in editor is restyled — an
     // editorSlot owns its own surface.
@@ -978,7 +1004,7 @@ export const M3RichTextEditor = ({
                     {topicSlot}
                     {showVersionControl && (
                         <SplitDropdown
-                            icon={<Schedule />}
+                            icon={<VersionHistoryIcon />}
                             title={t('legal.m3Editor.versionHistory')}
                             label={
                                 viewingVersion
@@ -1012,9 +1038,8 @@ export const M3RichTextEditor = ({
                                                     ]
                                                   : []),
                                               ...versions.map((v, index) => {
-                                                  const from = parseVersionDate(v.id);
-                                                  const until =
-                                                      index > 0 ? parseVersionDate(versions[index - 1].id) : null;
+                                                  const from = versionDate(v);
+                                                  const until = index > 0 ? versionDate(versions[index - 1]) : null;
                                                   let range = v.label;
                                                   if (from && until) {
                                                       range = t('legal.m3Editor.versionRangePublished', {
@@ -1088,14 +1113,28 @@ export const M3RichTextEditor = ({
                             <button
                                 type="button"
                                 className={`${styles.textBtn} ${styles.draft}`}
-                                disabled={imageUpload.uploading}
-                                aria-busy={imageUpload.uploading}
+                                // `publishing` means "a submit is in flight" for every consumer
+                                // of this shell (see LegalText/DataProcessingAgreement*/Dpia*),
+                                // not specifically "the publish button was clicked" — so it must
+                                // also block a second, overlapping draft save while one is
+                                // already pending, the same way it already blocks Publish.
+                                disabled={publishing || imageUpload.uploading}
+                                aria-busy={publishing || imageUpload.uploading}
                                 onClick={() => onSaveDraft(html())}
                             >
                                 <EditIcon />
                                 <span>{t('legal.m3Editor.saveDraft')}</span>
                             </button>
                         )}
+                    </div>
+                </>
+            )}
+
+            {readOnly && (
+                <>
+                    <hr className={styles.divider} />
+                    <div className={styles.readOnlyFooter} data-testid="m3-readonly-footer">
+                        {readOnlyFooter}
                     </div>
                 </>
             )}
