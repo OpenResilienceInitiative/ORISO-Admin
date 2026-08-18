@@ -37,10 +37,10 @@ export const legalTextVersionsUrl = (scope: LegalVersionScope): string => {
  * admin answering "which policy was in force in March" must not be told "none"
  * because a 403 or a 500 was swallowed.
  *
- * The one failure folded into "empty" is 404: ORISO-AgencyService#256 is not merged
- * and the Träger level has no endpoint at all, so a level legitimately has no history
- * yet, and an error banner on four cards would be noise about a feature that has not
- * shipped.
+ * The one failure folded into "empty" is 404: the Träger level has no endpoint at all,
+ * and ORISO-AgencyService#256 is merged but not yet deployed everywhere, so a level
+ * legitimately has no history yet and an error banner on four cards would be noise
+ * about a feature that has not reached that environment.
  */
 export const getLegalTextVersions = (scope: LegalVersionScope): Promise<LegalTextVersion[]> =>
     (
