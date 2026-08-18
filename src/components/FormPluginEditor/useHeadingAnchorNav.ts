@@ -49,6 +49,33 @@ export const useHeadingAnchorNav = (
         };
     }, [editor, enabled, editable]);
 
+    // Arriving WITH a hash (the URL a chip click produces, shared or reloaded):
+    // jump to that chapter once the anchor list is in. Without this, the link
+    // the click writes would look shareable and not be — worse than no hash.
+    // A hash that matches no anchor (stale link after re-authoring, typo, or a
+    // foreign in-page anchor) is deliberately ignored: no throw, no scroll.
+    // Read-only only — an author's editor must not jump away from the caret.
+    const consumedInitialHash = useRef(false);
+    useEffect(() => {
+        if (!editor || !enabled || editable || consumedInitialHash.current) return;
+        if (!anchors.length || typeof window === 'undefined') return;
+        let requested = '';
+        try {
+            requested = decodeURIComponent(window.location.hash.slice(1));
+        } catch {
+            // Malformed percent-encoding in a hand-edited URL — treat as "no hash".
+        }
+        if (!requested) {
+            consumedInitialHash.current = true;
+            return;
+        }
+        consumedInitialHash.current = true;
+        if (anchors.some((anchor) => anchor.id === requested)) {
+            // eslint-disable-next-line @typescript-eslint/no-use-before-define
+            scrollToAnchor(requested);
+        }
+    }, [editor, enabled, editable, anchors]);
+
     // Read-only scroll spy: mark the anchor whose heading is currently at the
     // top of the (scrolled) editor content as active.
     useEffect(() => {

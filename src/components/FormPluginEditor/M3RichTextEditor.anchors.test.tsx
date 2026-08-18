@@ -150,6 +150,31 @@ describe('M3RichTextEditor — anchor navigation (read-only)', () => {
         window.history.replaceState(null, '', '/');
     });
 
+    it('arriving with a #hash jumps to that chapter and marks its chip (shared link)', async () => {
+        // The other half of the shareable URL: what the chip click writes must
+        // work when pasted into a fresh tab.
+        scrollIntoViewMock.mockClear();
+        window.history.replaceState(null, '', '/read#details');
+        const { container } = render(<M3RichTextEditor value={content} readOnly />);
+
+        await waitFor(() => expect(scrollIntoViewMock).toHaveBeenCalled());
+        await waitFor(() =>
+            expect(container.querySelector('[data-anchor-chip="details"].RichEditor-anchorChip--active')).toBeTruthy(),
+        );
+        window.history.replaceState(null, '', '/');
+    });
+
+    it('ignores a hash that matches no chapter (stale or foreign link): no throw, no jump', async () => {
+        scrollIntoViewMock.mockClear();
+        window.history.replaceState(null, '', '/read#does-not-exist');
+        const { container } = render(<M3RichTextEditor value={content} readOnly />);
+
+        await waitFor(() => expect(container.querySelectorAll(chipSelector)).toHaveLength(2));
+        expect(scrollIntoViewMock).not.toHaveBeenCalled();
+        expect(container.querySelector('.RichEditor-anchorChip--active')).toBeFalsy();
+        window.history.replaceState(null, '', '/');
+    });
+
     it('intercepts in-text #anchor links: scrolls instead of navigating', async () => {
         scrollIntoViewMock.mockClear();
         const { container } = render(<M3RichTextEditor value={content} readOnly />);
