@@ -14,6 +14,11 @@ export interface PlaceholderTemplateFieldConfig<V extends Record<string, string>
     label: string;
     multiline?: boolean;
     rows?: number;
+    /**
+     * Whether this field carries a token picker. Defaults to `true`. A subject
+     * line is one short string — a picker hanging off it is noise (D1).
+     */
+    tokenPicker?: boolean;
 }
 
 export interface PlaceholderTemplateEditorProps<V extends Record<string, string>> {
@@ -79,7 +84,7 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
                         label={field.label}
                         multiline={field.multiline}
                         rows={field.rows}
-                        tokens={tokens}
+                        tokens={field.tokenPicker === false ? undefined : tokens}
                         value={values[field.name] ?? ''}
                         onChange={(next) => onChange({ ...values, [field.name]: next })}
                     />

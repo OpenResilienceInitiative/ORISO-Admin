@@ -16,8 +16,12 @@
     overflow-wrap: anywhere;
 }
 
+/* E1: the caption belongs to the Admin chrome, not to the mail document, so it
+   may carry the tenant primary. Size and casing stay caption-sized — primary is
+   a colour here, not a promotion to a heading. */
+
 .metaLabel {
-    color: var(--m3-on-surface-variant, #49454f);
+    color: var(--m3-primary, #a5000a);
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.04em;

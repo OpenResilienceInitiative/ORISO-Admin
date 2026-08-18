@@ -1,4 +1,4 @@
-import { Button, Form, Input, message, Select, Switch, Tag, Tooltip } from 'antd';
+import { Button, Form, Input, message, Select, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,7 @@ import {
     updateInviteEmailTemplate,
 } from '../../api/accountInvites/accountInvites';
 import { EmailKitPreview } from '../../components/PlaceholderTemplate';
+import { MuiSwitchField } from '../../components/mui/MuiSwitchField';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { Modal, DialogButton } from '../../components/Modal';
 import styles from './EmailTemplatesDialog.module.scss';
@@ -426,13 +427,13 @@ export const EmailTemplatesDialog = ({
                             >
                                 <Input.TextArea rows={8} />
                             </Form.Item>
-                            <Form.Item
-                                name="active"
+                            {/* D2: the shared MUI/M3 switch, not antd's. MuiSwitchField
+                                exists for exactly this shape of antd Form.Item call site. */}
+                            <MuiSwitchField
                                 label={t('links.templates.field.active', 'Active')}
-                                valuePropName="checked"
-                            >
-                                <Switch />
-                            </Form.Item>
+                                name="active"
+                                switchLabel={t('links.templates.field.active', 'Active')}
+                            />
                         </div>
                         {/* E2: the preview is rendered by the backend's own mail
                             renderer — the one the dispatcher runs — so what is

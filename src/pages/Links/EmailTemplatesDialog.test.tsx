@@ -240,6 +240,24 @@ describe('EmailTemplatesDialog', () => {
         expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
     });
 
+    // D2 — „wieder ant stuff anstatt mui". The recurring regression: an antd
+    // Switch where the shared MUI/M3 control belongs. MuiSwitchField exists
+    // precisely for antd Form.Item call sites like this one.
+    it('uses the shared MUI switch for Active, not an antd one', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+
+        const dialog = screen.getByRole('dialog');
+        // Both libraries expose role="switch"; the discriminator is whose markup it is.
+        expect(dialog.querySelector('.ant-switch')).toBeNull();
+        const toggle = within(dialog).getByRole('switch', { name: 'Active' });
+        expect(toggle).toBeInTheDocument();
+        expect(toggle.closest('.MuiSwitch-root')).not.toBeNull();
+    });
+
     it('opens a prefilled edit form on row double-click and updates the template', async () => {
         const user = userEvent.setup();
         mocks.updateInviteEmailTemplate.mockResolvedValue({ ...tenantTemplate, subject: 'Servus' });

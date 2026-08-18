@@ -57,22 +57,23 @@ export const sampleValues = (tokens: PlaceholderTokenDef[]): Record<string, stri
  * Invite-mail tokens — MUST mirror the placeholder set the UserService
  * `AccountInviteService` substitutes when it sends the invite. Sample values
  * are synthetic (Storybook/preview only), never live data.
+ *
+ * `inviteLink` is deliberately absent. The branded mail layout renders the
+ * action link itself — a CTA button plus a visible copy-paste line, in the HTML
+ * part and in the text/plain alternative alike — so a body that also inlined
+ * the token produced the same URL twice in the received mail. The author cannot
+ * insert it here, and `AccountInviteService.renderBody` strips one left over in
+ * an older stored body, so neither half of the pair can reintroduce it.
  */
 export const INVITE_EMAIL_TOKENS: PlaceholderTokenDef[] = [
-    {
-        key: 'inviteLink',
-        labelKey: 'placeholderTemplate.token.inviteLink',
-        labelFallback: 'Einladungslink',
-        sample: 'https://beratung.example.org/einladung?token=1c9d',
-    },
     {
         key: 'email',
         labelKey: 'placeholderTemplate.token.email',
         labelFallback: 'E-Mail-Adresse',
-        sample: 'lisa.beispiel@example.org',
+        sample: 'maren.muster@example.org',
     },
-    { key: 'firstName', labelKey: 'placeholderTemplate.token.firstName', labelFallback: 'Vorname', sample: 'Lisa' },
-    { key: 'lastName', labelKey: 'placeholderTemplate.token.lastName', labelFallback: 'Nachname', sample: 'Beispiel' },
+    { key: 'firstName', labelKey: 'placeholderTemplate.token.firstName', labelFallback: 'Vorname', sample: 'Maren' },
+    { key: 'lastName', labelKey: 'placeholderTemplate.token.lastName', labelFallback: 'Nachname', sample: 'Muster' },
     { key: 'tenantId', labelKey: 'placeholderTemplate.token.tenantId', labelFallback: 'Träger-ID', sample: '4' },
 ];
 

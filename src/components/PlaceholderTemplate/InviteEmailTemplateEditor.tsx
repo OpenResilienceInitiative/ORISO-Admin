@@ -48,7 +48,8 @@ export const InviteEmailTemplateEditor = ({
     const { t } = useTranslation();
 
     const fields: PlaceholderTemplateFieldConfig<InviteEmailTemplateValues>[] = [
-        { name: 'subject', label: t('placeholderTemplate.invite.subject', 'Betreff') },
+        // D1 — no token picker on the subject line.
+        { name: 'subject', label: t('placeholderTemplate.invite.subject', 'Betreff'), tokenPicker: false },
         { name: 'body', label: t('placeholderTemplate.invite.body', 'Inhalt'), multiline: true, rows: 8 },
     ];
 

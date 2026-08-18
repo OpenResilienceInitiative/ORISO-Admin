@@ -115,6 +115,20 @@ describe('InviteEmailTemplateEditor', () => {
         );
     });
 
+    // D1 — „Bei Betreff nicht benötigt". A subject line is one short string; a
+    // token picker hanging off it is noise, and the placeholders that matter
+    // there can be typed. The body keeps its picker.
+    it('offers the placeholder picker on the body only, never on the subject', () => {
+        render(<InviteHarness />);
+
+        const pickers = screen.getAllByRole('button', { name: 'Platzhalter einfügen' });
+        expect(pickers).toHaveLength(1);
+
+        // The one that remains belongs to the body field, not the subject.
+        const bodyField = screen.getByRole('textbox', { name: 'Inhalt' }).closest('div[class*="field"]');
+        expect(bodyField).toContainElement(pickers[0]);
+    });
+
     it('loads the picked template into the fields via the split button', async () => {
         const user = userEvent.setup();
         render(<InviteHarness />);

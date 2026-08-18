@@ -68,14 +68,27 @@ describe('insertPlaceholder', () => {
 });
 
 describe('token presets', () => {
+    // The branded layout renders the invite link itself, as a button plus a
+    // visible copy-paste line. Offering the author an {{inviteLink}} token to
+    // paste into the body could only ever produce the same URL twice in the
+    // received mail — so the picker does not offer it. UserService strips a
+    // token left over in an older stored body (AccountInviteService.renderBody).
+    it('does not offer the action link as an insertable token', () => {
+        expect(INVITE_EMAIL_TOKENS.map((token) => token.key)).not.toContain('inviteLink');
+    });
+
     it('invite tokens match the UserService AccountInviteService placeholder set', () => {
-        expect(INVITE_EMAIL_TOKENS.map((token) => token.key)).toEqual([
-            'inviteLink',
-            'email',
-            'firstName',
-            'lastName',
-            'tenantId',
-        ]);
+        expect(INVITE_EMAIL_TOKENS.map((token) => token.key)).toEqual(['email', 'firstName', 'lastName', 'tenantId']);
+    });
+
+    // D4 — Frank's sample identity. The mail preview itself is rendered by the
+    // backend, which carries the same names (InviteEmailPreviewService); these
+    // samples keep the picker's own hints consistent with it.
+    it('uses the Maren Muster sample identity', () => {
+        const samples = sampleValues(INVITE_EMAIL_TOKENS);
+        expect(samples.firstName).toBe('Maren');
+        expect(samples.lastName).toBe('Muster');
+        expect(samples.email).toBe('maren.muster@example.org');
     });
 
     it('legal consent tokens cover the registration consent sentence', () => {
@@ -84,7 +97,7 @@ describe('token presets', () => {
 
     it('sampleValues builds a key->sample map every token can be previewed with', () => {
         const samples = sampleValues(INVITE_EMAIL_TOKENS);
-        expect(Object.keys(samples)).toEqual(['inviteLink', 'email', 'firstName', 'lastName', 'tenantId']);
+        expect(Object.keys(samples)).toEqual(['email', 'firstName', 'lastName', 'tenantId']);
         INVITE_EMAIL_TOKENS.forEach((token) => {
             expect(samples[token.key]).toBe(token.sample);
             expect(token.sample.length).toBeGreaterThan(0);
