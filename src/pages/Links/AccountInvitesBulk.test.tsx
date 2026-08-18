@@ -133,6 +133,11 @@ const renderCounsellorTab = async () => {
     return render(<CounsellorInvitesTab />);
 };
 
+const renderTenantTab = async () => {
+    const { TenantInvitesTab } = await import('./AccountInvitesTab');
+    return render(<TenantInvitesTab />);
+};
+
 const rowCheckbox = async (email: string) => {
     const row = (await screen.findByText(email)).closest('tr') as HTMLElement;
     return within(row).getByRole('checkbox');
@@ -329,5 +334,153 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
 
         await waitFor(() => expect(screen.queryByText('ronny.bauer@example.org')).not.toBeInTheDocument());
         expect(screen.getByText('Karla Fischer')).toBeInTheDocument();
+    });
+
+    // A4 × B: the search and the bulk selection are two filters over one list,
+    // and they disagreed. Selecting a row and then typing a query that hides it
+    // left the row selected and every bulk action pointed at it — including
+    // "Ausgewählte löschen", which REVOKES. A destructive action must never run
+    // on a row the operator can no longer see.
+    it('drops a row from the bulk selection once the search hides it', async () => {
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowCheckbox('person21@example.org'));
+        await user.click(await rowCheckbox('person22@example.org'));
+        expect(await screen.findByText('2 ausgewählt')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
+        await user.type(await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }), 'person21@');
+
+        // Only person21 is still listed, so only person21 is still selected.
+        await waitFor(() => expect(screen.queryByText('person22@example.org')).not.toBeInTheDocument());
+        expect(await screen.findByText('1 ausgewählt')).toBeInTheDocument();
+    });
+
+    it('empties the bulk selection when the search hides every selected row', async () => {
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowCheckbox('person21@example.org'));
+        expect(await screen.findByText('1 ausgewählt')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
+        await user.type(
+            await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }),
+            'kein-treffer-fuer-diese-abfrage',
+        );
+
+        await waitFor(() => expect(screen.queryByText('person21@example.org')).not.toBeInTheDocument());
+        // The counter is gone, so the send control is back in single-create mode
+        // and "Ausgewählte löschen" is disabled again.
+        await waitFor(() => expect(screen.queryByText(/ausgewählt$/)).not.toBeInTheDocument());
+        await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }));
+        expect(await screen.findByRole('menuitem', { name: /Ausgewählte löschen/ })).toHaveAttribute(
+            'aria-disabled',
+            'true',
+        );
+    });
+
+    // A4: Frank's original report ("Fish" typed into the search returned
+    // nothing) turned out to be the search doing nothing at all — fixed above
+    // for e-mail+name together. This is the end-to-end validation he asked
+    // for on top: every field the search claims to cover, checked one at a
+    // time, on the actual Träger-Invites screen the finding was taken from
+    // (not the counsellor tab), because Träger-ID only exists there.
+    it('matches on every field the search claims to cover: e-mail, first name, last name and Träger-ID', async () => {
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.listAccountInvites.mockResolvedValue(
+            invitesPage([
+                {
+                    ...invite(41, 'EMAIL_SENT', 'amina.yildiz@example.org'),
+                    targetRole: 'TENANT_ADMIN',
+                    firstName: 'Amina',
+                    lastName: 'Yildiz',
+                    tenantId: 42,
+                },
+                {
+                    ...invite(51, 'EMAIL_SENT', 'bruno.schmidt@example.org'),
+                    targetRole: 'TENANT_ADMIN',
+                    firstName: 'Bruno',
+                    lastName: 'Schmidt',
+                    tenantId: 99,
+                },
+            ]),
+        );
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        await screen.findByText('amina.yildiz@example.org');
+        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
+        const search = await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' });
+
+        const onlyAminaVisible = async () => {
+            await waitFor(() => expect(screen.queryByText('bruno.schmidt@example.org')).not.toBeInTheDocument());
+            expect(screen.getByText('Amina Yildiz')).toBeInTheDocument();
+        };
+
+        // E-mail.
+        await user.type(search, 'amina.yildiz@example.org');
+        await onlyAminaVisible();
+        await user.clear(search);
+
+        // First name.
+        await user.type(search, 'Amina');
+        await onlyAminaVisible();
+        await user.clear(search);
+
+        // Last name.
+        await user.type(search, 'Yildiz');
+        await onlyAminaVisible();
+        await user.clear(search);
+
+        // Träger-ID.
+        await user.type(search, '42');
+        await onlyAminaVisible();
+    });
+
+    it('shows the filtered-empty state for a term that genuinely matches nothing', async () => {
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.listAccountInvites.mockResolvedValue(
+            invitesPage([{ ...invite(41, 'EMAIL_SENT', 'amina.yildiz@example.org'), targetRole: 'TENANT_ADMIN' }]),
+        );
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        await screen.findByText('amina.yildiz@example.org');
+        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
+        await user.type(
+            await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }),
+            'kein-solcher-treffer',
+        );
+
+        await waitFor(() => expect(screen.queryByText('amina.yildiz@example.org')).not.toBeInTheDocument());
+        expect(await screen.findByText('Keine Einladungen für diesen Filter.')).toBeInTheDocument();
+    });
+
+    // B6: Frank saw a DRAFT row appear checked "without having selected it".
+    // Reproduced two ways — a status/bucket FILTER CHIP hiding the row, and
+    // the SEARCH box hiding it — both leaving the selection un-pruned so the
+    // row comes back still checked with no click on its own checkbox either
+    // time. The chip/tile variant is already covered by open PR #766 ("guard
+    // stale invite loads and prune selection on filter change"); this file
+    // covers the search variant that PR predates and does not reach.
+    it('does not resurrect a stale selection when the search hides then reshows the row', async () => {
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowCheckbox('person21@example.org')); // DRAFT
+        expect(await screen.findByText('1 ausgewählt')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
+        const search = await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' });
+        await user.type(search, 'kein-treffer-fuer-diese-abfrage');
+        await waitFor(() => expect(screen.queryByText('person21@example.org')).not.toBeInTheDocument());
+        expect(screen.queryByText('1 ausgewählt')).not.toBeInTheDocument();
+
+        // Clearing the search brings person21 back — it must NOT be pre-checked.
+        await user.clear(search);
+        expect(await rowCheckbox('person21@example.org')).not.toBeChecked();
+        expect(screen.queryByText('1 ausgewählt')).not.toBeInTheDocument();
     });
 });

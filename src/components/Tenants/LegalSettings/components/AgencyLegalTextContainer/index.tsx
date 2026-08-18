@@ -7,11 +7,13 @@ import { usePublishDepartmentDpp } from '../../../../../hooks/usePublishDepartme
 import { usePublishDepartmentImprint } from '../../../../../hooks/usePublishDepartmentImprint.hook';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
+import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { AgencyData } from '../../../../../types/agency';
+import { LegalTextKind } from '../../../../../types/legalVersion';
 import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '../DepartmentSelect';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
@@ -29,6 +31,9 @@ interface AgencyLegalTextContainerProps {
 
 /** The agency-level content key differs from the department wording ("imprint" vs "impressum"). */
 const AGENCY_CONTENT_KEY: Record<LegalField, string> = { privacy: 'privacy', imprint: 'impressum' };
+
+/** The wire enum of the `kind` query parameter (ORISO-AgencyService#256). */
+const VERSION_KIND: Record<LegalField, LegalTextKind> = { privacy: 'DPP', imprint: 'IMPRINT' };
 
 /**
  * One legal-text editor per kind for the whole Beratungsstelle, with the Fachbereich chosen in the
@@ -102,6 +107,17 @@ export const AgencyLegalTextContainer = ({
     const imprintQuery = useDepartmentImprint(agencyId, field === 'imprint' ? (topicId as number) : NaN);
     const departmentQuery = field === 'privacy' ? dppQuery : imprintQuery;
 
+    // The publication history follows the switcher (#812): a Fachbereich shows its own
+    // versions, "Alle Fachbereiche" the agency-wide ones. Scoping the request itself —
+    // rather than filtering a shared list — is what makes it impossible for one
+    // department's wording to appear under another. Contract documents are untouched by
+    // this: they stay tenant-scoped in `DataProcessingAgreementContainer`.
+    const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions(
+        isDepartment
+            ? { level: 'department', agencyId, topicId: topicId as number, kind: VERSION_KIND[field] }
+            : { level: 'agency', agencyId, kind: VERSION_KIND[field] },
+    );
+
     const publishDpp = usePublishDepartmentDpp(agencyId, topicId as number);
     const publishImprint = usePublishDepartmentImprint(agencyId, topicId as number);
     const departmentPublish = field === 'privacy' ? publishDpp : publishImprint;
@@ -120,6 +136,48 @@ export const AgencyLegalTextContainer = ({
         [departmentQuery.data?.content],
     );
 
+    /**
+     * The consent sentence (ADR-021 decision 4) is a FIELD of the data-protection policy, never of
+     * the imprint (decision 7), so it follows exactly the same source as the body above it: the
+     * Fachbereich's own sentence when one is selected, the agency-wide one otherwise.
+     *
+     * Like the history above, this reached the Beratungsstelle level only through the
+     * per-department containers #555 replaced; the switcher inherited the card but not the wiring,
+     * so the live editor offered no consent field at all.
+     *
+     * `undefined` in both branches is load-bearing — it is how the card decides not to offer the
+     * consent editor, which is what must happen while a backend has no such field.
+     */
+    const departmentConsent = useMemo(
+        () =>
+            dppQuery.data && dppQuery.data.consentText !== undefined
+                ? parseLegalContentMap(dppQuery.data.consentText)
+                : undefined,
+        [dppQuery.data],
+    );
+    const agencyWideConsent = useMemo(() => {
+        const inherited = tenantData?.content?.privacyConsent;
+        const own = agencyData?.content?.privacyConsent;
+        if (inherited === undefined && own === undefined) {
+            return undefined;
+        }
+        return { ...(inherited ?? {}), ...(own ?? {}) };
+    }, [tenantData?.content?.privacyConsent, agencyData?.content?.privacyConsent]);
+    const consentByLanguage = useMemo(() => {
+        if (field !== 'privacy') {
+            return undefined;
+        }
+        return isDepartment ? departmentConsent : agencyWideConsent;
+    }, [field, isDepartment, departmentConsent, agencyWideConsent]);
+    // Under "Alle Fachbereiche" the sentence shown may still be the Träger's, so the card says so
+    // on the languages this Beratungsstelle has not overridden. A Fachbereich reads its own stored
+    // sentence, which carries no such distinction.
+    const ownConsentByLanguage = isDepartment ? undefined : agencyData?.content?.privacyConsent;
+    const consentInheritedFrom =
+        !isDepartment && tenantData?.content?.privacyConsent !== undefined
+            ? t('legal.consent.level.tenant')
+            : undefined;
+
     // The draft copy: a department with no own text yet starts from what it currently shows, which
     // is the inherited agency-wide text. "Alle Fachbereiche" always edits that same agency-wide text.
     //
@@ -136,13 +194,25 @@ export const AgencyLegalTextContainer = ({
         [tenantAdminData?.settings?.activeLanguages, contentByLanguage],
     );
 
-    const onSave = (content: Record<string, string>, publish: boolean) => {
+    const onSave = (content: Record<string, string>, publish: boolean, consent?: Record<string, string>) => {
         if (isDepartment) {
-            departmentPublish.mutate({ content, publish });
+            // Only the policy carries a consent sentence (decision 7), and the publish call omits
+            // the property entirely when the card had none to give — a backend that does not know
+            // `consentText` never receives it.
+            if (field === 'privacy') {
+                publishDpp.mutate({ content, publish, ...(consent ? { consentText: consent } : {}) });
+            } else {
+                publishImprint.mutate({ content, publish });
+            }
             return;
         }
         // The agency-wide text has no draft state of its own — it is stored on the agency record.
-        onSaveAgencyWide({ content: { [agencyContentKey]: content } });
+        // NOTE: unlike the department publishes above, this path cannot invalidate the agency
+        // version history — it goes through the shared agency-card mutation, which has no legal
+        // hook. The look-back catches up on its own `staleTime` (60s).
+        onSaveAgencyWide({
+            content: { [agencyContentKey]: content, ...(consent ? { privacyConsent: consent } : {}) },
+        });
     };
 
     const selectedDepartment = departments.find(({ id }) => id === topicId);
@@ -195,8 +265,13 @@ export const AgencyLegalTextContainer = ({
             documentType={field}
             departmentName={selectedDepartment?.name}
             initialContentByLanguage={contentByLanguage}
+            consentByLanguage={consentByLanguage}
+            consentInheritedFrom={consentInheritedFrom}
+            ownConsentByLanguage={ownConsentByLanguage}
             languages={languages}
             publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : undefined}
+            versions={versions}
+            versionsUnavailable={versionsUnavailable}
             readOnly={!canEditLegalText}
             onSave={onSave}
             saving={saving || departmentPublish.isPending}

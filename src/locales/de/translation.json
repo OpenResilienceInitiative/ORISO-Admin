@@ -1841,6 +1841,7 @@
     "agency.legal.department.notInheriting_one": "{{count}} mit eigenem Text",
     "agency.legal.department.notInheriting_other": "{{count}} mit eigenem Text",
     "agency.legal.department.choose": "Fachbereich wählen",
+    "agency.legal.department.menuHeader": "Fachbereich auswählen",
     "agency.legal.department.loadError.title": "Rechtstext konnte nicht geladen werden",
     "agency.legal.department.loadError.text": "Der Text für „{{name}}“ ist gerade nicht abrufbar. Bearbeiten ist gesperrt, damit der vorhandene Text nicht versehentlich durch den geerbten ersetzt wird.",
     "agency.legal.department.loadError.retry": "Erneut versuchen",

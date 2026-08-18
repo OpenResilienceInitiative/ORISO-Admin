@@ -25,7 +25,7 @@ export const usePublishDepartmentDpp = (agencyId: number, topicId: number) => {
             // save appends nothing, so its history is still current.
             if (publish) {
                 queryClient.invalidateQueries({
-                    queryKey: legalTextVersionsKey({ level: 'department', agencyId, topicId, kind: 'dpp' }),
+                    queryKey: legalTextVersionsKey({ level: 'department', agencyId, topicId, kind: 'DPP' }),
                 });
             }
         },

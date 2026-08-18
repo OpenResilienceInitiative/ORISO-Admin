@@ -188,6 +188,25 @@ export const InviteProgressBoard = ({
         }
     };
 
+    // A4×B: a row hidden by the SEARCH query must not stay selected in the
+    // background — left alone, a destructive bulk action (revoke) could reach
+    // a row the operator can no longer see. Scoped to `searched` deliberately,
+    // not the further status/bucket-filtered `filtered` below: pruning on a
+    // tile/chip filter change is open PR #766 ("guard stale invite loads and
+    // prune selection on filter change") — this only covers the dimension that
+    // PR does not (it predates the search feature). The two effects are
+    // independent and, once #766 lands, complementary rather than redundant.
+    // Pagination is deliberately excluded: moving to page 2 must not silently
+    // drop a selection that spans more than one page.
+    useEffect(() => {
+        const visibleIds = new Set(searched.map((invite) => invite.id));
+        const pruned = selectedIds.filter((id) => visibleIds.has(id));
+        if (pruned.length !== selectedIds.length) {
+            onSelectionChange(pruned);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- reacts to the SEARCH RESULT changing, not to the selection itself (that would set-state loop)
+    }, [searched]);
+
     const sorted = useMemo(() => {
         if (!sort) return filtered;
         const factor = sort.direction === 'asc' ? 1 : -1;
