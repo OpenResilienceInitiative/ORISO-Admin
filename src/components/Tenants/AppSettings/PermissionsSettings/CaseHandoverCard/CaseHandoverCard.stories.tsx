@@ -182,9 +182,9 @@ export const AdviceSeekerConsentMenuOpen: Story = {
         const expectedLabels = [
             /^(Consent opt-in \(enforced\)|Zustimmung Opt-In \(Vorgabe\))$/i,
             /^(Consent opt-out \(enforced\)|Zustimmung Opt-Out \(Vorgabe\))$/i,
-            /^(No consent \(recommendation\)|keine Zustimmung \(Empfehlung\))$/i,
-            /^(Consent opt-in \(recommendation\)|Zustimmung Opt-In \(Empfehlung\))$/i,
-            /^(Consent opt-out \(recommendation\)|Zustimmung Opt-Out \(Empfehlung\))$/i,
+            /^(No consent \(adjustable\)|keine Zustimmung \(anpassbar\))$/i,
+            /^(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))$/i,
+            /^(Consent opt-out \(adjustable\)|Zustimmung Opt-Out \(anpassbar\))$/i,
             /^(More information|Weitere Informationen)$/i,
         ];
 
@@ -193,6 +193,15 @@ export const AdviceSeekerConsentMenuOpen: Story = {
                 await expect(canvas.getByRole('button', { name })).toBeVisible();
             }),
         );
+        await Promise.all(
+            canvas.getAllByText(/^(Recommendation|Empfehlung)$/i).map(async (status) => {
+                await expect(status).toBeVisible();
+            }),
+        );
+        await expect(canvas.getByText(/^(Requirement|Vorgabe)$/i)).toBeVisible();
+        await expect(
+            canvas.queryByText(/\((?:can be adjusted|cannot be changed|änderbar|nicht änderbar)\)/i),
+        ).toBeNull();
     },
 };
 

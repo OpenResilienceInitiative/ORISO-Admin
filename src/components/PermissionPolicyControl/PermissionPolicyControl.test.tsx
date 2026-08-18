@@ -78,13 +78,13 @@ describe('PermissionPolicyControl', () => {
     it.each([
         {
             language: 'de',
-            status: 'Empfehlung (änderbar)',
+            status: 'Empfehlung',
             activation: 'Aktivierung (anpassbar)',
             deactivation: 'Deaktivierung (anpassbar)',
         },
         {
             language: 'en',
-            status: 'Recommendation (can be adjusted)',
+            status: 'Recommendation',
             activation: 'Activation (adjustable)',
             deactivation: 'Deactivation (adjustable)',
         },
@@ -119,6 +119,40 @@ describe('PermissionPolicyControl', () => {
         expect(screen.getByText(copy.status)).toBeInTheDocument();
         expect(screen.getByRole('button', { name: copy.activation })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: copy.deactivation })).toBeInTheDocument();
+    });
+
+    it.each([
+        { language: 'de', status: 'Vorgabe' },
+        { language: 'en', status: 'Requirement' },
+    ])('presents enforced policies as requirements in $language', async (copy) => {
+        const i18n = createInstance().use(initReactI18next);
+        await i18n.init({
+            lng: copy.language,
+            fallbackLng: 'en',
+            keySeparator: false,
+            ns: ['translations'],
+            defaultNS: 'translations',
+            resources: {
+                de: { translations: translationDe },
+                en: { translations: translationEn },
+            },
+        });
+
+        render(
+            <I18nextProvider i18n={i18n}>
+                <PermissionPolicyControl
+                    featureKey="featureSupervisionEnabled"
+                    label="Supervision"
+                    level="tenant"
+                    policy={{ value: true, mode: 'ENFORCED' }}
+                    open={false}
+                    onOpenChange={vi.fn()}
+                    onChange={vi.fn()}
+                />
+            </I18nextProvider>,
+        );
+
+        expect(screen.getByText(copy.status)).toBeInTheDocument();
     });
 
     it('opens information directly for inherited enforced values', async () => {
