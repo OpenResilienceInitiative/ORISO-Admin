@@ -56,6 +56,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
     const [bulkRunning, setBulkRunning] = useState(false);
+    // Toolbar search (A4/#376). The tab already holds the COMPLETE invite list
+    // (see loadInvites) and the board already filters it client-side by status
+    // bucket, so the query joins that same client-side pipeline instead of
+    // introducing a second, server-paged source the summary counts could not be
+    // derived from.
+    const [searchQuery, setSearchQuery] = useState('');
 
     const currentTenantId = parseUserAuthInfo().tenantId || undefined;
 
@@ -509,6 +515,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 persistKey={targetRole}
                 requireNames={targetRole === 'COUNSELLOR'}
                 requireTenantId={isTenantInvite}
+                searchPlaceholder={t('links.inviteProgress.searchPlaceholder', 'Einladungen durchsuchen')}
+                searchQuery={searchQuery}
                 selectionCount={selectedInvites.length}
                 submitting={submitting || bulkRunning}
                 templateId={selectedTemplateId}
@@ -518,6 +526,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
                 onDeleteSelected={() => setBulkDeleteConfirmOpen(true)}
                 onManageTemplates={(intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list')}
+                onSearchQueryChange={setSearchQuery}
                 onSubmit={onCreate}
             />
             {selectedInvites.length > 0 && (
@@ -528,6 +537,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             <InviteProgressBoard
                 invites={invites}
                 loading={loading}
+                searchQuery={searchQuery}
                 targetRole={targetRole}
                 selectedIds={selectedIds}
                 onSelectionChange={setSelectedIds}

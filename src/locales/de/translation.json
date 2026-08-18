@@ -352,6 +352,7 @@
     "links.inviteProgress.summary.completed": "Abgeschlossen",
     "links.inviteProgress.summary.problem": "Abgelaufen / Problem",
     "links.inviteProgress.tableLabel": "Einladungen und Onboarding-Fortschritt",
+    "links.inviteProgress.searchPlaceholder": "Einladungen durchsuchen",
     "links.inviteProgress.col.select": "Auswahl",
     "links.inviteProgress.col.recipient": "Empfänger",
     "links.inviteProgress.col.progress": "Onboarding-Fortschritt",

@@ -411,6 +411,7 @@
     "links.inviteProgress.summary.completed": "Completed",
     "links.inviteProgress.summary.problem": "Expired / problem",
     "links.inviteProgress.tableLabel": "Invitations and onboarding progress",
+    "links.inviteProgress.searchPlaceholder": "Search invitations",
     "links.inviteProgress.col.select": "Selection",
     "links.inviteProgress.col.recipient": "Recipient",
     "links.inviteProgress.col.progress": "Onboarding progress",

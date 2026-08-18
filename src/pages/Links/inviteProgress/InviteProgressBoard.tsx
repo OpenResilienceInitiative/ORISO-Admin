@@ -35,6 +35,7 @@ import {
     inviteDisplayName,
     inviteLastActivity,
     isDeadInvite,
+    matchesInviteQuery,
     PHASE_LABEL_FALLBACKS,
     phaseLabelKey,
 } from './derivePhases';
@@ -79,6 +80,8 @@ const isActionable = (invite: AccountInviteDTO) =>
 export interface InviteProgressBoardProps {
     invites: AccountInviteDTO[];
     loading: boolean;
+    /** Toolbar search query (A4/#376); blank shows everything. */
+    searchQuery?: string;
     /** The tab's audience — decides the phase track and the Träger-ID hint. */
     targetRole: AccountInviteTargetRole;
     selectedIds: number[];
@@ -102,6 +105,7 @@ export interface InviteProgressBoardProps {
 export const InviteProgressBoard = ({
     invites,
     loading,
+    searchQuery = '',
     targetRole,
     selectedIds,
     onSelectionChange,
@@ -123,15 +127,24 @@ export const InviteProgressBoard = ({
     // has one page would otherwise show the empty slot with rows available.
     useEffect(() => {
         setPage(1);
-    }, [filter]);
+    }, [filter, searchQuery]);
 
+    // The tiles count the WHOLE list, not the search result: they are the
+    // overview the search is run against, and a "3 Abgeschlossen" that silently
+    // meant "3 among the rows matching fisch" would be a different number every
+    // keystroke.
     const bucketCounts = useMemo(() => countInviteBuckets(invites), [invites]);
 
+    const searched = useMemo(
+        () => (searchQuery.trim() ? invites.filter((invite) => matchesInviteQuery(invite, searchQuery)) : invites),
+        [invites, searchQuery],
+    );
+
     const filtered = useMemo(() => {
-        if (!filter) return invites;
-        if (filter.kind === 'status') return invites.filter((invite) => invite.inviteStatus === filter.status);
-        return invites.filter((invite) => deriveInviteBucket(invite) === filter.bucket);
-    }, [invites, filter]);
+        if (!filter) return searched;
+        if (filter.kind === 'status') return searched.filter((invite) => invite.inviteStatus === filter.status);
+        return searched.filter((invite) => deriveInviteBucket(invite) === filter.bucket);
+    }, [searched, filter]);
 
     const sorted = useMemo(() => {
         if (!sort) return filtered;

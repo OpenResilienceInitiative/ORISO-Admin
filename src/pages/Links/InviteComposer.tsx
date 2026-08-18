@@ -105,6 +105,13 @@ export interface InviteComposerProps {
      */
     onDeleteSelected?: () => void;
     searchPlaceholder?: string;
+    /**
+     * Toolbar search (A4/#376). Controlled by the tab, which owns the invite
+     * list the query filters — the composer only renders the control. Without
+     * both props the search pill stays uncontrolled and, as before, inert.
+     */
+    searchQuery?: string;
+    onSearchQueryChange?: (query: string) => void;
     className?: string;
 }
 
@@ -162,6 +169,8 @@ export const InviteComposer = ({
     onClearSelection,
     onDeleteSelected,
     searchPlaceholder,
+    searchQuery,
+    onSearchQueryChange,
     className,
 }: InviteComposerProps) => {
     const { t } = useTranslation();
@@ -418,7 +427,16 @@ export const InviteComposer = ({
 
     return (
         <div className={classNames(styles.composer, className)}>
-            <GlobalSearchBar leading={moreButton} searchPlaceholder={searchPlaceholder}>
+            <GlobalSearchBar
+                leading={moreButton}
+                searchPlaceholder={searchPlaceholder}
+                // `onSearch` (Enter / magnifier) resolves to the same handler as
+                // `onSearchChange`: the list filters as you type, so submitting
+                // is a no-op rather than a second, different search.
+                value={onSearchQueryChange ? searchQuery ?? '' : undefined}
+                onSearch={onSearchQueryChange}
+                onSearchChange={onSearchQueryChange}
+            >
                 <FloatingLabelInput
                     className={styles.emailField}
                     error={showEmailError}

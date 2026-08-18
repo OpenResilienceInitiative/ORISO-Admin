@@ -301,4 +301,24 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         expect(screen.queryByRole('button', { name: 'Sendeoptionen' })).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Auswahl aufheben' })).toBeInTheDocument();
     });
+    // A4: the toolbar search pill rendered, took input and threw it away — no
+    // value, no callback, no filtering anywhere. Frank's "Fish" returned nothing
+    // because nothing was ever asked.
+    it('filters the board by the toolbar search across e-mail, name and Träger-ID', async () => {
+        mocks.listAccountInvites.mockResolvedValue(
+            invitesPage([
+                { ...invite(31, 'EMAIL_SENT', 'karla.fischer@example.org'), firstName: 'Karla', lastName: 'Fischer' },
+                { ...invite(32, 'EMAIL_SENT', 'ronny.bauer@example.org'), firstName: 'Ronny', lastName: 'Bauer' },
+            ]),
+        );
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await screen.findByText('karla.fischer@example.org');
+        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
+        await user.type(await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }), 'fisch');
+
+        await waitFor(() => expect(screen.queryByText('ronny.bauer@example.org')).not.toBeInTheDocument());
+        expect(screen.getByText('Karla Fischer')).toBeInTheDocument();
+    });
 });
