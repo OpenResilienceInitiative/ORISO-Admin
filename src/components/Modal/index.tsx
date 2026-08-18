@@ -40,6 +40,8 @@ export interface ModalProps {
     confirmDisabled?: boolean;
     /** Show the top-right close (X) affordance. Defaults to true. */
     closable?: boolean;
+    /** Extra class on the dialog root, for per-dialog sheet rules (e.g. a viewport bound). */
+    className?: string;
 }
 
 /**
@@ -69,6 +71,7 @@ export const Modal = ({
     showDivider = true,
     confirmDisabled = false,
     closable = true,
+    className,
 }: ModalProps) => {
     const { t } = useTranslation();
 
@@ -98,7 +101,7 @@ export const Modal = ({
 
     return (
         <AntModal
-            className={styles.modal}
+            className={classNames(styles.modal, className)}
             styles={{
                 mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
             }}
