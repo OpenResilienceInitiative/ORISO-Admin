@@ -65,6 +65,45 @@ describe('chapter-chip bar — control inset survives (#818, re-verified 2026-08
     });
 });
 
+describe('fluid READ card — text scrolls in its own box, the chapter bar stands still (owner demo 2026-08-19)', () => {
+    /*
+     * Owner demo (positions 1-4, tenant-onboarding AVV step): the chapter bar
+     * was `position: sticky` against the HOST scrollport, so it travelled up
+     * and down with the page and detached entirely once the card's end came
+     * into view; a chip click then re-scrolled the page and moved the bar out
+     * from under the cursor ("Ich muss zweimal drüber"). Position 1 — bar
+     * standing still, text moving — is the demanded state: „das Menü einfach
+     * starr bleibt, wo es ist … der Text in der Textbox sich bewegt".
+     *
+     * This DELIBERATELY reverses #594.3's "the fluid card is not a scroll
+     * container" for READ mode only: the reading viewport is bounded and
+     * scrolls internally (the same pattern the 800x740 deck card and the
+     * fullscreen dialog already use), and the chapter bar sits statically
+     * below it. Fluid WRITE mode (Erstantwort editor) keeps host scrolling.
+     */
+    const fluidReadBlock = () =>
+        moduleStyles.match(/\.module\.fluid\.readMode:not\(\.inDialog\)\s*{[\s\S]*?\n}/)?.[0] ?? '';
+
+    it('bounds the read-mode text viewport and lets it scroll internally', () => {
+        const block = fluidReadBlock();
+        expect(block).toMatch(/\.editorContentScroll\s*{[^}]*max-height:\s*clamp\(280px,\s*60vh,\s*640px\);/);
+        expect(block).toMatch(/\.editorContentScroll\s*{[^}]*overflow-y:\s*auto;/);
+    });
+
+    it('unpins the chapter bar from the host scrollport — it stands below the box instead', () => {
+        expect(fluidReadBlock()).toMatch(/\.anchorNav\s*{[^}]*position:\s*static;/);
+    });
+
+    it('drops the 56px sticky-bar clearance the internal box no longer needs', () => {
+        // The clearance existed so the sticky bar never covered the last lines;
+        // with a static bar OUTSIDE the scroll box it would just be dead space
+        // that scrolls the final lines away from the reader's edge.
+        const block = fluidReadBlock();
+        expect(block).toMatch(/\.editorContentScroll\s*{[^}]*padding:\s*8px;/);
+        expect(block).toMatch(/\.editorContentScroll\s*{[^}]*scroll-margin-bottom:\s*0;/);
+    });
+});
+
 describe('chapter-chip row — scrolls with a visible affordance (H4/I3, 2026-08-18)', () => {
     it('keeps the chips on one scrollable line (Figma 1299-81676)', () => {
         // Wrapping was measured and rejected: 11 chips would stack three rows
