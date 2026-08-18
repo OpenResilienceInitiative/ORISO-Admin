@@ -15,7 +15,23 @@
  * `flex: 0 0 auto` made the e-mail field alone wider than a 390px phone.
  */
 
+/*
+ * #713 finding 4 — „diese ecken müssen rund sein". E-Mail and Name are the two
+ * ENDS of the composer's field group; the corners the owner boxed are the ones
+ * facing the search pill (28px) on the left and the Träger-ID group (28px on
+ * its outer edge, 4px at its seam) on the right. Both rendered at the flat 4px
+ * seam radius, so the row's outline broke into squares between two pills.
+ *
+ * The grammar is the design system's own, taken verbatim from M3NumberField
+ * (`28px 4px 4px 28px` / `4px 28px 28px 4px`) and splitButton's
+ * `--sb-radius: 28px` outer / `--sb-radius-inner: 4px` seam: round on the
+ * outside of a group, flat where segments meet. Vorname keeps 4px on both
+ * sides — it is an interior segment.
+ */
+
 .emailField {
+    --fli-radius: 28px 4px 4px 28px;
+
     width: 304px;
     max-width: 100%;
     flex: 0 1 auto;
@@ -25,6 +41,11 @@
     width: 210px;
     max-width: 100%;
     flex: 0 1 auto;
+}
+
+/* The group's right-hand end: rounded towards the Träger-ID control. */
+.lastNameField {
+    --fli-radius: 4px 28px 28px 4px;
 }
 
 /*

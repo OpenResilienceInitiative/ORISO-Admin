@@ -200,7 +200,7 @@ describe('TenantInvitesTab Träger-ID field', () => {
 
         const field = await screen.findByLabelText('Träger-ID');
         await waitFor(() => expect(field).toHaveValue('Auto'));
-        expect(screen.getByText('Die nächste freie ID wird automatisch vergeben.')).toBeInTheDocument();
+        expect(screen.queryByText('Die nächste freie ID wird automatisch vergeben.')).not.toBeInTheDocument();
     });
 
     it('shows the dedicated collision message when the backend answers 409', async () => {
