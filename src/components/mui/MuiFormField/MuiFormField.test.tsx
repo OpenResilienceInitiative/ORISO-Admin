@@ -16,19 +16,27 @@ describe('MuiFormField', () => {
         resetStyle.textContent = antdResetCss;
         document.head.prepend(resetStyle);
 
-        render(
-            <Form component={false}>
-                <MuiFormField name="title" label="Title" />
-                <MuiSelectField name="category" label="Category" options={[{ value: 'general', label: 'General' }]} />
-            </Form>,
-        );
+        // The reset is global: if a render or an assertion throws, an un-removed <style> leaks the
+        // Ant legend rule into every later test in this file and turns one failure into several.
+        try {
+            render(
+                <Form component={false}>
+                    <MuiFormField name="title" label="Title" />
+                    <MuiSelectField
+                        name="category"
+                        label="Category"
+                        options={[{ value: 'general', label: 'General' }]}
+                    />
+                </Form>,
+            );
 
-        const legends = document.querySelectorAll<HTMLLegendElement>('.MuiOutlinedInput-notchedOutline legend');
+            const legends = document.querySelectorAll<HTMLLegendElement>('.MuiOutlinedInput-notchedOutline legend');
 
-        expect(legends).toHaveLength(2);
-        expect(Array.from(legends, (legend) => getComputedStyle(legend).width)).toEqual(['auto', 'auto']);
-
-        resetStyle.remove();
+            expect(legends).toHaveLength(2);
+            expect(Array.from(legends, (legend) => getComputedStyle(legend).width)).toEqual(['auto', 'auto']);
+        } finally {
+            resetStyle.remove();
+        }
     });
 
     it('floats an empty native date label before the field receives focus', () => {
