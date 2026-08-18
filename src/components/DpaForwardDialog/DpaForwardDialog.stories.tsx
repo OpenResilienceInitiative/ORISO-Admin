@@ -53,12 +53,29 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Link ready, mail preview visible, copy + optional e-mail send. */
+/**
+ * Link ready, mail preview visible, copy + optional e-mail send. With the name
+ * field empty the preview greets neutrally — a raw `{{recipientName}}` is never
+ * shown to a person.
+ */
 export const Default: Story = {};
 
 /** The whole dialog at 390×844 — link, fields and preview stay usable. */
 export const Mobile: Story = {
     ...PHONE_390,
+};
+
+/** Typing a name resolves the salutation in the preview. */
+export const NamedRecipient: Story = {
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const name = await body.findByLabelText(/Name der Person|Name of the person/);
+        await userEvent.type(name, 'Dr. Ruth Recht');
+        const frame = await body.findByTitle(/Vorschau der E-Mail|Preview of the e-mail/);
+        await waitFor(() =>
+            expect((frame as HTMLIFrameElement).contentDocument?.body?.innerText).toContain('Dr. Ruth Recht'),
+        );
+    },
 };
 
 /** Link creation failed: inline retryable error, confirm stays disabled. */

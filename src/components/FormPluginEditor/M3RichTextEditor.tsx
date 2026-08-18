@@ -123,11 +123,14 @@ export type M3RichTextEditorProps = {
     readOnly?: boolean;
     /**
      * Fluid sizing: the card fills its host column instead of the fixed
-     * 800x740 admin deck card, and it does NOT bring a scroll container of its
-     * own — the host surface scrolls (the bounded sheet on desktop, the page on
-     * a phone) and the chapter chips stay reachable by sticking to the bottom
-     * of the card. For hosts that are not the settings deck — e.g. the public
-     * tenant-onboarding DPA step and the DPA blocker (#594).
+     * 800x740 admin deck card. For hosts that are not the settings deck —
+     * e.g. the public tenant-onboarding DPA step and the DPA blocker (#594).
+     *
+     * Scrolling: in WRITE mode the card brings no scroll container of its own
+     * — the host surface scrolls and the chapter chips stick to the bottom of
+     * the card. In READ mode (owner demo 2026-08-19, reversing #594.3) the
+     * text scrolls inside its own bounded viewport and the chapter bar stands
+     * still below it, so picking a chapter never moves the page.
      */
     fluid?: boolean;
     /**
@@ -801,10 +804,13 @@ export const M3RichTextEditor = ({
     // editorSlot owns its own surface.
     const readMode = !editorEditable && !editorSlot;
     // Whether the text viewport is a scroll container of its own. The fixed
-    // deck card and the fullscreen dialog cap the text and scroll it inside;
-    // the fluid public reader hands scrolling to its host so the screen has
-    // exactly one scroller (#572 criterion, #594.3).
-    const scrollsInternally = !fluid || maximized;
+    // deck card and the fullscreen dialog cap the text and scroll it inside —
+    // and since the owner demo of 2026-08-19 (reversing #594.3 for reading)
+    // the fluid READ card does too: the chapter bar must stand still while
+    // the text moves in its own box, and a chip click must never re-scroll
+    // the host page. Only the fluid WRITE surface (e.g. the Erstantwort
+    // editor) still grows with its content and lets the host scroll.
+    const scrollsInternally = !fluid || maximized || readMode;
 
     // Maximize lives as the first toolbar control (Figma 1261-48667); in
     // fullscreen it becomes the red round exit button (Figma 1276-72139).
@@ -917,9 +923,10 @@ export const M3RichTextEditor = ({
                                 landmark. It only becomes a tab stop when it
                                 actually scrolls — a keyboard user must be able
                                 to scroll it without a pointer (axe:
-                                scrollable-region-focusable), but the fluid
-                                reader delegates scrolling to its host (#594.3)
-                                and an extra tab stop there would be noise. */}
+                                scrollable-region-focusable). Since the owner
+                                demo of 2026-08-19 every READ surface scrolls
+                                internally; only the fluid WRITE surface still
+                                delegates scrolling to its host. */}
                             {/* `lang` on the text itself: long German compounds
                                 ("Auftragsverarbeitungsvertrag") otherwise break
                                 mid-word on a phone, because `hyphens: auto` has

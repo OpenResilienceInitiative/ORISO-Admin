@@ -6,6 +6,7 @@ import Refresh from '@mui/icons-material/Refresh';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../Modal';
 import { M3Button } from '../M3Button';
+import { FieldGrid } from '../FieldGrid';
 import { MuiFormField } from '../mui/MuiFormField';
 import { EmailKitPreview } from '../PlaceholderTemplate/EmailKitPreview';
 import {
@@ -15,6 +16,7 @@ import {
     DpaForwardOutcome,
 } from '../../api/tenantOnboarding/dpaForward';
 import { CopyLinkRow } from './CopyLinkRow';
+import { buildForwardMailPreview } from './forwardMailPreview';
 import styles from './styles.module.scss';
 
 export interface DpaForwardResult {
@@ -129,13 +131,8 @@ export const DpaForwardDialog = ({
     };
 
     // The preview shows the REAL mail: the actual link once it exists, and the
-    // salutation the recipient will see. Empty inputs stay visible as
-    // unresolved {{token}} chips — the module's contract for "placeholder".
-    const previewSubject = t('dpaForward.mail.subject');
-    const previewBody = t('dpaForward.mail.body', {
-        recipientName: recipientName.trim() || '{{recipientName}}',
-        link: link?.signUrl ?? '{{link}}',
-    });
+    // salutation the recipient will see — never a raw {{token}}.
+    const preview = buildForwardMailPreview(t, { recipientName, signUrl: link?.signUrl ?? null });
 
     return (
         <Modal
@@ -150,43 +147,13 @@ export const DpaForwardDialog = ({
                 onForwarded({ link, recipientEmail: sentTo, mailFailed });
             }}
             onClose={onClose}
-            width={720}
+            className={styles.dialog}
+            width={880}
         >
             <div className={styles.body} data-testid="dpa-forward-dialog">
-                {linkState.kind === 'loading' && (
-                    <p className={styles.linkPending} role="status">
-                        {t('dpaForward.dialog.linkPending')}
-                    </p>
-                )}
-
-                {linkState.kind === 'error' && (
-                    <Alert
-                        severity="error"
-                        role="alert"
-                        data-testid="dpa-forward-link-error"
-                        action={
-                            <M3Button
-                                variant="text"
-                                icon={<Refresh fontSize="small" />}
-                                onClick={() => setLinkAttempt((attempt) => attempt + 1)}
-                            >
-                                {t('dpaForward.dialog.linkRetry')}
-                            </M3Button>
-                        }
-                    >
-                        {t(linkState.why)}
-                    </Alert>
-                )}
-
-                {link && (
-                    <div className={styles.linkSection}>
-                        <CopyLinkRow value={link.signUrl} />
-                        <p className={styles.validityNote} data-testid="dpa-forward-validity-note">
-                            {t('dpaForward.dialog.validityNote')}
-                        </p>
-                    </div>
-                )}
-
+                {/* The mail comes first: it is the worked example of what the
+                    recipient receives. The link block below it is the
+                    alternative for anyone who would rather share it themselves. */}
                 <div className={styles.emailSection}>
                     <h3 className={styles.sectionTitle}>{t('dpaForward.dialog.emailSectionTitle')}</h3>
                     <Form<RecipientFormValues>
@@ -201,7 +168,9 @@ export const DpaForwardDialog = ({
                         }}
                         initialValues={{ recipientName: '', recipientEmail: '' }}
                     >
-                        <div className={styles.recipientFields}>
+                        {/* Name and address share one row wherever the sheet is
+                            wide enough for two 240px tracks, and stack below it. */}
+                        <FieldGrid minColumnWidth={240} maxColumns={2}>
                             <MuiFormField name="recipientName" label={t('dpaForward.dialog.recipientName')} />
                             <MuiFormField
                                 name="recipientEmail"
@@ -216,7 +185,7 @@ export const DpaForwardDialog = ({
                                     { type: 'email', message: t('tenantOnboarding.validation.email') },
                                 ]}
                             />
-                        </div>
+                        </FieldGrid>
 
                         {sendState === 'sent' && sentTo && (
                             <Alert severity="success" data-testid="dpa-forward-sent" sx={{ mb: 2 }}>
@@ -235,23 +204,63 @@ export const DpaForwardDialog = ({
                             </Alert>
                         )}
 
-                        <M3Button
-                            type="submit"
-                            variant="outlined"
-                            loading={sendState === 'pending'}
-                            icon={<ForwardToInboxRounded fontSize="small" />}
-                        >
-                            {t('dpaForward.dialog.send')}
-                        </M3Button>
+                        {/* The section's own primary action: filled, and on the
+                            trailing edge where the sheet's actions live. */}
+                        <div className={styles.sendActions}>
+                            <M3Button
+                                type="submit"
+                                variant="filled"
+                                loading={sendState === 'pending'}
+                                icon={<ForwardToInboxRounded fontSize="small" />}
+                            >
+                                {t('dpaForward.dialog.send')}
+                            </M3Button>
+                        </div>
                     </Form>
 
                     <div className={styles.preview}>
                         <EmailKitPreview
-                            subject={previewSubject}
-                            body={previewBody}
+                            subject={preview.subject}
+                            body={preview.body}
                             previewLabel={t('dpaForward.dialog.previewLabel')}
                         />
                     </div>
+                </div>
+
+                <div className={styles.linkSection} data-testid="dpa-forward-link-section">
+                    {linkState.kind === 'loading' && (
+                        <p className={styles.linkPending} role="status">
+                            {t('dpaForward.dialog.linkPending')}
+                        </p>
+                    )}
+
+                    {linkState.kind === 'error' && (
+                        <Alert
+                            severity="error"
+                            role="alert"
+                            data-testid="dpa-forward-link-error"
+                            action={
+                                <M3Button
+                                    variant="text"
+                                    icon={<Refresh fontSize="small" />}
+                                    onClick={() => setLinkAttempt((attempt) => attempt + 1)}
+                                >
+                                    {t('dpaForward.dialog.linkRetry')}
+                                </M3Button>
+                            }
+                        >
+                            {t(linkState.why)}
+                        </Alert>
+                    )}
+
+                    {link && (
+                        <>
+                            <CopyLinkRow value={link.signUrl} />
+                            <p className={styles.validityNote} data-testid="dpa-forward-validity-note">
+                                {t('dpaForward.dialog.validityNote')}
+                            </p>
+                        </>
+                    )}
                 </div>
             </div>
         </Modal>

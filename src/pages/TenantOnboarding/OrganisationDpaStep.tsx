@@ -118,8 +118,7 @@ export const OrganisationDpaStep = ({
     // `!= null` on purpose, not `!== null`: an omitted prop arrives as
     // `undefined`, and `undefined !== null` is true — a caller that simply
     // does not pass `forward` would silently render the on-hold state and
-    // withhold the consent control. TypeScript catches that at the call
-    // sites we own; this makes the runtime behaviour match the intent.
+    // withhold the consent control.
     const forwarded = forward != null;
 
     const onFinish = (values: OrganisationDpaFormValues) => {

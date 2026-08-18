@@ -1,3 +1,31 @@
+/* House rule (owner, 2026-08-18): a dialog never touches the top or bottom edge
+   of the viewport. The sheet is therefore bounded and its BODY is the scroller,
+   so the hero icon, the title and the action row stay put while only the content
+   moves — the same construction as the DpaBlocker card and the onboarding sheet,
+   with their 48px (2 x 24px) gutter. Bounding the sheet rather than the content
+   keeps the gutter honest when the title or description wraps on a phone.
+   `dvh` so a mobile browser's collapsing URL bar is accounted for. */
+
+.dialog {
+    :global {
+        .ant-modal-content {
+            display: flex;
+            max-height: calc(100dvh - 48px);
+            flex-direction: column;
+        }
+
+        .ant-modal-body {
+            min-height: 0;
+            flex: 1 1 auto;
+            overflow-y: auto;
+
+            /* A long preview must not chain its scroll to the page behind the mask. */
+            overscroll-behavior: contain;
+            scrollbar-gutter: stable;
+        }
+    }
+}
+
 .body {
     /* The Modal centers its title block; the working area stays left-aligned. */
     text-align: left;
@@ -11,8 +39,7 @@
     color: var(--m3-on-surface-variant, #444748);
 }
 
-.linkBlock,
-.linkSection {
+.linkBlock {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -63,6 +90,13 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+}
+
+/* The divider now sits between the mail and the link alternative below it. */
+.linkSection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     padding-top: 16px;
     border-top: 1px solid var(--m3-outline-variant, #c4c7c8);
 }
@@ -74,10 +108,12 @@
     color: var(--m3-on-surface, #1b1b1c);
 }
 
-.recipientFields {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    column-gap: 12px;
+/* Trailing-edge action row — the same alignment the dialog's own footer uses,
+   so the section's primary action reads as an action and not as a stray chip. */
+
+.sendActions {
+    display: flex;
+    justify-content: flex-end;
 }
 
 .preview {
