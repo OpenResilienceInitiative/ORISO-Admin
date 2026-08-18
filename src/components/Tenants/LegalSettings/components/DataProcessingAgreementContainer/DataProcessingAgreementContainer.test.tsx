@@ -12,8 +12,8 @@ const {
     useUserData,
     useDpaGate,
     useDpaSignatures,
-    createInviteMutate,
-    sendInviteEmailMutate,
+    createInviteApi,
+    sendInviteEmailApi,
     userRoles,
 } = vi.hoisted(() => ({
     useDpaVersions: vi.fn(),
@@ -23,8 +23,8 @@ const {
     useUserData: vi.fn(),
     useDpaGate: vi.fn(),
     useDpaSignatures: vi.fn(),
-    createInviteMutate: vi.fn(),
-    sendInviteEmailMutate: vi.fn(),
+    createInviteApi: vi.fn(),
+    sendInviteEmailApi: vi.fn(),
     userRoles: {
         isSuperAdmin: true,
         isTenantScopedAdmin: false,
@@ -43,11 +43,33 @@ vi.mock('../../../../../hooks/useUserRoles.hook', () => ({
 }));
 vi.mock('../../../../../hooks/useDpaGate.hook', () => ({ useDpaGate }));
 vi.mock('../../../../../hooks/useDpaSignatures.hook', () => ({ useDpaSignatures }));
-vi.mock('../../../../../hooks/useCreateDpaInvite.hook', () => ({
-    useCreateDpaInvite: () => ({ mutate: createInviteMutate, isPending: false }),
+vi.mock('../../../../../api/tenant/createDpaSignInvite', () => ({
+    createDpaSignInvite: createInviteApi,
+    resolveDpaSignLink: (link: string) => link,
 }));
-vi.mock('../../../../../hooks/useSendDpaInviteEmail.hook', () => ({
-    useSendDpaInviteEmail: () => ({ mutate: sendInviteEmailMutate, isPending: false }),
+vi.mock('../../../../../api/tenant/sendDpaInviteEmail', () => ({
+    sendDpaInviteEmail: sendInviteEmailApi,
+}));
+
+// Stub the heavy shared dialog (#723) — its own behaviour is covered by
+// DpaForwardDialog.test.tsx; here only the container wiring matters.
+vi.mock('../../../../DpaForwardDialog/DpaForwardDialog', () => ({
+    DpaForwardDialog: ({ forward, onClose, onForwarded }: any) => (
+        <div data-testid="forward-dialog">
+            <button
+                type="button"
+                onClick={async () => {
+                    const { link, mailFailed } = await forward({ recipientEmail: 'bart.simpson@oriso.org' });
+                    onForwarded({ link, recipientEmail: mailFailed ? null : 'bart.simpson@oriso.org', mailFailed });
+                }}
+            >
+                complete forward
+            </button>
+            <button type="button" onClick={onClose}>
+                close forward
+            </button>
+        </div>
+    ),
 }));
 vi.mock('../../../../../hooks/usePublishDpa.hook', () => ({
     usePublishDpa: () => ({ mutate: publishMutate, isPending: false }),
@@ -126,8 +148,8 @@ beforeEach(() => {
     useUserData.mockReturnValue({ data: { id: 'admin-1' } });
     useDpaGate.mockReturnValue({ data: { dpaPublished: true, dpaSigned: true }, isError: false });
     useDpaSignatures.mockReturnValue({ data: [], isError: false });
-    createInviteMutate.mockReset();
-    sendInviteEmailMutate.mockReset();
+    createInviteApi.mockReset();
+    sendInviteEmailApi.mockReset();
     userRoles.isSuperAdmin = true;
     userRoles.isTenantScopedAdmin = false;
     userRoles.tenantId = 0;
@@ -237,66 +259,62 @@ describe('DataProcessingAgreementContainer', () => {
         expect(screen.getByTestId('card')).toHaveAttribute('data-dismissal-scope', '1:resolved-admin');
     });
 
-    it('keeps the tenant DPA read-only and sends the one-time link to the authorised signatory', async () => {
+    it('keeps the tenant DPA read-only and forwards through the shared dialog (#723)', async () => {
         userRoles.isSuperAdmin = false;
         userRoles.isTenantScopedAdmin = true;
         userRoles.tenantId = 84;
         useDpaGate.mockReturnValue({ data: { dpaPublished: true, dpaSigned: false }, isError: false });
-        createInviteMutate.mockImplementation((_variables, options) =>
-            options.onSuccess({ signLink: 'https://app.example/dpa-sign/secret', expiresAt: '2026-07-20T12:00:00Z' }),
-        );
-        sendInviteEmailMutate.mockImplementation((_variables, options) => options.onSuccess());
+        createInviteApi.mockResolvedValue({
+            signLink: 'https://app.example/dpa-sign/secret',
+            expiresAt: '2026-07-20T12:00:00Z',
+        });
+        sendInviteEmailApi.mockResolvedValue(undefined);
 
         const user = userEvent.setup();
         render(<DataProcessingAgreementContainer tenantId={84} />);
 
         expect(screen.getByTestId('card')).toHaveAttribute('data-read-only', 'true');
-        await user.type(
-            screen.getByRole('textbox', { name: 'legal.dpa.sign.recipientEmail' }),
-            'bart.simpson@oriso.org',
-        );
+        expect(screen.queryByTestId('forward-dialog')).not.toBeInTheDocument();
+
         await user.click(screen.getByRole('button', { name: 'legal.dpa.sign.sendLink' }));
-        expect(createInviteMutate).toHaveBeenCalled();
-        expect(sendInviteEmailMutate).toHaveBeenCalledWith(
-            {
-                tenantId: 84,
-                recipientEmail: 'bart.simpson@oriso.org',
-                signLink: 'https://app.example/dpa-sign/secret',
-                expiresAt: '2026-07-20T12:00:00Z',
-            },
-            expect.any(Object),
-        );
-        expect(screen.getByText('legal.dpa.sign.sent')).toBeInTheDocument();
+        expect(screen.getByTestId('forward-dialog')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'complete forward' }));
+
+        expect(createInviteApi).toHaveBeenCalledWith(84);
+        expect(sendInviteEmailApi).toHaveBeenCalledWith({
+            tenantId: 84,
+            recipientEmail: 'bart.simpson@oriso.org',
+            signLink: 'https://app.example/dpa-sign/secret',
+            expiresAt: '2026-07-20T12:00:00Z',
+        });
+        expect(await screen.findByText('legal.dpa.sign.sent')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'legal.dpa.sign.openLink' })).toBeInTheDocument();
+        expect(screen.queryByTestId('forward-dialog')).not.toBeInTheDocument();
         expect(screen.queryByText(/secret/)).not.toBeInTheDocument();
     });
 
-    it('shows a delivery failure and retains the generated one-time link for a safe retry', async () => {
+    it('reuses the created one-time link instead of minting a new token per open', async () => {
         userRoles.isSuperAdmin = false;
         userRoles.isTenantScopedAdmin = true;
         userRoles.tenantId = 84;
         useDpaGate.mockReturnValue({ data: { dpaPublished: true, dpaSigned: false }, isError: false });
-        createInviteMutate.mockImplementation((_variables, options) =>
-            options.onSuccess({ signLink: 'https://app.example/dpa-sign/secret', expiresAt: '2026-07-20T12:00:00Z' }),
-        );
-        sendInviteEmailMutate.mockImplementation((_variables, options) => options.onError(new Error('SMTP failed')));
+        createInviteApi.mockResolvedValue({
+            signLink: 'https://app.example/dpa-sign/secret',
+            expiresAt: '2026-07-20T12:00:00Z',
+        });
+        sendInviteEmailApi.mockResolvedValue(undefined);
 
         const user = userEvent.setup();
         render(<DataProcessingAgreementContainer tenantId={84} />);
 
-        await user.type(
-            screen.getByRole('textbox', { name: 'legal.dpa.sign.recipientEmail' }),
-            'bart.simpson@oriso.org',
-        );
         await user.click(screen.getByRole('button', { name: 'legal.dpa.sign.sendLink' }));
-
-        expect(screen.getByText('legal.dpa.sign.sendFailed')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'legal.dpa.sign.openLink' })).toBeInTheDocument();
-        expect(screen.queryByText(/secret/)).not.toBeInTheDocument();
-
+        await user.click(screen.getByRole('button', { name: 'complete forward' }));
         await user.click(screen.getByRole('button', { name: 'legal.dpa.sign.sendLink' }));
-        expect(createInviteMutate).toHaveBeenCalledTimes(1);
-        expect(sendInviteEmailMutate).toHaveBeenCalledTimes(2);
+        await user.click(screen.getByRole('button', { name: 'complete forward' }));
+
+        expect(createInviteApi).toHaveBeenCalledTimes(1);
+        expect(sendInviteEmailApi).toHaveBeenCalledTimes(2);
     });
 
     it('shows the confirmed signer identity and date to the tenant admin', () => {

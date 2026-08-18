@@ -7,6 +7,7 @@ import {
     TenantAdminOnboardingClient,
     TenantAdminOnboardingInviteDTO,
 } from '../../api/tenantOnboarding/tenantOnboarding';
+import { DpaForwardClient } from '../../api/tenantOnboarding/dpaForward';
 import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 
 vi.mock('react-i18next', () => ({
@@ -49,12 +50,21 @@ const createClient = (overrides: Partial<TenantAdminOnboardingClient> = {}): Ten
     ...overrides,
 });
 
-const renderFlow = (client: TenantAdminOnboardingClient, token = 'raw-token') =>
+const renderFlow = (client: TenantAdminOnboardingClient, token = 'raw-token', forwardClient?: DpaForwardClient) =>
     render(
         <MemoryRouter>
-            <TenantAdminOnboarding inviteToken={token} client={client} />
+            <TenantAdminOnboarding inviteToken={token} client={client} forwardClient={forwardClient} />
         </MemoryRouter>,
     );
+
+const FORWARD_LINK = { signUrl: 'https://app.example.org/dpa-sign/fwd-token', expiresAt: '2026-08-29T14:31:07' };
+
+const createForwardClient = (mailFailed = false): DpaForwardClient => ({
+    forward: vi.fn().mockImplementation(async (_token: string, request: { recipientEmail?: string } = {}) => ({
+        link: FORWARD_LINK,
+        mailFailed: mailFailed && !!request.recipientEmail,
+    })),
+});
 
 const completeOrganisationStep = async (user: ReturnType<typeof userEvent.setup>) => {
     await screen.findByLabelText('tenantOnboarding.organisation.name');
@@ -296,5 +306,100 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         // Still on step 1 — the account step never opens.
         expect(screen.queryByLabelText('tenantOnboarding.account.password')).not.toBeInTheDocument();
         expect(client.registerTenantAdmin).not.toHaveBeenCalled();
+    });
+
+    it('forward path (#723): dialog → calm on-hold → continue without consent → done mentions the signature mail', async () => {
+        const client = createClient();
+        const forwardClient = createForwardClient();
+        const user = userEvent.setup();
+        renderFlow(client, 'raw-token', forwardClient);
+
+        // Fill only the organisation data — no signer fields, no consent.
+        await screen.findByLabelText('tenantOnboarding.organisation.name');
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
+
+        // The second path is available without completing the signature form.
+        await user.click(screen.getByRole('button', { name: /dpaForward.action.notAuthorised/ }));
+        expect(await screen.findByTestId('dpa-forward-dialog')).toBeInTheDocument();
+        // Opening only mints a link — no recipient, so no mail goes out.
+        expect(forwardClient.forward).toHaveBeenCalledWith('raw-token', {});
+        await waitFor(() =>
+            expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(FORWARD_LINK.signUrl),
+        );
+
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.confirm' }));
+
+        // The step flips to the calm on-hold state: notice, no consent box.
+        expect(await screen.findByTestId('dpa-forwarded-notice')).toBeInTheDocument();
+        expect(screen.getByTestId('dpa-forwarded-onhold')).toBeInTheDocument();
+        expect(screen.queryByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' })).not.toBeInTheDocument();
+
+        // Continue to account + 2FA without a signature.
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
+
+        await waitFor(() =>
+            expect(client.registerTenantAdmin).toHaveBeenCalledWith(
+                'raw-token',
+                expect.objectContaining({ dpa: expect.objectContaining({ accepted: false }) }),
+            ),
+        );
+
+        await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+
+        expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
+        // Completion messaging mentions the notification mail on signature.
+        expect(screen.getByText('tenantOnboarding.done.next.signature')).toBeInTheDocument();
+    });
+
+    it('sends the forward mail from the dialog and shows the recipient in the on-hold state', async () => {
+        const client = createClient();
+        const forwardClient = createForwardClient();
+        const user = userEvent.setup();
+        renderFlow(client, 'raw-token', forwardClient);
+
+        await screen.findByLabelText('tenantOnboarding.organisation.name');
+        await user.click(screen.getByRole('button', { name: /dpaForward.action.notAuthorised/ }));
+        await screen.findByTestId('dpa-forward-dialog');
+        await waitFor(() => expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).not.toHaveValue(''));
+
+        await user.type(screen.getByLabelText('dpaForward.dialog.recipientName'), 'Dr. Ruth Recht');
+        await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+        await screen.findByTestId('dpa-forward-sent');
+        expect(forwardClient.forward).toHaveBeenLastCalledWith('raw-token', {
+            recipientEmail: 'legal@example.org',
+        });
+
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.confirm' }));
+        expect(await screen.findByTestId('dpa-forwarded-sent-to')).toBeInTheDocument();
+    });
+
+    it('502 forward (link created, mail not sent) still lets the wizard continue, with an honest note', async () => {
+        const client = createClient();
+        const forwardClient = createForwardClient(true);
+        const user = userEvent.setup();
+        renderFlow(client, 'raw-token', forwardClient);
+
+        await screen.findByLabelText('tenantOnboarding.organisation.name');
+        await user.click(screen.getByRole('button', { name: /dpaForward.action.notAuthorised/ }));
+        await screen.findByTestId('dpa-forward-dialog');
+        await waitFor(() => expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).not.toHaveValue(''));
+
+        await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+
+        // Warning, not error — the link exists and is the fallback.
+        await screen.findByTestId('dpa-forward-mail-failed');
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.confirm' }));
+
+        expect(await screen.findByTestId('dpa-forwarded-onhold')).toBeInTheDocument();
+        expect(screen.getByTestId('dpa-forwarded-mail-failed')).toBeInTheDocument();
+        expect(screen.queryByTestId('dpa-forwarded-sent-to')).not.toBeInTheDocument();
     });
 });
