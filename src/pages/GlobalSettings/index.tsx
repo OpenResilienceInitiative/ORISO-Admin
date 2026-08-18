@@ -24,6 +24,7 @@ import { sendGlobalSmtpTestEmail } from '../../api/settings/sendGlobalSmtpTestEm
 import { TranslationApiKeysCardContainer } from '../../components/GlobalSettings/TranslationApiKeysCardContainer';
 import { DocumentMasterDataCardContainer } from '../../components/GlobalSettings/DocumentMasterDataCardContainer';
 import styles from './styles.module.scss';
+import { resolveTenantId } from '../../utils/resolveTenantId';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
 
 export const GlobalSettingsPage = () => {
@@ -50,8 +51,11 @@ export const GlobalSettingsPage = () => {
 export const GlobalLoginSettingsPage = () => {
     const { t } = useTranslation();
     const { data, isLoading } = useTenantData();
-    const tenantId = data?.id ? `${data.id}` : '';
-    const seedTenantAdminData = useMemo(() => (data?.id ? mapTenantDataToTenantAdminData(data) : undefined), [data]);
+    const tenantId = resolveTenantId(undefined, data?.id);
+    const seedTenantAdminData = useMemo(
+        () => (data?.id == null ? undefined : mapTenantDataToTenantAdminData(data)),
+        [data],
+    );
     const { mutate } = useTenantAdminDataMutation({
         id: tenantId,
         seedTenantAdminData,

@@ -114,10 +114,15 @@ describe('M3RichTextEditor — anchor navigation (read-only)', () => {
         );
     });
 
-    it('does not invent anchors for headings without ids (content stays untouched)', async () => {
-        const { container } = render(<M3RichTextEditor value="<h2>Ohne Anker</h2><p>Text</p>" readOnly />);
-        await waitFor(() => expect(container.querySelector('[data-testid="m3-editor"] h2')).toBeTruthy());
-        expect(container.querySelector(chipSelector)).toBeNull();
+    it('adds display-only anchors to legacy headings without emitting a content change', async () => {
+        const onChange = vi.fn();
+        const { container } = render(
+            <M3RichTextEditor value="<h2>Ohne Anker</h2><p>Text</p>" readOnly onChange={onChange} />,
+        );
+
+        await waitFor(() => expect(container.querySelector('[data-anchor-chip="ohne-anker"]')).toBeTruthy());
+        expect(container.querySelector('#ohne-anker')).toBeTruthy();
+        expect(onChange).not.toHaveBeenCalled();
     });
 
     it('intercepts in-text #anchor links: scrolls instead of navigating', async () => {

@@ -73,7 +73,7 @@ export const DesktopWithChapters: Story = {
         );
         await userEvent.click(chip!);
         await waitFor(() =>
-            expect(canvasElement.querySelector('#4-pflichten-des-auftragnehmers')).toBe(document.activeElement),
+            expect(canvasElement.querySelector('[id="4-pflichten-des-auftragnehmers"]')).toBe(document.activeElement),
         );
     },
 };

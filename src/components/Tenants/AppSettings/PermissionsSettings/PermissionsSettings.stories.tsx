@@ -56,6 +56,43 @@ export const TenantView: Story = {
     },
 };
 
+/** Focused visual contract for the generic permission-card anatomy:
+ *  feature icon + title, leading neutral info copy, then the master switch. */
+export const OneOnOneCardHierarchy: Story = {
+    args: {
+        excludeCardKeys: ['liveChat', 'group', 'groupInternal'],
+        initialValues: { settings: filledSettings },
+    },
+    play: async ({ canvasElement, step }) => {
+        const canvas = within(canvasElement);
+
+        await step('description leads with a neutral 16px info icon', async () => {
+            const title = await canvas.findByRole('heading', { name: '1 zu 1 Beratungen' });
+            const cardItem = title.closest('[data-admin-card-deck-item]');
+            expect(cardItem).not.toBeNull();
+
+            const card = within(cardItem as HTMLElement);
+            const description = card.getByText(/Ratsuchende finden lokale Beratende/).closest('p');
+            const infoIcon = description?.firstElementChild;
+
+            expect(description).not.toBeNull();
+            expect(infoIcon?.tagName).toBe('svg');
+            expect(getComputedStyle(infoIcon as Element).width).toBe('16px');
+            expect(getComputedStyle(infoIcon as Element).color).toBe('rgb(68, 71, 72)');
+        });
+
+        await step('description appears before the activated switch', async () => {
+            const title = canvas.getByRole('heading', { name: '1 zu 1 Beratungen' });
+            const cardItem = title.closest('[data-admin-card-deck-item]') as HTMLElement;
+            const card = within(cardItem);
+            const description = card.getByText(/Ratsuchende finden lokale Beratende/).closest('p') as HTMLElement;
+            const activated = card.getByRole('switch', { name: 'Aktiviert' });
+
+            expect(description.compareDocumentPosition(activated)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        });
+    },
+};
+
 /** Live-chat module switched off: its sub-toggles (video, audio, voice, …)
  *  are locked off while the master is off — "disable, don't hide". */
 export const LiveChatMasterOff: Story = {
