@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -171,5 +173,101 @@ describe('DpaForwardDialog', () => {
 
         expect(onClose).toHaveBeenCalledTimes(1);
         expect(onForwarded).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * Layout contract (owner review 2026-08-18). jsdom has no layout engine, so the
+ * rules that only a real engine can execute — the viewport bound and the
+ * right-aligned action row — are asserted against the shipped stylesheet, and
+ * everything a DOM can answer (source order, one shared field grid, the sheet
+ * width antd actually applies, the button's emphasis) is asserted on the render.
+ * Both halves are proven again in a real browser at 390/820/1440; see the PR.
+ */
+describe('DpaForwardDialog layout', () => {
+    // Vitest serves modules over its own URL scheme, so `import.meta.url` is not a
+    // file path here; the stylesheet is read from the project root instead.
+    const stylesheet = readFileSync(join(process.cwd(), 'src/components/DpaForwardDialog/styles.module.scss'), 'utf8');
+
+    /** The declarations of exactly one rule, so a match cannot leak in from a neighbour. */
+    const ruleFor = (selector: string): string => {
+        const start = stylesheet.indexOf(`${selector} {`);
+        expect(start, `no \`${selector}\` rule in styles.module.scss`).toBeGreaterThan(-1);
+        let depth = 0;
+        for (let i = stylesheet.indexOf('{', start); i < stylesheet.length; i += 1) {
+            if (stylesheet[i] === '{') depth += 1;
+            if (stylesheet[i] === '}') {
+                depth -= 1;
+                if (depth === 0) return stylesheet.slice(start, i);
+            }
+        }
+        throw new Error(`unbalanced braces after \`${selector}\``);
+    };
+
+    it('puts the sign-link block below the mail preview', async () => {
+        renderDialog();
+        await screen.findByLabelText('dpaForward.dialog.linkLabel');
+
+        const preview = screen.getByRole('region', { name: 'dpaForward.dialog.previewLabel' });
+        const linkBlock = screen.getByTestId('dpa-forward-link-section');
+
+        // querySelectorAll answers in document order: the mail is the worked
+        // example, the link is the alternative underneath it.
+        const inOrder = Array.from(
+            document.querySelectorAll(
+                '[aria-label="dpaForward.dialog.previewLabel"], [data-testid="dpa-forward-link-section"]',
+            ),
+        );
+        expect(inOrder).toEqual([preview, linkBlock]);
+    });
+
+    it('scrolls its content inside the sheet instead of growing past the viewport', async () => {
+        renderDialog();
+        await screen.findByLabelText('dpaForward.dialog.linkLabel');
+        const content = screen.getByTestId('dpa-forward-dialog');
+
+        // Everything tall lives in the scroller; the dialog's own actions never do,
+        // so they cannot be pushed off a short screen.
+        expect(content).toContainElement(screen.getByRole('region', { name: 'dpaForward.dialog.previewLabel' }));
+        expect(content).toContainElement(screen.getByTestId('dpa-forward-link-section'));
+        expect(content).not.toContainElement(screen.getByRole('button', { name: 'dpaForward.dialog.confirm' }));
+
+        // The sheet is bounded against the viewport rather than against a guessed
+        // chrome height, so the gutter survives a wrapping title on a 390px phone.
+        expect(ruleFor('.ant-modal-content')).toMatch(/max-height:\s*calc\(100dvh - 48px\)/);
+        const scroller = ruleFor('.ant-modal-body');
+        expect(scroller).toMatch(/overflow-y:\s*auto/);
+        expect(scroller).toMatch(/overscroll-behavior:\s*contain/);
+    });
+
+    it('opens at the wide desktop sheet width', async () => {
+        renderDialog();
+        await screen.findByLabelText('dpaForward.dialog.linkLabel');
+
+        expect(document.querySelector<HTMLElement>('.ant-modal')?.style.width).toBe('880px');
+    });
+
+    it('lays name and e-mail out in one shared two-column field grid', async () => {
+        renderDialog();
+        const name = await screen.findByLabelText('dpaForward.dialog.recipientName');
+        const email = screen.getByLabelText('dpaForward.dialog.recipientEmail');
+
+        // FieldGrid is the house responsive raster: at most two tracks, and it
+        // drops to one as soon as a track would fall below its width floor.
+        const grid = name.closest<HTMLElement>('[style*="--field-grid-max-columns"]');
+        expect(grid, 'recipient fields are not inside a FieldGrid').not.toBeNull();
+        expect(grid?.style.getPropertyValue('--field-grid-max-columns')).toBe('2');
+        expect(grid).toContainElement(email);
+    });
+
+    it('gives the send action filled emphasis on a right-aligned row', async () => {
+        renderDialog();
+        await screen.findByLabelText('dpaForward.dialog.linkLabel');
+        const send = screen.getByRole('button', { name: 'dpaForward.dialog.send' });
+
+        expect(send.className).toContain('filled');
+        expect(send.className).not.toContain('outlined');
+        expect(send.parentElement?.className).toContain('sendActions');
+        expect(ruleFor('.sendActions')).toMatch(/justify-content:\s*flex-end/);
     });
 });
