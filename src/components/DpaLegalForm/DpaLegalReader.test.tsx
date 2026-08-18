@@ -71,22 +71,24 @@ describe('DpaLegalReader', () => {
     });
 
     /**
-     * #594.3 / #572: the reader brings NO scroll container of its own — the
-     * host surface scrolls (the viewport-bounded sheet on the desktop, the
-     * page on a phone) so there is exactly one scroller on screen and the step
-     * can be bounded and centred. Consequently the text region must not be a
-     * tab stop either: `scrollable-region-focusable` only asks for one when
-     * the region actually scrolls, and an extra stop in front of a 60-page
-     * agreement is pure noise.
+     * Owner demo 2026-08-19, REVERSING #594.3's "the host is the only
+     * scroller": with the host scrolling, the chapter bar travelled up and
+     * down with the page and a chip click re-scrolled it out from under the
+     * cursor (positions 2-4 of the demo; „das Menü einfach starr bleibt, wo
+     * es ist … der Text in der Textbox sich bewegt"). The reader therefore
+     * scrolls the agreement inside its own bounded viewport again — and a
+     * region that actually scrolls must be a tab stop, so keyboard users can
+     * scroll it without a pointer (axe: scrollable-region-focusable).
      */
-    it('delegates scrolling to its host and keeps the chapter row outside the text region', async () => {
+    it('scrolls the agreement in its own viewport: region is a tab stop, chapter row stays outside it', async () => {
         const { container } = render(<DpaLegalReader html={LEGAL_HTML} label="AVV" />);
         await waitFor(() => expect(chips(container)).toHaveLength(3));
 
         const region = screen.getByRole('region', { name: 'AVV' });
-        // The chip row is a SIBLING of the text viewport, never inside it.
+        // The chip row is a SIBLING of the text viewport, never inside it —
+        // it must stand still while the text scrolls past it.
         expect(region.contains(screen.getByRole('navigation'))).toBe(false);
-        expect(region).not.toHaveAttribute('tabindex');
+        expect(region).toHaveAttribute('tabindex', '0');
     });
 
     it('renders text without headings without a chapter row (no empty navigation)', async () => {

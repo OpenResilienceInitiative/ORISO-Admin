@@ -33,11 +33,12 @@ export interface DpaLegalReaderProps {
  * in-text `#anchor` cross references. Picking a chapter scrolls the host
  * surface to that heading and moves keyboard focus to it.
  *
- * Scrolling (#594.3): the card is `fluid`, i.e. it is NOT a scroll container.
- * Its host scrolls — the viewport-bounded sheet on the desktop, the page on a
- * phone — so a step containing a 60-page agreement can be bounded and centred,
- * and the screen never stacks two scrollbars (#572). The chapter chips stay
- * usable because they stick to the bottom of the active scrollport.
+ * Scrolling (owner demo 2026-08-19, reversing #594.3): the card is `fluid`
+ * for sizing, but the agreement scrolls inside its own bounded viewport — the
+ * chapter bar stands still below it while the text moves, and picking a
+ * chapter moves ONLY that viewport, never the host page. With the host as the
+ * only scroller, the sticky bar travelled with the page and a chip click
+ * re-scrolled it out from under the cursor (two clicks to select a chapter).
  *
  * The only thing added here is `ensureHeadingAnchorIds`: the read-only card
  * deliberately never mutates its document, so legal texts published before the

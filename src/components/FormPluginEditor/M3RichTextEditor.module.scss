@@ -116,12 +116,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
 // column width. The desktop rule above pins the deck card to 800x740, which
 // would overflow a sign-in-sized column.
 //
-// Scrolling (#594.3, decided against #572's "no nested scroller" criterion):
-// the fluid card is NOT a scroll container. Its host scrolls — the
-// viewport-bounded sheet on the desktop, the page on a phone — so there is
-// exactly ONE scroller on screen, and a step that contains a 60-page agreement
-// can still be bounded and centred. The chapter chips keep working because
-// they stick to the bottom of the card while the agreement is on screen.
+// Scrolling in WRITE mode (#594.3): the fluid card is NOT a scroll container.
+// Its host scrolls, and the chapter chips stay reachable by sticking to the
+// bottom of the host scrollport. READ mode no longer works this way — see
+// `.module.fluid.readMode` below (owner demo 2026-08-19).
 .module.fluid:not(.inDialog) {
     width: 100%;
     max-width: 100%;
@@ -172,10 +170,11 @@ $m3-state-active: rgb(39 50 112 / 12%);
         scroll-margin-bottom: 56px;
     }
 
-    /* Chapter navigation follows the reading position: pinned to the bottom of
-       the host's scrollport for as long as the agreement is on screen. An
-       opaque bar with a hairline, so text scrolling underneath reads as
-       "behind the bar" rather than as clipped. */
+    /* WRITE mode only (READ mode un-sticks this — see `.module.fluid.readMode`
+       below): chapter navigation follows the writing position, pinned to the
+       bottom of the host's scrollport for as long as the document is on
+       screen. An opaque bar with a hairline, so text scrolling underneath
+       reads as "behind the bar" rather than as clipped. */
 
     .editor .anchorNav {
         position: sticky;
@@ -218,6 +217,42 @@ $m3-state-active: rgb(39 50 112 / 12%);
             font-size: 22px;
             line-height: 30px;
         }
+    }
+}
+
+// Fluid READ mode (owner demo 2026-08-19, reversing #594.3 for reading): with
+// the HOST as the only scroller, the sticky chapter bar travelled up and down
+// with the page — and detached entirely once the card's end scrolled into
+// view — and a chip click re-scrolled the page so the bar moved out from
+// under the cursor: selecting "Anlage 3" took two clicks. Reading therefore
+// uses the same internal-scroll pattern the 800x740 deck card and the
+// fullscreen dialog already use: the text viewport is bounded and scrolls by
+// itself („der Text in der Textbox sich bewegt"), and the chapter bar stands
+// statically below the box („das Menü einfach starr bleibt, wo es ist").
+// Fluid WRITE mode (the Erstantwort editor) keeps growing with its content.
+.module.fluid.readMode:not(.inDialog) {
+    .editorContentScroll {
+        /* Floor: keeps a readable run of text on tiny landscape viewports.
+           60vh: box + chapter bar + the signer form below stay reachable on
+           every tested viewport (390/820/1440). Cap: keeps the line count of
+           the reading measure near the deck card's on very tall screens. */
+        max-height: clamp(280px, 60vh, 640px);
+        overflow-y: auto;
+
+        /* The bar no longer overlays the text, so the 56px sticky clearance
+           would only scroll the last lines away from the box edge. 8px keeps
+           the owner's "8px on all four sides" inset INSIDE the scrollport,
+           where the clipping actually happens. */
+        padding: 8px;
+        scroll-margin-bottom: 0;
+    }
+
+    /* The bar stops following the host scrollport: it stands below the box.
+       Background, hairline and 16px control inset stay — text scrolling up to
+       the box edge still reads as "behind the bar". */
+
+    .editor .anchorNav {
+        position: static;
     }
 }
 
@@ -1126,12 +1161,6 @@ $m3-state-active: rgb(39 50 112 / 12%);
     .versionSplit:hover & {
         background: $m3-state-hover;
     }
-
-    svg {
-        width: 18px;
-        height: 18px;
-        flex-shrink: 0;
-    }
 }
 
 .versionLeading {
@@ -1143,9 +1172,21 @@ $m3-state-active: rgb(39 50 112 / 12%);
     font-weight: 500;
     letter-spacing: 0.1px;
 
-    // antd Icon wrappers size via font-size (1em) — match the MUI icons.
+    // Leading icon box 24x24 (owner call 2026-08-19, "revert squeezing"):
+    // the version-history glyph rendered distorted at 18px — the box is now
+    // the standard 24px icon size and shrink-proof, and the clock SVG source
+    // keeps its aspect ratio again (it no longer ships the "none" value for
+    // preserveAspectRatio), so the box can never squeeze the glyph.
+    svg {
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+
+    // antd Icon wrappers size via font-size (1em) — must agree with the svg
+    // box above or the wrapper mis-centres the glyph.
     :global(.anticon) {
-        font-size: 18px;
+        font-size: 24px;
     }
 
     > span {

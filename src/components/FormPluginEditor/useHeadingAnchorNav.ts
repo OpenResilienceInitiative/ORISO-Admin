@@ -65,6 +65,16 @@ export const useHeadingAnchorNav = (
     const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
     const anchorsRef = useRef(anchors);
     anchorsRef.current = anchors;
+    /**
+     * Where a chapter JUMP parked the scroll viewport. While the viewport
+     * still sits exactly there, the scroll spy stays parked: near the end of
+     * a short document the box runs out of scroll distance before the picked
+     * heading reaches the top, and the spy — which derives the active chapter
+     * from the reading position — would instantly overwrite the chapter the
+     * user just picked (measured live 2026-08-19: the click appeared to not
+     * take). The first scroll that moves the box again clears it.
+     */
+    const jumpedTo = useRef<{ viewport: HTMLElement; top: number } | null>(null);
 
     // Stamp ids onto legacy content when editable (persisted via onChange on
     // save) and keep the chip list in sync with the doc. The 'transaction'
@@ -103,7 +113,7 @@ export const useHeadingAnchorNav = (
         consumedInitialHash.current = true;
         if (anchors.some((anchor) => anchor.id === requested)) {
             // eslint-disable-next-line @typescript-eslint/no-use-before-define
-            scrollToAnchor(requested);
+            scrollToAnchor(requested, true);
         }
     }, [editor, enabled, editable, anchors]);
 
@@ -121,6 +131,13 @@ export const useHeadingAnchorNav = (
                 // scrolls can change as content loads (anchors/chip bar
                 // altering layout) or the viewport crosses a breakpoint.
                 const scrollViewport = findScrollViewport(root);
+                // Parked after a chapter jump (see `jumpedTo`): the picked
+                // chapter keeps the selection until the user moves the box.
+                const jump = jumpedTo.current;
+                if (jump && scrollViewport === jump.viewport) {
+                    if (scrollViewport.scrollTop === jump.top) return;
+                    jumpedTo.current = null;
+                }
                 const rootTop = scrollViewport ? scrollViewport.getBoundingClientRect().top : 0;
                 let current: string | null = null;
                 anchorsRef.current.forEach((anchor) => {
@@ -137,12 +154,40 @@ export const useHeadingAnchorNav = (
         };
     }, [editor, enabled, editable]);
 
-    const scrollToAnchor = (anchorId: string) => {
+    /**
+     * `revealViewport` (initial `#hash` arrival only): additionally brings the
+     * reader itself into the HOST's view with `block: "nearest"` — a shared
+     * link must land on the chapter even when the reader sits below the fold.
+     * "nearest" never moves an already visible reader, so this stays off the
+     * interactive paths.
+     */
+    const scrollToAnchor = (anchorId: string, revealViewport = false) => {
         if (!editor) return;
-        const target = editor.view.dom.querySelector<HTMLElement>(`[id="${escapeCssId(anchorId)}"]`);
-        // Instant (non-smooth) scrolling: smooth programmatic scrolling is a
-        // silent no-op in several embedded/headless browsers.
-        target?.scrollIntoView({ block: 'start' });
+        const root = editor.view.dom as HTMLElement;
+        const target = root.querySelector<HTMLElement>(`[id="${escapeCssId(anchorId)}"]`);
+        const viewport = target ? findScrollViewport(root) : null;
+        if (target && viewport) {
+            // The reader scrolls inside a viewport of its own: move THAT and
+            // nothing else. `scrollIntoView` would drag every scrollable
+            // ancestor along — the host sheet/page included — which is the
+            // owner-demonstrated bug (2026-08-19): the chapter bar re-scrolled
+            // out from under the cursor and selecting a chip took two clicks.
+            const top = viewport.scrollTop + target.getBoundingClientRect().top - viewport.getBoundingClientRect().top;
+            // Instant (non-smooth) scrolling here and below: smooth
+            // programmatic scrolling is a silent no-op in several
+            // embedded/headless browsers.
+            if (typeof viewport.scrollTo === 'function') viewport.scrollTo({ top });
+            else viewport.scrollTop = top;
+            // Instant scrolling is synchronous, so this reads the CLAMPED
+            // position (a late chapter in a short document parks the box at
+            // its maximum before the heading reaches the top edge).
+            jumpedTo.current = { viewport, top: viewport.scrollTop };
+            if (revealViewport) viewport.scrollIntoView({ block: 'nearest' });
+        } else if (target) {
+            // Nothing between the text and the page scrolls (fluid WRITE
+            // mode): the page is the scroller and may move.
+            target.scrollIntoView({ block: 'start' });
+        }
         // Reading mode: focus follows the jump, so keyboard and screen-reader
         // users actually land in the chapter they picked instead of only
         // seeing it move (WCAG 2.4.3). Headings are not focusable by default,

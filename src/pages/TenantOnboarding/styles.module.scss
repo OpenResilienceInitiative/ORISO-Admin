@@ -59,8 +59,8 @@
         flex: 1 1 auto;
 
         /* Horizontal room for the focus ring of the fields inside the
-           scroller. Vertical padding is deliberately 0 so the sticky chapter
-           bar lands exactly on the scrollport edge. */
+           scroller. (The agreement itself scrolls inside the reader since the
+           owner demo 2026-08-19 — this body only scrolls the step's form.) */
         padding: 0 4px;
         margin: 0 -4px;
         overflow-y: auto;
