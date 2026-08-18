@@ -65,7 +65,7 @@ export const LegalTextSettings = ({ agencyData, field, onSave, saving }: LegalTe
     const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions({
         level: 'agency',
         agencyId: Number(agencyData?.id),
-        kind: isPrivacy ? 'dpp' : 'imprint',
+        kind: isPrivacy ? 'DPP' : 'IMPRINT',
     });
     // Keeps the consent sentence on the same version as the body shown above it.
     const {

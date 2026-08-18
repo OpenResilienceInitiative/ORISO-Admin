@@ -7,11 +7,13 @@ import { usePublishDepartmentDpp } from '../../../../../hooks/usePublishDepartme
 import { usePublishDepartmentImprint } from '../../../../../hooks/usePublishDepartmentImprint.hook';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
+import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { AgencyData } from '../../../../../types/agency';
+import { LegalTextKind } from '../../../../../types/legalVersion';
 import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '../DepartmentSelect';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
@@ -29,6 +31,9 @@ interface AgencyLegalTextContainerProps {
 
 /** The agency-level content key differs from the department wording ("imprint" vs "impressum"). */
 const AGENCY_CONTENT_KEY: Record<LegalField, string> = { privacy: 'privacy', imprint: 'impressum' };
+
+/** The wire enum of the `kind` query parameter (ORISO-AgencyService#256). */
+const VERSION_KIND: Record<LegalField, LegalTextKind> = { privacy: 'DPP', imprint: 'IMPRINT' };
 
 /**
  * One legal-text editor per kind for the whole Beratungsstelle, with the Fachbereich chosen in the
@@ -101,6 +106,17 @@ export const AgencyLegalTextContainer = ({
     const dppQuery = useDepartmentDpp(agencyId, field === 'privacy' ? (topicId as number) : NaN);
     const imprintQuery = useDepartmentImprint(agencyId, field === 'imprint' ? (topicId as number) : NaN);
     const departmentQuery = field === 'privacy' ? dppQuery : imprintQuery;
+
+    // The publication history follows the switcher (#812): a Fachbereich shows its own
+    // versions, "Alle Fachbereiche" the agency-wide ones. Scoping the request itself —
+    // rather than filtering a shared list — is what makes it impossible for one
+    // department's wording to appear under another. Contract documents are untouched by
+    // this: they stay tenant-scoped in `DataProcessingAgreementContainer`.
+    const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions(
+        isDepartment
+            ? { level: 'department', agencyId, topicId: topicId as number, kind: VERSION_KIND[field] }
+            : { level: 'agency', agencyId, kind: VERSION_KIND[field] },
+    );
 
     const publishDpp = usePublishDepartmentDpp(agencyId, topicId as number);
     const publishImprint = usePublishDepartmentImprint(agencyId, topicId as number);
@@ -197,6 +213,8 @@ export const AgencyLegalTextContainer = ({
             initialContentByLanguage={contentByLanguage}
             languages={languages}
             publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : undefined}
+            versions={versions}
+            versionsUnavailable={versionsUnavailable}
             readOnly={!canEditLegalText}
             onSave={onSave}
             saving={saving || departmentPublish.isPending}

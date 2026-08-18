@@ -38,7 +38,7 @@ export const DepartmentDataProtectionContainer = ({
         level: 'department',
         agencyId,
         topicId,
-        kind: 'dpp',
+        kind: 'DPP',
     });
 
     const contentByLanguage = useMemo(() => parseLegalContentMap(data?.content), [data?.content]);

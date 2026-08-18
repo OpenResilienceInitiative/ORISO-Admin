@@ -115,7 +115,7 @@ export const LegalText = ({
     // exactly as it did before. A genuine failure (403, 500, network) is NOT an
     // empty history and is reported as such.
     const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions(
-        { level: 'tenant', tenantId: Number(tenantId), kind: legalType === 'imprint' ? 'imprint' : 'privacy' },
+        { level: 'tenant', tenantId: Number(tenantId), kind: legalType === 'imprint' ? 'IMPRINT' : 'DPP' },
         !!legalType,
     );
     // Keeps the consent sentence on the same version as the body shown above it.

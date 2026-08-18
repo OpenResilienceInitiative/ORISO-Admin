@@ -29,7 +29,7 @@ export const DepartmentImprintContainer = ({
         level: 'department',
         agencyId,
         topicId,
-        kind: 'imprint',
+        kind: 'IMPRINT',
     });
     const contentByLanguage = useMemo(() => parseLegalContentMap(data?.content), [data?.content]);
     const languages = useMemo(

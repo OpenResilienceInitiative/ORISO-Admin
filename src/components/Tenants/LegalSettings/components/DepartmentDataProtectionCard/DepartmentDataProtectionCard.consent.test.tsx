@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DepartmentDataProtectionCard } from './index';
+import { LegalTextVersion } from '../../../../../types/legalVersion';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
@@ -83,9 +84,20 @@ beforeAll(() => {
     });
 });
 
+/** ADR-021/ORISO-AgencyService#256: a version is identified by a surrogate id. */
+const version = (id: number, publishedAt: string, content: string, consentText?: string): LegalTextVersion => ({
+    id,
+    kind: 'DPP',
+    ownerLevel: 'DEPARTMENT',
+    ownerId: 3,
+    publishedAt,
+    content,
+    ...(consentText === undefined ? {} : { consentText }),
+});
+
 const versions = [
-    { activationDate: '2026-07-13T10:22:00Z', content: JSON.stringify({ de: '<p>neu</p>' }) },
-    { activationDate: '2026-05-02T09:00:00Z', content: JSON.stringify({ de: '<p>alt</p>' }) },
+    version(42, '2026-07-13T10:22:00Z', JSON.stringify({ de: '<p>neu</p>' })),
+    version(17, '2026-05-02T09:00:00Z', JSON.stringify({ de: '<p>alt</p>' })),
 ];
 
 describe('DepartmentDataProtectionCard — version look-back', () => {
@@ -179,16 +191,18 @@ describe('DepartmentDataProtectionCard — consent field', () => {
  */
 describe('DepartmentDataProtectionCard — consent follows the selected version', () => {
     const versionedConsent = [
-        {
-            activationDate: '2026-07-13T10:22:00Z',
-            content: JSON.stringify({ de: '<p>neu</p>' }),
-            consentText: JSON.stringify({ de: 'Neuer Satz mit {{legal_links}}.' }),
-        },
-        {
-            activationDate: '2026-05-02T09:00:00Z',
-            content: JSON.stringify({ de: '<p>alt</p>' }),
-            consentText: JSON.stringify({ de: 'Alter Satz mit {{legal_links}}.' }),
-        },
+        version(
+            42,
+            '2026-07-13T10:22:00Z',
+            JSON.stringify({ de: '<p>neu</p>' }),
+            JSON.stringify({ de: 'Neuer Satz mit {{legal_links}}.' }),
+        ),
+        version(
+            17,
+            '2026-05-02T09:00:00Z',
+            JSON.stringify({ de: '<p>alt</p>' }),
+            JSON.stringify({ de: 'Alter Satz mit {{legal_links}}.' }),
+        ),
     ];
 
     const renderCard = () =>
@@ -209,21 +223,21 @@ describe('DepartmentDataProtectionCard — consent follows the selected version'
         renderCard();
         expect(consentInput()).toHaveValue('Heutiger Satz mit {{legal_links}}.');
 
-        await userEvent.click(screen.getByRole('button', { name: 'view 2026-05-02T09:00:00Z' }));
+        await userEvent.click(screen.getByRole('button', { name: 'view 17' }));
 
         expect(consentInput()).toHaveValue('Alter Satz mit {{legal_links}}.');
     });
 
     it('makes the archived sentence read-only — the published chain is append-only', async () => {
         renderCard();
-        await userEvent.click(screen.getByRole('button', { name: 'view 2026-05-02T09:00:00Z' }));
+        await userEvent.click(screen.getByRole('button', { name: 'view 17' }));
 
         expect(consentInput()).toBeDisabled();
     });
 
     it('returns to the editable current sentence when the look-back ends', async () => {
         renderCard();
-        await userEvent.click(screen.getByRole('button', { name: 'view 2026-05-02T09:00:00Z' }));
+        await userEvent.click(screen.getByRole('button', { name: 'view 17' }));
         await userEvent.click(screen.getByRole('button', { name: 'back to draft' }));
 
         expect(consentInput()).toHaveValue('Heutiger Satz mit {{legal_links}}.');

@@ -89,9 +89,10 @@ interface DepartmentDataProtectionCardProps {
 /**
  * Editor card for a department's (Fachbereich = agency × topic) own data privacy policy
  * (Datenschutzerklärung) in the M3 editor shell. Mirrors the tenant DPA card but is
- * per-Fachbereich: it has no version history and offers both a draft-save and a publish
- * action, with the current status shown as a tag. Publishing offers to machine-translate
- * the source text into the other active languages.
+ * per-Fachbereich: it offers both a draft-save and a publish action, with the current
+ * status shown as a tag, and looks back at the publication history OF THAT Fachbereich —
+ * the container scopes `versions` to whatever the switcher selected (#812). Publishing
+ * offers to machine-translate the source text into the other active languages.
  */
 export const DepartmentDataProtectionCard = ({
     departmentName,
