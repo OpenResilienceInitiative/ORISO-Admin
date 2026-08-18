@@ -65,6 +65,17 @@ interface DepartmentDataProtectionCardProps {
      */
     consentByLanguage?: Record<string, string>;
     /**
+     * Name of the level the consent sentence is inherited FROM (e.g. the Träger), shown as a notice
+     * on the languages this level has not overridden. Together with `ownConsentByLanguage` — the
+     * overrides that exist at THIS level — the card can answer the question per language, which the
+     * container cannot: the active language lives in here.
+     *
+     * Omitted when there is nothing above this level to inherit from.
+     */
+    consentInheritedFrom?: string;
+    /** The consent sentences authored at THIS level; a language absent here is inherited. */
+    ownConsentByLanguage?: Record<string, string>;
+    /**
      * Machine-translation call (wired by the container). When present, publishing offers
      * the translate-on-publish modal and non-source languages get a per-field
      * "translate from the original" button. Draft saves never translate.
@@ -89,9 +100,10 @@ interface DepartmentDataProtectionCardProps {
 /**
  * Editor card for a department's (Fachbereich = agency × topic) own data privacy policy
  * (Datenschutzerklärung) in the M3 editor shell. Mirrors the tenant DPA card but is
- * per-Fachbereich: it has no version history and offers both a draft-save and a publish
- * action, with the current status shown as a tag. Publishing offers to machine-translate
- * the source text into the other active languages.
+ * per-Fachbereich: it offers both a draft-save and a publish action, with the current
+ * status shown as a tag, and looks back at the publication history OF THAT Fachbereich —
+ * the container scopes `versions` to whatever the switcher selected (#812). Publishing
+ * offers to machine-translate the source text into the other active languages.
  */
 export const DepartmentDataProtectionCard = ({
     departmentName,
@@ -107,6 +119,8 @@ export const DepartmentDataProtectionCard = ({
     versions = [],
     versionsUnavailable = false,
     consentByLanguage,
+    consentInheritedFrom,
+    ownConsentByLanguage,
     readOnly = false,
 }: DepartmentDataProtectionCardProps) => {
     const { t, i18n } = useTranslation();
@@ -290,6 +304,16 @@ export const DepartmentDataProtectionCard = ({
                 It stays part of THIS card — one card, policy plus its consent field. */}
             {consentEnabled && (
                 <LegalConsentField
+                    inheritedFrom={
+                        // The notice describes the CURRENT state. While an archived version is on
+                        // screen it would answer a question nobody asked about the version being
+                        // read, so it goes away for the duration.
+                        consentInheritedFrom &&
+                        !isViewingVersion &&
+                        ownConsentByLanguage?.[activeLanguage] === undefined
+                            ? consentInheritedFrom
+                            : undefined
+                    }
                     language={activeLanguage}
                     readOnly={readOnly || isViewingVersion}
                     value={(viewedConsent ?? consentMap)[activeLanguage] ?? ''}

@@ -62,8 +62,15 @@ import styles from './M3RichTextEditor.module.scss';
 
 /** A saved, published version the editor can look back at (read-only). */
 export type EditorVersion = {
-    /** Stable id (e.g. the activation timestamp). */
+    /** Stable id (the AVV uses its activation timestamp, ADR-021 a surrogate id). */
     id: string;
+    /**
+     * When this version came into force (ISO). ADR-021 histories key a version by a
+     * surrogate id, so the date has to travel separately — feeding an id like `42`
+     * to `new Date()` would date the version to the year 2042. Absent for the AVV,
+     * whose id IS its activation timestamp.
+     */
+    publishedAt?: string;
     /** Human label shown in the version menu (e.g. a formatted date). */
     label: string;
     /** The version's HTML content. */
@@ -787,7 +794,10 @@ export const M3RichTextEditor = ({
     if (!editor) return null;
 
     const html = () => (editorSlot || editor.isEmpty ? '' : editor.getHTML());
-    const onlineSinceDate = versions.length > 0 ? parseVersionDate(versions[versions.length - 1].id) : null;
+    // Prefer the explicit publication timestamp; fall back to the id for the AVV,
+    // where the id is that timestamp.
+    const versionDate = (version: EditorVersion) => parseVersionDate(version.publishedAt ?? version.id);
+    const onlineSinceDate = versions.length > 0 ? versionDate(versions[versions.length - 1]) : null;
     // Read mode (published view / version look-back): text without box, outline
     // or padding (Figma 1261-51137). Only the built-in editor is restyled — an
     // editorSlot owns its own surface.
@@ -1028,9 +1038,8 @@ export const M3RichTextEditor = ({
                                                     ]
                                                   : []),
                                               ...versions.map((v, index) => {
-                                                  const from = parseVersionDate(v.id);
-                                                  const until =
-                                                      index > 0 ? parseVersionDate(versions[index - 1].id) : null;
+                                                  const from = versionDate(v);
+                                                  const until = index > 0 ? versionDate(versions[index - 1]) : null;
                                                   let range = v.label;
                                                   if (from && until) {
                                                       range = t('legal.m3Editor.versionRangePublished', {

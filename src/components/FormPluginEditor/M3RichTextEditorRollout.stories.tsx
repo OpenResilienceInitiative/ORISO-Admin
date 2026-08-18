@@ -33,7 +33,7 @@ const SURFACES: Surface[] = [
     },
     {
         name: 'Agency legal texts',
-        path: 'pages/Agency/Edit/components/LegalTextSettings',
+        path: 'components/Tenants/LegalSettings/components/AgencyLegalTextContainer',
         today: 'M3 Rich Text Editor',
         verdict: 'adopted',
         note: 'Already on the editor via AgencyLegalTextContainer, including the Fachbereich split button in the lower function bar.',

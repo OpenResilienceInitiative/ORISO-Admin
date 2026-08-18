@@ -1784,6 +1784,7 @@
     "agency.legal.department.notInheriting_one": "{{count}} with its own text",
     "agency.legal.department.notInheriting_other": "{{count}} with their own text",
     "agency.legal.department.choose": "Choose department",
+    "agency.legal.department.menuHeader": "Select department",
     "agency.legal.department.loadError.title": "Legal text could not be loaded",
     "agency.legal.department.loadError.text": "The text for \"{{name}}\" is currently unavailable. Editing is blocked so the existing text is not accidentally replaced by the inherited one.",
     "agency.legal.department.loadError.retry": "Try again",

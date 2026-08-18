@@ -30,8 +30,10 @@ export interface ViewedLegalVersion {
 export const useViewedLegalVersion = (versions: LegalTextVersion[]): ViewedLegalVersion => {
     const [viewedVersionId, setViewedVersionId] = useState<string | null>(null);
 
+    // The editor reports `EditorVersion.id`, which is the surrogate id as a string
+    // (ORISO-AgencyService#256) — the version is resolved by that, never by a date.
     const viewedVersion = useMemo(
-        () => (viewedVersionId ? versions.find((version) => version.activationDate === viewedVersionId) : undefined),
+        () => (viewedVersionId ? versions.find((version) => String(version.id) === viewedVersionId) : undefined),
         [versions, viewedVersionId],
     );
 
