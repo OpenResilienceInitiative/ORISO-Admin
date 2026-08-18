@@ -1,33 +1,47 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TokenizedText } from './TokenizedText';
-import { emailColor, safeLanguageTag, type EmailKitBrand } from './emailKit';
-import { ADMIN_EMAIL_SAMPLE_BRAND, renderInviteEmailPreviewHtml } from './invitePreviewMarkup';
+import { emailColor, safeLanguageTag } from './emailKit';
+import {
+    previewInviteEmailTemplateContent,
+    type InviteEmailPreviewDTO,
+    type InviteEmailTemplateKind,
+} from '../../api/accountInvites/accountInvites';
 import styles from './EmailKitPreview.module.scss';
 
 export interface EmailKitPreviewProps {
-    /** Subject with known tokens already substituted (unknown ones stay `{{key}}`). */
+    /**
+     * Subject **as authored**, tokens still unresolved. Substitution happens in
+     * the backend renderer, not here — see the component doc.
+     */
     subject: string;
-    /** Body with known tokens already substituted (unknown ones stay `{{key}}`). */
+    /** Body **as authored**, tokens still unresolved. */
     body: string;
     /** Accessible name of the preview region (also the iframe title). */
     previewLabel: string;
     /**
      * BCP-47 tag of the TEMPLATE being edited (e.g. an English template edited in
-     * a German session). Drives the document `lang` and the language the preview's
-     * own boilerplate is resolved in. Falls back to the admin UI locale.
+     * a German session). Drives the language the mail is rendered in. Falls back
+     * to the admin UI locale. Validated here because it is free text an admin
+     * types (#751 review), and now also because it goes over the wire.
      */
     language?: string;
+    /** Template kind, so the backend picks the matching sample content. */
+    kind?: InviteEmailTemplateKind;
+    /** Preview a specific tenant's branding instead of the platform default. */
+    tenantId?: number;
+    /** Stored template the draft belongs to, for the renderer's context. */
+    templateId?: number;
+    /**
+     * Renderer seam. Defaults to the real endpoint; Storybook injects a static
+     * document so the stories stay deterministic and offline. Production code
+     * must not pass this — a second renderer is the defect, not the fix.
+     */
+    renderPreview?: typeof previewInviteEmailTemplateContent;
 }
 
-/** The tenant primary from the admin theme, as a literal the e-mail kit can inline. */
-const readTenantPrimary = (): string => {
-    const value =
-        typeof window === 'undefined'
-            ? ''
-            : window.getComputedStyle(document.documentElement).getPropertyValue('--m3-primary').trim();
-    return value || '#a5000a';
-};
+/** Keystrokes are cheap, mail renders are not — coalesce a burst of typing. */
+const PREVIEW_DEBOUNCE_MS = 300;
 
 /**
  * Grows the frame to fit the rendered document, so the preview shows the whole
@@ -60,67 +74,79 @@ const useFittedFrame = (dependency: string) => {
 };
 
 /**
- * Invite-mail preview in the NEW transactional e-mail design (ORISO-Frontend
- * `src/emails/`, Storybook `Email/*`): branded header, white card, typography
- * and footer exactly as the kit renders them. The document goes into an
- * `<iframe>` because e-mail markup brings its own `<body>` background and a
- * media query that must react to the *frame* width — which also makes the
- * stacked mobile layout honest at 320px.
+ * Invite-mail preview rendered by **the backend's own mail renderer**
+ * (`POST /service/useradmin/invite-email-templates/preview`,
+ * `InviteEmailPreviewService`), which is the very renderer
+ * `InviteMailDispatchService` runs when the mail is actually sent.
+ *
+ * This used to be a client-side re-implementation of the mail frame
+ * (`invitePreviewMarkup.renderInviteEmailPreviewHtml`) with its own brand
+ * constants, its own token substitution and no CTA — which is exactly why the
+ * composed preview and the received mail disagreed (finding E2: „Das Muster und
+ * was versendet wird unterscheiden sich"). An Admin-side copy of the mail frame
+ * can only ever drift; the endpoint cannot, because it *is* the send path.
+ *
+ * Consequences worth knowing:
+ * - subject/body go over the wire **raw**; the backend substitutes the sample
+ *   values, so the preview shows the same substitution the recipient gets.
+ * - the returned document is shown verbatim in a sandboxed `<iframe>`. It is
+ *   never re-styled and never rebuilt from the fields.
+ * - a failed render is shown as a failed render (with a retry), never as a
+ *   plausible-looking local approximation. A silent fallback would recreate the
+ *   defect this component exists to remove.
  */
-export const EmailKitPreview = ({ subject, body, previewLabel, language }: EmailKitPreviewProps) => {
+export const EmailKitPreview = ({
+    subject,
+    body,
+    previewLabel,
+    language,
+    kind,
+    tenantId,
+    templateId,
+    renderPreview = previewInviteEmailTemplateContent,
+}: EmailKitPreviewProps) => {
     const { t, i18n } = useTranslation();
     // The template's own language wins: previewing an English template in a German
-    // session must render English boilerplate and lang="en" (#746 review). Only
-    // without one does the preview fall back to the admin UI locale.
-    //
-    // Validated here as well as at the sink: the template language is free text an
-    // admin types, and a malformed value should degrade to the UI locale rather
-    // than to the kit's blanket "de" default (#751 review).
+    // session must render an English mail (#746 review). Only without one does the
+    // preview fall back to the admin UI locale. Validated rather than forwarded
+    // raw — it is free text an admin types, and it now reaches a backend.
     const lang = safeLanguageTag(language, safeLanguageTag(i18n?.language));
-    // Read once per mount: the admin theme applies the tenant palette to the
-    // document root before any editor screen renders.
-    const primaryColor = useMemo(readTenantPrimary, []);
 
-    const brand: EmailKitBrand = useMemo(
-        () => ({ ...ADMIN_EMAIL_SAMPLE_BRAND, primaryColor, accentColor: primaryColor }),
-        [primaryColor],
-    );
+    const [preview, setPreview] = useState<InviteEmailPreviewDTO | null>(null);
+    const [failed, setFailed] = useState(false);
+    const [attempt, setAttempt] = useState(0);
 
-    const html = useMemo(
-        () =>
-            renderInviteEmailPreviewHtml({
-                subject,
-                body,
-                brand,
-                lang,
-                strings: {
-                    // `lng` pins every string to the TEMPLATE's language, not the UI's.
-                    subjectHint: t('links.templates.previewSubjectHint', 'Betreff der E-Mail', { lng: lang }),
-                    bodyHint: t('links.templates.previewBodyHint', 'Inhalt der E-Mail', { lng: lang }),
-                    assurance: t(
-                        'placeholderTemplate.preview.assurance',
-                        'Wir fragen Sie nie per E-Mail nach Ihrem Passwort. Geben Sie diesen Link an niemanden weiter.',
-                        { lng: lang },
-                    ),
-                    offeredBy: t('placeholderTemplate.preview.offeredBy', '{{platform}} ist ein Angebot von {{org}}.', {
-                        platform: brand.platformName,
-                        org: brand.orgName,
-                        lng: lang,
-                    }),
-                    linkLabels: [
-                        t('placeholderTemplate.preview.privacy', 'Datenschutz', { lng: lang }),
-                        t('placeholderTemplate.preview.imprint', 'Impressum', { lng: lang }),
-                    ],
-                    automatedNote: t(
-                        'placeholderTemplate.preview.automatedNote',
-                        'Diese E-Mail wurde automatisch versendet. Bitte antworten Sie nicht darauf.',
-                        { lng: lang },
-                    ),
-                },
-            }),
-        [subject, body, brand, lang, t],
-    );
+    useEffect(() => {
+        let cancelled = false;
+        const timer = window.setTimeout(() => {
+            renderPreview({ body, kind, language: lang, subject, templateId, tenantId })
+                .then((result) => {
+                    if (cancelled) return;
+                    setPreview(result);
+                    setFailed(false);
+                })
+                .catch(() => {
+                    if (cancelled) return;
+                    setFailed(true);
+                });
+        }, PREVIEW_DEBOUNCE_MS);
 
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
+        // The cleanup runs before every re-request, so a response that arrives
+        // late for older input finds `cancelled` set and is dropped: a stale
+        // render can never win the race against a newer one.
+    }, [attempt, body, kind, lang, renderPreview, subject, templateId, tenantId]);
+
+    const retry = useCallback(() => {
+        setFailed(false);
+        setAttempt((current) => current + 1);
+    }, []);
+
+    const html = preview?.html ?? '';
+    const renderedSubject = preview?.subject ?? '';
     const { ref, height, measure } = useFittedFrame(html);
 
     return (
@@ -128,25 +154,43 @@ export const EmailKitPreview = ({ subject, body, previewLabel, language }: Email
             <div className={styles.meta}>
                 <span className={styles.metaLabel}>{t('links.templates.field.subject', 'Betreff')}</span>
                 <strong className={styles.metaSubject}>
-                    {subject ? (
-                        <TokenizedText text={subject} />
+                    {renderedSubject ? (
+                        <TokenizedText text={renderedSubject} />
                     ) : (
                         t('links.templates.previewSubjectHint', 'Betreff der E-Mail')
                     )}
                 </strong>
             </div>
-            <iframe
-                ref={ref}
-                title={previewLabel}
-                // Same-origin is required for useFittedFrame's contentDocument
-                // measuring; everything else — scripts above all — stays off
-                // (#727 review).
-                sandbox="allow-same-origin"
-                srcDoc={html}
-                onLoad={measure}
-                className={styles.frame}
-                style={{ height, background: emailColor.canvas, borderColor: emailColor.outline }}
-            />
+            {failed ? (
+                <div className={styles.error} role="status">
+                    <span>{t('placeholderTemplate.preview.failed', 'Preview could not be rendered.')}</span>
+                    <button className={styles.retry} type="button" onClick={retry}>
+                        {t('placeholderTemplate.preview.retry', 'Retry')}
+                    </button>
+                </div>
+            ) : (
+                <iframe
+                    ref={ref}
+                    className={styles.frame}
+                    /*
+                     * DANGER, read before changing: `allow-same-origin` WITHOUT
+                     * `allow-scripts` is the safe half of the pair — no script in
+                     * the mail document ever executes, but the parent can read the
+                     * document to size the frame to its content (useFittedFrame,
+                     * #727 review).
+                     *
+                     * Adding `allow-scripts` alongside it defeats the sandbox
+                     * entirely: the frame would then be same-origin AND scriptable
+                     * and could reach into this app. If you are here to "make the
+                     * links in the preview clickable", the answer is no.
+                     */
+                    sandbox="allow-same-origin"
+                    srcDoc={html}
+                    style={{ height, background: emailColor.canvas, borderColor: emailColor.outline }}
+                    title={previewLabel}
+                    onLoad={measure}
+                />
+            )}
         </section>
     );
 };

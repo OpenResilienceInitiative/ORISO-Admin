@@ -240,6 +240,11 @@
    below, whose identity per the spec sheet is a resting shadow. */
 
 .open .segment {
+    /* D3 — „Elevated state color — both are not the same … use this color also
+       here from the menu in the button". While the menu is open the button and
+       the sheet are one surface, so the button takes the sheet's fill
+       (`.menuOverlay .ant-dropdown-menu`, same token). Measured before the fix:
+       button rgba(0, 0, 0, 0) against sheet rgb(246, 243, 243). */
     box-shadow: 0 1px 3px 1px color-mix(in srgb, var(--m3-shadow, #000000) 15%, transparent),
         0 1px 2px color-mix(in srgb, var(--m3-shadow, #000000) 30%, transparent);
 }
@@ -249,6 +254,19 @@
 /* Outlined (default): transparent container, outline-variant border. */
 .outlined .segment {
     background: transparent;
+}
+
+/* D3 — „Elevated state color — both are not the same … use this color also here
+   from the menu in the button". While its menu is open, the button and the sheet
+   read as one surface, so the button takes the sheet's fill — the same
+   `--m3-surface-container-low` token `.menuOverlay .ant-dropdown-menu` uses.
+   Measured before the fix, at 1440: button rgba(0, 0, 0, 0), sheet
+   rgb(246, 243, 243). Specificity has to beat `.outlined .segment` above, which
+   is why the open state is spelled out per variant rather than added to the
+   shared `.open .segment` rule. */
+
+.outlined.open .segment {
+    background: var(--m3-surface-container-low, #f6f3f3);
 }
 
 /* Filled: brand surface — the page's main CTA (alias: `primary`). */

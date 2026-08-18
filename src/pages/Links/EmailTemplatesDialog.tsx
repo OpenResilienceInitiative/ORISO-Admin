@@ -1,4 +1,4 @@
-import { Button, Input, message, Select, Switch, Tag, Tooltip } from 'antd';
+import { Button, Input, message, Select, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,7 @@ import {
     type InviteEmailTemplateValues,
     type PlaceholderTemplateDefinition,
 } from '../../components/PlaceholderTemplate';
+import { MuiSwitch } from '../../components/mui/MuiSwitchField';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { Modal, DialogButton } from '../../components/Modal';
 import styles from './EmailTemplatesDialog.module.scss';
@@ -553,7 +554,11 @@ export const EmailTemplatesDialog = ({
                             <label className={styles.metaLabel} htmlFor={`${fieldId}-active`}>
                                 {t('links.templates.field.active', 'Active')}
                             </label>
-                            <Switch
+                            {/* D2 — „wieder ant stuff anstatt mui". The shared M3
+                                switch, not antd's. This call site owns its own
+                                state and its own <label>, so it takes the bare
+                                MuiSwitch rather than the Form.Item-bound field. */}
+                            <MuiSwitch
                                 checked={draftMeta.active}
                                 id={`${fieldId}-active`}
                                 onChange={(active) => setDraftMeta((meta) => ({ ...meta, active }))}
@@ -564,6 +569,9 @@ export const EmailTemplatesDialog = ({
                         activeTemplateId={editingTemplate?.id}
                         // The preview follows the template's own language, not the admin UI locale.
                         language={draftMeta.language}
+                        // E2: the preview is rendered by the backend's own mail renderer;
+                        // the kind selects the sample content it renders with.
+                        kind={draftMeta.kind}
                         templates={editorTemplates}
                         tokens={inviteEmailTokensForKind(draftMeta.kind)}
                         values={draftValues}

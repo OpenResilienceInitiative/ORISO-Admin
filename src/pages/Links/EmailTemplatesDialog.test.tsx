@@ -41,12 +41,17 @@ const mocks = vi.hoisted(() => ({
     listInviteEmailTemplates: vi.fn(),
     createInviteEmailTemplate: vi.fn(),
     updateInviteEmailTemplate: vi.fn(),
+    previewInviteEmailTemplateContent: vi.fn(),
 }));
 
 vi.mock('../../api/accountInvites/accountInvites', () => ({
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
     createInviteEmailTemplate: mocks.createInviteEmailTemplate,
     updateInviteEmailTemplate: mocks.updateInviteEmailTemplate,
+    // E2: the editor's preview is rendered by the backend, so every test that
+    // mounts the editor now touches this call — omitting it throws for the whole
+    // file, not just the preview tests.
+    previewInviteEmailTemplateContent: mocks.previewInviteEmailTemplateContent,
 }));
 
 // antd's real Select relies on rc-select's virtual-list/portal machinery, which is
@@ -138,6 +143,17 @@ describe('EmailTemplatesDialog', () => {
         mocks.listInviteEmailTemplates.mockReset();
         mocks.createInviteEmailTemplate.mockReset();
         mocks.updateInviteEmailTemplate.mockReset();
+        mocks.previewInviteEmailTemplateContent.mockReset();
+        mocks.previewInviteEmailTemplateContent.mockResolvedValue({
+            templateId: null,
+            templateName: null,
+            kind: 'TENANT_INVITE',
+            language: 'de',
+            subject: 'Welcome to ORISO — as sent',
+            html: '<!doctype html><html><body>SERVER RENDERED</body></html>',
+            plainText: 'SERVER RENDERED',
+            sampleAcceptUrl: 'https://admin.example/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
+        });
         mocks.listInviteEmailTemplates.mockImplementation((kind: string) => {
             if (kind === 'TENANT_INVITE') return Promise.resolve([tenantTemplate, tenantTemplateShort]);
             if (kind === 'COUNSELLOR_INVITE') return Promise.resolve([counsellorTemplate]);
@@ -216,23 +232,39 @@ describe('EmailTemplatesDialog', () => {
         expect(withinDialog.getByRole('button', { name: 'save' })).toBeEnabled();
     });
 
-    it('renders a live email-kit preview substituting known tokens with samples', async () => {
+    /*
+     * These three were #751's, asserting the composer's own client-side
+     * substitution. E2 removed that substitution — the backend renderer now does
+     * it for the preview AND for the sent mail — so they are re-pointed at the
+     * new boundary rather than deleted: what the composer hands the renderer, and
+     * what it does with the answer.
+     */
+    it('previews through the backend renderer, not a local re-implementation', async () => {
         const user = userEvent.setup();
         renderDialog();
 
         const withinDialog = await openCreateForm(user);
         await user.type(withinDialog.getByLabelText('Betreff'), 'Welcome to ORISO');
         fireEvent.change(withinDialog.getByLabelText('Inhalt'), {
-            target: { value: 'Hello {{firstName}},\n\nuse {{inviteLink}} to finish setup.' },
+            target: { value: 'Hello {{firstName}},\n\nuse the button to finish setup.' },
         });
 
-        // Known tokens are substituted with the synthetic samples in the mail document…
-        expect(previewSrcDoc()).toContain('Hello Lisa,');
-        expect(previewSrcDoc()).toContain('https://beratung.example.org/einladung?token=1c9d');
-        expect(previewSrcDoc()).toContain('Welcome to ORISO');
+        // Raw, tokens unresolved, with the kind that selects the sample content.
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    kind: 'TENANT_INVITE',
+                    subject: 'Welcome to ORISO',
+                    body: 'Hello {{firstName}},\n\nuse the button to finish setup.',
+                }),
+            ),
+        );
+
+        // …and the answer is shown verbatim, never rebuilt from the fields.
+        await waitFor(() => expect(previewSrcDoc()).toBe('<!doctype html><html><body>SERVER RENDERED</body></html>'));
     });
 
-    it('keeps unknown tokens visible in the preview instead of rendering blank', async () => {
+    it('sends a typoed token to the renderer untouched instead of judging it locally', async () => {
         const user = userEvent.setup();
         renderDialog();
 
@@ -240,24 +272,59 @@ describe('EmailTemplatesDialog', () => {
         await user.type(withinDialog.getByLabelText('Betreff'), 'S');
         fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Hallo {{typo}}' } });
 
-        expect(previewSrcDoc()).toContain('{{typo}}');
-        expect(previewSrcDoc()).toContain('data-unknown-token');
+        // Which tokens are "unknown" is the renderer's call now — there is exactly
+        // one substitution implementation and the composer is not it.
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenCalledWith(
+                expect.objectContaining({ body: 'Hallo {{typo}}' }),
+            ),
+        );
     });
 
-    it('inserts a picked token into the body and substitutes it live', async () => {
+    it('inserts a picked token at the caret and previews the raw result', async () => {
         const user = userEvent.setup();
         renderDialog();
 
         const withinDialog = await openCreateForm(user);
-        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Ihr Link: ' } });
+        fireEvent.change(withinDialog.getByLabelText('Inhalt'), { target: { value: 'Guten Tag ' } });
 
-        // Each field has its own picker; the body's is the second one.
+        // D1: the subject no longer carries a picker, so the body's is the ONLY one.
         const pickers = withinDialog.getAllByRole('button', { name: 'Platzhalter einfügen' });
-        await user.click(pickers[1]);
-        await user.click(await screen.findByRole('menuitem', { name: /Einladungslink/ }));
+        expect(pickers).toHaveLength(1);
+        await user.click(pickers[0]);
+        await user.click(await screen.findByRole('menuitem', { name: /Vorname/ }));
 
-        await waitFor(() => expect(withinDialog.getByLabelText('Inhalt')).toHaveValue('Ihr Link: {{inviteLink}}'));
-        expect(previewSrcDoc()).toContain('https://beratung.example.org/einladung?token=1c9d');
+        await waitFor(() => expect(withinDialog.getByLabelText('Inhalt')).toHaveValue('Guten Tag {{firstName}}'));
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenCalledWith(
+                expect.objectContaining({ body: 'Guten Tag {{firstName}}' }),
+            ),
+        );
+    });
+
+    it('offers a retry instead of a blank panel when the preview cannot be rendered', async () => {
+        mocks.previewInviteEmailTemplateContent.mockRejectedValue(new Error('boom'));
+        const user = userEvent.setup();
+        renderDialog();
+
+        const withinDialog = await openCreateForm(user);
+        await user.type(withinDialog.getByLabelText('Betreff'), 'S');
+
+        expect(await screen.findByText('Preview could not be rendered.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    });
+
+    // D2 — „wieder ant stuff anstatt mui". Both libraries expose role="switch",
+    // so the discriminator is whose markup it is, not which role it reports.
+    it('uses the shared MUI switch for Active, not an antd one', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        await openCreateForm(user);
+        const dialog = screen.getByRole('dialog');
+        expect(dialog.querySelector('.ant-switch')).toBeNull();
+        const toggle = within(dialog).getByRole('switch', { name: 'Active' });
+        expect(toggle.closest('.MuiSwitch-root')).not.toBeNull();
     });
 
     it('no longer renders the hardcoded token code hint', async () => {

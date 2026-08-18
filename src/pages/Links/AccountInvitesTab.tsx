@@ -13,6 +13,7 @@ import {
     listInviteEmailTemplates,
     resendAccountInvite,
     revokeAccountInvite,
+    sendAccountInvite,
 } from '../../api/accountInvites/accountInvites';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
@@ -57,6 +58,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
     const [bulkRunning, setBulkRunning] = useState(false);
+    // Toolbar search (A4/#376). The tab already holds the COMPLETE invite list
+    // (see loadInvites) and the board already filters it client-side by status
+    // bucket, so the query joins that same client-side pipeline instead of
+    // introducing a second, server-paged source the summary counts could not be
+    // derived from.
+    const [searchQuery, setSearchQuery] = useState('');
 
     const currentTenantId = parseUserAuthInfo().tenantId || undefined;
 
@@ -440,11 +447,18 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     }, [loadInvites, selectedInvites, t]);
 
     // Bulk send (#316): the composer's send button acts on the selection — one
-    // resend per selected DRAFT/EMAIL_SENT row with the current template. Failed
-    // rows stay selected (their checkbox marks them for a retry); a full success
-    // clears the selection.
+    // request per selected DRAFT/EMAIL_SENT row with the current template.
+    // The VERB depends on the row's status, and getting it wrong destroys data:
+    // `/resend` supersedes the invite it is handed, so sending a never-mailed
+    // DRAFT through it left a dead "Ersetzt" row behind and minted a new invite
+    // id. A DRAFT's first delivery is `/send`; only an EMAIL_SENT row is resent.
+    // Failed rows stay selected (their checkbox marks them for a retry); a full
+    // success clears the selection.
     const onBulkSend = useCallback(async () => {
-        const templateId = selectedTemplateId ?? activeTemplates[0]?.id;
+        // No hidden fallback to activeTemplates[0] here: the composer is the ONE
+        // gate for bulk send and requires an explicitly chosen template (#713),
+        // so a silent second rule would send with a template nobody picked.
+        const templateId = selectedTemplateId;
         if (!templateId) {
             message.error(t('links.accountInvites.templateRequired', 'Select a template first.'));
             return;
@@ -455,12 +469,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         const failed: AccountInviteDTO[] = [];
         for (let i = 0; i < targets.length; i += 1) {
             try {
+                const deliver = targets[i].inviteStatus === 'DRAFT' ? sendAccountInvite : resendAccountInvite;
                 // eslint-disable-next-line no-await-in-loop -- sequential on purpose: per-row attribution, no mail burst
-                const resent = await resendAccountInvite(targets[i].id, {
+                const delivered = await deliver(targets[i].id, {
                     acceptBaseUrl: acceptBaseUrlForRole(targets[i].targetRole),
                     templateId,
                 });
-                rememberGeneratedLink(resent);
+                rememberGeneratedLink(delivered);
             } catch {
                 failed.push(targets[i]);
             }
@@ -482,7 +497,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             setSelectedIds(failed.map((invite) => invite.id));
         }
         await loadInvites();
-    }, [activeTemplates, loadInvites, rememberGeneratedLink, selectedInvites, selectedTemplateId, t]);
+    }, [loadInvites, rememberGeneratedLink, selectedInvites, selectedTemplateId, t]);
 
     // Empty-state CTA: the composer IS the invite entry point and sits right
     // above the board — bring it into view and focus its first field.
@@ -502,6 +517,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 persistKey={targetRole}
                 requireNames={targetRole === 'COUNSELLOR'}
                 requireTenantId={isTenantInvite}
+                searchPlaceholder={t('links.inviteProgress.searchPlaceholder', 'Einladungen durchsuchen')}
+                searchQuery={searchQuery}
                 selectionCount={selectedInvites.length}
                 submitting={submitting || bulkRunning}
                 templateId={selectedTemplateId}
@@ -511,6 +528,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
                 onDeleteSelected={() => setBulkDeleteConfirmOpen(true)}
                 onManageTemplates={(intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list')}
+                // A4: the tab owns the query; the board filters the list it holds.
+                onSearchQueryChange={setSearchQuery}
                 // #746: the pill's chevron menu switches the template in place —
                 // the same lifted selection the dialog picker writes.
                 onSelectTemplate={setSelectedTemplateId}
@@ -529,6 +548,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             <InviteProgressBoard
                 invites={invites}
                 loading={loading}
+                searchQuery={searchQuery}
                 targetRole={targetRole}
                 selectedIds={selectedIds}
                 onSelectionChange={setSelectedIds}

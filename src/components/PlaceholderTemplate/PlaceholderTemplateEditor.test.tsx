@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { InviteEmailTemplateEditor, type InviteEmailTemplateValues } from './InviteEmailTemplateEditor';
 import { LegalConsentTemplateEditor } from './LegalConsentTemplateEditor';
@@ -9,6 +9,16 @@ const t = (key: string, fallback?: string) => fallback ?? key;
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t }),
+}));
+
+// The invite preview is rendered by the backend (see EmailKitPreview) — the
+// editor's job is only to hand it the authored text unchanged.
+const mocks = vi.hoisted(() => ({
+    previewInviteEmailTemplateContent: vi.fn(),
+}));
+
+vi.mock('../../api/accountInvites/accountInvites', () => ({
+    previewInviteEmailTemplateContent: mocks.previewInviteEmailTemplateContent,
 }));
 
 const inviteTemplates = [
@@ -52,43 +62,71 @@ const InviteHarness = () => {
 const previewDocument = (preview: HTMLElement): string => preview.querySelector('iframe')?.getAttribute('srcdoc') ?? '';
 
 describe('InviteEmailTemplateEditor', () => {
-    it('substitutes sample values into the live preview', () => {
-        render(<InviteHarness />);
-        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
-        // firstName sample resolved in the inbox strip and the mail document.
-        expect(within(preview).getAllByText(/Lisa/).length).toBeGreaterThan(0);
-        expect(within(preview).queryByText('{{firstName}}')).not.toBeInTheDocument();
-        expect(previewDocument(preview)).toContain('Hallo Lisa,');
-        expect(previewDocument(preview)).not.toContain('{{firstName}}');
+    beforeEach(() => {
+        mocks.previewInviteEmailTemplateContent.mockReset();
+        mocks.previewInviteEmailTemplateContent.mockResolvedValue({
+            templateId: null,
+            templateName: null,
+            kind: 'TENANT_INVITE',
+            language: 'de',
+            subject: 'Einladung für Maren',
+            html: '<!doctype html><html><body>Hallo Maren,</body></html>',
+            plainText: 'Hallo Maren,',
+            sampleAcceptUrl: 'https://admin.example/tenant-onboarding/SAMPLE',
+        });
     });
 
-    it('updates the preview live while typing', () => {
+    // E2, second half: the editor used to substitute the sample values itself
+    // and hand the *resolved* text to the preview. With the preview coming from
+    // the send path's renderer that would put the author's view and the
+    // recipient's mail back on two substitution implementations. The authored
+    // text now travels raw and the backend resolves it once, for both.
+    it('hands the authored text to the renderer raw, tokens unresolved', async () => {
+        render(<InviteHarness />);
+
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    subject: 'Einladung für {{firstName}}',
+                    body: 'Hallo {{firstName}},\n{{inviteLink}}',
+                }),
+            ),
+        );
+    });
+
+    it('shows the rendered mail, substituted by the backend', async () => {
+        render(<InviteHarness />);
+        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
+
+        await waitFor(() => expect(previewDocument(preview)).toContain('Hallo Maren,'));
+        expect(previewDocument(preview)).not.toContain('{{firstName}}');
+        expect(within(preview).getByText('Einladung für Maren')).toBeInTheDocument();
+    });
+
+    it('re-renders through the backend while typing, still raw', async () => {
         render(<InviteHarness />);
         const body = screen.getByRole('textbox', { name: 'Inhalt' });
         fireEvent.change(body, { target: { value: 'Guten Tag {{lastName}}!' } });
-        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
-        expect(previewDocument(preview)).toContain('Guten Tag Beispiel!');
+
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenCalledWith(
+                expect.objectContaining({ body: 'Guten Tag {{lastName}}!' }),
+            ),
+        );
     });
 
-    it('keeps unknown tokens visible as {{key}} in the preview', () => {
+    // D1 — „Bei Betreff nicht benötigt". A subject line is one short string; a
+    // token picker hanging off it is noise, and the placeholders that matter
+    // there can be typed. The body keeps its picker.
+    it('offers the placeholder picker on the body only, never on the subject', () => {
         render(<InviteHarness />);
-        const body = screen.getByRole('textbox', { name: 'Inhalt' });
-        fireEvent.change(body, { target: { value: 'Hallo {{firstName}} und {{unbekannt}}' } });
-        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
-        expect(previewDocument(preview)).toContain('{{unbekannt}}');
-        expect(previewDocument(preview)).toContain('data-unknown-token');
-        expect(previewDocument(preview)).not.toContain('{{firstName}}');
-    });
 
-    it('renders the mail in the new e-mail design shell', () => {
-        render(<InviteHarness />);
-        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
-        const doc = previewDocument(preview);
-        // Kit canvas + centred 600px column + responsive stylesheet (ported
-        // from ORISO-Frontend src/emails/kit).
-        expect(doc).toContain('background-color:#f2efef');
-        expect(doc).toContain('max-width:600px');
-        expect(doc).toContain('@media only screen and (max-width:620px)');
+        const pickers = screen.getAllByRole('button', { name: 'Platzhalter einfügen' });
+        expect(pickers).toHaveLength(1);
+
+        // The one that remains belongs to the body field, not the subject.
+        const bodyField = screen.getByRole('textbox', { name: 'Inhalt' }).closest('div[class*="field"]');
+        expect(bodyField).toContainElement(pickers[0]);
     });
 
     it('loads the picked template into the fields via the split button', async () => {
