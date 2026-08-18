@@ -6,9 +6,32 @@ import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 import { DoneStep } from './DoneStep';
 import { OnboardingSheet } from './OnboardingSheet';
 
+/**
+ * A short, real-shaped AVV (mirrors the pre-dev content that exposed the
+ * broken chapter navigation, owner report 2026-08-18 F4/H4): few chapters,
+ * not enough text to fill the viewport on its own. This is the shape that
+ * broke the scroll spy — a document long enough to matter but short enough
+ * that "how far the page scrolled" and "how far into the document a heading
+ * sits" are easy to conflate, which is exactly the bug (see
+ * `useHeadingAnchorNav.ts`).
+ */
+const SHORT_DPA_HTML = `<h1 id="rechtsdokumente">Rechtsdokumente</h1><p>dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.</p><p>Betriebsgrundsätze (AGB Träger - DCV) &#61; Zivilrechte Nutzungsvereinbarung</p><p>At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p><h2 id="anlage-1-avv">Anlage 1: AVV</h2><p>At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p><h2 id="anlage-2-beratungsgrundsatze-agb-ratsuchenden-tr">Anlage 2: Beratungsgrundsätze (AGB Ratsuchenden - Träger)</h2><p>At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p><h3 id="anlage-3-leistungsumfang-und-verfugbarkeit">Anlage 3: Leistungsumfang und Verfügbarkeit</h3><p>At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p><p></p><p>testing</p>`;
+
+const shortDpaClient = () =>
+    createStubTenantAdminOnboardingClient({
+        latencyMs: 600,
+        invite: { dpaContent: JSON.stringify({ de: SHORT_DPA_HTML, en: SHORT_DPA_HTML }) },
+    });
+
+const shortDpaPage = () => (
+    <PasswordResetPageLayout variant="longForm">
+        <TenantAdminOnboarding inviteToken="storybook-invite-token" client={shortDpaClient()} />
+    </PasswordResetPageLayout>
+);
+
 const longDpaClient = () =>
     createStubTenantAdminOnboardingClient({
-        latencyMs: 0,
+        latencyMs: 600,
         invite: { dpaContent: JSON.stringify({ de: LONG_DPA_HTML, en: LONG_DPA_HTML }) },
     });
 
@@ -64,3 +87,12 @@ export const DoneMobile: StoryObj = {
     parameters: { layout: 'fullscreen', ...PHONE_390.parameters },
     globals: PHONE_390.globals,
 };
+
+/**
+ * The short AVV shape that exposed the broken chapter navigation on pre-dev
+ * (owner report 2026-08-18, F4/H4): click a chip, or load with `#anlage-1-avv`
+ * in the URL — both must scroll and keep the active chip in sync in this
+ * FLUID embedding, the same way they already do in the editor's own
+ * fixed-height card.
+ */
+export const ShortDpaDocument: StoryObj = { render: shortDpaPage };
