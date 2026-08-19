@@ -10,6 +10,8 @@ import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook
 import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
+import { useUserData } from '../../../../../hooks/useUserData.hook';
+import { useLegalDraft } from '../../hooks/useLegalDraft';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { AgencyData } from '../../../../../types/agency';
@@ -131,6 +133,24 @@ export const AgencyLegalTextContainer = ({
         [tenantData, agencyData, agencyContentKey],
     );
 
+    const { data: userData } = useUserData();
+    /*
+     * The agency record has no draft state, exactly like the Träger record one level up —
+     * so the parked wording lives on the device (`LegalText` + `useLegalDraft` set this
+     * precedent, and its LegalDraftNotice is what tells the admin the draft is local).
+     *
+     * The agency id has to be in the scope. Both levels store the same `privacy` document
+     * for the same user, so without it a Beratungsstelle's parked wording and the Träger's
+     * would share one key and silently overwrite each other.
+     */
+    const agencyDraftScope =
+        userData?.id && agencyData?.id ? `${agencyData.tenantId}:${userData.id}:agency:${agencyData.id}` : undefined;
+    const {
+        draft: agencyDraft,
+        saveDraft: saveAgencyDraft,
+        discardDraft: discardAgencyDraft,
+    } = useLegalDraft(field, agencyDraftScope);
+
     const departmentContent = useMemo(
         () => parseLegalContentMap(departmentQuery.data?.content),
         [departmentQuery.data?.content],
@@ -187,7 +207,10 @@ export const AgencyLegalTextContainer = ({
     // That is the same silent-overwrite class this whole epic exists to remove, so a failed read
     // blocks the editor instead (see the isError branch below).
     const hasOwnText = isDepartment && departmentQuery.isSuccess && Object.keys(departmentContent).length > 0;
-    const contentByLanguage = hasOwnText ? departmentContent : agencyWideContent;
+    // A parked draft is the admin's unfinished wording; it wins over the stored agency text
+    // until it is published or discarded. Departments keep their own seeding rules above.
+    const agencyWideSeed = agencyDraft?.content ?? agencyWideContent;
+    const contentByLanguage = hasOwnText ? departmentContent : agencyWideSeed;
 
     const languages = useMemo(
         () => getEditableLanguages(tenantAdminData?.settings?.activeLanguages, contentByLanguage),
@@ -206,13 +229,22 @@ export const AgencyLegalTextContainer = ({
             }
             return;
         }
-        // The agency-wide text has no draft state of its own — it is stored on the agency record.
+        // `publish === false` is the editor's "Save draft" action. Writing the agency record
+        // here would publish the live legal text under a label promising the opposite — so the
+        // draft goes to device-local storage and the record is left alone.
+        if (!publish) {
+            saveAgencyDraft(content, consent);
+            return;
+        }
         // NOTE: unlike the department publishes above, this path cannot invalidate the agency
         // version history — it goes through the shared agency-card mutation, which has no legal
         // hook. The look-back catches up on its own `staleTime` (60s).
         onSaveAgencyWide({
             content: { [agencyContentKey]: content, ...(consent ? { privacyConsent: consent } : {}) },
         });
+        // The parked wording has become the published text; keeping it would re-seed the editor
+        // with a stale copy on the next mount.
+        discardAgencyDraft();
     };
 
     const selectedDepartment = departments.find(({ id }) => id === topicId);
