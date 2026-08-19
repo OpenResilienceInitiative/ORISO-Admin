@@ -51,9 +51,9 @@ type LinkState = { kind: 'loading' } | { kind: 'ready'; link: DpaForwardLink } |
 
 /** i18n key for a typed backend failure. */
 const FAILURE_MESSAGE: Record<DpaForwardFailureKind, string> = {
-    INVALID_EMAIL: 'tenantOnboarding.validation.email',
     UNKNOWN_TOKEN: 'dpaForward.dialog.errorUnknownToken',
     NO_DPA_PUBLISHED: 'dpaForward.dialog.errorNoDpaPublished',
+    TOO_MANY_LINKS: 'dpaForward.dialog.errorTooManyLinks',
     TECHNICAL: 'dpaForward.dialog.linkError',
 };
 
