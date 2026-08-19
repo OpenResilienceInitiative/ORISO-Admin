@@ -181,6 +181,13 @@ export const OrganisationDpaStep = ({
             <h3 className={styles.sectionTitle} data-testid="organisation-master-data-title">
                 {t('tenantOnboarding.organisation.masterDataTitle')}
             </h3>
+            {/* Moved here from the top of the step: the reserved tenant id is
+                explained where it is actually entered. Left above the agreement
+                it sat ~800px and a whole contract away from the fields it
+                describes. */}
+            <Typography sx={{ mb: 2 }} color="text.secondary">
+                {t('tenantOnboarding.organisation.description', { tenantId: invite.reservedTenantId })}
+            </Typography>
             <div className={classNames(styles.fieldStack, styles.fieldStackPaired)}>
                 <MuiFormField
                     name="name"
@@ -229,11 +236,12 @@ export const OrganisationDpaStep = ({
                     signerOrganisation: initialDpa?.signerOrganisation ?? '',
                 }}
             >
-                <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1 }}>
+                {/* The step subtitle stays here: it titles the STEP. The sentence
+                    that explains the reserved id moved down to the master-data
+                    block, because it describes the fields, not the step — owner
+                    note on the *2 screenshot, 2026-08-19. */}
+                <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 2 }}>
                     {t('tenantOnboarding.organisation.title')}
-                </Typography>
-                <Typography sx={{ mb: 2 }} color="text.secondary">
-                    {t('tenantOnboarding.organisation.description', { tenantId: invite.reservedTenantId })}
                 </Typography>
                 <div className={styles.dpaBlock}>
                     {forwarded ? (
