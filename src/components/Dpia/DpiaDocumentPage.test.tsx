@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { DpiaDocumentPage } from './DpiaDocumentPage';
 
@@ -71,21 +71,36 @@ describe('DpiaDocumentPage', () => {
         expect(screen.getByText('1')).toBeInTheDocument();
     });
 
-    it('documents every admin tier with the full role bundle userRolesToPermissions.ts actually requires for what the matrix claims', () => {
+    it('documents every tier with the exact realm-role bundle userRolesToPermissions.ts requires for what the matrix claims', () => {
         render(<DpiaDocumentPage />);
 
-        // Every admin tier's realm-role tags are cross-checked against
+        // Scoped per tier card and asserted as an exact set: a regression that moves a role to the
+        // wrong tier, drops one, or duplicates a tag fails here. Cross-checked against
         // src/constants/userRolesToPermissions.ts (see the dpiaContent.ts header comment):
         // - useUserRoles.hook.ts: isSuperAdmin = agency-admin + tenant-admin + tenantId 0.
-        // - Agency.create/read is granted ONLY by agency-admin (AdminSidebar.stories.tsx's
-        //   TenantAdmin story: "lacking Agency read" without it).
-        // - Consultant.create (the matrix's "Beratende anlegen / einladen") is granted ONLY by
-        //   user-admin.
-        // Tags are shared across tiers (same underlying Keycloak roles, different scope), so
-        // assert presence per role rather than a single exact match per tier.
-        expect(screen.getAllByText('agency-admin').length).toBeGreaterThanOrEqual(3); // platform, tenant, agency tiers
-        expect(screen.getAllByText('tenant-admin').length).toBeGreaterThanOrEqual(2); // platform, tenant tiers
-        expect(screen.getAllByText('user-admin').length).toBe(3); // platform, tenant, agency tiers
+        // - Agency.create/read comes ONLY from agency-admin (AdminSidebar.stories.tsx's TenantAdmin
+        //   story renders "lacking Agency read" without it).
+        // - Consultant.create — the matrix's "Beratende anlegen / einladen" — ONLY from user-admin.
+        const expected: Record<string, string[]> = {
+            'Plattform-Admin': ['agency-admin', 'tenant-admin', 'user-admin'],
+            'Träger-Admin': ['tenant-admin', 'single-tenant-admin', 'agency-admin', 'user-admin'],
+            'Beratungsstellen-Admin': [
+                'agency-admin',
+                'restricted-agency-admin',
+                'restricted-consultant-admin',
+                'user-admin',
+            ],
+            'Beratende:r': ['consultant', 'group-chat-consultant', 'supervisor-consultant'],
+        };
+
+        Object.entries(expected).forEach(([tierName, realmRoles]) => {
+            const card = screen.getByRole('region', { name: tierName });
+            const rendered = within(card)
+                .getAllByTestId('realm-role')
+                .map((node) => node.textContent);
+
+            expect(rendered).toEqual(realmRoles);
+        });
     });
 
     it('marks 2FA deferral as a platform-admin-only affordance, not for tenant admins', () => {
