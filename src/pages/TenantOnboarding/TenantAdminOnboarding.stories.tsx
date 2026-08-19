@@ -46,6 +46,32 @@ export const OrganisationAndDpa: Story = {
     args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0 }) },
 };
 
+/**
+ * Owner report 2026-08-19 — the step is read as three named blocks now: the
+ * agreement, "Stammdaten Organisation" (moved down from the top of the step)
+ * and "Daten der unterschriftsberechtigten Person" directly below it, whose
+ * header is what lets the four signer labels be short.
+ */
+export const OrganisationAndDpaSections: Story = {
+    args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0 }) },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const masterData = await canvas.findByTestId('organisation-master-data-title');
+        const signer = await canvas.findByTestId('dpa-signer-section-title');
+
+        // Real headings, one level below the step title — not styled divs.
+        await expect(masterData.tagName).toBe('H3');
+        await expect(signer.tagName).toBe('H3');
+        // Master data stands directly above the person signing for it.
+        // eslint-disable-next-line no-bitwise
+        await expect(masterData.compareDocumentPosition(signer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        // Language-agnostic, like the forward stories: the point is that the
+        // labels are SHORT now, not which locale the preview happens to run in.
+        await expect(canvas.getByLabelText(/^Name$/)).toBeVisible();
+        await expect(canvas.getByLabelText(/^E-?Mail$/i)).toBeVisible();
+    },
+};
+
 /** Step 1 on a phone (390x844, #571 acceptance) — the DPA text scrolls in its own region. */
 export const OrganisationAndDpaMobile: Story = {
     args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0 }) },
