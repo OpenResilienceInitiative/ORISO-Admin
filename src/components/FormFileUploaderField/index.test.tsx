@@ -2,6 +2,7 @@ import { Form } from 'antd';
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FormFileUploaderField } from './index';
+import { getSafeFaviconUrl } from '../../utils/getSafeFaviconUrl';
 
 /**
  * The uploader lives inside CardEditable, which disables its <Form> while the card
@@ -86,6 +87,28 @@ describe('FormFileUploaderField', () => {
 
             pickFile(input, 'favicon.ico', type);
             await vi.waitFor(() => expect(changes.length).toBeGreaterThan(0));
+        });
+
+        /**
+         * Accepting the file is only half the job: the value the uploader stores is
+         * what later becomes `link[rel=icon][href]`, and `getSafeFaviconUrl` only
+         * admits `data:image/*`. A host that reports no MIME type for `.ico` made
+         * FileReader label the payload `application/octet-stream`, so the upload
+         * looked successful while the tab kept the built-in favicon.
+         */
+        it.each([
+            ['Chrome', 'image/vnd.microsoft.icon'],
+            ['Firefox', 'image/x-icon'],
+            ['a host with no mapping for the extension', ''],
+        ])('stores an .ico from %s as a value the favicon gatekeeper accepts', async (_host, type) => {
+            const { changes, input } = renderField({ formDisabled: false, allowIcon: true });
+
+            pickFile(input, 'favicon.ico', type);
+            await vi.waitFor(() => expect(changes.length).toBeGreaterThan(0));
+
+            const stored = changes[0].logo as string;
+            expect(stored).toMatch(/^data:image\//);
+            expect(getSafeFaviconUrl(stored)).toBe(stored);
         });
 
         it('still rejects an .ico file on a field that does not allow icons', async () => {
