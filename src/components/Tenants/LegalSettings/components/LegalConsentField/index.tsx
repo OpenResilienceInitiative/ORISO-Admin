@@ -1,15 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Alert } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { LegalConsentTemplateEditor, type LegalConsentTemplateValues } from '../../../../PlaceholderTemplate';
+import { LegalConsentTemplateEditor } from '../../../../PlaceholderTemplate';
+import { useConsentTemplates } from '../../hooks/useConsentTemplates';
 import {
     hasMandatoryConsentToken,
     isBlankConsentText,
     MANDATORY_CONSENT_TOKEN,
 } from '../../utils/consentTextValidation';
 import styles from './styles.module.scss';
-
-const PLATFORM_TEMPLATE_ID = 'platform';
 
 export interface LegalConsentFieldProps {
     /** The consent sentence of the language currently being edited. */
@@ -25,6 +24,13 @@ export interface LegalConsentFieldProps {
      * valid statement, so the card says which one it is showing).
      */
     inheritedFrom?: string;
+    /**
+     * The HOST already offers the template chooser — the department card lifts it
+     * into the editor's function bar (agency level, owner decision 2026-08-19), so
+     * this module must not draw a second, identical one. The choice itself is not
+     * taken away; only its location moves.
+     */
+    hideTemplateChooser?: boolean;
 }
 
 /**
@@ -41,20 +47,17 @@ export interface LegalConsentFieldProps {
  * - the cookie/authentication notice is appended by the platform and is not
  *   editable — shown in the preview so the admin sees the real sentence.
  */
-export const LegalConsentField = ({ value, language, onChange, readOnly, inheritedFrom }: LegalConsentFieldProps) => {
+export const LegalConsentField = ({
+    value,
+    language,
+    onChange,
+    readOnly,
+    inheritedFrom,
+    hideTemplateChooser,
+}: LegalConsentFieldProps) => {
     const { t } = useTranslation();
     const [activeTemplateId, setActiveTemplateId] = useState<number | string | undefined>(undefined);
-
-    const templates = useMemo(
-        () => [
-            {
-                id: PLATFORM_TEMPLATE_ID,
-                name: t('legal.consent.template.platform.name'),
-                values: { text: t('legal.consent.template.platform.text') } as LegalConsentTemplateValues,
-            },
-        ],
-        [t],
-    );
+    const templates = useConsentTemplates();
 
     // Only an authored sentence can violate the rule — an empty field means the
     // level above still applies, which is a valid state, not an error.
@@ -93,6 +96,7 @@ export const LegalConsentField = ({ value, language, onChange, readOnly, inherit
                         <span className={styles.addendumCaption}>{t('legal.consent.cookieNotice.caption')}</span>
                     </p>
                 }
+                hideTemplateChooser={hideTemplateChooser}
                 languageLabel={t(`language.${language}`, language.toUpperCase())}
                 readOnly={readOnly}
                 templates={templates}

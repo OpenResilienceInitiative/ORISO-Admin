@@ -48,6 +48,14 @@ export interface PlaceholderTemplateEditorProps<V extends Record<string, string>
      * hiding them would also hide what this level offers.
      */
     readOnly?: boolean;
+    /**
+     * The HOST already shows the template chooser somewhere else and this module
+     * must not draw a second one. Not a read-only variant and not a way to take
+     * the choice away: `readOnly` is what makes a chooser inert, this only says
+     * where it lives. Used by the department data-protection card, which lifts
+     * the chooser into the editor's function bar.
+     */
+    hideTemplateChooser?: boolean;
 }
 
 /**
@@ -70,18 +78,21 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
     onManageTemplates,
     preview,
     readOnly = false,
+    hideTemplateChooser = false,
 }: PlaceholderTemplateEditorProps<V>) => (
     <section aria-label={heading} className={styles.editor}>
         <header className={styles.header}>
             <h3 className={styles.heading}>{heading}</h3>
-            <TemplateSplitButton
-                activeTemplateId={activeTemplateId}
-                disabled={readOnly}
-                templates={templates}
-                onCreateFromTemplate={onCreateFromTemplate}
-                onMainClick={onManageTemplates}
-                onSelectTemplate={onSelectTemplate}
-            />
+            {!hideTemplateChooser && (
+                <TemplateSplitButton
+                    activeTemplateId={activeTemplateId}
+                    disabled={readOnly}
+                    templates={templates}
+                    onCreateFromTemplate={onCreateFromTemplate}
+                    onMainClick={onManageTemplates}
+                    onSelectTemplate={onSelectTemplate}
+                />
+            )}
         </header>
         <div className={styles.formAndPreview}>
             <div className={styles.fields}>
