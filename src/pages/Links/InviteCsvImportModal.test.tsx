@@ -202,6 +202,31 @@ describe('InviteCsvImportModal', () => {
         expect(await screen.findByText('2 Empfänger angelegt')).toBeInTheDocument();
     });
 
+    /*
+     * P3: the bulk path posts through the same create call, so it hits the same
+     * 409. An "id taken" label there would be a lie — the row must name the real
+     * cause so the admin knows to correct the address, not the id.
+     */
+    it('names an already registered recipient address in a per-row 409 (P3)', async () => {
+        createInvite.mockRejectedValue(
+            // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's CONFLICT_WITH_RESPONSE rejection (a raw Response)
+            new Response(null, { status: 409, headers: { 'X-Reason': 'EMAIL_NOT_AVAILABLE' } }),
+        );
+        renderModal(
+            parseResultOf({
+                rows: [
+                    { line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', id: 42, missingName: false },
+                ],
+            }),
+        );
+
+        await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+
+        expect(await rowCells('a@example.org').findByText('E-Mail-Adresse bereits vorhanden')).toBeInTheDocument();
+        expect(rowCells('a@example.org').queryByText('Träger-ID vergeben')).not.toBeInTheDocument();
+        expect(onCreated).not.toHaveBeenCalled();
+    });
+
     it('names the agency id space in a per-row 409', async () => {
         createInvite.mockRejectedValue(
             // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's CONFLICT_WITH_RESPONSE rejection (a raw Response)

@@ -342,6 +342,103 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(mocks.createAccountInvite.mock.calls[0][0].templateId).toBe(8);
     });
 
+    /*
+     * P3 (Problem 3): a recipient address that already belongs to a registered
+     * user must be refused when the invite is CREATED, not first at redemption —
+     * where the invitee had already filled in everything, registered and
+     * forwarded the contract before hitting the dead-end page. The backend
+     * answers 409 + X-Reason: EMAIL_NOT_AVAILABLE; the composer must show that
+     * inline on the e-mail field (not as a global toast) and keep the row
+     * filled so the admin only has to correct the address.
+     */
+    describe('duplicate recipient e-mail (P3)', () => {
+        const emailTakenResponse = () =>
+            new Response(null, { status: 409, headers: { 'X-Reason': 'EMAIL_NOT_AVAILABLE' } });
+
+        it('blocks "Direkt Versenden" (option A) with an inline field error', async () => {
+            mocks.createAccountInvite.mockRejectedValue(emailTakenResponse());
+
+            await renderTenantTab();
+            const user = userEvent.setup();
+
+            const emailField = await screen.findByLabelText('E-Mail');
+            await user.type(emailField, 'taken@example.org');
+            const sendButton = await findSendButton('Direkt Versenden');
+            await waitFor(() => expect(sendButton).toBeEnabled());
+            await user.click(sendButton);
+
+            expect(
+                await screen.findByText('E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.'),
+            ).toBeInTheDocument();
+            // Inline, not a global toast: the generic create-failed toast must not appear.
+            expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+            // The row keeps its values — nothing the admin typed is thrown away.
+            expect(screen.getByLabelText('E-Mail')).toHaveValue('taken@example.org');
+            // And a second click cannot re-post the same address.
+            await waitFor(() => expect(sendButton).toBeDisabled());
+        });
+
+        it('blocks "Empfänger nur anlegen" (option B) with the same inline error', async () => {
+            window.localStorage.setItem(sendModeStorageKey('TENANT_ADMIN'), 'createOnly');
+            mocks.createAccountInvite.mockRejectedValue(emailTakenResponse());
+
+            await renderTenantTab();
+            const user = userEvent.setup();
+
+            await user.type(await screen.findByLabelText('E-Mail'), 'taken@example.org');
+            const sendButton = await findSendButton('Empfänger nur anlegen');
+            await waitFor(() => expect(sendButton).toBeEnabled());
+            await user.click(sendButton);
+
+            expect(
+                await screen.findByText('E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.'),
+            ).toBeInTheDocument();
+            expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+            expect(mocks.createAccountInvite.mock.calls[0][0].templateId).toBeUndefined();
+        });
+
+        it('clears the inline error once a different address is entered', async () => {
+            mocks.createAccountInvite.mockRejectedValueOnce(emailTakenResponse());
+
+            await renderTenantTab();
+            const user = userEvent.setup();
+
+            const emailField = await screen.findByLabelText('E-Mail');
+            await user.type(emailField, 'taken@example.org');
+            const sendButton = await findSendButton('Direkt Versenden');
+            await waitFor(() => expect(sendButton).toBeEnabled());
+            await user.click(sendButton);
+            await screen.findByText('E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.');
+
+            await user.clear(emailField);
+            await user.type(emailField, 'frei@example.org');
+
+            await waitFor(() =>
+                expect(
+                    screen.queryByText('E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.'),
+                ).not.toBeInTheDocument(),
+            );
+            await waitFor(() => expect(sendButton).toBeEnabled());
+        });
+
+        it('still shows the tenant-ID message for a 409 without that reason', async () => {
+            mocks.createAccountInvite.mockRejectedValue(new Response(null, { status: 409 }));
+
+            await renderTenantTab();
+            const user = userEvent.setup();
+
+            await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
+            const sendButton = await findSendButton('Direkt Versenden');
+            await waitFor(() => expect(sendButton).toBeEnabled());
+            await user.click(sendButton);
+
+            expect(await screen.findByText('This tenant ID is already taken.')).toBeInTheDocument();
+            expect(
+                screen.queryByText('E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.'),
+            ).not.toBeInTheDocument();
+        });
+    });
+
     it('opens the create view prefilled from the pill menu\'s "Neu aus" entry (#746 review)', async () => {
         await renderTenantTab();
         const user = userEvent.setup();
