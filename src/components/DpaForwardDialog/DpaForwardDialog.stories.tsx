@@ -2,8 +2,13 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
+import { http, HttpResponse } from 'msw';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { PHONE_390 } from '../DpaLegalForm/dpaStoryText';
+import {
+    INVITE_EMAIL_PREVIEW_ENDPOINT,
+    renderBrandedEmailStoryPreview,
+} from '../EmailPreview/brandedEmailStoryPreview';
 import { DpaForwardDialog } from './DpaForwardDialog';
 import { DpaForwardError, DpaForwardLink, DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 
@@ -18,6 +23,17 @@ const wait = (ms: number) =>
     });
 
 /**
+ * The backend's mail renderer, offline: it echoes the subject and body the dialog
+ * composed back inside the checked-in house frame. Without it the preview request
+ * falls through MSW's `bypass` to the Storybook origin and every story here shows
+ * the preview's error state instead of a mail.
+ */
+const mailPreview = http.post(INVITE_EMAIL_PREVIEW_ENDPOINT, async ({ request }) => {
+    const { body = '', subject = '' } = (await request.json()) as { body?: string; subject?: string };
+    return HttpResponse.json(renderBrandedEmailStoryPreview(subject, body));
+});
+
+/**
  * Shared forward-to-authorised-signer dialog (#723, epic #722): copyable
  * single-use sign link, optional e-mail send with the actual DPA_FORWARD mail
  * rendered through the e-mail kit preview, and the note that the link stays
@@ -28,7 +44,15 @@ const wait = (ms: number) =>
 const meta = {
     title: 'Organisms/DpaForwardDialog',
     component: DpaForwardDialog,
-    parameters: { layout: 'fullscreen' },
+    parameters: {
+        layout: 'fullscreen',
+        msw: { handlers: [mailPreview] },
+        // axe stops at the frame: it holds the backend's mail document (table
+        // layout, inline styles), not app UI. Same rule and reason as
+        // `Organisms/EmailPreview/BrandedEmailPreview`; the dialog's own
+        // chrome around it is still audited.
+        a11y: { options: { iframes: false } },
+    },
     decorators: [
         (Story) => (
             <ThemeProvider theme={orisoMuiTheme}>
@@ -59,6 +83,42 @@ type Story = StoryObj<typeof meta>;
  * shown to a person.
  */
 export const Default: Story = {};
+
+/**
+ * **The forwarded mail as it is framed and sent** (JOB11, owner note 2026-08-19:
+ * „Add Footer to the forwarded email as well").
+ *
+ * The variant this modal is linked to: the same dialog, with the mail preview
+ * showing the finished document rather than the two paragraphs the dialog
+ * composes. The frame around them — brand header, call-to-action, and the
+ * FOOTER with the brand name, `Impressum · Datenschutz` and the automated-send
+ * note — is the house layout every transactional mail carries
+ * (ORISO-UserService `email/layout/branded-email.html`), applied by the backend
+ * renderer that the send path itself runs. The forward mail was not opting out
+ * of it; it simply never told the renderer which mail it was, so the sample
+ * call-to-action pointed at the admin console instead of the app host.
+ *
+ * The document here is a checked-in verbatim backend response with this mail's
+ * subject and body substituted into it, so the footer on screen is the real one
+ * and not a drawing of it.
+ */
+export const ForwardedMailWithFooter: Story = {
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.type(await body.findByLabelText(/Name der Person|Name of the person/), 'Dr. Ruth Recht');
+
+        const frame = (await body.findByTitle(/Vorschau der E-Mail|Preview of the e-mail/)) as HTMLIFrameElement;
+        await waitFor(() => {
+            const mail = frame.contentDocument?.body?.innerText ?? '';
+            // The composed content …
+            expect(mail).toContain('Dr. Ruth Recht');
+            // … inside the house frame, footer and all.
+            expect(mail).toContain('Impressum');
+            expect(mail).toContain('Datenschutz');
+            expect(mail).toContain('Diese E-Mail wurde automatisch versendet');
+        });
+    },
+};
 
 /** The whole dialog at 390×844 — link, fields and preview stay usable. */
 export const Mobile: Story = {
