@@ -16,6 +16,20 @@
     margin-bottom: 24px;
 }
 
+/* Section header of the signer block (owner report 2026-08-19). Same treatment
+   as the other section titles of the admin surfaces (DpaForwardDialog
+   `.sectionTitle`) — no new type scale, and the colour is the ORISO token, not
+   a local hex. It shares the 12px inset of the fields it names. */
+
+.sectionTitle {
+    padding-inline: 12px;
+    margin: 0 0 12px;
+    color: var(--m3-on-surface);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 22px;
+}
+
 /* The signer fields keep a 12px side inset (owner call 2026-07-30) while the
    legal text above them runs edge to edge: the text is the document, the fields
    are a form on top of it, and the inset is what keeps their outlines and focus
