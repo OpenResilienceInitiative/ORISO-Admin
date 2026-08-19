@@ -5,6 +5,15 @@ import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+// Imported statically, NOT with `await import(...)` inside a test. Every `vi.mock`
+// below is hoisted above this line, so the mocks still apply — but a dynamic
+// import inside the first test bills the whole transform + evaluation of this
+// tab's module graph (~12.5s on an idle laptop, measured) to that ONE test's
+// 30s budget. It fit locally and blew the budget on a loaded CI runner, which
+// is why "sends tenant-admin invites with the role-derived accept base URL"
+// timed out in CI while every other test in this file stayed under 4s. A static
+// import moves that cost into the file's (untimed) collection phase.
+import { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
 
 // antd components used by the composer (Dropdown/menus) query matchMedia,
 // which jsdom does not implement.
@@ -151,10 +160,7 @@ const invite = (id: number, tenantId: number | null, inviteStatus: string) => ({
     createDate: '2026-07-01T00:00:00Z',
 });
 
-const renderTenantTab = async () => {
-    const { TenantInvitesTab } = await import('./AccountInvitesTab');
-    return render(<TenantInvitesTab />);
-};
+const renderTenantTab = () => render(<TenantInvitesTab />);
 
 describe('TenantInvitesTab Träger-ID field', () => {
     beforeEach(() => {
@@ -171,7 +177,7 @@ describe('TenantInvitesTab Träger-ID field', () => {
         mocks.createAccountInvite.mockResolvedValue(invite(1, 21, 'EMAIL_SENT'));
         mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/admin/tenant-onboarding');
 
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
@@ -196,7 +202,7 @@ describe('TenantInvitesTab Träger-ID field', () => {
         mocks.searchTenantData.mockResolvedValue({ data: [{ id: 1 }, { id: 2 }, { id: 4 }], total: 3 });
         mocks.listAccountInvites.mockResolvedValue(invitesPage([invite(11, 3, 'DRAFT'), invite(12, 5, 'REVOKED')]));
 
-        await renderTenantTab();
+        renderTenantTab();
 
         const field = await screen.findByLabelText('Träger-ID');
         await waitFor(() => expect(field).toHaveValue('Auto'));
@@ -208,7 +214,7 @@ describe('TenantInvitesTab Träger-ID field', () => {
         mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
         mocks.createAccountInvite.mockRejectedValue(new Response(null, { status: 409 }));
 
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
@@ -228,7 +234,6 @@ describe('TenantInvitesTab Träger-ID field', () => {
 
     it('does not auto-fill the Träger-ID on the counsellor tab', async () => {
         mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
-        const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
         render(<CounsellorInvitesTab />);
 
         const field = await screen.findByLabelText('Träger-ID');
@@ -281,7 +286,7 @@ describe('overlapping invite loads', () => {
             // Refresh after the create: fast, and authoritative.
             .mockResolvedValue(invitesPage([invite(1, 21, 'EMAIL_SENT')]));
 
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
         await sendOneInvite(user);
 
@@ -301,7 +306,7 @@ describe('overlapping invite loads', () => {
         const second = deferred<ReturnType<typeof invitesPage>>();
         mocks.listAccountInvites.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
 
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
         await sendOneInvite(user);
         await waitFor(() => expect(mocks.listAccountInvites).toHaveBeenCalledTimes(2));
@@ -360,7 +365,6 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
 
     /** Fill the composer for a complete counsellor invite and press send. */
     const fillAndSend = async () => {
-        const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
@@ -535,7 +539,6 @@ describe('CSV import payload per tab', () => {
 
     it('sends the counsellor id column as a pinned agency reservation, auto for empty cells', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
-        const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
@@ -568,7 +571,7 @@ describe('CSV import payload per tab', () => {
 
     it('keeps the Träger id column a tenant id, without touching the agency space', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
