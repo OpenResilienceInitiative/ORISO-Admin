@@ -54,6 +54,7 @@ import {
 } from '../CustomIcons/EditorIcons';
 import { createImageDropPasteHandlers, useEditorImageUpload } from './useEditorImageUpload';
 import { ensureHeadingAnchorIds, HeadingAnchors } from './headingAnchors';
+import { TrailingParagraph } from './trailingParagraph';
 import { HeadingMenu } from './HeadingMenu';
 import { SplitDropdown } from './SplitDropdown';
 import AnchorChips from './AnchorChips';
@@ -723,6 +724,10 @@ export const M3RichTextEditor = ({
             Superscript,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             Placeholder.configure({ placeholder }),
+            // Word contract: empty space below a final heading belongs to a
+            // body paragraph — created on demand, never in the read-only
+            // reader (see trailingParagraph.ts).
+            TrailingParagraph,
             ...(anchorsEnabled ? [HeadingAnchors] : []),
         ],
         content: editorContent,

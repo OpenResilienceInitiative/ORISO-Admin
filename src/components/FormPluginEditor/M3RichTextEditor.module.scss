@@ -198,26 +198,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
         height: auto;
     }
 
-    // The display-size heading scale is made for the 800px deck card. In a
-    // sign-in-sized column it swallows the surface, so the fluid reader keeps
-    // the compact headline scale at every width.
-    .editor {
-        :global(.ProseMirror h1) {
-            font-size: 32px;
-            letter-spacing: 0;
-            line-height: 40px;
-        }
-
-        :global(.ProseMirror h2) {
-            font-size: 26px;
-            line-height: 34px;
-        }
-
-        :global(.ProseMirror h3) {
-            font-size: 22px;
-            line-height: 30px;
-        }
-    }
+    // No heading override here any more: since the owner's 2026-08-19 call
+    // the base scale IS the compact M3 headline scale at every width, so the
+    // fluid reader simply inherits it (headingScale.styles.test.ts pins one
+    // uniform scale across all surfaces).
 }
 
 // Fluid READ mode (owner demo 2026-08-19, reversing #594.3 for reading): with
@@ -1009,25 +993,31 @@ $m3-state-active: rgb(39 50 112 / 12%);
         cursor: pointer;
     }
 
-    // Heading scale (Figma 1280-73020): M3 display sizes on desktop, headline
-    // sizes on mobile — body text follows body-large / body-medium.
+    // Heading scale: M3 HEADLINE roles at every width — body text follows
+    // body-large / body-medium. Figma 1280-73020 put the M3 DISPLAY sizes
+    // (57/45/36, the hero/marketing role) on the desktop editor; the owner
+    // overrode that on 2026-08-19 ("die Header sind ... eindeutig oft zu
+    // groß ... das muss nicht so riesig sein"): running document text keeps
+    // the document relationship (h1 = 2x body, not 3.5x), which is exactly
+    // the scale the mobile breakpoint used all along. Contract-tested in
+    // headingScale.styles.test.ts — do not re-grow one surface only.
     :global(.ProseMirror h1) {
-        font-size: 57px;
+        font-size: 32px;
         font-weight: 400;
-        letter-spacing: -0.25px;
-        line-height: 64px;
+        letter-spacing: 0;
+        line-height: 40px;
     }
 
     :global(.ProseMirror h2) {
-        font-size: 45px;
+        font-size: 28px;
         font-weight: 400;
-        line-height: 52px;
+        line-height: 36px;
     }
 
     :global(.ProseMirror h3) {
-        font-size: 36px;
+        font-size: 24px;
         font-weight: 400;
-        line-height: 44px;
+        line-height: 32px;
     }
 
     :global(.ProseMirror p) {
@@ -1037,22 +1027,6 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 
     @media (max-width: 599px) {
-        :global(.ProseMirror h1) {
-            font-size: 32px;
-            letter-spacing: 0;
-            line-height: 40px;
-        }
-
-        :global(.ProseMirror h2) {
-            font-size: 28px;
-            line-height: 36px;
-        }
-
-        :global(.ProseMirror h3) {
-            font-size: 24px;
-            line-height: 32px;
-        }
-
         :global(.ProseMirror p) {
             font-size: 14px;
             letter-spacing: 0.25px;
