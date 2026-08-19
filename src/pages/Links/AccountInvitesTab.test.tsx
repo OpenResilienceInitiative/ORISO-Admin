@@ -306,6 +306,27 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
         expect(mocks.getAgencyDataById).toHaveBeenCalledWith('275');
     });
 
+    /*
+     * P3: the counsellor invite is the second invite kind and must be guarded the
+     * same way as the tenant invite — inline on the e-mail field, with the rest of
+     * the row (names, Beratungsstellen-ID) preserved.
+     */
+    it('shows the duplicate-address error inline for a counsellor invite (P3)', async () => {
+        mocks.getAgencyDataById.mockResolvedValue(agencyPayload([{ id: 2, name: 'U25 Suizidprävention' }]));
+        mocks.createAccountInvite.mockRejectedValue(
+            new Response(null, { status: 409, headers: { 'X-Reason': 'EMAIL_NOT_AVAILABLE' } }),
+        );
+
+        await fillAndSend();
+
+        expect(await screen.findByText('E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.')).toBeInTheDocument();
+        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+        // Nothing the admin typed is lost — only the address needs correcting.
+        expect(screen.getByLabelText('E-Mail')).toHaveValue('lisa.simpson@oriso.org');
+        expect(screen.getByLabelText('Vorname')).toHaveValue('Lisa');
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Direkt Versenden' })).toBeDisabled());
+    });
+
     it('refuses with a visible error when the agency has no topic', async () => {
         mocks.getAgencyDataById.mockResolvedValue(agencyPayload([]));
 
