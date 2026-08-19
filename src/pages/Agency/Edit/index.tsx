@@ -21,6 +21,7 @@ import { useAgencyPostCodesData } from '../../../hooks/useAgencyPostCodesData';
 import { useAgencyUpdate } from '../../../hooks/useAgencyUpdate';
 import { convertToOptions } from '../../../utils/convertToOptions';
 import { AgencySettings } from './components/AgencySettings';
+import { AgencyDepartmentDetails } from './components/DepartmentDetails';
 import { AgencyGeneralInformation } from './components/GeneralInformation';
 import { RegistrationSettings } from './components/RegistrationSettings';
 import { CounsellingRelation } from '../../../enums/CounsellingRelation';
@@ -327,6 +328,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                             >
                                 <AgencySettings isEditMode={isEditing} asFields />
                             </CardEditable>
+                        </CardDeck.Item>
+                        <CardDeck.Item>
+                            <AgencyDepartmentDetails agencyData={agencyData} />
                         </CardDeck.Item>
                     </CardDeck>
                 </ThemeProvider>
