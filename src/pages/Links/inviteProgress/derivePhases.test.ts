@@ -269,6 +269,16 @@ describe('inviteLastActivity', () => {
             inviteLastActivity(invite({ acceptedAt: '2026-08-03T10:00:00Z', revokedAt: '2026-08-05T10:00:00Z' })),
         ).toBe('2026-08-05T10:00:00Z');
     });
+
+    it('counts a 2FA waiver as activity', () => {
+        // The waiver is an admin acting on the invite; ignoring it made the
+        // column report the older acceptance date instead.
+        expect(
+            inviteLastActivity(
+                invite({ acceptedAt: '2026-08-03T10:00:00Z', twoFactorWaivedAt: '2026-08-06T10:00:00Z' }),
+            ),
+        ).toBe('2026-08-06T10:00:00Z');
+    });
 });
 
 describe('formatRelativeTime', () => {

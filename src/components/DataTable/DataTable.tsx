@@ -80,6 +80,13 @@ export interface DataTableRowProps {
     children: ReactNode;
     /** `error` = dead-record treatment: the magenta error-role wash. */
     tone?: 'default' | 'error';
+    /**
+     * Visual selection treatment only. The row carries no `aria-selected`:
+     * rows of a plain `role="table"` do not support that state (only `grid`
+     * and `treegrid` rows do), so screen readers ignore or misreport it.
+     * Selection must be announced by the control that also toggles it — the
+     * row's own checkbox, which is what `InviteProgressBoard` renders.
+     */
     selected?: boolean;
     /** Extra content rendered as a full-width expansion row below this one. */
     expandedContent?: ReactNode;
@@ -116,7 +123,6 @@ export const DataTableRow = ({
                     { [styles.rowError]: tone === 'error', [styles.rowSelected]: selected },
                     className,
                 )}
-                aria-selected={selected || undefined}
                 tabIndex={interactive ? 0 : undefined}
                 onClick={onClick}
                 onKeyDown={interactive ? onKeyDown : undefined}
