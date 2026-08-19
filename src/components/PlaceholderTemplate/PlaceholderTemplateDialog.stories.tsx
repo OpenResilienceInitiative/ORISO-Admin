@@ -2,7 +2,11 @@ import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { PlaceholderTemplateDialog } from './PlaceholderTemplateDialog';
 import { InviteEmailTemplateEditor, type InviteEmailTemplateValues } from './InviteEmailTemplateEditor';
-import { LegalConsentTemplateEditor, type LegalConsentTemplateValues } from './LegalConsentTemplateEditor';
+import {
+    LegalConsentHeadIcon,
+    LegalConsentTemplateEditor,
+    type LegalConsentTemplateValues,
+} from './LegalConsentTemplateEditor';
 import type { PlaceholderTemplateDefinition } from './PlaceholderTemplateEditor';
 
 const meta = {
@@ -97,6 +101,7 @@ const LegalDialogDemo = () => {
     return (
         <PlaceholderTemplateDialog
             titleKey="placeholderTemplate.dialog.legalTitle"
+            icon={<LegalConsentHeadIcon />}
             descriptionKey="placeholderTemplate.dialog.legalDescription"
             onSave={() => undefined}
             onClose={() => undefined}

@@ -1,5 +1,6 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import { M3Checkbox } from '../M3Checkbox';
 import {
     PlaceholderTemplateEditor,
@@ -13,6 +14,14 @@ import styles from './PlaceholderTemplateEditor.module.scss';
 export interface LegalConsentTemplateValues extends Record<string, string> {
     text: string;
 }
+
+/**
+ * Head symbol of the consent sentence: a document with a tick — the policy the
+ * sentence belongs to, plus the checkbox the help-seeker confirms it with. An
+ * alias, not a wrapper, so the full-page editor head and the dialog hero icon
+ * use one symbol instead of drifting apart. Decorative everywhere it is used.
+ */
+export const LegalConsentHeadIcon = FactCheckOutlinedIcon;
 
 export interface LegalConsentTemplateEditorProps {
     values: LegalConsentTemplateValues;
@@ -80,6 +89,7 @@ export const LegalConsentTemplateEditor = ({
             activeTemplateId={activeTemplateId}
             fields={fields}
             heading={t('placeholderTemplate.legal.heading', 'Einwilligung (Registrierung)')}
+            icon={<LegalConsentHeadIcon />}
             preview={
                 <section
                     aria-label={t('placeholderTemplate.legal.previewLabel', 'Vorschau der Einwilligung')}

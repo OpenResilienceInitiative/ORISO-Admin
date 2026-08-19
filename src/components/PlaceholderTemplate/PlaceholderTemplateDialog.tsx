@@ -5,6 +5,13 @@ import styles from './PlaceholderTemplateDialog.module.scss';
 export interface PlaceholderTemplateDialogProps {
     /** i18n key of the centered dialog title (house M3 anatomy). */
     titleKey: string;
+    /**
+     * Hero icon centered above the title (M3 basic-dialog anatomy: icon →
+     * title → description). Passed per variant, since the invite e-mail and
+     * the consent sentence are not the same subject. Decorative — the Modal
+     * renders it `aria-hidden`.
+     */
+    icon?: ReactNode;
     /** One sentence under the title saying what the dialog is for. */
     descriptionKey?: string;
     /**
@@ -45,6 +52,7 @@ export interface PlaceholderTemplateDialogProps {
  */
 export const PlaceholderTemplateDialog = ({
     titleKey,
+    icon,
     descriptionKey,
     children,
     onSave,
@@ -57,6 +65,7 @@ export const PlaceholderTemplateDialog = ({
 }: PlaceholderTemplateDialogProps) => (
     <Modal
         titleKey={titleKey}
+        icon={icon}
         descriptionKey={descriptionKey}
         footer={footer}
         okLabelKey="save"
