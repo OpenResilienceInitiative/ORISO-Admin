@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { UploadFileProps } from '../../types/uploadFiles';
 import decodeHTML from '../../utils/decodeHTML';
 import getBase64 from '../../utils/getBase64';
+import { normalizeIconDataUrl } from '../../utils/normalizeIconDataUrl';
 import styles from './styles.module.scss';
 
 interface FormFileUploaderFieldProps {
@@ -66,7 +67,10 @@ const FormFileUploaderLocal = ({ onChange, value, allowIcon, disabled }: FormRic
             return false;
         }
 
-        getBase64(file, onChange);
+        // The stored value is what later becomes `link[rel=icon][href]`, so an
+        // .ico whose MIME type the host could not map has to be relabelled here
+        // rather than admitted by loosening `getSafeFaviconUrl`.
+        getBase64(file, (result) => onChange(normalizeIconDataUrl(result, file.name)));
         return false;
     };
 
