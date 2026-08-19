@@ -2,7 +2,7 @@ import React from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Form } from 'antd';
+import { Form, notification } from 'antd';
 import { AgencyPageEdit } from './index';
 
 // Render AgencyPageEdit inside a QueryClientProvider so child components that use
@@ -29,6 +29,10 @@ const mocks = vi.hoisted(() => ({
     routeId: 'add',
     agencyData: undefined as any,
     createConsultantProps: undefined as any,
+    legalForm: {
+        setFields: vi.fn(),
+        scrollToField: vi.fn(),
+    },
 }));
 
 const translations: Record<string, string> = {
@@ -136,15 +140,27 @@ vi.mock('../../../hooks/useAgencyData', () => ({
 }));
 
 vi.mock('./components/ResponsibleSettings', () => ({
-    ResponsibleSettings: ({ onSave }: { onSave: (data: unknown) => void }) => (
+    ResponsibleSettings: ({
+        onSave,
+    }: {
+        onSave: (data: unknown, options: { onError: () => void; form: typeof mocks.legalForm }) => void;
+    }) => (
         <button
             type="button"
             onClick={() =>
-                onSave({
-                    dataProtection: {
-                        agencyDataProtectionResponsibleContact: { nameAndLegalForm: 'E2E Responsible Operator gGmbH' },
+                onSave(
+                    {
+                        dataProtection: {
+                            agencyDataProtectionResponsibleContact: {
+                                nameAndLegalForm: 'E2E Responsible Operator gGmbH',
+                            },
+                        },
                     },
-                })
+                    {
+                        onError: vi.fn(),
+                        form: mocks.legalForm,
+                    },
+                )
             }
         >
             Save responsible card
@@ -242,6 +258,8 @@ describe('AgencyPageEdit create flow', () => {
         mocks.routeId = 'add';
         mocks.agencyData = undefined;
         mocks.createConsultantProps = undefined;
+        mocks.legalForm.setFields.mockReset();
+        mocks.legalForm.scrollToField.mockReset();
     });
 
     it('renders the tenant assignment field for super-admin agency creation', async () => {
@@ -253,9 +271,11 @@ describe('AgencyPageEdit create flow', () => {
         // the text twice (the <label>, plus the aria-hidden notched-outline
         // <legend>), so a plain text query matches both.
         expect(await screen.findByLabelText('Trägerzuordnung *')).toBeInTheDocument();
-        // Create flow: general+registration share one deck item; settings is the second.
-        expect(container.querySelector('[data-admin-card-deck]')).toBeInTheDocument();
-        expect(container.querySelectorAll('[data-admin-card-deck-item]')).toHaveLength(2);
+        // #620: create flow lays its three cards out in the responsive CardGrid —
+        // cards share the row width and wrap/stack below the floor. The fixed-width
+        // horizontal CardDeck must be gone from the create surface.
+        expect(container.querySelector('[data-admin-card-grid]')).toBeInTheDocument();
+        expect(container.querySelector('[data-admin-card-deck]')).not.toBeInTheDocument();
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
     });
 
@@ -350,5 +370,59 @@ describe('AgencyPageEdit create flow', () => {
             },
             expect.any(Object),
         );
+    });
+
+    it('renders a structured service validation error on the responsible field and focuses it', async () => {
+        mocks.routeId = '282';
+        mocks.agencyData = {
+            id: 282,
+            name: 'E2E Agency',
+            tenantId: 84,
+            topics: [],
+            dataProtection: {
+                agencyDataProtectionResponsibleContact: {
+                    nameAndLegalForm: 'E2E Responsible Operator gGmbH',
+                },
+            },
+        };
+
+        renderWithClient(<AgencyPageEdit section="legal" />);
+        fireEvent.click(screen.getByRole('button', { name: 'Save responsible card' }));
+
+        const mutationOptions = mocks.mutate.mock.calls[0][1];
+        await mutationOptions.onError(
+            new Response(
+                JSON.stringify({
+                    field: 'dataProtection',
+                    reason: 'DATA_PROTECTION_RESPONSIBLE_IS_EMPTY',
+                    message: 'A responsible contact is required.',
+                }),
+                { status: 400, headers: { 'Content-Type': 'application/json' } },
+            ),
+        );
+
+        const fieldName = ['dataProtection', 'agencyDataProtectionResponsibleContact', 'nameAndLegalForm'];
+        expect(mocks.legalForm.setFields).toHaveBeenCalledWith([
+            { name: fieldName, errors: ['agency.edit.settings.legal.validation.responsible_required'] },
+        ]);
+        expect(mocks.legalForm.scrollToField).toHaveBeenCalledWith(fieldName, { focus: true });
+    });
+
+    it('shows the generic error notification for an unsupported service validation reason', async () => {
+        const notificationSpy = vi.spyOn(notification, 'error').mockImplementation(() => undefined as never);
+        mocks.routeId = '282';
+        mocks.agencyData = { id: 282, name: 'E2E Agency', tenantId: 84, topics: [] };
+
+        renderWithClient(<AgencyPageEdit section="legal" />);
+        fireEvent.click(screen.getByRole('button', { name: 'Save responsible card' }));
+        await mocks.mutate.mock.calls[0][1].onError(
+            new Response(JSON.stringify({ field: 'dataProtection', reason: 'A_NEW_REASON' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            }),
+        );
+
+        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
+        notificationSpy.mockRestore();
     });
 });

@@ -51,6 +51,7 @@
             margin-left: auto;
             margin-right: @two-factor-auth-overlay-buttons-margin-right;
         }
+
         .button__wrapper + .button__wrapper {
             .bp-min(@fromSmall, set) {
                 margin-left: @grid-base-two;
@@ -109,11 +110,16 @@
     &__connect {
         .text__divider {
             text-transform: uppercase;
-            display: flex;
+
+            /* Pre-existing: an unconditional `display: none` (previously a
+               second `.text__divider` rule at the end of this block) hides the
+               divider at every breakpoint, so the flex layout below is dead.
+               Folded in verbatim to keep rendering identical. */
+            display: none;
             color: var(--skin-color-secondary-contrast-safe, @primary);
 
-            &::before,
-            &::after {
+            &:before,
+            &:after {
                 content: '';
                 border-top: 1px solid var(--skin-color-secondary-contrast-safe, @primary);
                 width: max-content;
@@ -132,6 +138,10 @@
                 flex-shrink: 0;
             }
 
+            /* Scoped to the `.bp-min` breakpoint mixin, so this does not
+               collide with the base `.text__divider` above; postcss-less
+               cannot resolve Less mixin bodies. */
+            /* stylelint-disable-next-line no-duplicate-selectors */
             .text__divider {
                 display: none;
             }
@@ -145,10 +155,6 @@
         .twoFactorAuth__key {
             width: 50%;
             flex-shrink: 0;
-        }
-
-        .text__divider {
-            display: none;
         }
     }
 
@@ -217,16 +223,12 @@
     }
 
     &__radioWrapper {
-        margin-top: @grid-base-two;
         display: flex;
         align-items: center;
-
         border: @overlay-radio-outline;
         border-radius: @overlay-radio-radius;
         padding: 0 10px;
-
         width: 100%;
-
         margin: 0 @grid-base 0 0;
 
         .radioButton {
@@ -257,6 +259,7 @@
         svg {
             max-width: 240px;
         }
+
         .headline {
             text-align: center !important;
         }

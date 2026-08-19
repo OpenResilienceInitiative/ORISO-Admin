@@ -33,7 +33,7 @@
 .cardGridOuter {
     position: relative;
     width: 100%;
-    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .permissionsCardDeck {
@@ -50,9 +50,9 @@
 .chatTypeCard {
     background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
     border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 30%, transparent);
-    box-shadow: var(--m3-elevation-1, 0 1px 2px rgba(0, 0, 0, 0.3));
+    box-shadow: var(--m3-elevation-1, 0 1px 2px rgb(0 0 0 / 30%));
     border-radius: 28px;
-    padding: 32px 32px 32px;
+    padding: 32px;
     display: flex;
     flex-direction: column;
     min-height: auto;
@@ -63,7 +63,7 @@
 
     &:hover {
         border-color: color-mix(in srgb, var(--m3-outline, #747878) 44%, transparent);
-        box-shadow: var(--m3-elevation-2, 0 4px 8px rgba(0, 0, 0, 0.18));
+        box-shadow: var(--m3-elevation-2, 0 4px 8px rgb(0 0 0 / 18%));
     }
 }
 
@@ -157,6 +157,15 @@
     }
 }
 
+.cardDescriptionInfo {
+    width: 16px;
+    height: 16px;
+    margin: 4px 8px 2px 0;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    fill: currentcolor;
+    float: left;
+}
+
 .cardDescriptionSecondary {
     display: block;
     margin-top: 14px;
@@ -209,6 +218,21 @@
     font-weight: 500;
     flex: 1;
     min-width: 0;
+}
+
+/**
+ * Why a toggle next to it is disabled (ORISO-Admin#734). Inline rather than a
+ * tooltip: the reason has to be readable without hovering, on touch as well,
+ * and it explains an absent capability rather than decorating a control.
+ */
+
+.toggleUnavailableHint {
+    display: block;
+    margin-top: 2px;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.35;
+    color: var(--m3-on-surface-variant, #45464f);
 }
 
 .cardFooterActions {

@@ -1,5 +1,4 @@
 /* Avatar picker grid: circular primary-tinted tiles, single-select ring. */
-
 .grid {
     display: grid;
     gap: 12px;
@@ -33,6 +32,7 @@
 
 /* Monochrome avatar glyphs (fill=black) recolour to the on-primary white.
    Broadened past <path> so glyphs that fill circles/rects/groups also flip. */
+
 .avatar :global(svg) {
     width: 30px;
     height: 30px;

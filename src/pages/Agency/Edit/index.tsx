@@ -11,6 +11,7 @@ import { normalizeTopicIds } from '../../../api/agency/normalizeTopicIds';
 import routePathNames from '../../../appConfig';
 import { Page } from '../../../components/Page';
 import { CardDeck } from '../../../components/CardDeck';
+import { CardGrid } from '../../../components/CardGrid';
 import { DashboardEmptyState } from '../../../components/DashboardEmptyState/DashboardEmptyState';
 import { useFeatureContext } from '../../../context/FeatureContext';
 import { FeatureFlag } from '../../../enums/FeatureFlag';
@@ -20,6 +21,7 @@ import { useAgencyPostCodesData } from '../../../hooks/useAgencyPostCodesData';
 import { useAgencyUpdate } from '../../../hooks/useAgencyUpdate';
 import { convertToOptions } from '../../../utils/convertToOptions';
 import { AgencySettings } from './components/AgencySettings';
+import { AgencyDepartmentDetails } from './components/DepartmentDetails';
 import { AgencyGeneralInformation } from './components/GeneralInformation';
 import { RegistrationSettings } from './components/RegistrationSettings';
 import { CounsellingRelation } from '../../../enums/CounsellingRelation';
@@ -35,6 +37,7 @@ import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
+import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -237,14 +240,28 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     );
 
     const onSaveCard = useCallback(
-        (formData, options?: { onError?: () => void }) => {
+        (formData, options?: { onError?: () => void; form?: ReturnType<typeof Form.useForm>[0] }) => {
             // Card forms deliberately submit only their own nested fields. Passing a
             // full snapshot here lets a fast follow-up card save re-send stale nulls
             // before the invalidated agency query has completed, wiping the previous
             // card. useAgencyUpdate merges this narrow patch into its latest cache.
             mutate(formData, {
-                onError: () => {
+                onError: async (error) => {
                     options?.onError?.();
+                    const validationError = await parseAgencyFieldValidationError(error);
+                    if (validationError && options?.form) {
+                        const message = t(validationError.translationKey);
+                        options.form.setFields([{ name: validationError.fieldName, errors: [message] }]);
+                        options.form.scrollToField(validationError.fieldName, { focus: true });
+                        return;
+                    }
+
+                    if (error instanceof Response && error.status === 400) {
+                        notification.error({
+                            message: t('message.error.default'),
+                            duration: 8,
+                        });
+                    }
                 },
                 onSuccess: () => {
                     notification.success({
@@ -312,6 +329,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                 <AgencySettings isEditMode={isEditing} asFields />
                             </CardEditable>
                         </CardDeck.Item>
+                        <CardDeck.Item>
+                            <AgencyDepartmentDetails agencyData={agencyData} />
+                        </CardDeck.Item>
                     </CardDeck>
                 </ThemeProvider>
             );
@@ -330,19 +350,15 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     onFinish={onSubmit}
                 >
                     <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
-                    <CardDeck
-                        ariaLabel={t(`agency.edit.settings.general.title`)}
-                        previousLabel={t('agency.cardDeck.previous')}
-                        nextLabel={t('agency.cardDeck.next')}
-                    >
-                        <CardDeck.Item>
-                            <AgencyGeneralInformation />
-                            <RegistrationSettings />
-                        </CardDeck.Item>
-                        <CardDeck.Item>
-                            <AgencySettings isEditMode={isEditing} />
-                        </CardDeck.Item>
-                    </CardDeck>
+                    {/* #620: the create flow shares the row width responsively (CardGrid)
+                        instead of the fixed-width horizontal CardDeck — cards split 50/50
+                        while two fit and stack below the floor, so FieldGrid can reach
+                        its multi-column layout inside each card. */}
+                    <CardGrid minCardWidth={425} maxColumns={2}>
+                        <AgencyGeneralInformation />
+                        <RegistrationSettings />
+                        <AgencySettings isEditMode={isEditing} />
+                    </CardGrid>
                 </Form>
             </ThemeProvider>
         );
@@ -368,15 +384,11 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             onFinish={onSubmit}
         >
             <h3 className={styles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
-            <CardDeck
-                ariaLabel={t('agency.edit.settings.functionalities.title')}
-                previousLabel={t('agency.cardDeck.previous')}
-                nextLabel={t('agency.cardDeck.next')}
-            >
-                <CardDeck.Item>
-                    <AgencySettings isEditMode={isEditing} />
-                </CardDeck.Item>
-            </CardDeck>
+            {/* #620: a single card in a fixed 392px deck rendered needlessly narrow —
+                the grid lets it use the row up to the shared card floor. */}
+            <CardGrid minCardWidth={425} maxColumns={2}>
+                <AgencySettings isEditMode={isEditing} />
+            </CardGrid>
         </Form>
     );
 

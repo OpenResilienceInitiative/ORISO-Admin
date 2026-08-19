@@ -11,10 +11,17 @@ export interface PlaceholderTextFieldProps {
     value: string;
     onChange: (next: string) => void;
     /** Tokens offered by the field's own picker. */
-    tokens: PlaceholderTokenDef[];
+    /** Tokens the field's picker offers; omit to render the field without a picker (D1). */
+    tokens?: PlaceholderTokenDef[];
     /** Renders a textarea instead of a single-line input. */
     multiline?: boolean;
     rows?: number;
+    /**
+     * Read-only surface: input and token picker stay visible but inert. Suppressing
+     * only `onChange` would leave a field that accepts keystrokes and snaps back —
+     * an editable-looking control for someone who may not edit.
+     */
+    disabled?: boolean;
 }
 
 /**
@@ -30,6 +37,7 @@ export const PlaceholderTextField = ({
     tokens,
     multiline = false,
     rows = 6,
+    disabled = false,
 }: PlaceholderTextFieldProps) => {
     const fieldId = useId();
     const inputRef = useRef<InputRef>(null);
@@ -75,12 +83,13 @@ export const PlaceholderTextField = ({
                 <label className={styles.fieldLabel} htmlFor={fieldId}>
                     {label}
                 </label>
-                <TokenPicker tokens={tokens} onInsert={handleInsert} />
+                {tokens ? <TokenPicker disabled={disabled} tokens={tokens} onInsert={handleInsert} /> : null}
             </div>
             {multiline ? (
                 <Input.TextArea
                     id={fieldId}
                     ref={textAreaRef}
+                    disabled={disabled}
                     rows={rows}
                     value={value}
                     onChange={(event) => onChange(event.target.value)}
@@ -90,6 +99,7 @@ export const PlaceholderTextField = ({
                 <Input
                     id={fieldId}
                     ref={inputRef}
+                    disabled={disabled}
                     value={value}
                     onChange={(event) => onChange(event.target.value)}
                     onFocus={markTouched}

@@ -23,6 +23,7 @@ import {
 } from '../../../components/DataTable';
 import { FilterChip } from '../../../components/FilterChip';
 import { IconButton } from '../../../components/IconButton';
+import { M3Tooltip } from '../../../components/M3Tooltip';
 import { M3Button } from '../../../components/M3Button';
 import { M3Checkbox } from '../../../components/M3Checkbox';
 import {
@@ -35,6 +36,7 @@ import {
     inviteDisplayName,
     inviteLastActivity,
     isDeadInvite,
+    matchesInviteQuery,
     PHASE_LABEL_FALLBACKS,
     phaseLabelKey,
 } from './derivePhases';
@@ -51,6 +53,22 @@ export const INVITE_STATUS_FALLBACK_LABELS: Record<AccountInviteStatus, string> 
     EXPIRED: 'Abgelaufen',
     REVOKED: 'Widerrufen',
     SUPERSEDED: 'Ersetzt',
+};
+
+/**
+ * What each status MEANS (C3). The owner asked for this globally, not only for
+ * „Ersetzt": the labels are domain vocabulary, and a one-word chip cannot say
+ * whether a link still works or why a row went dead. Shown in both places the
+ * vocabulary appears — the filter chip and the row badge — and, like the labels
+ * themselves, the fallbacks double as the German i18n defaults.
+ */
+export const INVITE_STATUS_FALLBACK_HINTS: Record<AccountInviteStatus, string> = {
+    DRAFT: 'Angelegt, aber noch nicht versendet — es ist keine E-Mail herausgegangen.',
+    EMAIL_SENT: 'Die Einladungs-E-Mail wurde versendet und wartet darauf, angenommen zu werden.',
+    ACCEPTED: 'Die Einladung wurde angenommen — das Konto besteht, der Link ist verbraucht.',
+    EXPIRED: 'Die Gültigkeit der Einladung ist abgelaufen — der Link funktioniert nicht mehr.',
+    REVOKED: 'Die Einladung wurde zurückgezogen — der Link ist ungültig.',
+    SUPERSEDED: 'Diese Einladung wurde durch ein erneutes Versenden ersetzt — es gilt die neuere Einladung.',
 };
 
 const STATUS_FILTER_ORDER: AccountInviteStatus[] = [
@@ -86,6 +104,8 @@ const isActionable = (invite: AccountInviteDTO) =>
 export interface InviteProgressBoardProps {
     invites: AccountInviteDTO[];
     loading: boolean;
+    /** Toolbar search query (A4/#376); blank shows everything. */
+    searchQuery?: string;
     /** The tab's audience — decides the phase track and the Träger-ID hint. */
     targetRole: AccountInviteTargetRole;
     selectedIds: number[];
@@ -109,6 +129,7 @@ export interface InviteProgressBoardProps {
 export const InviteProgressBoard = ({
     invites,
     loading,
+    searchQuery = '',
     targetRole,
     selectedIds,
     onSelectionChange,
@@ -130,33 +151,43 @@ export const InviteProgressBoard = ({
     // has one page would otherwise show the empty slot with rows available.
     useEffect(() => {
         setPage(1);
-    }, [filter]);
+    }, [filter, searchQuery]);
 
+    // The tiles count the WHOLE list, not the search result: they are the
+    // overview the search is run against, and a "3 Abgeschlossen" that silently
+    // meant "3 among the rows matching fisch" would be a different number every
+    // keystroke.
     const bucketCounts = useMemo(() => countInviteBuckets(invites), [invites]);
 
-    const filtered = useMemo(
-        () => (filter ? invites.filter((invite) => matchesFilter(invite, filter)) : invites),
-        [invites, filter],
+    const searched = useMemo(
+        () => (searchQuery.trim() ? invites.filter((invite) => matchesInviteQuery(invite, searchQuery)) : invites),
+        [invites, searchQuery],
     );
 
-    /**
-     * Switching a tile or a chip also prunes the selection down to the rows the
-     * new filter still shows. The bulk actions above the board act on the
-     * selection, NOT on what is on screen — a row hidden by a filter would
-     * otherwise stay silently checked and get resent or revoked without the
-     * admin ever seeing it. This mirrors the pruning `AccountInvitesTab` already
-     * does when a reload drops a row from the list.
-     */
-    const applyFilter = (next: InviteFilter | null) => {
-        setFilter(next);
-        if (selectedIds.length === 0) return;
-        const stillVisible = selectedIds.filter((id) =>
-            invites.some((invite) => invite.id === id && matchesFilter(invite, next)),
-        );
-        if (stillVisible.length !== selectedIds.length) {
-            onSelectionChange(stillVisible);
+    const filtered = useMemo(() => {
+        if (!filter) return searched;
+        if (filter.kind === 'status') return searched.filter((invite) => invite.inviteStatus === filter.status);
+        return searched.filter((invite) => deriveInviteBucket(invite) === filter.bucket);
+    }, [searched, filter]);
+
+    // A4×B: a row hidden by the SEARCH query must not stay selected in the
+    // background — left alone, a destructive bulk action (revoke) could reach
+    // a row the operator can no longer see. Scoped to `searched` deliberately,
+    // not the further status/bucket-filtered `filtered` below: pruning on a
+    // tile/chip filter change is open PR #766 ("guard stale invite loads and
+    // prune selection on filter change") — this only covers the dimension that
+    // PR does not (it predates the search feature). The two effects are
+    // independent and, once #766 lands, complementary rather than redundant.
+    // Pagination is deliberately excluded: moving to page 2 must not silently
+    // drop a selection that spans more than one page.
+    useEffect(() => {
+        const visibleIds = new Set(searched.map((invite) => invite.id));
+        const pruned = selectedIds.filter((id) => visibleIds.has(id));
+        if (pruned.length !== selectedIds.length) {
+            onSelectionChange(pruned);
         }
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- reacts to the SEARCH RESULT changing, not to the selection itself (that would set-state loop)
+    }, [searched]);
 
     const sorted = useMemo(() => {
         if (!sort) return filtered;
@@ -242,6 +273,7 @@ export const InviteProgressBoard = ({
                     <FilterChip
                         key={status}
                         label={t(`links.accountInvites.status.${status}`, INVITE_STATUS_FALLBACK_LABELS[status])}
+                        tooltip={t(`links.accountInvites.statusHint.${status}`, INVITE_STATUS_FALLBACK_HINTS[status])}
                         selected={filter?.kind === 'status' && filter.status === status}
                         onChange={(next) => applyFilter(next ? { kind: 'status', status } : null)}
                     />
@@ -304,6 +336,7 @@ export const InviteProgressBoard = ({
                     const displayName = inviteDisplayName(invite);
                     const hasName = displayName !== invite.recipientEmail;
                     const lastActivity = inviteLastActivity(invite);
+                    const statusChipClass = classNames(styles.statusChip, { [styles.statusChipDead]: dead });
                     const phases = derivePhases(invite).map((phase) => ({
                         key: phase.key,
                         state: phase.state,
@@ -374,12 +407,23 @@ export const InviteProgressBoard = ({
                                 </time>
                             </DataTableCell>
                             <DataTableCell className={styles.statusCell}>
-                                <span className={classNames(styles.statusChip, { [styles.statusChipDead]: dead })}>
-                                    {t(
-                                        `links.accountInvites.status.${invite.inviteStatus}`,
-                                        INVITE_STATUS_FALLBACK_LABELS[invite.inviteStatus],
+                                {/* tabIndex on a badge: the explanation is the only
+                                    place the vocabulary is defined, so it has to be
+                                    reachable without a mouse as well (C3). */}
+                                <M3Tooltip
+                                    text={t(
+                                        `links.accountInvites.statusHint.${invite.inviteStatus}`,
+                                        INVITE_STATUS_FALLBACK_HINTS[invite.inviteStatus],
                                     )}
-                                </span>
+                                >
+                                    {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge is the only place the status vocabulary is explained, so it must be reachable without a mouse */}
+                                    <span tabIndex={0} className={statusChipClass}>
+                                        {t(
+                                            `links.accountInvites.status.${invite.inviteStatus}`,
+                                            INVITE_STATUS_FALLBACK_LABELS[invite.inviteStatus],
+                                        )}
+                                    </span>
+                                </M3Tooltip>
                             </DataTableCell>
                             <DataTableCell align="right" className={styles.actionsCell}>
                                 <div className={styles.actions}>
@@ -389,9 +433,16 @@ export const InviteProgressBoard = ({
                                         disabled={!actionable}
                                         onClick={() => onResend(invite)}
                                     />
+                                    {/* C5: the copy icon used to stay live between
+                                        two disabled neighbours, and pressing it in a
+                                        terminal state only produced the "link only
+                                        visible after send" refusal. An action whose
+                                        single outcome is a refusal is a disabled
+                                        action, so it follows the same rule. */}
                                     <IconButton
                                         icon={<ContentCopyOutlinedIcon />}
                                         ariaLabel={t('links.inviteProgress.action.copyLink', 'Einladungslink kopieren')}
+                                        disabled={!actionable}
                                         onClick={() => onCopyLink(invite)}
                                     />
                                     <IconButton

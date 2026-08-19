@@ -10,8 +10,31 @@ import { CaseHandoverCard } from './CaseHandoverCard';
 import { CheckToggle } from './CheckToggle';
 import { M3Checkbox } from '../../../M3Checkbox';
 import { isSubToggleDisabled } from './permissionsSettingsUtils';
-import type { ChatTypeCardKey, EnforceChangeHandler, ToggleAfterChangeHandler } from './types';
+import { runtimeConfig } from '../../../../config/runtimeConfig';
+import { ReactComponent as InfoIcon } from '../../../../resources/img/svg/i.svg';
+import type {
+    ChatTypeCardKey,
+    EnforceChangeHandler,
+    PermissionToggleCapability,
+    ToggleAfterChangeHandler,
+} from './types';
 import styles from './styles.module.scss';
+
+/**
+ * Reason a toggle cannot control anything in this environment, or `null` when
+ * it can (ORISO-Admin#734).
+ *
+ * The AI media check is the only such capability today: it needs a deployed
+ * content scanner and a signed zero-retention sub-processor agreement. Until
+ * both exist the switch would move without changing any behaviour, which
+ * misleads QA and the client — so it is disabled and says why.
+ */
+const unavailableCapabilityHintKey = (capability: PermissionToggleCapability | undefined): string | null => {
+    if (capability === 'mediaAiScan' && !runtimeConfig.mediaAiScanAvailable) {
+        return 'tenants.permissions.feature.mediaAiScanUnavailable';
+    }
+    return null;
+};
 
 export type PermissionsSettingsViewProps = {
     tenantId: string;
@@ -105,6 +128,21 @@ export const PermissionsSettingsView = ({
                                                     ) : undefined
                                                 }
                                             >
+                                                <p className={styles.cardDescription}>
+                                                    <InfoIcon
+                                                        aria-hidden="true"
+                                                        className={styles.cardDescriptionInfo}
+                                                        focusable="false"
+                                                    />
+                                                    <Trans
+                                                        i18nKey={card.descriptionKey}
+                                                        components={{
+                                                            strong: <strong />,
+                                                            small: <span className={styles.cardDescriptionSecondary} />,
+                                                        }}
+                                                    />
+                                                </p>
+
                                                 <div className={styles.masterRow}>
                                                     {enforceMode && masterField && (
                                                         <M3Checkbox
@@ -133,16 +171,6 @@ export const PermissionsSettingsView = ({
                                                     )}
                                                 </div>
 
-                                                <p className={styles.cardDescription}>
-                                                    <Trans
-                                                        i18nKey={card.descriptionKey}
-                                                        components={{
-                                                            strong: <strong />,
-                                                            small: <span className={styles.cardDescriptionSecondary} />,
-                                                        }}
-                                                    />
-                                                </p>
-
                                                 <div className={styles.cardDivider} />
 
                                                 <div className={styles.togglesSectionLabel}>
@@ -150,43 +178,58 @@ export const PermissionsSettingsView = ({
                                                 </div>
 
                                                 <div className={styles.togglesList}>
-                                                    {card.toggles.map((toggle) => (
-                                                        <div key={toggle.field.join('.')} className={styles.toggleRow}>
-                                                            {enforceMode && (
-                                                                <M3Checkbox
-                                                                    className={styles.enforceCheckbox}
-                                                                    label={t(
-                                                                        'tenants.permissions.enforce.checkboxLabel',
-                                                                        {
-                                                                            feature: t(toggle.labelKey),
-                                                                        },
+                                                    {card.toggles.map((toggle) => {
+                                                        const unavailableHintKey = unavailableCapabilityHintKey(
+                                                            toggle.requiresCapability,
+                                                        );
+                                                        return (
+                                                            <div
+                                                                key={toggle.field.join('.')}
+                                                                className={styles.toggleRow}
+                                                            >
+                                                                {enforceMode && (
+                                                                    <M3Checkbox
+                                                                        className={styles.enforceCheckbox}
+                                                                        label={t(
+                                                                            'tenants.permissions.enforce.checkboxLabel',
+                                                                            {
+                                                                                feature: t(toggle.labelKey),
+                                                                            },
+                                                                        )}
+                                                                        checked={
+                                                                            enforcedFields?.has(toggle.field[1]) ??
+                                                                            false
+                                                                        }
+                                                                        onChange={(next) =>
+                                                                            onEnforceChange?.(toggle.field[1], next)
+                                                                        }
+                                                                    />
+                                                                )}
+                                                                <span className={styles.toggleLabel}>
+                                                                    {t(toggle.labelKey)}
+                                                                    {unavailableHintKey && (
+                                                                        <span className={styles.toggleUnavailableHint}>
+                                                                            {t(unavailableHintKey)}
+                                                                        </span>
                                                                     )}
-                                                                    checked={
-                                                                        enforcedFields?.has(toggle.field[1]) ?? false
+                                                                </span>
+                                                                <CheckToggle
+                                                                    name={toggle.field}
+                                                                    label={t(toggle.labelKey)}
+                                                                    disabled={
+                                                                        Boolean(unavailableHintKey) ||
+                                                                        restrictedFields.has(toggle.field[1]) ||
+                                                                        isSubToggleDisabled(
+                                                                            card,
+                                                                            toggle.field,
+                                                                            masterEnabled,
+                                                                        )
                                                                     }
-                                                                    onChange={(next) =>
-                                                                        onEnforceChange?.(toggle.field[1], next)
-                                                                    }
+                                                                    onAfterChange={onToggleUpdate}
                                                                 />
-                                                            )}
-                                                            <span className={styles.toggleLabel}>
-                                                                {t(toggle.labelKey)}
-                                                            </span>
-                                                            <CheckToggle
-                                                                name={toggle.field}
-                                                                label={t(toggle.labelKey)}
-                                                                disabled={
-                                                                    restrictedFields.has(toggle.field[1]) ||
-                                                                    isSubToggleDisabled(
-                                                                        card,
-                                                                        toggle.field,
-                                                                        masterEnabled,
-                                                                    )
-                                                                }
-                                                                onAfterChange={onToggleUpdate}
-                                                            />
-                                                        </div>
-                                                    ))}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
 
                                                 {enforceMode && (

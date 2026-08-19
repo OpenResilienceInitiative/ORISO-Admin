@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -36,7 +36,6 @@ import {
     FormatAlignJustify,
     Image as ImageIcon,
     Restore,
-    Schedule,
     Language,
     ArrowDropDown,
     Fingerprint,
@@ -51,9 +50,11 @@ import {
     MinimizeContentIcon,
     PublishedIcon,
     EditIcon,
+    VersionHistoryIcon,
 } from '../CustomIcons/EditorIcons';
 import { createImageDropPasteHandlers, useEditorImageUpload } from './useEditorImageUpload';
-import { HeadingAnchors } from './headingAnchors';
+import { ensureHeadingAnchorIds, HeadingAnchors } from './headingAnchors';
+import { TrailingParagraph } from './trailingParagraph';
 import { HeadingMenu } from './HeadingMenu';
 import { SplitDropdown } from './SplitDropdown';
 import AnchorChips from './AnchorChips';
@@ -62,8 +63,15 @@ import styles from './M3RichTextEditor.module.scss';
 
 /** A saved, published version the editor can look back at (read-only). */
 export type EditorVersion = {
-    /** Stable id (e.g. the activation timestamp). */
+    /** Stable id (the AVV uses its activation timestamp, ADR-021 a surrogate id). */
     id: string;
+    /**
+     * When this version came into force (ISO). ADR-021 histories key a version by a
+     * surrogate id, so the date has to travel separately — feeding an id like `42`
+     * to `new Date()` would date the version to the year 2042. Absent for the AVV,
+     * whose id IS its activation timestamp.
+     */
+    publishedAt?: string;
     /** Human label shown in the version menu (e.g. a formatted date). */
     label: string;
     /** The version's HTML content. */
@@ -85,6 +93,14 @@ export type M3RichTextEditorProps = {
     versions?: EditorVersion[];
     /** Called with a version's content when the admin restores it as a new draft (copy). */
     onRestoreVersion?: (content: string) => void;
+    /**
+     * The version currently being looked at, or `null` for the editable draft.
+     * A card whose document has more fields than this editor's body — the DPP and
+     * its consent sentence (ADR-021 decision 4) — needs this to switch those fields
+     * to the same version, so a look-back never shows an archived policy next to
+     * today's consent wording.
+     */
+    onViewVersionChange?: (versionId: string | null) => void;
     onChange?: (html: string) => void;
     placeholder?: string;
     /**
@@ -110,11 +126,14 @@ export type M3RichTextEditorProps = {
     readOnly?: boolean;
     /**
      * Fluid sizing: the card fills its host column instead of the fixed
-     * 800x740 admin deck card, and it does NOT bring a scroll container of its
-     * own — the host surface scrolls (the bounded sheet on desktop, the page on
-     * a phone) and the chapter chips stay reachable by sticking to the bottom
-     * of the card. For hosts that are not the settings deck — e.g. the public
-     * tenant-onboarding DPA step and the DPA blocker (#594).
+     * 800x740 admin deck card. For hosts that are not the settings deck —
+     * e.g. the public tenant-onboarding DPA step and the DPA blocker (#594).
+     *
+     * Scrolling: in WRITE mode the card brings no scroll container of its own
+     * — the host surface scrolls and the chapter chips stick to the bottom of
+     * the card. In READ mode (owner demo 2026-08-19, reversing #594.3) the
+     * text scrolls inside its own bounded viewport and the chapter bar stands
+     * still below it, so picking a chapter never moves the page.
      */
     fluid?: boolean;
     /**
@@ -159,6 +178,12 @@ export type M3RichTextEditorProps = {
     editorSlot?: React.ReactNode;
     /** Rendered below the action footer (e.g. version history, modals). */
     belowSlot?: React.ReactNode;
+    /**
+     * Status shown in the persistent 68px footer of a read-only card. The row
+     * remains present when this is empty so the legal-card raster does not
+     * collapse while audit data is loading or unavailable.
+     */
+    readOnlyFooter?: React.ReactNode;
     /**
      * Anchor navigation (standard, ON by default): headings get persistent
      * `id`s, a horizontal chip row above the editor jumps to them, and
@@ -610,6 +635,7 @@ export const M3RichTextEditor = ({
     value = '',
     versions = [],
     onRestoreVersion,
+    onViewVersionChange,
     onChange,
     placeholder = 'Text eingeben …',
     placeholders,
@@ -629,6 +655,7 @@ export const M3RichTextEditor = ({
     aboveEditorSlot,
     editorSlot,
     belowSlot,
+    readOnlyFooter,
     enableAnchors = true,
     onPublish,
     onSaveDraft,
@@ -654,6 +681,13 @@ export const M3RichTextEditor = ({
         });
     // Which saved version is being viewed (null = the editable current draft).
     const [viewingVersionId, setViewingVersionId] = useState<string | null>(null);
+    // Single entry point for the switch, so every path that changes what the editor
+    // shows also tells the card — a version selected here but not there would put an
+    // archived body next to a live consent sentence.
+    const viewVersion = (versionId: string | null) => {
+        setViewingVersionId(versionId);
+        onViewVersionChange?.(versionId);
+    };
     const viewingVersion = versions.find((v) => v.id === viewingVersionId) ?? null;
     // What the editor surface shows: a looked-at version, else the live draft.
     const displayedContent = viewingVersion ? viewingVersion.content : value;
@@ -662,6 +696,13 @@ export const M3RichTextEditor = ({
     // Anchors only make sense for the built-in editor; an editorSlot brings
     // its own TiptapEditor with its own anchor row.
     const anchorsEnabled = enableAnchors && !editorSlot;
+    // Published before chapter navigation existed, many legal documents have
+    // headings without ids. Editing may persist ids on change; a reader must
+    // stay non-mutating, so stamp them only into the display copy.
+    const editorContent = useMemo(
+        () => (!editorEditable && anchorsEnabled ? ensureHeadingAnchorIds(displayedContent) : displayedContent),
+        [anchorsEnabled, displayedContent, editorEditable],
+    );
 
     // Image upload (WP-3b): editor + handler live behind refs so the drop/paste
     // handlers captured at editor creation always see the current instances.
@@ -683,9 +724,13 @@ export const M3RichTextEditor = ({
             Superscript,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             Placeholder.configure({ placeholder }),
+            // Word contract: empty space below a final heading belongs to a
+            // body paragraph — created on demand, never in the read-only
+            // reader (see trailingParagraph.ts).
+            TrailingParagraph,
             ...(anchorsEnabled ? [HeadingAnchors] : []),
         ],
-        content: value,
+        content: editorContent,
         editable: !readOnly,
         editorProps: {
             attributes: editorSurfaceAttributes(readOnly, title),
@@ -695,7 +740,9 @@ export const M3RichTextEditor = ({
                 }
             }),
         },
-        onUpdate: ({ editor: e }) => onChange?.(e.isEmpty ? '' : e.getHTML()),
+        onUpdate: ({ editor: e }) => {
+            if (e.isEditable) onChange?.(e.isEmpty ? '' : e.getHTML());
+        },
     });
 
     useEffect(() => {
@@ -711,7 +758,11 @@ export const M3RichTextEditor = ({
     useEffect(() => {
         if (viewingVersionId && !versions.some((v) => v.id === viewingVersionId)) {
             setViewingVersionId(null);
+            onViewVersionChange?.(null);
         }
+        // `onViewVersionChange` is intentionally not a dependency: an inline callback
+        // would re-run this reset on every render of the parent.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [versions, viewingVersionId]);
 
     useEffect(() => {
@@ -741,26 +792,32 @@ export const M3RichTextEditor = ({
 
     useEffect(() => {
         if (!editor) return;
-        const incoming = displayedContent || '';
+        const incoming = editorContent || '';
         const current = editor.isEmpty ? '' : editor.getHTML();
         if (incoming !== current && !(isEmptyHtml(incoming) && editor.isEmpty)) {
             editor.commands.setContent(incoming, false);
         }
-    }, [displayedContent, editor]);
+    }, [editorContent, editor]);
 
     if (!editor) return null;
 
     const html = () => (editorSlot || editor.isEmpty ? '' : editor.getHTML());
-    const onlineSinceDate = versions.length > 0 ? parseVersionDate(versions[versions.length - 1].id) : null;
+    // Prefer the explicit publication timestamp; fall back to the id for the AVV,
+    // where the id is that timestamp.
+    const versionDate = (version: EditorVersion) => parseVersionDate(version.publishedAt ?? version.id);
+    const onlineSinceDate = versions.length > 0 ? versionDate(versions[versions.length - 1]) : null;
     // Read mode (published view / version look-back): text without box, outline
     // or padding (Figma 1261-51137). Only the built-in editor is restyled — an
     // editorSlot owns its own surface.
     const readMode = !editorEditable && !editorSlot;
     // Whether the text viewport is a scroll container of its own. The fixed
-    // deck card and the fullscreen dialog cap the text and scroll it inside;
-    // the fluid public reader hands scrolling to its host so the screen has
-    // exactly one scroller (#572 criterion, #594.3).
-    const scrollsInternally = !fluid || maximized;
+    // deck card and the fullscreen dialog cap the text and scroll it inside —
+    // and since the owner demo of 2026-08-19 (reversing #594.3 for reading)
+    // the fluid READ card does too: the chapter bar must stand still while
+    // the text moves in its own box, and a chip click must never re-scroll
+    // the host page. Only the fluid WRITE surface (e.g. the Erstantwort
+    // editor) still grows with its content and lets the host scroll.
+    const scrollsInternally = !fluid || maximized || readMode;
 
     // Maximize lives as the first toolbar control (Figma 1261-48667); in
     // fullscreen it becomes the red round exit button (Figma 1276-72139).
@@ -810,7 +867,13 @@ export const M3RichTextEditor = ({
                 </div>
             )}
 
-            {helpSlot}
+            {/* `helpSlot` is part of the SAME header block `hideHeader` promises
+                to drop (Figma 1227-17235 places it directly under the icon +
+                title row it is documented against) — a host that hides the
+                header but still passes a help slot must not have it reappear
+                on its own (owner report 2026-08-18, H3/I2: the info line is
+                explicitly part of "alles innerhalb blauer area"). */}
+            {!hideHeader && helpSlot}
 
             {!hideHeader && <hr className={`${styles.divider} ${styles.headerDivider}`} />}
 
@@ -842,13 +905,13 @@ export const M3RichTextEditor = ({
                                 className={styles.outlineBtn}
                                 onClick={() => {
                                     onRestoreVersion(viewingVersion.content);
-                                    setViewingVersionId(null);
+                                    viewVersion(null);
                                 }}
                             >
                                 {t('legal.m3Editor.restoreVersion')}
                             </button>
                         )}
-                        <button type="button" className={styles.outlineBtn} onClick={() => setViewingVersionId(null)}>
+                        <button type="button" className={styles.outlineBtn} onClick={() => viewVersion(null)}>
                             {t('legal.m3Editor.backToDraft')}
                         </button>
                     </div>
@@ -867,9 +930,10 @@ export const M3RichTextEditor = ({
                                 landmark. It only becomes a tab stop when it
                                 actually scrolls — a keyboard user must be able
                                 to scroll it without a pointer (axe:
-                                scrollable-region-focusable), but the fluid
-                                reader delegates scrolling to its host (#594.3)
-                                and an extra tab stop there would be noise. */}
+                                scrollable-region-focusable). Since the owner
+                                demo of 2026-08-19 every READ surface scrolls
+                                internally; only the fluid WRITE surface still
+                                delegates scrolling to its host. */}
                             {/* `lang` on the text itself: long German compounds
                                 ("Auftragsverarbeitungsvertrag") otherwise break
                                 mid-word on a phone, because `hyphens: auto` has
@@ -958,7 +1022,7 @@ export const M3RichTextEditor = ({
                     {topicSlot}
                     {showVersionControl && (
                         <SplitDropdown
-                            icon={<Schedule />}
+                            icon={<VersionHistoryIcon />}
                             title={t('legal.m3Editor.versionHistory')}
                             label={
                                 viewingVersion
@@ -992,9 +1056,8 @@ export const M3RichTextEditor = ({
                                                     ]
                                                   : []),
                                               ...versions.map((v, index) => {
-                                                  const from = parseVersionDate(v.id);
-                                                  const until =
-                                                      index > 0 ? parseVersionDate(versions[index - 1].id) : null;
+                                                  const from = versionDate(v);
+                                                  const until = index > 0 ? versionDate(versions[index - 1]) : null;
                                                   let range = v.label;
                                                   if (from && until) {
                                                       range = t('legal.m3Editor.versionRangePublished', {
@@ -1026,8 +1089,21 @@ export const M3RichTextEditor = ({
                                                   };
                                               }),
                                           ]
-                                        : [{ key: 'latest', label: t('legal.m3Editor.versionLatest') }],
-                                onClick: ({ key }) => setViewingVersionId(key === 'current' ? null : key),
+                                        : // Never published: say so explicitly instead of
+                                          // offering a menu that looks broken (#768).
+                                          [
+                                              {
+                                                  key: 'empty',
+                                                  disabled: true,
+                                                  label: (
+                                                      <span className={styles.versionMenuHeader}>
+                                                          {t('legal.m3Editor.versionEmpty')}
+                                                      </span>
+                                                  ),
+                                              },
+                                              { key: 'latest', label: t('legal.m3Editor.versionLatest') },
+                                          ],
+                                onClick: ({ key }) => viewVersion(key === 'current' ? null : key),
                             }}
                         />
                     )}
@@ -1055,14 +1131,28 @@ export const M3RichTextEditor = ({
                             <button
                                 type="button"
                                 className={`${styles.textBtn} ${styles.draft}`}
-                                disabled={imageUpload.uploading}
-                                aria-busy={imageUpload.uploading}
+                                // `publishing` means "a submit is in flight" for every consumer
+                                // of this shell (see LegalText/DataProcessingAgreement*/Dpia*),
+                                // not specifically "the publish button was clicked" — so it must
+                                // also block a second, overlapping draft save while one is
+                                // already pending, the same way it already blocks Publish.
+                                disabled={publishing || imageUpload.uploading}
+                                aria-busy={publishing || imageUpload.uploading}
                                 onClick={() => onSaveDraft(html())}
                             >
                                 <EditIcon />
                                 <span>{t('legal.m3Editor.saveDraft')}</span>
                             </button>
                         )}
+                    </div>
+                </>
+            )}
+
+            {readOnly && (
+                <>
+                    <hr className={styles.divider} />
+                    <div className={styles.readOnlyFooter} data-testid="m3-readonly-footer">
+                        {readOnlyFooter}
                     </div>
                 </>
             )}

@@ -40,12 +40,23 @@
  * The row now wraps onto as many lines as it needs; `.scroller` stays as the
  * last-resort escape for a single control wider than its container.
  */
+
 .row {
     display: flex;
-    width: 100%;
-    min-width: 0;
-    align-items: center;
-    flex-wrap: wrap;
+    width: max-content;
+    min-width: 100%;
+
+    /* A2 — „Muss eine höhe sein". Controls differ in TOTAL height because some
+       carry a supporting-text line (the Träger-ID group is 56 + 4 + 16 = 76px).
+       Centring them made their 56px field boxes sit on three different
+       baselines. Aligning to the start puts every field box on the same line
+       and lets the supporting text hang below it, which is the line the owner
+       drew across the toolbar. */
+    align-items: flex-start;
+
+    /* A1 — „Müssen wieder horizontal scroll row werden". See the contract test
+       next to this file for the measurement that justifies the reversal. */
+    flex-wrap: nowrap;
     padding: 4px 0 8px;
     gap: 8px;
 }
@@ -59,7 +70,7 @@
     flex: 0 0 auto;
     align-items: center;
     padding: 4px;
-    background: var(--admin-search-surface, var(--m3-surface, #fcf9f9));
+    background: var(--admin-search-surface, var(--m3-surface-container-high, #eae7e8));
     border-radius: 28px;
     transition: width 240ms cubic-bezier(0.2, 0, 0, 1);
 }
@@ -70,6 +81,7 @@
  * collapsed (4px padding + two 40px icon slots), a lowest-tier surface so it
  * reads as raised against the bar, and M3's pressed-in inner shadow.
  */
+
 .pillScroller {
     width: 100%;
     min-width: 0;
@@ -78,6 +90,7 @@
 
 /* The bottom bar is one control plus a fixed 48px overflow slot inside a
    fixed-height bar — wrapping there would push "Mehr" onto a second line. */
+
 .pillRow {
     width: 100%;
     min-width: 0;
@@ -103,6 +116,7 @@
  * slot for the overflow ("Mehr") button, so however long the search gets, that
  * one icon stays reachable and the search does not have to close to get to it.
  */
+
 .pillSearchExpanded {
     width: 100%;
     min-width: 0;
@@ -126,7 +140,7 @@
 
     &:hover,
     &:focus {
-        background: var(--admin-search-hover-surface, var(--m3-surface-container, #f0edee));
+        background: var(--admin-search-hover-surface, var(--m3-surface-container-highest, #e4e2e2));
     }
 
     &:focus-visible {

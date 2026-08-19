@@ -20,6 +20,8 @@ export interface TemplateSplitButtonProps {
     onCreateFromTemplate?: (id: number | string) => void;
     /** Main-segment press (e.g. open a manage dialog). Optional in the pure picker. */
     onMainClick?: () => void;
+    /** Read-only surfaces keep the chooser visible but inert. */
+    disabled?: boolean;
 }
 
 const SELECT_PREFIX = 'select:';
@@ -38,6 +40,7 @@ export const TemplateSplitButton = ({
     onSelectTemplate,
     onCreateFromTemplate,
     onMainClick,
+    disabled = false,
 }: TemplateSplitButtonProps) => {
     const { t } = useTranslation();
     const active = templates.find((template) => template.id === activeTemplateId);
@@ -106,6 +109,7 @@ export const TemplateSplitButton = ({
 
     return (
         <SplitButton
+            disabled={disabled}
             icon={<DescriptionOutlinedIcon />}
             label={active?.name ?? t('placeholderTemplate.template.none', 'Vorlage wählen')}
             menu={menu}
@@ -114,6 +118,10 @@ export const TemplateSplitButton = ({
             // fill was the sheet's Elevated colourway — a state claim the resting
             // picker has no business making. It lifts only while its menu is open.
             variant="outlined"
+            // Without a main action the segment is inert — take it out of the
+            // tab order instead of offering a button that does nothing (#727
+            // post-merge review). The chevron menu stays fully interactive.
+            mainDisabled={!onMainClick}
             onClick={onMainClick}
         />
     );

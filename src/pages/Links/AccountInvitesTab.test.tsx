@@ -43,6 +43,11 @@ vi.mock('./EmailTemplatesDialog', () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
+    previewInviteEmailTemplateContent: vi.fn().mockResolvedValue({
+        subject: 'preview',
+        html: '<html><body>preview</body></html>',
+        plainText: 'preview',
+    }),
     listAccountInvites: vi.fn(),
     createAccountInvite: vi.fn(),
     resendAccountInvite: vi.fn(),
@@ -66,6 +71,10 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
     resendAccountInvite: mocks.resendAccountInvite,
     revokeAccountInvite: mocks.revokeAccountInvite,
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
+    // E2: the editor's preview is rendered by the backend. Without this the real
+    // fetch would run under jsdom — which is a load-dependent hang, not an
+    // honest failure. (Same omission #751 had; see the preview mock there.)
+    previewInviteEmailTemplateContent: mocks.previewInviteEmailTemplateContent,
 }));
 
 vi.mock('../../api/tenant/searchTenantData', () => ({
@@ -191,7 +200,7 @@ describe('TenantInvitesTab Träger-ID field', () => {
 
         const field = await screen.findByLabelText('Träger-ID');
         await waitFor(() => expect(field).toHaveValue('Auto'));
-        expect(screen.getByText('Die nächste freie ID wird automatisch vergeben.')).toBeInTheDocument();
+        expect(screen.queryByText('Die nächste freie ID wird automatisch vergeben.')).not.toBeInTheDocument();
     });
 
     it('shows the dedicated collision message when the backend answers 409', async () => {

@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EmailKitPreview } from './EmailKitPreview';
 import {
@@ -6,7 +5,8 @@ import {
     type PlaceholderTemplateDefinition,
     type PlaceholderTemplateFieldConfig,
 } from './PlaceholderTemplateEditor';
-import { fillPlaceholders, INVITE_EMAIL_TOKENS, sampleValues } from './placeholderTokens';
+import { INVITE_EMAIL_TOKENS, type PlaceholderTokenDef } from './placeholderTokens';
+import { type InviteEmailTemplateKind } from '../../api/accountInvites/accountInvites';
 
 export interface InviteEmailTemplateValues extends Record<string, string> {
     subject: string;
@@ -20,14 +20,36 @@ export interface InviteEmailTemplateEditorProps {
     activeTemplateId?: number | string;
     onSelectTemplate: (id: number | string) => void;
     onCreateFromTemplate?: (id: number | string) => void;
+    /** Main-segment press of the template split button (e.g. show the template manager). */
+    onManageTemplates?: () => void;
+    /**
+     * Token set offered by the pickers.
+     * Defaults to the shared invite set; pass `inviteEmailTokensForKind(kind)`
+     * for the per-kind wiring (#746).
+     */
+    tokens?: PlaceholderTokenDef[];
+    /**
+     * BCP-47 tag of the template being edited; forwarded to the preview so an
+     * English template does not render German boilerplate (#746 review).
+     */
+    language?: string;
+    /** Template kind handed to the renderer so it picks the matching samples. */
+    kind?: InviteEmailTemplateKind;
 }
 
 /**
  * Variant 1 — invite e-mail template: subject + body with the exact token set
- * the UserService `AccountInviteService` substitutes, previewed live in the
- * NEW transactional e-mail design system ({@link EmailKitPreview}, ported from
- * ORISO-Frontend `src/emails/`) with synthetic sample values. Unknown tokens
- * stay visible as highlighted `{{key}}` chips.
+ * the UserService `AccountInviteService` substitutes, previewed live through
+ * {@link EmailKitPreview}.
+ *
+ * The authored text is handed to the preview **raw**, tokens unresolved. The
+ * editor deliberately does not substitute sample values itself any more: the
+ * backend renderer substitutes for the preview *and* for the mail it sends, so
+ * there is exactly one substitution implementation and it cannot drift. Doing it
+ * here as well would put the author's view and the recipient's mail back on two
+ * different code paths — a subtler version of the very defect E2 describes.
+ *
+ * `tokens` therefore only drives the PICKERS now, not the preview.
  */
 export const InviteEmailTemplateEditor = ({
     values,
@@ -36,12 +58,16 @@ export const InviteEmailTemplateEditor = ({
     activeTemplateId,
     onSelectTemplate,
     onCreateFromTemplate,
+    onManageTemplates,
+    tokens = INVITE_EMAIL_TOKENS,
+    language,
+    kind,
 }: InviteEmailTemplateEditorProps) => {
     const { t } = useTranslation();
-    const samples = useMemo(() => sampleValues(INVITE_EMAIL_TOKENS), []);
 
     const fields: PlaceholderTemplateFieldConfig<InviteEmailTemplateValues>[] = [
-        { name: 'subject', label: t('placeholderTemplate.invite.subject', 'Betreff') },
+        // D1 — no token picker on the subject line.
+        { name: 'subject', label: t('placeholderTemplate.invite.subject', 'Betreff'), tokenPicker: false },
         { name: 'body', label: t('placeholderTemplate.invite.body', 'Inhalt'), multiline: true, rows: 8 },
     ];
 
@@ -52,16 +78,19 @@ export const InviteEmailTemplateEditor = ({
             heading={t('placeholderTemplate.invite.heading', 'Einladungs-E-Mail')}
             preview={
                 <EmailKitPreview
-                    body={fillPlaceholders(values.body, samples)}
+                    body={values.body}
+                    kind={kind}
+                    language={language}
                     previewLabel={t('placeholderTemplate.invite.previewLabel', 'E-Mail-Vorschau')}
-                    subject={fillPlaceholders(values.subject, samples)}
+                    subject={values.subject}
                 />
             }
             templates={templates}
-            tokens={INVITE_EMAIL_TOKENS}
+            tokens={tokens}
             values={values}
             onChange={onChange}
             onCreateFromTemplate={onCreateFromTemplate}
+            onManageTemplates={onManageTemplates}
             onSelectTemplate={onSelectTemplate}
         />
     );

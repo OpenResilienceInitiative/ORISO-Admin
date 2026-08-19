@@ -29,6 +29,15 @@ export interface ModalProps {
     children?: ReactNode;
     onConfirm?: () => void;
     onClose?: () => void;
+    /**
+     * Dismiss gestures (X button, Escape, mask click) when they must behave
+     * differently from the Cancel text button — e.g. a sub-view whose Cancel
+     * goes back one step while X closes the whole dialog. Defaults to
+     * `onClose`, so existing dialogs keep one close path.
+     */
+    onDismiss?: () => void;
+    /** Id of an element describing the confirm button (e.g. why it is disabled). */
+    confirmDescribedBy?: string;
     /** Custom footer content; replaces the standard text-button actions. */
     footer?: ReactNode;
     width?: number | string;
@@ -40,6 +49,8 @@ export interface ModalProps {
     confirmDisabled?: boolean;
     /** Show the top-right close (X) affordance. Defaults to true. */
     closable?: boolean;
+    /** Extra class on the dialog root, for per-dialog sheet rules (e.g. a viewport bound). */
+    className?: string;
 }
 
 /**
@@ -61,6 +72,8 @@ export const Modal = ({
     children,
     onConfirm,
     onClose,
+    onDismiss,
+    confirmDescribedBy,
     contentKey,
     contentKeyOptions,
     footer,
@@ -69,6 +82,7 @@ export const Modal = ({
     showDivider = true,
     confirmDisabled = false,
     closable = true,
+    className,
 }: ModalProps) => {
     const { t } = useTranslation();
 
@@ -84,6 +98,7 @@ export const Modal = ({
             {okLabelKey && (
                 <button
                     type="button"
+                    aria-describedby={confirmDescribedBy}
                     className={classNames(styles.actionButton, styles.actionButtonPrimary)}
                     disabled={confirmDisabled}
                     onClick={onConfirm}
@@ -98,7 +113,7 @@ export const Modal = ({
 
     return (
         <AntModal
-            className={styles.modal}
+            className={classNames(styles.modal, className)}
             styles={{
                 mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
             }}
@@ -125,7 +140,7 @@ export const Modal = ({
             maskClosable
             keyboard
             closable={closable}
-            onCancel={onClose}
+            onCancel={onDismiss ?? onClose}
             footer={
                 resolvedFooter ? (
                     <>

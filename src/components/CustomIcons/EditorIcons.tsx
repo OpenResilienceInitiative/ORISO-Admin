@@ -8,6 +8,7 @@ import { ReactComponent as CrossReference } from '../../resources/img/svg/cross-
 import { ReactComponent as EditOutline } from '../../resources/img/svg/edit.svg';
 import { ReactComponent as EditFilled } from '../../resources/img/svg/edit-filled.svg';
 import { ReactComponent as KeyboardArrowDown } from '../../resources/img/svg/keyboard-arrow-down.svg';
+import { ReactComponent as VersionHistory } from '../../resources/img/svg/clock-arrow-down.svg';
 
 /* eslint-disable react/jsx-props-no-spreading */
 
@@ -41,4 +42,8 @@ export const CrossReferenceIcon = (props: EditorIconProps) => (
 );
 export const KeyboardArrowDownIcon = (props: EditorIconProps) => (
     <Icon component={KeyboardArrowDown} {...decorative} {...props} />
+);
+/** Version-history clock with downward arrow (Figma Admin.ORISO 1:53273). */
+export const VersionHistoryIcon = (props: EditorIconProps) => (
+    <Icon component={VersionHistory} {...decorative} {...props} />
 );

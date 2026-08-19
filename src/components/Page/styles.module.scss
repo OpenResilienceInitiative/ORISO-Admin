@@ -22,13 +22,10 @@
         z-index: 900;
         margin: 0 calc(-1 * var(--admin-page-edge));
         top: 0;
-    }
 
-    // Bottom padding is the header's own 24px plus the 12px the content raster
-    // sits below it. Between the two the Figma header carries a 92px search row
-    // that this app does not have yet.
-    .back,
-    .pageTitleContainer {
+        // Bottom padding is the header's own 24px plus the 12px the content raster
+        // sits below it. Between the two the Figma header carries a 92px search row
+        // that this app does not have yet.
         padding: var(--admin-header-pad, 24px) var(--admin-page-edge) 36px var(--admin-page-gutter, 60px);
     }
 }

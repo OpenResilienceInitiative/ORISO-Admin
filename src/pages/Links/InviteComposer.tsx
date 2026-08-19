@@ -16,9 +16,9 @@ import { IdAllocationField, useIdAllocation } from '../../components/IdAllocatio
 import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { M3NumberField } from '../../components/M3NumberField';
+import { TemplateSplitButton } from '../../components/PlaceholderTemplate';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
-import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as FileSaveIcon } from '../../resources/img/svg/oriso/file_save_24px.svg';
 import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
 import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
@@ -76,6 +76,18 @@ export interface InviteComposerProps {
     /** Open the EmailTemplatesDialog in the requested view (`list` is the picker). */
     onManageTemplates: (intent: 'create' | 'delete' | 'list') => void;
     /**
+     * #746: the template pill's chevron menu switches the active template
+     * directly (module split-button semantics); the selection stays lifted in
+     * the tab, same as picking in the dialog.
+     */
+    onSelectTemplate?: (templateId: number) => void;
+    /**
+     * "Neu aus „X"" in the pill menu: start a new template prefilled from the
+     * given one (opens the dialog's create view with that source). Omit to
+     * hide the menu's create group.
+     */
+    onCreateFromTemplate?: (templateId: number) => void;
+    /**
      * Enables the "⋮" more-menu with the "CSV-Datei importieren" entry (#315).
      * Called with the client-side parse result and the send mode captured at
      * import time — the file itself is never uploaded anywhere.
@@ -105,6 +117,13 @@ export interface InviteComposerProps {
      */
     onDeleteSelected?: () => void;
     searchPlaceholder?: string;
+    /**
+     * Toolbar search (A4/#376). Controlled by the tab, which owns the invite
+     * list the query filters — the composer only renders the control. Without
+     * both props the search pill stays uncontrolled and, as before, inert.
+     */
+    searchQuery?: string;
+    onSearchQueryChange?: (query: string) => void;
     className?: string;
 }
 
@@ -156,12 +175,16 @@ export const InviteComposer = ({
     persistKey,
     onSubmit,
     onManageTemplates,
+    onSelectTemplate,
+    onCreateFromTemplate,
     onCsvParsed,
     selectionCount = 0,
     onBulkSend,
     onClearSelection,
     onDeleteSelected,
     searchPlaceholder,
+    searchQuery,
+    onSearchQueryChange,
     className,
 }: InviteComposerProps) => {
     const { t } = useTranslation();
@@ -418,7 +441,16 @@ export const InviteComposer = ({
 
     return (
         <div className={classNames(styles.composer, className)}>
-            <GlobalSearchBar leading={moreButton} searchPlaceholder={searchPlaceholder}>
+            <GlobalSearchBar
+                leading={moreButton}
+                searchPlaceholder={searchPlaceholder}
+                // `onSearch` (Enter / magnifier) resolves to the same handler as
+                // `onSearchChange`: the list filters as you type, so submitting
+                // is a no-op rather than a second, different search.
+                value={onSearchQueryChange ? searchQuery ?? '' : undefined}
+                onSearch={onSearchQueryChange}
+                onSearchChange={onSearchQueryChange}
+            >
                 <FloatingLabelInput
                     className={styles.emailField}
                     error={showEmailError}
@@ -442,7 +474,7 @@ export const InviteComposer = ({
                     onChange={(event) => setFirstName(event.target.value)}
                 />
                 <FloatingLabelInput
-                    className={styles.nameField}
+                    className={classNames(styles.nameField, styles.lastNameField)}
                     label={t('links.composer.lastName', 'Name')}
                     name="lastName"
                     value={lastName}
@@ -467,15 +499,17 @@ export const InviteComposer = ({
                         label={t('links.accountInvites.agencyId', 'Beratungsstellen-ID')}
                     />
                 )}
-                <SplitButton
-                    icon={<MailFilledIcon />}
-                    label={selectedTemplate?.name ?? t('links.composer.templatePlaceholder', 'E-Mail-Vorlage')}
-                    // Outlined at rest (#741): the old `tonal` was the light
-                    // Elevated colourway, which claimed a raised state the resting
-                    // picker is not in. `tonal` now means the M3 secondary
-                    // container per the spec sheet.
-                    variant="outlined"
-                    onClick={() => onManageTemplates('list')}
+                {/* #746: the module's template split button — main segment opens the
+                    manage/pick dialog (as before), the chevron menu now switches the
+                    active template in place, check-marked like in the editor. */}
+                <TemplateSplitButton
+                    activeTemplateId={selectedTemplate?.id}
+                    templates={activeTemplates}
+                    onCreateFromTemplate={
+                        onCreateFromTemplate && ((id) => onCreateFromTemplate(typeof id === 'number' ? id : Number(id)))
+                    }
+                    onMainClick={() => onManageTemplates('list')}
+                    onSelectTemplate={(id) => onSelectTemplate?.(typeof id === 'number' ? id : Number(id))}
                 />
                 {/* Filled primary is reserved for the selected item / main CTA; every
                 other resting state is tonal M3 secondary (owner call). The icon
@@ -486,14 +520,26 @@ export const InviteComposer = ({
                     label={bulkMode ? String(selectionCount) : singleSendLabel}
                     mainDisabled={!sendReady || submitting}
                     mainDescribedBy={sendBlockedReason ? sendHintId : undefined}
-                    menu={sendMenu}
+                    // The send-mode menu switches "Direkt Versenden" vs "Empfänger
+                    // nur anlegen", which only ever applies to the single-create
+                    // flow (see handleSend). In bulk mode it changed nothing and
+                    // only put a second, inert chevron next to the collapse one.
+                    menu={bulkMode ? undefined : sendMenu}
                     menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
                     title={bulkMode ? bulkSendLabel : undefined}
-                    // Filled primary is the single-send CTA. The selection counter stays
-                    // tonal secondary even when it is ready to fire (Figma 1165:16407
-                    // selection variant): it is a state display with actions hanging off
-                    // it, not the page's call to action.
-                    variant={!bulkMode && sendReady ? 'primary' : 'secondary'}
+                    // Filled primary is the single-send CTA; the selection counter
+                    // stays tonal secondary even when ready (Figma 1165:16407
+                    // selection variant) — a state display with actions hanging off
+                    // it, not the page's call to action. What BOTH share: a filled
+                    // shape is a promise that pressing does something. The tonal
+                    // disabled rule keeps `opacity: 1`, so a dead tonal counter was
+                    // pixel-identical to a live one ("Number counter Button
+                    // funktioniert hier nicht"). Not-ready therefore rests
+                    // `outlined` — colour arrives with the ability to fire.
+                    variant={(() => {
+                        if (!sendReady) return 'outlined';
+                        return bulkMode ? 'secondary' : 'primary';
+                    })()}
                     collapseLabel={t('links.bulk.clearSelection', 'Auswahl aufheben')}
                     onClick={bulkMode ? onBulkSend : handleSend}
                     onCollapse={bulkMode ? onClearSelection : undefined}

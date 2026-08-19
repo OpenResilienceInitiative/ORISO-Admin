@@ -33,10 +33,20 @@ vi.mock('../../components/ListingTable', () => ({
     listingTableStyles: new Proxy({}, { get: () => undefined }),
 }));
 
-// The dialog itself has its own test file; here only the opened view matters.
+// The dialog itself has its own test file; here only the opened view (and its
+// create-from source, #746) matters.
 vi.mock('./EmailTemplatesDialog', () => ({
-    EmailTemplatesDialog: ({ initialView }: { initialView?: string }) => (
-        <div data-testid="templates-dialog">{initialView}</div>
+    EmailTemplatesDialog: ({
+        initialView,
+        initialTemplateId,
+    }: {
+        initialView?: string;
+        initialTemplateId?: number;
+    }) => (
+        <div data-testid="templates-dialog">
+            {initialView}
+            {initialTemplateId != null ? `:${initialTemplateId}` : ''}
+        </div>
     ),
 }));
 
@@ -188,7 +198,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
         const idInput = await screen.findByRole('textbox', { name: 'Träger-ID' });
         expect(idInput).toHaveValue('Auto');
-        expect(screen.getByText('Die nächste freie ID wird automatisch vergeben.')).toBeInTheDocument();
+        expect(screen.queryByText('Die nächste freie ID wird automatisch vergeben.')).not.toBeInTheDocument();
 
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
         const sendButton = await findSendButton('Direkt Versenden');
@@ -233,8 +243,9 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
         await waitFor(() => expect(screen.getByRole('textbox', { name: 'Träger-ID' })).toHaveValue('21'));
         expect(mocks.tenantIdAllocationClient.nextFreeId).toHaveBeenCalledWith({ direction: 'up' });
-        // The tab-level `t` mock does not interpolate — the raw fallback is fine here.
-        expect(await screen.findByText('ID {{id}} ist frei.')).toBeInTheDocument();
+        // A free id is the expected case and says nothing an admin has to act on,
+        // so it no longer produces a supporting line at all.
+        expect(screen.queryByText('ID {{id}} ist frei.')).not.toBeInTheDocument();
 
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
         const sendButton = await findSendButton('Direkt Versenden');
@@ -299,5 +310,48 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         await user.click(templatePill);
 
         expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('list');
+    });
+
+    /*
+     * #746: the template pill is the module's TemplateSplitButton — the chevron
+     * menu switches the active template directly (marked with the check), the
+     * main segment still opens the manage/pick dialog.
+     */
+    it('selects the active template from the pill menu (module split-button semantics, #746)', async () => {
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE, { ...TEMPLATE, id: 8, name: 'Zweite Vorlage' }]);
+        mocks.createAccountInvite.mockResolvedValue({ id: 99 });
+
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        // Two active templates: nothing preselected, the pill rests on its fallback label.
+        expect(await screen.findByRole('button', { name: /Vorlage wählen/ })).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Zweite Vorlage$/ }));
+
+        // Selection is lifted to the tab and re-labels the pill…
+        expect(await screen.findByRole('button', { name: /Zweite Vorlage/ })).toBeInTheDocument();
+
+        // …and the send call uses exactly that template.
+        await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = await findSendButton('Direkt Versenden');
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.createAccountInvite.mock.calls[0][0].templateId).toBe(8);
+    });
+
+    it('opens the create view prefilled from the pill menu\'s "Neu aus" entry (#746 review)', async () => {
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        await screen.findByRole('button', { name: /Standard/ });
+        await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Standard“/ }));
+
+        // The dialog opens straight in create mode with template 7 as the source.
+        expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('create:7');
     });
 });

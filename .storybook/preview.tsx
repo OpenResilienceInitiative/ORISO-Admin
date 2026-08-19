@@ -9,10 +9,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider } from 'antd';
 import de_DE from 'antd/es/locale/de_DE';
 import { initialize, mswLoader } from 'msw-storybook-addon';
-// Same patch src/index.tsx installs: without it antd v5's static notification /
-// message / Modal APIs silently no-op under React 19, so stories that confirm an
-// action via notification.success would render nothing and look broken.
-import '@ant-design/v5-patch-for-react-19';
 import { buildAdminAntdTheme } from '../src/theme/antdM3Theme';
 import { AdminEmpty } from '../src/components/AdminEmpty';
 
@@ -33,6 +29,20 @@ initialize({
     onUnhandledRequest: 'bypass',
     serviceWorker: { url: new URL('mockServiceWorker.js', window.location.href).href },
 });
+
+// Registration can fail wholesale in embedded/sandboxed browsers that refuse
+// service workers. Stories that declare no `parameters.msw.handlers` never
+// talk to the worker, so a failed registration must degrade to "no mocking"
+// instead of replacing EVERY story with the MSW error page.
+const tolerantMswLoader: typeof mswLoader = async (context) => {
+    try {
+        return await mswLoader(context);
+    } catch (error) {
+        if (context.parameters?.msw) throw error;
+        console.warn('[storybook] MSW worker unavailable, story runs unmocked:', error);
+        return {};
+    }
+};
 
 const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -68,7 +78,7 @@ const preview: Preview = {
             storySort: { order: ['Atoms', 'Molecules', 'Organisms', '*'] },
         },
     },
-    loaders: [mswLoader],
+    loaders: [tolerantMswLoader],
     decorators: [
         (Story) => (
             <QueryClientProvider client={queryClient}>

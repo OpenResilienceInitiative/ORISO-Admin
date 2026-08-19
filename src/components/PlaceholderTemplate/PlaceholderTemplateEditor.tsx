@@ -14,6 +14,11 @@ export interface PlaceholderTemplateFieldConfig<V extends Record<string, string>
     label: string;
     multiline?: boolean;
     rows?: number;
+    /**
+     * Whether this field carries a token picker. Defaults to `true`. A subject
+     * line is one short string — a picker hanging off it is noise (D1).
+     */
+    tokenPicker?: boolean;
 }
 
 export interface PlaceholderTemplateEditorProps<V extends Record<string, string>> {
@@ -29,8 +34,20 @@ export interface PlaceholderTemplateEditorProps<V extends Record<string, string>
     activeTemplateId?: number | string;
     onSelectTemplate: (id: number | string) => void;
     onCreateFromTemplate?: (id: number | string) => void;
+    /**
+     * Main-segment press of the template split button (e.g. open the template
+     * manager). Without it the segment is a pure label (and leaves the tab
+     * order, see TemplateSplitButton).
+     */
+    onManageTemplates?: () => void;
     /** Live preview column, computed by the variant from the current values. */
     preview: ReactNode;
+    /**
+     * Read-only surface (no edit permission, or looking at an archived version):
+     * fields, token pickers and the template chooser go inert. They stay visible —
+     * hiding them would also hide what this level offers.
+     */
+    readOnly?: boolean;
 }
 
 /**
@@ -50,15 +67,19 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
     activeTemplateId,
     onSelectTemplate,
     onCreateFromTemplate,
+    onManageTemplates,
     preview,
+    readOnly = false,
 }: PlaceholderTemplateEditorProps<V>) => (
     <section aria-label={heading} className={styles.editor}>
         <header className={styles.header}>
             <h3 className={styles.heading}>{heading}</h3>
             <TemplateSplitButton
                 activeTemplateId={activeTemplateId}
+                disabled={readOnly}
                 templates={templates}
                 onCreateFromTemplate={onCreateFromTemplate}
+                onMainClick={onManageTemplates}
                 onSelectTemplate={onSelectTemplate}
             />
         </header>
@@ -67,10 +88,11 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
                 {fields.map((field) => (
                     <PlaceholderTextField
                         key={field.name}
+                        disabled={readOnly}
                         label={field.label}
                         multiline={field.multiline}
                         rows={field.rows}
-                        tokens={tokens}
+                        tokens={field.tokenPicker === false ? undefined : tokens}
                         value={values[field.name] ?? ''}
                         onChange={(next) => onChange({ ...values, [field.name]: next })}
                     />
