@@ -125,6 +125,7 @@
     "dpaForward.dialog.sendFailed": "Die E-Mail konnte nicht versendet werden. Bitte versuchen Sie es erneut.",
     "dpaForward.dialog.errorUnknownToken": "Dieser Einladungslink ist nicht mehr gültig. Bitte fordern Sie beim Plattformbetreiber einen neuen an.",
     "dpaForward.dialog.errorNoDpaPublished": "Der Plattformbetreiber hat noch keinen Auftragsverarbeitungsvertrag veröffentlicht. Es gibt derzeit nichts zum Weiterleiten — bitte wenden Sie sich an den Plattformbetreiber.",
+    "dpaForward.dialog.errorTooManyLinks": "Für diese Registrierung sind bereits zu viele offene Signaturlinks vorhanden. Bitte warten Sie, bis einer davon verwendet wurde oder abgelaufen ist, und versuchen Sie es dann erneut.",
     "dpaForward.dialog.mailFailedLinkReady": "Die E-Mail konnte nicht versendet werden. Der Signaturlink oben wurde trotzdem erstellt und ist gültig — teilen Sie ihn einfach direkt.",
     "dpaForward.dialog.previewLabel": "Vorschau der E-Mail",
     "dpaForward.dialog.confirm": "Weiterleitung abschließen",

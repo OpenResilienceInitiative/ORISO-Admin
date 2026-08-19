@@ -130,6 +130,7 @@
     "dpaForward.dialog.sendFailed": "The e-mail could not be sent. Please try again.",
     "dpaForward.dialog.errorUnknownToken": "This invitation link is no longer valid. Please request a new one from the platform operator.",
     "dpaForward.dialog.errorNoDpaPublished": "The platform operator has not published a data processing agreement yet. There is nothing to forward at the moment — please contact the platform operator.",
+    "dpaForward.dialog.errorTooManyLinks": "This registration already has too many outstanding signing links. Please wait until one of them has been used or has expired, then try again.",
     "dpaForward.dialog.mailFailedLinkReady": "The e-mail could not be sent. The signing link above was created anyway and is valid — simply share it directly.",
     "dpaForward.dialog.previewLabel": "Preview of the e-mail",
     "dpaForward.dialog.confirm": "Complete forwarding",
