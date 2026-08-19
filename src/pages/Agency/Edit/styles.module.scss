@@ -4,14 +4,26 @@
     --card-deck-gap: 32px;
 }
 
-// #862: M3 document editors (DPA, imprint, privacy) need the same 800px desktop
-// deck width as tenant LegalSettings (.documentEditorItem). Page .cardDeckItem
-// stretched them via grow and left them at the default ~392px compact card —
-// desktop looked like mobile. Keep these items fixed to the token width.
-@media (min-width: 1024px) {
+// #605 / JOB1: the M3 document editor is an 800px panel card on desktop
+// (Figma 1261-48667), the same width the platform admin sees on its
+// "Rechtliches" deck. All three legal cards — DPA, imprint and privacy —
+// stay side by side; the deck's own horizontal scroller is what makes that
+// fit, so the width never reaches the page.
+//
+// Deliberately no `--card-deck-item-min-width` here (the tenant deck sets one
+// and pays for it with a page-level horizontal scroll at tablet widths): the
+// deck's default `min(320px, …)` floor already keeps the card readable, and
+// the max-width below is capped by the same viewport raster CardDeck uses, so
+// a card can never be wider than the page area it sits in.
+//
+// Also do not combine with Page `.cardDeckItem` — that stretched editors and
+// left them at the default ~392px compact width (#862).
+@media (min-width: 768px) {
     .documentEditorItem {
-        --card-deck-item-min-width: 800px;
-        --card-deck-item-width: 800px;
-        --card-deck-item-max-width: min(800px, calc(100vw - 176px));
+        --card-deck-item-width: var(--admin-panel-card-width, 800px);
+        --card-deck-item-max-width: min(
+            var(--admin-panel-card-width, 800px),
+            calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px))
+        );
     }
 }
