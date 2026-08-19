@@ -17,6 +17,8 @@ import { ThemeBuilder } from './components/ThemeBuilder';
 import { TypeOfLanguage } from './components/TypeOfLanguage';
 import { AppConfigInterface } from '../../../types/AppConfigInterface';
 import { resolveTenantId } from '../../../utils/resolveTenantId';
+import { GoLiveStatus, GoLiveCondition } from '../../GoLiveStatus';
+import { useTenantGoLiveConditions } from '../../../hooks/useTenantGoLiveConditions';
 import styles from './styles.module.scss';
 
 /**
@@ -58,6 +60,14 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
     const { isSuperAdmin } = useUserRoles();
     const showAppearance = section === 'all' || section === 'appearance';
     const showMasterData = section === 'all' || section === 'masterData';
+    const tenantGoLive = useTenantGoLiveConditions(Number(finalTenantId), showMasterData);
+    const tenantGoLiveConditions: GoLiveCondition[] = (
+        [
+            { key: 'contract', met: tenantGoLive.contractSigned },
+            { key: 'agency', met: tenantGoLive.hasAgency },
+            { key: 'agencyLive', met: tenantGoLive.hasLiveAgency },
+        ] as const
+    ).map(({ key, met }) => ({ key, state: met ? 'met' : 'open', label: t(`tenants.goLive.condition.${key}`) }));
     const { settings, setManualSettings } = useAppConfigContext();
     const { mutate: updateSettings } = useSettingsAdminMutation();
     const appearanceAllowed =
@@ -83,6 +93,17 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
     };
     return (
         <div className={styles.appearancePage}>
+            {/* The Träger go-live chain scopes the whole master-data area, so it is a
+                SECTION above the cards, not a card of its own. There is no Träger
+                switch — going live happens on the Beratungsstelle. */}
+            {showMasterData && (
+                <GoLiveStatus
+                    title={t('tenants.goLive.title')}
+                    description={t('tenants.goLive.description')}
+                    conditions={tenantGoLiveConditions}
+                    isLoading={tenantGoLive.isLoading}
+                />
+            )}
             <CardDeck
                 className={styles.cardDeck}
                 ariaLabel={t('tenant.settings.cardDeck.ariaLabel')}
