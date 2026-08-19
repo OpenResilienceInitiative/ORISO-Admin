@@ -103,7 +103,20 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 4px 0 8px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+
+    /* Lifted surface: on the page ground the bare switch (transparent track,
+       outline only) was nearly invisible — especially while disabled. */
+    background: var(--m3-surface-bright, #f7f5f3);
+    border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 22%, transparent);
+    border-radius: 12px;
+
+    /* Off-state track gets a visible tint inside this section; the checked
+       (primary) track from the shared switch styles wins on specificity. */
+    :global(.MuiSwitch-track) {
+        background-color: color-mix(in srgb, var(--m3-outline, #747878) 24%, transparent);
+    }
 }
 
 .switchLabel {
