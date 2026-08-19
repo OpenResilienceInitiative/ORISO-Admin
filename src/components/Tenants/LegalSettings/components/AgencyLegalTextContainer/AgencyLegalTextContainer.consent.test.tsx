@@ -172,3 +172,78 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         expect(h.publishDpp).toHaveBeenCalledWith({ content: { de: '<p>neu</p>' }, publish: false });
     });
 });
+
+/**
+ * ADR-014 amendment: publishing under a Fachbereich forks it away from the inherited
+ * text for good. The body is already seeded from what the Fachbereich currently shows;
+ * the consent sentence has to come from the same place, or the fork ships a policy whose
+ * sentence was left behind on the level above (ADR-021 decision 4 — one document).
+ */
+describe('AgencyLegalTextContainer — the fork copies policy AND sentence', () => {
+    beforeEach(() => {
+        h.useDepartmentDpp.mockReset();
+        h.card.mockReset();
+        h.publishDpp.mockReset();
+        h.tenant.mockReset().mockReturnValue({ data: undefined });
+    });
+
+    const notYetForked = (extra: Record<string, unknown> = {}) =>
+        h.useDepartmentDpp.mockReturnValue({
+            data: { content: '', publicationStatus: 'DRAFT', consentText: '{}', ...extra },
+            isLoading: false,
+            isError: false,
+            isSuccess: true,
+        });
+
+    it('seeds a not-yet-forked Fachbereich with the sentence it currently shows', async () => {
+        notYetForked();
+        h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Traeger-Satz {{legal_links}}' } } } });
+
+        renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+
+        expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>agency wide</p>' });
+        expect(cardProps().consentByLanguage).toEqual({ de: 'Traeger-Satz {{legal_links}}' });
+        expect(cardProps().consentInheritedFrom).toBe('legal.consent.level.agency');
+        // Nothing authored at this level yet, so every language carries the notice.
+        expect(cardProps().ownConsentByLanguage).toEqual({});
+    });
+
+    it('publishes that seeded sentence with the forked policy', async () => {
+        notYetForked();
+        h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Traeger-Satz {{legal_links}}' } } } });
+
+        renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+        cardProps().onSave({ de: '<p>agency wide</p>' }, true, cardProps().consentByLanguage);
+
+        expect(h.publishDpp).toHaveBeenCalledWith({
+            content: { de: '<p>agency wide</p>' },
+            publish: true,
+            consentText: { de: 'Traeger-Satz {{legal_links}}' },
+        });
+    });
+
+    it('leaves a Fachbereich that has already forked with its own sentence, blank included', async () => {
+        storedDepartment({ consentText: '{}' });
+        h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Traeger-Satz' } } } });
+
+        renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+
+        // Blank at a forked level is a valid state: the level above still governs at
+        // runtime. Re-seeding it here would silently re-author a legal sentence.
+        expect(cardProps().consentByLanguage).toEqual({});
+        expect(cardProps().consentInheritedFrom).toBeUndefined();
+    });
+
+    it('still hides the consent editor entirely when the backend has no such field', async () => {
+        notYetForked({ consentText: undefined });
+        h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Traeger-Satz' } } } });
+
+        renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+
+        expect(cardProps().consentByLanguage).toBeUndefined();
+    });
+});

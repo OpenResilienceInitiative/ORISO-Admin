@@ -43,6 +43,28 @@ describe('usePublishDepartmentDpp', () => {
         expect(invalidate).toHaveBeenCalledWith({ queryKey: versionsKey });
     });
 
+    /**
+     * ADR-021 decision 4 — the sentence is a field of the policy, so it travels on the
+     * same request. A publish that dropped it would leave the live consent screen on
+     * the previous wording while a new policy version says otherwise.
+     */
+    it('carries the consent sentence of this version to the endpoint', async () => {
+        const { result } = setup();
+
+        act(() =>
+            result.current.mutate({
+                content: { de: '<p>x</p>' },
+                publish: true,
+                consentText: { de: 'Ich habe {{legal_links}} gelesen.' },
+            }),
+        );
+
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(publishDepartmentDpp).toHaveBeenCalledWith(AGENCY, TOPIC, { de: '<p>x</p>' }, true, {
+            de: 'Ich habe {{legal_links}} gelesen.',
+        });
+    });
+
     it('leaves the history alone on a draft save — a draft appends no version', async () => {
         const { result, invalidate } = setup();
 

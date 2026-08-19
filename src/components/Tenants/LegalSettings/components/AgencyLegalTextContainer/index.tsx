@@ -156,6 +156,20 @@ export const AgencyLegalTextContainer = ({
         [departmentQuery.data?.content],
     );
 
+    // The draft copy: a department with no own text yet starts from what it currently shows, which
+    // is the inherited agency-wide text. "Alle Fachbereiche" always edits that same agency-wide text.
+    //
+    // This inference is only safe once the read SUCCEEDED. A failed request also yields an empty
+    // map, and treating that as "has no own text" would seed the editor with the inherited text —
+    // publishing would then overwrite the department's real, existing text with the inherited one.
+    // That is the same silent-overwrite class this whole epic exists to remove, so a failed read
+    // blocks the editor instead (see the isError branch below).
+    const hasOwnText = isDepartment && departmentQuery.isSuccess && Object.keys(departmentContent).length > 0;
+    // A parked draft is the admin's unfinished wording; it wins over the stored agency text
+    // until it is published or discarded. Departments keep their own seeding rules above.
+    const agencyWideSeed = agencyDraft?.content ?? agencyWideContent;
+    const contentByLanguage = hasOwnText ? departmentContent : agencyWideSeed;
+
     /**
      * The consent sentence (ADR-021 decision 4) is a FIELD of the data-protection policy, never of
      * the imprint (decision 7). On the agency editor it is offered only for a concrete Fachbereich
@@ -172,26 +186,40 @@ export const AgencyLegalTextContainer = ({
                 : undefined,
         [dppQuery.data],
     );
+    // Inherited agency-wide sentence (Träger overlay + agency override). Used only to seed a
+    // not-yet-forked Fachbereich — #862 keeps "Alle Fachbereiche" consent-free.
+    const agencyWideConsent = useMemo(() => {
+        const inherited = tenantData?.content?.privacyConsent;
+        const own = agencyData?.content?.privacyConsent;
+        if (inherited === undefined && own === undefined) {
+            return undefined;
+        }
+        return { ...(inherited ?? {}), ...(own ?? {}) };
+    }, [tenantData?.content?.privacyConsent, agencyData?.content?.privacyConsent]);
+    /**
+     * A Fachbereich that has NOT forked yet edits a draft copy of what it currently shows. The body
+     * above is already seeded that way (`contentByLanguage`), and the sentence must follow the same
+     * source: publishing forks the Fachbereich away from the inherited text for good (ADR-014
+     * amendment), and a fork that carried the body but not its consent sentence would ship a policy
+     * whose consent screen was left behind on the level above — the exact de-synchronisation
+     * ADR-021 decision 4 exists to prevent.
+     *
+     * Once the Fachbereich HAS its own policy its stored sentence stands as it is, blank included:
+     * blank means the level above still governs at runtime (decision 1), and re-seeding it here
+     * would silently re-author a legal sentence nobody wrote.
+     */
+    const forkSeedsConsent = isDepartment && !hasOwnText && departmentConsent !== undefined;
     const consentByLanguage = useMemo(() => {
         if (field !== 'privacy' || !isDepartment) {
             return undefined;
         }
-        return departmentConsent;
-    }, [field, isDepartment, departmentConsent]);
-
-    // The draft copy: a department with no own text yet starts from what it currently shows, which
-    // is the inherited agency-wide text. "Alle Fachbereiche" always edits that same agency-wide text.
-    //
-    // This inference is only safe once the read SUCCEEDED. A failed request also yields an empty
-    // map, and treating that as "has no own text" would seed the editor with the inherited text —
-    // publishing would then overwrite the department's real, existing text with the inherited one.
-    // That is the same silent-overwrite class this whole epic exists to remove, so a failed read
-    // blocks the editor instead (see the isError branch below).
-    const hasOwnText = isDepartment && departmentQuery.isSuccess && Object.keys(departmentContent).length > 0;
-    // A parked draft is the admin's unfinished wording; it wins over the stored agency text
-    // until it is published or discarded. Departments keep their own seeding rules above.
-    const agencyWideSeed = agencyDraft?.content ?? agencyWideContent;
-    const contentByLanguage = hasOwnText ? departmentContent : agencyWideSeed;
+        return forkSeedsConsent ? agencyWideConsent ?? departmentConsent : departmentConsent;
+    }, [field, isDepartment, forkSeedsConsent, departmentConsent, agencyWideConsent]);
+    // A not-yet-forked Fachbereich shows the agency-level inheritance notice on languages it has
+    // not overridden; a forked one reads its own stored sentence with no such distinction.
+    const ownConsentByLanguage = forkSeedsConsent ? departmentConsent : undefined;
+    const consentInheritedFrom =
+        forkSeedsConsent && agencyWideConsent !== undefined ? t('legal.consent.level.agency') : undefined;
 
     const languages = useMemo(
         () => getEditableLanguages(tenantAdminData?.settings?.activeLanguages, contentByLanguage),
@@ -281,6 +309,8 @@ export const AgencyLegalTextContainer = ({
             departmentName={selectedDepartment?.name}
             initialContentByLanguage={contentByLanguage}
             consentByLanguage={consentByLanguage}
+            consentInheritedFrom={consentInheritedFrom}
+            ownConsentByLanguage={ownConsentByLanguage}
             languages={languages}
             publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : undefined}
             versions={versions}

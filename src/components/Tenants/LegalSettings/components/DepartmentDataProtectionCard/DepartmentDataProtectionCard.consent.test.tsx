@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DepartmentDataProtectionCard } from './index';
 import { LegalTextVersion } from '../../../../../types/legalVersion';
@@ -286,5 +286,153 @@ describe('DepartmentDataProtectionCard — unreadable version history', () => {
             />,
         );
         expect(screen.queryByTestId('legal-versions-unavailable')).not.toBeInTheDocument();
+    });
+});
+
+/**
+ * ADR-021 decision 4: the consent sentence is a FIELD of the data-protection
+ * policy. Editing only the sentence must therefore still produce a new policy
+ * version — the body going out unchanged is the point, not a reason to skip it.
+ */
+describe('DepartmentDataProtectionCard — a consent-only edit still publishes the policy', () => {
+    it('sends the byte-identical body together with the new sentence', async () => {
+        const onSave = vi.fn();
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Alter Satz mit {{legal_links}}.' }}
+                initialContentByLanguage={{ de: '<p>unveraendert</p>', en: '<p>unchanged</p>' }}
+                languages={['de']}
+                onSave={onSave}
+            />,
+        );
+
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Neuer Satz mit {{legal_links}}.' } });
+        await userEvent.click(screen.getByRole('button', { name: 'publish' }));
+
+        expect(onSave).toHaveBeenCalledWith({ de: '<p>unveraendert</p>', en: '<p>unchanged</p>' }, true, {
+            de: 'Neuer Satz mit {{legal_links}}.',
+        });
+    });
+});
+
+/**
+ * The rule arrived after texts were already live (ADR-021 decision 2), so a stored
+ * sentence can fail today's validation without anybody having touched it. The card
+ * has to say so when it OPENS — an admin who has to press Publish, and then hunt
+ * through the language switcher, is being told about a blocked document by accident.
+ */
+describe('DepartmentDataProtectionCard — a stored sentence that fails the rule', () => {
+    it('names the affected language before Publish is ever pressed', () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Ich habe {{legal_links}} gelesen.', en: 'I agree.' }}
+                initialContentByLanguage={{ de: '<p>x</p>', en: '<p>x</p>' }}
+                languages={['de', 'en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        // `de` is the active language and is fine — without this notice the `en`
+        // violation is invisible until the publish attempt fails.
+        expect(screen.getByTestId('consent-publish-blocked')).toBeInTheDocument();
+        expect(screen.getByTestId('consent-publish-blocked')).toHaveTextContent(
+            'legal.consent.publishBlocked.description:EN',
+        );
+    });
+
+    it('names the languages the admin reads, not the wire codes', async () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Ich stimme zu.' }}
+                initialContentByLanguage={{ de: '<p>x</p>' }}
+                languages={['de']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('consent-publish-blocked')).toHaveTextContent(
+            'legal.consent.publishBlocked.description:DE',
+        );
+    });
+
+    it('goes away once the sentence carries the token again', async () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Ich stimme zu.' }}
+                initialContentByLanguage={{ de: '<p>x</p>' }}
+                languages={['de']}
+                onSave={() => undefined}
+            />,
+        );
+        expect(screen.getByTestId('consent-publish-blocked')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Ich habe {{legal_links}} gelesen.' } });
+
+        expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
+    });
+
+    it('stays silent while every authored sentence is valid — blank is not a violation', () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Ich habe {{legal_links}} gelesen.', en: '' }}
+                initialContentByLanguage={{ de: '<p>x</p>' }}
+                languages={['de', 'en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
+    });
+});
+
+/**
+ * ADR-021 decision 2 at the field itself. The blocked-publish notice above says WHICH
+ * languages; this one says WHERE in the sentence — and, just as importantly, stays away
+ * from a blank field, because blank means the level above still governs (decision 1).
+ */
+describe('DepartmentDataProtectionCard — the mandatory token on the field being edited', () => {
+    it('marks an authored sentence that lacks the token', () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Ich stimme zu.' }}
+                initialContentByLanguage={{ de: '<p>x</p>' }}
+                languages={['de']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('consent-missing-token-error')).toHaveTextContent(
+            'legal.consent.error.missingLegalLinks.title',
+        );
+        expect(screen.getByTestId('consent-missing-token-error')).toHaveTextContent('{{legal_links}}');
+    });
+
+    it('reads a blank sentence as inheritance, never as an error', () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: '   ' }}
+                initialContentByLanguage={{ de: '<p>x</p>' }}
+                languages={['de']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.queryByTestId('consent-missing-token-error')).not.toBeInTheDocument();
+        expect(screen.getByTestId('consent-inherited-notice')).toHaveTextContent('legal.consent.emptyMeansInherited');
+    });
+
+    it('clears the mark as soon as the token is typed back in', () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Ich stimme zu.' }}
+                initialContentByLanguage={{ de: '<p>x</p>' }}
+                languages={['de']}
+                onSave={() => undefined}
+            />,
+        );
+
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Ich habe {{legal_links}} gelesen.' } });
+
+        expect(screen.queryByTestId('consent-missing-token-error')).not.toBeInTheDocument();
     });
 });
