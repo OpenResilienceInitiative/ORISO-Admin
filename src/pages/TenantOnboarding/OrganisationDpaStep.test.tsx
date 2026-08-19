@@ -202,3 +202,39 @@ describe('tenant onboarding wording — short signer labels under their section 
         expect(de['tenantOnboarding.organisation.subdomain']).toBe('Subdomain');
     });
 });
+
+describe('the reserved-tenant-ID explanation travels with the fields it explains', () => {
+    /*
+     * Owner annotation on the *2 screenshot, 2026-08-19: a red box around the
+     * three organisation fields plus the note "Move info to the section where
+     * the person needs to sign." His prose says "die SEKTION *2 muss nach unten
+     * ... wandern" — the section, not only its inputs.
+     *
+     * Moving the fields alone left the sentence that explains them stranded at
+     * the top of the step, with the entire contract reader between the two. The
+     * explanation now sits directly under the "Stammdaten Organisation" heading,
+     * so the reserved ID is described where it is actually entered.
+     *
+     * The step subtitle ("Angaben zur Organisation") deliberately stays at the
+     * top: it titles the step, not the field group.
+     */
+    it('renders the explanation after the master-data heading, not before the agreement', async () => {
+        renderStep();
+
+        const masterDataTitle = await screen.findByTestId('organisation-master-data-title');
+        const explanation = screen.getByText(/tenantOnboarding\.organisation\.description/);
+        const agreement = await screen.findByTestId('dpa-text');
+
+        expect(precedes(masterDataTitle, explanation)).toBe(true);
+        expect(precedes(agreement, explanation)).toBe(true);
+    });
+
+    it('keeps the step subtitle at the top of the step', async () => {
+        renderStep();
+
+        const subtitle = screen.getByRole('heading', { name: 'tenantOnboarding.organisation.title' });
+        const agreement = await screen.findByTestId('dpa-text');
+
+        expect(precedes(subtitle, agreement)).toBe(true);
+    });
+});

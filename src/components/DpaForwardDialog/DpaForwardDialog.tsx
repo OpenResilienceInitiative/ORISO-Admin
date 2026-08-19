@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Form } from 'antd';
 import Alert from '@mui/material/Alert';
 import ForwardToInboxRounded from '@mui/icons-material/ForwardToInboxRounded';
+import LinkRounded from '@mui/icons-material/LinkRounded';
 import Refresh from '@mui/icons-material/Refresh';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../Modal';
@@ -16,6 +17,7 @@ import {
     DpaForwardOutcome,
 } from '../../api/tenantOnboarding/dpaForward';
 import { CopyLinkRow } from './CopyLinkRow';
+import { PlainMailPreview } from './PlainMailPreview';
 import { buildForwardMailPreview } from './forwardMailPreview';
 import styles from './styles.module.scss';
 
@@ -27,17 +29,44 @@ export interface DpaForwardResult {
     mailFailed: boolean;
 }
 
+/**
+ * Which surface hosts the dialog. This is not cosmetic: `'admin'` unlocks the
+ * backend-rendered branded mail preview, which comes from the ADMIN-ONLY
+ * endpoint `POST /service/useradmin/invite-email-templates/preview`.
+ *
+ * The default is `'public'` — a host that declares nothing gets the plain-text
+ * preview, never a logout. See {@link DpaForwardDialogProps.surface}.
+ */
+export type DpaForwardSurface = 'public' | 'admin';
+
 export interface DpaForwardDialogProps {
     /**
-     * Performs the forward. Without `recipientEmail` it only mints a link for
-     * manual sharing; with one it also sends the `DPA_FORWARD` mail. Called
-     * once on open (link-only) and again per send — every issued link stays
-     * valid until a signature lands.
+     * Performs the forward. Without `recipientEmail` it mints a link for manual
+     * sharing; with one it also sends the `DPA_FORWARD` mail. Called only when
+     * the admin actually asks for a link or sends the mail — never on open.
+     * Every issued link stays valid until a signature lands, and only five may
+     * be outstanding per onboarding, so a call is a resource, not a warm-up.
      */
     forward: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
     onClose: () => void;
     /** Confirms the delegation — the host flips into its forwarded state. */
     onForwarded: (result: DpaForwardResult) => void;
+    /**
+     * Declares whether the host is an authenticated admin surface.
+     *
+     * On `'admin'` the mail preview is rendered by the backend's own mail
+     * renderer, so the preview and the sent mail cannot drift. On `'public'`
+     * (the default) that request is not issued at all: the endpoint is
+     * admin-only and answers 401 to an anonymous visitor, and `fetchData` turns
+     * a 401 on a credentialled call into refresh → logout → `/admin/login`.
+     * That is #712 — the public onboarding visitor was thrown onto the admin
+     * login page about half a second after opening this dialog, and could never
+     * type a recipient address.
+     *
+     * Defaulting to `'public'` keeps the failure mode safe: forgetting the prop
+     * costs a branded preview, never a session.
+     */
+    surface?: DpaForwardSurface;
     titleKey?: string;
     descriptionKey?: string;
 }
@@ -47,7 +76,9 @@ interface RecipientFormValues {
     recipientEmail: string;
 }
 
-type LinkState = { kind: 'loading' } | { kind: 'ready'; link: DpaForwardLink } | { kind: 'error'; why: string };
+type LinkState =
+    /** Nothing minted yet — opening the dialog costs no link (#712). */
+    { kind: 'idle' } | { kind: 'loading' } | { kind: 'ready'; link: DpaForwardLink } | { kind: 'error'; why: string };
 
 /** i18n key for a typed backend failure. */
 const FAILURE_MESSAGE: Record<DpaForwardFailureKind, string> = {
@@ -69,7 +100,15 @@ const failureKey = (error: unknown): string =>
  * The sign link is the primary artefact: copyable for any channel, with the
  * note that it stays valid until the contract is signed no matter where it is
  * shared. The e-mail send is optional and shows the actual DPA_FORWARD mail
- * through the e-mail kit preview before anything goes out.
+ * before anything goes out — through the backend's own mail renderer on an
+ * admin surface, and as plain text on the public one (see {@link
+ * DpaForwardDialogProps.surface}).
+ *
+ * **Links are minted on demand, never on open (#712).** Only five links may be
+ * outstanding per onboarding (14-day TTL) and every issued one stays valid until
+ * a signature lands, so minting on mount let five dialog-opens exhaust a tenant's
+ * quota without a single mail being sent. A link is therefore created by exactly
+ * the two acts that need one: asking for the copyable link, and sending the mail.
  *
  * The 502 case is deliberately NOT a failure: the backend created the link but
  * could not hand the mail to the SMTP server, so the dialog keeps the copyable
@@ -79,38 +118,36 @@ export const DpaForwardDialog = ({
     forward,
     onClose,
     onForwarded,
+    surface = 'public',
     titleKey = 'dpaForward.dialog.title',
     descriptionKey = 'dpaForward.dialog.description',
 }: DpaForwardDialogProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm<RecipientFormValues>();
-    const [linkState, setLinkState] = useState<LinkState>({ kind: 'loading' });
-    const [linkAttempt, setLinkAttempt] = useState(0);
+    const [linkState, setLinkState] = useState<LinkState>({ kind: 'idle' });
     const [sendState, setSendState] = useState<'idle' | 'pending' | 'sent' | 'mail-failed' | 'failed'>('idle');
     const [sendErrorKey, setSendErrorKey] = useState<string>(FAILURE_MESSAGE.TECHNICAL);
     const [sentTo, setSentTo] = useState<string | null>(null);
     const [mailFailed, setMailFailed] = useState(false);
     const [recipientName, setRecipientName] = useState('');
 
-    useEffect(() => {
-        let cancelled = false;
-        setLinkState({ kind: 'loading' });
-        // Link-only call: no recipient, so no mail goes out yet.
-        forward({})
-            .then((outcome) => {
-                if (!cancelled) setLinkState({ kind: 'ready', link: outcome.link });
-            })
-            .catch((error: unknown) => {
-                if (!cancelled) setLinkState({ kind: 'error', why: failureKey(error) });
-            });
-        return () => {
-            cancelled = true;
-        };
-        // The callback is stable by contract; re-run only on explicit retry.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [linkAttempt]);
-
     const link = linkState.kind === 'ready' ? linkState.link : null;
+
+    /**
+     * The explicit "I want a link to share myself" act, and the retry for a
+     * failed one. Link-only: no recipient, so no mail goes out. Guarded against
+     * a double activation because a second call is a second link out of five.
+     */
+    const requestLink = async () => {
+        if (linkState.kind === 'loading') return;
+        setLinkState({ kind: 'loading' });
+        try {
+            const outcome = await forward({});
+            setLinkState({ kind: 'ready', link: outcome.link });
+        } catch (error) {
+            setLinkState({ kind: 'error', why: failureKey(error) });
+        }
+    };
 
     const submitEmail = async (values: RecipientFormValues) => {
         if (sendState === 'pending') return;
@@ -218,16 +255,39 @@ export const DpaForwardDialog = ({
                         </div>
                     </Form>
 
+                    {/* The branded render is an ADMIN-ONLY backend call. Issuing
+                        it from the public wizard 401s and logs the anonymous
+                        visitor out (#712), so the public surface previews the
+                        wording it composed itself instead. */}
                     <div className={styles.preview}>
-                        <EmailKitPreview
-                            subject={preview.subject}
-                            body={preview.body}
-                            previewLabel={t('dpaForward.dialog.previewLabel')}
-                        />
+                        {surface === 'admin' ? (
+                            <EmailKitPreview
+                                subject={preview.subject}
+                                body={preview.body}
+                                previewLabel={t('dpaForward.dialog.previewLabel')}
+                            />
+                        ) : (
+                            <PlainMailPreview
+                                subject={preview.subject}
+                                body={preview.body}
+                                previewLabel={t('dpaForward.dialog.previewLabel')}
+                            />
+                        )}
                     </div>
                 </div>
 
                 <div className={styles.linkSection} data-testid="dpa-forward-link-section">
+                    {/* No link until one is asked for: every mint spends one of
+                        the five that may be outstanding per onboarding (#712). */}
+                    {linkState.kind === 'idle' && (
+                        <div className={styles.linkIdle}>
+                            <p className={styles.validityNote}>{t('dpaForward.dialog.linkIntro')}</p>
+                            <M3Button variant="tonal" icon={<LinkRounded fontSize="small" />} onClick={requestLink}>
+                                {t('dpaForward.dialog.linkCreate')}
+                            </M3Button>
+                        </div>
+                    )}
+
                     {linkState.kind === 'loading' && (
                         <p className={styles.linkPending} role="status">
                             {t('dpaForward.dialog.linkPending')}
@@ -240,11 +300,7 @@ export const DpaForwardDialog = ({
                             role="alert"
                             data-testid="dpa-forward-link-error"
                             action={
-                                <M3Button
-                                    variant="text"
-                                    icon={<Refresh fontSize="small" />}
-                                    onClick={() => setLinkAttempt((attempt) => attempt + 1)}
-                                >
+                                <M3Button variant="text" icon={<Refresh fontSize="small" />} onClick={requestLink}>
                                     {t('dpaForward.dialog.linkRetry')}
                                 </M3Button>
                             }

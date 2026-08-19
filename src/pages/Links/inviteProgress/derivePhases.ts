@@ -204,13 +204,24 @@ export const matchesInviteQuery = (invite: SearchableFacts, query: string): bool
     return terms.every((term) => haystack.includes(term));
 };
 
-type ActivityFacts = Pick<AccountInviteDTO, 'createDate' | 'acceptedAt' | 'revokedAt' | 'supersededAt'>;
+type ActivityFacts = Pick<
+    AccountInviteDTO,
+    'createDate' | 'acceptedAt' | 'revokedAt' | 'supersededAt' | 'twoFactorWaivedAt'
+>;
 
-/** Latest known activity timestamp of an invite (ISO string), for the "letzte Aktivität" column. */
+/**
+ * Latest known activity timestamp of an invite (ISO string), for the "letzte
+ * Aktivität" column. A 2FA waiver counts: it is an admin acting on the invite,
+ * and leaving it out made a fresh waiver read as the older acceptance date.
+ */
 export const inviteLastActivity = (invite: ActivityFacts): string => {
-    const candidates = [invite.createDate, invite.acceptedAt, invite.revokedAt, invite.supersededAt].filter(
-        (value): value is string => value != null,
-    );
+    const candidates = [
+        invite.createDate,
+        invite.acceptedAt,
+        invite.revokedAt,
+        invite.supersededAt,
+        invite.twoFactorWaivedAt,
+    ].filter((value): value is string => value != null);
     // Seeded on purpose: `createDate` is non-nullable today, but an unseeded
     // reduce would throw on an empty list and take the whole board down if the
     // API ever loosens that.

@@ -70,7 +70,7 @@
     flex: 0 0 auto;
     align-items: center;
     padding: 4px;
-    background: var(--admin-search-surface, var(--m3-surface, #fcf9f9));
+    background: var(--admin-search-surface, var(--m3-surface-container-high, #eae7e8));
     border-radius: 28px;
     transition: width 240ms cubic-bezier(0.2, 0, 0, 1);
 }
@@ -140,7 +140,7 @@
 
     &:hover,
     &:focus {
-        background: var(--admin-search-hover-surface, var(--m3-surface-container, #f0edee));
+        background: var(--admin-search-hover-surface, var(--m3-surface-container-highest, #e4e2e2));
     }
 
     &:focus-visible {

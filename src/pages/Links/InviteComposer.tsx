@@ -516,7 +516,7 @@ export const InviteComposer = ({
                     onChange={(event) => setFirstName(event.target.value)}
                 />
                 <FloatingLabelInput
-                    className={styles.nameField}
+                    className={classNames(styles.nameField, styles.lastNameField)}
                     label={t('links.composer.lastName', 'Name')}
                     name="lastName"
                     value={lastName}

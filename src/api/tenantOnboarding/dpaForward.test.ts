@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { FETCH_METHODS } from '../fetchData';
+import { FETCH_ERRORS, FETCH_METHODS } from '../fetchData';
 import { publicAccountInvitesEndpoint } from '../../appConfig';
 import { InviteLinkError } from './tenantOnboarding';
 import {
@@ -60,6 +60,33 @@ describe('createHttpDpaForwardClient', () => {
             }),
         );
     });
+
+    /**
+     * #712 regression. `fetchData` routes a 401 on a credentialled call into
+     * refresh → `logout()` → `/admin/login`. The forward endpoints are reached
+     * from the PUBLIC onboarding wizard, where that redirect throws an anonymous
+     * visitor off the page mid-task, so every call from this client has to
+     * declare itself credential-free (`skipAuth`) and handle its own failures
+     * (`CATCH_ALL_SILENT`) instead of letting the global handlers navigate.
+     * `FORBIDDEN_SILENT` is the same rule for the 403 → `/admin/access-denied`
+     * redirect. This is the mechanism the admin-only preview call lacked.
+     */
+    it.each([[undefined], [{ recipientEmail: 'legal@example.org' }]])(
+        'declares every public forward call credential-free and non-navigating (%o)',
+        async (request) => {
+            mocks.fetchData.mockResolvedValue(RESPONSE);
+
+            await createHttpDpaForwardClient().forward('tok', request);
+
+            const call = mocks.fetchData.mock.calls[0][0];
+            expect(call.skipAuth).toBe(true);
+            expect(call.responseHandling).toContain(FETCH_ERRORS.CATCH_ALL_SILENT);
+            expect(call.responseHandling).toContain(FETCH_ERRORS.FORBIDDEN_SILENT);
+            // Nothing that would let the global handlers redirect instead.
+            expect(call.responseHandling).not.toContain(FETCH_ERRORS.CATCH_ALL);
+            expect(call.responseHandling).not.toContain(FETCH_ERRORS.FORBIDDEN);
+        },
+    );
 
     it('sends the DPA_FORWARD mail when a recipient is given', async () => {
         mocks.fetchData.mockResolvedValue(RESPONSE);
