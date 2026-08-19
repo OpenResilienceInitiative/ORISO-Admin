@@ -20,6 +20,8 @@ import { X_REASON } from '../../../../api/fetchData';
 import { extractApiErrorMessage } from '../../../../utils/extractApiErrorMessage';
 import { M3Button } from '../../../../components/M3Button';
 import { orisoMuiTheme } from '../../../../theme/orisoMuiTheme';
+import { GoLiveStatus, GoLiveCondition } from '../../../../components/GoLiveStatus';
+import { useTenantGoLiveConditions } from '../../../../hooks/useTenantGoLiveConditions';
 import {
     MuiFormField,
     MuiNumberFormField,
@@ -130,6 +132,15 @@ export const GeneralTenantSettings = () => {
         update(rest as unknown as TenantAdminData);
     };
 
+    const tenantGoLive = useTenantGoLiveConditions(Number(id), isEditing);
+    const tenantGoLiveConditions: GoLiveCondition[] = (
+        [
+            { key: 'contract', met: tenantGoLive.contractSigned },
+            { key: 'agency', met: tenantGoLive.hasAgency },
+            { key: 'agencyLive', met: tenantGoLive.hasLiveAgency },
+        ] as const
+    ).map(({ key, met }) => ({ key, state: met ? 'met' : 'open', label: t(`tenants.goLive.condition.${key}`) }));
+
     const requiredRule = { required: true, message: t('form.errors.required') };
     const subdomainFormatRule = {
         pattern: SUBDOMAIN_PATTERN,
@@ -140,6 +151,15 @@ export const GeneralTenantSettings = () => {
     if (isEditing) {
         return (
             <ThemeProvider theme={orisoMuiTheme}>
+                {/* Topmost and NOT a card: the Träger go-live chain scopes the whole
+                    area. There is no Träger switch — the final step happens on the
+                    Beratungsstelle (concept 2026-08-19). */}
+                <GoLiveStatus
+                    title={t('tenants.goLive.title')}
+                    description={t('tenants.goLive.description')}
+                    conditions={tenantGoLiveConditions}
+                    isLoading={tenantGoLive.isLoading}
+                />
                 <CardDeck
                     ariaLabel={t('tenants.add.mainTenantTitle')}
                     className={styles.tenantCardDeck}
@@ -152,6 +172,7 @@ export const GeneralTenantSettings = () => {
                             isLoading={isLoading}
                             editMode={false}
                             titleKey="tenants.add.mainTenantTitle"
+                            subTitleKey="tenants.add.mainTenant.purpose"
                             variant="dialog"
                             editButtonPlacement="footer"
                             initialValues={data ? (data as unknown as Record<string, unknown>) : {}}
@@ -214,6 +235,7 @@ export const GeneralTenantSettings = () => {
                 <CardGrid minCardWidth={425} maxColumns={2}>
                     <Card
                         titleKey="tenants.add.mainTenantTitle"
+                        subTitleKey="tenants.add.mainTenant.purpose"
                         fullHeight
                         variant="dialog"
                         autoHeight

@@ -1,0 +1,122 @@
+/* Go-live readiness for a whole area. Deliberately NOT a card surface: it uses
+   the page ground so it reads as scoping everything below it. */
+
+.root {
+    max-width: 720px;
+    padding: 0 4px 8px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 22%, transparent);
+}
+
+.head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.title {
+    margin: 0;
+    color: var(--m3-on-surface, #1d1b20);
+    font-family: var(--m3-body-font-family);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.description {
+    max-width: 68ch;
+    margin: 4px 0 12px;
+    color: var(--m3-on-surface-variant, #49454f);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+}
+
+.conditions {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0 0 12px;
+    gap: 8px;
+    list-style: none;
+    counter-reset: go-live-step;
+}
+
+.condition {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    counter-increment: go-live-step;
+
+    &::before {
+        min-width: 20px;
+        color: var(--m3-on-surface-variant, #49454f);
+        content: counter(go-live-step) '.';
+        font-family: var(--m3-body-font-family);
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+        line-height: 22px;
+    }
+}
+
+.conditionIcon {
+    display: inline-flex;
+    align-items: center;
+    line-height: 22px;
+}
+
+.iconMet {
+    color: var(--admin-control-selected, var(--m3-primary, #a5000a));
+}
+
+.iconOpen {
+    color: var(--m3-outline, #747878);
+}
+
+.iconViolated {
+    color: var(--m3-error, #b1005e);
+}
+
+.conditionBody {
+    display: flex;
+    flex-direction: column;
+}
+
+.conditionLabel {
+    color: var(--m3-on-surface, #1d1b20);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    line-height: 22px;
+}
+
+.condition[data-condition-state='violated'] .conditionLabel {
+    color: var(--m3-error, #b1005e);
+}
+
+.conditionHint {
+    color: var(--m3-on-surface-variant, #49454f);
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+}
+
+.switchRow {
+    display: flex;
+    max-width: 560px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 4px 0 8px;
+}
+
+.switchLabel {
+    display: flex;
+    flex-direction: column;
+    color: var(--m3-on-surface, #1d1b20);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.switchHint {
+    color: var(--m3-on-surface-variant, #49454f);
+    font-size: 12px;
+    font-weight: 400;
+}

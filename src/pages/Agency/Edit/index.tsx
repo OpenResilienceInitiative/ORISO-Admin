@@ -35,6 +35,12 @@ import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
+import { GoLiveStatus, GoLiveCondition } from '../../../components/GoLiveStatus';
+import { useAgencyGoLiveConditions } from '../../../hooks/useAgencyGoLiveConditions';
+import { trackGoLiveEvent } from '../../../utils/goLiveTracking';
+import { AgencyCounsellingIcon } from '../../../components/CustomIcons/AgencyCounselling';
+import { AllUsersIcon } from '../../../components/CustomIcons/AllUsers';
+import { TopicInterestsIcon } from '../../../components/CustomIcons/TopicInterests';
 import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
@@ -91,6 +97,34 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { mutate, isPending: isAgencySaving } = useAgencyUpdate(id);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
+    const goLive = useAgencyGoLiveConditions({ id, agencyData });
+    const goLiveConditions: GoLiveCondition[] = (
+        [
+            { key: 'masterData', met: goLive.masterDataComplete },
+            { key: 'departments', met: goLive.departmentsDefined },
+            { key: 'team', met: goLive.hasTeam },
+            { key: 'privacy', met: goLive.privacyPublished },
+            { key: 'imprint', met: goLive.imprintPublished },
+        ] as const
+    ).map(({ key, met }) => ({ key, state: met ? 'met' : 'open', label: t(`agency.goLive.condition.${key}`) }));
+
+    const onGoLiveToggle = useCallback(
+        (next: boolean) => {
+            // Narrow patch on purpose (see onSaveCard): only the offline flag moves.
+            // Deactivating takes the Beratungsstelle offline for NEW requests only —
+            // existing conversations in the app remain untouched by this flag.
+            mutate(
+                { offline: !next },
+                {
+                    onSuccess: () => {
+                        trackGoLiveEvent({ scope: 'agency', id: Number(id), live: next });
+                        notification.success({ message: t('message.agency.updated'), duration: 3 });
+                    },
+                },
+            );
+        },
+        [id, mutate, t],
+    );
     const agencySettingsTabs = isAgencyInaccessible
         ? []
         : [
@@ -285,7 +319,21 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         if (isEditing) {
             return (
                 <ThemeProvider theme={orisoMuiTheme}>
-                    <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
+                    {/* Topmost, and deliberately a SECTION, not a card: the go-live
+                        state scopes the whole Beratungsstelle. The former redundant
+                        "Allgemeines" headline (it repeated the active tab) is gone. */}
+                    <GoLiveStatus
+                        title={t('agency.goLive.title')}
+                        description={t('agency.goLive.description')}
+                        conditions={goLiveConditions}
+                        isLoading={goLive.isLoading}
+                        switchControl={{
+                            checked: !agencyData?.offline,
+                            label: t('agency.goLive.switchLabel'),
+                            disabledHint: t('agency.goLive.switchHint'),
+                            onChange: onGoLiveToggle,
+                        }}
+                    />
                     <CardDeck
                         ariaLabel={t(`agency.edit.settings.general.title`)}
                         previousLabel={t('agency.cardDeck.previous')}
@@ -296,6 +344,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                 allowUnsavedChanges
                                 initialValues={initialValues}
                                 titleKey="agency.edit.general.general_information"
+                                subTitleKey="agency.edit.general.general_information.purpose"
+                                headerIcon={<AgencyCounsellingIcon />}
                                 variant="dialog"
                                 editButtonPlacement="footer"
                                 onSave={onSaveCard}
@@ -308,6 +358,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                 allowUnsavedChanges
                                 initialValues={initialValues}
                                 titleKey="agency.form.registrationSettings.title"
+                                subTitleKey="agency.form.registrationSettings.purpose"
+                                headerIcon={<AllUsersIcon />}
                                 variant="dialog"
                                 editButtonPlacement="footer"
                                 onSave={onSaveCard}
@@ -320,6 +372,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                 allowUnsavedChanges
                                 initialValues={initialValues}
                                 titleKey="agency.edit.settings.title"
+                                subTitleKey="agency.edit.settings.purpose"
+                                headerIcon={<TopicInterestsIcon />}
                                 variant="dialog"
                                 editButtonPlacement="footer"
                                 onSave={onSaveCard}
@@ -344,7 +398,14 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     disabled={isReadOnly}
                     onFinish={onSubmit}
                 >
-                    <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
+                    {/* Create flow: the same condition chain, shown from the first
+                        second so the path to "live" is never a surprise. The switch
+                        itself only exists once the Beratungsstelle is persisted. */}
+                    <GoLiveStatus
+                        title={t('agency.goLive.title')}
+                        description={`${t('agency.goLive.description')} ${t('agency.goLive.createHint')}`}
+                        conditions={goLiveConditions}
+                    />
                     <CardDeck
                         ariaLabel={t(`agency.edit.settings.general.title`)}
                         previousLabel={t('agency.cardDeck.previous')}
@@ -397,10 +458,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
 
     const renderLegalSettings = () => (
         <>
-            <h3 className={styles.backHeadline}>
-                {t(`agency.edit.settings.legal.title`)}{' '}
-                {legalDataMissing && <ErrorOutlinedIcon fontSize="small" color="error" />}
-            </h3>
+            {/* The "Rechtliches" headline repeated the active tab (feedback
+                2026-08-19); the legal-data-missing marker lives on the tab icon. */}
             <CardDeck
                 ariaLabel={t(`agency.edit.settings.legal.title`)}
                 previousLabel={t('legal.cardDeck.previous')}

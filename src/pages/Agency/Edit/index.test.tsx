@@ -274,6 +274,10 @@ describe('AgencyPageEdit create flow', () => {
         // Create flow: general+registration share one deck item; settings is the second.
         expect(container.querySelector('[data-admin-card-deck]')).toBeInTheDocument();
         expect(container.querySelectorAll('[data-admin-card-deck-item]')).toHaveLength(2);
+        // Go-live chain sits topmost as a section from the first second; the
+        // switch itself only exists once the agency is persisted.
+        expect(screen.getByTestId('go-live-status')).toBeInTheDocument();
+        expect(screen.queryByRole('switch')).not.toBeInTheDocument();
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
     });
 

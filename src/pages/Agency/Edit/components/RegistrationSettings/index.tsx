@@ -1,11 +1,11 @@
-import { Alert, Divider, Form } from 'antd';
+import { Divider, Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Card } from '../../../../../components/Card';
+import { AllUsersIcon } from '../../../../../components/CustomIcons/AllUsers';
 import { MuiRadioGroupField } from '../../../../../components/mui/MuiRadioGroupField';
 import { MuiSelectField } from '../../../../../components/mui/MuiSelectField';
-import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
 import { TypeOfUser } from '../../../../../enums/TypeOfUser';
 import { useAgencyHasConsultants } from '../../../../../hooks/useAgencyHasConsultants';
 import { useConsultantsOrAdminsData } from '../../../../../hooks/useConsultantsOrAdminsData';
@@ -30,10 +30,8 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
     const postCodeRangesActive = Form.useWatch('postCodeRangesActive');
     const selectedTenantId = Form.useWatch('tenantId') ?? form.getFieldValue('tenantId');
     const selectedTopicIds = Form.useWatch('topicIds') ?? form.getFieldValue('topicIds');
-    const selectedConsultants = Form.useWatch('consultantIds') || [];
-    const hasSelectedConsultants = selectedConsultants.length > 0;
     const showConsultantAssignment = !asFields || editing;
-    const { data: hasConsultants, isLoading } = useAgencyHasConsultants({ id });
+    const { isLoading } = useAgencyHasConsultants({ id });
     const { data: consultants, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
         typeOfUser: TypeOfUser.Consultants,
         search: '*',
@@ -45,7 +43,6 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
 
         return convertToOptions(activeConsultants, ['firstname', 'lastname', 'email'], 'id');
     }, [consultants?.data]);
-    const needsConsultantAssignment = id === 'add' ? !hasSelectedConsultants : !hasConsultants;
     // Superadmins pick the tenant in the form; tenant admins carry it in their token.
     const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
     const hasPersistedAgency = id !== 'add' && Number.isFinite(Number(id)) && Number(id) > 0;
@@ -61,25 +58,12 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         ]);
     };
 
-    useEffect(() => {
-        if (id === 'add' && !hasSelectedConsultants) {
-            form.setFieldValue('online', false);
-        }
-    }, [form, hasSelectedConsultants, id]);
-
     const fields = (
         <>
-            {needsConsultantAssignment && (
-                <Alert
-                    className={styles.warning}
-                    type="warning"
-                    description={t(
-                        showConsultantAssignment
-                            ? 'agency.form.registrationSettings.assignmentWarning'
-                            : 'agency.form.registrationSettings.onlineWarning',
-                    )}
-                />
-            )}
+            {/* The former warning alert and online switch moved into the page-level
+                GoLiveStatus section (concept 2026-08-19): visibility is a system-
+                checked condition chain there, not a per-card control. This card is
+                the team + catchment area. */}
             {showConsultantAssignment && (
                 <>
                     <MuiSelectField
@@ -108,11 +92,6 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
                     </div>
                 </>
             )}
-            <MuiSwitchField
-                label={t('agency.form.registrationSettings.onlineDescription')}
-                name="online"
-                disabled={needsConsultantAssignment}
-            />
             <Divider />
 
             <MuiRadioGroupField
@@ -142,6 +121,8 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
             autoHeight
             dialogContentPadding
             titleKey="agency.form.registrationSettings.title"
+            subTitleKey="agency.form.registrationSettings.purpose"
+            headerIcon={<AllUsersIcon />}
             isLoading={isLoading}
             variant="dialog"
         >

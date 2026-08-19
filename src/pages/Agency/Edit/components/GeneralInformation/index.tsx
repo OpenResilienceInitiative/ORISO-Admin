@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { MuiFormField, MuiMultilineFormField } from '../../../../../components/mui/MuiFormField';
 import { Card } from '../../../../../components/Card';
+import { AgencyCounsellingIcon } from '../../../../../components/CustomIcons/AgencyCounselling';
 import { FieldGrid } from '../../../../../components/FieldGrid';
 
 interface AgencyGeneralInformationProps {
@@ -106,7 +107,14 @@ export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationP
     }
 
     return (
-        <Card autoHeight dialogContentPadding titleKey="agency.edit.general.general_information" variant="dialog">
+        <Card
+            autoHeight
+            dialogContentPadding
+            titleKey="agency.edit.general.general_information"
+            subTitleKey="agency.edit.general.general_information.purpose"
+            headerIcon={<AgencyCounsellingIcon />}
+            variant="dialog"
+        >
             {fields}
         </Card>
     );
