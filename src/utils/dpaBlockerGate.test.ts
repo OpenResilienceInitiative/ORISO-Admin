@@ -269,3 +269,66 @@ describe('deriveDpaGateDecision — forwarded-pending (#724)', () => {
         ).toEqual({ kind: 'blocked', reason: 'STATUS_UNAVAILABLE', signable: false });
     });
 });
+
+describe('deriveDpaGateDecision — unlock confirmation (JOB8/JOB9)', () => {
+    it('asks for an explicit unlock when the signature lands while the tenant waited on the forwarded dialog', () => {
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'subject',
+                status: 'VALID',
+                isLoading: false,
+                isError: false,
+                wasAwaitingForwardedSignature: true,
+            }),
+        ).toEqual({ kind: 'unlock-confirm' });
+    });
+
+    it('does not ask for an unlock when the tenant never waited on the dialog', () => {
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'subject',
+                status: 'VALID',
+                isLoading: false,
+                isError: false,
+                wasAwaitingForwardedSignature: false,
+            }),
+        ).toEqual({ kind: 'inactive' });
+    });
+
+    it('never turns an unsigned status into an unlock prompt, however long the tenant waited', () => {
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'subject',
+                status: 'UNSIGNED',
+                isLoading: false,
+                isError: false,
+                forwardPending: true,
+                wasAwaitingForwardedSignature: true,
+            }),
+        ).toEqual({ kind: 'forwarded-pending', reason: 'UNSIGNED' });
+    });
+
+    it('never turns an unreadable status into an unlock prompt', () => {
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'subject',
+                status: undefined,
+                isLoading: false,
+                isError: true,
+                wasAwaitingForwardedSignature: true,
+            }),
+        ).toEqual({ kind: 'blocked', reason: 'STATUS_UNAVAILABLE', signable: false });
+    });
+
+    it('leaves the exempt platform admin untouched', () => {
+        expect(
+            deriveDpaGateDecision({
+                subjectKind: 'exempt',
+                status: 'VALID',
+                isLoading: false,
+                isError: false,
+                wasAwaitingForwardedSignature: true,
+            }),
+        ).toEqual({ kind: 'inactive' });
+    });
+});
