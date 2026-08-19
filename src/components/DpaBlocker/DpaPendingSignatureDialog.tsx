@@ -65,6 +65,9 @@ export const DpaPendingSignatureDialog = ({
         return (
             <DpaForwardDialog
                 forward={forward}
+                // Shown after login on an authenticated admin surface, so the
+                // admin-only branded mail preview is reachable here.
+                surface="admin"
                 onClose={() => setResendOpen(false)}
                 onForwarded={(result) => {
                     setResendOpen(false);

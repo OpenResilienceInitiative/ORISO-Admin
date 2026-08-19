@@ -53,10 +53,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** The explicit act that mints the link — nothing is minted by opening (#712). */
+const createLink = async (body: ReturnType<typeof within>) =>
+    userEvent.click(await body.findByRole('button', { name: /Signaturlink erzeugen|Create signing link/ }));
+
 /**
- * Link ready, mail preview visible, copy + optional e-mail send. With the name
- * field empty the preview greets neutrally — a raw `{{recipientName}}` is never
- * shown to a person.
+ * The public onboarding surface as it opens: no link minted yet, the mail
+ * previewed as text. With the name field empty the preview greets neutrally —
+ * a raw `{{recipientName}}` is never shown to a person.
  */
 export const Default: Story = {};
 
@@ -65,17 +69,37 @@ export const Mobile: Story = {
     ...PHONE_390,
 };
 
+/** The link after it was explicitly requested: copyable, with the validity note. */
+export const LinkRequested: Story = {
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await createLink(body);
+        await waitFor(async () =>
+            expect(await body.findByLabelText(/Signaturlink|Signing link/)).toHaveValue(LINK.signUrl),
+        );
+    },
+};
+
 /** Typing a name resolves the salutation in the preview. */
 export const NamedRecipient: Story = {
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         const name = await body.findByLabelText(/Name der Person|Name of the person/);
         await userEvent.type(name, 'Dr. Ruth Recht');
-        const frame = await body.findByTitle(/Vorschau der E-Mail|Preview of the e-mail/);
-        await waitFor(() =>
-            expect((frame as HTMLIFrameElement).contentDocument?.body?.innerText).toContain('Dr. Ruth Recht'),
+        // The public preview composes client-side, so this needs no backend.
+        await waitFor(async () =>
+            expect(await body.findByTestId('dpa-forward-plain-preview')).toHaveTextContent('Dr. Ruth Recht'),
         );
     },
+};
+
+/**
+ * The admin surface (Legal Settings, pending-signature dialog): the mail is
+ * rendered by the backend's own renderer, so the preview cannot drift from the
+ * sent mail. That endpoint is admin-only — hence the `surface` prop.
+ */
+export const AdminSurface: Story = {
+    args: { surface: 'admin' },
 };
 
 /** Link creation failed: inline retryable error, confirm stays disabled. */
@@ -86,6 +110,11 @@ export const LinkError: Story = {
             throw new DpaForwardError('TECHNICAL');
         },
     },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await createLink(body);
+        await waitFor(async () => expect(await body.findByTestId('dpa-forward-link-error')).toBeVisible());
+    },
 };
 
 /** 409 — the operator published no agreement, so there is nothing to forward. */
@@ -95,6 +124,11 @@ export const NoDpaPublished: Story = {
             await wait(300);
             throw new DpaForwardError('NO_DPA_PUBLISHED');
         },
+    },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await createLink(body);
+        await waitFor(async () => expect(await body.findByTestId('dpa-forward-link-error')).toBeVisible());
     },
 };
 
