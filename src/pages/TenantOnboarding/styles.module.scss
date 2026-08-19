@@ -95,9 +95,29 @@
     }
 }
 
+/* Organisation master data (owner report 2026-08-19). The block moved out of
+   the top of the step and now sits between the agreement and the signer
+   fields, so it takes the 12px side inset of the shared DPA form block: the
+   two adjacent sections must share one left edge. */
+
+.masterDataSection {
+    padding-inline: 12px;
+    margin-bottom: 24px;
+}
+
+/* Section header treatment of the admin surfaces (DpaForwardDialog
+   `.sectionTitle`) — no new type scale, colour from the ORISO token. */
+
+.sectionTitle {
+    margin: 0 0 12px;
+    color: var(--m3-on-surface);
+    font: 600 15px/22px var(--m3-body-font-family);
+}
+
 /* The DPA text + signer form block is shared — see src/components/DpaLegalForm.
-   The reader card carries its own title/help text, so this only separates it
-   from the organisation fields above. */
+   Since the owner report 2026-08-19 it also carries the organisation master
+   data (between the agreement and the signer section), so this only separates
+   the whole block from the step's intro above it. */
 
 .dpaBlock {
     margin-top: 32px;

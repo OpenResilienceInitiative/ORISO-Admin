@@ -166,6 +166,47 @@ export const OrganisationDpaStep = ({
         }
     };
 
+    /**
+     * The organisation master data (owner report 2026-08-19). It used to open
+     * the step, above the agreement — three unnamed fields the user filled in
+     * before ever seeing what they were signing. It now sits directly above
+     * the signer block, under its own header, so the organisation and the
+     * person signing for it read as one statement.
+     *
+     * `h3`: the page owns the h1, the step title the h2 — the outline must not
+     * skip a level (WCAG 2.2 / axe `heading-order`).
+     */
+    const organisationSection = (
+        <div className={styles.masterDataSection}>
+            <h3 className={styles.sectionTitle} data-testid="organisation-master-data-title">
+                {t('tenantOnboarding.organisation.masterDataTitle')}
+            </h3>
+            <div className={classNames(styles.fieldStack, styles.fieldStackPaired)}>
+                <MuiFormField
+                    name="name"
+                    label={t('tenantOnboarding.organisation.name')}
+                    rules={[{ required: true, whitespace: true, message: t('tenantOnboarding.validation.required') }]}
+                />
+                <MuiFormField
+                    name="subdomain"
+                    label={t('tenantOnboarding.organisation.subdomain')}
+                    rules={[
+                        { required: true, whitespace: true, message: t('tenantOnboarding.validation.required') },
+                        {
+                            pattern: /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/,
+                            message: t('tenantOnboarding.validation.subdomain'),
+                        },
+                    ]}
+                />
+                <MuiFormField
+                    name="address"
+                    label={t('tenantOnboarding.organisation.address')}
+                    rules={[{ required: true, whitespace: true, message: t('tenantOnboarding.validation.required') }]}
+                />
+            </div>
+        </div>
+    );
+
     return (
         <>
             <Form
@@ -194,34 +235,6 @@ export const OrganisationDpaStep = ({
                 <Typography sx={{ mb: 2 }} color="text.secondary">
                     {t('tenantOnboarding.organisation.description', { tenantId: invite.reservedTenantId })}
                 </Typography>
-                <div className={classNames(styles.fieldStack, styles.fieldStackPaired)}>
-                    <MuiFormField
-                        name="name"
-                        label={t('tenantOnboarding.organisation.name')}
-                        rules={[
-                            { required: true, whitespace: true, message: t('tenantOnboarding.validation.required') },
-                        ]}
-                    />
-                    <MuiFormField
-                        name="subdomain"
-                        label={t('tenantOnboarding.organisation.subdomain')}
-                        rules={[
-                            { required: true, whitespace: true, message: t('tenantOnboarding.validation.required') },
-                            {
-                                pattern: /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/,
-                                message: t('tenantOnboarding.validation.subdomain'),
-                            },
-                        ]}
-                    />
-                    <MuiFormField
-                        name="address"
-                        label={t('tenantOnboarding.organisation.address')}
-                        rules={[
-                            { required: true, whitespace: true, message: t('tenantOnboarding.validation.required') },
-                        ]}
-                    />
-                </div>
-
                 <div className={styles.dpaBlock}>
                     {forwarded ? (
                         <>
@@ -246,6 +259,7 @@ export const OrganisationDpaStep = ({
                                     contentLanguage={i18n.language}
                                 />
                             )}
+                            {organisationSection}
                             <div className={styles.forwardOnHold} data-testid="dpa-forwarded-onhold">
                                 <HourglassTopRounded aria-hidden className={styles.forwardOnHoldIcon} />
                                 <div>
@@ -288,6 +302,8 @@ export const OrganisationDpaStep = ({
                                 // (H3, same block, the "reader modal" this card becomes
                                 // when maximized).
                                 hideTextHeader
+                                beforeSignerFields={organisationSection}
+                                signerHeadingLevel={3}
                                 accepted={dpaAccepted}
                                 acceptTouched={acceptTouched}
                                 onAcceptedChange={(value) => {
