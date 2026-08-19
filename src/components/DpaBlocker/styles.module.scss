@@ -1,4 +1,5 @@
 @use '../../styles/breakpoints' as bp;
+@use '../../styles/scrollbars' as scrollbars;
 
 /* Global DPA blocker (TEN-INV-U10, #572).
  *
@@ -30,6 +31,12 @@
     background: var(--m3-surface-container-low, #f6f3f3);
     inset: 0;
     overflow-y: auto;
+
+    /* JOB10: the blocker covers the whole viewport, so its classic scrollbar
+       read as the window's own — a full-height grey track beside the contract
+       the admin is being asked to sign. */
+
+    @include scrollbars.quiet;
 }
 
 .card {
@@ -76,7 +83,12 @@
         padding: 0 4px;
         margin: 0 -4px;
         overflow-y: auto;
+
+        /* Gutter stays so the sign form does not jump sideways as it grows;
+           JOB10 only takes the track away. */
         scrollbar-gutter: stable;
+
+        @include scrollbars.quiet;
     }
 }
 
