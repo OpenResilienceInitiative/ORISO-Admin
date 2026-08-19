@@ -11,6 +11,7 @@ import { normalizeTopicIds } from '../../../api/agency/normalizeTopicIds';
 import routePathNames from '../../../appConfig';
 import { Page } from '../../../components/Page';
 import { CardDeck } from '../../../components/CardDeck';
+import { CardGrid } from '../../../components/CardGrid';
 import { DashboardEmptyState } from '../../../components/DashboardEmptyState/DashboardEmptyState';
 import { useFeatureContext } from '../../../context/FeatureContext';
 import { FeatureFlag } from '../../../enums/FeatureFlag';
@@ -345,19 +346,15 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     onFinish={onSubmit}
                 >
                     <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
-                    <CardDeck
-                        ariaLabel={t(`agency.edit.settings.general.title`)}
-                        previousLabel={t('agency.cardDeck.previous')}
-                        nextLabel={t('agency.cardDeck.next')}
-                    >
-                        <CardDeck.Item>
-                            <AgencyGeneralInformation />
-                            <RegistrationSettings />
-                        </CardDeck.Item>
-                        <CardDeck.Item>
-                            <AgencySettings isEditMode={isEditing} />
-                        </CardDeck.Item>
-                    </CardDeck>
+                    {/* #620: the create flow shares the row width responsively (CardGrid)
+                        instead of the fixed-width horizontal CardDeck — cards split 50/50
+                        while two fit and stack below the floor, so FieldGrid can reach
+                        its multi-column layout inside each card. */}
+                    <CardGrid minCardWidth={425} maxColumns={2}>
+                        <AgencyGeneralInformation />
+                        <RegistrationSettings />
+                        <AgencySettings isEditMode={isEditing} />
+                    </CardGrid>
                 </Form>
             </ThemeProvider>
         );
@@ -383,15 +380,11 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             onFinish={onSubmit}
         >
             <h3 className={styles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
-            <CardDeck
-                ariaLabel={t('agency.edit.settings.functionalities.title')}
-                previousLabel={t('agency.cardDeck.previous')}
-                nextLabel={t('agency.cardDeck.next')}
-            >
-                <CardDeck.Item>
-                    <AgencySettings isEditMode={isEditing} />
-                </CardDeck.Item>
-            </CardDeck>
+            {/* #620: a single card in a fixed 392px deck rendered needlessly narrow —
+                the grid lets it use the row up to the shared card floor. */}
+            <CardGrid minCardWidth={425} maxColumns={2}>
+                <AgencySettings isEditMode={isEditing} />
+            </CardGrid>
         </Form>
     );
 
