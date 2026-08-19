@@ -198,7 +198,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
         const idInput = await screen.findByRole('textbox', { name: 'Träger-ID' });
         expect(idInput).toHaveValue('Auto');
-        expect(screen.getByText('Die nächste freie ID wird automatisch vergeben.')).toBeInTheDocument();
+        expect(screen.queryByText('Die nächste freie ID wird automatisch vergeben.')).not.toBeInTheDocument();
 
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
         const sendButton = await findSendButton('Direkt Versenden');
@@ -243,8 +243,9 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
         await waitFor(() => expect(screen.getByRole('textbox', { name: 'Träger-ID' })).toHaveValue('21'));
         expect(mocks.tenantIdAllocationClient.nextFreeId).toHaveBeenCalledWith({ direction: 'up' });
-        // The tab-level `t` mock does not interpolate — the raw fallback is fine here.
-        expect(await screen.findByText('ID {{id}} ist frei.')).toBeInTheDocument();
+        // A free id is the expected case and says nothing an admin has to act on,
+        // so it no longer produces a supporting line at all.
+        expect(screen.queryByText('ID {{id}} ist frei.')).not.toBeInTheDocument();
 
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
         const sendButton = await findSendButton('Direkt Versenden');
