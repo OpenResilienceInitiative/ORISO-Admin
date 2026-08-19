@@ -45,6 +45,7 @@
 
 /* The link is minted on demand (#712), so its idle state is an explanation plus
    the act that creates it — the note leads, the action follows it. */
+
 .linkIdle {
     display: flex;
     flex-direction: column;
