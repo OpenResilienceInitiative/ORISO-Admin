@@ -6,6 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { configure, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';
+// Imported statically, NOT with `await import(...)` inside a test: every `vi.mock`
+// below is hoisted above this line, so the mocks still apply, while a dynamic
+// import would bill the transform + evaluation of this tab's module graph
+// (~12.5s idle, 15.4s under a 4-worker run) to whichever test happens to load it
+// first. That is what timed out AccountInvitesTab.test.tsx on CI.
+import { TenantInvitesTab } from './AccountInvitesTab';
 
 // CI runners are heavily contended; the 1s default for findBy*/waitFor flakes there.
 configure({ asyncUtilTimeout: 10_000 });
@@ -113,10 +119,7 @@ const emptyInvitesPage = {
     size: 20,
 };
 
-const renderTenantTab = async () => {
-    const { TenantInvitesTab } = await import('./AccountInvitesTab');
-    return render(<TenantInvitesTab />);
-};
+const renderTenantTab = () => render(<TenantInvitesTab />);
 
 const findSendButton = (name: string) => screen.findByRole('button', { name });
 
@@ -133,7 +136,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     });
 
     it('keeps the send action outlined + disabled until valid, then flips to primary', async () => {
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         const sendButton = await findSendButton('Direkt Versenden');
@@ -193,7 +196,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     });
 
     it('persists the chosen send mode per tab and swaps the main label', async () => {
-        const view = await renderTenantTab();
+        const view = renderTenantTab();
         const user = userEvent.setup();
 
         await findSendButton('Direkt Versenden');
@@ -206,7 +209,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
         // Survives a full remount (page reload) via localStorage.
         view.unmount();
-        await renderTenantTab();
+        renderTenantTab();
         expect(await findSendButton('Empfänger nur anlegen')).toBeInTheDocument();
     });
 
@@ -214,7 +217,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         window.localStorage.setItem(sendModeStorageKey('TENANT_ADMIN'), 'createOnly');
         mocks.createAccountInvite.mockResolvedValue({ id: 99 });
 
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
@@ -234,7 +237,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     it('starts visibly on Auto and posts allocationMode AUTO without a browser-pinned id (#570)', async () => {
         mocks.createAccountInvite.mockResolvedValue({ id: 99 });
 
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         const idInput = await screen.findByRole('textbox', { name: 'Träger-ID' });
@@ -257,7 +260,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     it('blocks sending on a reserved id and unblocks via the Auto toggle (#570)', async () => {
         mocks.tenantIdAllocationClient.checkIdAvailability.mockResolvedValue({ id: 30, state: 'RESERVED' });
 
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
@@ -276,7 +279,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     it('adopts the current next free id on the first arrow click and posts MANUAL (#570)', async () => {
         mocks.createAccountInvite.mockResolvedValue({ id: 99 });
 
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await screen.findByRole('textbox', { name: 'Träger-ID' });
@@ -300,7 +303,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     });
 
     it('parses a picked CSV client-side and opens the preview modal (#315)', async () => {
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }));
@@ -329,7 +332,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     it('names the missing precondition while the send action is disabled (#713)', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE, { ...TEMPLATE, id: 8, name: 'Zweite Vorlage' }]);
 
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         const sendButton = await findSendButton('Direkt Versenden');
@@ -344,7 +347,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     });
 
     it('opens the templates dialog in list view from the template pill', async () => {
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         const templatePill = await screen.findByRole('button', { name: /Standard/ });
@@ -362,7 +365,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE, { ...TEMPLATE, id: 8, name: 'Zweite Vorlage' }]);
         mocks.createAccountInvite.mockResolvedValue({ id: 99 });
 
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         // Two active templates: nothing preselected, the pill rests on its fallback label.
@@ -400,7 +403,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         it('blocks "Direkt Versenden" (option A) with an inline field error', async () => {
             mocks.createAccountInvite.mockRejectedValue(emailTakenResponse());
 
-            await renderTenantTab();
+            renderTenantTab();
             const user = userEvent.setup();
 
             const emailField = await screen.findByLabelText('E-Mail');
@@ -424,7 +427,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             window.localStorage.setItem(sendModeStorageKey('TENANT_ADMIN'), 'createOnly');
             mocks.createAccountInvite.mockRejectedValue(emailTakenResponse());
 
-            await renderTenantTab();
+            renderTenantTab();
             const user = userEvent.setup();
 
             await user.type(await screen.findByLabelText('E-Mail'), 'taken@example.org');
@@ -442,7 +445,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         it('clears the inline error once a different address is entered', async () => {
             mocks.createAccountInvite.mockRejectedValueOnce(emailTakenResponse());
 
-            await renderTenantTab();
+            renderTenantTab();
             const user = userEvent.setup();
 
             const emailField = await screen.findByLabelText('E-Mail');
@@ -466,7 +469,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         it('still shows the tenant-ID message for a 409 without that reason', async () => {
             mocks.createAccountInvite.mockRejectedValue(new Response(null, { status: 409 }));
 
-            await renderTenantTab();
+            renderTenantTab();
             const user = userEvent.setup();
 
             await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
@@ -482,7 +485,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     });
 
     it('opens the create view prefilled from the pill menu\'s "Neu aus" entry (#746 review)', async () => {
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await screen.findByRole('button', { name: /Standard/ });
