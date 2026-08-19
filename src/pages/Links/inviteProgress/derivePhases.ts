@@ -204,7 +204,10 @@ export const matchesInviteQuery = (invite: SearchableFacts, query: string): bool
     return terms.every((term) => haystack.includes(term));
 };
 
-type ActivityFacts = Pick<AccountInviteDTO, 'createDate' | 'acceptedAt' | 'revokedAt' | 'supersededAt'>;
+type ActivityFacts = Pick<
+    AccountInviteDTO,
+    'createDate' | 'acceptedAt' | 'revokedAt' | 'supersededAt' | 'twoFactorWaivedAt'
+>;
 
 /**
  * Latest known activity timestamp of an invite (ISO string), for the "letzte
