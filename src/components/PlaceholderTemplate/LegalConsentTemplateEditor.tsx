@@ -1,5 +1,6 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CheckBoxIcon } from '../CustomIcons/LegalIcons';
 import { M3Checkbox } from '../M3Checkbox';
 import {
     PlaceholderTemplateEditor,
@@ -107,6 +108,11 @@ export const LegalConsentTemplateEditor = ({
                 </section>
             }
             readOnly={readOnly}
+            // The consent sentence is rendered as a CHECKBOX label in registration
+            // (see the preview below), so the checkbox is the glyph that names this
+            // template — not the generic document icon the invite templates use.
+            // Outline, not filled: filled is this set's selected state.
+            templateIcon={<CheckBoxIcon />}
             templates={templates}
             tokens={LEGAL_CONSENT_TOKENS}
             values={values}

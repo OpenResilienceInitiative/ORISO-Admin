@@ -51,6 +51,13 @@ export interface ModalProps {
     closable?: boolean;
     /** Extra class on the dialog root, for per-dialog sheet rules (e.g. a viewport bound). */
     className?: string;
+    /**
+     * Lets the description use the dialog's full width instead of the 52ch reading
+     * cap. For wide working dialogs (the 1080px editor sheets) only, where the cap
+     * leaves the sentence as a narrow column over a much wider body. Confirm
+     * dialogs keep the cap.
+     */
+    descriptionFullWidth?: boolean;
 }
 
 /**
@@ -83,6 +90,7 @@ export const Modal = ({
     confirmDisabled = false,
     closable = true,
     className,
+    descriptionFullWidth = false,
 }: ModalProps) => {
     const { t } = useTranslation();
 
@@ -127,7 +135,11 @@ export const Modal = ({
                         )}
                         <div className={styles.title}>{titleKey ? t(titleKey, titleKeyOptions) : title}</div>
                         {(descriptionKey || description) && (
-                            <p className={styles.description}>
+                            <p
+                                className={classNames(styles.description, {
+                                    [styles.descriptionFullWidth]: descriptionFullWidth,
+                                })}
+                            >
                                 {descriptionKey ? t(descriptionKey, descriptionKeyOptions) : description}
                             </p>
                         )}

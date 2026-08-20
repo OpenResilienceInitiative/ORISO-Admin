@@ -42,6 +42,8 @@ export interface PlaceholderTemplateEditorProps<V extends Record<string, string>
     onManageTemplates?: () => void;
     /** Live preview column, computed by the variant from the current values. */
     preview: ReactNode;
+    /** Leading glyph of the template split button; see TemplateSplitButton. */
+    templateIcon?: ReactNode;
     /**
      * Read-only surface (no edit permission, or looking at an archived version):
      * fields, token pickers and the template chooser go inert. They stay visible —
@@ -69,6 +71,7 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
     onCreateFromTemplate,
     onManageTemplates,
     preview,
+    templateIcon,
     readOnly = false,
 }: PlaceholderTemplateEditorProps<V>) => (
     <section aria-label={heading} className={styles.editor}>
@@ -77,6 +80,7 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
             <TemplateSplitButton
                 activeTemplateId={activeTemplateId}
                 disabled={readOnly}
+                icon={templateIcon}
                 templates={templates}
                 onCreateFromTemplate={onCreateFromTemplate}
                 onMainClick={onManageTemplates}

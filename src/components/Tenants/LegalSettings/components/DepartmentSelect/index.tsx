@@ -1,5 +1,5 @@
-import Groups from '@mui/icons-material/Groups';
 import { useTranslation } from 'react-i18next';
+import { TopicIcon } from '../../../../CustomIcons/LegalIcons';
 import { SplitDropdown } from '../../../../FormPluginEditor/SplitDropdown';
 import styles from './styles.module.scss';
 
@@ -62,7 +62,13 @@ export const DepartmentSelect = ({ departments, value, onChange }: DepartmentSel
 
     return (
         <SplitDropdown
-            icon={<Groups />}
+            // The house Fachbereich/topic glyph (Icons Master File `topic_400_24px`),
+            // not MUI's `Groups`: this control picks a THEME, not a group of people, and
+            // the legal editors draw from the ORISO set (LegalIcons) rather than MUI.
+            // Outline, not `TopicFilledIcon` — the filled variant is this set's SELECTED
+            // state (see PillSelect's `icon` / `selectedIcon` pair); a resting leading
+            // glyph on a closed dropdown is the default state.
+            icon={<TopicIcon />}
             label={selected?.name ?? allLabel}
             title={t('agency.legal.department.choose', 'Fachbereich wählen')}
             menu={{

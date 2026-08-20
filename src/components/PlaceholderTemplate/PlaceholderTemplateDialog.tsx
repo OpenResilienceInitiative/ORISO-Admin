@@ -33,6 +33,8 @@ export interface PlaceholderTemplateDialogProps {
      */
     footer?: ReactNode;
     width?: number | string;
+    /** Optional 32px hero glyph above the title, naming what is being edited. */
+    icon?: ReactNode;
 }
 
 /**
@@ -54,6 +56,7 @@ export const PlaceholderTemplateDialog = ({
     saveDescribedBy,
     footer,
     width = 1080,
+    icon,
 }: PlaceholderTemplateDialogProps) => (
     <Modal
         titleKey={titleKey}
@@ -67,6 +70,11 @@ export const PlaceholderTemplateDialog = ({
         confirmDisabled={saveDisabled}
         confirmDescribedBy={saveDescribedBy}
         width={width}
+        icon={icon}
+        // This sheet is 1080px wide with a two-column editor beneath the title, so
+        // the Modal's 52ch reading cap left the description as a narrow column over a
+        // box more than twice its width. Confirm dialogs keep the cap.
+        descriptionFullWidth
     >
         <div className={styles.body}>{children}</div>
     </Modal>
