@@ -74,33 +74,46 @@ describe('createHttpDpaForwardClient', () => {
         );
     });
 
-    it('502: keeps the created link and reports the mail failure instead of failing outright', async () => {
-        mocks.fetchData
-            .mockRejectedValueOnce(new Response(null, { status: 502 }))
-            .mockResolvedValueOnce({ ...RESPONSE, signUrl: 'https://app.example.org/dpa-sign/retry' });
+    it('reports the mail failure from the first response without minting a second link', async () => {
+        // Every forward call mints a NEW link, and only five may be outstanding
+        // at once. The old 502 fallback made a second call to obtain a link, so
+        // one failed send cost two of the five. The flag now rides in the first
+        // response and there is no second call to make.
+        mocks.fetchData.mockResolvedValueOnce({ ...RESPONSE, mailSent: false });
 
         const outcome = await createHttpDpaForwardClient().forward('tok', { recipientEmail: 'legal@example.org' });
 
         expect(outcome.mailFailed).toBe(true);
-        expect(outcome.link.signUrl).toBe('https://app.example.org/dpa-sign/retry');
-        // The fallback call must not try to send the mail again.
-        expect(mocks.fetchData).toHaveBeenLastCalledWith(expect.objectContaining({ bodyData: JSON.stringify({}) }));
+        expect(outcome.link.signUrl).toBe(RESPONSE.signUrl);
+        expect(mocks.fetchData).toHaveBeenCalledTimes(1);
     });
 
-    it('502 whose link-only fallback also fails stays a technical error', async () => {
-        mocks.fetchData
-            .mockRejectedValueOnce(new Response(null, { status: 502 }))
-            .mockRejectedValueOnce(new Response(null, { status: 500 }));
+    it('treats a server that omits mailSent as "not sent" rather than a silent success', async () => {
+        // Failing towards "show the link" is safe; the opposite default would
+        // claim a delivery that never happened and hide the link.
+        mocks.fetchData.mockResolvedValueOnce({ ...RESPONSE });
 
-        await expect(
-            createHttpDpaForwardClient().forward('tok', { recipientEmail: 'legal@example.org' }),
-        ).rejects.toMatchObject({ kind: 'TECHNICAL' });
+        const outcome = await createHttpDpaForwardClient().forward('tok', { recipientEmail: 'legal@example.org' });
+
+        expect(outcome.mailFailed).toBe(true);
+    });
+
+    it('never reports a mail failure for a link-only call', async () => {
+        // No recipient means no mail was asked for, so there is nothing to fail.
+        mocks.fetchData.mockResolvedValueOnce({ ...RESPONSE });
+
+        const outcome = await createHttpDpaForwardClient().forward('tok');
+
+        expect(outcome.mailFailed).toBe(false);
     });
 
     it.each([
-        [400, 'INVALID_EMAIL'],
+        // 400 is TECHNICAL on purpose: it used to claim the address was
+        // invalid for any server-side rejection (owner report 2026-08-19).
+        [400, 'TECHNICAL'],
         [404, 'UNKNOWN_TOKEN'],
         [409, 'NO_DPA_PUBLISHED'],
+        [429, 'TOO_MANY_LINKS'],
         [500, 'TECHNICAL'],
     ] as const)('maps %i to DpaForwardError(%s)', async (status, kind) => {
         mocks.fetchData.mockRejectedValue(new Response(null, { status }));

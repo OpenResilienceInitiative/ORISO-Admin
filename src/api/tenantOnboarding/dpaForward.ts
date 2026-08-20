@@ -51,12 +51,12 @@ export interface DpaForwardOutcome {
 
 /** Why a forward call failed in a way the dialog must phrase specifically. */
 export type DpaForwardFailureKind =
-    /** 400 — `recipientEmail` is not a valid address (inline field error). */
-    | 'INVALID_EMAIL'
     /** 404 — unknown invite token. */
     | 'UNKNOWN_TOKEN'
     /** 409 — the platform operator has published no DPA, nothing to forward. */
     | 'NO_DPA_PUBLISHED'
+    /** 429 — this onboarding already holds the maximum of outstanding sign links. */
+    | 'TOO_MANY_LINKS'
     /** Anything else — retryable/technical. */
     | 'TECHNICAL';
 
@@ -116,13 +116,19 @@ const toForwardError = async (error: unknown): Promise<unknown> => {
     if (!(error instanceof Response)) {
         return error;
     }
+    // 400 deliberately has NO mapping of its own. It used to become
+    // INVALID_EMAIL, which told the user their address was wrong for any
+    // server-side rejection — the owner hit exactly that with a valid address
+    // while the real cause was a missing APP_BASE_URL two services away. The
+    // body is empty, so a 400 cannot be discriminated here anyway, and the
+    // dialog already blocks malformed addresses client-side via { type: 'email' }.
     switch (error.status) {
-        case 400:
-            return new DpaForwardError('INVALID_EMAIL');
         case 404:
             return new DpaForwardError('UNKNOWN_TOKEN');
         case 409:
             return new DpaForwardError('NO_DPA_PUBLISHED');
+        case 429:
+            return new DpaForwardError('TOO_MANY_LINKS');
         case 410:
             return toLinkDeath(error);
         default:
@@ -160,7 +166,7 @@ export const createHttpDpaForwardClient = (): DpaForwardClient => {
             skipAuth: true,
             responseHandling: [...PUBLIC_RESPONSE_HANDLING, FETCH_SUCCESS.CONTENT],
             bodyData: JSON.stringify(request),
-        }) as Promise<{ signUrl: string; expiresAt?: string | null }>;
+        }) as Promise<{ signUrl: string; expiresAt?: string | null; mailSent?: boolean }>;
 
     const toLink = (dto: { signUrl: string; expiresAt?: string | null }): DpaForwardLink => ({
         signUrl: resolveDpaForwardSignLink(dto.signUrl),
@@ -169,21 +175,22 @@ export const createHttpDpaForwardClient = (): DpaForwardClient => {
 
     return {
         forward: async (inviteToken, request = {}) => {
-            try {
-                return { link: toLink(await call(inviteToken, request)), mailFailed: false };
-            } catch (error) {
-                // 502: the mail could not be sent BUT THE LINK EXISTS. The
-                // response carries no body, so a link-only repeat call fetches
-                // one to display — sharing it manually is the whole fallback.
-                if (error instanceof Response && error.status === 502) {
-                    try {
-                        return { link: toLink(await call(inviteToken, {})), mailFailed: true };
-                    } catch (retryError) {
-                        throw await toForwardError(retryError);
-                    }
-                }
+            // The backend answers 200 with the link even when the mail could not
+            // be delivered, flagging it as `mailSent: false`. The old 502 branch
+            // fetched a link with a SECOND call — and every call mints a new
+            // link, so a failed send cost two of the five allowed outstanding
+            // links instead of none. The flag now travels in the first response.
+            //
+            // An older server omits `mailSent`. Reading that as "not sent" only
+            // ever shows the copyable link; the opposite default would claim a
+            // success that never happened and hide the link the user needs.
+            const dto = await call(inviteToken, request).catch(async (error: unknown) => {
                 throw await toForwardError(error);
-            }
+            });
+            return {
+                link: toLink(dto),
+                mailFailed: !!request.recipientEmail && dto.mailSent !== true,
+            };
         },
     };
 };
