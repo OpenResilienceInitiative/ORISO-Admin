@@ -138,15 +138,12 @@ export const AgencyLegalTextContainer = ({
 
     /**
      * The consent sentence (ADR-021 decision 4) is a FIELD of the data-protection policy, never of
-     * the imprint (decision 7), so it follows exactly the same source as the body above it: the
-     * Fachbereich's own sentence when one is selected, the agency-wide one otherwise.
+     * the imprint (decision 7). On the agency editor it is offered only for a concrete Fachbereich
+     * (#862) — "Alle Fachbereiche" edits the agency-wide body without the consent dialog.
      *
-     * Like the history above, this reached the Beratungsstelle level only through the
-     * per-department containers #555 replaced; the switcher inherited the card but not the wiring,
-     * so the live editor offered no consent field at all.
-     *
-     * `undefined` in both branches is load-bearing — it is how the card decides not to offer the
-     * consent editor, which is what must happen while a backend has no such field.
+     * `undefined` is load-bearing — it is how the card decides not to offer the consent editor,
+     * which is what must happen while a backend has no such field, and while the switcher is on
+     * the agency-wide entry.
      */
     const departmentConsent = useMemo(
         () =>
@@ -155,28 +152,12 @@ export const AgencyLegalTextContainer = ({
                 : undefined,
         [dppQuery.data],
     );
-    const agencyWideConsent = useMemo(() => {
-        const inherited = tenantData?.content?.privacyConsent;
-        const own = agencyData?.content?.privacyConsent;
-        if (inherited === undefined && own === undefined) {
-            return undefined;
-        }
-        return { ...(inherited ?? {}), ...(own ?? {}) };
-    }, [tenantData?.content?.privacyConsent, agencyData?.content?.privacyConsent]);
     const consentByLanguage = useMemo(() => {
-        if (field !== 'privacy') {
+        if (field !== 'privacy' || !isDepartment) {
             return undefined;
         }
-        return isDepartment ? departmentConsent : agencyWideConsent;
-    }, [field, isDepartment, departmentConsent, agencyWideConsent]);
-    // Under "Alle Fachbereiche" the sentence shown may still be the Träger's, so the card says so
-    // on the languages this Beratungsstelle has not overridden. A Fachbereich reads its own stored
-    // sentence, which carries no such distinction.
-    const ownConsentByLanguage = isDepartment ? undefined : agencyData?.content?.privacyConsent;
-    const consentInheritedFrom =
-        !isDepartment && tenantData?.content?.privacyConsent !== undefined
-            ? t('legal.consent.level.tenant')
-            : undefined;
+        return departmentConsent;
+    }, [field, isDepartment, departmentConsent]);
 
     // The draft copy: a department with no own text yet starts from what it currently shows, which
     // is the inherited agency-wide text. "Alle Fachbereiche" always edits that same agency-wide text.
@@ -210,8 +191,10 @@ export const AgencyLegalTextContainer = ({
         // NOTE: unlike the department publishes above, this path cannot invalidate the agency
         // version history — it goes through the shared agency-card mutation, which has no legal
         // hook. The look-back catches up on its own `staleTime` (60s).
+        // Agency-wide ("Alle Fachbereiche") never edits consent in this card (#862) — do not
+        // stamp privacyConsent from a leftover third argument.
         onSaveAgencyWide({
-            content: { [agencyContentKey]: content, ...(consent ? { privacyConsent: consent } : {}) },
+            content: { [agencyContentKey]: content },
         });
     };
 
@@ -266,8 +249,6 @@ export const AgencyLegalTextContainer = ({
             departmentName={selectedDepartment?.name}
             initialContentByLanguage={contentByLanguage}
             consentByLanguage={consentByLanguage}
-            consentInheritedFrom={consentInheritedFrom}
-            ownConsentByLanguage={ownConsentByLanguage}
             languages={languages}
             publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : undefined}
             versions={versions}

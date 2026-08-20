@@ -29,6 +29,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onPublish,
         onSaveDraft,
         onViewVersionChange,
+        topicSlot,
         belowSlot,
     }: {
         value?: string;
@@ -36,6 +37,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onPublish?: (html: string) => void;
         onSaveDraft?: (html: string) => void;
         onViewVersionChange?: (versionId: string | null) => void;
+        topicSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
     }) => (
         <div data-testid="editor" data-value={value}>
@@ -63,6 +65,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
                     saveDraft
                 </button>
             )}
+            {topicSlot}
             {belowSlot}
         </div>
     ),
@@ -118,6 +121,10 @@ describe('DepartmentDataProtectionCard — version look-back', () => {
 });
 
 describe('DepartmentDataProtectionCard — consent field', () => {
+    const openConsent = async () => {
+        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
+    };
+
     it('is not offered while the backend does not carry the field', () => {
         render(
             <DepartmentDataProtectionCard
@@ -126,7 +133,7 @@ describe('DepartmentDataProtectionCard — consent field', () => {
                 onSave={() => undefined}
             />,
         );
-        expect(screen.queryByTestId('consent-fixed-addendum')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('consent-edit-trigger')).not.toBeInTheDocument();
     });
 
     it('is never offered on the imprint — the imprint is no consent gate (ADR-021 decision 7)', () => {
@@ -139,10 +146,10 @@ describe('DepartmentDataProtectionCard — consent field', () => {
                 onSave={() => undefined}
             />,
         );
-        expect(screen.queryByTestId('consent-fixed-addendum')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('consent-edit-trigger')).not.toBeInTheDocument();
     });
 
-    it('shows the fixed, non-editable cookie notice next to the sentence', () => {
+    it('opens the consent dialog with the fixed cookie notice (#862)', async () => {
         render(
             <DepartmentDataProtectionCard
                 consentByLanguage={{ de: 'Ich habe {{legal_links}} gelesen.' }}
@@ -151,6 +158,8 @@ describe('DepartmentDataProtectionCard — consent field', () => {
                 onSave={() => undefined}
             />,
         );
+        expect(screen.queryByTestId('consent-fixed-addendum')).not.toBeInTheDocument();
+        await openConsent();
         expect(screen.getByTestId('consent-fixed-addendum')).toHaveTextContent('legal.consent.cookieNotice.caption');
     });
 
@@ -216,14 +225,20 @@ describe('DepartmentDataProtectionCard — consent follows the selected version'
             />,
         );
 
-    // The editor shell is stubbed, so the consent sentence is the only text box here.
+    const openConsent = async () => {
+        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
+    };
+
     const consentInput = () => screen.getByRole('textbox') as HTMLTextAreaElement;
 
     it('shows the archived sentence while that version is on screen', async () => {
         renderCard();
+        await openConsent();
         expect(consentInput()).toHaveValue('Heutiger Satz mit {{legal_links}}.');
+        await userEvent.click(screen.getByRole('button', { name: 'cancel' }));
 
         await userEvent.click(screen.getByRole('button', { name: 'view 17' }));
+        await openConsent();
 
         expect(consentInput()).toHaveValue('Alter Satz mit {{legal_links}}.');
     });
@@ -231,6 +246,7 @@ describe('DepartmentDataProtectionCard — consent follows the selected version'
     it('makes the archived sentence read-only — the published chain is append-only', async () => {
         renderCard();
         await userEvent.click(screen.getByRole('button', { name: 'view 17' }));
+        await openConsent();
 
         expect(consentInput()).toBeDisabled();
     });
@@ -239,6 +255,7 @@ describe('DepartmentDataProtectionCard — consent follows the selected version'
         renderCard();
         await userEvent.click(screen.getByRole('button', { name: 'view 17' }));
         await userEvent.click(screen.getByRole('button', { name: 'back to draft' }));
+        await openConsent();
 
         expect(consentInput()).toHaveValue('Heutiger Satz mit {{legal_links}}.');
         expect(consentInput()).not.toBeDisabled();
