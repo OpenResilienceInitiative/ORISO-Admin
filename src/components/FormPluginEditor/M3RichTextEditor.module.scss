@@ -1100,7 +1100,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     scrollbar-width: thin;
     scrollbar-color: var(--m3-outline, #747778) transparent;
 
-    &::before {
+    &:before {
         content: '';
         flex: 1 1 0;
         min-width: 0;
@@ -1122,7 +1122,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     @media (max-width: 599px) {
         gap: 8px;
 
-        &::before {
+        &:before {
             display: none;
         }
     }
