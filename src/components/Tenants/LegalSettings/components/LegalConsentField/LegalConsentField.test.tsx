@@ -20,11 +20,7 @@ vi.mock('react-i18next', () => ({
 describe('LegalConsentField — dialog (#862)', () => {
     it('starts closed with only the CTA — no panel below the card', () => {
         render(
-            <LegalConsentField
-                language="de"
-                value="Ich habe {{legal_links}} gelesen."
-                onChange={() => undefined}
-            />,
+            <LegalConsentField language="de" value="Ich habe {{legal_links}} gelesen." onChange={() => undefined} />,
         );
 
         expect(screen.getByTestId('consent-edit-trigger')).toBeInTheDocument();
@@ -35,11 +31,7 @@ describe('LegalConsentField — dialog (#862)', () => {
 
     it('opens the placeholder-template dialog on the CTA', async () => {
         render(
-            <LegalConsentField
-                language="de"
-                value="Ich habe {{legal_links}} gelesen."
-                onChange={() => undefined}
-            />,
+            <LegalConsentField language="de" value="Ich habe {{legal_links}} gelesen." onChange={() => undefined} />,
         );
 
         await userEvent.click(screen.getByTestId('consent-edit-trigger'));
@@ -51,9 +43,7 @@ describe('LegalConsentField — dialog (#862)', () => {
 
     it('commits the draft on Save and closes', async () => {
         const onChange = vi.fn();
-        render(
-            <LegalConsentField language="de" value="Alt {{legal_links}}." onChange={onChange} />,
-        );
+        render(<LegalConsentField language="de" value="Alt {{legal_links}}." onChange={onChange} />);
 
         await userEvent.click(screen.getByTestId('consent-edit-trigger'));
         const input = screen.getByRole('textbox');
@@ -69,9 +59,7 @@ describe('LegalConsentField — dialog (#862)', () => {
 
     it('discards the draft on Cancel', async () => {
         const onChange = vi.fn();
-        render(
-            <LegalConsentField language="de" value="Alt {{legal_links}}." onChange={onChange} />,
-        );
+        render(<LegalConsentField language="de" value="Alt {{legal_links}}." onChange={onChange} />);
 
         await userEvent.click(screen.getByTestId('consent-edit-trigger'));
         const input = screen.getByRole('textbox');
@@ -86,14 +74,7 @@ describe('LegalConsentField — dialog (#862)', () => {
 
     it('keeps Save disabled in read-only mode and does not commit', async () => {
         const onChange = vi.fn();
-        render(
-            <LegalConsentField
-                language="de"
-                readOnly
-                value="Fest {{legal_links}}."
-                onChange={onChange}
-            />,
-        );
+        render(<LegalConsentField language="de" readOnly value="Fest {{legal_links}}." onChange={onChange} />);
 
         expect(screen.getByTestId('consent-edit-trigger')).toHaveTextContent('legal.consent.viewButton');
         await userEvent.click(screen.getByTestId('consent-edit-trigger'));
@@ -104,17 +85,13 @@ describe('LegalConsentField — dialog (#862)', () => {
     });
 
     it('marks the CTA when the committed sentence lacks {{legal_links}}', () => {
-        render(
-            <LegalConsentField language="de" value="Ich stimme zu." onChange={() => undefined} />,
-        );
+        render(<LegalConsentField language="de" value="Ich stimme zu." onChange={() => undefined} />);
 
         expect(screen.getByTestId('consent-edit-trigger')).toHaveAttribute('data-missing-token', 'true');
     });
 
     it('shows the missing-token error inside the open dialog', async () => {
-        render(
-            <LegalConsentField language="de" value="Ich stimme zu." onChange={() => undefined} />,
-        );
+        render(<LegalConsentField language="de" value="Ich stimme zu." onChange={() => undefined} />);
 
         await userEvent.click(screen.getByTestId('consent-edit-trigger'));
         expect(screen.getByTestId('consent-missing-token-error')).toBeInTheDocument();
