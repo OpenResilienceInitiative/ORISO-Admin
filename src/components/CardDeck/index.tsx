@@ -16,10 +16,21 @@ interface CardDeckProps {
 interface CardDeckItemProps {
     children?: React.ReactNode;
     className?: string;
+    /**
+     * Width class of this rail position (Figma 1285-80497):
+     * `narrow` (~392px) is a self-contained logical container — a short list,
+     * a toggle, an explanation; `wide` (~820px) carries a form or an editor,
+     * whose fields then flow into up to three columns instead of growing the
+     * card downwards. `bare` is a narrow position without a card surface, used
+     * by the go-live status so it reads as scoping the rail rather than being
+     * one of its cards.
+     */
+    width?: 'narrow' | 'wide' | 'bare';
 }
 
 const SCROLL_EPSILON = 8;
-const DEFAULT_ITEM_WIDTH = 392;
+/** Mirrors the `@media (max-width: 767px)` stacking rule in the stylesheet. */
+const MOBILE_BREAKPOINT = 768;
 
 const readListGap = (deck: HTMLElement) => {
     const list = deck.querySelector('[data-admin-card-deck-list]');
@@ -29,8 +40,12 @@ const readListGap = (deck: HTMLElement) => {
     return Number.isFinite(parsedGap) ? parsedGap : 24;
 };
 
-const CardDeckItem = ({ children, className }: CardDeckItemProps) => (
-    <li className={classNames(styles.item, className)} data-admin-card-deck-item>
+const CardDeckItem = ({ children, className, width = 'narrow' }: CardDeckItemProps) => (
+    <li
+        className={classNames(styles.item, styles[width], className)}
+        data-admin-card-deck-item
+        data-admin-card-deck-item-width={width}
+    >
         {children}
     </li>
 );
@@ -57,15 +72,14 @@ const CardDeckRoot = ({ ariaLabel, children, className, deckClassName, nextLabel
         const gap = readListGap(deck);
         const cardElements = deck.querySelectorAll('[data-admin-card-deck-item]');
         const firstCard = cardElements[0] as HTMLElement | undefined;
-        // The token width, not the rendered width: in stacked mode a card is as
-        // wide as the deck, which would keep the deck stacked forever.
-        const parsedItemWidth = Number.parseFloat(
-            window.getComputedStyle(deck).getPropertyValue('--card-deck-item-width'),
-        );
-        const itemWidth = Number.isFinite(parsedItemWidth) ? parsedItemWidth : DEFAULT_ITEM_WIDTH;
-        // #568: a horizontal scroller with room for a single card hides every
-        // other card — fall back to the vertical stack instead.
-        const stacked = cardElements.length > 1 && deck.clientWidth > 0 && deck.clientWidth < itemWidth * 2 + gap;
+        // Cards stay on ONE horizontal rail on every desktop width and are reached
+        // by scrolling sideways (Frank, design review 2026-08-20) — the rail carries
+        // header arrows and position dots, so an off-screen card is discoverable.
+        // This deliberately replaces the #568 fallback, which stacked as soon as two
+        // cards no longer fit and therefore pushed wide cards under each other.
+        // Below the mobile breakpoint the stylesheet stacks; JS mirrors the same
+        // threshold so the scroll footer disappears with it.
+        const stacked = window.innerWidth < MOBILE_BREAKPOINT;
 
         const cardStep = firstCard ? firstCard.offsetWidth + gap : 0;
         const maxScrollLeft = Math.max(0, deck.scrollWidth - deck.clientWidth);

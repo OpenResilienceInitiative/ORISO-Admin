@@ -65,6 +65,27 @@
     }
 }
 
+/* Width classes of a rail position (Figma 1285-80497). Narrow is a
+   self-contained logical container (~390px, phone-width); wide carries a form or
+   editor (~820px) whose fields then flow into up to three columns. Both stay
+   capped by --deck-item-cap so a card can never widen the page. */
+.narrow {
+    --card-deck-item-width: 392px;
+    --card-deck-item-min-width: 320px;
+}
+
+.wide {
+    --card-deck-item-width: 820px;
+    --card-deck-item-min-width: 520px;
+}
+
+/* A narrow position without a card surface: the go-live status scopes the rail
+   instead of being one of its cards. */
+.bare {
+    --card-deck-item-width: 392px;
+    --card-deck-item-min-width: 320px;
+}
+
 // #568: with room for less than two cards a horizontal scroller reads as a
 // single-card page — fall back to the same vertical stack as on mobile.
 .stacked {

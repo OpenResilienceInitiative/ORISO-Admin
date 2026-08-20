@@ -93,23 +93,25 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
     };
     return (
         <div className={styles.appearancePage}>
-            {/* The Träger go-live chain scopes the whole master-data area, so it is a
-                SECTION above the cards, not a card of its own. There is no Träger
-                switch — going live happens on the Beratungsstelle. */}
-            {showMasterData && (
-                <GoLiveStatus
-                    title={t('tenants.goLive.title')}
-                    description={t('tenants.goLive.description')}
-                    conditions={tenantGoLiveConditions}
-                    isLoading={tenantGoLive.isLoading}
-                />
-            )}
             <CardDeck
                 className={styles.cardDeck}
                 ariaLabel={t('tenant.settings.cardDeck.ariaLabel')}
                 previousLabel={t('tenant.settings.cardDeck.previous')}
                 nextLabel={t('tenant.settings.cardDeck.next')}
             >
+                {/* First rail position, surface-less: the Träger go-live chain scopes
+                    the whole area instead of being one of its cards. No Träger switch —
+                    going live happens on the Beratungsstelle. */}
+                {showMasterData && (
+                    <CardDeck.Item width="bare">
+                        <GoLiveStatus
+                            title={t('tenants.goLive.title')}
+                            description={t('tenants.goLive.description')}
+                            conditions={tenantGoLiveConditions}
+                            isLoading={tenantGoLive.isLoading}
+                        />
+                    </CardDeck.Item>
+                )}
                 {showAppearance && (
                     <CardDeck.Item className={styles.cardSlotImages}>
                         <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />

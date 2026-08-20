@@ -1,11 +1,13 @@
-/* Go-live readiness for a whole area. Deliberately NOT a card surface: it uses
-   the page ground so it reads as scoping everything below it. */
+/* Go-live readiness for a whole area. It sits as the FIRST position of the card
+   rail but has no card surface — an "invisible card" (Frank, 2026-08-20): same
+   rhythm and width as a narrow card, so it scopes the rail instead of competing
+   with the cards on it. */
 
 .root {
-    max-width: 720px;
-    padding: 0 4px 8px;
-    margin-bottom: 16px;
-    border-bottom: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 22%, transparent);
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    padding: 8px 0;
 }
 
 .head {
@@ -23,7 +25,6 @@
 }
 
 .description {
-    max-width: 68ch;
     margin: 4px 0 12px;
     color: var(--m3-on-surface-variant, #49454f);
     font-family: var(--m3-body-font-family);
@@ -63,16 +64,20 @@
     line-height: 22px;
 }
 
+/* Status never borrows the tenant accent (accentDark steers ACTIONS): a seed
+   colour would repaint "done" per tenant. Met/open live in the neutral tier —
+   the same charcoal family as the ORISO icon set — and only a real problem
+   escalates, via the semantic status scale rather than the magenta leftover. */
 .iconMet {
-    color: var(--admin-control-selected, var(--m3-primary, #a5000a));
+    color: var(--m3-on-surface-variant, #444748);
 }
 
 .iconOpen {
-    color: var(--m3-outline, #747878);
+    color: var(--admin-status-muted, var(--m3-outline, #747878));
 }
 
 .iconViolated {
-    color: var(--m3-error, #b1005e);
+    color: var(--admin-status-error, #cc0000);
 }
 
 .conditionBody {
@@ -88,7 +93,11 @@
 }
 
 .condition[data-condition-state='violated'] .conditionLabel {
-    color: var(--m3-error, #b1005e);
+    color: var(--admin-status-error, #cc0000);
+}
+
+.condition[data-condition-state='open'] .conditionLabel {
+    color: var(--m3-on-surface-variant, #444748);
 }
 
 .conditionHint {
@@ -99,7 +108,6 @@
 
 .switchRow {
     display: flex;
-    max-width: 560px;
     align-items: center;
     justify-content: space-between;
     gap: 16px;

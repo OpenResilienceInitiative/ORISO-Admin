@@ -38,9 +38,8 @@ import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 import { GoLiveStatus, GoLiveCondition } from '../../../components/GoLiveStatus';
 import { useAgencyGoLiveConditions } from '../../../hooks/useAgencyGoLiveConditions';
 import { trackGoLiveEvent } from '../../../utils/goLiveTracking';
-import { AgencyCounsellingIcon } from '../../../components/CustomIcons/AgencyCounselling';
-import { AllUsersIcon } from '../../../components/CustomIcons/AllUsers';
-import { TopicInterestsIcon } from '../../../components/CustomIcons/TopicInterests';
+import { AgencyCounsellingIcon, AllUsersIcon } from '../../../components/CustomIcons/AgencyIcons';
+import { TopicIcon } from '../../../components/CustomIcons/LegalIcons';
 import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
@@ -319,27 +318,29 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         if (isEditing) {
             return (
                 <ThemeProvider theme={orisoMuiTheme}>
-                    {/* Topmost, and deliberately a SECTION, not a card: the go-live
-                        state scopes the whole Beratungsstelle. The former redundant
-                        "Allgemeines" headline (it repeated the active tab) is gone. */}
-                    <GoLiveStatus
-                        title={t('agency.goLive.title')}
-                        description={t('agency.goLive.description')}
-                        conditions={goLiveConditions}
-                        isLoading={goLive.isLoading}
-                        switchControl={{
-                            checked: !agencyData?.offline,
-                            label: t('agency.goLive.switchLabel'),
-                            disabledHint: t('agency.goLive.switchHint'),
-                            onChange: onGoLiveToggle,
-                        }}
-                    />
                     <CardDeck
                         ariaLabel={t(`agency.edit.settings.general.title`)}
                         previousLabel={t('agency.cardDeck.previous')}
                         nextLabel={t('agency.cardDeck.next')}
                     >
-                        <CardDeck.Item>
+                        {/* First position of the rail and surface-less — an "invisible
+                            card": the go-live state scopes the whole Beratungsstelle
+                            instead of competing with the cards next to it. */}
+                        <CardDeck.Item width="bare">
+                            <GoLiveStatus
+                                title={t('agency.goLive.title')}
+                                description={t('agency.goLive.description')}
+                                conditions={goLiveConditions}
+                                isLoading={goLive.isLoading}
+                                switchControl={{
+                                    checked: !agencyData?.offline,
+                                    label: t('agency.goLive.switchLabel'),
+                                    disabledHint: t('agency.goLive.switchHint'),
+                                    onChange: onGoLiveToggle,
+                                }}
+                            />
+                        </CardDeck.Item>
+                        <CardDeck.Item width="wide">
                             <CardEditable
                                 allowUnsavedChanges
                                 initialValues={initialValues}
@@ -353,7 +354,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                 <AgencyGeneralInformation asFields />
                             </CardEditable>
                         </CardDeck.Item>
-                        <CardDeck.Item>
+                        <CardDeck.Item width="narrow">
                             <CardEditable
                                 allowUnsavedChanges
                                 initialValues={initialValues}
@@ -367,13 +368,13 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                 {({ editing }) => <RegistrationSettings asFields editing={editing} />}
                             </CardEditable>
                         </CardDeck.Item>
-                        <CardDeck.Item>
+                        <CardDeck.Item width="narrow">
                             <CardEditable
                                 allowUnsavedChanges
                                 initialValues={initialValues}
                                 titleKey="agency.edit.settings.title"
                                 subTitleKey="agency.edit.settings.purpose"
-                                headerIcon={<TopicInterestsIcon />}
+                                headerIcon={<TopicIcon />}
                                 variant="dialog"
                                 editButtonPlacement="footer"
                                 onSave={onSaveCard}
@@ -398,24 +399,28 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     disabled={isReadOnly}
                     onFinish={onSubmit}
                 >
-                    {/* Create flow: the same condition chain, shown from the first
-                        second so the path to "live" is never a surprise. The switch
-                        itself only exists once the Beratungsstelle is persisted. */}
-                    <GoLiveStatus
-                        title={t('agency.goLive.title')}
-                        description={`${t('agency.goLive.description')} ${t('agency.goLive.createHint')}`}
-                        conditions={goLiveConditions}
-                    />
                     <CardDeck
                         ariaLabel={t(`agency.edit.settings.general.title`)}
                         previousLabel={t('agency.cardDeck.previous')}
                         nextLabel={t('agency.cardDeck.next')}
                     >
-                        <CardDeck.Item>
+                        {/* Create flow: same rail, same order. The chain is visible
+                            from the first second so the path to "live" is never a
+                            surprise; the switch only exists once persisted. */}
+                        <CardDeck.Item width="bare">
+                            <GoLiveStatus
+                                title={t('agency.goLive.title')}
+                                description={`${t('agency.goLive.description')} ${t('agency.goLive.createHint')}`}
+                                conditions={goLiveConditions}
+                            />
+                        </CardDeck.Item>
+                        <CardDeck.Item width="wide">
                             <AgencyGeneralInformation />
+                        </CardDeck.Item>
+                        <CardDeck.Item width="narrow">
                             <RegistrationSettings />
                         </CardDeck.Item>
-                        <CardDeck.Item>
+                        <CardDeck.Item width="narrow">
                             <AgencySettings isEditMode={isEditing} />
                         </CardDeck.Item>
                     </CardDeck>

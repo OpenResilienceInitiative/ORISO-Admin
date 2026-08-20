@@ -271,11 +271,16 @@ describe('AgencyPageEdit create flow', () => {
         // the text twice (the <label>, plus the aria-hidden notched-outline
         // <legend>), so a plain text query matches both.
         expect(await screen.findByLabelText('Trägerzuordnung *')).toBeInTheDocument();
-        // Create flow: general+registration share one deck item; settings is the second.
+        // One horizontal rail: go-live (surface-less) → general information (wide)
+        // → team (narrow) → counselling offer (narrow).
         expect(container.querySelector('[data-admin-card-deck]')).toBeInTheDocument();
-        expect(container.querySelectorAll('[data-admin-card-deck-item]')).toHaveLength(2);
-        // Go-live chain sits topmost as a section from the first second; the
-        // switch itself only exists once the agency is persisted.
+        expect(
+            Array.from(container.querySelectorAll('[data-admin-card-deck-item]')).map((item) =>
+                item.getAttribute('data-admin-card-deck-item-width'),
+            ),
+        ).toEqual(['bare', 'wide', 'narrow', 'narrow']);
+        // The chain is visible from the first second; the switch only exists
+        // once the agency is persisted.
         expect(screen.getByTestId('go-live-status')).toBeInTheDocument();
         expect(screen.queryByRole('switch')).not.toBeInTheDocument();
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });

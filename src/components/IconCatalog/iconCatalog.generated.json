@@ -19,6 +19,32 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:agency-counselling:base",
+        "family": "agency-counselling",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "agency-counselling.svg",
+        "sourcePath": "src/resources/img/svg/agency-counselling.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/AgencyIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:all-users:base",
+        "family": "all-users",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "all-users.svg",
+        "sourcePath": "src/resources/img/svg/all-users.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/AgencyIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:avatars:alpaca:base",
         "family": "alpaca",
         "state": "base",
@@ -1303,7 +1329,11 @@
         "fileName": "users.svg",
         "sourcePath": "src/resources/img/svg/nav-glyphs/users.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/NavGlyph/index.tsx", "src/pages/users/management/UserSectionPills.tsx"],
+        "usageFiles": [
+            "src/components/CustomIcons/AgencyIcons.tsx",
+            "src/components/NavGlyph/index.tsx",
+            "src/pages/users/management/UserSectionPills.tsx"
+        ],
         "usage": "app-used"
     },
     {

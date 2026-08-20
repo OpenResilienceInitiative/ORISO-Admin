@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CheckIcon from '@mui/icons-material/Check';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
 import { Spin } from 'antd';
@@ -39,8 +39,13 @@ interface GoLiveStatusProps {
     className?: string;
 }
 
+/**
+ * State reads from the glyph SHAPE first (check / empty ring / warning), colour
+ * only reinforces it — a colour-only cue fails the a11y gate. None of these use
+ * the tenant accent: a seed colour would make "done" look different per tenant.
+ */
 const stateIcon = (state: GoLiveConditionState) => {
-    if (state === 'met') return <CheckCircleIcon className={styles.iconMet} fontSize="small" />;
+    if (state === 'met') return <CheckIcon className={styles.iconMet} fontSize="small" />;
     if (state === 'violated') return <ErrorOutlinedIcon className={styles.iconViolated} fontSize="small" />;
     return <RadioButtonUncheckedIcon className={styles.iconOpen} fontSize="small" />;
 };

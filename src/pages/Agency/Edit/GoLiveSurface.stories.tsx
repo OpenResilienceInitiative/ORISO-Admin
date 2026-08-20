@@ -1,19 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type * as React from 'react';
 import { useState } from 'react';
 import { http, HttpResponse } from 'msw';
 import { Form } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
-import { CardGrid } from '../../../components/CardGrid';
+import { CardDeck } from '../../../components/CardDeck';
 import { GoLiveStatus, GoLiveCondition } from '../../../components/GoLiveStatus';
 import { AgencyGeneralInformation } from './components/GeneralInformation';
 import { RegistrationSettings } from './components/RegistrationSettings';
 import { AgencySettings } from './components/AgencySettings';
 
 /**
- * Review preview of the Beratungsstelle master-data surface as the page
- * composes it: the go-live section on top (a SECTION, not a card), then the
- * cards — each with icon, purpose line and its fields. Rendered without a
+ * Review preview of the Beratungsstelle master-data rail as the page composes
+ * it (Figma 1285-80497): one horizontal rail, scrolled sideways — first the
+ * surface-less go-live position, then the wide form card (fields in up to three
+ * columns) and the narrow, self-contained containers. Rendered without a
  * backend so the surface can be reviewed without a login.
  */
 const topics = [
@@ -41,6 +43,10 @@ const meta: Meta<typeof GoLiveStatus> = {
     title: 'Pages/Agency/GoLiveSurface',
     component: GoLiveStatus,
     parameters: {
+        design: {
+            type: 'figma',
+            url: 'https://www.figma.com/design/QfsgojtHQzBjbzU3Im9Cet/Admin.ORISO?node-id=1285-80497',
+        },
         msw: {
             handlers: [
                 http.get('*/service/topic*', () => HttpResponse.json(topics)),
@@ -73,32 +79,41 @@ const agencyChain = (met: number): GoLiveCondition[] =>
         'Impressum publizieren',
     ].map((label, index) => ({ key: `c${index}`, label, state: index < met ? 'met' : 'open' }));
 
-const AgencyCards = () => (
-    <CardGrid minCardWidth={425} maxColumns={2}>
-        <AgencyGeneralInformation />
-        <RegistrationSettings />
-        <AgencySettings isEditMode={false} />
-    </CardGrid>
+/** The rail as the page builds it: bare go-live, wide form, narrow containers. */
+const AgencyRail = ({ goLive }: { goLive: React.ReactNode }) => (
+    <CardDeck ariaLabel="Beratungsstelle" previousLabel="Zurück" nextLabel="Weiter">
+        <CardDeck.Item width="bare">{goLive}</CardDeck.Item>
+        <CardDeck.Item width="wide">
+            <AgencyGeneralInformation />
+        </CardDeck.Item>
+        <CardDeck.Item width="narrow">
+            <RegistrationSettings />
+        </CardDeck.Item>
+        <CardDeck.Item width="narrow">
+            <AgencySettings isEditMode={false} />
+        </CardDeck.Item>
+    </CardDeck>
 );
 
 /** Fresh Beratungsstelle: two steps done, switch still locked. */
 export const AgencyInProgress: Story = {
     render: () => (
-        <>
-            <GoLiveStatus
-                title="Go-Live-Status"
-                description="Diese Bedingungen braucht die Beratungsstelle, um in der Beratungsapp sichtbar zu sein. Sie werden automatisch geprüft."
-                conditions={agencyChain(2)}
-                switchControl={{
-                    checked: false,
-                    label: 'Beratungsstelle für die Beratungsapp aktivieren',
-                    disabledHint:
-                        'Aktivierbar, sobald alle Bedingungen erfüllt sind. Deaktivieren ist jederzeit möglich; bestehende Gespräche bleiben erhalten.',
-                    onChange: () => {},
-                }}
-            />
-            <AgencyCards />
-        </>
+        <AgencyRail
+            goLive={
+                <GoLiveStatus
+                    title="Go-Live-Status"
+                    description="Diese Bedingungen braucht die Beratungsstelle, um in der Beratungsapp sichtbar zu sein. Sie werden automatisch geprüft."
+                    conditions={agencyChain(2)}
+                    switchControl={{
+                        checked: false,
+                        label: 'Beratungsstelle für die Beratungsapp aktivieren',
+                        disabledHint:
+                            'Aktivierbar, sobald alle Bedingungen erfüllt sind. Deaktivieren ist jederzeit möglich; bestehende Gespräche bleiben erhalten.',
+                        onChange: () => {},
+                    }}
+                />
+            }
+        />
     ),
 };
 
@@ -107,19 +122,20 @@ export const AgencyReadyAndLive: Story = {
     render: function Render() {
         const [live, setLive] = useState(true);
         return (
-            <>
-                <GoLiveStatus
-                    title="Go-Live-Status"
-                    description="Diese Bedingungen braucht die Beratungsstelle, um in der Beratungsapp sichtbar zu sein. Sie werden automatisch geprüft."
-                    conditions={agencyChain(5)}
-                    switchControl={{
-                        checked: live,
-                        label: 'Beratungsstelle für die Beratungsapp aktivieren',
-                        onChange: setLive,
-                    }}
-                />
-                <AgencyCards />
-            </>
+            <AgencyRail
+                goLive={
+                    <GoLiveStatus
+                        title="Go-Live-Status"
+                        description="Diese Bedingungen braucht die Beratungsstelle, um in der Beratungsapp sichtbar zu sein. Sie werden automatisch geprüft."
+                        conditions={agencyChain(5)}
+                        switchControl={{
+                            checked: live,
+                            label: 'Beratungsstelle für die Beratungsapp aktivieren',
+                            onChange: setLive,
+                        }}
+                    />
+                }
+            />
         );
     },
 };

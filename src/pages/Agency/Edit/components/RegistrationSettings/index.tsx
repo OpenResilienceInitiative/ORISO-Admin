@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { useMemo } from 'react';
 import { Card } from '../../../../../components/Card';
-import { AllUsersIcon } from '../../../../../components/CustomIcons/AllUsers';
+import { AllUsersIcon } from '../../../../../components/CustomIcons/AgencyIcons';
 import { MuiRadioGroupField } from '../../../../../components/mui/MuiRadioGroupField';
 import { MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { TypeOfUser } from '../../../../../enums/TypeOfUser';

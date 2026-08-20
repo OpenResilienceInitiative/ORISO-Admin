@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { MuiFormField, MuiMultilineFormField } from '../../../../../components/mui/MuiFormField';
 import { Card } from '../../../../../components/Card';
-import { AgencyCounsellingIcon } from '../../../../../components/CustomIcons/AgencyCounselling';
+import { AgencyCounsellingIcon } from '../../../../../components/CustomIcons/AgencyIcons';
 import { FieldGrid } from '../../../../../components/FieldGrid';
 
 interface AgencyGeneralInformationProps {
@@ -13,11 +13,12 @@ export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationP
     const requiredRule = { required: true, message: t('form.errors.required') };
 
     const fields = (
-        <FieldGrid>
+        <FieldGrid minColumnWidth={240}>
             {/* Name + description span the full row; the address fields flow into
-                as many columns as the card width allows (FieldGrid decides — the
-                per-field antd Col spans are gone). Field data binding is unchanged:
-                every Form.Item name/rule/inputProps is identical to before. */}
+                as many columns as the card width allows. The 240px floor is what
+                lets a wide (820px) rail card reach THREE columns — the point of the
+                wide class is a compact card, not a taller one. Field data binding is
+                unchanged: every Form.Item name/rule/inputProps is identical. */}
             <FieldGrid.Wide>
                 <MuiFormField
                     name="name"

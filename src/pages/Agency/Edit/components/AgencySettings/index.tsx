@@ -7,7 +7,7 @@ import { Gender } from '../../../../../enums/Gender';
 import { convertToOptions } from '../../../../../utils/convertToOptions';
 import { Option, MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { Card } from '../../../../../components/Card';
-import { TopicInterestsIcon } from '../../../../../components/CustomIcons/TopicInterests';
+import { TopicIcon } from '../../../../../components/CustomIcons/LegalIcons';
 import { MuiSliderField } from '../../../../../components/mui/MuiSliderField';
 import { useTenantTopics } from '../../../../../hooks/useTenantTopics';
 import styles from './styles.module.scss';
@@ -126,7 +126,7 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
             isLoading={isLoadingTopics}
             titleKey="agency.edit.settings.title"
             subTitleKey="agency.edit.settings.purpose"
-            headerIcon={<TopicInterestsIcon />}
+            headerIcon={<TopicIcon />}
         >
             {fields}
         </Card>

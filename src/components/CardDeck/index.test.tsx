@@ -162,9 +162,11 @@ describe('CardDeck', () => {
         });
     });
 
-    // #568: with room for less than two cards a horizontal scroller hides
-    // everything but the first card — fall back to the vertical stack.
-    it('stacks vertically and drops the scroll footer when fewer than two cards fit', async () => {
+    // Design review 2026-08-20: cards stay on ONE horizontal rail at every desktop
+    // width — a narrow desktop scrolls sideways instead of stacking. This replaces
+    // the #568 "fewer than two cards fit" fallback, which pushed wide cards under
+    // each other exactly where the rail was wanted.
+    it('keeps the horizontal rail when a desktop viewport fits only one card', async () => {
         const { container } = renderDeck();
         const deck = container.querySelector('[data-admin-card-deck-scroll]');
 
@@ -175,9 +177,32 @@ describe('CardDeck', () => {
         });
 
         await waitFor(() => {
+            expect(container.querySelector('[data-admin-card-deck-dot]')).toBeInTheDocument();
+        });
+        expect(container.querySelector('[data-admin-card-deck-stacked]')).not.toBeInTheDocument();
+    });
+
+    it('stacks vertically and drops the position dots below the mobile breakpoint', async () => {
+        const { container } = renderDeck();
+        const originalWidth = window.innerWidth;
+
+        act(() => {
+            Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+            fireEvent(window, new Event('resize'));
+        });
+
+        await waitFor(() => {
             expect(container.querySelector('[data-admin-card-deck-stacked]')).toBeInTheDocument();
         });
-        expect(container.querySelector('[data-admin-card-deck-footer]')).not.toBeInTheDocument();
+        expect(container.querySelector('[data-admin-card-deck-dot]')).not.toBeInTheDocument();
+
+        Object.defineProperty(window, 'innerWidth', { value: originalWidth, configurable: true });
+    });
+
+    it('labels each rail position with its width class', () => {
+        const { container } = renderDeck();
+
+        expect(container.querySelectorAll('[data-admin-card-deck-item-width="narrow"]').length).toBeGreaterThan(0);
     });
 
     it.each([
