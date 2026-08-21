@@ -362,10 +362,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <CardGrid minCardWidth={425} maxColumns={2}>
                         <AgencyGeneralInformation />
                         <RegistrationSettings />
-                        <AgencySettings
-                            isEditMode={isEditing}
-                            persistedTeamAgency={initialValues.teamAgency}
-                        />
+                        <AgencySettings isEditMode={isEditing} persistedTeamAgency={initialValues.teamAgency} />
                     </CardGrid>
                 </Form>
             </ThemeProvider>
@@ -395,10 +392,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             {/* #620: a single card in a fixed 392px deck rendered needlessly narrow —
                 the grid lets it use the row up to the shared card floor. */}
             <CardGrid minCardWidth={425} maxColumns={2}>
-                <AgencySettings
-                    isEditMode={isEditing}
-                    persistedTeamAgency={initialValues.teamAgency}
-                />
+                <AgencySettings isEditMode={isEditing} persistedTeamAgency={initialValues.teamAgency} />
             </CardGrid>
         </Form>
     );
