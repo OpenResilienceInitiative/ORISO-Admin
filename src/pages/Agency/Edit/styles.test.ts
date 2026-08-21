@@ -18,7 +18,7 @@ describe('agency creation card deck', () => {
 // width as tenant LegalSettings — not Page .cardDeckItem { flex-grow: 1 }.
 describe('Agency Edit legal card deck contract', () => {
     it('gives M3 document editor items their 800px desktop width', () => {
-        const desktopRule = agencyEditStyles.match(/@media \(min-width:\s*768px\)\s*{([\s\S]*?)\n}/)?.[1] ?? '';
+        const desktopRule = agencyEditStyles.match(/@media \(min-width:\s*1024px\)\s*{([\s\S]*?)\n}/)?.[1] ?? '';
         const documentItemRule = desktopRule.match(/\.documentEditorItem\s*{([^}]*)}/s)?.[1] ?? '';
 
         expect(documentItemRule).toMatch(/--card-deck-item-min-width:\s*800px/);
