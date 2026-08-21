@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { MuiFormField, MuiMultilineFormField } from '../../../../../components/mui/MuiFormField';
+import { OpeningHoursFormField } from '../../../../../components/TimeslotField/OpeningHoursFormField';
 import { Card } from '../../../../../components/Card';
 import { AgencyCounsellingIcon } from '../../../../../components/CustomIcons/AgencyIcons';
 import { FieldGrid } from '../../../../../components/FieldGrid';
@@ -87,11 +88,7 @@ export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationP
                 inputProps={{ maxLength: 255 }}
             />
             <FieldGrid.Wide>
-                <MuiMultilineFormField
-                    name="openingHours"
-                    label={t('agency.edit.general.address.opening_hours')}
-                    placeholder={t('agency.edit.general.address.opening_hours')}
-                />
+                <OpeningHoursFormField label={t('agency.edit.general.address.opening_hours')} />
             </FieldGrid.Wide>
             <FieldGrid.Wide>
                 <MuiMultilineFormField

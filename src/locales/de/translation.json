@@ -1971,5 +1971,22 @@
     "tenants.goLive.condition.contract": "Vertragsunterlagen unterschreiben (AVV)",
     "tenants.goLive.condition.agency": "Mindestens eine Beratungsstelle anlegen",
     "tenants.goLive.condition.agencyLive": "Mindestens eine Beratungsstelle live schalten",
-    "tenants.add.mainTenant.purpose": "Stammdaten des Trägers: Name, Lizenzen und Adresse – die Grundlage für alle Beratungsstellen."
+    "tenants.add.mainTenant.purpose": "Stammdaten des Trägers: Name, Lizenzen und Adresse – die Grundlage für alle Beratungsstellen.",
+    "openingHours.section": "Reguläre Öffnungszeiten",
+    "openingHours.slot": "Zeitfenster",
+    "openingHours.starts": "Beginn",
+    "openingHours.ends": "Ende",
+    "openingHours.weekday": "Wochentag",
+    "openingHours.time": "Uhrzeit",
+    "openingHours.add": "Neues Zeitfenster anlegen",
+    "openingHours.remove": "Zeitfenster entfernen",
+    "openingHours.empty": "Noch keine Öffnungszeiten hinterlegt.",
+    "openingHours.legacyLabel": "Bisher als Text hinterlegt",
+    "weekday.monday": "Montag",
+    "weekday.tuesday": "Dienstag",
+    "weekday.wednesday": "Mittwoch",
+    "weekday.thursday": "Donnerstag",
+    "weekday.friday": "Freitag",
+    "weekday.saturday": "Samstag",
+    "weekday.sunday": "Sonntag"
 }

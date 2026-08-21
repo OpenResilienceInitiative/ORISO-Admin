@@ -1,0 +1,115 @@
+/* Structured opening hours (Figma 295-6112). Surfaces follow the admin tiers:
+   the rows sit on the field surface so they read as raised inside a card, the
+   same relationship Foundations/Field Tokens prescribes for inputs. */
+
+.root {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sectionLabel {
+    margin: 0;
+    color: var(--m3-on-surface, #1d1b20);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.empty {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+}
+
+.slot {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 14px;
+    border: 1px solid var(--admin-field-outline, var(--m3-outline-variant, #c4c7c8));
+    border-radius: 12px;
+    background: var(--admin-field-surface, #fcf9f9);
+    gap: 10px;
+}
+
+.slotHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.slotTitle {
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.remove {
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.row {
+    display: grid;
+    align-items: center;
+    gap: 10px;
+    grid-template-columns: minmax(48px, auto) minmax(110px, 1.3fr) minmax(88px, 1fr);
+}
+
+/* The row's own caption ("Beginn" / "Ende"); the controls keep their full
+   accessible names, this is the visible short form from the Figma row. */
+.edgeLabel {
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 13px;
+}
+
+.day,
+.time {
+    min-width: 0;
+}
+
+.add {
+    align-self: flex-start;
+}
+
+.legacy {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 14px;
+    border-left: 3px solid var(--admin-status-muted, var(--m3-outline, #747878));
+    border-radius: 0 8px 8px 0;
+    background: var(--m3-surface-container-low, #f6f3f3);
+    gap: 2px;
+}
+
+.legacyLabel {
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.legacyText {
+    margin: 0;
+    color: var(--m3-on-surface, #1d1b20);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    white-space: pre-wrap;
+}
+
+/* Narrow cards (the 392px rail position) stack the row. */
+@media (max-width: 520px) {
+    .row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* The adapter renders a control, not an input: drop the antd field chrome. */
+.formItem {
+    margin-bottom: 0;
+}

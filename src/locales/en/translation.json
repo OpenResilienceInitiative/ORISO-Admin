@@ -1971,5 +1971,22 @@
     "tenants.goLive.condition.contract": "Sign the contract documents (DPA)",
     "tenants.goLive.condition.agency": "Create at least one advice center",
     "tenants.goLive.condition.agencyLive": "Switch at least one advice center live",
-    "tenants.add.mainTenant.purpose": "Master data of the organisation: name, licences and address – the basis for all its advice centers."
+    "tenants.add.mainTenant.purpose": "Master data of the organisation: name, licences and address – the basis for all its advice centers.",
+    "openingHours.section": "Regular availability hours",
+    "openingHours.slot": "Timeslot",
+    "openingHours.starts": "Starts",
+    "openingHours.ends": "Ends",
+    "openingHours.weekday": "Weekday",
+    "openingHours.time": "Time",
+    "openingHours.add": "Create new timeslot",
+    "openingHours.remove": "Remove timeslot",
+    "openingHours.empty": "No opening hours set yet.",
+    "openingHours.legacyLabel": "Previously entered as text",
+    "weekday.monday": "Monday",
+    "weekday.tuesday": "Tuesday",
+    "weekday.wednesday": "Wednesday",
+    "weekday.thursday": "Thursday",
+    "weekday.friday": "Friday",
+    "weekday.saturday": "Saturday",
+    "weekday.sunday": "Sunday"
 }
