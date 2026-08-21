@@ -145,12 +145,14 @@ describe('PermissionsSettingsView data parity (1-on-1 card)', () => {
 
         const description = screen.getByText('tenants.permissions.card.oneOnOne.description').closest('p');
         const activated = screen.getByRole('switch', { name: 'tenants.permissions.card.activated' });
-        const headerNote = notes.find((node) =>
-            Boolean(description && (description.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)),
+        expect(description).not.toBeNull();
+
+        const headerNote = notes.find(
+            (node) => (description as Node).compareDocumentPosition(node) === Node.DOCUMENT_POSITION_FOLLOWING,
         );
 
         expect(headerNote).toBeTruthy();
-        expect(headerNote!.compareDocumentPosition(activated) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(headerNote!.compareDocumentPosition(activated)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
         expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0);
     });
 });
