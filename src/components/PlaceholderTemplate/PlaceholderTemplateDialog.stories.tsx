@@ -97,7 +97,7 @@ const LegalDialogDemo = () => {
     return (
         <PlaceholderTemplateDialog
             titleKey="placeholderTemplate.dialog.legalTitle"
-            descriptionKey="placeholderTemplate.dialog.legalDescription"
+            descriptionKey="legal.consent.description"
             onSave={() => undefined}
             onClose={() => undefined}
         >

@@ -77,11 +77,8 @@ const storedDepartment = (extra: Record<string, unknown> = {}) =>
 
 /**
  * ADR-021 decision 4 — the consent sentence is a field of the data-protection policy.
- *
- * It reached the Beratungsstelle level only through `LegalTextSettings` and
- * `DepartmentDataProtectionContainer`, neither of which was rendered anywhere: the Fachbereich
- * switcher of #555 inherited the card but not this wiring, so the live editor offered no consent
- * field at all while the Träger level kept one through `LegalText`.
+ * #862 — on the agency editor it is offered only for a concrete Fachbereich, not for
+ * "Alle Fachbereiche".
  */
 describe('AgencyLegalTextContainer — consent sentence', () => {
     beforeEach(() => {
@@ -91,47 +88,34 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         h.tenant.mockReset().mockReturnValue({ data: undefined });
     });
 
-    it('is not offered while no level of the ladder carries the field', () => {
+    it('is not offered while no level of the ladder carries the field', async () => {
         storedDepartment();
 
         renderContainer();
+        await selectDepartment('U25 Suizidprävention');
 
         // `undefined`, not `{}` — that is what tells the card to hide the editor entirely instead
         // of offering an input the backend cannot store.
         expect(cardProps().consentByLanguage).toBeUndefined();
     });
 
-    it('is never offered on the imprint', () => {
+    it('is never offered on the imprint', async () => {
         storedDepartment({ consentText: '{"de":"Ich willige ein {{legal_links}}"}' });
         h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Träger-Satz' } } } });
 
         renderContainer({ field: 'imprint' });
+        await selectDepartment('U25 Suizidprävention');
 
         expect(cardProps().consentByLanguage).toBeUndefined();
     });
 
-    it('shows the Träger sentence with an inheritance notice until the Beratungsstelle overrides it', () => {
+    it('is not offered on Alle Fachbereiche even when a Träger sentence exists (#862)', () => {
         storedDepartment();
         h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Träger-Satz' } } } });
 
         renderContainer();
 
-        expect(cardProps().consentByLanguage).toEqual({ de: 'Träger-Satz' });
-        expect(cardProps().consentInheritedFrom).toBe('legal.consent.level.tenant');
-        // No agency override yet — every language is still inherited.
-        expect(cardProps().ownConsentByLanguage).toBeUndefined();
-    });
-
-    it('lets the Beratungsstelle override win over the inherited sentence', () => {
-        storedDepartment();
-        h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Träger-Satz' } } } });
-
-        renderContainer({
-            agencyData: { ...agencyData, content: { ...agencyData.content, privacyConsent: { de: 'Eigener' } } },
-        });
-
-        expect(cardProps().consentByLanguage).toEqual({ de: 'Eigener' });
-        expect(cardProps().ownConsentByLanguage).toEqual({ de: 'Eigener' });
+        expect(cardProps().consentByLanguage).toBeUndefined();
     });
 
     it('hands a Fachbereich the sentence stored with its own policy', async () => {
@@ -141,11 +125,10 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         await selectDepartment('U25 Suizidprävention');
 
         expect(cardProps().consentByLanguage).toEqual({ de: 'Fachbereich-Satz' });
-        // A Fachbereich reads its own stored sentence; there is no inherited/own split to show.
         expect(cardProps().consentInheritedFrom).toBeUndefined();
     });
 
-    it('stores the agency-wide sentence on the agency record beside the policy', () => {
+    it('never stamps privacyConsent when saving Alle Fachbereiche (#862)', () => {
         storedDepartment();
         h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Träger-Satz' } } } });
         const onSaveAgencyWide = vi.fn();
@@ -154,7 +137,7 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         cardProps().onSave({ de: '<p>neu</p>' }, true, { de: 'Neuer Satz {{legal_links}}' });
 
         expect(onSaveAgencyWide).toHaveBeenCalledWith({
-            content: { privacy: { de: '<p>neu</p>' }, privacyConsent: { de: 'Neuer Satz {{legal_links}}' } },
+            content: { privacy: { de: '<p>neu</p>' } },
         });
     });
 

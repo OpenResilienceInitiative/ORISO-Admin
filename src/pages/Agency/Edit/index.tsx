@@ -32,7 +32,8 @@ import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
 import { DataProcessingAgreementContainer } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer';
 import { AgencyLegalTextContainer } from '../../../components/Tenants/LegalSettings/components/AgencyLegalTextContainer';
-import styles from '../../../components/Page/styles.module.scss';
+import pageStyles from '../../../components/Page/styles.module.scss';
+import styles from './styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
@@ -287,7 +288,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         if (isEditing) {
             return (
                 <ThemeProvider theme={orisoMuiTheme}>
-                    <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
+                    <h3 className={pageStyles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
                     <CardDeck
                         ariaLabel={t(`agency.edit.settings.general.title`)}
                         previousLabel={t('agency.cardDeck.previous')}
@@ -349,7 +350,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     disabled={isReadOnly}
                     onFinish={onSubmit}
                 >
-                    <h3 className={styles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
+                    <h3 className={pageStyles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
                     {/* #620: the create flow shares the row width responsively (CardGrid)
                         instead of the fixed-width horizontal CardDeck — cards split 50/50
                         while two fit and stack below the floor, so FieldGrid can reach
@@ -366,7 +367,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
 
     const renderFunctionalitiesSettings = () => (
         <>
-            <h3 className={styles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
+            <h3 className={pageStyles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
             {/* Agency-scoped toggles (the agency's own settings JSON) — not the tenant's. */}
             <AgencyPermissionsSettings agencyId={id} />
         </>
@@ -383,7 +384,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             disabled={isReadOnly}
             onFinish={onSubmit}
         >
-            <h3 className={styles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
+            <h3 className={pageStyles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
             {/* #620: a single card in a fixed 392px deck rendered needlessly narrow —
                 the grid lets it use the row up to the shared card floor. */}
             <CardGrid minCardWidth={425} maxColumns={2}>
@@ -394,7 +395,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
 
     const renderLegalSettings = () => (
         <>
-            <h3 className={styles.backHeadline}>
+            <h3 className={pageStyles.backHeadline}>
                 {t(`agency.edit.settings.legal.title`)}{' '}
                 {legalDataMissing && <ErrorOutlinedIcon fontSize="small" color="error" />}
             </h3>
@@ -409,11 +410,11 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 <CardDeck.Item>
                     <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
                 </CardDeck.Item>
-                <CardDeck.Item className={styles.cardDeckItem}>
+                <CardDeck.Item className={styles.documentEditorItem}>
                     {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
                     <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />
                 </CardDeck.Item>
-                <CardDeck.Item className={styles.cardDeckItem}>
+                <CardDeck.Item className={styles.documentEditorItem}>
                     {/* ADR-014: one editor per legal-text kind for the whole Beratungsstelle; the
                         Fachbereich is chosen in the editor's lower function bar (Figma 1261:52149),
                         with "Alle Fachbereiche" editing the inheritable agency-wide text. */}
@@ -424,7 +425,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                         saving={isAgencySaving}
                     />
                 </CardDeck.Item>
-                <CardDeck.Item className={styles.cardDeckItem}>
+                <CardDeck.Item className={styles.documentEditorItem}>
                     <AgencyLegalTextContainer
                         agencyData={agencyData}
                         field="privacy"

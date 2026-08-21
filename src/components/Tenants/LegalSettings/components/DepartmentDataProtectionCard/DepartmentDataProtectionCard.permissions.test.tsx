@@ -1,6 +1,7 @@
 import React from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { DepartmentDataProtectionCard } from './index';
 
 vi.mock('react-i18next', () => ({
@@ -19,6 +20,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onChange,
         onPublish,
         onSaveDraft,
+        topicSlot,
         aboveEditorSlot,
         belowSlot,
     }: {
@@ -27,6 +29,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onChange?: (html: string) => void;
         onPublish?: () => void;
         onSaveDraft?: () => void;
+        topicSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
     }) => (
@@ -42,6 +45,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
                     saveDraft
                 </button>
             )}
+            {topicSlot}
             {belowSlot}
             <span>{value}</span>
         </div>
@@ -101,8 +105,9 @@ describe('DepartmentDataProtectionCard — legal-text permission gate', () => {
         expect(editor).toHaveAttribute('data-editable', 'false');
     });
 
-    it('makes the consent sentence inert too — it is published with the policy', () => {
+    it('makes the consent sentence inert too — it is published with the policy', async () => {
         renderCard(true);
+        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
         expect(screen.getByRole('textbox')).toBeDisabled();
     });
 

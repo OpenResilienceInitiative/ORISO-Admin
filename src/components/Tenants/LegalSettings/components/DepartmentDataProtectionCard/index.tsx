@@ -228,7 +228,34 @@ export const DepartmentDataProtectionCard = ({
                         />
                     ) : undefined
                 }
-                topicSlot={departmentSlot}
+                topicSlot={
+                    consentEnabled || departmentSlot ? (
+                        <>
+                            {consentEnabled && (
+                                <LegalConsentField
+                                    inheritedFrom={
+                                        // The notice describes the CURRENT state. While an archived version is on
+                                        // screen it would answer a question nobody asked about the version being
+                                        // read, so it goes away for the duration.
+                                        consentInheritedFrom &&
+                                        !isViewingVersion &&
+                                        ownConsentByLanguage?.[activeLanguage] === undefined
+                                            ? consentInheritedFrom
+                                            : undefined
+                                    }
+                                    language={activeLanguage}
+                                    readOnly={readOnly || isViewingVersion}
+                                    value={(viewedConsent ?? consentMap)[activeLanguage] ?? ''}
+                                    onChange={(next) => {
+                                        setPublishBlocked(false);
+                                        setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
+                                    }}
+                                />
+                            )}
+                            {departmentSlot}
+                        </>
+                    ) : undefined
+                }
                 helpSlot={
                     <>
                         <div className={styles.header}>
@@ -298,31 +325,6 @@ export const DepartmentDataProtectionCard = ({
                     </>
                 }
             />
-            {/* The consent sentence sits UNDER the editor, not in its `belowSlot`:
-                the M3 card is a fixed 800×740 deck card, so visible content inside
-                it is clipped (the same trap the aboveEditorSlot banner hit in #708).
-                It stays part of THIS card — one card, policy plus its consent field. */}
-            {consentEnabled && (
-                <LegalConsentField
-                    inheritedFrom={
-                        // The notice describes the CURRENT state. While an archived version is on
-                        // screen it would answer a question nobody asked about the version being
-                        // read, so it goes away for the duration.
-                        consentInheritedFrom &&
-                        !isViewingVersion &&
-                        ownConsentByLanguage?.[activeLanguage] === undefined
-                            ? consentInheritedFrom
-                            : undefined
-                    }
-                    language={activeLanguage}
-                    readOnly={readOnly || isViewingVersion}
-                    value={(viewedConsent ?? consentMap)[activeLanguage] ?? ''}
-                    onChange={(next) => {
-                        setPublishBlocked(false);
-                        setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
-                    }}
-                />
-            )}
             {/* A history that failed to load is not an empty history — see LegalText. */}
             {versionsUnavailable && (
                 <Alert
