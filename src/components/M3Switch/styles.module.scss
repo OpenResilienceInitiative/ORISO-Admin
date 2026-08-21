@@ -21,7 +21,8 @@
 
     &:disabled {
         cursor: not-allowed;
-        opacity: 0.5;
+        /* ON+disabled and OFF+disabled both wash out (grey track + grey thumb). */
+        opacity: 0.45;
     }
 
     &:focus-visible {
