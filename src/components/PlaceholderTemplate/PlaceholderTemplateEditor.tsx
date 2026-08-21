@@ -24,6 +24,13 @@ export interface PlaceholderTemplateFieldConfig<V extends Record<string, string>
 export interface PlaceholderTemplateEditorProps<V extends Record<string, string>> {
     /** Module heading (visible; also groups the editor for screen readers). */
     heading: string;
+    /**
+     * Decorative head icon, M3 anatomy icon → title. Optional and supplied by
+     * the variant: this frame is shared with the invite e-mail, so it must not
+     * decide that both carry the same symbol. Purely decorative — it is
+     * `aria-hidden`, the `<section aria-label>` stays the accessible name.
+     */
+    icon?: ReactNode;
     fields: PlaceholderTemplateFieldConfig<V>[];
     /** Tokens every field's picker offers. */
     tokens: PlaceholderTokenDef[];
@@ -61,6 +68,7 @@ export interface PlaceholderTemplateEditorProps<V extends Record<string, string>
  */
 export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
     heading,
+    icon,
     fields,
     tokens,
     values,
@@ -76,6 +84,11 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
 }: PlaceholderTemplateEditorProps<V>) => (
     <section aria-label={heading} className={styles.editor}>
         <header className={styles.header}>
+            {icon && (
+                <span aria-hidden className={styles.headIcon} data-head-icon>
+                    {icon}
+                </span>
+            )}
             <h3 className={styles.heading}>{heading}</h3>
             <TemplateSplitButton
                 activeTemplateId={activeTemplateId}

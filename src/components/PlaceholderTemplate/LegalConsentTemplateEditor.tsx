@@ -15,6 +15,16 @@ export interface LegalConsentTemplateValues extends Record<string, string> {
     text: string;
 }
 
+/**
+ * Head symbol of the consent sentence — the house checkbox glyph, because the
+ * sentence IS the checkbox the help-seeker ticks during registration (owner
+ * call 2026-08-20; the earlier MUI `FactCheckOutlined` was not from the house
+ * set). An alias, not a wrapper, so the full-page editor head, the dialog hero
+ * icon and the template split button use one symbol instead of drifting apart.
+ * Decorative everywhere it is used.
+ */
+export const LegalConsentHeadIcon = CheckBoxIcon;
+
 export interface LegalConsentTemplateEditorProps {
     values: LegalConsentTemplateValues;
     onChange: (next: LegalConsentTemplateValues) => void;
@@ -81,6 +91,7 @@ export const LegalConsentTemplateEditor = ({
             activeTemplateId={activeTemplateId}
             fields={fields}
             heading={t('placeholderTemplate.legal.heading', 'Einwilligung (Registrierung)')}
+            icon={<LegalConsentHeadIcon />}
             preview={
                 <section
                     aria-label={t('placeholderTemplate.legal.previewLabel', 'Vorschau der Einwilligung')}
