@@ -72,7 +72,13 @@ const MuiControl = ({
     const form = Form.useFormInstance();
     const isError = status === 'error';
     const errors = form?.getFieldError(fieldName as any) ?? [];
-    const inputSurface = variant === 'outlined' ? 'transparent' : 'var(--input-bg)';
+    // Both variants carry the admin field surface. Outlined controls used to be
+    // transparent (#606), which works on a light page but makes every field
+    // vanish inside a card: the card surface (#eae7e8) and the field then read as
+    // one flat grey mass. `Foundations/Field Tokens` prescribes the opposite —
+    // "field surfaces sit one step LIGHTER than the workspace so inputs read as
+    // raised instead of muddy" — which is also what the Figma rail shows.
+    const inputSurface = 'var(--admin-field-surface, var(--input-bg, #fcf9f9))';
     const autofillSurface =
         variant === 'outlined'
             ? 'var(--input-autofill-surface, var(--input-label-bg, var(--m3-surface-container-highest, #e4e2e2)))'

@@ -46,9 +46,21 @@ describe('MuiFormField', () => {
         expect(input.labels?.[0]).toHaveAttribute('data-shrink', 'true');
     });
 
-    it('uses the surrounding surface only for filled fields', () => {
+    // Design review 2026-08-21: outlined fields carry the admin field surface too.
+    // They used to be transparent (#606), which reads fine on a light page but makes
+    // every field vanish inside a card — card and field then share one flat grey.
+    // `Foundations/Field Tokens` prescribes the opposite: a field surface one step
+    // lighter than the workspace, so inputs read as raised instead of muddy.
+    it('paints both field variants on the admin field surface, never transparent', () => {
         render(
-            <div style={{ '--input-bg': 'rgb(252, 249, 249)' } as React.CSSProperties}>
+            <div
+                style={
+                    {
+                        '--input-bg': 'rgb(252, 249, 249)',
+                        '--admin-field-surface': 'rgb(252, 249, 249)',
+                    } as React.CSSProperties
+                }
+            >
                 <Form>
                     <MuiFormField name="outlined" label="Outlined" />
                     <MuiFormField name="filled" label="Filled" variant="filled" />
@@ -59,7 +71,7 @@ describe('MuiFormField', () => {
         const outlinedRoot = screen.getByLabelText('Outlined').closest('.MuiInputBase-root');
         const filledRoot = screen.getByLabelText('Filled').closest('.MuiInputBase-root');
 
-        expect(getComputedStyle(outlinedRoot!).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+        expect(getComputedStyle(outlinedRoot!).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
         expect(getComputedStyle(filledRoot!).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
     });
 

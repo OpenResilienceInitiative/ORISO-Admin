@@ -29,8 +29,10 @@ export const muiFieldSx = (isDisabled?: boolean): SxProps<Theme> => ({
         minWidth: 0,
         maxWidth: '100%',
         boxSizing: 'border-box',
-        // Outlined controls sit on the surface behind them (matches #606).
-        backgroundColor: 'transparent',
+        // Field surface, not transparent: inside a card a transparent control is
+        // indistinguishable from the card itself. Mirrors MuiFormField and the
+        // `Foundations/Field Tokens` rule (one step lighter than the workspace).
+        backgroundColor: 'var(--admin-field-surface, var(--input-bg, #fcf9f9))',
         color: 'var(--admin-form-field-text)',
         fontFamily: 'var(--m3-body-font-family)',
         fontSize: 16,
