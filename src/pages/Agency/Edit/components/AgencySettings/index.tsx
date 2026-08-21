@@ -20,12 +20,20 @@ import { searchTenantData } from '../../../../../api/tenant/searchTenantData';
 interface AgencySettingsProps {
     isEditMode: boolean;
     asFields?: boolean;
+    /**
+     * The currently persisted (server-side) teamAgency value, e.g. `Boolean(agencyData?.teamAgency)`.
+     * Used as the baseline the live form value is compared against below. Callers must pass the
+     * value straight from their fetched agency data (not a value captured once on mount) so that a
+     * successful save — which updates that fetched data via the query cache — immediately refreshes
+     * the baseline. Without this, a second edit in the same page load (flip, save, flip again) would
+     * compare against the pre-save baseline and show the conversion warning incorrectly.
+     */
+    persistedTeamAgency?: boolean;
 }
 
-export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) => {
+export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: AgencySettingsProps) => {
     const [t] = useTranslation();
     const teamAgency = Form.useWatch('teamAgency');
-    const [persistedTeamAgency, setPersistedTeamAgency] = useState<boolean | null>(null);
     const showTeamToSingleWarning = isEditMode && persistedTeamAgency === true && teamAgency === false;
 
     const genders = Form.useWatch<Option[]>(['demographics', 'genders']) || [];
@@ -40,12 +48,6 @@ export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) =>
     const counsellingRelationsForList = Object.values(CounsellingRelation).filter(
         (relation) => !counsellingRelations.find(({ value }) => value === `${relation}`),
     );
-
-    useEffect(() => {
-        if (persistedTeamAgency === null && typeof teamAgency === 'boolean') {
-            setPersistedTeamAgency(teamAgency);
-        }
-    }, [persistedTeamAgency, teamAgency]);
 
     useEffect(() => {
         if (isSuperAdmin) {
