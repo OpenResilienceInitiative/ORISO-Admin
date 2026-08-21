@@ -21,7 +21,6 @@
 
     &:disabled {
         cursor: not-allowed;
-        /* ON+disabled and OFF+disabled both wash out (grey track + grey thumb). */
         opacity: 0.45;
     }
 
