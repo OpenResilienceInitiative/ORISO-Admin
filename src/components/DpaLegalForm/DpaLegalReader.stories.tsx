@@ -37,7 +37,7 @@ const meta = {
             </ThemeProvider>
         ),
     ],
-    args: { label: 'Auftragsverarbeitungsvertrag' },
+    args: { label: 'Vertragsunterlagen' },
 } satisfies Meta<typeof DpaLegalReader>;
 
 export default meta;

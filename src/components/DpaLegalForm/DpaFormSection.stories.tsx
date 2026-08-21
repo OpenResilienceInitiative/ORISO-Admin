@@ -23,7 +23,7 @@ const InteractiveSection = ({ initiallyTouched = false }: { initiallyTouched?: b
             >
                 <DpaFormSection
                     dpaHtml={LONG_DPA_HTML}
-                    textLabel="Auftragsverarbeitungsvertrag"
+                    textLabel="Vertragsunterlagen"
                     textDescription="Bitte prüfen Sie den Vertrag und bestätigen Sie ihn für Ihre Organisation."
                     accepted={accepted}
                     acceptTouched={touched}
