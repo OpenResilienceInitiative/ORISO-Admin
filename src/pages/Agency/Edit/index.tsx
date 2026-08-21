@@ -151,6 +151,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         ...counsellingRelationsInitialValues,
         postCodeRangesActive: !hasOnlyDefaultRangeDefined(postCodes || []),
         online: agencyData?.id ? !agencyData?.offline : false,
+        teamAgency: Boolean(agencyData?.teamAgency),
         // ADR-014: load every department, not just the first. Taking [0] here was the entry point
         // of the data loss — the form then sent that single topic back and the backend deleted the
         // other agency_topic rows together with their published legal texts.
@@ -327,7 +328,11 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                 editButtonPlacement="footer"
                                 onSave={onSaveCard}
                             >
-                                <AgencySettings isEditMode={isEditing} asFields />
+                                <AgencySettings
+                                    isEditMode={isEditing}
+                                    asFields
+                                    persistedTeamAgency={initialValues.teamAgency}
+                                />
                             </CardEditable>
                         </CardDeck.Item>
                         <CardDeck.Item>
@@ -358,7 +363,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <CardGrid minCardWidth={425} maxColumns={2}>
                         <AgencyGeneralInformation />
                         <RegistrationSettings />
-                        <AgencySettings isEditMode={isEditing} />
+                        <AgencySettings isEditMode={isEditing} persistedTeamAgency={initialValues.teamAgency} />
                     </CardGrid>
                 </Form>
             </ThemeProvider>
@@ -388,7 +393,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             {/* #620: a single card in a fixed 392px deck rendered needlessly narrow —
                 the grid lets it use the row up to the shared card floor. */}
             <CardGrid minCardWidth={425} maxColumns={2}>
-                <AgencySettings isEditMode={isEditing} />
+                <AgencySettings isEditMode={isEditing} persistedTeamAgency={initialValues.teamAgency} />
             </CardGrid>
         </Form>
     );
