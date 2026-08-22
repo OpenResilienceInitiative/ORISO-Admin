@@ -100,6 +100,7 @@ describe('AskerPermissionsCard', () => {
         });
 
         expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+        expect(screen.getByText('tenants.permissions.enforce.headerNote')).toBeTruthy();
     });
 
     it('shows no enforce checkboxes outside enforce mode', () => {

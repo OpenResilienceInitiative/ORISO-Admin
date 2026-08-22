@@ -121,4 +121,38 @@ describe('PermissionsSettingsView data parity (1-on-1 card)', () => {
 
         expect(videoCalls).toBeEnabled();
     });
+
+    it('surfaces the enforce explanation above the toggles when enforce mode is on', () => {
+        render(
+            <PermissionsSettingsView
+                tenantId="t1"
+                excludeCardKeys={['liveChat', 'group', 'groupInternal']}
+                isLoading={false}
+                initialValues={{ settings: { featureCallsEnabled: true } }}
+                formStateKey="k1"
+                restrictedFields={new Set()}
+                onToggleUpdate={vi.fn()}
+                onSave={vi.fn()}
+                enforceMode
+                enforcedFields={new Set()}
+                onEnforceChange={vi.fn()}
+            />,
+        );
+
+        const notes = screen.getAllByText('tenants.permissions.enforce.headerNote');
+        expect(notes.length).toBeGreaterThanOrEqual(1);
+        expect(screen.queryByText('tenants.permissions.enforce.footerNote')).toBeNull();
+
+        const description = screen.getByText('tenants.permissions.card.oneOnOne.description').closest('p');
+        const activated = screen.getByRole('switch', { name: 'tenants.permissions.card.activated' });
+        expect(description).not.toBeNull();
+
+        const headerNote = notes.find(
+            (node) => (description as Node).compareDocumentPosition(node) === Node.DOCUMENT_POSITION_FOLLOWING,
+        );
+
+        expect(headerNote).toBeTruthy();
+        expect(headerNote!.compareDocumentPosition(activated)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0);
+    });
 });
