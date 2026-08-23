@@ -12,18 +12,11 @@ describe('user assignment fields', () => {
     });
 });
 
-describe('consultant creation error reporting', () => {
-    it('names an unconfigured tenant licence instead of falling through to the generic error', () => {
-        expect(source).toContain('X_REASON.TENANT_LICENSING_NOT_CONFIGURED');
-        expect(source).toContain("t('message.error.TENANT_LICENSING_NOT_CONFIGURED')");
-    });
-
-    it('carries that message in every shipped locale', () => {
-        ['en', 'de'].forEach((locale) => {
-            const translations = JSON.parse(
-                readFileSync(resolve(__dirname, `../../../locales/${locale}/translation.json`), 'utf8'),
-            );
-            expect(translations['message.error.TENANT_LICENSING_NOT_CONFIGURED']).toBeTruthy();
-        });
+describe('user save error reporting', () => {
+    it('delegates X-Reason mapping to the extracted resolver instead of an inline switch', () => {
+        // The mapping itself is asserted in utils/userSaveErrorMessageKey.test.ts. This only pins
+        // the page to one call site, so a reason cannot be handled in two places that disagree.
+        expect(source).toContain('resolveUserSaveErrorMessageKey(error.headers.get(FETCH_ERRORS.X_REASON)');
+        expect(source).not.toContain('switch (error.headers.get(FETCH_ERRORS.X_REASON))');
     });
 });
