@@ -49,6 +49,13 @@ export interface ModalProps {
     confirmDisabled?: boolean;
     /** Show the top-right close (X) affordance. Defaults to true. */
     closable?: boolean;
+    /**
+     * Clicking the mask dismisses the dialog. Defaults to true. Set false for
+     * a GATE dialog whose whole point is that there is no way past it.
+     */
+    maskClosable?: boolean;
+    /** Escape dismisses the dialog. Defaults to true; see {@link maskClosable}. */
+    keyboard?: boolean;
     /** Extra class on the dialog root, for per-dialog sheet rules (e.g. a viewport bound). */
     className?: string;
     /**
@@ -89,6 +96,8 @@ export const Modal = ({
     showDivider = true,
     confirmDisabled = false,
     closable = true,
+    maskClosable = true,
+    keyboard = true,
     className,
     descriptionFullWidth = false,
 }: ModalProps) => {
@@ -149,8 +158,8 @@ export const Modal = ({
             open
             destroyOnClose
             centered
-            maskClosable
-            keyboard
+            maskClosable={maskClosable}
+            keyboard={keyboard}
             closable={closable}
             onCancel={onDismiss ?? onClose}
             footer={

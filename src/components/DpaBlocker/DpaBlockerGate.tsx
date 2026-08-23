@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import logout from '../../api/auth/logout';
 import { signDpaAdmin } from '../../api/tenant/signDpaAdmin';
@@ -14,6 +14,7 @@ import { DpaAdminSignRequest } from '../../types/dpa';
 import { deriveDpaGateDecision, resolveDpaGateSubject } from '../../utils/dpaBlockerGate';
 import { DpaBlocker, DpaBlockerSignData } from './DpaBlocker';
 import { DpaPendingSignatureDialog } from './DpaPendingSignatureDialog';
+import { DpaUnlockDialog } from './DpaUnlockDialog';
 
 /**
  * Global route guard for TEN-INV-U10 (#572): wraps the ENTIRE protected admin
@@ -24,25 +25,42 @@ import { DpaPendingSignatureDialog } from './DpaPendingSignatureDialog';
  * - blocked  -> the non-bypassable {@link DpaBlocker} INSTEAD of the routes —
  *               a direct URL to any admin page hits this same gate,
  * - inactive -> children (status VALID, or the account is not tenant-scoped),
- * - forwarded-pending (#724) -> children PLUS the friendly recurring
- *               {@link DpaPendingSignatureDialog}: the signature was
- *               explicitly handed to an authorised signatory, so the admin
- *               may work on non-legal data while the tenant legitimately
- *               waits. The trigger is the additive `forwardPending` flag on
- *               the status DTO (#723 contract correction — the `status` enum
- *               itself has no `PENDING_FORWARDED` value); absent or false it
- *               keeps the strict #572 blocker.
+ * - forwarded-pending (#724, hardened by JOB7) -> the
+ *               {@link DpaPendingSignatureDialog} INSTEAD of the routes. The
+ *               signature was handed to an authorised signatory, so the tenant
+ *               gets the calm waiting screen with the sign link rather than
+ *               the sign form — but it is still a GATE: the admin area is not
+ *               rendered behind it and the only exit is logout. The trigger is
+ *               the additive `forwardPending` flag on the status DTO (#723
+ *               contract correction — the `status` enum itself has no
+ *               `PENDING_FORWARDED` value); absent or false it keeps the
+ *               strict #572 blocker,
+ * - unlock-confirm (JOB8/JOB9) -> the signature landed WHILE the tenant was
+ *               waiting. {@link DpaUnlockDialog} asks for one explicit click,
+ *               and that click re-asks the backend before the app opens.
  *
  * Signing writes the returned status back into the query cache, so a
  * successful signature lifts the block immediately and permanently.
  * Frontend-only lock: the backend write enforcement stays U9/U3 scope.
+ *
+ * The gate only ever READS signature state (ADR-022): the status GET, and the
+ * sign endpoint the admin themselves submits. Nothing here fabricates a
+ * consent or signature record.
  */
 export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
     const { hasRole, isSuperAdmin, tenantId, tokenUnreadable } = useUserRoles();
     const queryClient = useQueryClient();
-    // Dismissal is per app load: a fresh login (page load) shows the dialog
-    // again, while SPA navigation within the session stays quiet (#724).
-    const [pendingDismissed, setPendingDismissed] = useState(false);
+    /**
+     * The waiting dialog has been on screen in this session, so a VALID status
+     * arriving now is a transition the tenant has not acknowledged yet. A ref,
+     * not state: it only ever feeds the NEXT decision.
+     */
+    const awaitedForwardedSignature = useRef(false);
+    /** The re-check confirmed the signature — the app may render. */
+    const [platformUnlocked, setPlatformUnlocked] = useState(false);
+    const [recheckPending, setRecheckPending] = useState(false);
+    /** The re-check came back without a signature — explained on the gate. */
+    const [recheckRejected, setRecheckRejected] = useState(false);
 
     // FAIL-CLOSED (#569 hardening): 'indeterminate' (malformed token /
     // tenant-admin without a usable tenantId claim) blocks instead of
@@ -64,7 +82,17 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
         isError: statusQuery.isError,
         // Rides on the same status answer — no second request to wait for.
         forwardPending: statusQuery.data?.forwardPending,
+        wasAwaitingForwardedSignature: awaitedForwardedSignature.current && !platformUnlocked,
     });
+
+    useEffect(() => {
+        if (decision.kind === 'forwarded-pending') {
+            awaitedForwardedSignature.current = true;
+            // Re-gated after an unlock (e.g. a new DPA version): the next
+            // signature has to be acknowledged again.
+            setPlatformUnlocked(false);
+        }
+    }, [decision.kind]);
 
     const blockedSignable = decision.kind === 'blocked' && decision.signable;
     // silent: a versions failure renders the blocker's inline error — never
@@ -86,6 +114,39 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
 
     if (decision.kind === 'pending') {
         return <Initialization />;
+    }
+
+    if (decision.kind === 'unlock-confirm') {
+        /**
+         * JOB9 — the acceptance criterion for JOB8's button lives HERE: the
+         * click does not trust `statusQuery.data`, it forces a fresh request
+         * and reads THAT answer.
+         *
+         * - VALID   -> the gate opens.
+         * - anything else -> the tenant stays gated; the waiting dialog comes
+         *   back carrying the reason.
+         * - request failed -> `isError` puts the decision back on the
+         *   fail-closed STATUS_UNAVAILABLE blocker with its own retry.
+         */
+        const onUnlockPlatform = async () => {
+            setRecheckPending(true);
+            setRecheckRejected(false);
+            const verified = await statusQuery.refetch();
+            setRecheckPending(false);
+            if (verified.isError || verified.data?.status !== 'VALID') {
+                setRecheckRejected(!verified.isError);
+                return;
+            }
+            setPlatformUnlocked(true);
+        };
+
+        return (
+            <DpaUnlockDialog
+                onUnlock={onUnlockPlatform}
+                onLogout={() => logout(true)}
+                checking={recheckPending || statusQuery.isFetching}
+            />
+        );
     }
 
     if (decision.kind === 'forwarded-pending') {
@@ -118,18 +179,15 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
                 return { link, mailFailed: true };
             }
         };
+        // No `children`: an unsigned tenant may not reach the admin area at
+        // all, so there is nothing behind the dialog to click (JOB7).
         return (
-            <>
-                {children}
-                {!pendingDismissed && (
-                    <DpaPendingSignatureDialog
-                        ensureSignLink={mintLink}
-                        forward={forward}
-                        onDismiss={() => setPendingDismissed(true)}
-                        onForwardCompleted={() => setPendingDismissed(true)}
-                    />
-                )}
-            </>
+            <DpaPendingSignatureDialog
+                ensureSignLink={mintLink}
+                forward={forward}
+                onLogout={() => logout(true)}
+                recheckRejected={recheckRejected}
+            />
         );
     }
 
