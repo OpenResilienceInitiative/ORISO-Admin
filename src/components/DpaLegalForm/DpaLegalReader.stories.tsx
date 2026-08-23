@@ -58,7 +58,10 @@ const desktopReader: NonNullable<Story['decorators']> = [
 
 /** Desktop: long contract, one chip per chapter, no editing affordances. */
 export const DesktopWithChapters: Story = {
-    args: { html: LONG_DPA_HTML, description: 'Bitte prüfen Sie die Vertragsunterlagen und bestätigen Sie sie anschließend.' },
+    args: {
+        html: LONG_DPA_HTML,
+        description: 'Bitte prüfen Sie die Vertragsunterlagen und bestätigen Sie sie anschließend.',
+    },
     decorators: desktopReader,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
