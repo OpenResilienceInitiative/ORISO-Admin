@@ -219,7 +219,18 @@ export const DpaForwardDialog = ({
                     </Form>
 
                     <div className={styles.preview}>
+                        {/* The kind is what makes this the FORWARD mail rather than a
+                            generic invite. Without it the backend renderer defaults to
+                            TENANT_INVITE (`InviteEmailPreviewService`: a null kind falls
+                            back to TENANT_INVITE), so the sample call-to-action pointed
+                            at the admin console — `admin.oriso.org/admin/tenant-onboarding/…`
+                            — while a DPA signer is sent to the app host instead. The
+                            house frame around the mail, and with it the footer (brand
+                            name, Impressum · Datenschutz, automated-send note), is
+                            applied by the backend for every kind; it is not something
+                            this dialog composes. */}
                         <EmailKitPreview
+                            kind="DPA_FORWARD"
                             subject={preview.subject}
                             body={preview.body}
                             previewLabel={t('dpaForward.dialog.previewLabel')}

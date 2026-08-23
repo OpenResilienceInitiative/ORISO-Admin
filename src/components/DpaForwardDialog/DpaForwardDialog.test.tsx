@@ -13,6 +13,17 @@ vi.mock('react-i18next', () => ({
     }),
 }));
 
+/**
+ * The mail preview renders through the BACKEND's renderer. jsdom has no server,
+ * so the call is stubbed here — which also makes the request itself assertable.
+ */
+const renderPreview = vi.hoisted(() => vi.fn().mockResolvedValue({ html: '<p>mail</p>', subject: 'Betreff' }));
+
+vi.mock('../../api/accountInvites/accountInvites', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../../api/accountInvites/accountInvites')>()),
+    previewInviteEmailTemplateContent: renderPreview,
+}));
+
 const LINK: DpaForwardLink = {
     signUrl: 'https://app.example.org/dpa-sign/token-1',
     expiresAt: '2026-08-29T14:31:07',
@@ -173,6 +184,26 @@ describe('DpaForwardDialog', () => {
 
         expect(onClose).toHaveBeenCalledTimes(1);
         expect(onForwarded).not.toHaveBeenCalled();
+    });
+
+    /**
+     * JOB11. The mail frame — header, call-to-action and the house FOOTER (brand
+     * name, Impressum · Datenschutz, "Diese E-Mail wurde automatisch versendet …")
+     * — is applied by the backend renderer, the same one the send path runs; this
+     * dialog only composes the salutation and the body that go inside it. What the
+     * dialog owes the renderer is the identity of the mail, and it was not sending
+     * it: with no `kind`, `InviteEmailPreviewService` falls back to TENANT_INVITE
+     * and renders the sample call-to-action against the ADMIN console, while a DPA
+     * signer belongs on the app host. Nothing else in the render branches on kind,
+     * so this is the whole of the fix — and the reason the preview may not be
+     * hand-framed in Admin instead.
+     */
+    it('tells the backend renderer which mail this is, so the forward mail is framed as itself', async () => {
+        renderDialog();
+        await screen.findByLabelText('dpaForward.dialog.linkLabel');
+
+        await waitFor(() => expect(renderPreview).toHaveBeenCalled());
+        expect(renderPreview.mock.calls[0][0]).toMatchObject({ kind: 'DPA_FORWARD' });
     });
 });
 
