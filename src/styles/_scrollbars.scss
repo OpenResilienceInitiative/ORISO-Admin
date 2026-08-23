@@ -1,0 +1,55 @@
+// Shared scrollbar treatment for the CSS modules.
+//
+// Silent `//` comments on purpose: this partial is `@use`d by four modules,
+// and Sass copies a loud `/* */` block into the compiled output of every one
+// of them.
+//
+// Owner report (JOB10, 2026-08-19): "Remove the scrollbars in firefox, edge,
+// safari browsers, or that you only see them when scrolling. Also in the main
+// signup module they are even more visible." The screenshot shows a permanent
+// grey scroll TRACK down the right edge of the contract document box.
+//
+// The defect is the track, not the thumb. Firefox and Chromium/Edge on Windows
+// paint a classic scrollbar: an always-on grey channel plus a thumb, both
+// occupying layout width. macOS paints overlay scrollbars that already fade
+// out when idle, which is why this only ever looked broken on the browsers the
+// owner named.
+//
+// `quiet` therefore takes the track away and keeps the thumb: the surface
+// reads as "only visible while scrolling" on macOS (native overlay behaviour
+// is left untouched) and as a thin, trackless thumb everywhere else.
+//
+// Why NOT the full-hide pattern that this repo already uses in ~10 places:
+// every one of those is a HORIZONTAL control row — the chapter chips
+// (FormPluginEditor.styles.scss), the editor toolbar, the function bar,
+// CardDeck, the segmented tabs. Each carries its own affordance (a 32px edge
+// fade, prev/next arrows, an active chip). The surfaces this mixin is for are
+// VERTICAL readers and form scrollers — the contract box the owner
+// screenshotted, the onboarding sheet body, the public page itself. Hiding the
+// scrollbar there would delete the only signal that more text exists below, on
+// a page whose whole purpose is reading a contract before signing it. That is
+// a WCAG 2.2 regression, so the thumb stays.
+//
+// Standard properties only, deliberately. The webkit pseudo-element is not
+// paired with them because Chromium ignores it as soon as `scrollbar-width` is
+// set — the finding is already written down in
+// GlobalSearch/globalSearchBar.module.scss. Safari below 18.2 supports neither
+// property and keeps its native overlay scrollbar, which is the behaviour this
+// mixin is imitating anyway.
+//
+// Not a new idiom: the admin sidebar (protectedLayout.less `.upperSidebar`)
+// and the mobile editor toolbar (M3RichTextEditor.module.scss) have both
+// scrolled this way since they were built. This mixin names that treatment and
+// brings the public and reader surfaces in line with it.
+//
+// LESS-pipeline files (src/styles/components/*.less) cannot `@use` this
+// partial; publicLayout.less repeats the two declarations inline and points
+// here.
+
+@mixin quiet {
+    scrollbar-width: thin;
+
+    // Thumb tonal with the surface, track fully transparent — the same thumb
+    // colour GlobalSearch already uses for a styled scrollbar.
+    scrollbar-color: var(--m3-outline-variant, #c4c7c8) transparent;
+}

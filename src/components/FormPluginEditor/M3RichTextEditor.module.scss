@@ -2,6 +2,8 @@
 // node 1:34903). Mirrors the M3 sys tokens; brand primary #273270, M3 seed
 // primary #a5000a (publish accent).
 
+@use '../../styles/scrollbars' as scrollbars;
+
 $m3-surface: #eae7e8;
 $m3-on-surface: #1b1b1c;
 $m3-on-surface-variant: #444748;
@@ -11,6 +13,22 @@ $m3-primary: #273270;
 $m3-publish: #a5000a;
 $m3-state-hover: rgb(68 71 72 / 8%);
 $m3-state-active: rgb(39 50 112 / 12%);
+
+/* The reading viewport of the legal reader — the box in the owner's JOB10
+   screenshot with a permanent grey scroll track down its right edge. It turns
+   into a scroller in three places (the 800x740 deck card at >=600px, the
+   fullscreen dialog, and the bounded fluid READ card), so the treatment is
+   declared once here for all of them; on the non-scrolling variants these two
+   declarations are inert.
+
+   Trackless-thin rather than hidden: a DPA runs to several screens and the
+   thumb is the only thing telling the reader that the contract continues
+   below the fold. The chapter bar underneath navigates BETWEEN chapters, it
+   does not signal WITHIN one. See src/styles/_scrollbars.scss. */
+
+.editorContentScroll {
+    @include scrollbars.quiet;
+}
 
 .module {
     display: flex;

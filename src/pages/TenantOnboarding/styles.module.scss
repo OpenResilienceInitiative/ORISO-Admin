@@ -1,4 +1,5 @@
 @use '../../styles/breakpoints' as bp;
+@use '../../styles/scrollbars' as scrollbars;
 
 /* Public tenant-admin onboarding (#571).
  *
@@ -64,7 +65,17 @@
         padding: 0 4px;
         margin: 0 -4px;
         overflow-y: auto;
+
+        /* JOB10: this is the "main signup module" whose scrollbars the owner
+           called "even more visible" — `scrollbar-gutter: stable` reserves the
+           channel permanently, so a full-width classic scrollbar sat next to
+           the wizard on every step whether it was scrolling or not. The gutter
+           stays (it is what stops the step content jumping sideways when a
+           step grows past the fold); a thin, trackless thumb is what makes it
+           unobtrusive. */
         scrollbar-gutter: stable;
+
+        @include scrollbars.quiet;
     }
 }
 
