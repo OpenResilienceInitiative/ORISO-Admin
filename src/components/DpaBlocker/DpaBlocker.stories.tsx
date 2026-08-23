@@ -4,8 +4,8 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { DpaBlocker } from './DpaBlocker';
 
 const SHORT_DPA = JSON.stringify({
-    de: '<h2>Auftragsverarbeitungsvertrag</h2><p>Zwischen dem Plattformbetreiber und Ihrer Organisation wird der folgende Vertrag über die Verarbeitung personenbezogener Daten geschlossen.</p><p>§ 1 Gegenstand: Der Betreiber verarbeitet personenbezogene Daten ausschließlich im Auftrag und nach Weisung der Organisation.</p>',
-    en: '<h2>Data processing agreement</h2><p>The platform operator and your organisation conclude the following agreement on the processing of personal data.</p><p>Section 1 Subject: the operator processes personal data exclusively on behalf of and under the instructions of the organisation.</p>',
+    de: '<h2>Vertragsunterlagen</h2><p>Zwischen dem Plattformbetreiber und Ihrer Organisation wird der folgende Vertrag über die Verarbeitung personenbezogener Daten geschlossen.</p><p>§ 1 Gegenstand: Der Betreiber verarbeitet personenbezogene Daten ausschließlich im Auftrag und nach Weisung der Organisation.</p>',
+    en: '<h2>Contract documents</h2><p>The platform operator and your organisation conclude the following agreement on the processing of personal data.</p><p>Section 1 Subject: the operator processes personal data exclusively on behalf of and under the instructions of the organisation.</p>',
 });
 
 // 10 sections x 4 paragraphs: long enough for the #572 scroll acceptance AND
@@ -21,8 +21,8 @@ const longSections = Array.from(
 ).join('');
 
 const LONG_DPA = JSON.stringify({
-    de: `<h1>Auftragsverarbeitungsvertrag (Langfassung)</h1>${longSections}`,
-    en: `<h1>Data processing agreement (long version)</h1>${longSections}`,
+    de: `<h1>Vertragsunterlagen (Langfassung)</h1>${longSections}`,
+    en: `<h1>Contract documents (long version)</h1>${longSections}`,
 });
 
 /**

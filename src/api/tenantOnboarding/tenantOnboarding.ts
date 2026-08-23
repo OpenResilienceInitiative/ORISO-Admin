@@ -321,8 +321,8 @@ const STUB_INVITE: TenantAdminOnboardingInviteDTO = {
     tenantIdReservationToken: '3f2c6d1e-8b1a-4b8e-9f47-stubreserved',
     expiresAt: null,
     dpaContent: JSON.stringify({
-        de: '<h2>Auftragsverarbeitungsvertrag</h2><p>Platzhalter — der veröffentlichte AVV-Text des Betreibers wird hier unverändert angezeigt.</p>',
-        en: '<h2>Data processing agreement</h2><p>Placeholder — the operator’s published DPA text is rendered here unchanged.</p>',
+        de: '<h2>Vertragsunterlagen</h2><p>Platzhalter — der veröffentlichte Vertragstext des Betreibers wird hier unverändert angezeigt.</p>',
+        en: '<h2>Contract documents</h2><p>Placeholder — the operator’s published contract text is rendered here unchanged.</p>',
     }),
 };
 

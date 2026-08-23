@@ -40,7 +40,7 @@ const meta = {
             </ThemeProvider>
         ),
     ],
-    args: { label: 'Auftragsverarbeitungsvertrag' },
+    args: { label: 'Vertragsunterlagen' },
 } satisfies Meta<typeof DpaLegalReader>;
 
 export default meta;
@@ -61,7 +61,10 @@ const desktopReader: NonNullable<Story['decorators']> = [
 
 /** Desktop: long contract, one chip per chapter, no editing affordances. */
 export const DesktopWithChapters: Story = {
-    args: { html: LONG_DPA_HTML, description: 'Bitte prüfen Sie den Vertrag und bestätigen Sie ihn anschließend.' },
+    args: {
+        html: LONG_DPA_HTML,
+        description: 'Bitte prüfen Sie die Vertragsunterlagen und bestätigen Sie sie anschließend.',
+    },
     decorators: desktopReader,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
