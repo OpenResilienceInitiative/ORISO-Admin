@@ -1861,7 +1861,7 @@
     "placeholderTemplate.dialog.inviteTitle": "Einladungs-E-Mail",
     "placeholderTemplate.dialog.inviteDescription": "Vorlage wählen, Platzhalter einfügen und die E-Mail live in der Vorschau prüfen.",
     "placeholderTemplate.dialog.legalTitle": "Einwilligungstext",
-    "placeholderTemplate.dialog.legalDescription": "Vorlage wählen und den Einwilligungssatz mit Platzhaltern anpassen.",
+    "placeholderTemplate.dialog.legalDescription": "Hier legen Sie den Satz fest, den der Ratsuchende bei der Registrierung mit einem Häkchen bestätigt. Er gehört zur Datenschutzerklärung — mit dem Veröffentlichen entsteht eine neue Fassung, auch wenn der übrige Text gleich bleibt.",
     "placeholderTemplate.preview.failed": "Die Vorschau konnte nicht erzeugt werden.",
     "placeholderTemplate.preview.retry": "Erneut versuchen",
     "placeholderTemplate.token.inviteLink": "Einladungslink",

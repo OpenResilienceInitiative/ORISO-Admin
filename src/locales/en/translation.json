@@ -1861,7 +1861,7 @@
     "placeholderTemplate.dialog.inviteTitle": "Invitation e-mail",
     "placeholderTemplate.dialog.inviteDescription": "Pick a template, insert placeholders and check the e-mail live in the preview.",
     "placeholderTemplate.dialog.legalTitle": "Consent text",
-    "placeholderTemplate.dialog.legalDescription": "Pick a template and adjust the consent sentence with placeholders.",
+    "placeholderTemplate.dialog.legalDescription": "Here you set the sentence the help seeker confirms with a checkbox when registering. It belongs to the data protection policy — publishing it creates a new version, even when the rest of the text stays the same.",
     "placeholderTemplate.preview.failed": "Preview could not be rendered.",
     "placeholderTemplate.preview.retry": "Retry",
     "placeholderTemplate.token.inviteLink": "Invitation link",
