@@ -219,6 +219,12 @@ export const UserEditOrAdd = () => {
                             duration: 8,
                         });
                         return;
+                    case X_REASON.TENANT_LICENSING_NOT_CONFIGURED:
+                        message.error({
+                            content: t('message.error.TENANT_LICENSING_NOT_CONFIGURED'),
+                            duration: 8,
+                        });
+                        return;
                     case X_REASON.PASSWORD_NOT_VALID:
                         message.error({
                             content: t('message.error.PASSWORD_NOT_VALID'),
