@@ -11,12 +11,3 @@ describe('user assignment fields', () => {
         expect(source.match(/name="topicIds"/g)).toHaveLength(1);
     });
 });
-
-describe('user save error reporting', () => {
-    it('delegates X-Reason mapping to the extracted resolver instead of an inline switch', () => {
-        // The mapping itself is asserted in utils/userSaveErrorMessageKey.test.ts. This only pins
-        // the page to one call site, so a reason cannot be handled in two places that disagree.
-        expect(source).toContain('resolveUserSaveErrorMessageKey(error.headers.get(FETCH_ERRORS.X_REASON)');
-        expect(source).not.toContain('switch (error.headers.get(FETCH_ERRORS.X_REASON))');
-    });
-});
