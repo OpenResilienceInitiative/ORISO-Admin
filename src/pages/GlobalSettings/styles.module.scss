@@ -232,7 +232,11 @@
     .globalConfigGrid {
         gap: mui.$mui-unit * 2;
     }
+}
 
+/* SMTP lives on a separate route outside .globalConfigViewport, so these must
+   stay viewport media queries — a global-settings container never exists there. */
+@media only screen and (max-width: 640px) {
     .smtpPage {
         max-width: 100%;
     }
