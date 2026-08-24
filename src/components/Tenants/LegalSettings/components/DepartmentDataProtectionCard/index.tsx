@@ -130,7 +130,6 @@ export const DepartmentDataProtectionCard = ({
     // decision 7 — the imprint is an information duty and never a consent gate).
     const consentEnabled = documentType === 'privacy' && consentByLanguage !== undefined;
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
-    const [publishBlocked, setPublishBlocked] = useState(false);
     const consentMap = useMemo(
         () => ({ ...(consentByLanguage ?? {}), ...consentEdits }),
         [consentByLanguage, consentEdits],
@@ -138,6 +137,12 @@ export const DepartmentDataProtectionCard = ({
     const blockedLanguages = useMemo(
         () => (consentEnabled ? consentPublicationBlockers(consentMap) : []),
         [consentEnabled, consentMap],
+    );
+    // Named the way the admin reads them ("Deutsch, Englisch"), not as wire codes:
+    // the whole point of the notice is to send them to the right language tab.
+    const blockedLanguageNames = useMemo(
+        () => blockedLanguages.map((language) => t(`language.${language}`, language.toUpperCase())).join(', '),
+        [blockedLanguages, t],
     );
     const {
         activeLanguage,
@@ -191,10 +196,8 @@ export const DepartmentDataProtectionCard = ({
      */
     const handlePublish = () => {
         if (blockedLanguages.length > 0) {
-            setPublishBlocked(true);
             return;
         }
-        setPublishBlocked(false);
         requestPublish();
     };
 
@@ -246,10 +249,9 @@ export const DepartmentDataProtectionCard = ({
                                     language={activeLanguage}
                                     readOnly={readOnly || isViewingVersion}
                                     value={(viewedConsent ?? consentMap)[activeLanguage] ?? ''}
-                                    onChange={(next) => {
-                                        setPublishBlocked(false);
-                                        setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
-                                    }}
+                                    onChange={(next) =>
+                                        setConsentEdits((current) => ({ ...current, [activeLanguage]: next }))
+                                    }
                                 />
                             )}
                             {departmentSlot}
@@ -335,7 +337,11 @@ export const DepartmentDataProtectionCard = ({
                     description={t('legal.versions.unavailable.description')}
                 />
             )}
-            {publishBlocked && (
+            {/* Shown as soon as ANY authored language is affected, not only after a
+                failed publish attempt: the rule arrived after texts were live, so a
+                stored sentence can be blocking on open, in a language that is not the
+                one on screen. Waiting for the Publish click would hide that. */}
+            {blockedLanguages.length > 0 && (
                 <Alert
                     type="error"
                     showIcon
@@ -343,9 +349,9 @@ export const DepartmentDataProtectionCard = ({
                     message={t('legal.consent.publishBlocked.title')}
                     description={
                         <>
-                            {t('legal.consent.publishBlocked.description', {
-                                languages: blockedLanguages.join(', '),
-                            })}{' '}
+                            {t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}{' '}
+                            {/* The token is composed in JSX, never interpolated — i18next
+                                treats `{{…}}` in a translation as its own syntax. */}
                             <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
                         </>
                     }
