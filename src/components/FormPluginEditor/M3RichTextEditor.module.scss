@@ -154,6 +154,14 @@ $m3-state-active: rgb(39 50 112 / 12%);
        sticky chapter bar below, which has to mask the text scrolling under it. */
     background: none;
     border: 0;
+
+    /* The radius framed the card, so it goes with the card. `.module`'s 28px
+       rounds an 800px surface that still paints a background and a shadow;
+       here there is nothing left to round — but `overflow: clip` kept obeying
+       it, and the arc sliced the maximize control sitting in that corner
+       (owner report 2026-08-19: "abgeschnitten … obere rechte Ecke"). Clipping
+       to a plain rectangle costs nothing visually and gives the control back. */
+    border-radius: 0;
     box-shadow: none;
 
     /* The rules that framed the removed box go with it. */
