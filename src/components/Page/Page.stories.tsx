@@ -86,7 +86,7 @@ export const WithCardDeck: Story = {
                 previousLabel="Vorherige Karte anzeigen"
                 nextLabel="Weitere Karte anzeigen"
             >
-                {['Trägerspezifische Datenschutzerklärung', 'Auftragsverarbeitungsvertrag', 'Datenschutzerklärung'].map(
+                {['Trägerspezifische Datenschutzerklärung', 'Vertragsunterlagen', 'Datenschutzerklärung'].map(
                     (title) => (
                         <CardDeck.Item key={title}>
                             <Card titleKey={title}>Karteninhalt mit eigenen Footer-Aktionen.</Card>

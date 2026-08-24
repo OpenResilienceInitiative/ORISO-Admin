@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MenuProps } from 'antd';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
@@ -22,6 +23,13 @@ export interface TemplateSplitButtonProps {
     onMainClick?: () => void;
     /** Read-only surfaces keep the chooser visible but inert. */
     disabled?: boolean;
+    /**
+     * Leading glyph naming WHAT is being templated. Defaults to the generic
+     * document icon; variants whose artefact has its own house glyph pass it
+     * (the consent editor passes the checkbox, because a consent sentence is
+     * rendered as a checkbox label in registration).
+     */
+    icon?: ReactNode;
 }
 
 const SELECT_PREFIX = 'select:';
@@ -41,6 +49,7 @@ export const TemplateSplitButton = ({
     onCreateFromTemplate,
     onMainClick,
     disabled = false,
+    icon = <DescriptionOutlinedIcon />,
 }: TemplateSplitButtonProps) => {
     const { t } = useTranslation();
     const active = templates.find((template) => template.id === activeTemplateId);
@@ -110,7 +119,7 @@ export const TemplateSplitButton = ({
     return (
         <SplitButton
             disabled={disabled}
-            icon={<DescriptionOutlinedIcon />}
+            icon={icon}
             label={active?.name ?? t('placeholderTemplate.template.none', 'Vorlage wählen')}
             menu={menu}
             menuLabel={t('placeholderTemplate.template.menuLabel', 'Vorlagenmenü öffnen')}
@@ -118,6 +127,15 @@ export const TemplateSplitButton = ({
             // fill was the sheet's Elevated colourway — a state claim the resting
             // picker has no business making. It lifts only while its menu is open.
             variant="outlined"
+            // Small (40px), not the SplitButton default medium (56px): this picker sits in
+            // the same row as the legal editors' language/Fachbereich/version SplitDropdowns,
+            // whose pills are 36px. At 56px it towered over them and read as the row's main
+            // action, which a template chooser is not.
+            size="small"
+            // Without a main action the segment is inert — take it out of the
+            // tab order instead of offering a button that does nothing (#727
+            // post-merge review). The chevron menu stays fully interactive.
+            mainDisabled={!onMainClick}
             onClick={onMainClick}
         />
     );

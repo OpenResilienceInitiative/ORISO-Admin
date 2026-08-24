@@ -1,4 +1,5 @@
 @use '../../styles/breakpoints' as bp;
+@use '../../styles/scrollbars' as scrollbars;
 
 /* Public tenant-admin onboarding (#571).
  *
@@ -59,12 +60,22 @@
         flex: 1 1 auto;
 
         /* Horizontal room for the focus ring of the fields inside the
-           scroller. Vertical padding is deliberately 0 so the sticky chapter
-           bar lands exactly on the scrollport edge. */
+           scroller. (The agreement itself scrolls inside the reader since the
+           owner demo 2026-08-19 — this body only scrolls the step's form.) */
         padding: 0 4px;
         margin: 0 -4px;
         overflow-y: auto;
+
+        /* JOB10: this is the "main signup module" whose scrollbars the owner
+           called "even more visible" — `scrollbar-gutter: stable` reserves the
+           channel permanently, so a full-width classic scrollbar sat next to
+           the wizard on every step whether it was scrolling or not. The gutter
+           stays (it is what stops the step content jumping sideways when a
+           step grows past the fold); a thin, trackless thumb is what makes it
+           unobtrusive. */
         scrollbar-gutter: stable;
+
+        @include scrollbars.quiet;
     }
 }
 
@@ -95,9 +106,29 @@
     }
 }
 
+/* Organisation master data (owner report 2026-08-19). The block moved out of
+   the top of the step and now sits between the agreement and the signer
+   fields, so it takes the 12px side inset of the shared DPA form block: the
+   two adjacent sections must share one left edge. */
+
+.masterDataSection {
+    padding-inline: 12px;
+    margin-bottom: 24px;
+}
+
+/* Section header treatment of the admin surfaces (DpaForwardDialog
+   `.sectionTitle`) — no new type scale, colour from the ORISO token. */
+
+.sectionTitle {
+    margin: 0 0 12px;
+    color: var(--m3-on-surface);
+    font: 600 15px/22px var(--m3-body-font-family);
+}
+
 /* The DPA text + signer form block is shared — see src/components/DpaLegalForm.
-   The reader card carries its own title/help text, so this only separates it
-   from the organisation fields above. */
+   Since the owner report 2026-08-19 it also carries the organisation master
+   data (between the agreement and the signer section), so this only separates
+   the whole block from the step's intro above it. */
 
 .dpaBlock {
     margin-top: 32px;
@@ -195,4 +226,49 @@
         margin-top: 1px;
         color: var(--m3-outline);
     }
+}
+
+/* Forward path (#723): the "not authorised to sign" affordance sits directly
+   below the consent act; its long label may wrap on narrow screens. */
+
+.forwardAction {
+    margin-top: 12px;
+
+    button {
+        height: auto;
+        min-height: 40px;
+        text-align: start;
+        white-space: normal;
+    }
+}
+
+/* On-hold state after forwarding: visually calm — a neutral surface card,
+   not an alert. Waiting is the intended, valid state of the step here. */
+
+.forwardOnHold {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--m3-surface-container-high, #eae7e8);
+}
+
+.forwardOnHoldIcon {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.forwardOnHoldTitle {
+    margin: 0 0 4px;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 600 15px/22px var(--m3-body-font-family);
+}
+
+.forwardOnHoldText {
+    margin: 0 0 8px;
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 14px/20px var(--m3-body-font-family);
 }

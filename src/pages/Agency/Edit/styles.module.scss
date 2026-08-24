@@ -3,3 +3,15 @@
     --card-deck-item-width: 420px;
     --card-deck-gap: 32px;
 }
+
+// #862: M3 document editors (DPA, imprint, privacy) need the same 800px desktop
+// deck width as tenant LegalSettings (.documentEditorItem). Page .cardDeckItem
+// stretched them via grow and left them at the default ~392px compact card —
+// desktop looked like mobile. Keep these items fixed to the token width.
+@media (min-width: 1024px) {
+    .documentEditorItem {
+        --card-deck-item-min-width: 800px;
+        --card-deck-item-width: 800px;
+        --card-deck-item-max-width: min(800px, calc(100vw - 176px));
+    }
+}

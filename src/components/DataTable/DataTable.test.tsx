@@ -82,6 +82,55 @@ describe('DataTable', () => {
         expect(screen.getByText('Details')).toBeInTheDocument();
     });
 
+    it('activates an interactive row from the keyboard as well as the pointer', async () => {
+        const user = userEvent.setup();
+        const onClick = vi.fn();
+        render(
+            <DataTable>
+                <DataTableRow onClick={onClick} expandedContent={<p>Details</p>}>
+                    <DataTableCell>Zeile</DataTableCell>
+                </DataTableRow>
+            </DataTable>,
+        );
+
+        const row = screen.getByRole('row');
+        row.focus();
+        expect(row).toHaveFocus();
+
+        await user.keyboard('{Enter}');
+        expect(onClick).toHaveBeenCalledTimes(1);
+
+        await user.keyboard(' ');
+        expect(onClick).toHaveBeenCalledTimes(2);
+    });
+
+    it('announces selection through the row control, not an unsupported row state', () => {
+        render(
+            <DataTable>
+                <DataTableRow selected>
+                    <DataTableCell>
+                        <input type="checkbox" defaultChecked aria-label="Zeile auswählen" />
+                    </DataTableCell>
+                </DataTableRow>
+            </DataTable>,
+        );
+
+        // `aria-selected` is not supported on rows of a plain `role="table"`.
+        expect(screen.getByRole('row')).not.toHaveAttribute('aria-selected');
+        expect(screen.getByRole('checkbox', { name: 'Zeile auswählen' })).toBeChecked();
+    });
+
+    it('leaves a non-interactive row out of the tab order', () => {
+        render(
+            <DataTable>
+                <DataTableRow>
+                    <DataTableCell>Zeile</DataTableCell>
+                </DataTableRow>
+            </DataTable>,
+        );
+        expect(screen.getByRole('row')).not.toHaveAttribute('tabindex');
+    });
+
     it('renders the footer slot', () => {
         render(<DataTable footer={<div>Seite 1 von 2</div>} />);
         expect(screen.getByText('Seite 1 von 2')).toBeInTheDocument();

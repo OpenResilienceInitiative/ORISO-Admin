@@ -16,10 +16,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const description =
-    'Fügen Sie hier den Auftragsverarbeitungsvertrag (AVV) ein und drücken Sie Veröffentlichen, um den Vertrag für ' +
-    'Träger zu veröffentlichen. Nur Träger, die den Vertrag unterschrieben haben, können auf der Plattform ' +
+    'Fügen Sie hier die Vertragsunterlagen ein und drücken Sie Veröffentlichen, um sie für Träger zu ' +
+    'veröffentlichen. Nur Träger, die die Unterlagen unterschrieben haben, können auf der Plattform ' +
     'Ratsuchende beraten.';
-const cta = 'Um Träger anzulegen, müssen Sie erst einen Auftragsverarbeitungsvertrag (AVV) veröffentlichen.';
+const cta = 'Um Träger anzulegen, müssen Sie erst Vertragsunterlagen veröffentlichen.';
 
 // Several headings so the anchor chip row overflows → prev/next nav appears.
 const contractHtml =

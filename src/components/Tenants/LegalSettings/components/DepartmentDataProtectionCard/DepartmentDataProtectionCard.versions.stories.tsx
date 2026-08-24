@@ -19,19 +19,31 @@ type Story = StoryObj<typeof meta>;
 
 const versions = [
     {
-        activationDate: '2026-07-13T10:22:00Z',
+        id: 42,
+        kind: 'DPP' as const,
+        ownerLevel: 'DEPARTMENT' as const,
+        ownerId: 3,
+        publishedAt: '2026-07-13T10:22:00Z',
         content: JSON.stringify({
             de: '<h1>Datenschutzerklärung</h1><p>Fassung vom 13. Juli 2026 — aktuell online.</p>',
         }),
     },
     {
-        activationDate: '2026-05-02T09:00:00Z',
+        id: 17,
+        kind: 'DPP' as const,
+        ownerLevel: 'DEPARTMENT' as const,
+        ownerId: 3,
+        publishedAt: '2026-05-02T09:00:00Z',
         content: JSON.stringify({
             de: '<h1>Datenschutzerklärung</h1><p>Fassung vom 2. Mai 2026 — abgelöst.</p>',
         }),
     },
     {
-        activationDate: '2026-01-15T08:30:00Z',
+        id: 8,
+        kind: 'DPP' as const,
+        ownerLevel: 'DEPARTMENT' as const,
+        ownerId: 3,
+        publishedAt: '2026-01-15T08:30:00Z',
         content: JSON.stringify({
             de: '<h1>Datenschutzerklärung</h1><p>Erste veröffentlichte Fassung vom 15. Januar 2026.</p>',
         }),

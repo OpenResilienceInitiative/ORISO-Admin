@@ -115,7 +115,7 @@ export const LegalText = ({
     // exactly as it did before. A genuine failure (403, 500, network) is NOT an
     // empty history and is reported as such.
     const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions(
-        { level: 'tenant', tenantId: Number(tenantId), kind: legalType === 'imprint' ? 'imprint' : 'privacy' },
+        { level: 'tenant', tenantId: Number(tenantId), kind: legalType === 'imprint' ? 'IMPRINT' : 'DPP' },
         !!legalType,
     );
     // Keeps the consent sentence on the same version as the body shown above it.
@@ -368,25 +368,24 @@ export const LegalText = ({
                 }
                 onPublish={canEditLegalText ? onPublish : undefined}
                 onSaveDraft={canEditLegalText && legalType && dismissalScope ? onSaveDraft : undefined}
+                actionsLeading={
+                    consentEnabled ? (
+                        <LegalConsentField
+                            language={activeLanguage}
+                            readOnly={consentReadOnly}
+                            value={consentDisplay[activeLanguage] ?? ''}
+                            onChange={(next) => {
+                                setPublishBlocked(false);
+                                setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
+                            }}
+                        />
+                    ) : undefined
+                }
                 belowSlot={
                     showConfirmationModal &&
                     modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
                 }
             />
-            {/* Under the editor, not inside its `belowSlot`: the M3 card is a fixed
-                800×740 deck card and clips visible slot content (same trap as the
-                aboveEditorSlot banner in #708). Still one card — policy + consent. */}
-            {consentEnabled && (
-                <LegalConsentField
-                    language={activeLanguage}
-                    readOnly={consentReadOnly}
-                    value={consentDisplay[activeLanguage] ?? ''}
-                    onChange={(next) => {
-                        setPublishBlocked(false);
-                        setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
-                    }}
-                />
-            )}
             {/* A history that failed to load is not an empty history. Saying "no
                 version published yet" for a 403 or a 500 would be a false answer to
                 the exact question the look-back exists for. Editing stays possible. */}

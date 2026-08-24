@@ -11,14 +11,17 @@ import { LONG_DPA_CHAPTER_COUNT, LONG_DPA_HTML, PHONE_390, PLAIN_DPA_HTML } from
  * step and the DPA blocker). It has NO navigation of its own: the canonical
  * read-only rich-text card provides the "Chapter Navbar" chip row
  * (`AnchorChips`, Figma 1299-81676), the fullscreen reading mode and the
- * in-text cross references. Picking a chapter scrolls the host surface to that
- * heading and moves keyboard focus to it.
+ * in-text cross references. Picking a chapter scrolls the reader's own viewport
+ * to that heading and moves keyboard focus to it.
  *
- * The card brings NO scroll container of its own (#594.3): its host scrolls —
- * the viewport-bounded sheet on the desktop, the page on a phone — so the
- * screen never stacks two scrollbars (#572) and a step containing a 60-page
- * agreement can still be bounded and centred. The chapter chips stay usable by
- * sticking to the bottom of whichever scrollport is active.
+ * Scrolling (owner demo 2026-08-19, REVERSING #594.3's "the card brings no
+ * scroll container of its own"): the agreement scrolls inside its own bounded
+ * viewport and the chapter bar stands still BELOW that box. With the host as
+ * the only scroller the bar was sticky against the page, so it travelled with
+ * it and a chip click re-scrolled it out from under the cursor — two clicks to
+ * pick one chapter. The contract for this layout is
+ * `FormPluginEditor/legalReader.styles.test.ts`; this comment must not drift
+ * from it again.
  */
 const meta = {
     title: 'Molecules/DpaLegalReader',
@@ -37,7 +40,7 @@ const meta = {
             </ThemeProvider>
         ),
     ],
-    args: { label: 'Auftragsverarbeitungsvertrag' },
+    args: { label: 'Vertragsunterlagen' },
 } satisfies Meta<typeof DpaLegalReader>;
 
 export default meta;
@@ -58,7 +61,10 @@ const desktopReader: NonNullable<Story['decorators']> = [
 
 /** Desktop: long contract, one chip per chapter, no editing affordances. */
 export const DesktopWithChapters: Story = {
-    args: { html: LONG_DPA_HTML, description: 'Bitte prüfen Sie den Vertrag und bestätigen Sie ihn anschließend.' },
+    args: {
+        html: LONG_DPA_HTML,
+        description: 'Bitte prüfen Sie die Vertragsunterlagen und bestätigen Sie sie anschließend.',
+    },
     decorators: desktopReader,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -73,7 +79,7 @@ export const DesktopWithChapters: Story = {
         );
         await userEvent.click(chip!);
         await waitFor(() =>
-            expect(canvasElement.querySelector('#4-pflichten-des-auftragnehmers')).toBe(document.activeElement),
+            expect(canvasElement.querySelector('[id="4-pflichten-des-auftragnehmers"]')).toBe(document.activeElement),
         );
     },
 };

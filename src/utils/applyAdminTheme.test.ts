@@ -151,7 +151,7 @@ describe('applyAdminInvertedTheme', () => {
         expect(applied).toBe(true);
         expect(root.style.getPropertyValue('--m3-surface')).toBe(tokens['--m3-surface']);
         expect(root.style.getPropertyValue('--admin-workspace-background')).toBe('#e4e2e2');
-        expect(root.style.getPropertyValue('--admin-search-surface')).toBe('#fcf9f9');
+        expect(root.style.getPropertyValue('--admin-search-surface')).toBe('#eae7e8');
         expect(root.style.getPropertyValue('--admin-search-text')).toBe('#444748');
         expect(root.style.getPropertyValue('--admin-table-surface')).toBe('#f6f3f3');
         expect(root.style.getPropertyValue('--admin-table-header-surface')).toBe('#e4e2e2');

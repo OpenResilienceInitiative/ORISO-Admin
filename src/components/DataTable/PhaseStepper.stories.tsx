@@ -23,7 +23,7 @@ const TENANT_TRACK = (states: ('done' | 'current' | 'pending' | 'warning' | 'err
         [
             { key: 'invited', label: 'Eingeladen' },
             { key: 'registered', label: 'Registriert' },
-            { key: 'dpaConfirmed', label: 'AVV bestätigt' },
+            { key: 'dpaConfirmed', label: 'Vertragsunterlagen bestätigt' },
             { key: 'twoFactorActive', label: '2FA aktiv' },
             { key: 'completed', label: 'Abgeschlossen' },
         ] as const

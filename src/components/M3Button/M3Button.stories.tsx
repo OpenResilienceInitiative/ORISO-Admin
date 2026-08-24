@@ -36,7 +36,40 @@ export const Outlined: Story = {
 export const Filled: Story = { args: { variant: 'filled', icon: <UploadIcon />, children: 'Upload' } };
 export const Tonal: Story = { args: { variant: 'tonal', children: 'Batch Mode' } };
 export const Disabled: Story = { args: { variant: 'filled', disabled: true, children: 'Upload' } };
+export const DisabledText: Story = { args: { variant: 'text', disabled: true, children: 'Next' } };
+export const DisabledOutlined: Story = {
+    args: { variant: 'outlined', disabled: true, icon: <PlusIcon />, children: 'additional postal code' },
+};
+export const DisabledTonal: Story = { args: { variant: 'tonal', disabled: true, children: 'Batch Mode' } };
 export const Loading: Story = { args: { variant: 'outlined', loading: true, children: 'Save' } };
+
+/**
+ * Every variant disabled, side by side — the view that makes a regression
+ * obvious. M3 disables a filled or tonal button by neutralising its container
+ * (`on-surface` 12%) and dropping the label to 38%; the brand colour must not
+ * survive. A blanket `opacity` on the control instead produces a faded pink
+ * pill, which is exactly what the admin sign-in form showed once its submit
+ * button moved to `M3Button` (PR #839) — the login page's initial state IS the
+ * disabled state.
+ */
+export const AllVariantsDisabled: StoryObj = {
+    render: () => (
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+            <M3Button variant="text" disabled>
+                Back
+            </M3Button>
+            <M3Button variant="outlined" disabled icon={<PlusIcon />}>
+                additional postal code
+            </M3Button>
+            <M3Button variant="filled" disabled icon={<UploadIcon />}>
+                Upload
+            </M3Button>
+            <M3Button variant="tonal" disabled>
+                Batch Mode
+            </M3Button>
+        </div>
+    ),
+};
 
 export const AllVariants: StoryObj = {
     render: () => (

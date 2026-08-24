@@ -2,9 +2,12 @@ export {
     fillPlaceholders,
     insertPlaceholder,
     INVITE_EMAIL_TOKENS,
+    INVITE_EMAIL_TOKENS_BY_KIND,
+    inviteEmailTokensForKind,
     LEGAL_CONSENT_TOKENS,
     listPlaceholders,
     sampleValues,
+    type InviteEmailTokenKind,
     type PlaceholderTokenDef,
 } from './placeholderTokens';
 export { TokenPicker, type TokenPickerProps } from './TokenPicker';
@@ -19,5 +22,9 @@ export {
 } from './PlaceholderTemplateEditor';
 export { EmailKitPreview, type EmailKitPreviewProps } from './EmailKitPreview';
 export { InviteEmailTemplateEditor, type InviteEmailTemplateValues } from './InviteEmailTemplateEditor';
-export { LegalConsentTemplateEditor, type LegalConsentTemplateValues } from './LegalConsentTemplateEditor';
+export {
+    LegalConsentHeadIcon,
+    LegalConsentTemplateEditor,
+    type LegalConsentTemplateValues,
+} from './LegalConsentTemplateEditor';
 export { PlaceholderTemplateDialog, type PlaceholderTemplateDialogProps } from './PlaceholderTemplateDialog';

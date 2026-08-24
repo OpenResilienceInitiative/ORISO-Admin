@@ -30,6 +30,20 @@ initialize({
     serviceWorker: { url: new URL('mockServiceWorker.js', window.location.href).href },
 });
 
+// Registration can fail wholesale in embedded/sandboxed browsers that refuse
+// service workers. Stories that declare no `parameters.msw.handlers` never
+// talk to the worker, so a failed registration must degrade to "no mocking"
+// instead of replacing EVERY story with the MSW error page.
+const tolerantMswLoader: typeof mswLoader = async (context) => {
+    try {
+        return await mswLoader(context);
+    } catch (error) {
+        if (context.parameters?.msw) throw error;
+        console.warn('[storybook] MSW worker unavailable, story runs unmocked:', error);
+        return {};
+    }
+};
+
 const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
 });
@@ -66,7 +80,7 @@ const preview: Preview = {
             storySort: { order: ['Atoms', 'Molecules', 'Organisms', '*'] },
         },
     },
-    loaders: [mswLoader],
+    loaders: [tolerantMswLoader],
     decorators: [
         (Story) => (
             <QueryClientProvider client={queryClient}>
