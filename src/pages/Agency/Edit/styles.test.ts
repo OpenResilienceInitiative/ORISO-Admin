@@ -14,16 +14,28 @@ describe('agency creation card deck', () => {
     });
 });
 
-// #862: Agency legal document editors must use the same 800px desktop deck
-// width as tenant LegalSettings — not Page .cardDeckItem { flex-grow: 1 }.
+// JOB1 / #862: the three legal editors on the agency "Rechtliches" tab must get
+// the same usable width the platform admin sees (800px panel card, Figma
+// 1261-48667) instead of the deck's 392px default — without Page .cardDeckItem
+// flex-grow and without a min-width that overflows at tablet.
 describe('Agency Edit legal card deck contract', () => {
-    it('gives M3 document editor items their 800px desktop width', () => {
-        const desktopRule = agencyEditStyles.match(/@media \(min-width:\s*1024px\)\s*{([\s\S]*?)\n}/)?.[1] ?? '';
-        const documentItemRule = desktopRule.match(/\.documentEditorItem\s*{([^}]*)}/s)?.[1] ?? '';
+    const rule = agencyEditStyles.match(/\.documentEditorItem\s*{([\s\S]*?)\n {4}}/)?.[1] ?? '';
 
-        expect(documentItemRule).toMatch(/--card-deck-item-min-width:\s*800px/);
-        expect(documentItemRule).toMatch(/--card-deck-item-width:\s*800px/);
-        expect(documentItemRule).toMatch(/--card-deck-item-max-width:\s*min\(800px,\s*calc\(100vw\s*-\s*176px\)\)/);
+    it('gives the legal editors the 800px panel-card width from tablet up', () => {
+        expect(agencyEditStyles).toMatch(/@media \(min-width: 768px\)/);
+        expect(rule).toMatch(/--card-deck-item-width:\s*var\(--admin-panel-card-width, 800px\)/);
+    });
+
+    it('caps that width by the page raster so the page never scrolls sideways', () => {
+        expect(rule).toMatch(
+            /--card-deck-item-max-width:\s*min\(\s*var\(--admin-panel-card-width, 800px\),\s*calc\(100vw - var\(--admin-sidebar-width, 128px\) - 2 \* var\(--admin-page-edge, 84px\)\)\s*\)/,
+        );
+    });
+
+    // The tenant deck sets one and overflows the page at tablet widths; the
+    // deck's own min(320px, max-width) floor is enough here.
+    it('sets no item minimum that could outgrow the viewport', () => {
+        expect(rule).not.toMatch(/--card-deck-item-min-width/);
     });
 
     it('applies the wider item only to DPA, imprint and privacy', () => {
