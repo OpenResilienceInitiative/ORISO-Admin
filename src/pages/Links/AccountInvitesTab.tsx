@@ -15,13 +15,14 @@ import {
     revokeAccountInvite,
     sendAccountInvite,
 } from '../../api/accountInvites/accountInvites';
+import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
 import { Modal } from '../../components/Modal';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
-import { InviteComposer, InviteComposerValues, InviteSendMode } from './InviteComposer';
+import { InviteComposer, InviteComposerValues, InviteSendMode, InviteSubmitOutcome } from './InviteComposer';
 import { InviteCsvImportModal, type InviteCsvCreateRow } from './InviteCsvImportModal';
 import { InviteProgressBoard } from './inviteProgress/InviteProgressBoard';
 import styles from './styles.module.scss';
@@ -232,7 +233,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     }, []);
 
     const onCreate = useCallback(
-        async (values: InviteComposerValues): Promise<boolean> => {
+        async (values: InviteComposerValues): Promise<InviteSubmitOutcome> => {
             setSubmitting(true);
             try {
                 // Department routing (#384): a counsellor must arrive with the
@@ -326,14 +327,23 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 await loadInvites();
                 return true;
             } catch (error) {
-                // The backend also rejects a colliding tenantId with 409 (see
-                // createAccountInvite's CONFLICT_WITH_RESPONSE handling); surface that
-                // specific message instead of the generic fallback when we can tell.
-                if (isTenantInvite && error instanceof Response && error.status === 409) {
-                    message.error(t('links.accountInvites.tenantIdTaken', 'This tenant ID is already taken.'));
-                } else {
-                    message.error(t('links.error.createFailed', 'Could not create link'));
+                // The backend answers 409 for more than one reason (see
+                // createAccountInvite's CONFLICT_WITH_RESPONSE handling), so the typed
+                // X-Reason decides which specific message the admin gets.
+                if (error instanceof Response && error.status === 409) {
+                    // P3: the recipient address already belongs to a registered user.
+                    // This one belongs ON the e-mail field, not in a global toast —
+                    // the admin has to correct that exact input, and the rest of the
+                    // row must survive. The composer renders it inline.
+                    if (error.headers.get(FETCH_ERRORS.X_REASON) === X_REASON.EMAIL_NOT_AVAILABLE) {
+                        return 'emailTaken';
+                    }
+                    if (isTenantInvite) {
+                        message.error(t('links.accountInvites.tenantIdTaken', 'This tenant ID is already taken.'));
+                        return false;
+                    }
                 }
+                message.error(t('links.error.createFailed', 'Could not create link'));
                 return false;
             } finally {
                 setSubmitting(false);
