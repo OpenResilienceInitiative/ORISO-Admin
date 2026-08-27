@@ -227,9 +227,7 @@ export const TemplateEditing: Story = {
     },
     play: async ({ canvasElement, args }) => {
         const canvas = within(canvasElement);
-        await userEvent.click(
-            canvas.getByRole('tab', { name: /Ungeplant verhindert|Unplanned unavailability/i }),
-        );
+        await userEvent.click(canvas.getByRole('tab', { name: /Ungeplant verhindert|Unplanned unavailability/i }));
         const input = canvas.getByTestId('case-handover-template-input') as HTMLTextAreaElement;
         await expect(input.value).toContain('{{newAdvisor}}');
         await userEvent.clear(input);
