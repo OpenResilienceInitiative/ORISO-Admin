@@ -27,13 +27,32 @@ export const OtherFunctionsSettings = ({
         successMessageKey: 'tenants.message.settingsUpdate',
     });
     const extraI18nTopicKey = settings.multitenancyWithSingleDomainEnabled ? '.mtsd' : '';
+    const initialValues = {
+        ...data,
+        settings: {
+            ...data?.settings,
+            allowAdviceSeekerUsernameEditing: data?.settings?.allowAdviceSeekerUsernameEditing !== false,
+        },
+    };
+
     return (
         <CardEditable
             isLoading={isLoading}
-            initialValues={{ ...data }}
+            initialValues={initialValues}
             titleKey="tenants.appSettings.otherFunctions.title"
             onSave={mutate}
         >
+            <div className={styles.checkGroup}>
+                <FormSwitchField
+                    labelKey="tenants.appSettings.otherFunctions.adviceSeekerUsernameEditing.title"
+                    name={['settings', 'allowAdviceSeekerUsernameEditing']}
+                    inline
+                    disableLabels
+                />
+                <p className={styles.checkInfo}>
+                    {t('tenants.appSettings.otherFunctions.adviceSeekerUsernameEditing.description')}
+                </p>
+            </div>
             {!hideTopics && (
                 <div className={styles.checkGroup}>
                     <FormSwitchField

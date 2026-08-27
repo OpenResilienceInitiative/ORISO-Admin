@@ -42,6 +42,22 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 describe('OtherFunctionsSettings', () => {
+    it('renders the shared advice-seeker username policy toggle', () => {
+        render(<OtherFunctionsSettings tenantId="1" />);
+
+        expect(
+            screen.getByText('tenants.appSettings.otherFunctions.adviceSeekerUsernameEditing.title'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('tenants.appSettings.otherFunctions.adviceSeekerUsernameEditing.description'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('switch', {
+                name: 'tenants.appSettings.otherFunctions.adviceSeekerUsernameEditing.title',
+            }),
+        ).toBeChecked();
+    });
+
     it('renders the Team-Besprechung toggle bound to featureTeamDiscussionEnabled', () => {
         render(<OtherFunctionsSettings tenantId="1" />);
 

@@ -1599,6 +1599,8 @@
     "editor.image.upload.uploading": "Uploading…",
     "tenants.appSettings.otherFunctions.teamDiscussion.title": "Allow team discussion",
     "tenants.appSettings.otherFunctions.teamDiscussion.description": "Advisors can coordinate on an open request in a team-only room the advice seeker never sees; it closes when the request is accepted.",
+    "tenants.appSettings.otherFunctions.adviceSeekerUsernameEditing.title": "Allow advice seekers to choose their username",
+    "tenants.appSettings.otherFunctions.adviceSeekerUsernameEditing.description": "When disabled, advice seekers receive a randomly generated, read-only username in Live Chat and online counseling. They can use the dice to generate more suggestions.",
     "twoFactorAuth.required.skip": "Set up later",
     "twoFactorAuth.required.skipHint": "You can enable two-factor authentication at any time under Profile.",
     "agency.legal.department.all": "All departments",

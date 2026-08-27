@@ -1,5 +1,6 @@
 export interface TenantSettings {
     activeLanguages?: string[];
+    allowAdviceSeekerUsernameEditing?: boolean | null;
     featureAppointmentsEnabled?: boolean | null;
     featureDemographicsEnabled?: boolean | null;
     featureTopicsEnabled?: boolean | null;

@@ -1599,6 +1599,8 @@
     "editor.image.upload.uploading": "Lädt hoch…",
     "tenants.appSettings.otherFunctions.teamDiscussion.title": "Team-Besprechung erlauben",
     "tenants.appSettings.otherFunctions.teamDiscussion.description": "Berater:innen können sich zu einer offenen Anfrage in einem nur für das Team sichtbaren Raum abstimmen, den die ratsuchende Person nie sieht; er schließt bei Annahme der Anfrage.",
+    "tenants.appSettings.otherFunctions.adviceSeekerUsernameEditing.title": "Eigenen Benutzernamen für Ratsuchende erlauben",
+    "tenants.appSettings.otherFunctions.adviceSeekerUsernameEditing.description": "Wenn deaktiviert, erhalten Ratsuchende in Live-Chat und Online-Beratung einen zufällig erzeugten, schreibgeschützten Benutzernamen. Sie können mit dem Würfel weitere Vorschläge erzeugen.",
     "twoFactorAuth.required.skip": "Später einrichten",
     "twoFactorAuth.required.skipHint": "Sie können die Zwei-Faktor-Authentifizierung jederzeit unter Profil aktivieren.",
     "agency.legal.department.all": "Alle Fachbereiche",
