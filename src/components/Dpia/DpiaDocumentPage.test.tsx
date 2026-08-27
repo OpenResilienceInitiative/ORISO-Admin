@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { DpiaDocumentPage } from './DpiaDocumentPage';
 
@@ -71,18 +71,36 @@ describe('DpiaDocumentPage', () => {
         expect(screen.getByText('1')).toBeInTheDocument();
     });
 
-    it('documents the platform-admin tier with the full role bundle it actually needs (agency-admin + tenant-admin + user-admin)', () => {
+    it('documents every tier with the exact realm-role bundle userRolesToPermissions.ts requires for what the matrix claims', () => {
         render(<DpiaDocumentPage />);
 
-        // useUserRoles.hook.ts: isSuperAdmin = hasRole(AgencyAdmin) && hasRole(TenantAdmin) &&
-        // tenantId === 0 identifies the tier, but userRolesToPermissions.ts only grants Consultant
-        // CRUD (the matrix's "Beratende anlegen / einladen") to UserRole.UserAdmin — dropping it
-        // would make that matrix cell false. agency-admin/tenant-admin tags are shared with the
-        // tenant-admin tier below (same roles, different scope), so assert presence, not a single
-        // match; user-admin is unique to the platform tier.
-        expect(screen.getAllByText('agency-admin').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('tenant-admin').length).toBeGreaterThan(0);
-        expect(screen.getByText('user-admin')).toBeInTheDocument();
+        // Scoped per tier card and asserted as an exact set: a regression that moves a role to the
+        // wrong tier, drops one, or duplicates a tag fails here. Cross-checked against
+        // src/constants/userRolesToPermissions.ts (see the dpiaContent.ts header comment):
+        // - useUserRoles.hook.ts: isSuperAdmin = agency-admin + tenant-admin + tenantId 0.
+        // - Agency.create/read comes ONLY from agency-admin (AdminSidebar.stories.tsx's TenantAdmin
+        //   story renders "lacking Agency read" without it).
+        // - Consultant.create — the matrix's "Beratende anlegen / einladen" — ONLY from user-admin.
+        const expected: Record<string, string[]> = {
+            'Plattform-Admin': ['agency-admin', 'tenant-admin', 'user-admin'],
+            'Träger-Admin': ['tenant-admin', 'single-tenant-admin', 'agency-admin', 'user-admin'],
+            'Beratungsstellen-Admin': [
+                'agency-admin',
+                'restricted-agency-admin',
+                'restricted-consultant-admin',
+                'user-admin',
+            ],
+            'Beratende:r': ['consultant', 'group-chat-consultant', 'supervisor-consultant'],
+        };
+
+        Object.entries(expected).forEach(([tierName, realmRoles]) => {
+            const card = screen.getByRole('region', { name: tierName });
+            const rendered = within(card)
+                .getAllByTestId('realm-role')
+                .map((node) => node.textContent);
+
+            expect(rendered).toEqual(realmRoles);
+        });
     });
 
     it('marks 2FA deferral as a platform-admin-only affordance, not for tenant admins', () => {

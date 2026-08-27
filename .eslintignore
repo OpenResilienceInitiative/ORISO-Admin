@@ -9,6 +9,7 @@ stories
 vite.config.ts
 src/vite-env.d.ts
 build
+storybook-static
 vitest.config.ts
 vite.authBffPlugin.ts
 public/mockServiceWorker.js

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { DpiaTextEditor } from '../DpiaTextEditor';
 import { DpiaTextDocument, DpiaTextGateway, createMockDpiaTextGateway } from '../../api/dpiaTextGateway';
 import { DpiaTextMap } from '../../utils/dpiaSections';
+import { seedDpiaDefaults, stripDpiaDefaults } from '../../utils/dpiaDefaults';
 
 interface DpiaTextEditorContainerProps {
     tenantId: string | number;
@@ -119,8 +120,11 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
     }, [load]);
 
     const handleSave = useCallback(
-        (texts: DpiaTextMap, publish: boolean) => {
+        (editorTexts: DpiaTextMap, publish: boolean) => {
             if (!Number.isFinite(id) || id <= 0) return;
+            // Untouched default drafts must never reach the backend as "text": store them as
+            // empty, so the slot stays unwritten (and DRAFT) until the operator actually edits it.
+            const texts = stripDpiaDefaults(editorTexts);
             lastSaveAttempt.current = { texts, publish };
             setSaving(true);
             setSaveFailed(false);
@@ -188,7 +192,9 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
                 // changed, so without a fresh instance tenant A's unsaved edits would keep
                 // overriding tenant B's loaded texts (mirrors AgencyLegalTextContainer's key).
                 key={id}
-                initialTexts={document.texts}
+                // Empty slots open with the pre-filled draft (see dpiaDefaults.ts); stored
+                // operator text always wins.
+                initialTexts={seedDpiaDefaults(document.texts)}
                 statusBySection={document.statusBySection}
                 onSave={handleSave}
                 saving={saving}

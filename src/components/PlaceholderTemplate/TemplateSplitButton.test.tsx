@@ -82,6 +82,33 @@ describe('TemplateSplitButton', () => {
     });
 
     /*
+     * PR #727 post-merge review: without `onMainClick` the main segment is an
+     * inert button — it must leave the keyboard tab order instead of focusing
+     * a control that does nothing.
+     */
+    it('disables the inert main segment in picker-only mode', () => {
+        render(<TemplateSplitButton activeTemplateId={1} templates={templates} onSelectTemplate={() => {}} />);
+        expect(screen.getByRole('button', { name: /Standard-Einladung/ })).toBeDisabled();
+    });
+
+    it('keeps the main segment interactive when a main action is wired', async () => {
+        const user = userEvent.setup();
+        const onMainClick = vi.fn();
+        render(
+            <TemplateSplitButton
+                activeTemplateId={1}
+                templates={templates}
+                onMainClick={onMainClick}
+                onSelectTemplate={() => {}}
+            />,
+        );
+        const main = screen.getByRole('button', { name: /Standard-Einladung/ });
+        expect(main).toBeEnabled();
+        await user.click(main);
+        expect(onMainClick).toHaveBeenCalledTimes(1);
+    });
+
+    /*
      * ORISO-Admin#741, owner feedback on PR #727: "Das ist nur ein Elevated
      * state, der hier falsch ist." The picker rests as a plain outlined pill —
      * elevation (and the elevated colourway) is reserved for the open state /

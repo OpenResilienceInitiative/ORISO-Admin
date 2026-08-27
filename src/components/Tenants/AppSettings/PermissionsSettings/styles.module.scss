@@ -123,12 +123,13 @@
 
 /* Enforce mode: leading checkbox that locks a feature on for lower roles. */
 .enforceCheckbox {
+    display: inline-flex;
     flex: 0 0 auto;
     margin-left: -8px;
 }
 
-.enforceFooterNote {
-    margin: 0 0 20px;
+.enforceHeaderNote {
+    margin: 0 0 12px;
     font-size: 13px;
     font-weight: 700;
     line-height: 1.33;
@@ -155,6 +156,15 @@
         color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
         font-weight: 700;
     }
+}
+
+.cardDescriptionInfo {
+    width: 16px;
+    height: 16px;
+    margin: 4px 8px 2px 0;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    fill: currentcolor;
+    float: left;
 }
 
 .cardDescriptionSecondary {

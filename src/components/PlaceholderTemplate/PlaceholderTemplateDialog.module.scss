@@ -10,12 +10,19 @@
 .body :global(section > header > h3) {
     position: absolute;
     overflow: hidden;
-    clip: rect(0 0 0 0);
     clip-path: inset(50%);
     width: 1px;
     height: 1px;
     margin: -1px;
     white-space: nowrap;
+}
+
+/* The dialog head already carries the hero icon above the centered title
+   (Modal anatomy). The editor's own head icon would repeat it, off-center and
+   next to the split button — it is decorative, so it simply goes away here. */
+
+.body :global(section > header > [data-head-icon]) {
+    display: none;
 }
 
 /* With the heading hidden, the template split button alone forms the header

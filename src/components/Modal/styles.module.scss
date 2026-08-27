@@ -105,6 +105,21 @@
     text-align: center;
 }
 
+/* Opt-out of the reading-width cap, for the WIDE working dialogs (1080px editor
+   sheets) whose body is a full-bleed two-column workspace. There the 52ch cap
+   left the sentence as a narrow column above a box more than twice its width,
+   which reads as a layout fault rather than as a measure. Confirm dialogs keep
+   the cap — that is where a short sentence in a narrow sheet needs it. */
+
+.descriptionFullWidth {
+    /* `align-self` as well as the cap: `.titleBlock` is a centered flex column, so a
+       child without it is sized shrink-to-fit and lifting `max-width` alone would
+       only trade the narrow column for a max-content one. Stretch makes the
+       paragraph box the width of the sheet; the text stays centered inside it. */
+    max-width: none;
+    align-self: stretch;
+}
+
 .divider {
     display: block;
     width: 100%;
@@ -189,6 +204,14 @@
 /* Primary/confirming action — brand primary colour. */
 .actionButtonPrimary {
     color: var(--m3-primary, #a5000a);
+}
+
+/* Destructive action (discard, delete) — the M3 error role, which in this
+   scheme is magenta, deliberately distinct from the red brand primary so
+   "confirm" and "lose data" never read as the same button. */
+
+.actionButtonDestructive {
+    color: var(--m3-error, #b1005e);
 }
 
 .actionSpinner {

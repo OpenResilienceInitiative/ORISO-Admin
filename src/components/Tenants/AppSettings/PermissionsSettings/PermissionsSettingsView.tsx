@@ -1,4 +1,4 @@
-import { Form } from 'antd';
+import { Form, Tooltip } from 'antd';
 import { Trans, useTranslation } from 'react-i18next';
 import { Card } from '../../../Card';
 import { CardDeck } from '../../../CardDeck';
@@ -11,6 +11,7 @@ import { CheckToggle } from './CheckToggle';
 import { M3Checkbox } from '../../../M3Checkbox';
 import { isSubToggleDisabled } from './permissionsSettingsUtils';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
+import { ReactComponent as InfoIcon } from '../../../../resources/img/svg/i.svg';
 import type {
     ChatTypeCardKey,
     EnforceChangeHandler,
@@ -72,6 +73,20 @@ export const PermissionsSettingsView = ({
     const cardsToRender = excludeCardKeys?.length
         ? CHAT_TYPE_CARDS.filter((card) => !excludeCardKeys.includes(card.key))
         : CHAT_TYPE_CARDS;
+    const enforceHeaderNote = t('tenants.permissions.enforce.headerNote');
+    const enforceTooltip = t('tenants.permissions.enforce.tooltip');
+
+    const enforceCheckbox = (fieldKey: string, featureLabel: string) => (
+        <Tooltip title={enforceTooltip}>
+            <span className={styles.enforceCheckbox}>
+                <M3Checkbox
+                    label={t('tenants.permissions.enforce.checkboxLabel', { feature: featureLabel })}
+                    checked={enforcedFields?.has(fieldKey) ?? false}
+                    onChange={(next) => onEnforceChange?.(fieldKey, next)}
+                />
+            </span>
+        </Tooltip>
+    );
 
     return (
         <CardEditable
@@ -95,7 +110,13 @@ export const PermissionsSettingsView = ({
                             settings govern the advice seeker's own account, so they come
                             before the per-chat-type feature cards. */}
                         <CardDeck.Item className={styles.chatTypeCardSlot}>
-                            <AskerPermissionsCard restrictedFields={restrictedFields} onToggleUpdate={onToggleUpdate} />
+                            <AskerPermissionsCard
+                                restrictedFields={restrictedFields}
+                                onToggleUpdate={onToggleUpdate}
+                                enforceMode={enforceMode}
+                                enforcedFields={enforcedFields}
+                                onEnforceChange={onEnforceChange}
+                            />
                         </CardDeck.Item>
                         <CardDeck.Item className={styles.chatTypeCardSlot}>
                             <CaseHandoverCard />
@@ -127,17 +148,33 @@ export const PermissionsSettingsView = ({
                                                     ) : undefined
                                                 }
                                             >
+                                                <p className={styles.cardDescription}>
+                                                    <InfoIcon
+                                                        aria-hidden="true"
+                                                        className={styles.cardDescriptionInfo}
+                                                        focusable="false"
+                                                    />
+                                                    <Trans
+                                                        i18nKey={card.descriptionKey}
+                                                        components={{
+                                                            strong: <strong />,
+                                                            small: <span className={styles.cardDescriptionSecondary} />,
+                                                        }}
+                                                    />
+                                                </p>
+
+                                                {/* ORISO-Admin#798: brief notice above controls (no footer). */}
+                                                {enforceMode && (
+                                                    <p className={styles.enforceHeaderNote}>{enforceHeaderNote}</p>
+                                                )}
+
                                                 <div className={styles.masterRow}>
-                                                    {enforceMode && masterField && (
-                                                        <M3Checkbox
-                                                            className={styles.enforceCheckbox}
-                                                            label={t('tenants.permissions.enforce.checkboxLabel', {
-                                                                feature: t('tenants.permissions.card.activated'),
-                                                            })}
-                                                            checked={enforcedFields?.has(masterField[1]) ?? false}
-                                                            onChange={(next) => onEnforceChange?.(masterField[1], next)}
-                                                        />
-                                                    )}
+                                                    {enforceMode &&
+                                                        masterField &&
+                                                        enforceCheckbox(
+                                                            masterField[1],
+                                                            t('tenants.permissions.card.activated'),
+                                                        )}
                                                     <span className={styles.masterLabel}>
                                                         {t('tenants.permissions.card.activated')}
                                                     </span>
@@ -155,16 +192,6 @@ export const PermissionsSettingsView = ({
                                                     )}
                                                 </div>
 
-                                                <p className={styles.cardDescription}>
-                                                    <Trans
-                                                        i18nKey={card.descriptionKey}
-                                                        components={{
-                                                            strong: <strong />,
-                                                            small: <span className={styles.cardDescriptionSecondary} />,
-                                                        }}
-                                                    />
-                                                </p>
-
                                                 <div className={styles.cardDivider} />
 
                                                 <div className={styles.togglesSectionLabel}>
@@ -181,24 +208,11 @@ export const PermissionsSettingsView = ({
                                                                 key={toggle.field.join('.')}
                                                                 className={styles.toggleRow}
                                                             >
-                                                                {enforceMode && (
-                                                                    <M3Checkbox
-                                                                        className={styles.enforceCheckbox}
-                                                                        label={t(
-                                                                            'tenants.permissions.enforce.checkboxLabel',
-                                                                            {
-                                                                                feature: t(toggle.labelKey),
-                                                                            },
-                                                                        )}
-                                                                        checked={
-                                                                            enforcedFields?.has(toggle.field[1]) ??
-                                                                            false
-                                                                        }
-                                                                        onChange={(next) =>
-                                                                            onEnforceChange?.(toggle.field[1], next)
-                                                                        }
-                                                                    />
-                                                                )}
+                                                                {enforceMode &&
+                                                                    enforceCheckbox(
+                                                                        toggle.field[1],
+                                                                        t(toggle.labelKey),
+                                                                    )}
                                                                 <span className={styles.toggleLabel}>
                                                                     {t(toggle.labelKey)}
                                                                     {unavailableHintKey && (
@@ -225,12 +239,6 @@ export const PermissionsSettingsView = ({
                                                         );
                                                     })}
                                                 </div>
-
-                                                {enforceMode && (
-                                                    <p className={styles.enforceFooterNote}>
-                                                        {t('tenants.permissions.enforce.footerNote')}
-                                                    </p>
-                                                )}
                                             </Card>
                                         );
                                     }}

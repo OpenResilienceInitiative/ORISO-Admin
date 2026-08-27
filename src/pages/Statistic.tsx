@@ -84,7 +84,7 @@ import type {
 import type { AdminSegmentedTabItem } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 
 const conversationSegmentBlueprint = [
-    { label: 'Nähe', color: '#bd000d' },
+    { label: 'Mail', color: '#bd000d' },
     { label: 'Live', color: '#ffaaa3' },
     { label: 'Gesprächskreise', displayLabel: 'Gesprächs\nkreise', color: '#ffd8d5' },
     { label: 'Interna', color: '#c10072' },
@@ -165,9 +165,9 @@ const dashboardTextKeyByValue: Record<string, string> = {
     'Nachrichten Beratende': 'statistic.dashboard.text.counselorMessages',
     'Nachrichten pro Gespräch': 'statistic.dashboard.text.messagesPerConversation',
     'Nachrichten Ratsuchende': 'statistic.dashboard.text.seekerMessages',
-    Nähe: 'statistic.dashboard.text.counseling',
-    'Nähe (1:1)': 'statistic.dashboard.text.oneToOneCounseling',
-    'Nähe / 1:1-Anfragen': 'statistic.dashboard.text.counselingOneToOneRequests',
+    Mail: 'statistic.dashboard.text.counseling',
+    'Mail (1:1)': 'statistic.dashboard.text.oneToOneCounseling',
+    'Mail / 1:1-Anfragen': 'statistic.dashboard.text.counselingOneToOneRequests',
     'Persönliche Kennzahl auswählen': 'statistic.dashboard.menu.selectPersonalMetric',
     Plattformweit: 'statistic.dashboard.scope.platform',
     Schulden: 'statistic.dashboard.topic.debt',
@@ -398,8 +398,8 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
         },
         {
             key: 'oneToOne',
-            label: 'Nähe (1:1)',
-            title: 'Nähe (1:1)',
+            label: 'Mail (1:1)',
+            title: 'Mail (1:1)',
             icon: RequestsIcon,
         },
         {
@@ -536,8 +536,8 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
         },
         {
             key: 'oneToOne',
-            label: 'Nähe (1:1)',
-            title: 'Nähe (1:1)',
+            label: 'Mail (1:1)',
+            title: 'Mail (1:1)',
             icon: RequestsIcon,
         },
         {
@@ -674,8 +674,8 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
         },
         {
             key: 'oneToOne',
-            label: 'Nähe (1:1)',
-            title: 'Nähe (1:1)',
+            label: 'Mail (1:1)',
+            title: 'Mail (1:1)',
             icon: RequestsIcon,
         },
         {
@@ -1282,7 +1282,7 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboardBlueprint> = {
                     },
                     {
                         key: 'oneToOne',
-                        label: 'Nähe (1:1)',
+                        label: 'Mail (1:1)',
                     },
                     {
                         key: 'liveChat',
@@ -1415,7 +1415,7 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboardBlueprint> = {
                     },
                     {
                         key: 'oneToOne',
-                        label: 'Nähe (1:1)',
+                        label: 'Mail (1:1)',
                     },
                     {
                         key: 'liveChat',
@@ -1548,7 +1548,7 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboardBlueprint> = {
                     },
                     {
                         key: 'oneToOne',
-                        label: 'Nähe (1:1)',
+                        label: 'Mail (1:1)',
                     },
                     {
                         key: 'liveChat',

@@ -14,11 +14,23 @@ export interface PlaceholderTemplateFieldConfig<V extends Record<string, string>
     label: string;
     multiline?: boolean;
     rows?: number;
+    /**
+     * Whether this field carries a token picker. Defaults to `true`. A subject
+     * line is one short string — a picker hanging off it is noise (D1).
+     */
+    tokenPicker?: boolean;
 }
 
 export interface PlaceholderTemplateEditorProps<V extends Record<string, string>> {
     /** Module heading (visible; also groups the editor for screen readers). */
     heading: string;
+    /**
+     * Decorative head icon, M3 anatomy icon → title. Optional and supplied by
+     * the variant: this frame is shared with the invite e-mail, so it must not
+     * decide that both carry the same symbol. Purely decorative — it is
+     * `aria-hidden`, the `<section aria-label>` stays the accessible name.
+     */
+    icon?: ReactNode;
     fields: PlaceholderTemplateFieldConfig<V>[];
     /** Tokens every field's picker offers. */
     tokens: PlaceholderTokenDef[];
@@ -29,8 +41,16 @@ export interface PlaceholderTemplateEditorProps<V extends Record<string, string>
     activeTemplateId?: number | string;
     onSelectTemplate: (id: number | string) => void;
     onCreateFromTemplate?: (id: number | string) => void;
+    /**
+     * Main-segment press of the template split button (e.g. open the template
+     * manager). Without it the segment is a pure label (and leaves the tab
+     * order, see TemplateSplitButton).
+     */
+    onManageTemplates?: () => void;
     /** Live preview column, computed by the variant from the current values. */
     preview: ReactNode;
+    /** Leading glyph of the template split button; see TemplateSplitButton. */
+    templateIcon?: ReactNode;
     /**
      * Read-only surface (no edit permission, or looking at an archived version):
      * fields, token pickers and the template chooser go inert. They stay visible —
@@ -48,6 +68,7 @@ export interface PlaceholderTemplateEditorProps<V extends Record<string, string>
  */
 export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
     heading,
+    icon,
     fields,
     tokens,
     values,
@@ -56,17 +77,26 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
     activeTemplateId,
     onSelectTemplate,
     onCreateFromTemplate,
+    onManageTemplates,
     preview,
+    templateIcon,
     readOnly = false,
 }: PlaceholderTemplateEditorProps<V>) => (
     <section aria-label={heading} className={styles.editor}>
         <header className={styles.header}>
+            {icon && (
+                <span aria-hidden className={styles.headIcon} data-head-icon>
+                    {icon}
+                </span>
+            )}
             <h3 className={styles.heading}>{heading}</h3>
             <TemplateSplitButton
                 activeTemplateId={activeTemplateId}
                 disabled={readOnly}
+                icon={templateIcon}
                 templates={templates}
                 onCreateFromTemplate={onCreateFromTemplate}
+                onMainClick={onManageTemplates}
                 onSelectTemplate={onSelectTemplate}
             />
         </header>
@@ -79,7 +109,7 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
                         label={field.label}
                         multiline={field.multiline}
                         rows={field.rows}
-                        tokens={tokens}
+                        tokens={field.tokenPicker === false ? undefined : tokens}
                         value={values[field.name] ?? ''}
                         onChange={(next) => onChange({ ...values, [field.name]: next })}
                     />

@@ -40,6 +40,23 @@ describe('CardEditable', () => {
         expect(screen.getByRole('switch', { name: 'Enabled' })).toBeEnabled();
     });
 
+    it('submits a toggled-off switch as false so card patches keep the new value', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        render(
+            <CardEditable titleKey="card.title" onSave={onSave} initialValues={{ teamAgency: true }}>
+                <MuiSwitchField name="teamAgency" label="Team" />
+            </CardEditable>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('switch', { name: 'Team' }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        await waitFor(() => expect(onSave).toHaveBeenCalled());
+        expect(onSave.mock.calls[0][0]).toEqual({ teamAgency: false });
+    });
+
     it('keeps entered values editable when the save callback reports an error', async () => {
         const user = userEvent.setup();
         const onSave = vi.fn();
@@ -79,5 +96,36 @@ describe('CardEditable', () => {
         expect(screen.getByLabelText('Name')).toBeEnabled();
         await user.click(screen.getByRole('button', { name: 'card.edit.cancel' }));
         expect(await screen.findByText('overlay.unsaved.title')).toBeInTheDocument();
+    });
+
+    it('ignores a failure that arrives after a newer save was sent', async () => {
+        const user = userEvent.setup();
+        const deferredErrors: (() => void)[] = [];
+        const onSave = vi.fn((_formData, options) => {
+            if (options?.onError) {
+                deferredErrors.push(options.onError);
+            }
+        });
+        render(
+            <CardEditable titleKey="card.title" onSave={onSave} initialValues={{ name: 'ACME' }}>
+                <MuiFormField name="name" label="Name" />
+            </CardEditable>,
+        );
+
+        const saveOnce = async (value: string) => {
+            await user.click(screen.getByRole('button', { name: 'edit' }));
+            await user.clear(screen.getByLabelText('Name'));
+            await user.type(screen.getByLabelText('Name'), value);
+            await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        };
+
+        await saveOnce('First edit');
+        await saveOnce('Second edit');
+        expect(deferredErrors).toHaveLength(2);
+
+        // The first save fails late, after the second one has already been sent.
+        deferredErrors[0]();
+
+        await waitFor(() => expect(screen.getByLabelText('Name')).toBeDisabled());
     });
 });

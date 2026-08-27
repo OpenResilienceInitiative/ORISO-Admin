@@ -113,6 +113,67 @@ export const AnchorRowNarrowOverflow: Story = {
     ],
 };
 
+// The owner's caret trap (2026-08-19): a document that ends with a heading
+// left ~184px of empty editor surface in which EVERY click put the caret into
+// the heading — typing produced giant heading text. Contract under test
+// (Word's click-and-type): clicking the empty space below a final heading
+// creates a body paragraph and the caret lands in it (trailingParagraph.ts).
+// This play function runs against the real browser layout — jsdom has none.
+export const CaretBelowHeadingLandsInBodyText: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    args: {
+        title: 'Datenschutz',
+        value: '<h1>Datenschutzerklärung</h1>',
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+    },
+    play: async ({ canvasElement }) => {
+        const editorNode = await waitFor(() => {
+            const node = canvasElement.querySelector<HTMLElement>('.ProseMirror');
+            expect(node).not.toBeNull();
+            return node!;
+        });
+
+        // The guarantee paragraph must exist below the final heading.
+        await waitFor(() => expect(editorNode.querySelector('h1 + p')).not.toBeNull());
+
+        // Click into the dead space between the heading's bottom and the
+        // editor surface's bottom (its min-height keeps that area open).
+        // `caretRangeFromPoint` is the browser's OWN hit-testing — the same
+        // resolution a native click performs. Before the fix it resolved
+        // every point in this area into the heading (measured 2026-08-19).
+        const heading = editorNode.querySelector('h1')!;
+        const headingRect = heading.getBoundingClientRect();
+        const surfaceRect = editorNode.getBoundingClientRect();
+        const clientX = surfaceRect.left + 24;
+        const clientY = headingRect.bottom + (surfaceRect.bottom - headingRect.bottom) / 2;
+        const caretRange = document.caretRangeFromPoint(clientX, clientY);
+        expect(caretRange).not.toBeNull();
+
+        editorNode.focus();
+        const selection = document.getSelection()!;
+        selection.removeAllRanges();
+        selection.addRange(caretRange!);
+
+        // The caret must sit in a body paragraph AFTER the heading, never in
+        // the heading itself.
+        await waitFor(() => {
+            const anchor = document.getSelection()?.anchorNode;
+            expect(anchor).toBeTruthy();
+            const block = anchor instanceof Element ? anchor : anchor?.parentElement;
+            expect(block?.closest('p')).toBeTruthy();
+            expect(block?.closest('h1')).toBeFalsy();
+        });
+
+        // Typing there produces body text and leaves the heading untouched.
+        document.execCommand('insertText', false, 'Absatztext.');
+        await waitFor(() => {
+            expect(editorNode.querySelector('h1 + p')?.textContent).toBe('Absatztext.');
+            expect(editorNode.querySelector('h1')?.textContent).toBe('Datenschutzerklärung');
+        });
+    },
+};
+
 const ResponsiveHintEditor = (args: Parameters<typeof M3RichTextEditor>[0]) => {
     const [visible, setVisible] = useState(true);
     return (
@@ -186,6 +247,13 @@ export const ReadOnlyWithAnchors: Story = {
         languages: [{ value: 'de', label: 'Deutsch' }],
         language: 'de',
     },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByRole('navigation')).toBeInTheDocument());
+
+        const chapterNav = canvas.getByRole('navigation');
+        expect(window.getComputedStyle(chapterNav).paddingTop).toBe('16px');
+    },
 };
 
 // Opt-out state: no anchor row, headings stay untouched.
@@ -212,7 +280,7 @@ export const FullscreenDialog: Story = {
     },
     args: {
         title: 'Auftragsdaten Verabeitungsvertrag',
-        placeholder: 'Fügen Sie hier den Auftragsverarbeitungsvertrag ein.',
+        placeholder: 'Fügen Sie hier die Vertragsunterlagen ein.',
         value: '',
         languages: [{ value: 'de', label: 'Deutsch' }],
         language: 'de',
@@ -234,17 +302,17 @@ const dpaVersions = [
     {
         id: '2026-07-01T10:00',
         label: '1. Jul 2026 – 10:22 (aktuell)',
-        content: '<h2>Auftragsverarbeitungsvertrag</h2><p>Fassung vom Juli 2026.</p>',
+        content: '<h2>Vertragsunterlagen</h2><p>Fassung vom Juli 2026.</p>',
     },
     {
         id: '2026-05-02T09:00',
         label: '2. Mai 2026 – 09:00',
-        content: '<h2>Auftragsverarbeitungsvertrag</h2><p>Ältere Fassung vom Mai 2026.</p>',
+        content: '<h2>Vertragsunterlagen</h2><p>Ältere Fassung vom Mai 2026.</p>',
     },
     {
         id: '2026-01-15T14:30',
         label: '15. Jan 2026 – 14:30',
-        content: '<h2>Auftragsverarbeitungsvertrag</h2><p>Erste Fassung vom Januar 2026.</p>',
+        content: '<h2>Vertragsunterlagen</h2><p>Erste Fassung vom Januar 2026.</p>',
     },
 ];
 
@@ -267,7 +335,7 @@ export const WithVersionSelect: Story = {
     },
     args: {
         title: 'Auftragsdaten Verabeitungsvertrag',
-        value: '<h2>Auftragsverarbeitungsvertrag</h2><p>Aktueller Entwurf.</p>',
+        value: '<h2>Vertragsunterlagen</h2><p>Aktueller Entwurf.</p>',
         versions: dpaVersions,
         languages: [{ value: 'de', label: 'Deutsch' }],
         language: 'de',
@@ -279,7 +347,7 @@ export const VersionSelectReadOnly: Story = {
     render: (args) => <ControlledEditor {...args} />,
     args: {
         title: 'Auftragsdaten Verabeitungsvertrag',
-        value: '<h2>Auftragsverarbeitungsvertrag</h2><p>Veröffentlichte Fassung.</p>',
+        value: '<h2>Vertragsunterlagen</h2><p>Veröffentlichte Fassung.</p>',
         versions: dpaVersions,
         readOnly: true,
         languages: [{ value: 'de', label: 'Deutsch' }],
