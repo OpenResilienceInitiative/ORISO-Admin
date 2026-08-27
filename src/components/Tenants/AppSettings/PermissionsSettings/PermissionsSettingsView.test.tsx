@@ -1,7 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, SVGProps } from 'react';
 import userEvent from '@testing-library/user-event';
-import type { SVGProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 
