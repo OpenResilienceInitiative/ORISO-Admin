@@ -1,3 +1,4 @@
+import { Tooltip } from 'antd';
 import { Trans, useTranslation } from 'react-i18next';
 import { Card } from '../../../../Card';
 import { M3Checkbox } from '../../../../M3Checkbox';
@@ -57,18 +58,23 @@ export const AskerPermissionsCard = ({
     onEnforceChange,
 }: AskerPermissionsCardProps) => {
     const { t } = useTranslation();
+    const enforceHeaderNote = t('tenants.permissions.enforce.headerNote');
+    const enforceTooltip = t('tenants.permissions.enforce.tooltip');
 
     /* "Disable, never hide" is only half the rule — a switch that is greyed out
        with no explanation tells an admin they did something wrong. The reason
        says who actually holds the decision. */
     const enforceCheckbox = (field: string, labelKey: string) =>
         enforceMode ? (
-            <M3Checkbox
-                className={styles.enforceCheckbox}
-                label={t('tenants.permissions.enforce.checkboxLabel', { feature: t(labelKey) })}
-                checked={enforcedFields?.has(field) ?? false}
-                onChange={(next) => onEnforceChange?.(field, next)}
-            />
+            <Tooltip title={enforceTooltip}>
+                <span className={styles.enforceCheckbox}>
+                    <M3Checkbox
+                        label={t('tenants.permissions.enforce.checkboxLabel', { feature: t(labelKey) })}
+                        checked={enforcedFields?.has(field) ?? false}
+                        onChange={(next) => onEnforceChange?.(field, next)}
+                    />
+                </span>
+            </Tooltip>
         ) : null;
 
     const restrictedNote = (field: string) =>
@@ -81,6 +87,8 @@ export const AskerPermissionsCard = ({
             <p className={styles.intro}>
                 <Trans i18nKey="tenants.permissions.asker.description" components={{ strong: <strong /> }} />
             </p>
+
+            {enforceMode && <p className={styles.enforceHeaderNote}>{enforceHeaderNote}</p>}
 
             <div className={styles.setting}>
                 <div className={styles.settingHeader}>

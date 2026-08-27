@@ -108,14 +108,13 @@ export const LegalText = ({
         legalType && dismissalScope ? isHintDismissed(legalType, dismissalScope) : false,
     );
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
-    const [publishBlocked, setPublishBlocked] = useState(false);
 
     // Version look-back for the Träger-level text (ADR-021 decision 3). Empty
     // until the history endpoints of #250 are deployed — the card then behaves
     // exactly as it did before. A genuine failure (403, 500, network) is NOT an
     // empty history and is reported as such.
     const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions(
-        { level: 'tenant', tenantId: Number(tenantId), kind: legalType === 'imprint' ? 'imprint' : 'privacy' },
+        { level: 'tenant', tenantId: Number(tenantId), kind: legalType === 'imprint' ? 'IMPRINT' : 'DPP' },
         !!legalType,
     );
     // Keeps the consent sentence on the same version as the body shown above it.
@@ -137,7 +136,6 @@ export const LegalText = ({
     useEffect(() => {
         setEdits({});
         setConsentEdits({});
-        setPublishBlocked(false);
         setPendingFormData(undefined);
         setModalVisible(false);
         setActiveLanguage('de');
@@ -214,6 +212,12 @@ export const LegalText = ({
         () => (consentEnabled ? consentPublicationBlockers(consentByLanguage) : []),
         [consentEnabled, consentByLanguage],
     );
+    // Named the way the admin reads them, not as wire codes — the notice exists to
+    // point at a language tab.
+    const blockedLanguageNames = useMemo(
+        () => blockedLanguages.map((language) => t(`language.${language}`, language.toUpperCase())).join(', '),
+        [blockedLanguages, t],
+    );
 
     // Looking back means looking back at the WHOLE document: the consent sentence
     // archived with that policy version, not today's. Read-only, because the
@@ -236,7 +240,6 @@ export const LegalText = ({
             // The consent sentence is part of the same draft — leaving the in-memory
             // edit behind would keep showing exactly the wording just discarded.
             setConsentEdits({});
-            setPublishBlocked(false);
         }
     }, [discardDraft]);
 
@@ -270,10 +273,8 @@ export const LegalText = ({
         // `{{legal_links}}` is rejected server-side (ADR-021 decision 2), and the
         // admin should learn that from the editor, not from a failed publish.
         if (blockedLanguages.length > 0) {
-            setPublishBlocked(true);
             return;
         }
-        setPublishBlocked(false);
         // The COMPLETE map goes out — languages the admin did not touch survive.
         const formData = set({}, fieldName, { ...contentByLanguage });
         if (consentEnabled) {
@@ -368,25 +369,21 @@ export const LegalText = ({
                 }
                 onPublish={canEditLegalText ? onPublish : undefined}
                 onSaveDraft={canEditLegalText && legalType && dismissalScope ? onSaveDraft : undefined}
+                actionsLeading={
+                    consentEnabled ? (
+                        <LegalConsentField
+                            language={activeLanguage}
+                            readOnly={consentReadOnly}
+                            value={consentDisplay[activeLanguage] ?? ''}
+                            onChange={(next) => setConsentEdits((current) => ({ ...current, [activeLanguage]: next }))}
+                        />
+                    ) : undefined
+                }
                 belowSlot={
                     showConfirmationModal &&
                     modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
                 }
             />
-            {/* Under the editor, not inside its `belowSlot`: the M3 card is a fixed
-                800×740 deck card and clips visible slot content (same trap as the
-                aboveEditorSlot banner in #708). Still one card — policy + consent. */}
-            {consentEnabled && (
-                <LegalConsentField
-                    language={activeLanguage}
-                    readOnly={consentReadOnly}
-                    value={consentDisplay[activeLanguage] ?? ''}
-                    onChange={(next) => {
-                        setPublishBlocked(false);
-                        setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
-                    }}
-                />
-            )}
             {/* A history that failed to load is not an empty history. Saying "no
                 version published yet" for a 403 or a 500 would be a false answer to
                 the exact question the look-back exists for. Editing stays possible. */}
@@ -399,7 +396,11 @@ export const LegalText = ({
                     description={t('legal.versions.unavailable.description')}
                 />
             )}
-            {publishBlocked && (
+            {/* Shown while ANY authored language is affected, not only after a failed
+                publish attempt: the rule arrived after texts were live, so a stored
+                sentence can be blocking on open — possibly in a language other than
+                the one on screen. */}
+            {blockedLanguages.length > 0 && (
                 <Alert
                     type="error"
                     showIcon
@@ -407,9 +408,8 @@ export const LegalText = ({
                     message={t('legal.consent.publishBlocked.title')}
                     description={
                         <>
-                            {t('legal.consent.publishBlocked.description', {
-                                languages: blockedLanguages.join(', '),
-                            })}{' '}
+                            {t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}{' '}
+                            {/* Composed in JSX, never interpolated — i18next would eat it. */}
                             <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
                         </>
                     }

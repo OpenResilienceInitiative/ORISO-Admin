@@ -30,6 +30,16 @@ vi.mock('../../../../../hooks/useTranslateLegalContent.hook', () => ({
 vi.mock('../../../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({ can: h.canEditLegalText, permissions: {} }),
 }));
+// The department-scoped history has its own suite (AgencyLegalTextContainer.versions.test.tsx).
+vi.mock('../../../../../hooks/useUserData.hook', () => ({
+    // The container reads the opaque user id to scope its device-local draft; without
+    // this mock the real react-query hook runs and the render dies on "No QueryClient".
+    useUserData: () => ({ data: { id: 'user-7' }, isLoading: false }),
+    USER_DATA_KEY: 'user-data',
+}));
+vi.mock('../../../../../hooks/useLegalTextVersions.hook', () => ({
+    useLegalTextVersions: () => ({ data: [], isError: false }),
+}));
 vi.mock('../DepartmentDataProtectionCard', () => ({
     DepartmentDataProtectionCard: (props: any) => {
         h.card(props);

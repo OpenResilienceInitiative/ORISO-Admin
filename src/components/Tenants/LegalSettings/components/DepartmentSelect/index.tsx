@@ -1,5 +1,5 @@
-import Groups from '@mui/icons-material/Groups';
 import { useTranslation } from 'react-i18next';
+import { TopicIcon } from '../../../../CustomIcons/LegalIcons';
 import { SplitDropdown } from '../../../../FormPluginEditor/SplitDropdown';
 import styles from './styles.module.scss';
 
@@ -34,6 +34,10 @@ interface DepartmentSelectProps {
  * department currently shows; publishing it breaks the inheritance and the department carries its
  * own text from then on (ADR-014 amendment 2026-07-28).
  *
+ * The menu opens on a header naming the choice (#812) — antd's own labelled group, the same
+ * pattern `DpiaSectionSelect` and `TemplateSplitButton` use on this control, so the header
+ * titles the options for a screen reader instead of sitting among them as an inert entry.
+ *
  * Departments that already left the inherited text are marked (#583): an admin editing the
  * agency-wide text has to see who will *not* receive the change — the one thing that matters when
  * a Beratungsstelle publishes a correction. The state comes from `departments[]` on the admin
@@ -58,7 +62,13 @@ export const DepartmentSelect = ({ departments, value, onChange }: DepartmentSel
 
     return (
         <SplitDropdown
-            icon={<Groups />}
+            // The house Fachbereich/topic glyph (Icons Master File `topic_400_24px`),
+            // not MUI's `Groups`: this control picks a THEME, not a group of people, and
+            // the legal editors draw from the ORISO set (LegalIcons) rather than MUI.
+            // Outline, not `TopicFilledIcon` — the filled variant is this set's SELECTED
+            // state (see PillSelect's `icon` / `selectedIcon` pair); a resting leading
+            // glyph on a closed dropdown is the default state.
+            icon={<TopicIcon />}
             label={selected?.name ?? allLabel}
             title={t('agency.legal.department.choose', 'Fachbereich wählen')}
             menu={{
@@ -66,35 +76,45 @@ export const DepartmentSelect = ({ departments, value, onChange }: DepartmentSel
                 selectedKeys: [String(value)],
                 items: [
                     {
-                        key: ALL_DEPARTMENTS,
-                        label: (
-                            <span className={styles.entry}>
-                                <span>{allLabel}</span>
-                                {withOwnText > 0 && (
-                                    <span className={styles.excludedHint} data-testid="departments-with-own-text">
-                                        {t('agency.legal.department.notInheriting', {
-                                            count: withOwnText,
-                                            defaultValue: '{{count}} mit eigenem Text',
-                                        })}
+                        key: 'department-choice',
+                        type: 'group' as const,
+                        label: t('agency.legal.department.menuHeader', 'Fachbereich auswählen'),
+                        children: [
+                            {
+                                key: ALL_DEPARTMENTS,
+                                label: (
+                                    <span className={styles.entry}>
+                                        <span>{allLabel}</span>
+                                        {withOwnText > 0 && (
+                                            <span
+                                                className={styles.excludedHint}
+                                                data-testid="departments-with-own-text"
+                                            >
+                                                {t('agency.legal.department.notInheriting', {
+                                                    count: withOwnText,
+                                                    defaultValue: '{{count}} mit eigenem Text',
+                                                })}
+                                            </span>
+                                        )}
                                     </span>
-                                )}
-                            </span>
-                        ),
+                                ),
+                            },
+                            { type: 'divider' as const },
+                            ...departments.map(({ id, name, hasOwnText }) => ({
+                                key: String(id),
+                                label: (
+                                    <span className={styles.entry}>
+                                        <span>{name}</span>
+                                        {hasOwnText && (
+                                            <span className={styles.ownTextTag} data-testid={`own-text-${id}`}>
+                                                {ownTextLabel}
+                                            </span>
+                                        )}
+                                    </span>
+                                ),
+                            })),
+                        ],
                     },
-                    { type: 'divider' as const },
-                    ...departments.map(({ id, name, hasOwnText }) => ({
-                        key: String(id),
-                        label: (
-                            <span className={styles.entry}>
-                                <span>{name}</span>
-                                {hasOwnText && (
-                                    <span className={styles.ownTextTag} data-testid={`own-text-${id}`}>
-                                        {ownTextLabel}
-                                    </span>
-                                )}
-                            </span>
-                        ),
-                    })),
                 ],
                 onClick: ({ key }) => onChange(key === ALL_DEPARTMENTS ? ALL_DEPARTMENTS : Number(key)),
             }}

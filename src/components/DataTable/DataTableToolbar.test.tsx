@@ -19,8 +19,13 @@ describe('DataTableToolbar', () => {
     });
 
     it('renders nothing for omitted slots', () => {
-        const { container } = render(<DataTableToolbar filters={<span>Chips</span>} />);
-        const toolbar = container.firstElementChild as HTMLElement;
-        expect(toolbar.children).toHaveLength(1);
+        render(<DataTableToolbar filters={<span>Chips</span>} />);
+
+        expect(screen.getByText('Chips')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Suche')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Export' })).not.toBeInTheDocument();
+        // Nothing but the one provided slot reaches the DOM.
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        expect(screen.queryAllByRole('button')).toHaveLength(0);
     });
 });

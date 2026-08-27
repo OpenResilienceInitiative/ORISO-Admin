@@ -8,6 +8,7 @@ import {
     inviteDisplayName,
     inviteLastActivity,
     isDeadInvite,
+    matchesInviteQuery,
 } from './derivePhases';
 
 const invite = (overrides: Partial<AccountInviteDTO> = {}): AccountInviteDTO => ({
@@ -268,6 +269,16 @@ describe('inviteLastActivity', () => {
             inviteLastActivity(invite({ acceptedAt: '2026-08-03T10:00:00Z', revokedAt: '2026-08-05T10:00:00Z' })),
         ).toBe('2026-08-05T10:00:00Z');
     });
+
+    it('counts a 2FA waiver as activity', () => {
+        // The waiver is an admin acting on the invite; ignoring it made the
+        // column report the older acceptance date instead.
+        expect(
+            inviteLastActivity(
+                invite({ acceptedAt: '2026-08-03T10:00:00Z', twoFactorWaivedAt: '2026-08-06T10:00:00Z' }),
+            ),
+        ).toBe('2026-08-06T10:00:00Z');
+    });
 });
 
 describe('formatRelativeTime', () => {
@@ -284,5 +295,29 @@ describe('formatRelativeTime', () => {
 
     it('reads sub-minute differences as "now" wording instead of 0 seconds', () => {
         expect(formatRelativeTime('2026-08-12T11:59:59Z', 'de', now)).toBe('in dieser Minute');
+    });
+});
+
+describe('matchesInviteQuery (A4)', () => {
+    it('matches on e-mail, first name, last name and the Träger-ID', () => {
+        const row = invite({ tenantId: 42 });
+        expect(matchesInviteQuery(row, 'huber@example')).toBe(true);
+        expect(matchesInviteQuery(row, 'maria')).toBe(true);
+        expect(matchesInviteQuery(row, 'Huber')).toBe(true);
+        expect(matchesInviteQuery(row, '42')).toBe(true);
+        expect(matchesInviteQuery(row, 'fisch')).toBe(false);
+    });
+
+    it('is case- and diacritic-insensitive and requires every term to match', () => {
+        const row = invite({ firstName: 'Jürgen', lastName: 'Müller', recipientEmail: 'j.mueller@example.org' });
+        expect(matchesInviteQuery(row, 'JÜRGEN')).toBe(true);
+        expect(matchesInviteQuery(row, 'muller')).toBe(true);
+        expect(matchesInviteQuery(row, 'jurgen muller')).toBe(true);
+        expect(matchesInviteQuery(row, 'jurgen fischer')).toBe(false);
+    });
+
+    it('treats a blank query as no filter at all', () => {
+        expect(matchesInviteQuery(invite(), '   ')).toBe(true);
+        expect(matchesInviteQuery(invite(), '')).toBe(true);
     });
 });

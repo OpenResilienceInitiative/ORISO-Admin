@@ -1,6 +1,6 @@
 import styles from './PlaceholderTemplateEditor.module.scss';
 
-/** Same token-highlighting split the e-mail preview uses (EmailTemplatePreview). */
+/** Same token-highlighting split the e-mail-kit preview document uses. */
 const TOKEN_SPLIT = /({{[^{}]+}})/g;
 const TOKEN_ONLY = /^{{[^{}]+}}$/;
 

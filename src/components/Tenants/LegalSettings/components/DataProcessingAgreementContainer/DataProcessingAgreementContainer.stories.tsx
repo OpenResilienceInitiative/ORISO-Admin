@@ -28,10 +28,10 @@ const meta = {
                             activationDate: '2026-07-13T10:22:00',
                             content: JSON.stringify({
                                 de:
-                                    '<h1>Auftragsverarbeitungsvertrag</h1>' +
+                                    '<h1>Vertragsunterlagen</h1>' +
                                     '<p>Veröffentlichte Fassung: Weisungsbindung, Vertraulichkeit, TOMs, Löschung.</p>',
                                 en:
-                                    '<h1>Data processing agreement</h1>' +
+                                    '<h1>Contract documents</h1>' +
                                     '<p>Published version: instruction binding, confidentiality, TOMs, deletion.</p>',
                             }),
                         },

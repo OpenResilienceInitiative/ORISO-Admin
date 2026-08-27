@@ -1,10 +1,8 @@
 import { fetchData, FETCH_METHODS, FETCH_ERRORS } from '../fetchData';
 import { baseTenantPublicEndpoint } from '../../appConfig';
 import getLocationVariables from '../../utils/getLocationVariables';
-import { decodeTenantAsset } from '../../utils/decodeTenantAsset';
+import { decodeTenantBrandingAssets } from '../../utils/decodeTenantAsset';
 import { AppConfigInterface } from '../../types/AppConfigInterface';
-
-const BRANDING_ASSETS = ['logo', 'favicon', 'associationLogo'] as const;
 
 /**
  * TenantService HTML-encodes every stored string, so a base64 branding asset
@@ -15,18 +13,7 @@ const BRANDING_ASSETS = ['logo', 'favicon', 'associationLogo'] as const;
  * it got missed: the admin's upload preview decoded, the public surfaces did not.
  */
 const decodeBrandingAssets = (result: any) => {
-    if (!result?.theming) {
-        return result;
-    }
-
-    const theming = { ...result.theming };
-    BRANDING_ASSETS.forEach((asset) => {
-        if (typeof theming[asset] === 'string') {
-            theming[asset] = decodeTenantAsset(theming[asset]);
-        }
-    });
-
-    return { ...result, theming };
+    return decodeTenantBrandingAssets(result);
 };
 
 /**

@@ -121,6 +121,7 @@
     "agency.form.registrationSettings.title": "Visibility in registration",
     "agency.form.registrationSettings.toPostCode": "To postal code",
     "agency.form.settings.headline": "Counseling service settings",
+    "agency.form.settings.teamAdviceCenter.changeWarning": "Turning off team counseling converts existing team chats into 1:1 counseling. Other counselors at this counseling center will no longer be able to view those chats.",
     "agency.form.settings.teamAdviceCenter.description": "All consultants of an advice center can view and participate in all chats with people seeking advice.",
     "agency.form.settings.teamAdviceCenter.title": "Offer team counseling",
     "agency.gender": "Gender",

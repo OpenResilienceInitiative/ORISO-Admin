@@ -55,7 +55,12 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         versions?: { id: string; label: string; content: string; restorable?: boolean }[];
         onRestoreVersion?: (content: string) => void;
     }) => (
-        <div data-testid="editor" data-value={value} data-readonly={readOnly ? 'true' : 'false'}>
+        <div
+            data-testid="editor"
+            data-value={value}
+            data-readonly={readOnly ? 'true' : 'false'}
+            data-has-language-slot={languageSlot ? 'true' : 'false'}
+        >
             {languageSlot}
             {helpSlot}
             {snackbarSlot}
@@ -115,6 +120,19 @@ beforeAll(() => {
 const publishButtonName = 'legal.m3Editor.publish';
 
 describe('DataProcessingAgreementCard', () => {
+    it('omits the language control entirely when only one content language exists', () => {
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                languages={['de']}
+                versions={[]}
+                onPublish={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-has-language-slot', 'false');
+    });
+
     it('keeps the other languages when publishing after editing only one language', async () => {
         const user = userEvent.setup();
         const onPublish = vi.fn();

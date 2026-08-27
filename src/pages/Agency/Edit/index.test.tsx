@@ -271,9 +271,11 @@ describe('AgencyPageEdit create flow', () => {
         // the text twice (the <label>, plus the aria-hidden notched-outline
         // <legend>), so a plain text query matches both.
         expect(await screen.findByLabelText('Trägerzuordnung *')).toBeInTheDocument();
-        // Create flow: general+registration share one deck item; settings is the second.
-        expect(container.querySelector('[data-admin-card-deck]')).toBeInTheDocument();
-        expect(container.querySelectorAll('[data-admin-card-deck-item]')).toHaveLength(2);
+        // #620: create flow lays its three cards out in the responsive CardGrid —
+        // cards share the row width and wrap/stack below the floor. The fixed-width
+        // horizontal CardDeck must be gone from the create surface.
+        expect(container.querySelector('[data-admin-card-grid]')).toBeInTheDocument();
+        expect(container.querySelector('[data-admin-card-deck]')).not.toBeInTheDocument();
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
     });
 

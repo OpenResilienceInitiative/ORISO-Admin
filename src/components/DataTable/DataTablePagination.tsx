@@ -37,8 +37,13 @@ export const DataTablePagination = ({
     const { t } = useTranslation();
     const selectId = useId();
     const pageCount = Math.max(1, Math.ceil(total / pageSize));
-    const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
-    const to = Math.min(total, page * pageSize);
+    // Filtering or a deletion can shrink `total` under a page the caller still
+    // holds. Rendering that page verbatim produces nonsense like "21–4 von 4"
+    // and re-enables "previous" past the end, so the range and the navigation
+    // bounds are computed from the clamped page.
+    const safePage = Math.min(Math.max(1, page), pageCount);
+    const from = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
+    const to = Math.min(total, safePage * pageSize);
 
     return (
         <div className={classNames(styles.pagination, className)}>
@@ -69,14 +74,14 @@ export const DataTablePagination = ({
                 <IconButton
                     icon={<ChevronLeftIcon />}
                     ariaLabel={t('dataTable.pagination.previous', 'Vorherige Seite')}
-                    disabled={disabled || page <= 1}
-                    onClick={() => onPageChange(page - 1)}
+                    disabled={disabled || safePage <= 1}
+                    onClick={() => onPageChange(safePage - 1)}
                 />
                 <IconButton
                     icon={<ChevronRightIcon />}
                     ariaLabel={t('dataTable.pagination.next', 'Nächste Seite')}
-                    disabled={disabled || page >= pageCount}
-                    onClick={() => onPageChange(page + 1)}
+                    disabled={disabled || safePage >= pageCount}
+                    onClick={() => onPageChange(safePage + 1)}
                 />
             </div>
         </div>

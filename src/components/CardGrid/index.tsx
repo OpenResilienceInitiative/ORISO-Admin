@@ -27,6 +27,7 @@ export interface CardGridProps {
  */
 export const CardGrid = ({ children, minCardWidth = 400, maxColumns = 3, className }: CardGridProps) => (
     <div
+        data-admin-card-grid
         className={classNames(styles.cardGrid, className)}
         style={
             {

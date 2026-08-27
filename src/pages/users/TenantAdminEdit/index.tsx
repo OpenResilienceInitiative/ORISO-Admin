@@ -84,7 +84,7 @@ export const TenantAdminEditOrAdd = () => {
                     />
                 )}
                 {isReadOnly && (
-                    <Button type="text" className="admin-m3-text-button" onClick={() => setReadOnly(false)}>
+                    <Button type="primary" onClick={() => setReadOnly(false)}>
                         {t('edit')}
                     </Button>
                 )}
@@ -93,7 +93,7 @@ export const TenantAdminEditOrAdd = () => {
                         <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
                             {t('btn.cancel')}
                         </Button>
-                        <Button type="text" className="admin-m3-text-button" onClick={() => form.submit()}>
+                        <Button type="primary" onClick={() => form.submit()}>
                             {t('save')}
                         </Button>
                     </>
