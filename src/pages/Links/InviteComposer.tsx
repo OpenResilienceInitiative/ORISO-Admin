@@ -19,9 +19,9 @@ import { M3NumberField } from '../../components/M3NumberField';
 import { TemplateSplitButton } from '../../components/PlaceholderTemplate';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
+import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
+import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as FileSaveIcon } from '../../resources/img/svg/oriso/file_save_24px.svg';
-import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
-import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
 import styles from './inviteComposer.module.scss';
 
 /**
@@ -443,16 +443,40 @@ export const InviteComposer = ({
             : t('links.composer.sendCreateOnly', 'Empfänger nur anlegen');
     const bulkSendLabel = t('links.bulk.sendSelected', '{{count}} ausgewählte senden', { count: selectionCount });
 
+    /**
+     * Glyph on the main send segment (#574). It has to say what pressing the
+     * button DOES, which is the one thing the two send modes differ in: `direct`
+     * puts an e-mail on the wire — mail glyph, filled once the action is live —
+     * while `createOnly` only files the recipient away, so it takes the same file
+     * glyph its own menu entry carries. The paper plane said "send" for both.
+     */
+    const renderSendGlyph = () => {
+        if (sendMode === 'createOnly') {
+            return <FileSaveIcon data-glyph="file-save" data-testid="composer-send-icon" />;
+        }
+        if (sendReady) {
+            return <MailFilledIcon data-glyph="mail-filled" data-testid="composer-send-icon" />;
+        }
+        return <MailIcon data-glyph="mail" data-testid="composer-send-icon" />;
+    };
+
     const sendMenu: MenuProps = {
         items: [
             {
                 key: 'direct',
-                icon: <SendIcon aria-hidden className={styles.menuIcon} />,
+                // Same glyph rule as the button (#574): mail, filled while this
+                // is the mode that will actually fire.
+                icon:
+                    sendMode === 'direct' ? (
+                        <MailFilledIcon aria-hidden className={styles.menuIcon} data-glyph="mail-filled" />
+                    ) : (
+                        <MailIcon aria-hidden className={styles.menuIcon} data-glyph="mail" />
+                    ),
                 label: t('links.composer.sendDirect', 'Direkt Versenden'),
             },
             {
                 key: 'createOnly',
-                icon: <FileSaveIcon aria-hidden className={styles.menuIcon} />,
+                icon: <FileSaveIcon aria-hidden className={styles.menuIcon} data-glyph="file-save" />,
                 label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen'),
             },
         ],
@@ -558,7 +582,7 @@ export const InviteComposer = ({
                 stays in both states — a send button without its glyph was the
                 "icons are missing" note. */}
                 <SplitButton
-                    icon={bulkMode ? <SelectAllIcon fontSize="small" /> : <SendFilledIcon />}
+                    icon={bulkMode ? <SelectAllIcon fontSize="small" /> : renderSendGlyph()}
                     label={bulkMode ? String(selectionCount) : singleSendLabel}
                     mainDisabled={!sendReady || submitting}
                     mainDescribedBy={sendBlockedReason ? sendHintId : undefined}

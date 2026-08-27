@@ -151,6 +151,47 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(wrapper).toHaveClass(splitButtonStyles.filled);
     });
 
+    // #574: "Direkt Versenden" mails the invite out, so it carries the mail glyph
+    // — outlined while the action is still gated, filled once it can actually
+    // fire. The paper plane it used to show said "send" without saying that an
+    // e-mail leaves the building, which is the whole difference to create-only.
+    it('carries the mail glyph on Direkt Versenden and fills it once the action is live (#574)', async () => {
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        const sendButton = await findSendButton('Direkt Versenden');
+        expect(await screen.findByRole('button', { name: /Standard/ })).toBeInTheDocument();
+        expect(sendButton).toBeDisabled();
+        expect(screen.getByTestId('composer-send-icon')).toHaveAttribute('data-glyph', 'mail');
+
+        await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
+
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        expect(screen.getByTestId('composer-send-icon')).toHaveAttribute('data-glyph', 'mail-filled');
+    });
+
+    // Create-only sends no mail, so it must not keep the mail glyph — it takes
+    // the same file glyph its own menu entry already carries.
+    it('swaps the glyph to file-save in create-only mode (#574)', async () => {
+        window.localStorage.setItem(sendModeStorageKey('TENANT_ADMIN'), 'createOnly');
+
+        await renderTenantTab();
+
+        await findSendButton('Empfänger nur anlegen');
+        expect(screen.getByTestId('composer-send-icon')).toHaveAttribute('data-glyph', 'file-save');
+    });
+
+    it('marks the Direkt Versenden menu entry with the same mail glyph (#574)', async () => {
+        await renderTenantTab();
+        const user = userEvent.setup();
+
+        await findSendButton('Direkt Versenden');
+        await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
+
+        const entry = await screen.findByRole('menuitem', { name: 'Direkt Versenden' });
+        expect(entry.querySelector('[data-glyph]')).toHaveAttribute('data-glyph', 'mail-filled');
+    });
+
     it('persists the chosen send mode per tab and swaps the main label', async () => {
         const view = await renderTenantTab();
         const user = userEvent.setup();
