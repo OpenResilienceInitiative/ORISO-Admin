@@ -30,6 +30,20 @@ initialize({
     serviceWorker: { url: new URL('mockServiceWorker.js', window.location.href).href },
 });
 
+// Registration can fail wholesale in embedded/sandboxed browsers that refuse
+// service workers. Stories that declare no `parameters.msw.handlers` never
+// talk to the worker, so a failed registration must degrade to "no mocking"
+// instead of replacing EVERY story with the MSW error page.
+const tolerantMswLoader: typeof mswLoader = async (context) => {
+    try {
+        return await mswLoader(context);
+    } catch (error) {
+        if (context.parameters?.msw) throw error;
+        console.warn('[storybook] MSW worker unavailable, story runs unmocked:', error);
+        return {};
+    }
+};
+
 const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
 });
@@ -56,6 +70,8 @@ const preview: Preview = {
                 phoneSmall: { name: 'Phone 360', styles: { width: '360px', height: '740px' } },
                 phone: { name: 'Phone 390', styles: { width: '390px', height: '844px' } },
                 tablet: { name: 'Tablet 768', styles: { width: '768px', height: '1024px' } },
+                responsive640: { name: 'Responsive 640', styles: { width: '640px', height: '900px' } },
+                responsive1100: { name: 'Responsive 1100', styles: { width: '1100px', height: '900px' } },
                 laptop: { name: 'Laptop 1280', styles: { width: '1280px', height: '800px' } },
                 desktop: { name: 'Desktop 1440', styles: { width: '1440px', height: '900px' } },
             },
@@ -64,7 +80,7 @@ const preview: Preview = {
             storySort: { order: ['Atoms', 'Molecules', 'Organisms', '*'] },
         },
     },
-    loaders: [mswLoader],
+    loaders: [tolerantMswLoader],
     decorators: [
         (Story) => (
             <QueryClientProvider client={queryClient}>

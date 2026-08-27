@@ -193,11 +193,32 @@
     /* Card elevation. Softer + wider than M3 elevation-1 (which is a tight
        0 1px 3px) — a gentle, diffuse drop like the M3 dialog, tunable here. */
     --admin-card-elevation: 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%);
-    --admin-search-surface: #fcf9f9;
+
+    /*
+     * The search control's surface (#713 follow-up, owner findings 2 + 3:
+     * „farbe von text feldern und den outline felder unterschiedlich" and
+     * „nutze dunkle version").
+     *
+     * It used to be #fcf9f9 (`--m3-surface`), which is all but white. Measured
+     * in the invite toolbar at 1440/820/390: the pill painted rgb(252,249,249)
+     * while its neighbouring outlined text fields are transparent over the
+     * rgb(228,226,226) workspace — the pill read as a white sticker on the row.
+     *
+     * #eae7e8 is `--m3-surface-container-high` — the SAME token
+     * FloatingLabelInput already names for its floating-label chip, so the
+     * search field and the outlined fields now resolve to one surface. It is a
+     * step DOWN the M3 container ramp, i.e. the darker variant the owner asked
+     * for, not a new colour.
+     */
+    --admin-search-surface: #eae7e8;
     --admin-search-text: #444748;
     --admin-search-placeholder: #444748;
     --admin-search-icon: #444748;
-    --admin-search-hover-surface: #f0edee;
+
+    /* The hover state layer has to stay DARKER than the resting surface. With
+       the pill at #eae7e8 the old #f0edee was lighter, so hovering lifted the
+       icon instead of pressing it — one more step down the ramp fixes that. */
+    --admin-search-hover-surface: #e4e2e2;
     --admin-table-surface: #f6f3f3;
     --admin-table-header-surface: #e4e2e2;
     --admin-table-row-hover-surface: #f0edee;

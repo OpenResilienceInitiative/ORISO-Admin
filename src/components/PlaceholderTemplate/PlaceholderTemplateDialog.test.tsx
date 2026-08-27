@@ -40,6 +40,18 @@ describe('PlaceholderTemplateDialog', () => {
         expect(screen.getByRole('button', { name: 'cancel' })).toBeInTheDocument();
     });
 
+    // M3 basic-dialog anatomy: icon → title → description. The shell only
+    // forwards it; which symbol a dialog carries is the variant's call.
+    it('shows the hero icon in the head when the caller supplies one', () => {
+        renderDialog({ icon: <svg data-testid="hero-icon" /> });
+        expect(screen.getByTestId('hero-icon')).toBeInTheDocument();
+    });
+
+    it('keeps the head iconless when no icon is passed', () => {
+        renderDialog();
+        expect(screen.queryByTestId('hero-icon')).toBeNull();
+    });
+
     it('wires save and cancel to the callbacks', () => {
         const { onSave, onClose } = renderDialog();
         fireEvent.click(screen.getByRole('button', { name: 'save' }));

@@ -5,6 +5,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { LONG_DPA_CHAPTER_COUNT, LONG_DPA_HTML, PHONE_390 } from '../../components/DpaLegalForm/dpaStoryText';
 import { createStubTenantAdminOnboardingClient } from '../../api/tenantOnboarding/tenantOnboarding';
+import { createStubDpaForwardClient } from '../../api/tenantOnboarding/dpaForward';
 import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 import { AccountStep } from './AccountStep';
 import { TwoFactorStep } from './TwoFactorStep';
@@ -43,6 +44,32 @@ type Story = StoryObj<typeof meta>;
 /** Step 1: organisation data + the published DPA/AVV text with the signer fields. */
 export const OrganisationAndDpa: Story = {
     args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0 }) },
+};
+
+/**
+ * Owner report 2026-08-19 — the step is read as three named blocks now: the
+ * agreement, "Stammdaten Organisation" (moved down from the top of the step)
+ * and "Daten der unterschriftsberechtigten Person" directly below it, whose
+ * header is what lets the four signer labels be short.
+ */
+export const OrganisationAndDpaSections: Story = {
+    args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0 }) },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const masterData = await canvas.findByTestId('organisation-master-data-title');
+        const signer = await canvas.findByTestId('dpa-signer-section-title');
+
+        // Real headings, one level below the step title — not styled divs.
+        await expect(masterData.tagName).toBe('H3');
+        await expect(signer.tagName).toBe('H3');
+        // Master data stands directly above the person signing for it.
+        // eslint-disable-next-line no-bitwise
+        await expect(masterData.compareDocumentPosition(signer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        // Language-agnostic, like the forward stories: the point is that the
+        // labels are SHORT now, not which locale the preview happens to run in.
+        await expect(canvas.getByLabelText(/^Name$/)).toBeVisible();
+        await expect(canvas.getByLabelText(/^E-?Mail$/i)).toBeVisible();
+    },
 };
 
 /** Step 1 on a phone (390x844, #571 acceptance) — the DPA text scrolls in its own region. */
@@ -90,6 +117,71 @@ export const OrganisationAndDpaIncompleteSubmitMobile: Story = {
     args: { client: longDpaClient() },
     ...PHONE_390,
     play: OrganisationAndDpaIncompleteSubmit.play,
+};
+
+/**
+ * Step 1 forward path (#723): "I am not authorised to sign" opens the shared
+ * forward dialog — copyable single-use sign link, optional e-mail send with
+ * the DPA_FORWARD mail preview, and the note that the link stays valid until
+ * the contract is signed.
+ */
+export const OrganisationDpaForwardDialog: Story = {
+    args: {
+        // `forwarded` mirrors the server-side record the real backend writes
+        // when the forward endpoint is called — it is what permits the later
+        // registration with `accepted: false`.
+        client: createStubTenantAdminOnboardingClient({ latencyMs: 0, forwarded: true }),
+        forwardClient: createStubDpaForwardClient({ latencyMs: 300 }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(
+            await canvas.findByRole('button', { name: /nicht unterschriftsberechtigt|not authorised/ }),
+        );
+        await waitFor(async () => expect(await body.findByTestId('dpa-forward-dialog')).toBeVisible());
+    },
+};
+
+/** The forward dialog at 390×844 (#723 acceptance: 320/412px usable). */
+export const OrganisationDpaForwardDialogMobile: Story = {
+    args: OrganisationDpaForwardDialog.args,
+    ...PHONE_390,
+    play: OrganisationDpaForwardDialog.play,
+};
+
+/**
+ * After confirming the forward the step flips to the calm on-hold state
+ * (#723): success notice, "Weitergeleitet — wartet auf Unterschrift", no
+ * signer fields, no consent box — Continue works with the organisation data
+ * alone.
+ */
+export const OrganisationDpaForwardedOnHold: Story = {
+    args: {
+        client: createStubTenantAdminOnboardingClient({ latencyMs: 0, forwarded: true }),
+        forwardClient: createStubDpaForwardClient({ latencyMs: 0 }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(
+            await canvas.findByRole('button', { name: /nicht unterschriftsberechtigt|not authorised/ }),
+        );
+        const confirm = await body.findByRole('button', {
+            name: /Weiterleitung abschließen|Complete forwarding/,
+        });
+        await waitFor(() => expect(confirm).toBeEnabled());
+        await userEvent.click(confirm);
+        await waitFor(async () => expect(await canvas.findByTestId('dpa-forwarded-onhold')).toBeVisible());
+        await expect(canvas.queryByRole('checkbox')).toBeNull();
+    },
+};
+
+/** The on-hold state at 390×844. */
+export const OrganisationDpaForwardedOnHoldMobile: Story = {
+    args: OrganisationDpaForwardedOnHold.args,
+    ...PHONE_390,
+    play: OrganisationDpaForwardedOnHold.play,
 };
 
 /** A consumed link: distinct terminal state, no form, nothing resubmittable. */
@@ -181,6 +273,18 @@ export const Done: StoryObj = {
 export const DoneMobile: StoryObj = {
     render: () => <DoneStep tenantId={21} />,
     ...PHONE_390,
+};
+
+/**
+ * Completion after a forwarded signature (#723): an additional line says the
+ * admin will be e-mailed once the signature arrives.
+ */
+export const DoneAfterForward: StoryObj = {
+    render: () => <DoneStep tenantId={21} forwarded />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getAllByTestId('onboarding-done-next-step')).toHaveLength(3);
+    },
 };
 
 /** Step 3 in isolation: TOTP linking + first one-time code. */

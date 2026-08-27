@@ -21,34 +21,40 @@ import { getLegalTextVersions, legalTextVersionsUrl } from './getLegalTextVersio
 
 beforeEach(() => fetchData.mockClear());
 
+/**
+ * The URLs are the ones ORISO-AgencyService#256 actually serves: ONE `legal-versions`
+ * collection per level, with the document chosen by a `kind` query parameter — not a
+ * path segment per document, which is what this client guessed before the contract
+ * existed.
+ */
 describe('legalTextVersionsUrl', () => {
-    it('addresses the Träger level on the tenant service', () => {
-        expect(legalTextVersionsUrl({ level: 'tenant', tenantId: 7, kind: 'privacy' })).toBe(
-            '/service/tenantadmin/7/legal/privacy/versions',
-        );
-    });
-
     it('addresses the Beratungsstelle level on the agency service', () => {
-        expect(legalTextVersionsUrl({ level: 'agency', agencyId: 12, kind: 'dpp' })).toBe(
-            '/service/agencyadmin/agencies/12/dpp/versions',
+        expect(legalTextVersionsUrl({ level: 'agency', agencyId: 12, kind: 'DPP' })).toBe(
+            '/service/agencyadmin/agencies/12/legal-versions?kind=DPP',
         );
     });
 
     it('addresses the Fachbereich level as agency × topic', () => {
-        expect(legalTextVersionsUrl({ level: 'department', agencyId: 12, topicId: 3, kind: 'imprint' })).toBe(
-            '/service/agencyadmin/agencies/12/topics/3/imprint/versions',
+        expect(legalTextVersionsUrl({ level: 'department', agencyId: 12, topicId: 3, kind: 'IMPRINT' })).toBe(
+            '/service/agencyadmin/agencies/12/topics/3/legal-versions?kind=IMPRINT',
+        );
+    });
+
+    it('addresses the Träger level on the tenant service', () => {
+        expect(legalTextVersionsUrl({ level: 'tenant', tenantId: 7, kind: 'DPP' })).toBe(
+            '/service/tenantadmin/7/legal-versions?kind=DPP',
         );
     });
 });
 
 describe('getLegalTextVersions', () => {
-    const scope = { level: 'department', agencyId: 12, topicId: 3, kind: 'dpp' } as const;
+    const scope = { level: 'department', agencyId: 12, topicId: 3, kind: 'DPP' } as const;
 
     it('GETs with auth and silent error handling (a missing history must not toast)', () => {
         getLegalTextVersions(scope);
         expect(fetchData).toHaveBeenCalledWith(
             expect.objectContaining({
-                url: '/service/agencyadmin/agencies/12/topics/3/dpp/versions',
+                url: '/service/agencyadmin/agencies/12/topics/3/legal-versions?kind=DPP',
                 method: 'GET',
                 skipAuth: false,
                 responseHandling: ['NO_MATCH', 'CATCH_ALL_SILENT', 'FORBIDDEN_SILENT'],

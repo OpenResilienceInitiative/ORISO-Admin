@@ -219,6 +219,31 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
     return response.json();
 };
 
+/**
+ * First delivery of a never-sent invite (`POST .../{id}/send`).
+ *
+ * Deliberately NOT `resendAccountInvite`: `/resend` supersedes the invite it is
+ * given — the old row becomes `SUPERSEDED` ("Ersetzt") and a replacement id is
+ * created. That is correct for an invite whose mail already went out and wrong
+ * for a `DRAFT`, which has never been mailed at all. Callers dispatch by status.
+ */
+export const sendAccountInvite = async (
+    inviteId: number,
+    body: SendAccountInviteRequest,
+): Promise<AccountInviteDTO> => {
+    const response = await fetchData({
+        url: `${accountInvitesEndpoint}/${inviteId}/send`,
+        method: FETCH_METHODS.POST,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        bodyData: JSON.stringify({
+            acceptBaseUrl: body.acceptBaseUrl,
+            templateId: body.templateId,
+        }),
+    });
+    return response.json();
+};
+
 export const resendAccountInvite = async (
     inviteId: number,
     body: SendAccountInviteRequest,
@@ -278,6 +303,41 @@ export const getInviteEmailPreview = async (params: InviteEmailPreviewParams = {
         responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
     });
 };
+
+export interface InviteEmailPreviewContentParams extends InviteEmailPreviewParams {
+    /** Unsaved subject from the editor. */
+    subject?: string;
+    /** Unsaved body from the editor. */
+    body?: string;
+}
+
+/**
+ * Live preview of UNSAVED editor content through the backend's own renderer
+ * (`POST .../invite-email-templates/preview`).
+ *
+ * This is what keeps the composer honest: the endpoint runs the very
+ * `renderBrandedMail` call the dispatcher runs, so an authored template can be
+ * seen exactly as it will be sent — branding, layout, CTA and all — instead of
+ * through an Admin-side re-implementation of the mail frame. `CATCH_ALL_SILENT`
+ * because the preview panel shows its own inline error with a retry.
+ */
+export const previewInviteEmailTemplateContent = async (
+    params: InviteEmailPreviewContentParams = {},
+): Promise<InviteEmailPreviewDTO> =>
+    fetchData({
+        url: inviteEmailPreviewEndpoint,
+        method: FETCH_METHODS.POST,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+        bodyData: JSON.stringify({
+            body: params.body,
+            kind: params.kind,
+            language: params.language,
+            subject: params.subject,
+            templateId: params.templateId,
+            tenantId: params.tenantId,
+        }),
+    }).then((response) => response.json());
 
 export const createInviteEmailTemplate = async (body: TemplateRequestDTO): Promise<InviteEmailTemplateDTO> => {
     const response = await fetchData({

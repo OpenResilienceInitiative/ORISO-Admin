@@ -41,7 +41,7 @@ describe('PlaceholderTextField', () => {
         render(<Harness />);
         await user.click(screen.getByRole('button', { name: 'Platzhalter einfügen' }));
         expect(await screen.findByRole('menuitem', { name: /Vorname/ })).toBeInTheDocument();
-        expect(screen.getByRole('menuitem', { name: /Einladungslink/ })).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: /E-Mail-Adresse/ })).toBeInTheDocument();
     });
 
     it('inserts {{key}} at the caret when a token is picked', async () => {
@@ -71,8 +71,8 @@ describe('PlaceholderTextField', () => {
         const user = userEvent.setup();
         render(<Harness initialValue="Link: " />);
         await user.click(screen.getByRole('button', { name: 'Platzhalter einfügen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /Einladungslink/ }));
-        expect(screen.getByRole('textbox', { name: 'Inhalt' })).toHaveValue('Link: {{inviteLink}}');
+        await user.click(await screen.findByRole('menuitem', { name: /Vorname/ }));
+        expect(screen.getByRole('textbox', { name: 'Inhalt' })).toHaveValue('Link: {{firstName}}');
     });
 
     it('propagates typing through onChange', () => {

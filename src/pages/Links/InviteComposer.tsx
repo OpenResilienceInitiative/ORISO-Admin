@@ -16,6 +16,7 @@ import { IdAllocationField, useIdAllocation } from '../../components/IdAllocatio
 import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { M3NumberField } from '../../components/M3NumberField';
+import { TemplateSplitButton } from '../../components/PlaceholderTemplate';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
 import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
@@ -29,6 +30,13 @@ import styles from './inviteComposer.module.scss';
  * by simply omitting `templateId`).
  */
 export type InviteSendMode = 'direct' | 'createOnly';
+
+/**
+ * What a create attempt did. `true`/`false` keep the original success/failure
+ * contract; `'emailTaken'` is the P3 case that the composer renders inline on
+ * the e-mail field rather than as a global toast.
+ */
+export type InviteSubmitOutcome = boolean | 'emailTaken';
 
 export interface InviteComposerValues {
     recipientEmail: string;
@@ -70,10 +78,28 @@ export interface InviteComposerProps {
     submitting?: boolean;
     /** Discriminator for the persisted send mode (one per tab), e.g. the target role. */
     persistKey: string;
-    /** Resolve `true` on success — the composer then clears its fields. */
-    onSubmit: (values: InviteComposerValues) => Promise<boolean> | boolean;
+    /**
+     * Resolve `true` on success — the composer then clears its fields.
+     * Resolve `'emailTaken'` when the backend refused the address because it
+     * already belongs to a registered user (409 + `X-Reason:
+     * EMAIL_NOT_AVAILABLE`, P3): the composer then keeps every value and marks
+     * the e-mail field inline instead of clearing the row.
+     */
+    onSubmit: (values: InviteComposerValues) => Promise<InviteSubmitOutcome> | InviteSubmitOutcome;
     /** Open the EmailTemplatesDialog in the requested view (`list` is the picker). */
     onManageTemplates: (intent: 'create' | 'delete' | 'list') => void;
+    /**
+     * #746: the template pill's chevron menu switches the active template
+     * directly (module split-button semantics); the selection stays lifted in
+     * the tab, same as picking in the dialog.
+     */
+    onSelectTemplate?: (templateId: number) => void;
+    /**
+     * "Neu aus „X"" in the pill menu: start a new template prefilled from the
+     * given one (opens the dialog's create view with that source). Omit to
+     * hide the menu's create group.
+     */
+    onCreateFromTemplate?: (templateId: number) => void;
     /**
      * Enables the "⋮" more-menu with the "CSV-Datei importieren" entry (#315).
      * Called with the client-side parse result and the send mode captured at
@@ -104,6 +130,13 @@ export interface InviteComposerProps {
      */
     onDeleteSelected?: () => void;
     searchPlaceholder?: string;
+    /**
+     * Toolbar search (A4/#376). Controlled by the tab, which owns the invite
+     * list the query filters — the composer only renders the control. Without
+     * both props the search pill stays uncontrolled and, as before, inert.
+     */
+    searchQuery?: string;
+    onSearchQueryChange?: (query: string) => void;
     className?: string;
 }
 
@@ -155,17 +188,25 @@ export const InviteComposer = ({
     persistKey,
     onSubmit,
     onManageTemplates,
+    onSelectTemplate,
+    onCreateFromTemplate,
     onCsvParsed,
     selectionCount = 0,
     onBulkSend,
     onClearSelection,
     onDeleteSelected,
     searchPlaceholder,
+    searchQuery,
+    onSearchQueryChange,
     className,
 }: InviteComposerProps) => {
     const { t } = useTranslation();
     const [recipientEmail, setRecipientEmail] = useState('');
     const [emailTouched, setEmailTouched] = useState(false);
+    // P3: the address the backend last refused as already registered, normalized.
+    // Kept as a value (not a flag) so simply editing the field clears the error
+    // and re-typing the same address brings it straight back.
+    const [emailTakenAddress, setEmailTakenAddress] = useState<string | null>(null);
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     // `null` = untouched → the field renders the admin's own tenant (non-Träger
@@ -189,6 +230,14 @@ export const InviteComposer = ({
     const selectedTemplate = activeTemplates.find((template) => template.id === templateId);
 
     const emailValid = EMAIL_PATTERN.test(recipientEmail.trim());
+    // P3: the create call itself is the authority (it is the only admin-authorised
+    // place that may answer this), so the block lasts exactly as long as the
+    // refused address stays in the field.
+    const emailTaken = emailTakenAddress !== null && recipientEmail.trim().toLowerCase() === emailTakenAddress;
+    const emailTakenMessage = t(
+        'links.composer.emailTaken',
+        'E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.',
+    );
     // Auto is always sendable; a manual id only once the check confirmed it free.
     const tenantIdValid = !requireTenantId || tenantAllocation.canSubmit;
     const agencyIdValid = !includeAgencyField || agencyAllocation.canSubmit;
@@ -196,7 +245,7 @@ export const InviteComposer = ({
     // Counsellor invites provision a person (#384): without names the invite
     // cannot create a usable counsellor account, so the send button stays off.
     const namesValid = !requireNames || (firstName.trim().length > 0 && lastName.trim().length > 0);
-    const isValid = emailValid && tenantIdValid && agencyIdValid && templateValid && namesValid;
+    const isValid = emailValid && !emailTaken && tenantIdValid && agencyIdValid && templateValid && namesValid;
     const showEmailError = emailTouched && recipientEmail.length > 0 && !emailValid;
 
     // Bulk mode (#316): while rows are checked, sending acts on the selection
@@ -222,6 +271,12 @@ export const InviteComposer = ({
         }
         if (!emailValid) {
             return t('links.composer.blocked.email', 'Bitte eine gültige E-Mail-Adresse eingeben.');
+        }
+        if (emailTaken) {
+            return t(
+                'links.composer.blocked.emailTaken',
+                'E-Mail-Adresse bereits vorhanden. Bitte eine andere Adresse eingeben.',
+            );
         }
         if (!namesValid) {
             return t('links.composer.blocked.names', 'Bitte Vorname und Name eingeben.');
@@ -253,7 +308,7 @@ export const InviteComposer = ({
             return;
         }
 
-        const succeeded = await onSubmit({
+        const outcome = await onSubmit({
             recipientEmail: recipientEmail.trim(),
             firstName: firstName.trim() || undefined,
             lastName: lastName.trim() || undefined,
@@ -266,9 +321,17 @@ export const InviteComposer = ({
             sendMode,
         });
 
-        if (succeeded) {
+        if (outcome === 'emailTaken') {
+            // Keep everything the admin typed; only the address needs correcting.
+            setEmailTakenAddress(recipientEmail.trim().toLowerCase());
+            setEmailTouched(true);
+            return;
+        }
+
+        if (outcome) {
             setRecipientEmail('');
             setEmailTouched(false);
+            setEmailTakenAddress(null);
             setFirstName('');
             setLastName('');
             setTenantIdOverride(null);
@@ -441,14 +504,26 @@ export const InviteComposer = ({
 
     return (
         <div className={classNames(styles.composer, className)}>
-            <GlobalSearchBar leading={moreButton} searchPlaceholder={searchPlaceholder}>
+            <GlobalSearchBar
+                leading={moreButton}
+                searchPlaceholder={searchPlaceholder}
+                // `onSearch` (Enter / magnifier) resolves to the same handler as
+                // `onSearchChange`: the list filters as you type, so submitting
+                // is a no-op rather than a second, different search.
+                value={onSearchQueryChange ? searchQuery ?? '' : undefined}
+                onSearch={onSearchQueryChange}
+                onSearchChange={onSearchQueryChange}
+            >
                 <FloatingLabelInput
                     className={styles.emailField}
-                    error={showEmailError}
+                    error={showEmailError || emailTaken}
                     label={t('links.accountInvites.email', 'E-Mail')}
                     name="recipientEmail"
                     supportingText={
-                        showEmailError
+                        // eslint-disable-next-line no-nested-ternary -- three mutually exclusive field states
+                        emailTaken
+                            ? emailTakenMessage
+                            : showEmailError
                             ? t('links.composer.emailInvalid', 'Bitte gültige E-Mail-Adresse eingeben.')
                             : undefined
                     }
@@ -465,7 +540,7 @@ export const InviteComposer = ({
                     onChange={(event) => setFirstName(event.target.value)}
                 />
                 <FloatingLabelInput
-                    className={styles.nameField}
+                    className={classNames(styles.nameField, styles.lastNameField)}
                     label={t('links.composer.lastName', 'Name')}
                     name="lastName"
                     value={lastName}
@@ -490,15 +565,17 @@ export const InviteComposer = ({
                         label={t('links.accountInvites.agencyId', 'Beratungsstellen-ID')}
                     />
                 )}
-                <SplitButton
-                    icon={<MailFilledIcon />}
-                    label={selectedTemplate?.name ?? t('links.composer.templatePlaceholder', 'E-Mail-Vorlage')}
-                    // Outlined at rest (#741): the old `tonal` was the light
-                    // Elevated colourway, which claimed a raised state the resting
-                    // picker is not in. `tonal` now means the M3 secondary
-                    // container per the spec sheet.
-                    variant="outlined"
-                    onClick={() => onManageTemplates('list')}
+                {/* #746: the module's template split button — main segment opens the
+                    manage/pick dialog (as before), the chevron menu now switches the
+                    active template in place, check-marked like in the editor. */}
+                <TemplateSplitButton
+                    activeTemplateId={selectedTemplate?.id}
+                    templates={activeTemplates}
+                    onCreateFromTemplate={
+                        onCreateFromTemplate && ((id) => onCreateFromTemplate(typeof id === 'number' ? id : Number(id)))
+                    }
+                    onMainClick={() => onManageTemplates('list')}
+                    onSelectTemplate={(id) => onSelectTemplate?.(typeof id === 'number' ? id : Number(id))}
                 />
                 {/* Filled primary is reserved for the selected item / main CTA; every
                 other resting state is tonal M3 secondary (owner call). The icon
@@ -509,14 +586,26 @@ export const InviteComposer = ({
                     label={bulkMode ? String(selectionCount) : singleSendLabel}
                     mainDisabled={!sendReady || submitting}
                     mainDescribedBy={sendBlockedReason ? sendHintId : undefined}
-                    menu={sendMenu}
+                    // The send-mode menu switches "Direkt Versenden" vs "Empfänger
+                    // nur anlegen", which only ever applies to the single-create
+                    // flow (see handleSend). In bulk mode it changed nothing and
+                    // only put a second, inert chevron next to the collapse one.
+                    menu={bulkMode ? undefined : sendMenu}
                     menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
                     title={bulkMode ? bulkSendLabel : undefined}
-                    // Filled primary is the single-send CTA. The selection counter stays
-                    // tonal secondary even when it is ready to fire (Figma 1165:16407
-                    // selection variant): it is a state display with actions hanging off
-                    // it, not the page's call to action.
-                    variant={!bulkMode && sendReady ? 'primary' : 'secondary'}
+                    // Filled primary is the single-send CTA; the selection counter
+                    // stays tonal secondary even when ready (Figma 1165:16407
+                    // selection variant) — a state display with actions hanging off
+                    // it, not the page's call to action. What BOTH share: a filled
+                    // shape is a promise that pressing does something. The tonal
+                    // disabled rule keeps `opacity: 1`, so a dead tonal counter was
+                    // pixel-identical to a live one ("Number counter Button
+                    // funktioniert hier nicht"). Not-ready therefore rests
+                    // `outlined` — colour arrives with the ability to fire.
+                    variant={(() => {
+                        if (!sendReady) return 'outlined';
+                        return bulkMode ? 'secondary' : 'primary';
+                    })()}
                     collapseLabel={t('links.bulk.clearSelection', 'Auswahl aufheben')}
                     onClick={bulkMode ? onBulkSend : handleSend}
                     onCollapse={bulkMode ? onClearSelection : undefined}

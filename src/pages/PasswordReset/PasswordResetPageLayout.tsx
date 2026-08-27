@@ -48,7 +48,7 @@ export const PasswordResetPageLayout = ({ children, variant = 'login' }: Passwor
             {/* The Admin panel's branding fade plays once on EVERY public page
                 (#594.3). It is fixed-position and settles off-canvas below xl,
                 so it never covers a long form after its intro. */}
-            <Stage logo={tenantData?.theming?.logo} claim={tenantData?.content?.claim} />
+            <Stage logo={tenantData?.theming?.logo} />
             <Row align={isLongForm || isWizard ? 'top' : 'middle'} style={{ flex: '1 0 auto' }}>
                 <Col
                     xs={{ span: 20, offset: 2 }}
