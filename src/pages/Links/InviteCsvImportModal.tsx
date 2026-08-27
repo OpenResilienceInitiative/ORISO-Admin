@@ -3,6 +3,7 @@ import { DeleteOutlined } from '@ant-design/icons';
 import { Button, Input, message, Tag, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
+import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { ListingTable } from '../../components/ListingTable';
 import { Modal, DialogButton } from '../../components/Modal';
 import { assignBatchTenantIds, type InviteCsvRejectionReason, type ParseInviteCsvResult } from './csv/parseInviteCsv';
@@ -41,6 +42,12 @@ interface ImportRow {
     state: RowState;
     /** `failed` flavour: the backend rejected the id with 409. */
     conflict?: boolean;
+    /**
+     * P3 `failed` flavour: the 409 was about the recipient address already
+     * belonging to a registered user, not about the id. Labelling that as an id
+     * collision would send the admin to fix the wrong column.
+     */
+    emailTaken?: boolean;
 }
 
 export interface InviteCsvImportModalProps {
@@ -135,7 +142,7 @@ export const InviteCsvImportModal = ({
         for (let i = 0; i < pendingRows.length; i += 1) {
             const row = pendingRows[i];
             const id = assigned.get(row.line);
-            patchRow(row.line, { state: 'creating', conflict: false });
+            patchRow(row.line, { state: 'creating', conflict: false, emailTaken: false });
             try {
                 // eslint-disable-next-line no-await-in-loop
                 await createInvite({
@@ -148,9 +155,13 @@ export const InviteCsvImportModal = ({
                 patchRow(row.line, { state: 'created', explicitId: id });
             } catch (error) {
                 failed += 1;
+                const conflict = error instanceof Response && error.status === 409;
                 patchRow(row.line, {
                     state: 'failed',
-                    conflict: error instanceof Response && error.status === 409,
+                    conflict,
+                    emailTaken:
+                        conflict &&
+                        (error as Response).headers.get(FETCH_ERRORS.X_REASON) === X_REASON.EMAIL_NOT_AVAILABLE,
                 });
             }
         }
@@ -202,7 +213,10 @@ export const InviteCsvImportModal = ({
             case 'failed':
                 return (
                     <Tag color="red">
-                        {row.conflict
+                        {/* eslint-disable-next-line no-nested-ternary -- three mutually exclusive failure flavours */}
+                        {row.emailTaken
+                            ? t('links.csvImport.status.emailTaken', 'E-Mail-Adresse bereits vorhanden')
+                            : row.conflict
                             ? t('links.csvImport.status.idTaken', '{{idLabel}} vergeben', { idLabel })
                             : t('links.csvImport.status.failed', 'Fehlgeschlagen')}
                     </Tag>

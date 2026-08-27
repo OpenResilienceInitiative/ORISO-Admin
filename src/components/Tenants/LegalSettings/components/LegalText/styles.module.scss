@@ -6,5 +6,10 @@
 }
 
 .description {
-    margin-bottom: 12px;
+    margin: 0 0 12px;
+    padding: 0 24px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
 }

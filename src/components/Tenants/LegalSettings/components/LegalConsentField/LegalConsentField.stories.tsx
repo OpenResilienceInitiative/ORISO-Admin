@@ -3,9 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { LegalConsentField } from './index';
 
 /**
- * The consent sentence as a FIELD of the data-protection policy (ADR-021
- * decision 4) — with the mandatory `{{legal_links}}` token, the fixed
- * cookie/authentication addendum, and the blocked-publication error state.
+ * Consent sentence of the data-protection policy (ADR-021 decision 4).
+ * #862: closed surface is only the in-card CTA; the editor opens in a dialog.
  */
 const meta = {
     title: 'Organisms/Legal/LegalConsentField',

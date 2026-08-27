@@ -12,8 +12,28 @@
     gap: 12px;
 }
 
+/* Decorative head icon (M3 anatomy icon → title). Sized by font-size as well
+   as by width/height, the same way Modal's hero icon is: the icon sets clip
+   themselves against a rect expressed in `em`, so sizing only the box can crop
+   the artboard. */
+
+.headIcon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    color: var(--m3-secondary, #4c555f);
+    font-size: 24px;
+
+    svg {
+        width: 1em;
+        height: 1em;
+    }
+}
+
 .heading {
-    margin: 0;
+    /* Absorbs the free space so the head reads icon → title on the left and
+       keeps the template split button on the right edge. */
+    margin: 0 auto 0 0;
     color: var(--m3-on-surface, #1d1b20);
     font-size: 18px;
     font-weight: 600;

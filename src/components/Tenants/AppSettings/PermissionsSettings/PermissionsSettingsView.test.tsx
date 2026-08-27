@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import userEvent from '@testing-library/user-event';
+import type { SVGProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 
@@ -22,6 +23,9 @@ vi.mock('../../../../resources/img/svg/permissions/one_on_one.svg', () => ({ Rea
 vi.mock('../../../../resources/img/svg/permissions/live_chat.svg', () => ({ ReactComponent: () => null }));
 vi.mock('../../../../resources/img/svg/permissions/group.svg', () => ({ ReactComponent: () => null }));
 vi.mock('../../../../resources/img/svg/permissions/group_internal.svg', () => ({ ReactComponent: () => null }));
+vi.mock('../../../../resources/img/svg/i.svg', () => ({
+    ReactComponent: (props: SVGProps<SVGSVGElement>) => <svg data-testid="permission-description-info" {...props} />,
+}));
 
 const renderOneOnOne = (
     onPolicyChange = vi.fn(),
@@ -53,6 +57,23 @@ const renderOneOnOne = (
 };
 
 describe('PermissionsSettingsView per-feature policy controls', () => {
+    it('orders the title, leading description info, and activated control for quick scanning', () => {
+        renderOneOnOne();
+
+        const title = screen.getByRole('heading', { name: 'tenants.permissions.card.oneOnOne.title' });
+        const description = screen.getByText('tenants.permissions.card.oneOnOne.description').closest('p');
+        const descriptionInfo = screen.getByTestId('permission-description-info');
+        const activated = screen.getByRole('button', {
+            name: /tenants.permissions.card.activated: tenants.permissions.policy.openMenu/,
+        });
+
+        expect(description).not.toBeNull();
+        expect(description?.firstElementChild).toBe(descriptionInfo);
+        expect(descriptionInfo).toHaveAttribute('aria-hidden', 'true');
+        expect(title.compareDocumentPosition(description as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        expect((description as Node).compareDocumentPosition(activated)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
     it('shows policy buttons instead of the former global enforcement UI', () => {
         renderOneOnOne();
 

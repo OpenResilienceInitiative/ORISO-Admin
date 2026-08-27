@@ -42,7 +42,7 @@ export const COUNSELLOR_PHASE_KEYS: readonly PhaseKey[] = ['invited', 'accountCr
 export const PHASE_LABEL_FALLBACKS: Record<PhaseKey, string> = {
     invited: 'Eingeladen',
     registered: 'Registriert',
-    dpaConfirmed: 'AVV bestätigt',
+    dpaConfirmed: 'Vertragsunterlagen bestätigt',
     twoFactorActive: '2FA aktiv',
     accountCreated: 'Konto angelegt',
     completed: 'Abgeschlossen',
@@ -170,13 +170,58 @@ type IdentityFacts = Pick<AccountInviteDTO, 'firstName' | 'lastName' | 'recipien
 export const inviteDisplayName = (invite: IdentityFacts): string =>
     [invite.firstName, invite.lastName].filter(Boolean).join(' ') || invite.recipientEmail;
 
-type ActivityFacts = Pick<AccountInviteDTO, 'createDate' | 'acceptedAt' | 'revokedAt' | 'supersededAt'>;
+/** Lower-cased, diacritic-stripped form used by the search predicate. */
+const fold = (value: string): string =>
+    value
+        .toLocaleLowerCase('de')
+        .normalize('NFD')
+        // eslint-disable-next-line no-misleading-character-class -- combining marks are exactly what is stripped
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
 
-/** Latest known activity timestamp of an invite (ISO string), for the "letzte Aktivität" column. */
-export const inviteLastActivity = (invite: ActivityFacts): string => {
-    const candidates = [invite.createDate, invite.acceptedAt, invite.revokedAt, invite.supersededAt].filter(
-        (value): value is string => value != null,
+type SearchableFacts = Pick<AccountInviteDTO, 'recipientEmail' | 'firstName' | 'lastName' | 'tenantId'>;
+
+/**
+ * Toolbar-search predicate for the invite board (A4/#376).
+ *
+ * Matches the fields the row actually shows: the e-mail, the first and last
+ * name, and the Träger-ID the identity cell prints. Case-insensitive and
+ * accent-insensitive, so "muller" finds "Müller" — an admin types what is on
+ * the keyboard, not what is in the database. All whitespace-separated terms
+ * must match, which is what makes "karla fischer" behave like one name rather
+ * than an OR over two words.
+ *
+ * A blank query matches everything: an empty search field is not a filter.
+ */
+export const matchesInviteQuery = (invite: SearchableFacts, query: string): boolean => {
+    const terms = fold(query).split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return true;
+    const haystack = fold(
+        [invite.recipientEmail, invite.firstName, invite.lastName, invite.tenantId?.toString()]
+            .filter(Boolean)
+            .join(' '),
     );
+    return terms.every((term) => haystack.includes(term));
+};
+
+type ActivityFacts = Pick<
+    AccountInviteDTO,
+    'createDate' | 'acceptedAt' | 'revokedAt' | 'supersededAt' | 'twoFactorWaivedAt'
+>;
+
+/**
+ * Latest known activity timestamp of an invite (ISO string), for the "letzte
+ * Aktivität" column. A 2FA waiver counts: it is an admin acting on the invite,
+ * and leaving it out made a fresh waiver read as the older acceptance date.
+ */
+export const inviteLastActivity = (invite: ActivityFacts): string => {
+    const candidates = [
+        invite.createDate,
+        invite.acceptedAt,
+        invite.revokedAt,
+        invite.supersededAt,
+        invite.twoFactorWaivedAt,
+    ].filter((value): value is string => value != null);
     // Seeded on purpose: `createDate` is non-nullable today, but an unseeded
     // reduce would throw on an empty list and take the whole board down if the
     // API ever loosens that.

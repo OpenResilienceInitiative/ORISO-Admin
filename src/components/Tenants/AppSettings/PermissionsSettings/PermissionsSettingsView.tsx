@@ -11,6 +11,7 @@ import { PermissionPolicyControl } from '../../../PermissionPolicyControl/Permis
 import { isSubToggleDisabled, resolvePermissionPolicy } from './permissionsSettingsUtils';
 import { syncMasterChildTogglesInForm } from './permissionsToggleLogic';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
+import { ReactComponent as InfoIcon } from '../../../../resources/img/svg/i.svg';
 import type { ChatTypeCardKey, PermissionToggleCapability, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import styles from './styles.module.scss';
@@ -153,6 +154,21 @@ export const PermissionsSettingsView = ({
                                                 headerIcon={<CardIcon width={40} height={40} />}
                                                 titleKey={card.titleKey}
                                             >
+                                                <p className={styles.cardDescription}>
+                                                    <InfoIcon
+                                                        aria-hidden="true"
+                                                        className={styles.cardDescriptionInfo}
+                                                        focusable="false"
+                                                    />
+                                                    <Trans
+                                                        i18nKey={card.descriptionKey}
+                                                        components={{
+                                                            strong: <strong />,
+                                                            small: <span className={styles.cardDescriptionSecondary} />,
+                                                        }}
+                                                    />
+                                                </p>
+
                                                 <div className={styles.masterRow}>
                                                     {masterField ? (
                                                         <PermissionPolicyControl
@@ -183,16 +199,6 @@ export const PermissionsSettingsView = ({
                                                         </>
                                                     )}
                                                 </div>
-
-                                                <p className={styles.cardDescription}>
-                                                    <Trans
-                                                        i18nKey={card.descriptionKey}
-                                                        components={{
-                                                            strong: <strong />,
-                                                            small: <span className={styles.cardDescriptionSecondary} />,
-                                                        }}
-                                                    />
-                                                </p>
 
                                                 <div className={styles.cardDivider} />
 

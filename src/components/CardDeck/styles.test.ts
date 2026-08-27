@@ -52,3 +52,33 @@ describe('CardDeck responsive contract', () => {
         expect(listRule).toMatch(/gap:\s*var\(--card-deck-gap,\s*var\(--admin-card-gap,\s*48px\)\)/);
     });
 });
+
+// A deck of settings cards is a document, not a media carousel: dragging it
+// sideways must come to rest where the reader let go instead of being tugged
+// onto the next card edge — which is what kept two cards from being read side
+// by side. Snapping was already off for the stacked and mobile variants, so the
+// desktop scroller was the only surface that still pulled.
+describe('CardDeck free horizontal scrolling', () => {
+    it('leaves the scroller and its cards free of snap points', () => {
+        const deckRule = cardDeckStyles.match(/\n\.deck\s*{([\s\S]*?)\n}/)?.[1] ?? '';
+        const itemRule = cardDeckStyles.match(/\n\.item\s*{([\s\S]*?)\n}/)?.[1] ?? '';
+
+        expect(deckRule).not.toMatch(/scroll-snap-type/);
+        expect(itemRule).not.toMatch(/scroll-snap-align/);
+    });
+
+    // Deliberately file-wide: a snap axis re-armed under any selector — a new
+    // variant, a breakpoint, a state class — brings the pull straight back.
+    it('never re-arms scroll snapping in a deck variant or breakpoint', () => {
+        expect(cardDeckStyles).not.toMatch(/scroll-snap/);
+    });
+
+    // Free must not become frozen: the cards still have to reach their full
+    // range under pointer, wheel and touch.
+    it('keeps the deck scrolling horizontally', () => {
+        const deckRule = cardDeckStyles.match(/\n\.deck\s*{([\s\S]*?)\n}/)?.[1] ?? '';
+
+        expect(deckRule).toMatch(/overflow-x:\s*auto/);
+        expect(deckRule).toMatch(/touch-action:[^;]*pan-x/);
+    });
+});

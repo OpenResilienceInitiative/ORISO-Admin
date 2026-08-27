@@ -25,4 +25,13 @@ describe('PermissionsSettings responsive card contract', () => {
         expect(permissionsStyles).toMatch(/@media screen and \(max-width:\s*767px\)[\s\S]*max-height:\s*none;/);
         expect(permissionsStyles).toMatch(/@media screen and \(max-width:\s*767px\)[\s\S]*overflow:\s*visible;/);
     });
+
+    it('wraps the description around a neutral 16px leading info icon', () => {
+        expect(permissionsStyles).toMatch(/\.cardDescriptionInfo\s*\{[\s\S]*?width:\s*16px;/);
+        expect(permissionsStyles).toMatch(/\.cardDescriptionInfo\s*\{[\s\S]*?height:\s*16px;/);
+        expect(permissionsStyles).toMatch(/\.cardDescriptionInfo\s*\{[\s\S]*?float:\s*left;/);
+        expect(permissionsStyles).toMatch(
+            /\.cardDescriptionInfo\s*\{[\s\S]*?color:\s*var\(--admin-form-muted-text,\s*var\(--m3-on-surface-variant,\s*#444748\)\);/,
+        );
+    });
 });

@@ -70,6 +70,27 @@ describe('DataTablePagination', () => {
         expect(onPageSizeChange).toHaveBeenCalledWith(30);
     });
 
+    it('normalizes a page left beyond a shrunken total', () => {
+        // Filtering or a deletion cut 34 rows down to 4 while the caller still
+        // holds page 3 — rendering it verbatim read "21–4 von 4".
+        renderPagination({ page: 3, total: 4 });
+
+        expect(screen.getByText('1–4 von 4')).toBeInTheDocument();
+        // A single page means both directions are dead ends.
+        expect(screen.getByRole('button', { name: 'Nächste Seite' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Vorherige Seite' })).toBeDisabled();
+    });
+
+    it('navigates from the clamped page, not from the stale one', async () => {
+        const user = userEvent.setup();
+        // 34 rows shrank to 24 (3 pages) while the caller still holds page 5.
+        const { onPageChange } = renderPagination({ page: 5, total: 24 });
+
+        expect(screen.getByText('21–24 von 24')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Vorherige Seite' }));
+        expect(onPageChange).toHaveBeenCalledWith(2);
+    });
+
     it('hides the page-size select when no handler is provided', () => {
         render(<DataTablePagination page={1} pageSize={10} total={5} onPageChange={vi.fn()} />);
         expect(screen.queryByLabelText('Zeilen pro Seite')).not.toBeInTheDocument();

@@ -5,7 +5,10 @@ import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { LinksPage, TenantInvitesTab } from './index';
 
-const emptyList = HttpResponse.json({ content: [], totalElements: 0, totalPages: 0, page: 0, size: 20 });
+// A factory, not a constant: a `Response` body can only be read once, so
+// handing the same instance to a second request makes MSW throw
+// "Failed to execute 'clone' on 'Response': Response body is already used".
+const emptyList = () => HttpResponse.json({ content: [], totalElements: 0, totalPages: 0, page: 0, size: 20 });
 
 /**
  * Full Links page shell — the pill tab row ("Träger-Invites" / "Berater-Invites" /
@@ -19,7 +22,7 @@ const meta = {
         layout: 'fullscreen',
         msw: {
             handlers: [
-                http.get('*/service/useradmin/account-invites', () => emptyList),
+                http.get('*/service/useradmin/account-invites', () => emptyList()),
                 http.get('*/service/useradmin/invite-email-templates', () => HttpResponse.json([])),
                 http.get('*/service/tenantadmin/search', () => HttpResponse.json({ total: 0, _embedded: [] })),
             ],

@@ -812,6 +812,32 @@
         "usage": "catalogued-only"
     },
     {
+        "id": "ui-icon:check-box:filled",
+        "family": "check-box",
+        "state": "filled",
+        "role": "selected",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "check-box-filled.svg",
+        "sourcePath": "src/resources/img/svg/check-box-filled.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:check-box:base",
+        "family": "check-box",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "check-box.svg",
+        "sourcePath": "src/resources/img/svg/check-box.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:checkmark:base",
         "family": "checkmark",
         "state": "base",
@@ -864,6 +890,19 @@
         "sourcePath": "src/resources/img/svg/chevron-up.svg",
         "exportNames": [],
         "usageFiles": ["src/components/CustomIcons/ChevronUp.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:clock-arrow-down:base",
+        "family": "clock-arrow-down",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "clock-arrow-down.svg",
+        "sourcePath": "src/resources/img/svg/clock-arrow-down.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/EditorIcons.tsx"],
         "usage": "app-used"
     },
     {
@@ -1049,7 +1088,11 @@
         "fileName": "i.svg",
         "sourcePath": "src/resources/img/svg/i.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/Card/index.tsx", "src/components/TwoFactorSetup/TwoFactorAuthTypeButtons.tsx"],
+        "usageFiles": [
+            "src/components/Card/index.tsx",
+            "src/components/Tenants/AppSettings/PermissionsSettings/PermissionsSettingsView.tsx",
+            "src/components/TwoFactorSetup/TwoFactorAuthTypeButtons.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -1865,8 +1908,8 @@
         "fileName": "mail_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_24px.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:oriso:mail:filled",
@@ -1969,8 +2012,8 @@
         "fileName": "send_400_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/send_400_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:oriso:send:filled",
@@ -1982,8 +2025,8 @@
         "fileName": "send_filled_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/send_filled_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:oriso:silent:400",
@@ -3138,6 +3181,7 @@
             "src/components/AdminEmpty/index.tsx",
             "src/components/cards/CaseTakeoverCard/index.tsx",
             "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
+            "src/components/CustomIcons/LegalIcons.tsx",
             "src/components/GlobalSearch/GlobalSearchBar.tsx",
             "src/components/GlobalSearch/SplitButton.tsx",
             "src/components/M3NumberField/index.tsx",

@@ -5,6 +5,13 @@ import styles from './PlaceholderTemplateDialog.module.scss';
 export interface PlaceholderTemplateDialogProps {
     /** i18n key of the centered dialog title (house M3 anatomy). */
     titleKey: string;
+    /**
+     * Hero icon centered above the title (M3 basic-dialog anatomy: icon →
+     * title → description). Passed per variant, since the invite e-mail and
+     * the consent sentence are not the same subject. Decorative — the Modal
+     * renders it `aria-hidden`.
+     */
+    icon?: ReactNode;
     /** One sentence under the title saying what the dialog is for. */
     descriptionKey?: string;
     /**
@@ -15,8 +22,23 @@ export interface PlaceholderTemplateDialogProps {
     children: ReactNode;
     onSave: () => void;
     onClose: () => void;
+    /**
+     * X button / Escape / mask click, when they must differ from the Cancel
+     * text button (e.g. Cancel steps back to a list while X closes the whole
+     * dialog). Defaults to `onClose`.
+     */
+    onDismiss?: () => void;
     /** Disables "Speichern" (e.g. while submitting or invalid). */
     saveDisabled?: boolean;
+    /** Id of an element explaining the save button (e.g. why it is disabled). */
+    saveDescribedBy?: string;
+    /**
+     * Replaces the standard Abbrechen/Speichern row — used when the dialog
+     * switches into a sub-state with its own actions (e.g. the discard-changes
+     * question), so that state stays inside THIS dialog instead of opening a
+     * second overlay.
+     */
+    footer?: ReactNode;
     width?: number | string;
 }
 
@@ -30,22 +52,34 @@ export interface PlaceholderTemplateDialogProps {
  */
 export const PlaceholderTemplateDialog = ({
     titleKey,
+    icon,
     descriptionKey,
     children,
     onSave,
     onClose,
+    onDismiss,
     saveDisabled = false,
+    saveDescribedBy,
+    footer,
     width = 1080,
 }: PlaceholderTemplateDialogProps) => (
     <Modal
         titleKey={titleKey}
         descriptionKey={descriptionKey}
+        footer={footer}
         okLabelKey="save"
         cancelLabelKey="cancel"
         onConfirm={onSave}
         onClose={onClose}
+        onDismiss={onDismiss}
         confirmDisabled={saveDisabled}
+        confirmDescribedBy={saveDescribedBy}
         width={width}
+        icon={icon}
+        // This sheet is 1080px wide with a two-column editor beneath the title, so
+        // the Modal's 52ch reading cap left the description as a narrow column over a
+        // box more than twice its width. Confirm dialogs keep the cap.
+        descriptionFullWidth
     >
         <div className={styles.body}>{children}</div>
     </Modal>

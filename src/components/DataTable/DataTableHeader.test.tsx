@@ -56,4 +56,13 @@ describe('DataTableHeader', () => {
         renderHeader(null);
         expect(screen.queryByRole('button', { name: 'Eingeladen am' })).not.toBeInTheDocument();
     });
+
+    it('drops the sort affordance when no handler can act on it', () => {
+        // A sortable column without `onSortChange` used to render an active
+        // button (and claim `aria-sort`) that did nothing when clicked.
+        render(<DataTable header={<DataTableHeader columns={COLUMNS} sort={{ key: 'name', direction: 'asc' }} />} />);
+
+        expect(screen.queryByRole('button', { name: 'Name' })).not.toBeInTheDocument();
+        expect(screen.getByRole('columnheader', { name: 'Name' })).not.toHaveAttribute('aria-sort');
+    });
 });
