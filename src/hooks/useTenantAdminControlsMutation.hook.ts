@@ -6,7 +6,7 @@ import { TenantAdminControls } from '../types/TenantAdminControls';
 import { TENANT_ADMIN_CONTROLS_KEY } from './useTenantAdminControls.hook';
 
 interface TenantAdminControlsMutationOptions
-    extends UseMutationOptions<unknown, unknown, Partial<TenantAdminControls>> {
+    extends UseMutationOptions<TenantAdminControls, unknown, Partial<TenantAdminControls>> {
     successMessageKey?: string | false;
 }
 

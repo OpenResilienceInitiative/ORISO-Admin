@@ -28,7 +28,7 @@ interface CardEditableProps {
               editing: boolean;
               startEditing: () => void;
           }) => React.ReactElement<any> | React.ReactElement<any>[]);
-    onSave: <T>(formData: T, options?: { onError?: () => void; form?: FormInstance }) => void;
+    onSave?: <T>(formData: T, options?: { onError?: () => void; form?: FormInstance }) => void;
     formProp?: FormInstance;
     editMode?: boolean;
     hideSaveButton?: boolean;
@@ -88,6 +88,7 @@ export const CardEditable = ({
 
     const onFormSubmit = useCallback(
         (formData) => {
+            if (!onSave) return;
             // Identifies this submission so a slow failure from an earlier save cannot
             // reopen the card on top of a later one the user has already sent.
             const submission = latestSubmission.current + 1;

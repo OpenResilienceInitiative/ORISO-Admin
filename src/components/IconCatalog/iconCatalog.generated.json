@@ -1870,6 +1870,35 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:oriso:lock-open-right:400",
+        "family": "lock-open-right",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 20,
+        "fileName": "lock_open_right_400_20px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/lock_open_right_400_20px.svg",
+        "exportNames": [],
+        "usageFiles": [],
+        "usage": "catalogued-only"
+    },
+    {
+        "id": "ui-icon:oriso:lock-open-right:filled",
+        "family": "lock-open-right",
+        "state": "filled",
+        "role": "selected",
+        "kind": "ui-icon",
+        "size": 20,
+        "fileName": "lock_open_right_filled_20px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/lock_open_right_filled_20px.svg",
+        "exportNames": [],
+        "usageFiles": [
+            "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
+            "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx"
+        ],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:oriso:mail:base",
         "family": "mail",
         "state": "base",
@@ -1998,6 +2027,45 @@
         "exportNames": [],
         "usageFiles": [],
         "usage": "catalogued-only"
+    },
+    {
+        "id": "ui-icon:oriso:silent:400",
+        "family": "silent",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "silent_400_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/silent_400_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:oriso:switch-off:400",
+        "family": "switch-off",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "switch_off_400_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/switch_off_400_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:oriso:switch-on:400",
+        "family": "switch-on",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "switch_on_400_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/switch_on_400_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:oriso:topic:400",
@@ -3112,11 +3180,13 @@
         "usageFiles": [
             "src/components/AdminEmpty/index.tsx",
             "src/components/cards/CaseTakeoverCard/index.tsx",
+            "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
             "src/components/CustomIcons/LegalIcons.tsx",
             "src/components/GlobalSearch/GlobalSearchBar.tsx",
             "src/components/GlobalSearch/SplitButton.tsx",
             "src/components/M3NumberField/index.tsx",
             "src/components/overlay/Overlay.tsx",
+            "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx",
             "src/components/PillSelect/index.tsx",
             "src/pages/Links/index.tsx",
             "src/pages/Links/InviteComposer.tsx",
