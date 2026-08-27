@@ -49,6 +49,8 @@ export interface LegalConsentTemplateEditorProps {
      * archived version.
      */
     readOnly?: boolean;
+    /** The host draws the template chooser itself — see PlaceholderTemplateEditor. */
+    hideTemplateChooser?: boolean;
 }
 
 /**
@@ -68,6 +70,7 @@ export const LegalConsentTemplateEditor = ({
     addendum,
     languageLabel,
     readOnly = false,
+    hideTemplateChooser = false,
 }: LegalConsentTemplateEditorProps) => {
     const { t } = useTranslation();
     const sentenceId = useId();
@@ -90,6 +93,7 @@ export const LegalConsentTemplateEditor = ({
         <PlaceholderTemplateEditor
             activeTemplateId={activeTemplateId}
             fields={fields}
+            hideTemplateChooser={hideTemplateChooser}
             heading={t('placeholderTemplate.legal.heading', 'Einwilligung (Registrierung)')}
             icon={<LegalConsentHeadIcon />}
             preview={

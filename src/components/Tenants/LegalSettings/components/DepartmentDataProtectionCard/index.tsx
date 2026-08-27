@@ -3,6 +3,7 @@ import { Alert, Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
+import { TemplateSplitButton } from '../../../../PlaceholderTemplate';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { LegalConsentField } from '../LegalConsentField';
 import { PublishSourceWarningModal } from '../PublishSourceWarningModal';
@@ -10,6 +11,7 @@ import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
 import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
 import { toEditorVersions } from '../../utils/legalVersionOptions';
+import { useConsentTemplates } from '../../hooks/useConsentTemplates';
 import { useViewedLegalVersion } from '../../hooks/useViewedLegalVersion';
 import { LegalTextVersion } from '../../../../../types/legalVersion';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
@@ -130,6 +132,8 @@ export const DepartmentDataProtectionCard = ({
     // decision 7 — the imprint is an information duty and never a consent gate).
     const consentEnabled = documentType === 'privacy' && consentByLanguage !== undefined;
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
+    const consentTemplates = useConsentTemplates();
+    const [consentTemplateId, setConsentTemplateId] = useState<number | string | undefined>(undefined);
     const consentMap = useMemo(
         () => ({ ...(consentByLanguage ?? {}), ...consentEdits }),
         [consentByLanguage, consentEdits],
@@ -187,6 +191,9 @@ export const DepartmentDataProtectionCard = ({
     );
     // Keeps the consent sentence on the same version as the body shown above it.
     const { onViewVersionChange, viewedConsent, isViewingVersion } = useViewedLegalVersion(versions);
+    // Nothing about the consent sentence may be changed by a viewer without the
+    // legal-text permission, or while an archived version is on screen.
+    const consentLocked = readOnly || isViewingVersion;
 
     /**
      * Publishing is refused while an authored consent sentence lacks
@@ -199,6 +206,18 @@ export const DepartmentDataProtectionCard = ({
             return;
         }
         requestPublish();
+    };
+
+    /**
+     * Loading a template REPLACES the sentence of the language currently being
+     * edited — the consent map is per language, so a template picked while
+     * reading German must not overwrite the French wording as well.
+     */
+    const applyConsentTemplate = (id: number | string) => {
+        const template = consentTemplates.find((entry) => entry.id === id);
+        if (!template || consentLocked) return;
+        setConsentTemplateId(id);
+        setConsentEdits((current) => ({ ...current, [activeLanguage]: template.values.text }));
     };
 
     return (
@@ -231,11 +250,27 @@ export const DepartmentDataProtectionCard = ({
                         />
                     ) : undefined
                 }
+                /* The consent sentence is a FIELD of this policy (ADR-021 decision 4),
+                   so its template chooser belongs in this editor's function bar —
+                   agency level only, by the owner's decision of 2026-08-19. It stays
+                   visible but inert on read-only and archived surfaces: hiding it
+                   would also hide that this level offers templates at all. */
+                consentSlot={
+                    consentEnabled ? (
+                        <TemplateSplitButton
+                            activeTemplateId={consentTemplateId}
+                            disabled={consentLocked}
+                            templates={consentTemplates}
+                            onSelectTemplate={applyConsentTemplate}
+                        />
+                    ) : undefined
+                }
                 topicSlot={
                     consentEnabled || departmentSlot ? (
                         <>
                             {consentEnabled && (
                                 <LegalConsentField
+                                    hideTemplateChooser
                                     inheritedFrom={
                                         // The notice describes the CURRENT state. While an archived version is on
                                         // screen it would answer a question nobody asked about the version being
@@ -247,7 +282,7 @@ export const DepartmentDataProtectionCard = ({
                                             : undefined
                                     }
                                     language={activeLanguage}
-                                    readOnly={readOnly || isViewingVersion}
+                                    readOnly={consentLocked}
                                     value={(viewedConsent ?? consentMap)[activeLanguage] ?? ''}
                                     onChange={(next) =>
                                         setConsentEdits((current) => ({ ...current, [activeLanguage]: next }))

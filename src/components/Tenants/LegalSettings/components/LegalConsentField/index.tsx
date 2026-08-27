@@ -1,20 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Alert } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import {
-    LegalConsentTemplateEditor,
-    PlaceholderTemplateDialog,
-    type LegalConsentTemplateValues,
-} from '../../../../PlaceholderTemplate';
+import { LegalConsentTemplateEditor, PlaceholderTemplateDialog } from '../../../../PlaceholderTemplate';
+import { useConsentTemplates } from '../../hooks/useConsentTemplates';
 import {
     hasMandatoryConsentToken,
     isBlankConsentText,
     MANDATORY_CONSENT_TOKEN,
 } from '../../utils/consentTextValidation';
 import styles from './styles.module.scss';
-
-const PLATFORM_TEMPLATE_ID = 'platform';
 
 export interface LegalConsentFieldProps {
     /** The consent sentence of the language currently being edited. */
@@ -30,6 +25,13 @@ export interface LegalConsentFieldProps {
      * valid statement, so the card says which one it is showing).
      */
     inheritedFrom?: string;
+    /**
+     * The HOST already offers the template chooser — the department card lifts it
+     * into the editor's function bar (agency level, owner decision 2026-08-19), so
+     * this module must not draw a second, identical one. The choice itself is not
+     * taken away; only its location moves.
+     */
+    hideTemplateChooser?: boolean;
 }
 
 /**
@@ -40,22 +42,19 @@ export interface LegalConsentFieldProps {
  * meant to sit left of the Fachbereich dropdown inside the card. The dialog
  * portals out so the fixed 800×740 card never stretches.
  */
-export const LegalConsentField = ({ value, language, onChange, readOnly, inheritedFrom }: LegalConsentFieldProps) => {
+export const LegalConsentField = ({
+    value,
+    language,
+    onChange,
+    readOnly,
+    inheritedFrom,
+    hideTemplateChooser,
+}: LegalConsentFieldProps) => {
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [draft, setDraft] = useState(value);
     const [activeTemplateId, setActiveTemplateId] = useState<number | string | undefined>(undefined);
-
-    const templates = useMemo(
-        () => [
-            {
-                id: PLATFORM_TEMPLATE_ID,
-                name: t('legal.consent.template.platform.name'),
-                values: { text: t('legal.consent.template.platform.text') } as LegalConsentTemplateValues,
-            },
-        ],
-        [t],
-    );
+    const templates = useConsentTemplates();
 
     const missingMandatoryToken = !isBlankConsentText(value) && !hasMandatoryConsentToken(value);
     const draftMissingMandatoryToken = !isBlankConsentText(draft) && !hasMandatoryConsentToken(draft);
@@ -145,6 +144,7 @@ export const LegalConsentField = ({ value, language, onChange, readOnly, inherit
                         <LegalConsentTemplateEditor
                             activeTemplateId={activeTemplateId}
                             addendum={cookieAddendum}
+                            hideTemplateChooser={hideTemplateChooser}
                             languageLabel={t(`language.${language}`, language.toUpperCase())}
                             readOnly={readOnly}
                             templates={templates}

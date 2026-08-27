@@ -163,6 +163,18 @@ export type M3RichTextEditorProps = {
      */
     snackbarSlot?: React.ReactNode;
     /**
+     * Split button in the bottom function bar between language and topic — the
+     * chooser for a template the document's consent sentence is loaded from
+     * (ADR-021 decision 4: the consent text is a FIELD of the data-protection
+     * policy, so its template belongs to that policy's editor). Named for the
+     * role, not the one control that fills it today.
+     *
+     * Optional and additive: a host that passes nothing gets exactly the bar it
+     * had before. The consent chooser is wired on the AGENCY level only (owner
+     * decision 2026-08-19); the tenant/platform editor deliberately passes none.
+     */
+    consentSlot?: React.ReactNode;
+    /**
      * Second split button in the bottom function bar (between language and
      * version) — e.g. a topic/department picker (Figma 1261-48667 allows up
      * to three split button fields).
@@ -655,6 +667,7 @@ export const M3RichTextEditor = ({
     contentLanguage,
     hideHeader,
     languageSlot,
+    consentSlot,
     topicSlot,
     helpSlot,
     snackbarSlot,
@@ -1021,11 +1034,14 @@ export const M3RichTextEditor = ({
                 </div>
             )}
 
-            {/* Lower function bar (Figma 1261-48667): up to three split buttons —
-                language, topic/department (slot), version history. */}
-            {(languageControl || topicSlot || showVersionControl) && (
-                <div className={styles.functionBar}>
+            {/* Lower function bar (Figma 1261-48667): up to four split buttons —
+                language, consent template (slot), topic/department (slot),
+                version history. Every one of them can be the only occupant, so
+                each has to hold the bar open on its own. */}
+            {(languageControl || consentSlot || topicSlot || showVersionControl) && (
+                <div className={styles.functionBar} data-testid="m3-editor-function-bar">
                     {languageControl}
+                    {consentSlot}
                     {topicSlot}
                     {showVersionControl && (
                         <SplitDropdown

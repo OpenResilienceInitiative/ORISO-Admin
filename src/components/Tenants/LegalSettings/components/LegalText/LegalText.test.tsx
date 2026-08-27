@@ -73,6 +73,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         snackbarSlot,
         aboveEditorSlot,
         belowSlot,
+        ...rest
     }: {
         value?: string;
         onChange?: (html: string) => void;
@@ -83,8 +84,16 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         snackbarSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
+        [prop: string]: unknown;
     }) => (
-        <div data-testid="m3-editor" data-value={value} data-readonly={readOnly ? 'true' : 'false'}>
+        <div
+            data-testid="m3-editor"
+            data-value={value}
+            data-readonly={readOnly ? 'true' : 'false'}
+            // Everything the tenant editor passes beyond the props modelled above.
+            // Read by the "consent chooser stays off this level" test below.
+            data-extra-props={Object.keys(rest).sort().join(',')}
+        >
             {helpSlot}
             {snackbarSlot}
             {aboveEditorSlot}
@@ -294,6 +303,30 @@ describe('LegalText (M3 editor)', () => {
         await vi.waitFor(() =>
             expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>'),
         );
+    });
+});
+
+describe('LegalText — consent template chooser (deliberately absent)', () => {
+    /**
+     * The owner settled the consent split button on the AGENCY level ONLY
+     * (2026-08-19). `M3RichTextEditor.consentSlot` exists for every host, but the
+     * tenant/platform editor must keep the footer it had. This asserts the
+     * restriction so it reads as a decision, not as an oversight — do not "finish"
+     * the job by wiring it here.
+     */
+    it('passes no consentSlot to the editor', () => {
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                subTitle="imprint.subTitle"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        const extraProps = screen.getByTestId('m3-editor').getAttribute('data-extra-props') ?? '';
+        expect(extraProps.split(',')).not.toContain('consentSlot');
     });
 });
 
