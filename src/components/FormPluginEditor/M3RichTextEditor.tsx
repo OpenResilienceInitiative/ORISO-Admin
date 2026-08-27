@@ -191,6 +191,12 @@ export type M3RichTextEditorProps = {
     /** Rendered below the action footer (e.g. version history, modals). */
     belowSlot?: React.ReactNode;
     /**
+     * Leading control(s) in the publish/draft footer row — e.g. the consent
+     * CTA for a DPP card (#862). Sits on the left; Publish / Edit draft stay
+     * right-aligned. Also shown in the read-only footer when present.
+     */
+    actionsLeading?: React.ReactNode;
+    /**
      * Status shown in the persistent 68px footer of a read-only card. The row
      * remains present when this is empty so the legal-card raster does not
      * collapse while audit data is loading or unavailable.
@@ -668,6 +674,7 @@ export const M3RichTextEditor = ({
     aboveEditorSlot,
     editorSlot,
     belowSlot,
+    actionsLeading,
     readOnlyFooter,
     enableAnchors = true,
     onPublish,
@@ -1126,11 +1133,12 @@ export const M3RichTextEditor = ({
                 </div>
             )}
 
-            {editorEditable && (onPublish || onSaveDraft) && (
+            {editorEditable && (onPublish || onSaveDraft || actionsLeading) && (
                 <>
                     <hr className={styles.divider} />
 
                     <div className={styles.actions}>
+                        {actionsLeading && <div className={styles.actionsLeading}>{actionsLeading}</div>}
                         {onPublish && (
                             <button
                                 type="button"
@@ -1168,6 +1176,7 @@ export const M3RichTextEditor = ({
                 <>
                     <hr className={styles.divider} />
                     <div className={styles.readOnlyFooter} data-testid="m3-readonly-footer">
+                        {actionsLeading && <div className={styles.actionsLeading}>{actionsLeading}</div>}
                         {readOnlyFooter}
                     </div>
                 </>

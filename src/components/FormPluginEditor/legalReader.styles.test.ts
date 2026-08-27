@@ -129,3 +129,53 @@ describe('chapter-chip row — scrolls with a visible affordance (H4/I3, 2026-08
         expect(globalStyles).toMatch(/&--fadeStart#{&}--fadeEnd/);
     });
 });
+
+describe('boxless fluid reader — no vestigial corner radius (owner report 2026-08-19)', () => {
+    /*
+     * The owner reported the maximize control "abgeschnitten … in der oberen
+     * rechten Ecke" on the public onboarding reader.
+     *
+     * Measured live on predev.oriso.org (tenant-onboarding wizard, 1440x900,
+     * getComputedStyle) BEFORE the fix:
+     *
+     *   .maximizeToolBtn   28x28, border-radius 50%, rect top 235 / right 1328
+     *   .module.fluid.readMode  overflow "clip", border-radius "28px",
+     *                           rect top 235 / right 1328
+     *                           background rgba(0,0,0,0), border 0px none,
+     *                           box-shadow none
+     *
+     * The button's corner IS the container's corner, and a 28px arc through a
+     * 28px control slices it. The radius is a leftover: `.module` styles an
+     * 800px card, but the fluid reader explicitly gives up `background`,
+     * `border` and `box-shadow` ("The public reader is not a card … it IS the
+     * page", #594.17). Nothing visible is rounded any more — the radius only
+     * still clips. So the box's radius goes with the rest of the box, rather
+     * than the control being nudged away from a corner that no longer exists.
+     */
+    it('drops the card radius wherever it drops the card background', () => {
+        const fluid = moduleStyles.match(/\.module\.fluid:not\(\.inDialog\)\s*{[\s\S]*?\n}/)?.[0] ?? '';
+        expect(fluid).not.toBe('');
+        // The three rules that already retire the box …
+        expect(fluid).toMatch(/background:\s*none;/);
+        expect(fluid).toMatch(/border:\s*0;/);
+        expect(fluid).toMatch(/box-shadow:\s*none;/);
+        // … and the radius that framed it must retire with them.
+        expect(fluid).toMatch(/border-radius:\s*0;/);
+    });
+
+    it('keeps clipping the boxless reader so the chip row is not trapped', () => {
+        // `clip` (not `hidden`) stays: it must not become a scroll container,
+        // which would trap the sticky chapter bar. With a 0 radius it clips to
+        // a plain rectangle, so nothing eats the control any more.
+        const fluid = moduleStyles.match(/\.module\.fluid:not\(\.inDialog\)\s*{[\s\S]*?\n}/)?.[0] ?? '';
+        expect(fluid).toMatch(/overflow:\s*clip;/);
+    });
+
+    it('leaves the 800px deck card its rounded corners', () => {
+        // Only the boxless fluid reader loses the radius. The real card — the
+        // one that still paints a surface and a shadow — keeps it.
+        const base = moduleStyles.match(/^\.module\s*{[\s\S]*?\n}/m)?.[0] ?? '';
+        expect(base).toMatch(/border-radius:\s*28px;/);
+        expect(base).toMatch(/box-shadow:/);
+    });
+});

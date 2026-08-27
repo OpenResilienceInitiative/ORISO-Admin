@@ -20,15 +20,18 @@ vi.mock('react-i18next', () => ({
 vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
     M3RichTextEditor: ({
         consentSlot,
+        topicSlot,
         onViewVersionChange,
         versions,
     }: {
         consentSlot?: React.ReactNode;
+        topicSlot?: React.ReactNode;
         onViewVersionChange?: (versionId: string | null) => void;
         versions?: { id: string }[];
     }) => (
         <div data-testid="editor">
             <div data-testid="consent-slot">{consentSlot}</div>
+            <div data-testid="topic-slot">{topicSlot}</div>
             {(versions ?? []).map((version) => (
                 <button key={version.id} type="button" onClick={() => onViewVersionChange?.(version.id)}>
                     view {version.id}
@@ -67,8 +70,8 @@ describe('DepartmentDataProtectionCard consent template chooser', () => {
 
         const slot = await screen.findByTestId('consent-slot');
         expect(slot).toContainElement(chooser());
-        // Exactly one chooser on the surface — the consent module below the editor
-        // must not draw a second one driving the same field.
+        // Exactly one chooser on the surface — the consent dialog must not draw a
+        // second one driving the same field.
         expect(screen.getAllByRole('button', { name: 'Vorlagenmenü öffnen' })).toHaveLength(1);
     });
 
@@ -87,7 +90,8 @@ describe('DepartmentDataProtectionCard consent template chooser', () => {
         await user.click(await screen.findByText('legal.consent.template.platform.name'));
 
         // The template's text lands in the consent field of the active language …
-        expect(await screen.findByDisplayValue('legal.consent.template.platform.text')).toBeInTheDocument();
+        await user.click(screen.getByTestId('consent-edit-trigger'));
+        expect(screen.getByRole('textbox')).toHaveValue('legal.consent.template.platform.text');
         // … and picking a template is an edit, not a save.
         expect(onSave).not.toHaveBeenCalled();
     });

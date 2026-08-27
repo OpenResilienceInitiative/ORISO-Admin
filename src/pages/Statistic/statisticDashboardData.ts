@@ -211,7 +211,7 @@ const buildConversationValues = (
     conversationPeriodOrder.reduce(
         (conversation, periodKey) => ({
             ...conversation,
-            // segments: [Nähe (1:1), Live, Gesprächskreise, Interna] — Live and Interna
+            // segments: [Mail (1:1), Live, Gesprächskreise, Interna] — Live and Interna
             // have no application-layer data source yet
             [periodKey]: [sessionCounts?.[periodKey] || 0, 0, chatCounts?.[periodKey] || 0, 0],
         }),

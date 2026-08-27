@@ -22,7 +22,14 @@ export type DpaGateDecision =
      * dialog instead of the hard blocker. The backend write-guard for
      * legal-gated operations is untouched.
      */
-    | { kind: 'forwarded-pending'; reason: DpaBlockerReason };
+    | { kind: 'forwarded-pending'; reason: DpaBlockerReason }
+    /**
+     * JOB8/JOB9: the tenant sat on the waiting dialog and the authoritative
+     * status has meanwhile turned VALID. The app is NOT opened silently — the
+     * tenant confirms with "Plattform freischalten", and THAT click re-asks
+     * the backend before anything behind the gate is rendered.
+     */
+    | { kind: 'unlock-confirm' };
 
 export interface DpaGateSubjectInput {
     hasTenantAdminRole: boolean;
@@ -79,6 +86,14 @@ export interface DpaGateDecisionInput {
      * keeps the strict gate: softening needs positive proof of the delegation.
      */
     forwardPending?: boolean;
+    /**
+     * JOB8: this session has already shown the forwarded-pending waiting
+     * dialog. A VALID status arriving afterwards is a state CHANGE the tenant
+     * has not seen yet, so it earns the explicit unlock confirmation instead
+     * of dropping them into the admin area mid-sentence. False on a fresh
+     * login of an already-signed tenant — no spurious success dialog.
+     */
+    wasAwaitingForwardedSignature?: boolean;
 }
 
 /**
@@ -94,6 +109,7 @@ export const deriveDpaGateDecision = ({
     isLoading,
     isError,
     forwardPending = false,
+    wasAwaitingForwardedSignature = false,
 }: DpaGateDecisionInput): DpaGateDecision => {
     if (subjectKind === 'exempt') return { kind: 'inactive' };
     if (subjectKind === 'indeterminate') {
@@ -106,7 +122,7 @@ export const deriveDpaGateDecision = ({
 
     switch (status) {
         case 'VALID':
-            return { kind: 'inactive' };
+            return wasAwaitingForwardedSignature ? { kind: 'unlock-confirm' } : { kind: 'inactive' };
         case 'UNSIGNED':
         case 'OUTDATED':
             // #724: only a positively reported forward softens the gate; the

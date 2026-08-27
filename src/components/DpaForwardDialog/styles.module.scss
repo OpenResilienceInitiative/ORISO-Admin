@@ -1,3 +1,5 @@
+@use '../../styles/scrollbars' as scrollbars;
+
 /* House rule (owner, 2026-08-18): a dialog never touches the top or bottom edge
    of the viewport. The sheet is therefore bounded and its BODY is the scroller,
    so the hero icon, the title and the action row stay put while only the content
@@ -22,6 +24,8 @@
             /* A long preview must not chain its scroll to the page behind the mask. */
             overscroll-behavior: contain;
             scrollbar-gutter: stable;
+
+            @include scrollbars.quiet;
         }
     }
 }

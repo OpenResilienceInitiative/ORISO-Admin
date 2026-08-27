@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { CheckBoxIcon } from '../CustomIcons/LegalIcons';
 import { PlaceholderTemplateDialog } from './PlaceholderTemplateDialog';
 import { InviteEmailTemplateEditor, type InviteEmailTemplateValues } from './InviteEmailTemplateEditor';
 import { LegalConsentTemplateEditor, type LegalConsentTemplateValues } from './LegalConsentTemplateEditor';
@@ -96,8 +97,11 @@ const LegalDialogDemo = () => {
 
     return (
         <PlaceholderTemplateDialog
+            // The consent sentence appears as a checkbox label in registration, so the
+            // checkbox names the dialog too — same glyph as its template split button.
+            icon={<CheckBoxIcon />}
             titleKey="placeholderTemplate.dialog.legalTitle"
-            descriptionKey="placeholderTemplate.dialog.legalDescription"
+            descriptionKey="legal.consent.description"
             onSave={() => undefined}
             onClose={() => undefined}
         >

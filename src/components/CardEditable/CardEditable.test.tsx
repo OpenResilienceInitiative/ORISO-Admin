@@ -40,6 +40,23 @@ describe('CardEditable', () => {
         expect(screen.getByRole('switch', { name: 'Enabled' })).toBeEnabled();
     });
 
+    it('submits a toggled-off switch as false so card patches keep the new value', async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        render(
+            <CardEditable titleKey="card.title" onSave={onSave} initialValues={{ teamAgency: true }}>
+                <MuiSwitchField name="teamAgency" label="Team" />
+            </CardEditable>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('switch', { name: 'Team' }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        await waitFor(() => expect(onSave).toHaveBeenCalled());
+        expect(onSave.mock.calls[0][0]).toEqual({ teamAgency: false });
+    });
+
     it('keeps entered values editable when the save callback reports an error', async () => {
         const user = userEvent.setup();
         const onSave = vi.fn();

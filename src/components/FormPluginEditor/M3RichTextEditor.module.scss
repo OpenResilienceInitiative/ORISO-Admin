@@ -2,6 +2,8 @@
 // node 1:34903). Mirrors the M3 sys tokens; brand primary #273270, M3 seed
 // primary #a5000a (publish accent).
 
+@use '../../styles/scrollbars' as scrollbars;
+
 $m3-surface: #eae7e8;
 $m3-on-surface: #1b1b1c;
 $m3-on-surface-variant: #444748;
@@ -11,6 +13,22 @@ $m3-primary: #273270;
 $m3-publish: #a5000a;
 $m3-state-hover: rgb(68 71 72 / 8%);
 $m3-state-active: rgb(39 50 112 / 12%);
+
+/* The reading viewport of the legal reader — the box in the owner's JOB10
+   screenshot with a permanent grey scroll track down its right edge. It turns
+   into a scroller in three places (the 800x740 deck card at >=600px, the
+   fullscreen dialog, and the bounded fluid READ card), so the treatment is
+   declared once here for all of them; on the non-scrolling variants these two
+   declarations are inert.
+
+   Trackless-thin rather than hidden: a DPA runs to several screens and the
+   thumb is the only thing telling the reader that the contract continues
+   below the fold. The chapter bar underneath navigates BETWEEN chapters, it
+   does not signal WITHIN one. See src/styles/_scrollbars.scss. */
+
+.editorContentScroll {
+    @include scrollbars.quiet;
+}
 
 .module {
     display: flex;
@@ -136,6 +154,14 @@ $m3-state-active: rgb(39 50 112 / 12%);
        sticky chapter bar below, which has to mask the text scrolling under it. */
     background: none;
     border: 0;
+
+    /* The radius framed the card, so it goes with the card. `.module`'s 28px
+       rounds an 800px surface that still paints a background and a shadow;
+       here there is nothing left to round — but `overflow: clip` kept obeying
+       it, and the arc sliced the maximize control sitting in that corner
+       (owner report 2026-08-19: "abgeschnitten … obere rechte Ecke"). Clipping
+       to a plain rectangle costs nothing visually and gives the control back. */
+    border-radius: 0;
     box-shadow: none;
 
     /* The rules that framed the removed box go with it. */
@@ -438,7 +464,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    scrollbar-width: auto;
 
     &::-webkit-scrollbar {
         display: none;
@@ -1077,22 +1103,42 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 }
 
-// Lower function bar (Figma 1261-48667): up to three split buttons in ONE
-// horizontal row — overflow scrolls sideways instead of stacking.
+// Lower function bar (Figma 1261-48667 / #862): one horizontal row of split
+// buttons. Must stay scrollable with a visible thin scrollbar when consent +
+// language + department + version no longer fit the 800px card.
 .functionBar {
     display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     flex-wrap: nowrap;
     gap: 12px;
     align-items: center;
-    justify-content: flex-end;
-    padding: 12px 16px 4px;
+    // Spacer pushes controls right when they fit; shrinks away so overflow can
+    // scroll from the start (flex-end alone leaves left items unreachable).
+    justify-content: flex-start;
+    padding: 12px 16px 8px;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--m3-outline, #747778) transparent;
+
+    &:before {
+        content: '';
+        flex: 1 1 0;
+        min-width: 0;
+    }
 
     &::-webkit-scrollbar {
-        display: none;
+        height: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border-radius: 2px;
+        background: var(--m3-outline, #747778);
     }
 
     > * {
@@ -1101,7 +1147,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
     @media (max-width: 599px) {
         gap: 8px;
-        justify-content: flex-start;
+
+        &:before {
+            display: none;
+        }
     }
 }
 
@@ -1401,6 +1450,13 @@ $m3-state-active: rgb(39 50 112 / 12%);
     align-items: center;
     justify-content: flex-end;
     padding: 8px 16px 16px;
+}
+
+.actionsLeading {
+    display: flex;
+    margin-right: auto;
+    gap: 8px;
+    align-items: center;
 }
 
 .readOnlyFooter {

@@ -129,6 +129,14 @@ describe('InviteEmailTemplateEditor', () => {
         expect(bodyField).toContainElement(pickers[0]);
     });
 
+    // The head icon is a variant decision, not a frame decision: the shared
+    // editor is reused here, so hardcoding a symbol in it would stamp the
+    // consent icon onto the invitation e-mail too.
+    it('keeps the invite head iconless — the shared frame does not pick a symbol', () => {
+        const { container } = render(<InviteHarness />);
+        expect(container.querySelector('[data-head-icon]')).toBeNull();
+    });
+
     it('loads the picked template into the fields via the split button', async () => {
         const user = userEvent.setup();
         render(<InviteHarness />);
@@ -162,6 +170,16 @@ describe('LegalConsentTemplateEditor', () => {
         expect(within(preview).getByRole('checkbox')).toBeInTheDocument();
         expect(within(preview).getByText(/Beratungsstelle Mainz-Neustadt/)).toBeInTheDocument();
         expect(within(preview).queryByText('{{Beratungsstelle}}')).not.toBeInTheDocument();
+    });
+
+    it('heads the module with a decorative icon that never becomes its name', () => {
+        const { container } = render(<LegalHarness />);
+
+        const headIcon = container.querySelector('[data-head-icon]');
+        expect(headIcon).toBeInTheDocument();
+        expect(headIcon).toHaveAttribute('aria-hidden', 'true');
+        // The accessible name stays the heading on the <section aria-label>.
+        expect(screen.getByRole('region', { name: 'Einwilligung (Registrierung)' })).toBeInTheDocument();
     });
 
     it('updates the consent preview live while typing', () => {

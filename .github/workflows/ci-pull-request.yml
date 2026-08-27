@@ -27,3 +27,39 @@ jobs:
                   push_to_ghcr: false
                   image_name: oriso-admin
                   github_token: ${{ secrets.GITHUB_TOKEN }}
+
+    # Runs every story in a real Chromium: renders it, executes its `play`
+    # function, and fails on any axe (WCAG 2.2 AA) violation, because
+    # .storybook/preview.tsx sets `a11y.test: 'error'`. Separate job from `build`
+    # so it runs in parallel and a red story is attributable at a glance.
+    storybook-tests:
+        name: Storybook component tests (interactions + a11y)
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '22.12.0'
+                  cache: npm
+
+            - name: Install dependencies
+              # Same supply-chain hardening as .github/actions/node-build.
+              run: npm ci --ignore-scripts
+
+            - name: Install Chromium for Vitest browser mode
+              # --ignore-scripts above skips Playwright's own postinstall, so the
+              # browser has to be fetched explicitly. Chromium only — this suite
+              # asserts behaviour and accessibility, not cross-browser rendering.
+              run: npx playwright install --with-deps chromium
+
+            - name: Generate icon catalogue
+              # IconCatalog.stories.tsx reads the generated JSON; `prestorybook`
+              # does this for the dev server, and the test project needs it too.
+              run: npm run generate:icon-catalog
+
+            - name: Run Storybook component tests
+              run: npm run test:storybook

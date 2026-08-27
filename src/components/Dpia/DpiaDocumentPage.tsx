@@ -323,7 +323,11 @@ export const DpiaDocumentPage = ({
 
                     <div className={styles.roleGrid}>
                         {ROLE_TIERS.map((role) => (
-                            <div key={role.id} className={cx(styles.roleCard, TIER_CLASS[role.tier])}>
+                            <section
+                                key={role.id}
+                                aria-label={role.name}
+                                className={cx(styles.roleCard, TIER_CLASS[role.tier])}
+                            >
                                 <div className={styles.roleHead}>
                                     <DpiaIcon name={role.icon} size="18px" />
                                     <span className={styles.roleName}>{role.name}</span>
@@ -331,7 +335,7 @@ export const DpiaDocumentPage = ({
                                 <p className={styles.roleDesc}>{role.description}</p>
                                 <div className={styles.roleTags}>
                                     {role.realmRoles.map((realmRole) => (
-                                        <span key={realmRole} className={styles.realmRole}>
+                                        <span key={realmRole} data-testid="realm-role" className={styles.realmRole}>
                                             {realmRole}
                                         </span>
                                     ))}
@@ -341,7 +345,7 @@ export const DpiaDocumentPage = ({
                                         </span>
                                     )}
                                 </div>
-                            </div>
+                            </section>
                         ))}
                     </div>
 

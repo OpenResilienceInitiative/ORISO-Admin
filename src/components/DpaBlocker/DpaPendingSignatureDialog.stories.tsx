@@ -16,12 +16,14 @@ const wait = (ms: number) =>
     });
 
 /**
- * Friendly recurring pending-signature dialog (#724, epic #722): shown on
- * each login while the DPA signature is pending after a forward — instead of
- * the hard DpaBlocker dead end. It mints a shareable sign link on open (there
- * is no "read the active link" endpoint; every issued link stays valid until a
- * signature lands), offers a re-send through the shared forward dialog (#723),
- * and "Später" to work on non-legal data.
+ * Pending-signature GATE (#724, epic #722, hardened by JOB7): shown for as long
+ * as the DPA signature is outstanding after a forward. It mints a shareable
+ * sign link on open (there is no "read the active link" endpoint; every issued
+ * link stays valid until a signature lands) and offers a re-send through the
+ * shared forward dialog (#723).
+ *
+ * It is a gate, not a notice: the admin routes are not rendered behind it, the
+ * mask and Escape do not dismiss it, and the only exit is "Abmelden".
  */
 const meta = {
     title: 'Organisms/DpaBlocker/PendingSignatureDialog',
@@ -45,7 +47,7 @@ const meta = {
             await wait(400);
             return { link: LINK, mailFailed: false };
         },
-        onDismiss: () => {},
+        onLogout: () => {},
         onForwardCompleted: () => {},
     },
 } satisfies Meta<typeof DpaPendingSignatureDialog>;
@@ -53,8 +55,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Status, the freshly minted copyable link, and both actions. */
+/** Status, the freshly minted copyable link, and the two allowed actions. */
 export const Default: Story = {};
+
+/**
+ * JOB9: the tenant pressed "Plattform freischalten" and the re-check against
+ * the backend found no signature — the gate stays up and says why.
+ */
+export const RecheckRejected: Story = {
+    args: { recheckRejected: true },
+};
 
 /** The same dialog at 390×844 — link, copy and both actions stay reachable. */
 export const Mobile: Story = {

@@ -17,29 +17,41 @@ export interface DpaPendingSignatureDialogProps {
     ensureSignLink: () => Promise<DpaForwardLink>;
     /** Sends the DPA_FORWARD mail again (or to a different address). */
     forward: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
-    /** "Später" — the admin proceeds to the (non-legal) admin area. */
-    onDismiss: () => void;
+    /**
+     * "Abmelden" — the ONLY way off this screen (JOB7). There is no dismiss:
+     * an unsigned tenant may not use the platform, so the dialog is a gate,
+     * not a notice.
+     */
+    onLogout: () => void;
     /** The embedded forward dialog was completed (fresh link and/or mail sent). */
-    onForwardCompleted: (result: DpaForwardResult) => void;
+    onForwardCompleted?: (result: DpaForwardResult) => void;
+    /**
+     * JOB9: the tenant pressed "Plattform freischalten" and the re-check
+     * against the backend found NO valid signature. Say so here, where the
+     * remaining actions (copy the link, resend the mail) live.
+     */
+    recheckRejected?: boolean;
 }
 
 type LinkState = { kind: 'loading' } | { kind: 'ready'; link: DpaForwardLink } | { kind: 'error' };
 
 /**
- * Friendly recurring pending-signature dialog (#724, epic #722): shown on
- * each login while the tenant's DPA signature is pending after a forward —
- * INSTEAD of the hard {@link DpaBlocker} dead end. Calm status, a sign link
- * ready to copy, the option to send the mail again through the shared forward
- * dialog (#723), and a dismiss that lets the admin work on non-legal data.
+ * Recurring pending-signature GATE (#724, epic #722, hardened by JOB7):
+ * shown for as long as the tenant's DPA signature is outstanding after a
+ * forward. It is the whole screen — the admin routes are not rendered behind
+ * it, the mask and Escape do not dismiss it, and the only exit is logout.
  *
- * Presentation only: the backend gate for legal-gated operations is untouched,
- * and the never-forwarded unsigned state keeps the hard blocker (#572).
+ * It offers exactly what a waiting tenant can legitimately do: copy the sign
+ * link, send the mail again through the shared forward dialog (#723), or log
+ * out. When the signature lands the gate swaps this dialog for
+ * {@link DpaUnlockDialog}.
  */
 export const DpaPendingSignatureDialog = ({
     ensureSignLink,
     forward,
-    onDismiss,
+    onLogout,
     onForwardCompleted,
+    recheckRejected = false,
 }: DpaPendingSignatureDialogProps) => {
     const { t } = useTranslation();
     const [resendOpen, setResendOpen] = useState(false);
@@ -67,8 +79,9 @@ export const DpaPendingSignatureDialog = ({
                 forward={forward}
                 onClose={() => setResendOpen(false)}
                 onForwarded={(result) => {
+                    // Back to the gate, never out of it (JOB7).
                     setResendOpen(false);
-                    onForwardCompleted(result);
+                    onForwardCompleted?.(result);
                 }}
             />
         );
@@ -80,12 +93,21 @@ export const DpaPendingSignatureDialog = ({
             descriptionKey="dpaPending.description"
             icon={<HourglassTopRounded fontSize="inherit" />}
             okLabelKey="dpaPending.resend"
-            cancelLabelKey="dpaPending.later"
+            cancelLabelKey="dpaBlocker.logout"
             onConfirm={() => setResendOpen(true)}
-            onClose={onDismiss}
+            onClose={onLogout}
+            // A gate, not a notice: no X, no mask click, no Escape (JOB7).
+            closable={false}
+            maskClosable={false}
+            keyboard={false}
             width={560}
         >
             <div className={styles.body} data-testid="dpa-pending-dialog">
+                {recheckRejected && (
+                    <Alert severity="warning" role="alert" data-testid="dpa-pending-recheck-rejected">
+                        {t('dpaPending.recheckRejected')}
+                    </Alert>
+                )}
                 {linkState.kind === 'loading' && (
                     <p className={styles.note} role="status">
                         {t('dpaForward.dialog.linkPending')}

@@ -134,7 +134,6 @@ export const DepartmentDataProtectionCard = ({
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
     const consentTemplates = useConsentTemplates();
     const [consentTemplateId, setConsentTemplateId] = useState<number | string | undefined>(undefined);
-    const [publishBlocked, setPublishBlocked] = useState(false);
     const consentMap = useMemo(
         () => ({ ...(consentByLanguage ?? {}), ...consentEdits }),
         [consentByLanguage, consentEdits],
@@ -142,6 +141,12 @@ export const DepartmentDataProtectionCard = ({
     const blockedLanguages = useMemo(
         () => (consentEnabled ? consentPublicationBlockers(consentMap) : []),
         [consentEnabled, consentMap],
+    );
+    // Named the way the admin reads them ("Deutsch, Englisch"), not as wire codes:
+    // the whole point of the notice is to send them to the right language tab.
+    const blockedLanguageNames = useMemo(
+        () => blockedLanguages.map((language) => t(`language.${language}`, language.toUpperCase())).join(', '),
+        [blockedLanguages, t],
     );
     const {
         activeLanguage,
@@ -198,10 +203,8 @@ export const DepartmentDataProtectionCard = ({
      */
     const handlePublish = () => {
         if (blockedLanguages.length > 0) {
-            setPublishBlocked(true);
             return;
         }
-        setPublishBlocked(false);
         requestPublish();
     };
 
@@ -214,7 +217,6 @@ export const DepartmentDataProtectionCard = ({
         const template = consentTemplates.find((entry) => entry.id === id);
         if (!template || consentLocked) return;
         setConsentTemplateId(id);
-        setPublishBlocked(false);
         setConsentEdits((current) => ({ ...current, [activeLanguage]: template.values.text }));
     };
 
@@ -263,7 +265,34 @@ export const DepartmentDataProtectionCard = ({
                         />
                     ) : undefined
                 }
-                topicSlot={departmentSlot}
+                topicSlot={
+                    consentEnabled || departmentSlot ? (
+                        <>
+                            {consentEnabled && (
+                                <LegalConsentField
+                                    hideTemplateChooser
+                                    inheritedFrom={
+                                        // The notice describes the CURRENT state. While an archived version is on
+                                        // screen it would answer a question nobody asked about the version being
+                                        // read, so it goes away for the duration.
+                                        consentInheritedFrom &&
+                                        !isViewingVersion &&
+                                        ownConsentByLanguage?.[activeLanguage] === undefined
+                                            ? consentInheritedFrom
+                                            : undefined
+                                    }
+                                    language={activeLanguage}
+                                    readOnly={consentLocked}
+                                    value={(viewedConsent ?? consentMap)[activeLanguage] ?? ''}
+                                    onChange={(next) =>
+                                        setConsentEdits((current) => ({ ...current, [activeLanguage]: next }))
+                                    }
+                                />
+                            )}
+                            {departmentSlot}
+                        </>
+                    ) : undefined
+                }
                 helpSlot={
                     <>
                         <div className={styles.header}>
@@ -333,32 +362,6 @@ export const DepartmentDataProtectionCard = ({
                     </>
                 }
             />
-            {/* The consent sentence sits UNDER the editor, not in its `belowSlot`:
-                the M3 card is a fixed 800×740 deck card, so visible content inside
-                it is clipped (the same trap the aboveEditorSlot banner hit in #708).
-                It stays part of THIS card — one card, policy plus its consent field. */}
-            {consentEnabled && (
-                <LegalConsentField
-                    hideTemplateChooser
-                    inheritedFrom={
-                        // The notice describes the CURRENT state. While an archived version is on
-                        // screen it would answer a question nobody asked about the version being
-                        // read, so it goes away for the duration.
-                        consentInheritedFrom &&
-                        !isViewingVersion &&
-                        ownConsentByLanguage?.[activeLanguage] === undefined
-                            ? consentInheritedFrom
-                            : undefined
-                    }
-                    language={activeLanguage}
-                    readOnly={consentLocked}
-                    value={(viewedConsent ?? consentMap)[activeLanguage] ?? ''}
-                    onChange={(next) => {
-                        setPublishBlocked(false);
-                        setConsentEdits((current) => ({ ...current, [activeLanguage]: next }));
-                    }}
-                />
-            )}
             {/* A history that failed to load is not an empty history — see LegalText. */}
             {versionsUnavailable && (
                 <Alert
@@ -369,7 +372,11 @@ export const DepartmentDataProtectionCard = ({
                     description={t('legal.versions.unavailable.description')}
                 />
             )}
-            {publishBlocked && (
+            {/* Shown as soon as ANY authored language is affected, not only after a
+                failed publish attempt: the rule arrived after texts were live, so a
+                stored sentence can be blocking on open, in a language that is not the
+                one on screen. Waiting for the Publish click would hide that. */}
+            {blockedLanguages.length > 0 && (
                 <Alert
                     type="error"
                     showIcon
@@ -377,9 +384,9 @@ export const DepartmentDataProtectionCard = ({
                     message={t('legal.consent.publishBlocked.title')}
                     description={
                         <>
-                            {t('legal.consent.publishBlocked.description', {
-                                languages: blockedLanguages.join(', '),
-                            })}{' '}
+                            {t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}{' '}
+                            {/* The token is composed in JSX, never interpolated — i18next
+                                treats `{{…}}` in a translation as its own syntax. */}
                             <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
                         </>
                     }

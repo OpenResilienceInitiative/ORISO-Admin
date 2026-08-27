@@ -22,5 +22,9 @@ export {
 } from './PlaceholderTemplateEditor';
 export { EmailKitPreview, type EmailKitPreviewProps } from './EmailKitPreview';
 export { InviteEmailTemplateEditor, type InviteEmailTemplateValues } from './InviteEmailTemplateEditor';
-export { LegalConsentTemplateEditor, type LegalConsentTemplateValues } from './LegalConsentTemplateEditor';
+export {
+    LegalConsentHeadIcon,
+    LegalConsentTemplateEditor,
+    type LegalConsentTemplateValues,
+} from './LegalConsentTemplateEditor';
 export { PlaceholderTemplateDialog, type PlaceholderTemplateDialogProps } from './PlaceholderTemplateDialog';

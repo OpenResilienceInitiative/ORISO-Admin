@@ -283,7 +283,7 @@ export const FullscreenDialog: Story = {
     },
     args: {
         title: 'Auftragsdaten Verabeitungsvertrag',
-        placeholder: 'Fügen Sie hier den Auftragsverarbeitungsvertrag ein.',
+        placeholder: 'Fügen Sie hier die Vertragsunterlagen ein.',
         value: '',
         languages: [{ value: 'de', label: 'Deutsch' }],
         language: 'de',
@@ -305,17 +305,17 @@ const dpaVersions = [
     {
         id: '2026-07-01T10:00',
         label: '1. Jul 2026 – 10:22 (aktuell)',
-        content: '<h2>Auftragsverarbeitungsvertrag</h2><p>Fassung vom Juli 2026.</p>',
+        content: '<h2>Vertragsunterlagen</h2><p>Fassung vom Juli 2026.</p>',
     },
     {
         id: '2026-05-02T09:00',
         label: '2. Mai 2026 – 09:00',
-        content: '<h2>Auftragsverarbeitungsvertrag</h2><p>Ältere Fassung vom Mai 2026.</p>',
+        content: '<h2>Vertragsunterlagen</h2><p>Ältere Fassung vom Mai 2026.</p>',
     },
     {
         id: '2026-01-15T14:30',
         label: '15. Jan 2026 – 14:30',
-        content: '<h2>Auftragsverarbeitungsvertrag</h2><p>Erste Fassung vom Januar 2026.</p>',
+        content: '<h2>Vertragsunterlagen</h2><p>Erste Fassung vom Januar 2026.</p>',
     },
 ];
 
@@ -338,7 +338,7 @@ export const WithVersionSelect: Story = {
     },
     args: {
         title: 'Auftragsdaten Verabeitungsvertrag',
-        value: '<h2>Auftragsverarbeitungsvertrag</h2><p>Aktueller Entwurf.</p>',
+        value: '<h2>Vertragsunterlagen</h2><p>Aktueller Entwurf.</p>',
         versions: dpaVersions,
         languages: [{ value: 'de', label: 'Deutsch' }],
         language: 'de',
@@ -350,7 +350,7 @@ export const VersionSelectReadOnly: Story = {
     render: (args) => <ControlledEditor {...args} />,
     args: {
         title: 'Auftragsdaten Verabeitungsvertrag',
-        value: '<h2>Auftragsverarbeitungsvertrag</h2><p>Veröffentlichte Fassung.</p>',
+        value: '<h2>Vertragsunterlagen</h2><p>Veröffentlichte Fassung.</p>',
         versions: dpaVersions,
         readOnly: true,
         languages: [{ value: 'de', label: 'Deutsch' }],

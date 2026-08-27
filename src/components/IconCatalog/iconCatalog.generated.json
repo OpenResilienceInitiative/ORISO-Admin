@@ -812,6 +812,32 @@
         "usage": "catalogued-only"
     },
     {
+        "id": "ui-icon:check-box:filled",
+        "family": "check-box",
+        "state": "filled",
+        "role": "selected",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "check-box-filled.svg",
+        "sourcePath": "src/resources/img/svg/check-box-filled.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:check-box:base",
+        "family": "check-box",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "check-box.svg",
+        "sourcePath": "src/resources/img/svg/check-box.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:checkmark:base",
         "family": "checkmark",
         "state": "base",
@@ -1853,8 +1879,8 @@
         "fileName": "mail_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_24px.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:oriso:mail:filled",
@@ -1866,8 +1892,8 @@
         "fileName": "mail_filled_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_filled_24px.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:oriso:nearby-conv-type:200",
@@ -1957,8 +1983,8 @@
         "fileName": "send_400_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/send_400_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:oriso:send:filled",
@@ -1970,8 +1996,8 @@
         "fileName": "send_filled_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/send_filled_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:oriso:topic:400",
@@ -3086,6 +3112,7 @@
         "usageFiles": [
             "src/components/AdminEmpty/index.tsx",
             "src/components/cards/CaseTakeoverCard/index.tsx",
+            "src/components/CustomIcons/LegalIcons.tsx",
             "src/components/GlobalSearch/GlobalSearchBar.tsx",
             "src/components/GlobalSearch/SplitButton.tsx",
             "src/components/M3NumberField/index.tsx",
