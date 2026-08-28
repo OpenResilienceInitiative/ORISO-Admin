@@ -430,10 +430,16 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         renderForm();
 
         await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
-        // MUI renders the clear affordance inside the Autocomplete; it is only revealed on hover,
-        // so drive it by class rather than by accessible name.
-        const field = screen.getByLabelText('Fester Supervisor').closest('.MuiAutocomplete-root');
-        fireEvent.click(field.querySelector('.MuiAutocomplete-clearIndicator'));
+        // Hover is what a real admin does to reveal the clear affordance.
+        await user.hover(screen.getByLabelText('Fester Supervisor'));
+        // Query it by its visible title rather than MUI's internal class, so a class rename in
+        // the library cannot silently turn this assertion into a no-op. `getByRole` is not usable
+        // here: MUI keeps the button mounted at `visibility: hidden` and reveals it through a CSS
+        // `:hover` rule that jsdom never applies, and dom-accessibility-api computes no accessible
+        // name for a visibility-hidden element — so role+name finds nothing even with
+        // `hidden: true`. `fireEvent` for the same reason: user-event refuses to click an element
+        // it considers invisible.
+        fireEvent.click(screen.getByTitle('Clear'));
 
         // '' is the backend's "clear it" signal; undefined would leave the supervisor in place.
         expect(await submit(user)).toMatchObject({ assignedSupervisorId: '' });
