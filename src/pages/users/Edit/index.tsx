@@ -142,6 +142,7 @@ export const UserEditOrAdd = () => {
      * `consultantById` first, list row second order the public-slug fields already use.
      */
     const storedSupervisorId = consultantById?.assignedSupervisorId ?? singleData?.assignedSupervisorId;
+    const editedTenantId = consultantById?.tenantId ?? singleData?.tenantId;
     /**
      * Only the single-consultant record carries the current assignment, so without it we do not
      * know what is stored. Writing the field then would send '' on any unrelated edit and silently
@@ -153,7 +154,18 @@ export const UserEditOrAdd = () => {
         const candidates = supervisorCandidatesResponse?.data || [];
         // The backend rejects a target that is not itself a supervisor, or the counsellor
         // themselves — so never offer either.
-        const eligible = candidates.filter((candidate) => candidate.isSupervisor && candidate.id !== id);
+        // A platform admin's consultant search spans tenants, so `isSupervisor` alone would offer
+        // colleagues from a foreign tenant. The backend does not reject that today — it stores the
+        // assignment and the attach then fails silently at accept time, which looks configured but
+        // never supervises anything. Scope the list when we know the edited consultant's tenant;
+        // for tenant-scoped admins the search is already narrowed, so an unknown tenant is left
+        // unfiltered rather than emptying the list.
+        const eligible = candidates.filter(
+            (candidate) =>
+                candidate.isSupervisor &&
+                candidate.id !== id &&
+                (editedTenantId === undefined || String(candidate.tenantId) === String(editedTenantId)),
+        );
         const options = convertToOptions(eligible, ['firstname', 'lastname'], 'id');
 
         if (!storedSupervisorId || options.some(({ value }) => value === storedSupervisorId)) {
@@ -170,7 +182,7 @@ export const UserEditOrAdd = () => {
                 value: storedSupervisorId,
             },
         ];
-    }, [supervisorCandidatesResponse, id, storedSupervisorId]);
+    }, [supervisorCandidatesResponse, id, storedSupervisorId, editedTenantId]);
 
     const standingSupervisorHelpKey = (() => {
         if (supervisorCandidatesFailed) {

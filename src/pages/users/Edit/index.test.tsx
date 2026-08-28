@@ -397,6 +397,15 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
                         firstname: 'Grace',
                         lastname: 'Hopper',
                         isSupervisor: true,
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                    {
+                        id: 'supervisor-foreign',
+                        firstname: 'Foreign',
+                        lastname: 'Supervisor',
+                        isSupervisor: true,
+                        tenantId: TENANT.id + 1,
                         agencies: [],
                     },
                 ],
@@ -456,6 +465,23 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         renderForm();
 
         expect(await unlockAndSubmit(user)).not.toHaveProperty('assignedSupervisorId');
+    });
+
+    /**
+     * A platform admin's consultant search spans tenants. Offering a foreign supervisor would
+     * store an assignment the accept path can never honour — it fails silently there, so the
+     * setting would look done and supervise nothing.
+     */
+    it("offers only supervisors from the edited consultant's own tenant", async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, tenantId: TENANT.id, assignedSupervisorId: undefined });
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(screen.getByLabelText('Fester Supervisor'));
+
+        expect(await screen.findByRole('option', { name: 'Grace Hopper' })).toBeTruthy();
+        expect(screen.queryByRole('option', { name: 'Foreign Supervisor' })).toBeNull();
     });
 
     it('writes the new supervisor when the admin picks one', async () => {
