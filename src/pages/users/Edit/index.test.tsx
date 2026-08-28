@@ -432,6 +432,30 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
                         agencies: [],
                     },
                     {
+                        id: 'supervisor-absent-disabled',
+                        firstname: 'AbsentDisabled',
+                        lastname: 'Supervisor',
+                        isSupervisor: true,
+                        // Absent AND disabled: resolveDisplayStatus reports ABSENT and never looks
+                        // at `active`, which is exactly how this one used to slip through.
+                        absent: true,
+                        active: false,
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                    {
+                        id: 'supervisor-absent-only',
+                        firstname: 'AbsentOnly',
+                        lastname: 'Supervisor',
+                        isSupervisor: true,
+                        // Absence alone is temporary; ADR-008 lets supervision lapse rather than
+                        // block, so this one must stay assignable.
+                        absent: true,
+                        active: true,
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                    {
                         id: 'supervisor-deleting',
                         firstname: 'Deleting',
                         lastname: 'Supervisor',
@@ -532,6 +556,9 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         // Accounts that cannot work: they keep the capability flag but would supervise nothing.
         expect(screen.queryByRole('option', { name: 'Disabled Supervisor' })).toBeNull();
         expect(screen.queryByRole('option', { name: 'Deleting Supervisor' })).toBeNull();
+        expect(screen.queryByRole('option', { name: 'AbsentDisabled Supervisor' })).toBeNull();
+        // Absence on its own is not a reason to exclude anybody.
+        expect(screen.queryByRole('option', { name: 'AbsentOnly Supervisor' })).toBeTruthy();
     });
 
     /**

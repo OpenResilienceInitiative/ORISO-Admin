@@ -31,7 +31,6 @@ import { searchTenantData } from '../../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
 import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 import { findUncoveredTopics } from '../../../utils/topicAgencyCoverage';
-import { resolveDisplayStatus } from '../../../types/userDisplayStatus';
 import { CounselorData } from '../../../types/counselor';
 import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { useCounselorById } from '../../../hooks/useCounselorById';
@@ -56,12 +55,16 @@ const FORM_NAME = 'consultantOrAdmin';
 const SUPERVISOR_CANDIDATE_PAGE_SIZE = 1000;
 
 /**
- * A standing supervisor has to be an account that can still work: `resolveDisplayStatus` treats
- * `active === false` and `INACTIVE` as disabled, and `IN_DELETION` is on its way out. Either would
- * be stored happily and then supervise nothing.
+ * A standing supervisor has to be an account that can still work. Read the raw fields rather than
+ * `resolveDisplayStatus`: that helper answers "what badge does the user table show", and it
+ * returns ABSENT before it ever looks at whether the account is disabled — so a colleague who is
+ * both absent AND disabled would read as merely absent and slip through.
+ *
+ * Absence alone stays assignable on purpose. It is temporary, and ADR-008 is explicit that
+ * supervision simply lapses while the supervisor is away rather than blocking anything.
  */
 const isAssignableSupervisor = (candidate: CounselorData): boolean =>
-    resolveDisplayStatus(candidate) !== 'DISABLED' && candidate.status !== 'IN_DELETION';
+    candidate.active !== false && candidate.status !== 'INACTIVE' && candidate.status !== 'IN_DELETION';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
     const seen = new Set(current.map(({ value }) => value));
