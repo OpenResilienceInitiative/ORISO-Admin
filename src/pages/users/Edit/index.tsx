@@ -139,6 +139,14 @@ export const UserEditOrAdd = () => {
     const pendingPublicSlug = Form.useWatch('pendingPublicSlug', form);
     const publicSlugStatus = Form.useWatch('publicSlugStatus', form);
     const prevAgencyIdsRef = useRef<string[] | null>(null);
+    /**
+     * Whether the ADMIN changed the standing supervisor, as opposed to us syncing it from a
+     * refetch. antd's `isFieldTouched` cannot tell the two apart — `setFieldsValue` marks the
+     * field touched too — and conflating them is what makes an unrelated save start writing a
+     * value nobody chose. `onValuesChange` fires only for user-driven changes, so this ref is the
+     * honest signal.
+     */
+    const supervisorPickedByAdminRef = useRef(false);
     const topicsForList = topics?.filter((topic) => !selectedTopicIds.find(({ value }) => value === `${topic.id}`));
     const topicOptions = [
         ...selectedTopicIds.filter((selected) => !topics?.some((topic) => `${topic.id}` === selected.value)),
@@ -329,7 +337,7 @@ export const UserEditOrAdd = () => {
             // save — so without this the selector would keep showing what the form mounted with
             // while the backend already held another. Never over a field the admin has touched:
             // their edit beats a background refetch.
-            ...(form.isFieldTouched('assignedSupervisorId')
+            ...(supervisorPickedByAdminRef.current
                 ? {}
                 : { assignedSupervisorId: consultantById.assignedSupervisorId || undefined }),
         });
@@ -429,7 +437,7 @@ export const UserEditOrAdd = () => {
             // from a stale detail cache — would mean submitting a value we did not actually know,
             // and since '' means "clear it" to the backend, an unrelated edit could silently drop
             // a supervisor nobody touched. Omitted, the backend leaves the assignment alone.
-            if (!canWriteStandingSupervisor || !form.isFieldTouched('assignedSupervisorId')) {
+            if (!canWriteStandingSupervisor || !supervisorPickedByAdminRef.current) {
                 const payloadWithoutSupervisor = { ...data };
                 delete payloadWithoutSupervisor.assignedSupervisorId;
                 mutate(payloadWithoutSupervisor);
@@ -539,6 +547,13 @@ export const UserEditOrAdd = () => {
                     form={form}
                     name={FORM_NAME}
                     onFinish={onSave}
+                    // Fires for user-driven changes only, never for `setFieldsValue` — the one
+                    // signal that separates an admin's pick from a background sync.
+                    onValuesChange={(changedValues) => {
+                        if ('assignedSupervisorId' in changedValues) {
+                            supervisorPickedByAdminRef.current = true;
+                        }
+                    }}
                     onFinishFailed={onFinishFailed}
                     initialValues={{
                         ...(singleData || {

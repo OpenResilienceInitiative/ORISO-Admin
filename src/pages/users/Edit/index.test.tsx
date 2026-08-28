@@ -586,9 +586,11 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * while the backend already holds something else.
      */
     it('picks up the stored assignment when the detail record arrives after mount', async () => {
+        const user = userEvent.setup();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         const { rerender } = renderForm();
 
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
         await waitFor(() => expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', ''));
 
         mocks.counselorResult = {
@@ -602,6 +604,11 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         );
 
         await waitFor(() => expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', 'Grace Hopper'));
+
+        // The sync must not count as an admin edit. If `setFieldsValue` marked the field touched,
+        // this unrelated save would start writing a value nobody chose — the same data-loss shape
+        // the touched-field guard exists to prevent.
+        expect(await submit(user)).not.toHaveProperty('assignedSupervisorId');
     });
 
     /**
