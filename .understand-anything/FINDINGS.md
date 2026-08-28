@@ -1,5 +1,7 @@
 # Findings And Maintainability Risks
 
+> **Historical snapshot (June 2026).** This document is a point-in-time audit and has not been re-run. File counts, versions and findings refer to the June 2026 state of the repository.
+
 ## Current Graph Findings
 
 - Graph was refreshed from latest `dev` commit `1a367cd463191425e4ee61f02ec5f1a35d6b02bf`.
