@@ -103,13 +103,19 @@ export const UserEditOrAdd = () => {
      * only — `CreateConsultantDTO` carries no such field, the counsellor must exist first.
      */
     const showStandingSupervisor = isConsultantForm && isEditing;
-    const { data: supervisorCandidatesResponse, isLoading: isLoadingSupervisorCandidates } = useConsultantsOrAdminsData(
-        {
-            typeOfUser: TypeOfUser.Consultants,
-            pageSize: SUPERVISOR_CANDIDATE_PAGE_SIZE,
-            enabled: showStandingSupervisor,
-        },
-    );
+    const {
+        data: supervisorCandidatesResponse,
+        isLoading: isLoadingSupervisorCandidates,
+        isError: supervisorCandidatesFailed,
+    } = useConsultantsOrAdminsData({
+        typeOfUser: TypeOfUser.Consultants,
+        pageSize: SUPERVISOR_CANDIDATE_PAGE_SIZE,
+        enabled: showStandingSupervisor,
+        // Without this the search resolves to an empty list on a 500, so "nobody is eligible"
+        // would be indistinguishable from "the API is down" — the admin would be told there is
+        // nobody to pick while the outage stays invisible.
+        rethrowOnFailure: true,
+    });
     const showGrantConsultantIdentity = canGrantConsultantIdentity(isEditing, typeOfUsers, singleData);
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted] = useState(false);
@@ -136,6 +142,13 @@ export const UserEditOrAdd = () => {
      * `consultantById` first, list row second order the public-slug fields already use.
      */
     const storedSupervisorId = consultantById?.assignedSupervisorId ?? singleData?.assignedSupervisorId;
+    /**
+     * Only the single-consultant record carries the current assignment, so without it we do not
+     * know what is stored. Writing the field then would send '' on any unrelated edit and silently
+     * clear a supervisor the admin never touched, so the field is read-only and stays out of the
+     * payload until that record is available.
+     */
+    const canWriteStandingSupervisor = showStandingSupervisor && !!consultantById;
     const supervisorOptions = useMemo(() => {
         const candidates = supervisorCandidatesResponse?.data || [];
         // The backend rejects a target that is not itself a supervisor, or the counsellor
@@ -158,6 +171,18 @@ export const UserEditOrAdd = () => {
             },
         ];
     }, [supervisorCandidatesResponse, id, storedSupervisorId]);
+
+    const standingSupervisorHelpKey = (() => {
+        if (supervisorCandidatesFailed) {
+            return 'counselor.assignedSupervisor.loadFailed';
+        }
+        if (!canWriteStandingSupervisor) {
+            return 'counselor.assignedSupervisor.detailsUnavailable';
+        }
+        return supervisorOptions.length === 0
+            ? 'counselor.assignedSupervisor.noCandidates'
+            : 'counselor.assignedSupervisor.hint';
+    })();
 
     const hasSelectedAgencies = selectedAgencies.length > 0;
     const consultantTopics = consultantById?.topics || [];
@@ -356,12 +381,20 @@ export const UserEditOrAdd = () => {
                     return;
                 }
             }
+            if (!canWriteStandingSupervisor) {
+                // The field is read-only in this state; keep it out of the payload entirely so an
+                // unrelated edit cannot clear a standing supervisor we were never able to read.
+                const payloadWithoutSupervisor = { ...data };
+                delete payloadWithoutSupervisor.assignedSupervisorId;
+                mutate(payloadWithoutSupervisor);
+                return;
+            }
             // `MuiSelectField` emits `undefined` when the admin clears it, but the backend reads
             // undefined as "leave the assignment untouched" — only '' clears it. Without this
             // coercion a standing supervisor could be set but never removed.
-            mutate(showStandingSupervisor ? { ...data, assignedSupervisorId: data.assignedSupervisorId ?? '' } : data);
+            mutate({ ...data, assignedSupervisorId: data.assignedSupervisorId ?? '' });
         },
-        [isConsultantForm, filteredAgencies, form, mutate, t, showStandingSupervisor],
+        [isConsultantForm, filteredAgencies, form, mutate, t, canWriteStandingSupervisor],
     );
     const onFinishFailed = useCallback(({ errorFields }: ValidateErrorEntity) => {
         // Keep values; jump to the field that blocked save (#717 / #594.6).
@@ -680,13 +713,14 @@ export const UserEditOrAdd = () => {
                                                     name="assignedSupervisorId"
                                                     label="counselor.assignedSupervisor"
                                                     placeholder="counselor.assignedSupervisor.placeholder"
-                                                    help={
-                                                        supervisorOptions.length === 0
-                                                            ? 'counselor.assignedSupervisor.noCandidates'
-                                                            : 'counselor.assignedSupervisor.hint'
-                                                    }
+                                                    help={standingSupervisorHelpKey}
                                                     options={supervisorOptions}
                                                     loading={isLoadingSupervisorCandidates}
+                                                    // Disabled, not hidden: the admin should see
+                                                    // that the assignment exists but cannot be
+                                                    // edited right now, rather than the field
+                                                    // vanishing.
+                                                    disabled={!canWriteStandingSupervisor || supervisorCandidatesFailed}
                                                     allowClear
                                                 />
                                             )}

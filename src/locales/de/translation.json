@@ -790,6 +790,8 @@
     "counselor.assignedSupervisor.placeholder": "Supervisor auswählen",
     "counselor.assignedSupervisor.hint": "Wird automatisch als Supervisor zu jedem Fall hinzugefügt, den diese Person annimmt.",
     "counselor.assignedSupervisor.noCandidates": "Noch niemand auswählbar: Es ist bisher keine Person über „Als Supervisor hinzufügen können“ freigegeben.",
+    "counselor.assignedSupervisor.loadFailed": "Die Liste möglicher Supervisoren konnte nicht geladen werden. Bitte die Seite neu laden.",
+    "counselor.assignedSupervisor.detailsUnavailable": "Die gespeicherte Zuweisung konnte nicht geladen werden. Das Feld bleibt gesperrt, damit sie nicht versehentlich gelöscht wird.",
     "counselor.displayName": "Anzeigename für Ratsuchende",
     "counselor.displayName.placeholder": "Anzeigename eingeben",
     "counselor.displayName.hint": "Dieser Name wird Ratsuchenden angezeigt.",

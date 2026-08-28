@@ -36,6 +36,8 @@ const mocks = vi.hoisted(() => ({
     topicsResult: { data: [] as any[], isLoading: false },
     consultantsResult: { data: { data: [] as any[] }, isLoading: false },
     counselorResult: { data: undefined as any, isLoading: false },
+    /** Swapped per test so the same harness can drive the create AND the edit form. */
+    params: { id: 'add', typeOfUsers: 'consultants' } as { id: string; typeOfUsers: string },
 }));
 
 const TENANT = { id: 7, name: 'Caritas Augsburg' };
@@ -58,6 +60,7 @@ const translations: Record<string, string> = {
     'counselor.position': 'Funktion',
     'counselor.personalTitle': 'Titel',
     'counselor.adminRemarks': 'Interne Anmerkungen',
+    'counselor.assignedSupervisor': 'Fester Supervisor',
     'tenantAdmins.form.tenantAssignment': 'Trägerzuordnung',
     agency: 'Beratungsstelle',
     'topics.title': 'Themen',
@@ -77,9 +80,10 @@ vi.mock('react-router-dom', async () => {
     return {
         ...actual,
         useNavigate: () => mocks.navigate,
-        // The consultant *create* form: no `id`, so nothing is read-only and the
-        // save button is available without first unlocking the form.
-        useParams: () => ({ id: 'add', typeOfUsers: 'consultants' }),
+        // Defaults to the consultant *create* form (`id: 'add'`): nothing is read-only and the
+        // save button is available without first unlocking the form. Tests that need the edit
+        // form set `mocks.params.id` to a consultant id.
+        useParams: () => mocks.params,
     };
 });
 
@@ -241,6 +245,7 @@ beforeEach(() => {
     mocks.topicsResult = { data: [], isLoading: false };
     mocks.consultantsResult = { data: { data: [] }, isLoading: false };
     mocks.counselorResult = { data: undefined, isLoading: false };
+    mocks.params = { id: 'add', typeOfUsers: 'consultants' };
 });
 
 describe('admin remarks are gated on the tenant-level admin role (#994)', () => {
@@ -364,5 +369,81 @@ describe('assignment fields', () => {
         await chooseOption(user, 'Beratungsstelle', '20095 Beratungsstelle Nord Hamburg');
 
         expect(await screen.findAllByLabelText('Themen')).toHaveLength(1);
+    });
+});
+
+describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
+    const CONSULTANT_ID = 'consultant-1';
+    const SUPERVISOR_ID = 'supervisor-9';
+
+    const editExistingConsultant = (counselorData: any) => {
+        mocks.params = { id: CONSULTANT_ID, typeOfUsers: 'consultants' };
+        mocks.consultantsResult = {
+            data: {
+                data: [
+                    {
+                        id: CONSULTANT_ID,
+                        firstname: 'Ada',
+                        lastname: 'Lovelace',
+                        email: 'ada.lovelace@example.org',
+                        username: 'ada-lovelace',
+                        tenantId: TENANT.id,
+                        agencies: [],
+                        // The list endpoint never fills this — see the comment in index.tsx.
+                        assignedSupervisorId: null,
+                    },
+                    {
+                        id: SUPERVISOR_ID,
+                        firstname: 'Grace',
+                        lastname: 'Hopper',
+                        isSupervisor: true,
+                        agencies: [],
+                    },
+                ],
+            },
+            isLoading: false,
+        };
+        mocks.counselorResult = { data: counselorData, isLoading: false };
+    };
+
+    const unlockAndSubmit = async (user: ReturnType<typeof userEvent.setup>) => {
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        return submit(user);
+    };
+
+    /**
+     * The dangerous case. Only `GET /useradmin/consultants/{id}` carries the stored assignment;
+     * when it fails the form still renders. Sending `assignedSupervisorId: ''` then would clear a
+     * standing supervisor the admin never touched, on any unrelated edit.
+     */
+    it('never writes the field when the stored assignment could not be read', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant(undefined);
+        renderForm();
+
+        expect(await unlockAndSubmit(user)).not.toHaveProperty('assignedSupervisorId');
+    });
+
+    it('clears the assignment when the admin empties the field', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID });
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        // MUI renders the clear affordance inside the Autocomplete; it is only revealed on hover,
+        // so drive it by class rather than by accessible name.
+        const field = screen.getByLabelText('Fester Supervisor').closest('.MuiAutocomplete-root');
+        fireEvent.click(field.querySelector('.MuiAutocomplete-clearIndicator'));
+
+        // '' is the backend's "clear it" signal; undefined would leave the supervisor in place.
+        expect(await submit(user)).toMatchObject({ assignedSupervisorId: '' });
+    });
+
+    it('keeps the stored assignment when the admin does not touch the field', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID });
+        renderForm();
+
+        expect(await unlockAndSubmit(user)).toMatchObject({ assignedSupervisorId: SUPERVISOR_ID });
     });
 });
