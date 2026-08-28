@@ -31,6 +31,8 @@ import { searchTenantData } from '../../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
 import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 import { findUncoveredTopics } from '../../../utils/topicAgencyCoverage';
+import { resolveDisplayStatus } from '../../../types/userDisplayStatus';
+import { CounselorData } from '../../../types/counselor';
 import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { useCounselorById } from '../../../hooks/useCounselorById';
 import { GrantConsultantIdentityModal } from '../../../components/GrantConsultantIdentityModal';
@@ -52,6 +54,14 @@ const FORM_NAME = 'consultantOrAdmin';
  * far above any realistic tenant, far below "fetch the world".
  */
 const SUPERVISOR_CANDIDATE_PAGE_SIZE = 1000;
+
+/**
+ * A standing supervisor has to be an account that can still work: `resolveDisplayStatus` treats
+ * `active === false` and `INACTIVE` as disabled, and `IN_DELETION` is on its way out. Either would
+ * be stored happily and then supervise nothing.
+ */
+const isAssignableSupervisor = (candidate: CounselorData): boolean =>
+    resolveDisplayStatus(candidate) !== 'DISABLED' && candidate.status !== 'IN_DELETION';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
     const seen = new Set(current.map(({ value }) => value));
@@ -164,6 +174,9 @@ export const UserEditOrAdd = () => {
             (candidate) =>
                 candidate.isSupervisor &&
                 candidate.id !== id &&
+                // A disabled or pending-deletion colleague keeps the capability flag but cannot
+                // take on oversight. Offering them yields an assignment that supervises nothing.
+                isAssignableSupervisor(candidate) &&
                 (editedTenantId === undefined || String(candidate.tenantId) === String(editedTenantId)),
         );
         const options = convertToOptions(eligible, ['firstname', 'lastname'], 'id');
@@ -421,6 +434,19 @@ export const UserEditOrAdd = () => {
         },
         [isConsultantForm, filteredAgencies, form, mutate, t, canWriteStandingSupervisor],
     );
+    /**
+     * antd applies `initialValues` once, at mount. The detail record can arrive or refetch later
+     * (its query is invalidated on every save), and without this the selector would keep showing
+     * the value the form mounted with while the backend already had another. Never overrides a
+     * field the admin has touched — their edit wins over a background refetch.
+     */
+    useEffect(() => {
+        if (!canWriteStandingSupervisor || form.isFieldTouched('assignedSupervisorId')) {
+            return;
+        }
+        form.setFieldsValue({ assignedSupervisorId: storedSupervisorId || undefined });
+    }, [canWriteStandingSupervisor, form, storedSupervisorId]);
+
     const onFinishFailed = useCallback(({ errorFields }: ValidateErrorEntity) => {
         // Keep values; jump to the field that blocked save (#717 / #594.6).
         focusFirstInvalidField(errorFields, FORM_NAME);

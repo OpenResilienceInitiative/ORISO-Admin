@@ -423,6 +423,24 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
                         agencies: [],
                     },
                     {
+                        id: 'supervisor-disabled',
+                        firstname: 'Disabled',
+                        lastname: 'Supervisor',
+                        isSupervisor: true,
+                        active: false,
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                    {
+                        id: 'supervisor-deleting',
+                        firstname: 'Deleting',
+                        lastname: 'Supervisor',
+                        isSupervisor: true,
+                        status: 'IN_DELETION',
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                    {
                         id: 'supervisor-foreign',
                         firstname: 'Foreign',
                         lastname: 'Supervisor',
@@ -511,6 +529,9 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         expect(screen.queryByRole('option', { name: 'Plain Colleague' })).toBeNull();
         // A supervisor in another tenant.
         expect(screen.queryByRole('option', { name: 'Foreign Supervisor' })).toBeNull();
+        // Accounts that cannot work: they keep the capability flag but would supervise nothing.
+        expect(screen.queryByRole('option', { name: 'Disabled Supervisor' })).toBeNull();
+        expect(screen.queryByRole('option', { name: 'Deleting Supervisor' })).toBeNull();
     });
 
     /**
@@ -557,6 +578,30 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
 
         expect(screen.getByText('Nur die ersten 1000 werden durchsucht.')).toBeTruthy();
+    });
+
+    /**
+     * antd applies `initialValues` once, at mount, and the detail query is invalidated on every
+     * save — so without an explicit sync the selector keeps showing what the form mounted with
+     * while the backend already holds something else.
+     */
+    it('picks up the stored assignment when the detail record arrives after mount', async () => {
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        const { rerender } = renderForm();
+
+        await waitFor(() => expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', ''));
+
+        mocks.counselorResult = {
+            data: { id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID },
+            isLoading: false,
+        };
+        rerender(
+            <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+
+        await waitFor(() => expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', 'Grace Hopper'));
     });
 
     it('writes the new supervisor when the admin picks one', async () => {
