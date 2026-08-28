@@ -1037,6 +1037,7 @@
     "counselor.assignedSupervisor.placeholder": "Select a supervisor",
     "counselor.assignedSupervisor.hint": "Automatically added as supervisor to every case this counsellor accepts.",
     "counselor.assignedSupervisor.noCandidates": "Nobody to choose yet: no counsellor has been enabled via “Supervisor” capability.",
+    "counselor.assignedSupervisor.truncated": "Only the first 1000 counsellors are searched. If someone is missing, please report it.",
     "counselor.assignedSupervisor.loadFailed": "The list of possible supervisors could not be loaded. Please reload the page.",
     "counselor.assignedSupervisor.detailsUnavailable": "The stored assignment could not be loaded. The field stays locked so it cannot be cleared by accident.",
     "counselor.displayName": "Display name for advice seekers",

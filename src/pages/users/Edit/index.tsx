@@ -184,9 +184,19 @@ export const UserEditOrAdd = () => {
         ];
     }, [supervisorCandidatesResponse, id, storedSupervisorId, editedTenantId]);
 
+    /**
+     * The candidate list is one page deep. A tenant with more consultants than that would silently
+     * hide eligible supervisors on later pages, so say it rather than presenting a short list as
+     * if it were complete. Proper server-side search is the real answer and is out of scope here.
+     */
+    const supervisorCandidatesTruncated = (supervisorCandidatesResponse?.total ?? 0) > SUPERVISOR_CANDIDATE_PAGE_SIZE;
+
     const standingSupervisorHelpKey = (() => {
         if (supervisorCandidatesFailed) {
             return 'counselor.assignedSupervisor.loadFailed';
+        }
+        if (supervisorCandidatesTruncated) {
+            return 'counselor.assignedSupervisor.truncated';
         }
         if (!canWriteStandingSupervisor) {
             return 'counselor.assignedSupervisor.detailsUnavailable';

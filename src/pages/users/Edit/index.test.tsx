@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
     agenciesResult: { data: { data: [] as any[] }, isLoading: false },
     topicsResult: { data: [] as any[], isLoading: false },
     consultantsResult: { data: { data: [] as any[] }, isLoading: false },
+    supervisorCandidatesResult: { data: { data: [] as any[] }, isLoading: false, isError: false },
     counselorResult: { data: undefined as any, isLoading: false },
     /** Swapped per test so the same harness can drive the create AND the edit form. */
     params: { id: 'add', typeOfUsers: 'consultants' } as { id: string; typeOfUsers: string },
@@ -61,6 +62,10 @@ const translations: Record<string, string> = {
     'counselor.personalTitle': 'Titel',
     'counselor.adminRemarks': 'Interne Anmerkungen',
     'counselor.assignedSupervisor': 'Fester Supervisor',
+    'counselor.assignedSupervisor.loadFailed': 'Liste konnte nicht geladen werden.',
+    'counselor.assignedSupervisor.detailsUnavailable': 'Gespeicherte Zuweisung nicht ladbar.',
+    'counselor.assignedSupervisor.noCandidates': 'Noch niemand freigegeben.',
+    'counselor.assignedSupervisor.truncated': 'Nur die ersten 1000 werden durchsucht.',
     'tenantAdmins.form.tenantAssignment': 'Trägerzuordnung',
     agency: 'Beratungsstelle',
     'topics.title': 'Themen',
@@ -140,7 +145,11 @@ vi.mock('../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin', () => ({
 }));
 
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
-    useConsultantsOrAdminsData: () => mocks.consultantsResult,
+    // The page runs this hook twice: once searching for the edited consultant (`search: id`) and
+    // once, unsearched, for the supervisor candidates. They have to be distinguishable, otherwise
+    // a candidate-query failure cannot be simulated at all.
+    useConsultantsOrAdminsData: (args: { search?: string }) =>
+        args?.search ? mocks.consultantsResult : mocks.supervisorCandidatesResult,
 }));
 
 vi.mock('../../../hooks/useAgencysData', () => ({
@@ -244,6 +253,7 @@ beforeEach(() => {
     mocks.agenciesResult = { data: { data: [] }, isLoading: false };
     mocks.topicsResult = { data: [], isLoading: false };
     mocks.consultantsResult = { data: { data: [] }, isLoading: false };
+    mocks.supervisorCandidatesResult = { data: { data: [] }, isLoading: false, isError: false };
     mocks.counselorResult = { data: undefined, isLoading: false };
     mocks.params = { id: 'add', typeOfUsers: 'consultants' };
 });
@@ -378,25 +388,37 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
 
     const editExistingConsultant = (counselorData: any) => {
         mocks.params = { id: CONSULTANT_ID, typeOfUsers: 'consultants' };
-        mocks.consultantsResult = {
+        const edited = {
+            id: CONSULTANT_ID,
+            firstname: 'Ada',
+            lastname: 'Lovelace',
+            email: 'ada.lovelace@example.org',
+            username: 'ada-lovelace',
+            tenantId: TENANT.id,
+            agencies: [],
+            // Ada may BE a supervisor for others — that must still not let her supervise herself.
+            isSupervisor: true,
+            // The list endpoint never fills this — see the comment in index.tsx.
+            assignedSupervisorId: null,
+        };
+        mocks.consultantsResult = { data: { data: [edited] }, isLoading: false };
+        mocks.supervisorCandidatesResult = {
             data: {
                 data: [
-                    {
-                        id: CONSULTANT_ID,
-                        firstname: 'Ada',
-                        lastname: 'Lovelace',
-                        email: 'ada.lovelace@example.org',
-                        username: 'ada-lovelace',
-                        tenantId: TENANT.id,
-                        agencies: [],
-                        // The list endpoint never fills this — see the comment in index.tsx.
-                        assignedSupervisorId: null,
-                    },
+                    edited,
                     {
                         id: SUPERVISOR_ID,
                         firstname: 'Grace',
                         lastname: 'Hopper',
                         isSupervisor: true,
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                    {
+                        id: 'colleague-plain',
+                        firstname: 'Plain',
+                        lastname: 'Colleague',
+                        isSupervisor: false,
                         tenantId: TENANT.id,
                         agencies: [],
                     },
@@ -411,6 +433,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
                 ],
             },
             isLoading: false,
+            isError: false,
         };
         mocks.counselorResult = { data: counselorData, isLoading: false };
     };
@@ -468,11 +491,12 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
     });
 
     /**
-     * A platform admin's consultant search spans tenants. Offering a foreign supervisor would
-     * store an assignment the accept path can never honour — it fails silently there, so the
-     * setting would look done and supervise nothing.
+     * Three predicates, one list: the colleague must hold the supervisor capability, must not be
+     * the consultant being edited, and must sit in the same tenant. A platform admin's search
+     * spans tenants, and a foreign assignment is stored but never honoured at accept time — it
+     * would look configured and supervise nothing.
      */
-    it("offers only supervisors from the edited consultant's own tenant", async () => {
+    it("offers only eligible supervisors from the edited consultant's own tenant", async () => {
         const user = userEvent.setup();
         editExistingConsultant({ id: CONSULTANT_ID, tenantId: TENANT.id, assignedSupervisorId: undefined });
         renderForm();
@@ -481,7 +505,58 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         await user.click(screen.getByLabelText('Fester Supervisor'));
 
         expect(await screen.findByRole('option', { name: 'Grace Hopper' })).toBeTruthy();
+        // Ada herself, even though she holds the capability.
+        expect(screen.queryByRole('option', { name: 'Ada Lovelace' })).toBeNull();
+        // A colleague without the capability.
+        expect(screen.queryByRole('option', { name: 'Plain Colleague' })).toBeNull();
+        // A supervisor in another tenant.
         expect(screen.queryByRole('option', { name: 'Foreign Supervisor' })).toBeNull();
+    });
+
+    /**
+     * An outage must not read as "nobody is eligible". The candidate search swallows failures into
+     * an empty list unless the query opts into rethrowing, so without this the admin would be told
+     * there is nobody to pick while the API was down — and could not tell the difference.
+     */
+    it('says the list could not be loaded, and locks the field, when the candidate query fails', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        mocks.supervisorCandidatesResult = { data: undefined, isLoading: false, isError: true };
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect(screen.getByText('Liste konnte nicht geladen werden.')).toBeTruthy();
+        expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('disabled', true);
+    });
+
+    it('locks the field and says so when the stored assignment could not be read', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant(undefined);
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect(screen.getByText('Gespeicherte Zuweisung nicht ladbar.')).toBeTruthy();
+        expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('disabled', true);
+    });
+
+    /**
+     * The candidate query reads one page. Beyond it, eligible supervisors exist that the admin
+     * cannot select — so the short list must not be presented as if it were complete.
+     */
+    it('warns when there are more consultants than the candidate query reads', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        mocks.supervisorCandidatesResult = {
+            ...mocks.supervisorCandidatesResult,
+            data: { ...mocks.supervisorCandidatesResult.data, total: 1001 },
+        };
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect(screen.getByText('Nur die ersten 1000 werden durchsucht.')).toBeTruthy();
     });
 
     it('writes the new supervisor when the admin picks one', async () => {
