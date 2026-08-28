@@ -128,7 +128,14 @@ export const UserEditOrAdd = () => {
         ...selectedTopicIds.filter((selected) => !topics?.some((topic) => `${topic.id}` === selected.value)),
         ...convertToOptions(topicsForList, 'name', 'id'),
     ];
-    const storedSupervisorId = singleData?.assignedSupervisorId;
+    /**
+     * Read the standing supervisor from the single-consultant record, not from the list row.
+     * The form's list comes from `/service/users/consultants/search`, which leaves
+     * `assignedSupervisorId` null; only `GET /useradmin/consultants/{id}` fills it. Sourcing it
+     * from the list row would make a saved assignment look forgotten after every reload. Same
+     * `consultantById` first, list row second order the public-slug fields already use.
+     */
+    const storedSupervisorId = consultantById?.assignedSupervisorId ?? singleData?.assignedSupervisorId;
     const supervisorOptions = useMemo(() => {
         const candidates = supervisorCandidatesResponse?.data || [];
         // The backend rejects a target that is not itself a supervisor, or the counsellor
@@ -461,6 +468,7 @@ export const UserEditOrAdd = () => {
                         username: decodeUsername(singleData?.username || ''),
                         agencies: convertToOptions(singleData?.agencies || [], ['postcode', 'name', 'city'], 'id'),
                         topicIds: convertToOptions(consultantById?.topics || [], 'name', 'id'),
+                        assignedSupervisorId: storedSupervisorId || undefined,
                         publicSlug: consultantById?.publicSlug || singleData?.publicSlug || '',
                         pendingPublicSlug: consultantById?.pendingPublicSlug || singleData?.pendingPublicSlug || '',
                         publicSlugStatus: consultantById?.publicSlugStatus || singleData?.publicSlugStatus || '',
