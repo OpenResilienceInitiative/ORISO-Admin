@@ -445,11 +445,27 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         expect(await submit(user)).toMatchObject({ assignedSupervisorId: '' });
     });
 
-    it('keeps the stored assignment when the admin does not touch the field', async () => {
+    /**
+     * The field is written only on a deliberate change. Anything else risks submitting a value we
+     * did not actually know — a stale detail cache is enough — and '' means "clear it" to the
+     * backend, so an unrelated edit could drop a supervisor nobody touched.
+     */
+    it('leaves the stored assignment alone when the admin does not touch the field', async () => {
         const user = userEvent.setup();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID });
         renderForm();
 
-        expect(await unlockAndSubmit(user)).toMatchObject({ assignedSupervisorId: SUPERVISOR_ID });
+        expect(await unlockAndSubmit(user)).not.toHaveProperty('assignedSupervisorId');
+    });
+
+    it('writes the new supervisor when the admin picks one', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
+
+        expect(await submit(user)).toMatchObject({ assignedSupervisorId: SUPERVISOR_ID });
     });
 });

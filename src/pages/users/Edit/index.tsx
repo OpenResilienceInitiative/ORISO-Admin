@@ -381,9 +381,12 @@ export const UserEditOrAdd = () => {
                     return;
                 }
             }
-            if (!canWriteStandingSupervisor) {
-                // The field is read-only in this state; keep it out of the payload entirely so an
-                // unrelated edit cannot clear a standing supervisor we were never able to read.
+            // Write the standing supervisor ONLY when the admin deliberately changed it. Anything
+            // else — the field read-only because the record was unreadable, or the form mounted
+            // from a stale detail cache — would mean submitting a value we did not actually know,
+            // and since '' means "clear it" to the backend, an unrelated edit could silently drop
+            // a supervisor nobody touched. Omitted, the backend leaves the assignment alone.
+            if (!canWriteStandingSupervisor || !form.isFieldTouched('assignedSupervisorId')) {
                 const payloadWithoutSupervisor = { ...data };
                 delete payloadWithoutSupervisor.assignedSupervisorId;
                 mutate(payloadWithoutSupervisor);
