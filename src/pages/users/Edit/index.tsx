@@ -217,15 +217,21 @@ export const UserEditOrAdd = () => {
      */
     const supervisorCandidatesTruncated = (supervisorCandidatesResponse?.total ?? 0) > SUPERVISOR_CANDIDATE_PAGE_SIZE;
 
+    /**
+     * Ordered by what actually blocks the admin. Anything that LOCKS the field outranks a note
+     * about the list being incomplete: telling someone the search is capped, while the real reason
+     * they cannot edit is that the stored value could not be read, sends them looking in the wrong
+     * place entirely.
+     */
     const standingSupervisorHelpKey = (() => {
         if (supervisorCandidatesFailed) {
             return 'counselor.assignedSupervisor.loadFailed';
         }
-        if (supervisorCandidatesTruncated) {
-            return 'counselor.assignedSupervisor.truncated';
-        }
         if (!canWriteStandingSupervisor) {
             return 'counselor.assignedSupervisor.detailsUnavailable';
+        }
+        if (supervisorCandidatesTruncated) {
+            return 'counselor.assignedSupervisor.truncated';
         }
         return supervisorOptions.length === 0
             ? 'counselor.assignedSupervisor.noCandidates'

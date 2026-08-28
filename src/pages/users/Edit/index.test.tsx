@@ -682,6 +682,25 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         expect(staleOption.getAttribute('aria-disabled')).toBe('true');
     });
 
+    /**
+     * Both conditions at once. The locked field is what stops the admin working, so that has to be
+     * what the field says — a truncation note would send them looking in the wrong place.
+     */
+    it('explains the locked field rather than the capped search when both apply', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant(undefined);
+        mocks.supervisorCandidatesResult = {
+            ...mocks.supervisorCandidatesResult,
+            data: { ...mocks.supervisorCandidatesResult.data, total: 1001 },
+        };
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect(screen.getByText('Gespeicherte Zuweisung nicht ladbar.')).toBeTruthy();
+        expect(screen.queryByText('Nur die ersten 1000 werden durchsucht.')).toBeNull();
+    });
+
     it('writes the new supervisor when the admin picks one', async () => {
         const user = userEvent.setup();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
