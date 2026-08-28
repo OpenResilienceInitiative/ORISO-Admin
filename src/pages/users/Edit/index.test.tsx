@@ -604,6 +604,33 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         await waitFor(() => expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', 'Grace Hopper'));
     });
 
+    /**
+     * The other half of the sync: a background refetch must never overwrite what the admin just
+     * picked. Otherwise their selection silently reverts to whatever the server last said, and
+     * they save a value they did not choose.
+     */
+    it("keeps the admin's pick when a detail refetch brings a different value", async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        const { rerender } = renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
+
+        // A refetch lands, saying somebody else is stored.
+        mocks.counselorResult = {
+            data: { id: CONSULTANT_ID, assignedSupervisorId: 'supervisor-other' },
+            isLoading: false,
+        };
+        rerender(
+            <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+
+        expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', 'Grace Hopper');
+    });
+
     it('writes the new supervisor when the admin picks one', async () => {
         const user = userEvent.setup();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });

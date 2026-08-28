@@ -324,6 +324,14 @@ export const UserEditOrAdd = () => {
             position: consultantById.position || '',
             title: consultantById.title || '',
             ...(canManageAdminRemarks ? { adminRemarks: consultantById.adminRemarks || '' } : {}),
+            // The standing supervisor comes from the same record and belongs in the same sync.
+            // antd applies `initialValues` once, at mount, and this query is invalidated on every
+            // save — so without this the selector would keep showing what the form mounted with
+            // while the backend already held another. Never over a field the admin has touched:
+            // their edit beats a background refetch.
+            ...(form.isFieldTouched('assignedSupervisorId')
+                ? {}
+                : { assignedSupervisorId: consultantById.assignedSupervisorId || undefined }),
         });
     }, [consultantById, isEditing, isConsultantForm, canManageAdminRemarks, form]);
 
@@ -434,19 +442,6 @@ export const UserEditOrAdd = () => {
         },
         [isConsultantForm, filteredAgencies, form, mutate, t, canWriteStandingSupervisor],
     );
-    /**
-     * antd applies `initialValues` once, at mount. The detail record can arrive or refetch later
-     * (its query is invalidated on every save), and without this the selector would keep showing
-     * the value the form mounted with while the backend already had another. Never overrides a
-     * field the admin has touched — their edit wins over a background refetch.
-     */
-    useEffect(() => {
-        if (!canWriteStandingSupervisor || form.isFieldTouched('assignedSupervisorId')) {
-            return;
-        }
-        form.setFieldsValue({ assignedSupervisorId: storedSupervisorId || undefined });
-    }, [canWriteStandingSupervisor, form, storedSupervisorId]);
-
     const onFinishFailed = useCallback(({ errorFields }: ValidateErrorEntity) => {
         // Keep values; jump to the field that blocked save (#717 / #594.6).
         focusFirstInvalidField(errorFields, FORM_NAME);
