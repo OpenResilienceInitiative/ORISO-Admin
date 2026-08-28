@@ -192,15 +192,17 @@ export const UserEditOrAdd = () => {
         if (!storedSupervisorId || options.some(({ value }) => value === storedSupervisorId)) {
             return options;
         }
-        // The stored supervisor no longer qualifies (capability withdrawn, or account gone).
-        // Keep it visible with whatever name we can resolve, so the admin sees a stale
-        // assignment and can correct it instead of it silently disappearing from the form.
+        // The stored supervisor no longer qualifies (capability withdrawn, account disabled or on
+        // its way out). Keep it VISIBLE so the admin sees the stale assignment and can correct it
+        // instead of it silently disappearing — but not selectable, or they could switch away and
+        // pick it straight back, storing an assignment that supervises nothing.
         const stored = candidates.find((candidate) => candidate.id === storedSupervisorId);
         return [
             ...options,
             {
                 label: stored ? `${stored.firstname} ${stored.lastname}` : storedSupervisorId,
                 value: storedSupervisorId,
+                disabled: true,
             },
         ];
     }, [supervisorCandidatesResponse, id, storedSupervisorId, editedTenantId]);

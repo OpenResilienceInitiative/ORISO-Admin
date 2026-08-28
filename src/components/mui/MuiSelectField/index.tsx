@@ -14,6 +14,8 @@ import { flattenChildren } from '../flattenChildren';
 export interface Option {
     label: string;
     value: string;
+    /** Visible in the list but not selectable — see {@link ResolvedOption.disabled}. */
+    disabled?: boolean;
 }
 
 type FieldName = string | Array<string | number>;
@@ -21,6 +23,11 @@ type FieldName = string | Array<string | number>;
 /** An option plus the optional rich node an `MuiSelectField.Option` child supplied. */
 interface ResolvedOption extends Option {
     node?: React.ReactNode;
+    /**
+     * Shown in the list but not selectable. For a value that is stored and must stay visible so
+     * the user can see and correct it, while no longer being a valid choice.
+     */
+    disabled?: boolean;
     /** Class the `.Option` child declared; applied to the rendered list item. */
     className?: string;
 }
@@ -173,6 +180,7 @@ const MuiSelectControl = ({
             filterOptions={filterOptions}
             getOptionLabel={(option) => (option as ResolvedOption).label ?? ''}
             isOptionEqualToValue={(option, selectedOption) => option.value === selectedOption?.value}
+            getOptionDisabled={(option) => Boolean((option as ResolvedOption).disabled)}
             noOptionsText={placeholder}
             sx={muiFieldSx(isDisabled)}
             renderOption={(liProps, option) => {

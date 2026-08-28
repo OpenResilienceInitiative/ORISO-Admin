@@ -638,6 +638,23 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', 'Grace Hopper');
     });
 
+    /**
+     * A stored supervisor who has since been disabled must stay VISIBLE — the admin has to see the
+     * stale assignment to correct it — but must not be selectable again, or they could switch away
+     * and pick it straight back, storing an assignment that supervises nothing.
+     */
+    it('shows a stale stored supervisor but does not let it be picked again', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: 'supervisor-disabled' });
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(screen.getByLabelText('Fester Supervisor'));
+
+        const staleOption = await screen.findByRole('option', { name: 'Disabled Supervisor' });
+        expect(staleOption.getAttribute('aria-disabled')).toBe('true');
+    });
+
     it('writes the new supervisor when the admin picks one', async () => {
         const user = userEvent.setup();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
