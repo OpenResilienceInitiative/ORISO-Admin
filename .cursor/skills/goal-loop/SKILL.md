@@ -59,7 +59,7 @@ One short block per iteration in `03-progress-log.md`:
 1. Run the `regression-check` skill on touched areas → `04-test-evidence.md`.
 2. If auth, input handling, storage, network, or privacy boundaries were touched: run the `security-auditor` subagent → `05-security-review.md`.
 3. Run the `pr-prep` skill → `06-pr-summary.md`.
-4. Record any reusable lesson in `.learnings/LEARNINGS.md` (one concept per entry, keep short).
+4. Record one short entry per concept: process bugs in `.learnings/ERRORS.md`, other reusable lessons in `.learnings/LEARNINGS.md`.
 5. STOP for user confirmation before opening or updating a PR.
 
 ## Artifacts

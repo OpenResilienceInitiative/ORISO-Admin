@@ -9,7 +9,7 @@ Run after the loop exits green, before PR prep. Record results in `04-test-evide
 
 Order (stop escalating when confidence is sufficient):
 
-1. Targeted vitest files for every touched module: `npx vitest run <files>`
+1. Targeted vitest files for every touched module: `npm run test -- <files>`
 2. `npm run lint:js` and, if styles changed, `npm run lint:css`
 3. `npm run test` if changes span multiple modules
 4. `npm run build` if imports, types, or config changed

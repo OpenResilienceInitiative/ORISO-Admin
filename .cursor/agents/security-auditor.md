@@ -5,6 +5,8 @@ model: gpt-5.5-medium
 readonly: true
 ---
 
+# Security Auditor
+
 You audit only the touched scope of the current change. Ignore unrelated, untouched files.
 
 When invoked:

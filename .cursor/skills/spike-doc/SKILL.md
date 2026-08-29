@@ -10,7 +10,7 @@ Create `01-spike.md` in the current task folder under `docs/agent-tasks/`.
 Before writing, analyze the existing implementation:
 
 -   Use the `codebase-explorer` subagent (or Explore) for broad searches; keep raw search results out of the main context.
--   Skim `.understand-anything/ARCHITECTURE.md` and `graphify-out/GRAPH_REPORT.md` for structure before reading raw files.
+-   Skim `.understand-anything/ARCHITECTURE.md` for structure before reading raw files. Use `graphify-out/GRAPH_REPORT.md` when it exists; skip it if absent.
 -   Reuse existing patterns, hooks, tokens, and mixins before inventing new abstractions.
 
 Structure (keep each section short, file-oriented, no narrative essays):

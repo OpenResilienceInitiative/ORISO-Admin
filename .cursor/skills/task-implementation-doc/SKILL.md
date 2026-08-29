@@ -12,7 +12,7 @@ Structure:
 -   **Objective**: one line
 -   **Impacted files**: paths only
 -   **Subtasks**: table with columns `#`, `Subtask`, `Files`, `Verify with`, `Status`
-    -   Each subtask must be small enough for one loop iteration and have a concrete verify command (e.g. `npx vitest run src/foo.test.ts`)
+    -   Each subtask must be small enough for one loop iteration and have a concrete verify command (e.g. `npm run test -- src/foo.test.ts`)
     -   Status values: `todo`, `doing`, `done`, `blocked`
 -   **Verification checklist**: which of `npm run test`, `lint:js`, `lint:css`, `build`, Browser check apply to this task
 -   **Risks**

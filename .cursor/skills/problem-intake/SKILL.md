@@ -9,7 +9,7 @@ Create `docs/agent-tasks/YYYY-MM-DD_short-feature-name/00-problem-brief.md`.
 
 Include only:
 
--   **Source**: links or "chat" — never copy long source text, summarize it
+-   **Source**: links, "chat", or an MCP URI / source identifier — never copy long source text, summarize it
 -   **Problem**: the exact reported problem, 1–3 sentences
 -   **Goal**: business outcome in one line
 -   **Acceptance criteria**: checkbox list; each must be verifiable by a test, lint, build, or observable UI behavior — these are the goal-loop exit test
