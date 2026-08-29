@@ -20,26 +20,26 @@ Repeat THINK → IMPLEMENT → VERIFY → DECIDE.
 
 **THINK**
 
-- Iteration 1: pick the first unchecked criterion or subtask from the plan.
-- Iteration >1: read the failure output from the last VERIFY. Diagnose the root cause before touching code — state the hypothesis in one line in the progress log. If the same failure has appeared twice, the hypothesis must be different from the last one; re-read the surrounding code instead of re-trying the same fix.
+-   Iteration 1: pick the first unchecked criterion or subtask from the plan.
+-   Iteration >1: read the failure output from the last VERIFY. Diagnose the root cause before touching code — state the hypothesis in one line in the progress log. If the same failure has appeared twice, the hypothesis must be different from the last one; re-read the surrounding code instead of re-trying the same fix.
 
 **IMPLEMENT**
 
-- Smallest coherent change that addresses the current criterion or failure. Touch only files the task requires.
-- Prefer red-green: write/adjust the failing test first when adding behavior (per AGENTS.md).
+-   Smallest coherent change that addresses the current criterion or failure. Touch only files the task requires.
+-   Prefer red-green: write/adjust the failing test first when adding behavior (per AGENTS.md).
 
 **VERIFY**
 
-- Narrowest check first: the specific vitest file(s) for touched code, then `npm run lint:js` / `npm run lint:css` on style changes, `npm run build` only when imports/config/types changed broadly.
-- For UI changes, use Browser verification and save screenshots to the task folder.
-- Never paste long logs into the conversation; summarize failures in the progress log.
+-   Narrowest check first: the specific vitest file(s) for touched code, then `npm run lint:js` / `npm run lint:css` on style changes, `npm run build` only when imports/config/types changed broadly.
+-   For UI changes, use Browser verification and save screenshots to the task folder.
+-   Never paste long logs into the conversation; summarize failures in the progress log.
 
 **DECIDE**
 
-- All acceptance criteria met and checks green → exit loop, go to Finish.
-- Failures remain → append one progress-log entry and return to THINK.
-- Same failure 3 consecutive iterations, or 10 iterations total → STOP and report the blocker with your best diagnosis. Do not thrash.
-- Need credentials, destructive commands, external service setup → STOP and ask.
+-   All acceptance criteria met and checks green → exit loop, go to Finish.
+-   Failures remain → append one progress-log entry and return to THINK.
+-   Same failure 3 consecutive iterations, or 10 iterations total → STOP and report the blocker with your best diagnosis. Do not thrash.
+-   Need credentials, destructive commands, external service setup → STOP and ask.
 
 ## Progress log entry format
 
@@ -48,10 +48,10 @@ One short block per iteration in `03-progress-log.md`:
 ```markdown
 ### Iteration N — <status: pass|fail|blocked>
 
-- Target: <criterion or failing check>
-- Hypothesis: <one line, iterations >1 only>
-- Change: <files touched, one line>
-- Verify: <command run → result summary>
+-   Target: <criterion or failing check>
+-   Hypothesis: <one line, iterations >1 only>
+-   Change: <files touched, one line>
+-   Verify: <command run → result summary>
 ```
 
 ## Finish

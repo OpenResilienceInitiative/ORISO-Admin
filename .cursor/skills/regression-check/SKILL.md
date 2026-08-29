@@ -18,7 +18,7 @@ Order (stop escalating when confidence is sufficient):
 Evidence format in `04-test-evidence.md` — one line per check:
 
 ```markdown
-- `<command>` → pass|fail (<counts or short failure summary>)
+-   `<command>` → pass|fail (<counts or short failure summary>)
 ```
 
 If a check fails on something unrelated to this change, say so precisely and note the pre-existing failure; do not silently skip it.

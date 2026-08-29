@@ -7,7 +7,7 @@ Format:
 ```markdown
 ## YYYY-MM-DD <short title>
 
-- What went wrong: <one line>
-- Root cause: <one line>
-- Prevention: <one line>
+-   What went wrong: <one line>
+-   Root cause: <one line>
+-   Prevention: <one line>
 ```

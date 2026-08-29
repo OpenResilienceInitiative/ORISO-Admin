@@ -7,6 +7,6 @@ Format:
 ```markdown
 ## YYYY-MM-DD <short title>
 
-- Context: <task folder or area>
-- Lesson: <what to do differently next time>
+-   Context: <task folder or area>
+-   Lesson: <what to do differently next time>
 ```
