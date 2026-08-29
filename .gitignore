@@ -37,3 +37,10 @@ storybook-static
 
 # local testing notes (contains credentials) — never commit
 TESTING-CONTEXT.md
+
+# Agent/local docs: existing tracked files stay tracked; new scratch under docs/ is ignored.
+# Commit a task trail by adding a negation for that folder (see Frontend gitignore).
+docs/*
+!docs/agent-tasks/
+docs/agent-tasks/*
+!docs/agent-tasks/index.md
