@@ -11,6 +11,7 @@
 -   Never implement directly on `pre-dev`. Branch as `cursor/<ticket-or-feature>/<short-slug>`.
 -   Reuse existing table, form, query, mutation, role, and validation patterns.
 -   Do not paper over 401/403/API failures with UI-only success states.
+-   After every edit, `npx prettier --write` the touched paths. CI fails `npx prettier . --check --ignore-unknown` on Markdown and JSON, not only source.
 
 ## Open failures
 
