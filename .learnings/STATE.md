@@ -4,7 +4,7 @@
 
 -   Integration branch for Admin feature PRs is `pre-dev`; `dev` is the stable demo behind the human promotion gate.
 -   CI / engines Node is **22.12.0**. Validation commands: `npm run test`, `npm run lint:js`, `npm run lint:css`, `npm run build`.
--   Non-trivial agent work writes a trail under `docs/agent-tasks/YYYY-MM-DD_short-feature-name/`. `docs/*` is gitignored except `docs/agent-tasks/index.md` unless a task folder is explicitly un-ignored.
+-   Non-trivial agent work writes a trail under `docs/agent-tasks/YYYY-MM-DD_short-feature-name/`. Only `docs/agent-tasks/*` is gitignored (except `index.md`) unless a task folder is explicitly un-ignored. Other files under `docs/` stay trackable.
 
 ## General rules
 
