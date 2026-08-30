@@ -22,4 +22,5 @@
 
 ## Last session
 
+-   2026-08-30: #874 — original ten PRs already on `pre-dev`. Leftovers: live consent dialog icon, unlock/pending wording, template content-language. Branch `cursor/874/legal-review-gaps`.
 -   2026-08-29: Scaffolded `.cursor/` agent harness (rules, skills, subagents, hooks), `docs/agent-tasks/index.md`, and `.learnings/` templates.
