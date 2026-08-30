@@ -50,6 +50,30 @@ describe('editCounselorData', () => {
         });
     });
 
+    it('sends the standing supervisor, and an empty string when the admin cleared it', async () => {
+        await editCounselorData('consultant-1', {
+            ...baseFormData,
+            assignedSupervisorId: 'supervisor-7',
+        });
+        expect(JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string).assignedSupervisorId).toBe(
+            'supervisor-7',
+        );
+
+        vi.mocked(fetchData).mockClear();
+
+        await editCounselorData('consultant-1', { ...baseFormData, assignedSupervisorId: '' });
+        // '' is the backend's "clear it" signal — it must survive, not be dropped as falsy.
+        expect(JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string).assignedSupervisorId).toBe('');
+    });
+
+    it('omits the standing supervisor when the form did not render the field', async () => {
+        await editCounselorData('consultant-1', { ...baseFormData });
+
+        expect(JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string)).not.toHaveProperty(
+            'assignedSupervisorId',
+        );
+    });
+
     it('omits personal-info fields the form did not render', async () => {
         await editCounselorData('consultant-1', { ...baseFormData });
 

@@ -13,6 +13,12 @@ interface ConsultantsDataProps extends Omit<UseQueryOptions<ResponseList<Counsel
     order?: string;
     pageSize?: number;
     typeOfUser: TypeOfUser;
+    /**
+     * Let a failed search reject instead of resolving to an empty list. The default (false) keeps
+     * list pages rendering an empty table on an outage; a caller that must tell "nobody matched"
+     * apart from "the request failed" opts in and reads `isError`.
+     */
+    rethrowOnFailure?: boolean;
 }
 
 export const useConsultantsOrAdminsData = ({
@@ -22,6 +28,7 @@ export const useConsultantsOrAdminsData = ({
     order,
     pageSize,
     typeOfUser = TypeOfUser.Consultants,
+    rethrowOnFailure = false,
     ...options
 }: ConsultantsDataProps) => {
     const baseUrlByTypeOfUser = {
@@ -31,7 +38,7 @@ export const useConsultantsOrAdminsData = ({
     const baseUrl = baseUrlByTypeOfUser[typeOfUser] ?? agencyAdminsSearchEndpoint;
 
     return useQuery({
-        queryKey: [typeOfUser.toUpperCase(), search, current, sortBy, order, pageSize],
+        queryKey: [typeOfUser.toUpperCase(), search, current, sortBy, order, pageSize, rethrowOnFailure],
         queryFn: () =>
             fetchUserSearchWithSortFallback({
                 url: `${baseUrl}?query=${encodeURIComponent(search || '*')}&page=${current || 1}&perPage=${
@@ -41,6 +48,7 @@ export const useConsultantsOrAdminsData = ({
                 order: order || USER_TABLE_DEFAULT_ORDER,
                 current,
                 pageSize,
+                rethrowOnFailure,
             }),
         ...(options as object),
         retry: false,
