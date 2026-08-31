@@ -1,13 +1,119 @@
+/*
+ * M3 split button (Figma 57994-15744, spec sheet "Split button").
+ *
+ * All geometry is driven by the size variables below so the five spec sizes
+ * (XSmall/Small/Medium/Large/XLarge) share one rule set. The base values ARE
+ * the Medium size (56px) — the default — so existing callers keep their
+ * geometry. Sizes measured off the Figma symbols (node ids 57994:15752/16184/
+ * 15860/15968/16076).
+ */
+
 .splitButton {
+    /* Medium (default): 56px pill, Figma 57994:15860 */
+    --sb-height: 56px;
+    --sb-radius: 28px; /* outer pill radius = height / 2 */
+    --sb-radius-inner: 4px; /* the small corners where the segments meet */
+    --sb-radius-pressed: 10px; /* pressed shape morph of the inner corners */
+    --sb-pad-left: 24px;
+    --sb-pad-right: 24px;
+    --sb-gap: 8px; /* icon ↔ label */
+    --sb-font-size: 16px; /* M3/title/medium */
+    --sb-line-height: 24px;
+    --sb-letter-spacing: 0.15px;
+    --sb-font-weight: 500;
+    --sb-icon: 24px;
+    --sb-chevron-width: 56px;
+    --sb-chevron-icon: 26px;
+    --sb-touch-extend: 0; /* XS/S visuals are < 48px; the hit area is not */
+
     display: inline-flex;
     align-items: stretch;
-    gap: 2px;
+    gap: 2px; /* between segments, all sizes (Figma) */
 }
 
+/* ---- Size scale (Figma 57994-15744) ------------------------------------- */
+.xsmall {
+    --sb-height: 32px;
+    --sb-radius: 16px;
+    --sb-radius-inner: 4px;
+    --sb-radius-pressed: 8px;
+    --sb-pad-left: 12px;
+    --sb-pad-right: 10px;
+    --sb-gap: 4px;
+    --sb-font-size: 14px; /* M3/label/large */
+    --sb-line-height: 20px;
+    --sb-letter-spacing: 0.1px;
+    --sb-font-weight: 500;
+    --sb-icon: 20px;
+    --sb-chevron-width: 48px;
+    --sb-chevron-icon: 22px;
+    --sb-touch-extend: 8px;
+}
+
+.small {
+    --sb-height: 40px;
+    --sb-radius: 20px;
+    --sb-radius-inner: 4px;
+    --sb-radius-pressed: 8px;
+    --sb-pad-left: 16px;
+    --sb-pad-right: 12px;
+    --sb-gap: 8px;
+    --sb-font-size: 14px; /* M3/label/large */
+    --sb-line-height: 20px;
+    --sb-letter-spacing: 0.1px;
+    --sb-font-weight: 500;
+    --sb-icon: 20px;
+    --sb-chevron-width: 48px;
+    --sb-chevron-icon: 22px;
+    --sb-touch-extend: 4px;
+}
+
+/* Medium is the base rule set above; the class still exists so the size is
+   always explicit in the DOM (and testable). */
+
+.medium {
+    --sb-height: 56px;
+}
+
+.large {
+    --sb-height: 96px;
+    --sb-radius: 48px;
+    --sb-radius-inner: 8px;
+    --sb-radius-pressed: 16px;
+    --sb-pad-left: 48px;
+    --sb-pad-right: 48px;
+    --sb-gap: 12px;
+    --sb-font-size: 24px; /* M3/headline/small */
+    --sb-line-height: 32px;
+    --sb-letter-spacing: 0;
+    --sb-font-weight: 400;
+    --sb-icon: 32px;
+    --sb-chevron-width: 96px;
+    --sb-chevron-icon: 38px;
+}
+
+.xlarge {
+    --sb-height: 136px;
+    --sb-radius: 68px;
+    --sb-radius-inner: 12px;
+    --sb-radius-pressed: 24px;
+    --sb-pad-left: 64px;
+    --sb-pad-right: 64px;
+    --sb-gap: 16px;
+    --sb-font-size: 32px; /* M3/headline/large */
+    --sb-line-height: 40px;
+    --sb-letter-spacing: 0;
+    --sb-font-weight: 400;
+    --sb-icon: 40px;
+    --sb-chevron-width: 136px;
+    --sb-chevron-icon: 50px;
+}
+
+/* ---- Segments ------------------------------------------------------------ */
 .segment {
     position: relative;
     display: inline-flex;
-    height: 56px;
+    height: var(--sb-height);
     box-sizing: border-box;
     align-items: center;
     justify-content: center;
@@ -18,11 +124,15 @@
     color: var(--m3-on-surface-variant, #444748);
     cursor: pointer;
     font-family: inherit;
-    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease,
+        border-radius 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-.splitButton:not(.disabled) .segment:not(:disabled):hover {
-    background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+/* XS/S render below 48px but must keep the 48px M3 touch target. */
+.segment:before {
+    content: '';
+    position: absolute;
+    inset: calc(var(--sb-touch-extend) * -1) 0;
 }
 
 /* Per-segment disabling (`mainDisabled`): only the action segment greys out. */
@@ -39,19 +149,19 @@
 }
 
 .main {
-    gap: 8px;
-    padding: 16px 24px;
-    border-radius: 28px 4px 4px 28px;
-    font-size: 16px;
-    font-weight: 500;
-    letter-spacing: 0.15px;
-    line-height: 24px;
+    gap: var(--sb-gap);
+    padding: 0 var(--sb-pad-right) 0 var(--sb-pad-left);
+    border-radius: var(--sb-radius) var(--sb-radius-inner) var(--sb-radius-inner) var(--sb-radius);
+    font-size: var(--sb-font-size);
+    font-weight: var(--sb-font-weight);
+    letter-spacing: var(--sb-letter-spacing);
+    line-height: var(--sb-line-height);
     white-space: nowrap;
 }
 
 /* No chevron: a single-action pill (e.g. template opener) stays fully rounded. */
 .splitButton:not(:has(.chevron)) .main {
-    border-radius: 28px;
+    border-radius: var(--sb-radius);
 }
 
 /* Menu selections become the main label; long user-defined names truncate. */
@@ -62,18 +172,14 @@
 }
 
 .chevron {
-    width: 56px;
-    border-radius: 4px 28px 28px 4px;
+    width: var(--sb-chevron-width);
+    border-radius: var(--sb-radius-inner) var(--sb-radius) var(--sb-radius) var(--sb-radius-inner);
 }
 
 .chevronIcon {
-    width: 20px;
-    height: 20px;
+    width: var(--sb-chevron-icon);
+    height: var(--sb-chevron-icon);
     transition: transform 200ms ease;
-}
-
-.open .chevronIcon {
-    transform: rotate(180deg);
 }
 
 .icon {
@@ -82,31 +188,107 @@
     line-height: 1;
 
     svg {
-        width: 24px;
-        height: 24px;
+        width: var(--sb-icon);
+        height: var(--sb-icon);
     }
 }
 
-/* Tonal: light fill, primary-coloured content (template picker). */
-.tonal .segment {
-    border-color: transparent;
-    background: var(--m3-surface-container-low, #f6f3f3);
-    color: var(--m3-primary, #a5000a);
+/* ---- Interaction states -------------------------------------------------- */
+
+/* Hover: 8% state layer of the segment's content colour (spec sheet). */
+.splitButton:not(.disabled) .segment:not(:disabled):hover {
+    background: color-mix(in srgb, var(--m3-on-surface-variant, #444748) 8%, transparent);
+}
+
+/* Pressed: 10% state layer + the spec's shape morph — the pressed segment's
+   inner corners round up (Figma "Leading/Trailing state=Pressed"). */
+
+.splitButton:not(.disabled) .segment:not(:disabled):active {
+    background: color-mix(in srgb, var(--m3-on-surface-variant, #444748) 10%, transparent);
+}
+
+.splitButton:not(.disabled) .main:not(:disabled):active {
+    border-radius: var(--sb-radius) var(--sb-radius-pressed) var(--sb-radius-pressed) var(--sb-radius);
+}
+
+.splitButton:not(.disabled) .chevron:not(:disabled):active {
+    border-radius: var(--sb-radius-pressed) var(--sb-radius) var(--sb-radius) var(--sb-radius-pressed);
+}
+
+/* A single-action pill has no inner corners, so the pressed morph does not
+   apply — it stays fully rounded. */
+
+.splitButton:not(:has(.chevron)):not(.disabled) .main:not(:disabled):active {
+    border-radius: var(--sb-radius);
+}
+
+/* Open: the chevron flips up and its segment morphs to the fully rounded
+   shape (Figma "Trailing state=Selected"). */
+
+.open .chevronIcon {
+    transform: rotate(180deg);
+}
+
+.open .chevron {
+    border-radius: var(--sb-radius);
 }
 
 /* Elevation is a STATE, not a skin (owner call, twice): a split button lifts
    only while its menu is open, and the menu carries the matching, higher
    shadow so button and sheet read as one surface. A permanently raised button
-   claimed a state it was not in. */
+   claimed a state it was not in. The one exception is the `elevated` VARIANT
+   below, whose identity per the spec sheet is a resting shadow. */
+
 .open .segment {
-    box-shadow: 0 1px 3px 1px color-mix(in srgb, var(--m3-shadow, #000) 15%, transparent),
-        0 1px 2px color-mix(in srgb, var(--m3-shadow, #000) 30%, transparent);
+    /* D3 — „Elevated state color — both are not the same … use this color also
+       here from the menu in the button". While the menu is open the button and
+       the sheet are one surface, so the button takes the sheet's fill
+       (`.menuOverlay .ant-dropdown-menu`, same token). Measured before the fix:
+       button rgba(0, 0, 0, 0) against sheet rgb(246, 243, 243). */
+    box-shadow: 0 1px 3px 1px color-mix(in srgb, var(--m3-shadow, #000000) 15%, transparent),
+        0 1px 2px color-mix(in srgb, var(--m3-shadow, #000000) 30%, transparent);
 }
 
-/* Secondary tonal: the M3 secondary container. Everything that is NOT the
-   selected item / main CTA rests here — the send button before the form is
-   valid, and the bulk-selection counter. */
-.secondary .segment {
+/* ---- Colour variants (sheet: Filled / Tonal / Outlined / Elevated) ------- */
+
+/* Outlined (default): transparent container, outline-variant border. */
+.outlined .segment {
+    background: transparent;
+}
+
+/* D3 — „Elevated state color — both are not the same … use this color also here
+   from the menu in the button". While its menu is open, the button and the sheet
+   read as one surface, so the button takes the sheet's fill — the same
+   `--m3-surface-container-low` token `.menuOverlay .ant-dropdown-menu` uses.
+   Measured before the fix, at 1440: button rgba(0, 0, 0, 0), sheet
+   rgb(246, 243, 243). Specificity has to beat `.outlined .segment` above, which
+   is why the open state is spelled out per variant rather than added to the
+   shared `.open .segment` rule. */
+
+.outlined.open .segment {
+    background: var(--m3-surface-container-low, #f6f3f3);
+}
+
+/* Filled: brand surface — the page's main CTA (alias: `primary`). */
+.filled .segment {
+    border-color: transparent;
+    background: var(--m3-primary, #a5000a);
+    color: var(--m3-on-primary, #ffffff);
+}
+
+.filled:not(.disabled) .segment:not(:disabled):hover {
+    background: color-mix(in srgb, var(--m3-on-primary, #ffffff) 8%, var(--m3-primary, #a5000a));
+}
+
+.filled:not(.disabled) .segment:not(:disabled):active {
+    background: color-mix(in srgb, var(--m3-on-primary, #ffffff) 10%, var(--m3-primary, #a5000a));
+}
+
+/* Tonal: the M3 secondary container (alias: `secondary`). Everything that is
+   NOT the selected item / main CTA rests here — the send button before the
+   form is valid, and the bulk-selection counter. */
+
+.tonal .segment {
     border-color: transparent;
     background: var(--m3-secondary-container, #646d78);
     color: var(--m3-on-secondary-container, #e7effc);
@@ -115,12 +297,21 @@
 /* Not-ready is still the secondary container (owner call), so the disabled
    treatment dims the CONTENT instead of fading the whole pill — at 38% opacity
    on a slate fill the label and the send glyph vanished altogether. */
-.secondary .segment:disabled {
+
+.tonal .segment:disabled {
     opacity: 1;
     color: color-mix(in srgb, var(--m3-on-secondary-container, #e7effc) 78%, var(--m3-secondary-container, #646d78));
 }
 
-.secondary:not(.disabled) .segment:not(:disabled):hover {
+.tonal:not(.disabled) .segment:not(:disabled):hover {
+    background: color-mix(
+        in srgb,
+        var(--m3-on-secondary-container, #e7effc) 8%,
+        var(--m3-secondary-container, #646d78)
+    );
+}
+
+.tonal:not(.disabled) .segment:not(:disabled):active {
     background: color-mix(
         in srgb,
         var(--m3-on-secondary-container, #e7effc) 10%,
@@ -128,19 +319,24 @@
     );
 }
 
-.tonal:not(.disabled) .segment:not(:disabled):hover {
+/* Elevated: light container with primary content AND a resting shadow — the
+   only variant that rests raised, because that is its point (spec sheet
+   "Style=Elevated"). Do not use it for pickers that merely sit on a bar. */
+
+.elevated .segment {
+    border-color: transparent;
+    background: var(--m3-surface-container-low, #f6f3f3);
+    color: var(--m3-primary, #a5000a);
+    box-shadow: 0 1px 3px 1px color-mix(in srgb, var(--m3-shadow, #000000) 15%, transparent),
+        0 1px 2px color-mix(in srgb, var(--m3-shadow, #000000) 30%, transparent);
+}
+
+.elevated:not(.disabled) .segment:not(:disabled):hover {
     background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, var(--m3-surface-container-low, #f6f3f3));
 }
 
-/* Primary: filled brand surface (send action once the form is valid). */
-.primary .segment {
-    border-color: transparent;
-    background: var(--m3-primary, #a5000a);
-    color: var(--m3-on-primary, #ffffff);
-}
-
-.primary:not(.disabled) .segment:not(:disabled):hover {
-    background: color-mix(in srgb, var(--m3-on-primary, #fff) 8%, var(--m3-primary, #a5000a));
+.elevated:not(.disabled) .segment:not(:disabled):active {
+    background: color-mix(in srgb, var(--m3-primary, #a5000a) 10%, var(--m3-surface-container-low, #f6f3f3));
 }
 
 .disabled .segment {
@@ -148,15 +344,18 @@
     opacity: 0.38;
 }
 
+/* ---- Menu sheet ---------------------------------------------------------- */
+
 /* The dropdown sheet. antd renders it in a portal, so everything below is
    scoped through the overlay class the SplitButton hands to `Dropdown`. */
+
 .menuOverlay {
     :global(.ant-dropdown-menu) {
         padding: 8px;
         border-radius: 16px;
         background: var(--m3-surface-container-low, #f6f3f3);
-        box-shadow: 0 4px 8px 3px color-mix(in srgb, var(--m3-shadow, #000) 15%, transparent),
-            0 1px 3px color-mix(in srgb, var(--m3-shadow, #000) 30%, transparent);
+        box-shadow: 0 4px 8px 3px color-mix(in srgb, var(--m3-shadow, #000000) 15%, transparent),
+            0 1px 3px color-mix(in srgb, var(--m3-shadow, #000000) 30%, transparent);
     }
 
     /* Two-line group header: what the list is for, then what it lists. */
@@ -179,6 +378,7 @@
 
 /* Ordinal badge before each selectable entry, so a list of user-named
    templates can still be referred to by position. */
+
 .menuIndex {
     display: inline-flex;
     width: 20px;
@@ -197,11 +397,12 @@
 
 /* "Create new …" is the one entry that adds something, so it is the one entry
    that carries a container instead of sitting flush like the rest. */
+
 .menuCreate {
     /* Derived from the secondary container rather than a new hex: the light
        slate-blue of the Figma sheet without adding a token the scheme has no
        role for. */
-    background: color-mix(in srgb, var(--m3-secondary-container, #646d78) 18%, #fff) !important;
+    background: color-mix(in srgb, var(--m3-secondary-container, #646d78) 18%, #ffffff) !important;
     color: var(--m3-primary, #a5000a) !important;
     font-weight: 500;
 }
@@ -213,16 +414,17 @@
 
 /* Third segment: the pill's right end moves to it, so the middle chevron
    becomes a straight-sided divider between the two. */
+
 .splitButton .collapse {
-    border-radius: 4px 28px 28px 4px;
+    border-radius: var(--sb-radius-inner) var(--sb-radius) var(--sb-radius) var(--sb-radius-inner);
 }
 
 .splitButton .collapse ~ * {
-    border-radius: 4px;
+    border-radius: var(--sb-radius-inner);
 }
 
 .splitButton:has(.collapse) .chevron:not(.collapse) {
-    border-radius: 4px;
+    border-radius: var(--sb-radius-inner);
 }
 
 .chevronUp {

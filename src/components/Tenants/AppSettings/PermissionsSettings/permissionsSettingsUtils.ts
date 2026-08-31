@@ -1,7 +1,24 @@
 import { PermissionToggleVisibility } from '../../../../types/PermissionToggleVisibility';
 import { TenantAdminControls } from '../../../../types/TenantAdminControls';
 import type { TenantSettings } from '../../../../types/tenant';
+import type { PolicyValue } from '../../../../types/permissionPolicy';
 import type { ChatTypeCardDef } from './types';
+
+export const resolvePermissionPolicy = (
+    permissionPolicies: Record<string, PolicyValue<boolean>> | undefined,
+    fieldKey: string,
+    currentValue: unknown,
+    restrictedFields: ReadonlySet<string>,
+): PolicyValue<boolean> => {
+    const restricted = restrictedFields.has(fieldKey);
+    return (
+        permissionPolicies?.[fieldKey] ?? {
+            value: currentValue !== false,
+            mode: restricted ? 'ENFORCED' : 'SUGGESTED',
+            inherited: restricted,
+        }
+    );
+};
 
 export const DEFAULT_PERMISSION_SETTINGS = {
     featureAnonymousChatEnabled: true,
@@ -40,7 +57,8 @@ export const DEFAULT_PERMISSION_SETTINGS = {
     featureMediaInlineDisplayOneOnOneChatsEnabled: true,
     featureMediaInlineDisplayGroupChatsEnabled: true,
     featureMediaInlineDisplaySupervisionChatsEnabled: true,
-    // AI scan is opt-in: off until the content-scanner pipeline is deployed (ADR-014/015)
+    // AI scan is opt-in: off until the content-scanner pipeline is deployed and
+    // its sub-processor agreement is signed (ADR-019/015, docs/media-ai-scan-enablement.md)
     featureMediaAiScanEnabled: false,
     featureMediaAiScanAnonymousChatsEnabled: false,
     featureMediaAiScanOneOnOneChatsEnabled: false,

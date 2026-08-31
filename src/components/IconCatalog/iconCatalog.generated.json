@@ -812,6 +812,32 @@
         "usage": "catalogued-only"
     },
     {
+        "id": "ui-icon:check-box:filled",
+        "family": "check-box",
+        "state": "filled",
+        "role": "selected",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "check-box-filled.svg",
+        "sourcePath": "src/resources/img/svg/check-box-filled.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:check-box:base",
+        "family": "check-box",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "check-box.svg",
+        "sourcePath": "src/resources/img/svg/check-box.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:checkmark:base",
         "family": "checkmark",
         "state": "base",
@@ -864,6 +890,19 @@
         "sourcePath": "src/resources/img/svg/chevron-up.svg",
         "exportNames": [],
         "usageFiles": ["src/components/CustomIcons/ChevronUp.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:clock-arrow-down:base",
+        "family": "clock-arrow-down",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "clock-arrow-down.svg",
+        "sourcePath": "src/resources/img/svg/clock-arrow-down.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/EditorIcons.tsx"],
         "usage": "app-used"
     },
     {
@@ -940,6 +979,19 @@
         "size": null,
         "fileName": "dpa.svg",
         "sourcePath": "src/resources/img/svg/dpa.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:dpia:base",
+        "family": "dpia",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "dpia.svg",
+        "sourcePath": "src/resources/img/svg/dpia.svg",
         "exportNames": [],
         "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
         "usage": "app-used"
@@ -1036,7 +1088,11 @@
         "fileName": "i.svg",
         "sourcePath": "src/resources/img/svg/i.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/Card/index.tsx", "src/components/TwoFactorSetup/TwoFactorAuthTypeButtons.tsx"],
+        "usageFiles": [
+            "src/components/Card/index.tsx",
+            "src/components/Tenants/AppSettings/PermissionsSettings/PermissionsSettingsView.tsx",
+            "src/components/TwoFactorSetup/TwoFactorAuthTypeButtons.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -1104,8 +1160,8 @@
         "fileName": "logout.svg",
         "sourcePath": "src/resources/img/svg/logout.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:maximize-content:base",
@@ -1144,6 +1200,136 @@
         "sourcePath": "src/resources/img/svg/minus.svg",
         "exportNames": [],
         "usageFiles": ["src/pages/Agency/Edit/components/RegistrationSettings/PostCodeRanges/index.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:nav-glyphs:counseling:base",
+        "family": "counseling",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "counseling.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/counseling.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:nav-glyphs:display-settings:base",
+        "family": "display-settings",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "display_settings.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/display_settings.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:nav-glyphs:links:base",
+        "family": "links",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "links.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/links.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:nav-glyphs:logout:base",
+        "family": "logout",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "logout.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/logout.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:nav-glyphs:logs:base",
+        "family": "logs",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "logs.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/logs.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:nav-glyphs:profile:base",
+        "family": "profile",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "profile.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/profile.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:nav-glyphs:statistics:base",
+        "family": "statistics",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "statistics.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/statistics.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:nav-glyphs:tenants:base",
+        "family": "tenants",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "tenants.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/tenants.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:nav-glyphs:topics:base",
+        "family": "topics",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "topics.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/topics.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:nav-glyphs:users:base",
+        "family": "users",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "users.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/users.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/NavGlyph/index.tsx", "src/pages/users/management/UserSectionPills.tsx"],
         "usage": "app-used"
     },
     {
@@ -1624,7 +1810,7 @@
         "fileName": "empty_state_96px.svg",
         "sourcePath": "src/resources/img/svg/oriso/empty_state_96px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/AdminEmpty/index.tsx"],
+        "usageFiles": ["src/components/AdminEmpty/index.tsx", "src/pages/Links/inviteProgress/InviteProgressBoard.tsx"],
         "usage": "app-used"
     },
     {
@@ -1684,6 +1870,35 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:oriso:lock-open-right:400",
+        "family": "lock-open-right",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 20,
+        "fileName": "lock_open_right_400_20px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/lock_open_right_400_20px.svg",
+        "exportNames": [],
+        "usageFiles": [],
+        "usage": "catalogued-only"
+    },
+    {
+        "id": "ui-icon:oriso:lock-open-right:filled",
+        "family": "lock-open-right",
+        "state": "filled",
+        "role": "selected",
+        "kind": "ui-icon",
+        "size": 20,
+        "fileName": "lock_open_right_filled_20px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/lock_open_right_filled_20px.svg",
+        "exportNames": [],
+        "usageFiles": [
+            "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
+            "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx"
+        ],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:oriso:mail:base",
         "family": "mail",
         "state": "base",
@@ -1693,8 +1908,8 @@
         "fileName": "mail_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_24px.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:oriso:mail:filled",
@@ -1797,8 +2012,8 @@
         "fileName": "send_400_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/send_400_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:oriso:send:filled",
@@ -1810,7 +2025,46 @@
         "fileName": "send_filled_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/send_filled_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
+        "usageFiles": [],
+        "usage": "catalogued-only"
+    },
+    {
+        "id": "ui-icon:oriso:silent:400",
+        "family": "silent",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "silent_400_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/silent_400_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:oriso:switch-off:400",
+        "family": "switch-off",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "switch_off_400_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/switch_off_400_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:oriso:switch-on:400",
+        "family": "switch-on",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "switch_on_400_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/switch_on_400_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
         "usage": "app-used"
     },
     {
@@ -2926,13 +3180,17 @@
         "usageFiles": [
             "src/components/AdminEmpty/index.tsx",
             "src/components/cards/CaseTakeoverCard/index.tsx",
+            "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
+            "src/components/CustomIcons/LegalIcons.tsx",
             "src/components/GlobalSearch/GlobalSearchBar.tsx",
             "src/components/GlobalSearch/SplitButton.tsx",
             "src/components/M3NumberField/index.tsx",
             "src/components/overlay/Overlay.tsx",
+            "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx",
             "src/components/PillSelect/index.tsx",
             "src/pages/Links/index.tsx",
-            "src/pages/Links/InviteComposer.tsx"
+            "src/pages/Links/InviteComposer.tsx",
+            "src/pages/Links/inviteProgress/InviteProgressBoard.tsx"
         ],
         "usage": "app-used"
     }

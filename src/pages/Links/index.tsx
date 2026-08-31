@@ -1,7 +1,10 @@
 import classNames from 'classnames';
-import { Navigate, NavLink, Outlet } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Page } from '../../components/Page';
+import { useRegisterMobileNav } from '../../components/AdminMobileNav/MobileNavContext';
+import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import routePathNames from '../../appConfig';
 import pageStyles from '../../components/Page/styles.module.scss';
 // The tab glyph is the ORISO icon-master link mark, not the generic permissions
@@ -32,31 +35,62 @@ const LINK_TABS = [
 
 export const LinksPage = () => {
     const { t } = useTranslation();
+    const { pathname } = useLocation();
+    const isDesktopLayout = useIsDesktopLayout();
+
+    const navigableTabs = useMemo(() => LINK_TABS.filter((tab) => !tab.disabled), []);
+
+    const activeSubsectionKey = useMemo(() => {
+        const matches = navigableTabs
+            .filter((tab) => pathname === tab.to || pathname.startsWith(`${tab.to}/`))
+            .sort((a, b) => b.to.length - a.to.length);
+
+        return matches[0]?.to;
+    }, [navigableTabs, pathname]);
+
+    // Custom NavLink row keeps its own icon treatment on desktop; publish the
+    // same destinations for the mobile chip row (Page.Title `tabs` would also
+    // render PageTabs and double the desktop switcher).
+    useRegisterMobileNav(
+        'links-sections',
+        navigableTabs.length > 1
+            ? {
+                  subsections: navigableTabs.map((tab) => ({
+                      key: tab.to,
+                      label: String(t(tab.titleKey)),
+                      to: tab.to,
+                  })),
+                  activeSubsectionKey,
+              }
+            : null,
+    );
 
     return (
         <Page>
             <Page.Title>
-                <div className={styles.pageHeader}>
-                    <div className={pageStyles.tabsContainer}>
-                        {LINK_TABS.map((tab) =>
-                            tab.disabled ? (
-                                <span
-                                    className={classNames(pageStyles.tab, styles.tabDisabled)}
-                                    key={tab.titleKey}
-                                    aria-disabled="true"
-                                >
-                                    <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
-                                    <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
-                                </span>
-                            ) : (
-                                <NavLink className={pageStyles.tab} to={tab.to} key={tab.titleKey}>
-                                    <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
-                                    <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
-                                </NavLink>
-                            ),
-                        )}
+                {isDesktopLayout && (
+                    <div className={styles.pageHeader}>
+                        <div className={pageStyles.tabsContainer}>
+                            {LINK_TABS.map((tab) =>
+                                tab.disabled ? (
+                                    <span
+                                        className={classNames(pageStyles.tab, styles.tabDisabled)}
+                                        key={tab.titleKey}
+                                        aria-disabled="true"
+                                    >
+                                        <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
+                                        <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
+                                    </span>
+                                ) : (
+                                    <NavLink className={pageStyles.tab} to={tab.to} key={tab.titleKey}>
+                                        <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
+                                        <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
+                                    </NavLink>
+                                ),
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
             </Page.Title>
             <Outlet />
         </Page>

@@ -1,10 +1,12 @@
 import { Alert, Button, message, Space, Col, Row, Form } from 'antd';
 import { useWatch } from 'antd/lib/form/Form';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
+import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
+import { passwordFormRules, usernameFormRules } from '../../../utils/consultantCredentialRules';
 import { Card } from '../../../components/Card';
 import { MuiFormField, MuiMultilineFormField, MuiPasswordFormField } from '../../../components/mui/MuiFormField';
 import { MuiSwitchField } from '../../../components/mui/MuiSwitchField';
@@ -22,11 +24,13 @@ import { convertToOptions } from '../../../utils/convertToOptions';
 import { decodeUsername } from '../../../utils/encryptionHelpers';
 import styles from './styles.module.scss';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { UserRole } from '../../../enums/UserRole';
 import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { searchTenantData } from '../../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
 import { createUserSaveErrorHandler } from '../../../utils/userSaveErrorHandler';
 import { findUncoveredTopics } from '../../../utils/topicAgencyCoverage';
+import { CounselorData } from '../../../types/counselor';
 import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { useCounselorById } from '../../../hooks/useCounselorById';
 import { GrantConsultantIdentityModal } from '../../../components/GrantConsultantIdentityModal';
@@ -34,11 +38,50 @@ import { CreateAgencyModal } from '../../../components/CreateAgencyModal';
 import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
+import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
+
+/**
+ * antd prefixes every bound control id with the form name, and
+ * `focusFirstInvalidField` resolves that same id. Keep them in lockstep.
+ */
+const FORM_NAME = 'consultantOrAdmin';
+
+/**
+ * The standing-supervisor picker needs every eligible colleague in one list, so it reads the
+ * consultant search in a single page rather than paginating a dropdown. Bounded on purpose:
+ * far above any realistic tenant, far below "fetch the world".
+ */
+const SUPERVISOR_CANDIDATE_PAGE_SIZE = 1000;
+
+/**
+ * A standing supervisor has to be an account that can still work. Read the raw fields rather than
+ * `resolveDisplayStatus`: that helper answers "what badge does the user table show", and it
+ * returns ABSENT before it ever looks at whether the account is disabled — so a colleague who is
+ * both absent AND disabled would read as merely absent and slip through.
+ *
+ * Absence alone stays assignable on purpose. It is temporary, and ADR-008 is explicit that
+ * supervision simply lapses while the supervisor is away rather than blocking anything.
+ */
+const isAssignableSupervisor = (candidate: CounselorData): boolean =>
+    candidate.active !== false && candidate.status !== 'INACTIVE' && candidate.status !== 'IN_DELETION';
 
 const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
     const seen = new Set(current.map(({ value }) => value));
     return [...current, ...incoming.filter(({ value }) => !seen.has(value))];
 };
+
+/**
+ * Stable salutation keys (#994) — persisted as-is, rendered via i18n.
+ * Wording of the option list follows the Counsellor Setup Wizard design:
+ * Beraterin, Berater, Beratende Person, Berater*in, keine Angabe.
+ */
+const SALUTATION_KEYS = [
+    'counsellor_female',
+    'counsellor_male',
+    'counselling_person',
+    'counsellor_gender_neutral',
+    'not_specified',
+] as const;
 
 export const UserEditOrAdd = () => {
     const navigate = useNavigate();
@@ -46,7 +89,11 @@ export const UserEditOrAdd = () => {
     const [form] = Form.useForm();
     const { can } = useUserPermissions();
     const { t } = useTranslation();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, hasRole } = useUserRoles();
+    // Mirrors the backend gate (AuthenticatedUser#hasTenantLevelAdminRole): remarks are
+    // tenant-level-admin only. For any other role the field is omitted entirely — the
+    // caller could neither read nor write it.
+    const canManageAdminRemarks = hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin]);
 
     const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
     const isEditing = id !== 'add';
@@ -62,6 +109,25 @@ export const UserEditOrAdd = () => {
         id: isEditing && isConsultantForm ? id : undefined,
     });
     const singleData = consultantsResponse?.data.find((c) => c.id === id);
+    /**
+     * ADR-008 "Supervision (auto-assigned)": an agency admin points a counsellor at one standing
+     * supervisor, who is then attached read-only to every case that counsellor accepts. Editing
+     * only — `CreateConsultantDTO` carries no such field, the counsellor must exist first.
+     */
+    const showStandingSupervisor = isConsultantForm && isEditing;
+    const {
+        data: supervisorCandidatesResponse,
+        isLoading: isLoadingSupervisorCandidates,
+        isError: supervisorCandidatesFailed,
+    } = useConsultantsOrAdminsData({
+        typeOfUser: TypeOfUser.Consultants,
+        pageSize: SUPERVISOR_CANDIDATE_PAGE_SIZE,
+        enabled: showStandingSupervisor,
+        // Without this the search resolves to an empty list on a 500, so "nobody is eligible"
+        // would be indistinguishable from "the API is down" — the admin would be told there is
+        // nobody to pick while the outage stays invisible.
+        rethrowOnFailure: true,
+    });
     const showGrantConsultantIdentity = canGrantConsultantIdentity(isEditing, typeOfUsers, singleData);
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted] = useState(false);
@@ -75,11 +141,102 @@ export const UserEditOrAdd = () => {
     const pendingPublicSlug = Form.useWatch('pendingPublicSlug', form);
     const publicSlugStatus = Form.useWatch('publicSlugStatus', form);
     const prevAgencyIdsRef = useRef<string[] | null>(null);
+    /**
+     * Whether the ADMIN changed the standing supervisor, as opposed to us syncing it from a
+     * refetch. antd's `isFieldTouched` cannot tell the two apart — `setFieldsValue` marks the
+     * field touched too — and conflating them is what makes an unrelated save start writing a
+     * value nobody chose. `onValuesChange` fires only for user-driven changes, so this ref is the
+     * honest signal.
+     */
+    const supervisorPickedByAdminRef = useRef(false);
     const topicsForList = topics?.filter((topic) => !selectedTopicIds.find(({ value }) => value === `${topic.id}`));
     const topicOptions = [
         ...selectedTopicIds.filter((selected) => !topics?.some((topic) => `${topic.id}` === selected.value)),
         ...convertToOptions(topicsForList, 'name', 'id'),
     ];
+    /**
+     * Read the standing supervisor from the single-consultant record, not from the list row.
+     * The form's list comes from `/service/users/consultants/search`, which leaves
+     * `assignedSupervisorId` null; only `GET /useradmin/consultants/{id}` fills it. Sourcing it
+     * from the list row would make a saved assignment look forgotten after every reload. Same
+     * `consultantById` first, list row second order the public-slug fields already use.
+     */
+    const storedSupervisorId = consultantById?.assignedSupervisorId ?? singleData?.assignedSupervisorId;
+    const editedTenantId = consultantById?.tenantId ?? singleData?.tenantId;
+    /**
+     * Only the single-consultant record carries the current assignment, so without it we do not
+     * know what is stored. Writing the field then would send '' on any unrelated edit and silently
+     * clear a supervisor the admin never touched, so the field is read-only and stays out of the
+     * payload until that record is available.
+     */
+    const canWriteStandingSupervisor = showStandingSupervisor && !!consultantById;
+    const supervisorOptions = useMemo(() => {
+        const candidates = supervisorCandidatesResponse?.data || [];
+        // The backend rejects a target that is not itself a supervisor, or the counsellor
+        // themselves — so never offer either.
+        // A platform admin's consultant search spans tenants, so `isSupervisor` alone would offer
+        // colleagues from a foreign tenant. The backend does not reject that today — it stores the
+        // assignment and the attach then fails silently at accept time, which looks configured but
+        // never supervises anything. Scope the list when we know the edited consultant's tenant;
+        // for tenant-scoped admins the search is already narrowed, so an unknown tenant is left
+        // unfiltered rather than emptying the list.
+        const eligible = candidates.filter(
+            (candidate) =>
+                candidate.isSupervisor &&
+                candidate.id !== id &&
+                // A disabled or pending-deletion colleague keeps the capability flag but cannot
+                // take on oversight. Offering them yields an assignment that supervises nothing.
+                isAssignableSupervisor(candidate) &&
+                (editedTenantId === undefined || String(candidate.tenantId) === String(editedTenantId)),
+        );
+        const options = convertToOptions(eligible, ['firstname', 'lastname'], 'id');
+
+        if (!storedSupervisorId || options.some(({ value }) => value === storedSupervisorId)) {
+            return options;
+        }
+        // The stored supervisor no longer qualifies (capability withdrawn, account disabled or on
+        // its way out). Keep it VISIBLE so the admin sees the stale assignment and can correct it
+        // instead of it silently disappearing — but not selectable, or they could switch away and
+        // pick it straight back, storing an assignment that supervises nothing.
+        const stored = candidates.find((candidate) => candidate.id === storedSupervisorId);
+        return [
+            ...options,
+            {
+                label: stored ? `${stored.firstname} ${stored.lastname}` : storedSupervisorId,
+                value: storedSupervisorId,
+                disabled: true,
+            },
+        ];
+    }, [supervisorCandidatesResponse, id, storedSupervisorId, editedTenantId]);
+
+    /**
+     * The candidate list is one page deep. A tenant with more consultants than that would silently
+     * hide eligible supervisors on later pages, so say it rather than presenting a short list as
+     * if it were complete. Proper server-side search is the real answer and is out of scope here.
+     */
+    const supervisorCandidatesTruncated = (supervisorCandidatesResponse?.total ?? 0) > SUPERVISOR_CANDIDATE_PAGE_SIZE;
+
+    /**
+     * Ordered by what actually blocks the admin. Anything that LOCKS the field outranks a note
+     * about the list being incomplete: telling someone the search is capped, while the real reason
+     * they cannot edit is that the stored value could not be read, sends them looking in the wrong
+     * place entirely.
+     */
+    const standingSupervisorHelpKey = (() => {
+        if (supervisorCandidatesFailed) {
+            return 'counselor.assignedSupervisor.loadFailed';
+        }
+        if (!canWriteStandingSupervisor) {
+            return 'counselor.assignedSupervisor.detailsUnavailable';
+        }
+        if (supervisorCandidatesTruncated) {
+            return 'counselor.assignedSupervisor.truncated';
+        }
+        return supervisorOptions.length === 0
+            ? 'counselor.assignedSupervisor.noCandidates'
+            : 'counselor.assignedSupervisor.hint';
+    })();
+
     const hasSelectedAgencies = selectedAgencies.length > 0;
     const consultantTopics = consultantById?.topics || [];
     const showTopicsField =
@@ -171,6 +328,31 @@ export const UserEditOrAdd = () => {
         prevAgencyIdsRef.current = (form.getFieldValue('agencies') || []).map(({ value }) => String(value));
     }, [consultantById, isEditing, isConsultantForm, form]);
 
+    // Personal-info fields (#994) are only served by the get-by-id endpoint, not by the
+    // search result the rest of the form prefills from.
+    useEffect(() => {
+        if (!isEditing || !isConsultantForm || !consultantById) {
+            return;
+        }
+
+        form.setFieldsValue({
+            displayName: consultantById.displayName || '',
+            internalDisplayName: consultantById.internalDisplayName || '',
+            salutation: consultantById.salutation || undefined,
+            position: consultantById.position || '',
+            title: consultantById.title || '',
+            ...(canManageAdminRemarks ? { adminRemarks: consultantById.adminRemarks || '' } : {}),
+            // The standing supervisor comes from the same record and belongs in the same sync.
+            // antd applies `initialValues` once, at mount, and this query is invalidated on every
+            // save — so without this the selector would keep showing what the form mounted with
+            // while the backend already held another. Never over a field the admin has touched:
+            // their edit beats a background refetch.
+            ...(supervisorPickedByAdminRef.current
+                ? {}
+                : { assignedSupervisorId: consultantById.assignedSupervisorId || undefined }),
+        });
+    }, [consultantById, isEditing, isConsultantForm, canManageAdminRemarks, form]);
+
     const { mutate } = useAddOrUpdateConsultantOrAdmin({
         id: isEditing ? id : null,
         typeOfUser: typeOfUsers,
@@ -224,10 +406,28 @@ export const UserEditOrAdd = () => {
                     return;
                 }
             }
-            mutate(data);
+            // Write the standing supervisor ONLY when the admin deliberately changed it. Anything
+            // else — the field read-only because the record was unreadable, or the form mounted
+            // from a stale detail cache — would mean submitting a value we did not actually know,
+            // and since '' means "clear it" to the backend, an unrelated edit could silently drop
+            // a supervisor nobody touched. Omitted, the backend leaves the assignment alone.
+            if (!canWriteStandingSupervisor || !supervisorPickedByAdminRef.current) {
+                const payloadWithoutSupervisor = { ...data };
+                delete payloadWithoutSupervisor.assignedSupervisorId;
+                mutate(payloadWithoutSupervisor);
+                return;
+            }
+            // `MuiSelectField` emits `undefined` when the admin clears it, but the backend reads
+            // undefined as "leave the assignment untouched" — only '' clears it. Without this
+            // coercion a standing supervisor could be set but never removed.
+            mutate({ ...data, assignedSupervisorId: data.assignedSupervisorId ?? '' });
         },
-        [isConsultantForm, filteredAgencies, form, mutate, t],
+        [isConsultantForm, filteredAgencies, form, mutate, t, canWriteStandingSupervisor],
     );
+    const onFinishFailed = useCallback(({ errorFields }: ValidateErrorEntity) => {
+        // Keep values; jump to the field that blocked save (#717 / #594.6).
+        focusFirstInvalidField(errorFields, FORM_NAME);
+    }, []);
     const onCancel = useCallback(() => navigate(`/admin/users/${typeOfUsers}`), []);
     const isAbsentEnabled = useWatch('absent', form);
     const activePublicSlug = publicSlug || consultantById?.publicSlug;
@@ -319,7 +519,16 @@ export const UserEditOrAdd = () => {
                     labelWrap
                     layout="vertical"
                     form={form}
+                    name={FORM_NAME}
                     onFinish={onSave}
+                    // Fires for user-driven changes only, never for `setFieldsValue` — the one
+                    // signal that separates an admin's pick from a background sync.
+                    onValuesChange={(changedValues) => {
+                        if ('assignedSupervisorId' in changedValues) {
+                            supervisorPickedByAdminRef.current = true;
+                        }
+                    }}
+                    onFinishFailed={onFinishFailed}
                     initialValues={{
                         ...(singleData || {
                             formalLanguage: true,
@@ -327,6 +536,7 @@ export const UserEditOrAdd = () => {
                         username: decodeUsername(singleData?.username || ''),
                         agencies: convertToOptions(singleData?.agencies || [], ['postcode', 'name', 'city'], 'id'),
                         topicIds: convertToOptions(consultantById?.topics || [], 'name', 'id'),
+                        assignedSupervisorId: storedSupervisorId || undefined,
                         publicSlug: consultantById?.publicSlug || singleData?.publicSlug || '',
                         pendingPublicSlug: consultantById?.pendingPublicSlug || singleData?.pendingPublicSlug || '',
                         publicSlugStatus: consultantById?.publicSlugStatus || singleData?.publicSlugStatus || '',
@@ -354,6 +564,65 @@ export const UserEditOrAdd = () => {
                                     rules={[requiredRule]}
                                 />
 
+                                {isConsultantForm && (
+                                    <>
+                                        <MuiFormField
+                                            name="displayName"
+                                            label={t('counselor.displayName')}
+                                            placeholder={t('counselor.displayName.placeholder')}
+                                            helpText={t('counselor.displayName.hint')}
+                                        />
+
+                                        <MuiFormField
+                                            name="internalDisplayName"
+                                            label={t('counselor.internalDisplayName')}
+                                            placeholder={t('counselor.internalDisplayName.placeholder')}
+                                            helpText={t('counselor.internalDisplayName.hint')}
+                                        />
+
+                                        {/*
+                                          Deliberately not clearable. Clearing the select yields
+                                          `undefined`, which the API layer omits and the backend
+                                          reads as "leave unchanged" — so the clear affordance
+                                          would silently fail to persist. `not_specified` ("keine
+                                          Angabe") is the canonical way to say "no salutation", so
+                                          nothing is lost by removing it. Sending `''` instead
+                                          would introduce a second representation of "none" and
+                                          would wipe a stored salutation whenever the form is
+                                          submitted before getConsultantById has prefilled it.
+                                        */}
+                                        <MuiSelectField
+                                            name="salutation"
+                                            label="counselor.salutation"
+                                            placeholder="plsSelect"
+                                            options={SALUTATION_KEYS.map((key) => ({
+                                                value: key,
+                                                label: t(`counselor.salutation.option.${key}`),
+                                            }))}
+                                        />
+
+                                        <MuiFormField
+                                            name="position"
+                                            label={t('counselor.position')}
+                                            placeholder={t('counselor.position.placeholder')}
+                                        />
+
+                                        <MuiFormField
+                                            name="title"
+                                            label={t('counselor.personalTitle')}
+                                            placeholder={t('counselor.personalTitle.placeholder')}
+                                        />
+
+                                        {canManageAdminRemarks && (
+                                            <MuiMultilineFormField
+                                                name="adminRemarks"
+                                                label={t('counselor.adminRemarks')}
+                                                helpText={t('counselor.adminRemarks.hint')}
+                                            />
+                                        )}
+                                    </>
+                                )}
+
                                 <MuiFormField
                                     name="email"
                                     label={t('email')}
@@ -372,16 +641,8 @@ export const UserEditOrAdd = () => {
                                     label={t('counselor.username')}
                                     placeholder={t('placeholder.username')}
                                     disabled={isEditing}
-                                    rules={[
-                                        {
-                                            required: true,
-                                            message: t('message.error.username.required'),
-                                        },
-                                        {
-                                            pattern: /^[a-z0-9_-]+$/,
-                                            message: t('message.error.username.format'),
-                                        },
-                                    ]}
+                                    helpText={t('message.error.username.format')}
+                                    rules={usernameFormRules(t)}
                                 />
 
                                 {!isEditing &&
@@ -393,18 +654,7 @@ export const UserEditOrAdd = () => {
                                                 label={t('counselor.password')}
                                                 placeholder={t('placeholder.password')}
                                                 required
-                                                rules={[
-                                                    requiredRule,
-                                                    {
-                                                        min: 8,
-                                                        message: t('message.error.password.minLength'),
-                                                    },
-                                                    {
-                                                        pattern:
-                                                            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-                                                        message: t('message.error.password.policy'),
-                                                    },
-                                                ]}
+                                                rules={[requiredRule, ...passwordFormRules(t)]}
                                             />
                                             <MuiPasswordFormField
                                                 name="passwordConfirmation"
@@ -493,6 +743,22 @@ export const UserEditOrAdd = () => {
                                                     name="isSupervisor"
                                                 />
                                             </div>
+                                            {showStandingSupervisor && (
+                                                <MuiSelectField
+                                                    name="assignedSupervisorId"
+                                                    label="counselor.assignedSupervisor"
+                                                    placeholder="counselor.assignedSupervisor.placeholder"
+                                                    help={standingSupervisorHelpKey}
+                                                    options={supervisorOptions}
+                                                    loading={isLoadingSupervisorCandidates}
+                                                    // Disabled, not hidden: the admin should see
+                                                    // that the assignment exists but cannot be
+                                                    // edited right now, rather than the field
+                                                    // vanishing.
+                                                    disabled={!canWriteStandingSupervisor || supervisorCandidatesFailed}
+                                                    allowClear
+                                                />
+                                            )}
                                             {isAbsentEnabled && (
                                                 <MuiMultilineFormField
                                                     label={t('counselor.absenceMessage')}

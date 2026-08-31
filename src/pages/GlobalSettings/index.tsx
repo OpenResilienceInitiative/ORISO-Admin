@@ -5,8 +5,6 @@ import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Outlet } from 'react-router-dom';
-import { Page } from '../../components/Page';
 import { CardDeck } from '../../components/CardDeck';
 import { CardEditable } from '../../components/CardEditable';
 import { Card } from '../../components/Card';
@@ -22,35 +20,19 @@ import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.h
 import { useUserData } from '../../hooks/useUserData.hook';
 import { sendGlobalSmtpTestEmail } from '../../api/settings/sendGlobalSmtpTestEmail';
 import { TranslationApiKeysCardContainer } from '../../components/GlobalSettings/TranslationApiKeysCardContainer';
+import { DocumentMasterDataCardContainer } from '../../components/GlobalSettings/DocumentMasterDataCardContainer';
 import styles from './styles.module.scss';
+import { resolveTenantId } from '../../utils/resolveTenantId';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
-
-export const GlobalSettingsPage = () => {
-    return (
-        <Page>
-            <Page.Title
-                titleKey="globalSettings.pageTitle"
-                tabs={[
-                    {
-                        to: '/admin/global-settings/login',
-                        titleKey: 'globalSettings.tabs.login',
-                    },
-                    {
-                        to: '/admin/global-settings/smtp',
-                        titleKey: 'globalSettings.tabs.smtp',
-                    },
-                ]}
-            />
-            <Outlet />
-        </Page>
-    );
-};
 
 export const GlobalLoginSettingsPage = () => {
     const { t } = useTranslation();
     const { data, isLoading } = useTenantData();
-    const tenantId = data?.id ? `${data.id}` : '';
-    const seedTenantAdminData = useMemo(() => (data?.id ? mapTenantDataToTenantAdminData(data) : undefined), [data]);
+    const tenantId = resolveTenantId(undefined, data?.id);
+    const seedTenantAdminData = useMemo(
+        () => (data?.id == null ? undefined : mapTenantDataToTenantAdminData(data)),
+        [data],
+    );
     const { mutate } = useTenantAdminDataMutation({
         id: tenantId,
         seedTenantAdminData,
@@ -60,42 +42,51 @@ export const GlobalLoginSettingsPage = () => {
     const initialValues = useMemo(() => ({ ...data }), [data]);
 
     return (
-        <div className={styles.globalConfigGrid}>
-            <section className={styles.globalConfigCardSlot}>
-                <ThemeProvider theme={orisoMuiTheme}>
-                    <CardEditable
-                        className={styles.loginFunctionCard}
-                        isLoading={isLoading}
-                        initialValues={initialValues}
-                        titleKey="tenants.globalSettings.anonymousChat.title"
-                        onSave={mutate}
-                        variant="dialog"
-                        editButtonPlacement="footer"
-                        headerIcon={<LoginOutlinedIcon />}
-                    >
-                        <div className={styles.checkGroup}>
-                            <MuiSwitchField
-                                label={t('tenants.permissions.anonymousChat.title')}
-                                name={['settings', 'featureAnonymousChatEnabled']}
-                            />
-                            {/* ORISO-Admin#602: this switch used to carry no visible
-                                description at all, while the string behind it promised
-                                "wird auf der Login-Seite nicht angezeigt" — behaviour
-                                nothing implements (`featureAnonymousChatEnabled` is read
-                                by no consumer in Frontend or UserService). Rather than
-                                invent the behaviour, the description now says what the
-                                switch actually does, and it is rendered so an admin can
-                                read it before deciding. */}
-                            <p className={styles.settingDescription}>
-                                {t('tenants.permissions.anonymousChat.description')}
-                            </p>
-                        </div>
-                    </CardEditable>
-                </ThemeProvider>
-            </section>
-            <section className={styles.translationCardSlot}>
-                <TranslationApiKeysCardContainer />
-            </section>
+        <div className={styles.globalConfigViewport}>
+            <div className={styles.globalConfigGrid}>
+                <div className={styles.compactCardColumn}>
+                    <section className={styles.globalConfigCardSlot}>
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <CardEditable
+                                className={styles.loginFunctionCard}
+                                isLoading={isLoading}
+                                initialValues={initialValues}
+                                titleKey="tenants.globalSettings.anonymousChat.title"
+                                onSave={mutate}
+                                variant="dialog"
+                                editButtonPlacement="footer"
+                                headerIcon={<LoginOutlinedIcon />}
+                            >
+                                <div className={styles.checkGroup}>
+                                    <MuiSwitchField
+                                        label={t('tenants.permissions.anonymousChat.title')}
+                                        name={['settings', 'featureAnonymousChatEnabled']}
+                                    />
+                                    {/* ORISO-Admin#602: this switch used to carry no visible
+                                    description at all, while the string behind it promised
+                                    "wird auf der Login-Seite nicht angezeigt" — behaviour
+                                    nothing implements (`featureAnonymousChatEnabled` is read
+                                    by no consumer in Frontend or UserService). Rather than
+                                    invent the behaviour, the description now says what the
+                                    switch actually does, and it is rendered so an admin can
+                                    read it before deciding. */}
+                                    <p className={styles.settingDescription}>
+                                        {t('tenants.permissions.anonymousChat.description')}
+                                    </p>
+                                </div>
+                            </CardEditable>
+                        </ThemeProvider>
+                    </section>
+                    <section className={styles.translationCardSlot}>
+                        <TranslationApiKeysCardContainer />
+                    </section>
+                </div>
+                {/* ORISO-Admin#735: operator master data for the living DPIA and the other legal
+                    documents. The desktop grid keeps it beside the two compact configuration cards. */}
+                <section className={styles.documentMasterDataCardSlot}>
+                    <DocumentMasterDataCardContainer />
+                </section>
+            </div>
         </div>
     );
 };
@@ -278,5 +269,3 @@ export const GlobalSmtpSettingsPage = () => {
         </ThemeProvider>
     );
 };
-
-export const GlobalSettingsIndexRedirect = () => <Navigate to="/admin/global-settings/login" replace />;

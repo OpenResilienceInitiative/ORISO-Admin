@@ -1,5 +1,6 @@
 import { keycloakAuthPath, runtimeConfig } from './config/runtimeConfig';
 import getLocationVariables from './utils/getLocationVariables';
+import { SUPPORTED_LANGUAGE_CODES } from './constants/supportedLanguages';
 
 export const CSRF_WHITELIST_HEADER: string = runtimeConfig.csrfWhitelistHeader;
 
@@ -17,7 +18,7 @@ export const clusterFeatureFlags = {
     useApiClusterSettings: true, // Fetch server settings from /service/settings
 };
 
-export const supportedLanguages = ['de', 'en', 'fr', 'ru', 'tr', 'uk', 'ti'];
+export const supportedLanguages = [...SUPPORTED_LANGUAGE_CODES];
 
 export const agencyDataAgencyId = (agencyId: string) => `${agencyServiceURL}/service/agencyadmin/agencies/${agencyId}`;
 export const agencyEndpointBase = `${agencyServiceURL}/service/agencyadmin/agencies`;
@@ -100,6 +101,12 @@ const routePathNames = {
      * so the route takes the raw token as a path segment.
      */
     tenantOnboarding: '/admin/tenant-onboarding',
+    /**
+     * Public counsellor onboarding wizard (#997). Counsellor invite links land
+     * here (UserService InviteAcceptUrlBuilder) instead of the app-layer
+     * acceptance page; the raw token is the trailing path segment.
+     */
+    counsellorOnboarding: '/admin/counsellor-onboarding',
     themeSettings: '/admin/theme-settings',
     globalSettings: '/admin/global-settings',
     permissionsSettings: '/admin/theme-settings/permissions',

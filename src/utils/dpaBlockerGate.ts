@@ -15,7 +15,21 @@ export type DpaBlockerReason = 'UNSIGNED' | 'OUTDATED' | 'MISSING' | 'INCONSISTE
 export type DpaGateDecision =
     | { kind: 'inactive' }
     | { kind: 'pending' }
-    | { kind: 'blocked'; reason: DpaBlockerReason; signable: boolean };
+    | { kind: 'blocked'; reason: DpaBlockerReason; signable: boolean }
+    /**
+     * #724: the signature is missing but was explicitly handed to an
+     * authorised signatory. The app renders — with the friendly recurring
+     * dialog instead of the hard blocker. The backend write-guard for
+     * legal-gated operations is untouched.
+     */
+    | { kind: 'forwarded-pending'; reason: DpaBlockerReason }
+    /**
+     * JOB8/JOB9: the tenant sat on the waiting dialog and the authoritative
+     * status has meanwhile turned VALID. The app is NOT opened silently — the
+     * tenant confirms with "Plattform freischalten", and THAT click re-asks
+     * the backend before anything behind the gate is rendered.
+     */
+    | { kind: 'unlock-confirm' };
 
 export interface DpaGateSubjectInput {
     hasTenantAdminRole: boolean;
@@ -64,6 +78,22 @@ export interface DpaGateDecisionInput {
     status: TenantDpaStatus | undefined;
     isLoading: boolean;
     isError: boolean;
+    /**
+     * `forwardPending` from the status DTO (#723 contract correction): the
+     * signature was forwarded and an unexpired link is outstanding. It is an
+     * ADDITIVE BOOLEAN — the `status` enum is unchanged and carries no
+     * `PENDING_FORWARDED` value. Absent/false (older backend, or no forward)
+     * keeps the strict gate: softening needs positive proof of the delegation.
+     */
+    forwardPending?: boolean;
+    /**
+     * JOB8: this session has already shown the forwarded-pending waiting
+     * dialog. A VALID status arriving afterwards is a state CHANGE the tenant
+     * has not seen yet, so it earns the explicit unlock confirmation instead
+     * of dropping them into the admin area mid-sentence. False on a fresh
+     * login of an already-signed tenant — no spurious success dialog.
+     */
+    wasAwaitingForwardedSignature?: boolean;
 }
 
 /**
@@ -78,6 +108,8 @@ export const deriveDpaGateDecision = ({
     status,
     isLoading,
     isError,
+    forwardPending = false,
+    wasAwaitingForwardedSignature = false,
 }: DpaGateDecisionInput): DpaGateDecision => {
     if (subjectKind === 'exempt') return { kind: 'inactive' };
     if (subjectKind === 'indeterminate') {
@@ -90,9 +122,14 @@ export const deriveDpaGateDecision = ({
 
     switch (status) {
         case 'VALID':
-            return { kind: 'inactive' };
+            return wasAwaitingForwardedSignature ? { kind: 'unlock-confirm' } : { kind: 'inactive' };
         case 'UNSIGNED':
         case 'OUTDATED':
+            // #724: only a positively reported forward softens the gate; the
+            // never-forwarded state keeps the strict #572 blocker. The flag
+            // rides on the same status answer, so there is no second request
+            // to wait for and nothing can leak out meanwhile.
+            if (forwardPending) return { kind: 'forwarded-pending', reason: status };
             return { kind: 'blocked', reason: status, signable: true };
         case 'MISSING':
             return { kind: 'blocked', reason: 'MISSING', signable: false };

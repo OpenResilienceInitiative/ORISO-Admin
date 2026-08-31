@@ -1,0 +1,21 @@
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    text-align: left;
+}
+
+.note {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+/* Custom footer for the unlock gate: the two exits, primary on the right. */
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}

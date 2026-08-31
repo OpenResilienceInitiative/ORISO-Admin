@@ -1,4 +1,5 @@
 @use '../../styles/breakpoints' as bp;
+@use '../../styles/scrollbars' as scrollbars;
 
 /* Global DPA blocker (TEN-INV-U10, #572).
  *
@@ -9,11 +10,12 @@
  * `#dce5df` fallback was Material's default green and had nothing to do with
  * this product).
  *
- * Scrolling: exactly ONE scroller. From the desktop breakpoint up the card is
- * bounded to the viewport and its body scrolls, so the card is genuinely
- * centred; below that the overlay scrolls and the card is an ordinary block,
- * which is what keeps the whole form reachable at 390x844. The reader itself
- * never scrolls independently any more (see M3RichTextEditor `fluid`).
+ * Scrolling: from the desktop breakpoint up the card is bounded to the
+ * viewport and its body scrolls, so the card is genuinely centred; below that
+ * the overlay scrolls and the card is an ordinary block, which is what keeps
+ * the whole form reachable at 390x844. The agreement itself scrolls inside
+ * the reader's own bounded viewport (owner demo 2026-08-19, reversing
+ * #594.3), so the chapter bar stands still while the text moves.
  */
 
 .overlay {
@@ -29,6 +31,12 @@
     background: var(--m3-surface-container-low, #f6f3f3);
     inset: 0;
     overflow-y: auto;
+
+    /* JOB10: the blocker covers the whole viewport, so its classic scrollbar
+       read as the window's own — a full-height grey track beside the contract
+       the admin is being asked to sign. */
+
+    @include scrollbars.quiet;
 }
 
 .card {
@@ -70,12 +78,17 @@
         flex: 1 1 auto;
 
         /* Horizontal room for the focus ring of the fields inside the
-           scroller. Vertical padding is deliberately 0 so the sticky chapter
-           bar lands exactly on the scrollport edge. */
+           scroller. (The agreement itself scrolls inside the reader since the
+           owner demo 2026-08-19 — this body only scrolls the sign form.) */
         padding: 0 4px;
         margin: 0 -4px;
         overflow-y: auto;
+
+        /* Gutter stays so the sign form does not jump sideways as it grows;
+           JOB10 only takes the track away. */
         scrollbar-gutter: stable;
+
+        @include scrollbars.quiet;
     }
 }
 
@@ -87,7 +100,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 24px 24px 24px;
+    padding: 24px;
     gap: 8px;
     text-align: center;
 }

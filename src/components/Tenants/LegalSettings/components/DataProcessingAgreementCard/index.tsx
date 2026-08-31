@@ -8,40 +8,44 @@ import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnack
 import { useLegalHelp } from '../../hooks/useLegalHelp';
 import { LegalHelpRole } from '../../utils/legalHelpTexts';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
+import { LegalDraftNotice } from '../LegalDraftNotice';
+import { PublishSourceWarningModal } from '../PublishSourceWarningModal';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
 import { parseLegalContentMap, pickLegalContentLanguage } from '../../utils/legalContentLanguages';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
 import styles from './styles.module.scss';
 
-// "Nicht mehr anzeigen" on the DPA blocker snackbar persists across sessions.
-const DPA_BLOCKER_DISMISSED_KEY = 'oriso-admin.legal.dpa.blocker.dismissed';
-const DPA_BLOCKER_SESSION_KEY = 'oriso-admin.legal.dpa.blocker.closed';
+// "Nicht mehr anzeigen" on the editor snackbars persists across sessions; the X /
+// check affordance only hides it for the session. The blocker ("publish a DPA
+// first") and the signed confirmation are dismissed independently.
+type SnackbarKind = 'blocker' | 'signed';
 
-const scopedDismissalKey = (key: string, scope: string) => `${key}.${scope}`;
+const dismissedKey = (kind: SnackbarKind, scope: string) => `oriso-admin.legal.dpa.${kind}.dismissed.${scope}`;
+const sessionKey = (kind: SnackbarKind, scope: string) => `oriso-admin.legal.dpa.${kind}.closed.${scope}`;
 
-const isBlockerDismissed = (scope: string) => {
+const isSnackbarDismissed = (kind: SnackbarKind, scope: string) => {
     try {
         return (
-            window.localStorage.getItem(scopedDismissalKey(DPA_BLOCKER_DISMISSED_KEY, scope)) === 'true' ||
-            window.sessionStorage.getItem(scopedDismissalKey(DPA_BLOCKER_SESSION_KEY, scope)) === 'true'
+            window.localStorage.getItem(dismissedKey(kind, scope)) === 'true' ||
+            window.sessionStorage.getItem(sessionKey(kind, scope)) === 'true'
         );
     } catch {
         return false;
     }
 };
 
-const persistBlockerDismissed = (scope: string) => {
+const persistSnackbarDismissed = (kind: SnackbarKind, scope: string) => {
     try {
-        window.localStorage.setItem(scopedDismissalKey(DPA_BLOCKER_DISMISSED_KEY, scope), 'true');
+        window.localStorage.setItem(dismissedKey(kind, scope), 'true');
     } catch {
         // Private mode / storage disabled: the snackbar just reappears next session.
     }
 };
 
-const persistBlockerClosedForSession = (scope: string) => {
+const persistSnackbarClosedForSession = (kind: SnackbarKind, scope: string) => {
     try {
-        window.sessionStorage.setItem(scopedDismissalKey(DPA_BLOCKER_SESSION_KEY, scope), 'true');
+        window.sessionStorage.setItem(sessionKey(kind, scope), 'true');
     } catch {
         // Private mode / storage disabled: the close still works for this mount.
     }
@@ -64,7 +68,10 @@ interface DataProcessingAgreementCardProps {
     initialContentByLanguage?: Record<string, string>;
     /** The languages offered for editing (tenant's active languages + stored ones). */
     languages?: string[];
-    /** The language shown first (usually the admin's UI language). */
+    /**
+     * Explicit override of the language shown first; defaults to the legal source
+     * language, or to the first offered language when the source is not offered.
+     */
     defaultLanguage?: string;
     /** Previously published versions, newest first — browsable via the editor's version select. */
     versions: LegalVersion[];
@@ -91,6 +98,19 @@ interface DataProcessingAgreementCardProps {
     helpRole?: LegalHelpRole;
     /** Tenant/account scope for dismissal persistence. */
     dismissalScope?: string;
+    /**
+     * Stores the complete content map as a draft WITHOUT publishing. Omitted = no draft
+     * action; publishing a DPA stamps a new version every tenant has to sign again, so
+     * "save" and "publish" must stay two separate decisions.
+     */
+    onSaveDraft?: (contentByLanguage: Record<string, string>) => void;
+    /** When set, the editor is showing a restored draft saved at this time. */
+    draftSavedAt?: string;
+    /** A newer version was published after the restored draft was saved. */
+    draftStale?: boolean;
+    onDiscardDraft?: () => void;
+    /** Audit status rendered in the shared read-only footer. */
+    readOnlyFooter?: React.ReactNode;
 }
 
 /**
@@ -112,6 +132,11 @@ export const DataProcessingAgreementCard = ({
     dpaSigned,
     helpRole,
     dismissalScope,
+    onSaveDraft,
+    draftSavedAt,
+    draftStale,
+    onDiscardDraft,
+    readOnlyFooter,
 }: DataProcessingAgreementCardProps) => {
     const { t } = useTranslation();
     const {
@@ -123,6 +148,10 @@ export const DataProcessingAgreementCard = ({
         contentMapWithEdits,
         handleEditorChange,
         requestPublish,
+        sourceWarningOpen,
+        editedNonSourceLanguages,
+        confirmSourceWarning,
+        cancelSourceWarning,
         modalOpen,
         closeModal,
         translating,
@@ -152,14 +181,22 @@ export const DataProcessingAgreementCard = ({
         helpRole,
     );
     const [blockerHidden, setBlockerHidden] = useState(() =>
-        dismissalScope ? isBlockerDismissed(dismissalScope) : false,
+        dismissalScope ? isSnackbarDismissed('blocker', dismissalScope) : false,
+    );
+    const [signedHidden, setSignedHidden] = useState(() =>
+        dismissalScope ? isSnackbarDismissed('signed', dismissalScope) : false,
     );
     useEffect(() => {
-        setBlockerHidden(dismissalScope ? isBlockerDismissed(dismissalScope) : false);
+        setBlockerHidden(dismissalScope ? isSnackbarDismissed('blocker', dismissalScope) : false);
+        setSignedHidden(dismissalScope ? isSnackbarDismissed('signed', dismissalScope) : false);
     }, [dismissalScope]);
     // Gate snackbar vs inline hint on the resolved help role (platform = super admin).
     const isPlatformAdmin = help.role === 'platform';
     const showBlockerSnackbar = isPlatformAdmin && !blockerHidden;
+    // The signed confirmation belongs in the editor's own snackbar (Figma 1261-51137,
+    // success tone) rather than in a separate alert below the card — same field, one
+    // message. Platform admins never see it: they publish the DPA, they do not sign it.
+    const showSignedSnackbar = !isPlatformAdmin && !!dpaSigned && !signedHidden;
     // The editor's version select browses the versions in the ACTIVE language; a version
     // that was never stored in that language falls back to its first stored language
     // rather than showing an empty page.
@@ -179,6 +216,9 @@ export const DataProcessingAgreementCard = ({
 
     return (
         <div className={styles.card}>
+            {!readOnly && onDiscardDraft && (
+                <LegalDraftNotice savedAt={draftSavedAt} stale={draftStale} onDiscard={onDiscardDraft} />
+            )}
             <M3RichTextEditor
                 title={t('tenants.legal.dataProcessingAgreement.title')}
                 icon={DpaIcon}
@@ -192,29 +232,45 @@ export const DataProcessingAgreementCard = ({
                 // the published version chain stays append-only and untouched.
                 onRestoreVersion={readOnly ? undefined : handleEditorChange}
                 languageSlot={
-                    <LegalContentLanguageSelect
-                        languages={languages}
-                        value={activeLanguage}
-                        onChange={setActiveLanguage}
-                        sourceLanguage={sourceLanguage}
-                        contentMap={contentMapWithEdits}
-                    />
+                    languages.length > 1 ? (
+                        <LegalContentLanguageSelect
+                            languages={languages}
+                            value={activeLanguage}
+                            onChange={setActiveLanguage}
+                            sourceLanguage={sourceLanguage}
+                            contentMap={contentMapWithEdits}
+                        />
+                    ) : undefined
                 }
                 helpSlot={<EditorHelpText text={help.text} hint={isPlatformAdmin ? undefined : help.hint} />}
                 snackbarSlot={
-                    showBlockerSnackbar && (
+                    (showBlockerSnackbar && (
                         <EditorHintSnackbar
                             text={help.hint}
                             onClose={() => {
-                                if (dismissalScope) persistBlockerClosedForSession(dismissalScope);
+                                if (dismissalScope) persistSnackbarClosedForSession('blocker', dismissalScope);
                                 setBlockerHidden(true);
                             }}
                             onDismiss={() => {
-                                if (dismissalScope) persistBlockerDismissed(dismissalScope);
+                                if (dismissalScope) persistSnackbarDismissed('blocker', dismissalScope);
                                 setBlockerHidden(true);
                             }}
                         />
-                    )
+                    )) ||
+                    (showSignedSnackbar && (
+                        <EditorHintSnackbar
+                            tone="success"
+                            text={t('legal.dpa.sign.complete')}
+                            onClose={() => {
+                                if (dismissalScope) persistSnackbarClosedForSession('signed', dismissalScope);
+                                setSignedHidden(true);
+                            }}
+                            onDismiss={() => {
+                                if (dismissalScope) persistSnackbarDismissed('signed', dismissalScope);
+                                setSignedHidden(true);
+                            }}
+                        />
+                    ))
                 }
                 aboveEditorSlot={
                     !readOnly &&
@@ -235,18 +291,31 @@ export const DataProcessingAgreementCard = ({
                     )
                 }
                 onPublish={readOnly ? undefined : () => requestPublish()}
+                // Saving a draft must never reach the publish endpoint: it hands over the
+                // same complete map the publish would send, but only to local storage.
+                onSaveDraft={readOnly || !onSaveDraft ? undefined : () => onSaveDraft(contentMapWithEdits)}
+                readOnlyFooter={readOnlyFooter}
                 belowSlot={
                     !readOnly && (
-                        <TranslateOnPublishModal
-                            open={modalOpen}
-                            sourceLanguage={sourceLanguage}
-                            targetLanguages={targetLanguages}
-                            translating={translating}
-                            errorKey={modalErrorKey}
-                            onConfirm={translateAndPublish}
-                            onSkip={publishWithoutTranslation}
-                            onCancel={closeModal}
-                        />
+                        <>
+                            <PublishSourceWarningModal
+                                open={sourceWarningOpen}
+                                sourceLanguage={sourceLanguage}
+                                editedLanguages={editedNonSourceLanguages}
+                                onConfirm={confirmSourceWarning}
+                                onCancel={cancelSourceWarning}
+                            />
+                            <TranslateOnPublishModal
+                                open={modalOpen}
+                                sourceLanguage={sourceLanguage}
+                                targetLanguages={targetLanguages}
+                                translating={translating}
+                                errorKey={modalErrorKey}
+                                onConfirm={translateAndPublish}
+                                onSkip={publishWithoutTranslation}
+                                onCancel={closeModal}
+                            />
+                        </>
                     )
                 }
             />

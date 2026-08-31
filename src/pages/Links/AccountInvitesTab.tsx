@@ -1,12 +1,10 @@
-import { Button, message, Tag, Tooltip } from 'antd';
-import type { TablePaginationConfig } from 'antd/es/table';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { message } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import {
     acceptBaseUrlForRole,
     AccountInviteDTO,
-    AccountInviteStatus,
     AccountInviteTargetRole,
     createAccountInvite,
     InviteEmailTemplateDTO,
@@ -15,16 +13,18 @@ import {
     listInviteEmailTemplates,
     resendAccountInvite,
     revokeAccountInvite,
+    sendAccountInvite,
 } from '../../api/accountInvites/accountInvites';
+import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
-import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { Modal } from '../../components/Modal';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
-import { InviteComposer, InviteComposerValues, InviteSendMode } from './InviteComposer';
+import { InviteComposer, InviteComposerValues, InviteSendMode, InviteSubmitOutcome } from './InviteComposer';
 import { InviteCsvImportModal, type InviteCsvCreateRow } from './InviteCsvImportModal';
+import { InviteProgressBoard } from './inviteProgress/InviteProgressBoard';
 import styles from './styles.module.scss';
 
 interface AccountInvitesTabProps {
@@ -32,44 +32,6 @@ interface AccountInvitesTabProps {
     templateKind: InviteEmailTemplateKind;
     includeAgencyField?: boolean;
 }
-
-/*
- * Chips are tonal, not traffic lights (owner call 2026-07-29): the antd colour
- * names this used to map to — green/gold/red — are antd's palette, not the
- * ORISO scheme, and in a table meant to be scanned they shouted louder than
- * the data. The state is in the chip's own label.
- *
- * The single exception is a state that means the invite is DEAD. Those carry
- * the scheme's error role, because "expired" and "accepted" reading identically
- * is what the tonal pass cost us — the point of the column is to spot them.
- */
-const DEAD_INVITE_STATES = new Set(['EXPIRED', 'REVOKED', 'FAILED', 'BLOCKED_EMAIL', 'BLOCKED_TWO_FACTOR']);
-
-const statusTagClass = (value?: string | null) =>
-    `${listingTableStyles.statusTag} ${
-        value && DEAD_INVITE_STATES.has(value)
-            ? listingTableStyles.statusTagExpired
-            : listingTableStyles.statusTagDefault
-    }`;
-
-const StatusValue = ({ value }: { value?: string | null }) => (
-    <Tag className={statusTagClass(value)}>{value || '—'}</Tag>
-);
-
-/**
- * Send-state column (#316, Figma 1165:17005 red annotation "2nd: send state,
- * draft, sent, declined etc."): the raw enum is translated into the German
- * labels the owner asked for; every chip uses the one tonal style.
- * Fallbacks double as the i18n defaults for both locales' JSON files.
- */
-const INVITE_STATUS_FALLBACK_LABELS: Record<AccountInviteStatus, string> = {
-    DRAFT: 'Draft',
-    EMAIL_SENT: 'Gesendet',
-    ACCEPTED: 'Angenommen',
-    EXPIRED: 'Abgelaufen',
-    REVOKED: 'Widerrufen',
-    SUPERSEDED: 'Ersetzt',
-};
 
 /**
  * Bulk actions (#316) only make sense while an invite can still change:
@@ -87,8 +49,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [generatedLinks, setGeneratedLinks] = useState<Record<number, string>>({});
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
     const [templatesDialogView, setTemplatesDialogView] = useState<'list' | 'create' | null>(null);
+    // "Neu aus „X"" (#746): source template the create view prefills from.
+    const [createFromTemplateId, setCreateFromTemplateId] = useState<number | undefined>();
     // CSV import (#315): parse result + the send mode captured when the file was picked.
     const [csvImport, setCsvImport] = useState<{ result: ParseInviteCsvResult; sendMode: InviteSendMode } | null>(null);
     // Bulk selection (#316): checked row ids, the open/closed state of the
@@ -96,6 +59,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
     const [bulkRunning, setBulkRunning] = useState(false);
+    // Toolbar search (A4/#376). The tab already holds the COMPLETE invite list
+    // (see loadInvites) and the board already filters it client-side by status
+    // bucket, so the query joins that same client-side pipeline instead of
+    // introducing a second, server-paged source the summary counts could not be
+    // derived from.
+    const [searchQuery, setSearchQuery] = useState('');
 
     const currentTenantId = parseUserAuthInfo().tenantId || undefined;
 
@@ -105,7 +74,6 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     // only pre-flags collisions in the CSV import preview.
     const isTenantInvite = targetRole === 'TENANT_ADMIN';
     const [existingTenantIds, setExistingTenantIds] = useState<Set<number>>(new Set());
-    const [activeInviteTenantIds, setActiveInviteTenantIds] = useState<Set<number>>(new Set());
 
     useEffect(() => {
         if (!isTenantInvite) return undefined;
@@ -139,41 +107,19 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         };
     }, [isTenantInvite]);
 
-    useEffect(() => {
-        if (!isTenantInvite) return undefined;
-        // A dedicated, large, unpaginated fetch: the visible `invites` table is
-        // paginated (20/page) and would miss active invites sitting on other pages.
-        let cancelled = false;
-        const loadAllActiveInviteTenantIds = async () => {
-            const responses: AccountInviteDTO[] = [];
-            let page = 0;
-            let totalPages = 1;
-            while (page < totalPages) {
-                // Pagination is intentionally sequential because totalPages comes from the preceding response.
-                // eslint-disable-next-line no-await-in-loop
-                const response = await listAccountInvites({ targetRole: 'TENANT_ADMIN', page, size: 200 });
-                responses.push(...(response.content ?? []));
-                totalPages = response.totalPages ?? 0;
-                page += 1;
-            }
-            if (!cancelled) {
-                const ids = responses
+    // Active-invite tenant ids used to need a second, dedicated full fetch;
+    // since the board loads the COMPLETE list (see loadInvites), they are now a
+    // plain derivation of it — the just-created invite is reflected on reload.
+    const activeInviteTenantIds = useMemo(
+        () =>
+            new Set(
+                invites
                     .filter((invite) => invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT')
                     .map((invite) => invite.tenantId)
-                    .filter((id): id is number => id != null);
-                setActiveInviteTenantIds(new Set(ids));
-            }
-        };
-        loadAllActiveInviteTenantIds().catch(() => {
-            // Best-effort pre-flagging only — the CSV preview falls back to the backend's 409.
-        });
-        // Recomputed whenever the visible (paginated) invite list reloads — e.g. right
-        // after this component creates a new invite — so the just-taken id is reflected
-        // without waiting for an unrelated trigger.
-        return () => {
-            cancelled = true;
-        };
-    }, [isTenantInvite, invites]);
+                    .filter((id): id is number => id != null),
+            ),
+        [invites],
+    );
 
     const takenTenantIds = useMemo(
         () => new Set<number>([...existingTenantIds, ...activeInviteTenantIds]),
@@ -182,29 +128,49 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
 
     const activeTemplates = useMemo(() => templates.filter((template) => template.active), [templates]);
 
-    const loadInvites = useCallback(
-        async (page: number, pageSize: number) => {
-            setLoading(true);
-            try {
-                const response = await listAccountInvites({
-                    page: page - 1,
-                    size: pageSize,
-                    targetRole,
-                });
-                setInvites(response.content ?? []);
-                setPagination({
-                    current: (response.page ?? 0) + 1,
-                    pageSize: response.size ?? pageSize,
-                    total: response.totalElements ?? 0,
-                });
-            } catch {
-                message.error(t('links.error.loadFailed', 'Could not load links'));
-            } finally {
-                setLoading(false);
+    /** Sequence number of the newest `loadInvites` run; see the guard inside it. */
+    const loadRevision = useRef(0);
+
+    /**
+     * Loads the tab's COMPLETE invite list (all pages, 200 per request). The
+     * board derives its summary counts and bucket filters client-side — a
+     * single server page could not answer "how many are completed" — and the
+     * list endpoint offers no bucket aggregation. Invite lists are admin-scale
+     * (the tenant tab already fetched everything for id pre-flagging before).
+     */
+    const loadInvites = useCallback(async () => {
+        loadRevision.current += 1;
+        const revision = loadRevision.current;
+        // Only the newest load may write. The initial load, the refresh after
+        // every invite action and the CSV import's refresh all call this, so two
+        // runs can be in flight at once — and because each run walks several
+        // pages, the older one can finish last. Without this guard it would
+        // overwrite fresher rows (and clear `loading` while the newer run is
+        // still fetching), showing a just-revoked invite as still active.
+        const isLatest = () => revision === loadRevision.current;
+        setLoading(true);
+        try {
+            const all: AccountInviteDTO[] = [];
+            let page = 0;
+            let totalPages = 1;
+            while (page < totalPages) {
+                // Pagination is intentionally sequential because totalPages comes from the preceding response.
+                // eslint-disable-next-line no-await-in-loop
+                const response = await listAccountInvites({ page, size: 200, targetRole });
+                all.push(...(response.content ?? []));
+                totalPages = response.totalPages ?? 0;
+                page += 1;
             }
-        },
-        [targetRole, t],
-    );
+            if (!isLatest()) return;
+            setInvites(all);
+        } catch {
+            if (!isLatest()) return;
+            message.error(t('links.error.loadFailed', 'Could not load links'));
+        } finally {
+            // A superseded run leaves `loading` to the run that overtook it.
+            if (isLatest()) setLoading(false);
+        }
+    }, [targetRole, t]);
 
     const loadTemplates = useCallback(() => {
         listInviteEmailTemplates(templateKind)
@@ -236,7 +202,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     );
 
     useEffect(() => {
-        loadInvites(1, 20);
+        loadInvites();
     }, [loadInvites]);
 
     useEffect(() => {
@@ -267,7 +233,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     }, []);
 
     const onCreate = useCallback(
-        async (values: InviteComposerValues): Promise<boolean> => {
+        async (values: InviteComposerValues): Promise<InviteSubmitOutcome> => {
             setSubmitting(true);
             try {
                 // Department routing (#384): a counsellor must arrive with the
@@ -358,23 +324,32 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         ? t('links.accountInvites.created', 'Invite sent')
                         : t('links.accountInvites.createdNoEmail', 'Recipient created without sending an email'),
                 );
-                await loadInvites(1, pagination.pageSize);
+                await loadInvites();
                 return true;
             } catch (error) {
-                // The backend also rejects a colliding tenantId with 409 (see
-                // createAccountInvite's CONFLICT_WITH_RESPONSE handling); surface that
-                // specific message instead of the generic fallback when we can tell.
-                if (isTenantInvite && error instanceof Response && error.status === 409) {
-                    message.error(t('links.accountInvites.tenantIdTaken', 'This tenant ID is already taken.'));
-                } else {
-                    message.error(t('links.error.createFailed', 'Could not create link'));
+                // The backend answers 409 for more than one reason (see
+                // createAccountInvite's CONFLICT_WITH_RESPONSE handling), so the typed
+                // X-Reason decides which specific message the admin gets.
+                if (error instanceof Response && error.status === 409) {
+                    // P3: the recipient address already belongs to a registered user.
+                    // This one belongs ON the e-mail field, not in a global toast —
+                    // the admin has to correct that exact input, and the rest of the
+                    // row must survive. The composer renders it inline.
+                    if (error.headers.get(FETCH_ERRORS.X_REASON) === X_REASON.EMAIL_NOT_AVAILABLE) {
+                        return 'emailTaken';
+                    }
+                    if (isTenantInvite) {
+                        message.error(t('links.accountInvites.tenantIdTaken', 'This tenant ID is already taken.'));
+                        return false;
+                    }
                 }
+                message.error(t('links.error.createFailed', 'Could not create link'));
                 return false;
             } finally {
                 setSubmitting(false);
             }
         },
-        [isTenantInvite, loadInvites, pagination.pageSize, rememberGeneratedLink, targetRole, t],
+        [isTenantInvite, loadInvites, rememberGeneratedLink, targetRole, t],
     );
 
     // One row of the CSV batch. Uses the send mode captured at file-pick time:
@@ -425,20 +400,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 });
                 rememberGeneratedLink(resent);
                 message.success(t('links.accountInvites.resent', 'Invite resent'));
-                await loadInvites(pagination.current, pagination.pageSize);
+                await loadInvites();
             } catch {
                 message.error(t('links.accountInvites.resendFailed', 'Could not resend invite'));
             }
         },
-        [
-            activeTemplates,
-            loadInvites,
-            pagination.current,
-            pagination.pageSize,
-            rememberGeneratedLink,
-            selectedTemplateId,
-            t,
-        ],
+        [activeTemplates, loadInvites, rememberGeneratedLink, selectedTemplateId, t],
     );
 
     const onRevoke = useCallback(
@@ -446,12 +413,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             try {
                 await revokeAccountInvite(invite.id);
                 message.success(t('links.accountInvites.revoked', 'Invite revoked'));
-                await loadInvites(pagination.current, pagination.pageSize);
+                await loadInvites();
             } catch {
                 message.error(t('links.accountInvites.revokeFailed', 'Could not revoke invite'));
             }
         },
-        [loadInvites, pagination.current, pagination.pageSize, t],
+        [loadInvites, t],
     );
 
     // Selection follows the visible page: reloading (pagination, refresh after an
@@ -501,15 +468,22 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             );
         }
         setSelectedIds([]);
-        await loadInvites(pagination.current, pagination.pageSize);
-    }, [loadInvites, pagination.current, pagination.pageSize, selectedInvites, t]);
+        await loadInvites();
+    }, [loadInvites, selectedInvites, t]);
 
     // Bulk send (#316): the composer's send button acts on the selection — one
-    // resend per selected DRAFT/EMAIL_SENT row with the current template. Failed
-    // rows stay selected (their checkbox marks them for a retry); a full success
-    // clears the selection.
+    // request per selected DRAFT/EMAIL_SENT row with the current template.
+    // The VERB depends on the row's status, and getting it wrong destroys data:
+    // `/resend` supersedes the invite it is handed, so sending a never-mailed
+    // DRAFT through it left a dead "Ersetzt" row behind and minted a new invite
+    // id. A DRAFT's first delivery is `/send`; only an EMAIL_SENT row is resent.
+    // Failed rows stay selected (their checkbox marks them for a retry); a full
+    // success clears the selection.
     const onBulkSend = useCallback(async () => {
-        const templateId = selectedTemplateId ?? activeTemplates[0]?.id;
+        // No hidden fallback to activeTemplates[0] here: the composer is the ONE
+        // gate for bulk send and requires an explicitly chosen template (#713),
+        // so a silent second rule would send with a template nobody picked.
+        const templateId = selectedTemplateId;
         if (!templateId) {
             message.error(t('links.accountInvites.templateRequired', 'Select a template first.'));
             return;
@@ -520,12 +494,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         const failed: AccountInviteDTO[] = [];
         for (let i = 0; i < targets.length; i += 1) {
             try {
+                const deliver = targets[i].inviteStatus === 'DRAFT' ? sendAccountInvite : resendAccountInvite;
                 // eslint-disable-next-line no-await-in-loop -- sequential on purpose: per-row attribution, no mail burst
-                const resent = await resendAccountInvite(targets[i].id, {
+                const delivered = await deliver(targets[i].id, {
                     acceptBaseUrl: acceptBaseUrlForRole(targets[i].targetRole),
                     templateId,
                 });
-                rememberGeneratedLink(resent);
+                rememberGeneratedLink(delivered);
             } catch {
                 failed.push(targets[i]);
             }
@@ -546,135 +521,29 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             );
             setSelectedIds(failed.map((invite) => invite.id));
         }
-        await loadInvites(pagination.current, pagination.pageSize);
-    }, [
-        activeTemplates,
-        loadInvites,
-        pagination.current,
-        pagination.pageSize,
-        rememberGeneratedLink,
-        selectedInvites,
-        selectedTemplateId,
-        t,
-    ]);
+        await loadInvites();
+    }, [loadInvites, rememberGeneratedLink, selectedInvites, selectedTemplateId, t]);
 
-    const onTableChange = useCallback(
-        (tablePagination: TablePaginationConfig) => {
-            loadInvites(tablePagination.current ?? 1, tablePagination.pageSize ?? 20);
-        },
-        [loadInvites],
-    );
-
-    const formatDate = (value: string | null) => (value ? new Date(value).toLocaleString() : '—');
-
-    const columns = useMemo(
-        () => [
-            {
-                title: t('links.accountInvites.email', 'E-mail'),
-                dataIndex: 'recipientEmail',
-                key: 'recipientEmail',
-            },
-            // Träger-ID (owner report: the sorting field was missing). The list
-            // endpoint takes page/size/target_role/status/tenant_id and no sort
-            // parameter, so this orders the CURRENT PAGE only — the header says
-            // so rather than implying a table-wide sort that does not exist.
-            ...(isTenantInvite
-                ? [
-                      {
-                          title: (
-                              <Tooltip
-                                  title={t('links.accountInvites.tenantIdSortHint', 'Sortiert die aktuelle Seite.')}
-                              >
-                                  <span>{t('links.accountInvites.tenantId', 'Träger-ID')}</span>
-                              </Tooltip>
-                          ),
-                          dataIndex: 'tenantId',
-                          key: 'tenantId',
-                          sorter: (a: AccountInviteDTO, b: AccountInviteDTO) =>
-                              (a.tenantId ?? Number.POSITIVE_INFINITY) - (b.tenantId ?? Number.POSITIVE_INFINITY),
-                          render: (value: number | null) => value ?? '—',
-                      },
-                  ]
-                : []),
-            {
-                title: t('links.accountInvites.inviteStatus', 'Invite'),
-                dataIndex: 'inviteStatus',
-                key: 'inviteStatus',
-                render: (value: AccountInviteStatus) => (
-                    <Tag className={statusTagClass(value)}>
-                        {t(`links.accountInvites.status.${value}`, INVITE_STATUS_FALLBACK_LABELS[value] ?? value)}
-                    </Tag>
-                ),
-            },
-            {
-                title: t('links.accountInvites.mailStatus', 'Mail'),
-                dataIndex: 'emailDeliveryStatus',
-                key: 'emailDeliveryStatus',
-                render: (value: string | null) => <StatusValue value={value} />,
-            },
-            {
-                title: t('links.accountInvites.twoFactorStatus', '2FA'),
-                dataIndex: 'twoFactorStatus',
-                key: 'twoFactorStatus',
-                render: (value: string) => <StatusValue value={value} />,
-            },
-            {
-                title: t('links.accountInvites.provisioningStatus', 'Provisioning'),
-                dataIndex: 'provisioningStatus',
-                key: 'provisioningStatus',
-                render: (value: string | null) => <StatusValue value={value} />,
-            },
-            {
-                title: t('links.accountInvites.accessGateStatus', 'Access'),
-                dataIndex: 'accessGateStatus',
-                key: 'accessGateStatus',
-                render: (value: string) => <StatusValue value={value} />,
-            },
-            {
-                title: t('links.col.expiresAt', 'Expires'),
-                dataIndex: 'expiresAt',
-                key: 'expiresAt',
-                render: (value: string | null) => formatDate(value),
-            },
-            {
-                title: t('links.col.link', 'Link'),
-                key: 'link',
-                render: (_: unknown, invite: AccountInviteDTO) => (
-                    <Button
-                        size="small"
-                        className={listingTableStyles.copyButton}
-                        onClick={() => copyLink(generatedLinks[invite.id])}
-                    >
-                        {t('links.copy', 'Copy')}
-                    </Button>
-                ),
-            },
-            {
-                title: t('links.accountInvites.actions', 'Actions'),
-                key: 'actions',
-                render: (_: unknown, invite: AccountInviteDTO) => (
-                    <div className={listingTableStyles.actionGroup}>
-                        <Button size="small" onClick={() => onResend(invite)}>
-                            {t('links.accountInvites.resend', 'Resend')}
-                        </Button>
-                        <Button size="small" danger onClick={() => onRevoke(invite)}>
-                            {t('links.accountInvites.revoke', 'Revoke')}
-                        </Button>
-                    </div>
-                ),
-            },
-        ],
-        [copyLink, generatedLinks, onResend, onRevoke, t],
-    );
+    // Empty-state CTA: the composer IS the invite entry point and sits right
+    // above the board — bring it into view and focus its first field.
+    const composerRef = useRef<HTMLDivElement>(null);
+    const focusComposer = useCallback(() => {
+        composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        composerRef.current?.querySelector<HTMLInputElement>('input:not([type="hidden"])')?.focus({
+            preventScroll: true,
+        });
+    }, []);
 
     return (
-        <>
+        <div ref={composerRef}>
             <InviteComposer
                 includeAgencyField={includeAgencyField}
                 initialTenantId={isTenantInvite ? undefined : currentTenantId}
                 persistKey={targetRole}
                 requireNames={targetRole === 'COUNSELLOR'}
                 requireTenantId={isTenantInvite}
+                searchPlaceholder={t('links.inviteProgress.searchPlaceholder', 'Einladungen durchsuchen')}
+                searchQuery={searchQuery}
                 selectionCount={selectedInvites.length}
                 submitting={submitting || bulkRunning}
                 templateId={selectedTemplateId}
@@ -684,6 +553,16 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
                 onDeleteSelected={() => setBulkDeleteConfirmOpen(true)}
                 onManageTemplates={(intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list')}
+                // A4: the tab owns the query; the board filters the list it holds.
+                onSearchQueryChange={setSearchQuery}
+                // #746: the pill's chevron menu switches the template in place —
+                // the same lifted selection the dialog picker writes.
+                onSelectTemplate={setSelectedTemplateId}
+                // "Neu aus „X"": open the dialog's create view prefilled from X.
+                onCreateFromTemplate={(templateId) => {
+                    setCreateFromTemplateId(templateId);
+                    setTemplatesDialogView('create');
+                }}
                 onSubmit={onCreate}
             />
             {selectedInvites.length > 0 && (
@@ -691,24 +570,19 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     {t('links.bulk.selectedCount', '{{count}} ausgewählt', { count: selectedInvites.length })}
                 </div>
             )}
-            <ListingTable<AccountInviteDTO>
-                rowKey="id"
+            <InviteProgressBoard
+                invites={invites}
                 loading={loading}
-                columns={columns}
-                dataSource={invites}
-                pagination={{
-                    current: pagination.current,
-                    pageSize: pagination.pageSize,
-                    total: pagination.total,
-                    showSizeChanger: true,
-                    pageSizeOptions: ['10', '20', '30'],
-                }}
-                rowSelection={{
-                    selectedRowKeys: selectedIds,
-                    onChange: (keys) => setSelectedIds(keys.map(Number)),
-                    getCheckboxProps: (invite) => ({ disabled: !isBulkSelectable(invite) || bulkRunning }),
-                }}
-                onChange={onTableChange}
+                searchQuery={searchQuery}
+                targetRole={targetRole}
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
+                isRowSelectable={isBulkSelectable}
+                selectionDisabled={bulkRunning}
+                onResend={onResend}
+                onCopyLink={(invite) => copyLink(generatedLinks[invite.id] ?? invite.acceptUrl)}
+                onRevoke={onRevoke}
+                onInviteCta={focusComposer}
             />
             {bulkDeleteConfirmOpen && (
                 <Modal
@@ -729,15 +603,19 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     parseResult={csvImport.result}
                     takenTenantIds={isTenantInvite ? takenTenantIds : undefined}
                     onClose={() => setCsvImport(null)}
-                    onCreated={() => loadInvites(1, pagination.pageSize)}
+                    onCreated={() => loadInvites()}
                 />
             )}
             {templatesDialogView && (
                 <EmailTemplatesDialog
                     initialView={templatesDialogView}
+                    initialTemplateId={templatesDialogView === 'create' ? createFromTemplateId : undefined}
                     selectedTemplateId={selectedTemplateId}
                     templateKind={templateKind}
-                    onClose={() => setTemplatesDialogView(null)}
+                    onClose={() => {
+                        setTemplatesDialogView(null);
+                        setCreateFromTemplateId(undefined);
+                    }}
                     onChanged={onTemplateChanged}
                     // Picking in the overview selects for the composer and closes
                     // the dialog; create/edit stay inside the dialog itself.
@@ -747,7 +625,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     }}
                 />
             )}
-        </>
+        </div>
     );
 };
 

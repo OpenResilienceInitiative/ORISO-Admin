@@ -1,0 +1,123 @@
+/* Presentation for the rollout-plan story. It is documentation, not a product
+   surface, but it renders in the same Storybook as the components it is about —
+   so it uses the same M3 colour tokens and the same 8px spacing grid rather than
+   a private set of literals. */
+
+@use '../../styles/muiSpacing' as mui;
+
+.page {
+    max-width: 900px;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.title {
+    margin: 0 0 mui.$mui-unit * 0.5;
+    font-size: 24px;
+    font-weight: 400;
+}
+
+.sectionHeading {
+    margin: mui.$mui-unit * 3.5 0 mui.$mui-unit;
+    font-size: 18px;
+    font-weight: 400;
+}
+
+.lead {
+    margin: 0 0 mui.$mui-unit * 3;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.leadTight {
+    margin: 0 0 mui.$mui-unit * 1.5;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.surface {
+    margin-bottom: mui.$mui-unit * 1.5;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: mui.$mui-unit * 1.5;
+}
+
+/* Out-of-scope entries stay readable but recede — they are context, not work. */
+.surfaceOut {
+    opacity: 0.65;
+}
+
+.surfaceHead {
+    display: flex;
+    flex-wrap: wrap;
+    gap: mui.$mui-unit;
+    align-items: baseline;
+}
+
+.surfaceName {
+    flex: 1 1 260px;
+}
+
+.verdict {
+    padding: 2px mui.$mui-unit * 1.25;
+    border-radius: 100px;
+    font-size: 12px;
+}
+
+/* Each verdict pairs a container token with its matching `on-` token: the container
+   carries the background, the `on-` colour the text. Using an `on-` token as a
+   surface (as the first version did) only happens to be legible in one scheme. */
+
+.verdictAdopted {
+    background: var(--m3-surface-container-high, #eae7e8);
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.verdictCandidate {
+    background: var(--m3-secondary-container, #39414b);
+    color: var(--m3-on-secondary-container, #e7effc);
+}
+
+.verdictOut {
+    background: transparent;
+    border: 1px solid currentcolor;
+    color: var(--m3-outline, #747878);
+}
+
+.path {
+    display: block;
+    margin: mui.$mui-unit * 0.75 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+}
+
+.today {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+}
+
+.note {
+    margin: mui.$mui-unit * 0.75 0 0;
+}
+
+.reusableList {
+    margin: 0;
+}
+
+.reusableItem {
+    margin-bottom: mui.$mui-unit * 1.25;
+}
+
+.reusableName {
+    font-weight: 600;
+}
+
+.reusableWhat {
+    margin: 2px 0 0;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.questions {
+    margin: 0;
+    padding-left: mui.$mui-unit * 2.5;
+    color: var(--m3-on-surface-variant, #444748);
+}

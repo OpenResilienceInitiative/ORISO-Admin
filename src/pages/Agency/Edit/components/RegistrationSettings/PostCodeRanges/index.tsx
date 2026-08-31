@@ -1,6 +1,4 @@
-import { useContext } from 'react';
-import DisabledContext from 'antd/es/config-provider/DisabledContext';
-import { Form } from 'antd';
+import { ConfigProvider, Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import AddIcon from '@mui/icons-material/Add';
@@ -12,7 +10,7 @@ import styles from './styles.module.scss';
 
 export const PostCodeRanges = () => {
     const { t } = useTranslation();
-    const contextDisabled = useContext(DisabledContext);
+    const { componentDisabled } = ConfigProvider.useConfig();
 
     return (
         <div className={styles.postCodeRangesContainer}>
@@ -45,8 +43,8 @@ export const PostCodeRanges = () => {
                                 <button
                                     type="button"
                                     aria-label={t('agency.form.registrationSettings.removePostCode')}
-                                    disabled={contextDisabled}
-                                    className={classNames(styles.remove, { [styles.disabled]: contextDisabled })}
+                                    disabled={componentDisabled}
+                                    className={classNames(styles.remove, { [styles.disabled]: componentDisabled })}
                                     onClick={() => remove(field.name)}
                                 >
                                     <XIcon />
@@ -61,7 +59,7 @@ export const PostCodeRanges = () => {
                                 {t('agency.form.registrationSettings.newPostCodeLabel')}
                             </p>
                             {elements}
-                            {!contextDisabled && (
+                            {!componentDisabled && (
                                 <M3Button
                                     variant="outlined"
                                     className={styles.addButton}

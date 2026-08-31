@@ -6,8 +6,15 @@ const permissionsStyles = readFileSync(resolve(__dirname, './styles.module.scss'
 
 describe('PermissionsSettings responsive card contract', () => {
     it('keeps 425px desktop cards before smartphone stacking takes over', () => {
+        expect(permissionsStyles).toMatch(/--card-deck-item-min-width:\s*425px;/);
         expect(permissionsStyles).toMatch(/--card-deck-item-width:\s*425px;/);
         expect(permissionsStyles).toMatch(/--card-deck-item-max-width:\s*425px;/);
+    });
+
+    it('keeps smartphone cards six pixels from the viewport edges', () => {
+        expect(permissionsStyles).toMatch(
+            /@media screen and \(max-width:\s*767px\)[\s\S]*--card-deck-mobile-padding:\s*0 6px;/,
+        );
     });
 
     it('lets smartphone cards grow with their content instead of using internal card scrolling', () => {
@@ -17,5 +24,14 @@ describe('PermissionsSettings responsive card contract', () => {
         expect(permissionsStyles).toMatch(/@media screen and \(max-width:\s*767px\)[\s\S]*min-height:\s*auto;/);
         expect(permissionsStyles).toMatch(/@media screen and \(max-width:\s*767px\)[\s\S]*max-height:\s*none;/);
         expect(permissionsStyles).toMatch(/@media screen and \(max-width:\s*767px\)[\s\S]*overflow:\s*visible;/);
+    });
+
+    it('wraps the description around a neutral 16px leading info icon', () => {
+        expect(permissionsStyles).toMatch(/\.cardDescriptionInfo\s*\{[\s\S]*?width:\s*16px;/);
+        expect(permissionsStyles).toMatch(/\.cardDescriptionInfo\s*\{[\s\S]*?height:\s*16px;/);
+        expect(permissionsStyles).toMatch(/\.cardDescriptionInfo\s*\{[\s\S]*?float:\s*left;/);
+        expect(permissionsStyles).toMatch(
+            /\.cardDescriptionInfo\s*\{[\s\S]*?color:\s*var\(--admin-form-muted-text,\s*var\(--m3-on-surface-variant,\s*#444748\)\);/,
+        );
     });
 });

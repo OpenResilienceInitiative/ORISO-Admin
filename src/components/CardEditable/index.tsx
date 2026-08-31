@@ -1,6 +1,6 @@
 import { Form, FormInstance } from 'antd';
 import classNames from 'classnames';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, ButtonItem, BUTTON_TYPES } from '../button/Button';
 import { UnsavedChangesModal } from './components/UnsavedChanges';
@@ -28,7 +28,7 @@ interface CardEditableProps {
               editing: boolean;
               startEditing: () => void;
           }) => React.ReactElement<any> | React.ReactElement<any>[]);
-    onSave: <T>(formData: T, options?: { onError?: () => void }) => void;
+    onSave?: <T>(formData: T, options?: { onError?: () => void; form?: FormInstance }) => void;
     formProp?: FormInstance;
     editMode?: boolean;
     hideSaveButton?: boolean;
@@ -74,6 +74,7 @@ export const CardEditable = ({
     const [editing, setEditing] = useState(editMode);
     const [hasChanges, setHasChanges] = useState(false);
     const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+    const latestSubmission = useRef(0);
 
     const cancelEditButton: ButtonItem = {
         label: t(cancelKey),
@@ -87,11 +88,30 @@ export const CardEditable = ({
 
     const onFormSubmit = useCallback(
         (formData) => {
-            onSave(formData, { onError: () => setEditing(editMode) });
+            if (!onSave) return;
+            // Identifies this submission so a slow failure from an earlier save cannot
+            // reopen the card on top of a later one the user has already sent.
+            const submission = latestSubmission.current + 1;
+            latestSubmission.current = submission;
+            // Close optimistically first, so a synchronous onError still wins the race
+            // and reopens the card rather than being overwritten by this reset.
             setEditing(editMode);
             setHasChanges(false);
+            onSave(formData, {
+                // A failed save must not be indistinguishable from a successful one:
+                // reopen the card with the entered values still in the form so the user
+                // can retry, instead of silently dropping the change on the floor.
+                onError: () => {
+                    if (submission !== latestSubmission.current) {
+                        return;
+                    }
+                    setEditing(true);
+                    setHasChanges(true);
+                },
+                form,
+            });
         },
-        [onSave],
+        [editMode, form, onSave],
     );
     const canStartEditing = allowEdit && !editMode && !editing;
     const finalEditButtonPlacement = editButtonPlacement ?? (variant === 'dialog' ? 'footer' : 'header');

@@ -31,6 +31,7 @@
             z-index: 850;
             left: 0;
             right: 0;
+
             /* Flush with the viewport bottom: at 24px the table container kept
                peeking through the gap below the sticky bar on tall pages
                (owner report 2026-07-18, Logs page). The 24px breathing room
@@ -46,6 +47,7 @@
             padding: 16px 24px;
             overflow: hidden;
             border-radius: 0 0 var(--admin-table-radius) var(--admin-table-radius);
+
             /* Dedicated footer surface from the reviewed admin-table polish (#354). */
             background: var(--admin-table-footer-surface, #e4e2e2);
         }
@@ -57,7 +59,7 @@
             font-weight: 500;
             text-align: center;
 
-            &::before {
+            &:before {
                 background-color: var(--admin-table-border, #eae7e8) !important;
             }
         }
@@ -79,10 +81,10 @@
             background: inherit !important;
         }
 
-        .ant-table-cell-fix-left-last::after,
-        .ant-table-cell-fix-right-first::after,
-        .ant-table-ping-left .ant-table-cell-fix-left-last::after,
-        .ant-table-ping-right .ant-table-cell-fix-right-first::after {
+        .ant-table-cell-fix-left-last:after,
+        .ant-table-cell-fix-right-first:after,
+        .ant-table-ping-left .ant-table-cell-fix-left-last:after,
+        .ant-table-ping-right .ant-table-cell-fix-right-first:after {
             box-shadow: none !important;
         }
 
@@ -115,12 +117,12 @@
         }
 
         .ant-form-item-label > label {
-            color: rgba(0, 0, 0, 0.6);
+            color: rgb(0 0 0 / 60%);
             font-weight: 900;
             height: 40px;
         }
 
-        .ant-form-item-label > label::after {
+        .ant-form-item-label > label:after {
             content: ':';
             margin-inline: 2px 8px;
         }
@@ -162,7 +164,7 @@
                 height: auto;
             }
 
-            .ant-form-item-label > label::after {
+            .ant-form-item-label > label:after {
                 content: '';
                 margin-inline: 0;
             }
@@ -202,7 +204,7 @@
     &:hover,
     &:focus {
         border-color: transparent !important;
-        background: color-mix(in srgb, var(--m3-on-primary, #fff) 8%, var(--m3-primary, #a5000a)) !important;
+        background: color-mix(in srgb, var(--m3-on-primary, #ffffff) 8%, var(--m3-primary, #a5000a)) !important;
         color: var(--m3-on-primary, #ffffff) !important;
     }
 }
@@ -261,6 +263,7 @@
    wrong or ran out carries the scheme's ERROR role. That is not a traffic
    light — it is the role M3 has for exactly this, and without it an expired
    invite was indistinguishable from a live one in a table you scan. */
+
 .statusTagExpired {
     background: color-mix(in srgb, var(--m3-error, #b1005e) 10%, var(--m3-surface-container-low, #f6f3f3));
     border-color: color-mix(in srgb, var(--m3-error, #b1005e) 35%, transparent);
@@ -283,4 +286,15 @@
     background: var(--admin-table-chip-surface, #e4e2e2);
     border-color: var(--admin-table-chip-border, #c4c7c8);
     color: var(--admin-table-chip-text, #444748);
+}
+
+// On a phone the table spans the full width, so its rounded corners cut into
+// content instead of framing it — the card look only reads at desktop widths
+// (Frank, 2026-08-07).
+@media (max-width: 768px) {
+    .listingTable {
+        --admin-table-radius: 0;
+
+        padding-bottom: 0;
+    }
 }

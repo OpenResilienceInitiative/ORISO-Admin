@@ -1,6 +1,7 @@
 import Typography from '@mui/material/Typography';
 import HourglassTopRounded from '@mui/icons-material/HourglassTopRounded';
 import LoginRounded from '@mui/icons-material/LoginRounded';
+import MarkEmailReadRounded from '@mui/icons-material/MarkEmailReadRounded';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import routePathNames from '../../appConfig';
@@ -11,6 +12,11 @@ import styles from './styles.module.scss';
 interface DoneStepProps {
     /** The tenant ID the reservation was consumed for — the number the platform operator refers to. */
     tenantId: number;
+    /**
+     * The DPA signature was forwarded to an authorised signatory (#723) —
+     * the completion additionally says an e-mail will follow once it arrives.
+     */
+    forwarded?: boolean;
 }
 
 /**
@@ -25,7 +31,7 @@ interface DoneStepProps {
  * gallery (Atoms/CustomIcons) in the product's secondary colour (#594.11) —
  * the green MUI check it replaced was a colour from outside the palette.
  */
-export const DoneStep = ({ tenantId }: DoneStepProps) => {
+export const DoneStep = ({ tenantId, forwarded = false }: DoneStepProps) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
 
@@ -45,6 +51,12 @@ export const DoneStep = ({ tenantId }: DoneStepProps) => {
             </dl>
 
             <ul className={styles.doneNext}>
+                {forwarded && (
+                    <li data-testid="onboarding-done-next-step">
+                        <MarkEmailReadRounded fontSize="small" aria-hidden />
+                        <span>{t('tenantOnboarding.done.next.signature')}</span>
+                    </li>
+                )}
                 <li data-testid="onboarding-done-next-step">
                     <HourglassTopRounded fontSize="small" aria-hidden />
                     <span>{t('tenantOnboarding.done.next.activation')}</span>

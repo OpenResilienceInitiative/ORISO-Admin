@@ -1,0 +1,138 @@
+/* Bead-track stepper. All colours are scheme roles: done = secondary tonal
+   (same family as the selected FilterChip), current = the row's single primary
+   accent, warning = admin warning, error = the MAGENTA error role. */
+
+.stepper {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.track {
+    display: flex;
+    align-items: center;
+    padding: 2px 0;
+    margin: 0;
+    list-style: none;
+}
+
+.phase {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* Connector between beads: neutral by default, tonal once progress reached it. */
+.phase + .phase:before {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: var(--m3-outline-variant, #c4c7c8);
+    content: '';
+}
+
+.phase + .done:before,
+.phase + .current:before,
+.phase + .warning:before,
+.phase + .error:before {
+    background: color-mix(in srgb, var(--m3-secondary, #4c555f) 55%, transparent);
+}
+
+/* C1: the track had no hover state at all. The bead is the hover/focus target
+   and grows a soft state layer around itself, so a milestone visibly answers
+   the pointer before its tooltip arrives — reached or not. */
+
+.bead {
+    position: relative;
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 50%;
+    cursor: help;
+    transition: background 160ms ease;
+}
+
+.bead:hover,
+.bead:focus-visible {
+    background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+}
+
+.bead:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 1px;
+}
+
+.dot {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.done .dot {
+    background: var(--m3-secondary, #4c555f);
+    color: var(--m3-on-secondary, #ffffff);
+}
+
+.current .dot {
+    border: 2px solid var(--m3-primary, #a5000a);
+    background: var(--m3-surface-container-lowest, #ffffff);
+}
+
+.current .dot:after {
+    width: 4px;
+    height: 4px;
+    background: var(--m3-primary, #a5000a);
+    border-radius: 50%;
+    content: '';
+}
+
+.pending .dot {
+    border: 2px solid var(--m3-outline-variant, #c4c7c8);
+    background: transparent;
+}
+
+.warning .dot {
+    background: var(--admin-status-warning, #ff9f00);
+    color: #442c00;
+}
+
+.error .dot {
+    background: var(--m3-error, #b1005e);
+    color: var(--m3-on-error, #ffffff);
+}
+
+.mark {
+    font: 700 9px/1 var(--m3-body-font-family);
+}
+
+.activeLabel {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 500 12px/16px var(--m3-body-font-family);
+    letter-spacing: 0.3px;
+}
+
+.activeLabelDone {
+    color: color-mix(in srgb, var(--m3-secondary, #4c555f) 80%, var(--m3-on-surface, #1b1b1c));
+}
+
+/* Amber on a light surface fails contrast — darken toward on-surface for text. */
+.activeLabelWarning {
+    color: color-mix(in srgb, var(--admin-status-warning, #ff9f00) 45%, var(--m3-on-surface, #1b1b1c));
+}
+
+.activeLabelError {
+    color: var(--m3-error, #b1005e);
+}
+
+.srOnly {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}

@@ -1,3 +1,5 @@
+@use '../../../../styles/muiSpacing' as mui;
+
 /* Wrapper override: remove the outer white CardEditable background & title header */
 .transparentCardWrapper {
     background: transparent !important;
@@ -33,35 +35,27 @@
 .cardGridOuter {
     position: relative;
     width: 100%;
-    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .permissionsCardDeck {
     --card-deck-min-height: max(0px, calc(100dvh - 255px));
-    --side-scroller-button-width: 128px;
-    --side-scroller-button-height: 96px;
 }
 
 .cardGrid {
     --card-deck-gap: 48px;
     --card-deck-padding: 8px 4px 18px;
+    --card-deck-item-min-width: 425px;
     --card-deck-item-width: 425px;
     --card-deck-item-max-width: 425px;
-    --card-deck-footer-bottom: 28px;
-    --card-deck-footer-margin-top: 35px;
-    --card-deck-footer-padding: 0 80px;
-}
-
-.permissionsCardDeckFooter {
-    margin-top: var(--card-deck-footer-margin-top, 35px);
 }
 
 .chatTypeCard {
     background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
     border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 30%, transparent);
-    box-shadow: var(--m3-elevation-1, 0 1px 2px rgba(0, 0, 0, 0.3));
+    box-shadow: var(--m3-elevation-1, 0 1px 2px rgb(0 0 0 / 30%));
     border-radius: 28px;
-    padding: 32px 32px 32px;
+    padding: calc(mui.$mui-unit * 4);
     display: flex;
     flex-direction: column;
     min-height: auto;
@@ -72,7 +66,7 @@
 
     &:hover {
         border-color: color-mix(in srgb, var(--m3-outline, #747878) 44%, transparent);
-        box-shadow: var(--m3-elevation-2, 0 4px 8px rgba(0, 0, 0, 0.18));
+        box-shadow: var(--m3-elevation-2, 0 4px 8px rgb(0 0 0 / 18%));
     }
 }
 
@@ -132,12 +126,13 @@
 
 /* Enforce mode: leading checkbox that locks a feature on for lower roles. */
 .enforceCheckbox {
+    display: inline-flex;
     flex: 0 0 auto;
     margin-left: -8px;
 }
 
-.enforceFooterNote {
-    margin: 0 0 20px;
+.enforceHeaderNote {
+    margin: 0 0 12px;
     font-size: 13px;
     font-weight: 700;
     line-height: 1.33;
@@ -164,6 +159,15 @@
         color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
         font-weight: 700;
     }
+}
+
+.cardDescriptionInfo {
+    width: 16px;
+    height: 16px;
+    margin: 4px 8px 2px 0;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    fill: currentcolor;
+    float: left;
 }
 
 .cardDescriptionSecondary {
@@ -213,12 +217,18 @@
 }
 
 .toggleLabel {
-    font-size: 15px;
-    color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
-    font-weight: 500;
-    flex: 1;
     min-width: 0;
+    flex: 1;
+    color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
+    font-size: 15px;
+    font-weight: 500;
 }
+
+/**
+ * Why a toggle next to it is disabled (ORISO-Admin#734). Inline rather than a
+ * tooltip: the reason has to be readable without hovering, on touch as well,
+ * and it explains an absent capability rather than decorating a control.
+ */
 
 .cardFooterActions {
     margin: auto -32px 0;
@@ -241,16 +251,12 @@
 @media screen and (max-width: 767px) {
     .permissionsCardDeck {
         --card-deck-min-height: max(0px, calc(100dvh - 220px));
-        --side-scroller-button-width: 88px;
-        --side-scroller-button-height: 56px;
     }
 
     .cardGrid {
         --card-deck-gap: 24px;
-        --card-deck-footer-padding: 0 8px;
-        --card-deck-footer-margin-top: 28px;
         --card-deck-mobile-gap: 24px;
-        --card-deck-mobile-padding: 0;
+        --card-deck-mobile-padding: 0 6px;
     }
 
     .chatTypeCard {
