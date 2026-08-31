@@ -1304,7 +1304,7 @@
     "gender.female": "Ms.",
     "gender.male": "Mr.",
     "globalSettings.smtp.description": "Configure the SMTP server and the sending of the platform's system emails.",
-    "globalSettings.smtp.secure.description": "Uses an encrypted TLS/SSL connection for SMTP.",
+    "globalSettings.smtp.secure.description": "On: TLS/SSL from the first byte of the connection (typical: port 465). Off: encrypted STARTTLS (typical: port 587). Unencrypted sending is ruled out either way.",
     "globalSettings.smtp.smtpToggle.description": "Sends platform emails via the SMTP connection configured below.",
     "globalSettings.smtp.systemEmailToggle.description": "Allows system notifications to be sent by email for the platform.",
     "globalSettings.smtp.test.description": "Send a test message to verify the current SMTP configuration.",

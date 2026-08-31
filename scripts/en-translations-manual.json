@@ -222,6 +222,7 @@
     "globalSettings.smtp.password": "SMTP password",
     "globalSettings.smtp.port": "SMTP port",
     "globalSettings.smtp.secure": "SMTP secure (TLS/SSL)",
+    "globalSettings.smtp.secure.description": "On: TLS/SSL from the first byte of the connection (typical: port 465). Off: encrypted STARTTLS (typical: port 587). Unencrypted sending is ruled out either way.",
     "globalSettings.smtp.smtpToggle.title": "Enable SMTP",
     "globalSettings.smtp.systemEmailToggle.title": "Send system notifications by email",
     "globalSettings.smtp.test.button": "Send test email",

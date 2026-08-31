@@ -60,3 +60,25 @@ describe('retired SMTP test-mail gate key (CTS-C01 set-only credentials)', () =>
         });
     });
 });
+
+/**
+ * Owner request on ORISO-Admin PR #892: the secure-toggle description used to
+ * read as if OFF meant plaintext. In the backend (UserService
+ * JakartaInviteMailTransport) secure=false means MANDATORY STARTTLS
+ * (starttls.enable + starttls.required — plaintext is refused, typical for
+ * port 587) and secure=true means implicit TLS from the first byte (typical
+ * for port 465). Pin the copy so it keeps saying that OFF is still encrypted.
+ */
+describe('secure-toggle description explains that OFF is mandatory STARTTLS, not plaintext', () => {
+    it('mentions STARTTLS and both typical ports in de, en, and the English manual file', () => {
+        const key = 'globalSettings.smtp.secure.description';
+        [de, en, manual].forEach((file) => {
+            expect(file[key]).toContain('STARTTLS');
+            expect(file[key]).toContain('465');
+            expect(file[key]).toContain('587');
+        });
+        // The old copy implied OFF = unencrypted; the new copy must rule that out.
+        expect(de[key]).toContain('unverschlüsselter Versand');
+        expect(en[key]).toContain('Unencrypted sending');
+    });
+});

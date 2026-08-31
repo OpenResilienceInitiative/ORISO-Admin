@@ -915,7 +915,7 @@
     "globalSettings.smtp.password": "SMTP Passwort",
     "globalSettings.smtp.port": "SMTP Port",
     "globalSettings.smtp.secure": "SMTP Secure (TLS/SSL)",
-    "globalSettings.smtp.secure.description": "Nutzt eine verschlüsselte TLS/SSL-Verbindung für SMTP.",
+    "globalSettings.smtp.secure.description": "An: TLS/SSL ab Verbindungsaufbau (üblich: Port 465). Aus: verschlüsseltes STARTTLS (üblich: Port 587). Ein unverschlüsselter Versand ist in beiden Fällen ausgeschlossen.",
     "globalSettings.smtp.test.description": "Senden Sie eine Testnachricht, um die aktuelle SMTP-Konfiguration zu prüfen.",
     "globalSettings.smtp.smtpToggle.title": "SMTP aktivieren",
     "globalSettings.smtp.systemEmailToggle.title": "Systembenachrichtigungen per E-Mail",
