@@ -237,9 +237,13 @@ export const InviteComposer = ({
     // Owner request (#893, live finding): the refusal was too subtle to notice.
     // The field-level text now says WHAT happened and WHAT TO DO — and it stays
     // under the input for as long as the refused address is in the field.
+    // Deliberately generic: the backend's EMAIL_NOT_AVAILABLE covers an address
+    // with an existing INVITE as well as one belonging to a registered ACCOUNT
+    // (no invite row), and this state is fed only by that 409 — the client
+    // cannot tell the two apart, so the text must not promise a resend.
     const emailTakenMessage = t(
         'links.composer.emailTaken',
-        'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+        'Diese E-Mail-Adresse ist bereits vergeben – für ein bestehendes Konto oder eine bestehende Einladung. Bitte eine andere Adresse verwenden.',
     );
     // Auto is always sendable; a manual id only once the check confirmed it free.
     const tenantIdValid = !requireTenantId || tenantAllocation.canSubmit;
@@ -278,7 +282,7 @@ export const InviteComposer = ({
         if (emailTaken) {
             return t(
                 'links.composer.blocked.emailTaken',
-                'Diese E-Mail-Adresse wurde bereits eingeladen – andere Adresse verwenden oder die bestehende Einladung erneut senden.',
+                'Diese E-Mail-Adresse ist bereits vergeben – bitte eine andere Adresse eingeben.',
             );
         }
         if (!namesValid) {

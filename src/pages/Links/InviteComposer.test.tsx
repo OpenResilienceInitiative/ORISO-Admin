@@ -411,13 +411,13 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
             expect(
                 await screen.findByText(
-                    'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                    'Diese E-Mail-Adresse ist bereits vergeben – für ein bestehendes Konto oder eine bestehende Einladung. Bitte eine andere Adresse verwenden.',
                 ),
             ).toBeInTheDocument();
             // The send hint under the bar names the same actionable reason.
             expect(
                 await screen.findByText(
-                    'Diese E-Mail-Adresse wurde bereits eingeladen – andere Adresse verwenden oder die bestehende Einladung erneut senden.',
+                    'Diese E-Mail-Adresse ist bereits vergeben – bitte eine andere Adresse eingeben.',
                 ),
             ).toBeInTheDocument();
             // Inline, not a global toast: the generic create-failed toast must not appear.
@@ -442,7 +442,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
             expect(
                 await screen.findByText(
-                    'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                    'Diese E-Mail-Adresse ist bereits vergeben – für ein bestehendes Konto oder eine bestehende Einladung. Bitte eine andere Adresse verwenden.',
                 ),
             ).toBeInTheDocument();
             expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
@@ -461,7 +461,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             await waitFor(() => expect(sendButton).toBeEnabled());
             await user.click(sendButton);
             await screen.findByText(
-                'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                'Diese E-Mail-Adresse ist bereits vergeben – für ein bestehendes Konto oder eine bestehende Einladung. Bitte eine andere Adresse verwenden.',
             );
 
             await user.clear(emailField);
@@ -470,7 +470,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             await waitFor(() =>
                 expect(
                     screen.queryByText(
-                        'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                        'Diese E-Mail-Adresse ist bereits vergeben – für ein bestehendes Konto oder eine bestehende Einladung. Bitte eine andere Adresse verwenden.',
                     ),
                 ).not.toBeInTheDocument(),
             );
@@ -489,7 +489,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             await waitFor(() => expect(sendButton).toBeEnabled());
             await user.click(sendButton);
             await screen.findByText(
-                'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                'Diese E-Mail-Adresse ist bereits vergeben – für ein bestehendes Konto oder eine bestehende Einladung. Bitte eine andere Adresse verwenden.',
             );
 
             // Correct it away, then type the SAME refused address again.
@@ -498,7 +498,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             await waitFor(() =>
                 expect(
                     screen.queryByText(
-                        'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                        'Diese E-Mail-Adresse ist bereits vergeben – für ein bestehendes Konto oder eine bestehende Einladung. Bitte eine andere Adresse verwenden.',
                     ),
                 ).not.toBeInTheDocument(),
             );
@@ -509,12 +509,12 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             // actionable explanation back under the field AND under the bar.
             expect(
                 await screen.findByText(
-                    'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                    'Diese E-Mail-Adresse ist bereits vergeben – für ein bestehendes Konto oder eine bestehende Einladung. Bitte eine andere Adresse verwenden.',
                 ),
             ).toBeInTheDocument();
             expect(
                 await screen.findByText(
-                    'Diese E-Mail-Adresse wurde bereits eingeladen – andere Adresse verwenden oder die bestehende Einladung erneut senden.',
+                    'Diese E-Mail-Adresse ist bereits vergeben – bitte eine andere Adresse eingeben.',
                 ),
             ).toBeInTheDocument();
             await waitFor(() => expect(sendButton).toBeDisabled());
@@ -535,7 +535,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             expect(await screen.findByText('This tenant ID is already taken.')).toBeInTheDocument();
             expect(
                 screen.queryByText(
-                    'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                    'Diese E-Mail-Adresse ist bereits vergeben – für ein bestehendes Konto oder eine bestehende Einladung. Bitte eine andere Adresse verwenden.',
                 ),
             ).not.toBeInTheDocument();
         });

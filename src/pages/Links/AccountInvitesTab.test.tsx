@@ -471,7 +471,7 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
 
         expect(
             await screen.findByText(
-                'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                'Diese E-Mail-Adresse ist bereits vergeben – für ein bestehendes Konto oder eine bestehende Einladung. Bitte eine andere Adresse verwenden.',
             ),
         ).toBeInTheDocument();
         expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
