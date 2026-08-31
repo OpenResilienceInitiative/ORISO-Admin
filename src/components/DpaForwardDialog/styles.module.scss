@@ -43,6 +43,16 @@
     color: var(--m3-on-surface-variant, #444748);
 }
 
+/* The link is minted on demand (#712), so its idle state is an explanation plus
+   the act that creates it — the note leads, the action follows it. */
+
+.linkIdle {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+}
+
 .linkBlock {
     display: flex;
     flex-direction: column;
@@ -122,4 +132,58 @@
 
 .preview {
     margin-top: 16px;
+}
+
+/* Plain-text mail preview for the public surface, where the branded backend
+   render is not reachable (#712). Deliberately reads as a quoted document, not
+   as a rendered mail — it must never be mistaken for the branded frame. */
+
+.plainPreview {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 12px;
+    background: var(--m3-surface-container-low, #f7f3f3);
+}
+
+.plainMeta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--m3-outline-variant, #c4c7c8);
+}
+
+.plainMetaLabel {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.plainMetaSubject {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--m3-on-surface, #1b1b1c);
+}
+
+.plainBody {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--m3-on-surface, #1b1b1c);
+
+    /* Keeps the composed paragraph breaks without one element per line. */
+    white-space: pre-line;
+
+    /* A sign URL has no spaces and must not push the sheet sideways. */
+    overflow-wrap: anywhere;
+}
+
+.plainNote {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--m3-on-surface-variant, #444748);
 }

@@ -59,10 +59,16 @@ const renderFlow = (client: TenantAdminOnboardingClient, token = 'raw-token', fo
 
 const FORWARD_LINK = { signUrl: 'https://app.example.org/dpa-sign/fwd-token', expiresAt: '2026-08-29T14:31:07' };
 
-const createForwardClient = (mailFailed = false): DpaForwardClient => ({
+/**
+ * Stand-in at the {@link DpaForwardClient} seam. `mailNotSent` models the
+ * backend answering 200 with the link plus `mailSent: false` — issued, but not
+ * delivered. The wire-level `mailSent` → `mailFailed` mapping is covered in
+ * dpaForward.test.ts; what matters here is the outcome the wizard receives.
+ */
+const createForwardClient = (mailNotSent = false): DpaForwardClient => ({
     forward: vi.fn().mockImplementation(async (_token: string, request: { recipientEmail?: string } = {}) => ({
         link: FORWARD_LINK,
-        mailFailed: mailFailed && !!request.recipientEmail,
+        mailFailed: mailNotSent && !!request.recipientEmail,
     })),
 });
 
@@ -323,7 +329,15 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         // The second path is available without completing the signature form.
         await user.click(screen.getByRole('button', { name: /dpaForward.action.notAuthorised/ }));
         expect(await screen.findByTestId('dpa-forward-dialog')).toBeInTheDocument();
-        // Opening only mints a link — no recipient, so no mail goes out.
+        // Opening mints nothing: only five sign links may be outstanding per
+        // onboarding, so a link costs an explicit act (#712).
+        expect(forwardClient.forward).not.toHaveBeenCalled();
+        expect(screen.queryByLabelText('dpaForward.dialog.linkLabel')).not.toBeInTheDocument();
+
+        // Asking for the shareable link mints exactly one, and with no
+        // recipient — so no mail goes out on this path.
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.linkCreate' }));
+        expect(forwardClient.forward).toHaveBeenCalledTimes(1);
         expect(forwardClient.forward).toHaveBeenCalledWith('raw-token', {});
         await waitFor(() =>
             expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(FORWARD_LINK.signUrl),
@@ -366,21 +380,39 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         await screen.findByLabelText('tenantOnboarding.organisation.name');
         await user.click(screen.getByRole('button', { name: /dpaForward.action.notAuthorised/ }));
         await screen.findByTestId('dpa-forward-dialog');
-        await waitFor(() => expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).not.toHaveValue(''));
 
         await user.type(screen.getByLabelText('dpaForward.dialog.recipientName'), 'Dr. Ruth Recht');
         await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
         await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
         await screen.findByTestId('dpa-forward-sent');
+        // The send IS the minting act: one forward costs one link, with no
+        // warm-up call on open (#712).
+        expect(forwardClient.forward).toHaveBeenCalledTimes(1);
+        // The typed name travels with the send (#842).
         expect(forwardClient.forward).toHaveBeenLastCalledWith('raw-token', {
             recipientEmail: 'legal@example.org',
+            recipientName: 'Dr. Ruth Recht',
         });
+        // …and the link that send issued is the one on offer to copy.
+        await waitFor(() =>
+            expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(FORWARD_LINK.signUrl),
+        );
 
         await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.confirm' }));
         expect(await screen.findByTestId('dpa-forwarded-sent-to')).toBeInTheDocument();
     });
 
-    it('502 forward (link created, mail not sent) still lets the wizard continue, with an honest note', async () => {
+    /**
+     * Was "502 forward (link created, mail not sent)". That path is gone
+     * (dd0e7519): a failed delivery is no longer an error status but a 200
+     * carrying the link plus `mailSent: false`, because the old 502 fallback
+     * fetched a link with a SECOND call and so cost two of the five allowed
+     * outstanding links. The scenario is therefore renamed, not dropped — the
+     * behaviour it protects is unchanged and still reachable: a mail that did
+     * not go out leaves the wizard usable, with the copyable link and an honest
+     * note instead of a claimed delivery.
+     */
+    it('mail not sent (200 with mailSent: false) still lets the wizard continue, with an honest note', async () => {
         const client = createClient();
         const forwardClient = createForwardClient(true);
         const user = userEvent.setup();
@@ -389,13 +421,15 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         await screen.findByLabelText('tenantOnboarding.organisation.name');
         await user.click(screen.getByRole('button', { name: /dpaForward.action.notAuthorised/ }));
         await screen.findByTestId('dpa-forward-dialog');
-        await waitFor(() => expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).not.toHaveValue(''));
 
         await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
         await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
 
         // Warning, not error — the link exists and is the fallback.
         await screen.findByTestId('dpa-forward-mail-failed');
+        // A failed delivery costs ONE link, not two: nothing re-fetches one.
+        expect(forwardClient.forward).toHaveBeenCalledTimes(1);
+        expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(FORWARD_LINK.signUrl);
         await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.confirm' }));
 
         expect(await screen.findByTestId('dpa-forwarded-onhold')).toBeInTheDocument();
