@@ -107,12 +107,36 @@ export const GlobalSmtpSettingsPage = () => {
             globalSmtpHost: settings.globalSmtpHost ?? '',
             globalSmtpPort: settings.globalSmtpPort ?? '587',
             globalSmtpSecure: settings.globalSmtpSecure ?? false,
-            globalSmtpUsername: settings.globalSmtpUsername ?? '',
-            globalSmtpPassword: settings.globalSmtpPassword ?? '',
+            // CTS-C01: the public settings payload never carries the stored SMTP
+            // credentials, so these two fields are set-only. They always start
+            // empty; an empty field on save means "keep the stored value".
+            globalSmtpUsername: '',
+            globalSmtpPassword: '',
             globalSmtpFrom: settings.globalSmtpFrom ?? '',
             globalSmtpEmailThemeColor: settings.globalSmtpEmailThemeColor ?? '#0f3b8f',
         }),
         [settings],
+    );
+    // Set-only credentials: an empty username/password field means "keep the
+    // stored value", so the key must not appear in the PATCH body at all — an
+    // empty string would destroy the stored credential server-side (CTS-C01).
+    const handleSave = useCallback(
+        (formData: unknown, options?: { onError?: () => void }) => {
+            const { globalSmtpUsername, globalSmtpPassword, ...rest } = (formData ?? {}) as Record<string, unknown>;
+            mutate(
+                {
+                    ...rest,
+                    ...(typeof globalSmtpUsername === 'string' && globalSmtpUsername.trim() !== ''
+                        ? { globalSmtpUsername }
+                        : {}),
+                    ...(typeof globalSmtpPassword === 'string' && globalSmtpPassword.trim() !== ''
+                        ? { globalSmtpPassword }
+                        : {}),
+                },
+                options,
+            );
+        },
+        [mutate],
     );
     const handleSendTestEmail = useCallback(async () => {
         const values = form.getFieldsValue(true);
@@ -124,14 +148,13 @@ export const GlobalSmtpSettingsPage = () => {
             return;
         }
 
-        if (
-            !values.globalSmtpHost ||
-            !values.globalSmtpPort ||
-            !values.globalSmtpUsername ||
-            !values.globalSmtpPassword ||
-            !values.globalSmtpFrom
-        ) {
-            message.error(t('globalSettings.smtp.test.errorMissingSmtp'));
+        // Only the connection fields are required here. The backend test
+        // endpoint reads the STORED credentials and ignores whatever the
+        // request carries, so empty username/password fields (set-only since
+        // CTS-C01) must never block the test mail. If no credentials are
+        // stored, the server answers with a clear error that is surfaced below.
+        if (!values.globalSmtpHost || !values.globalSmtpPort || !values.globalSmtpFrom) {
+            message.error(t('globalSettings.smtp.test.errorMissingConnection'));
             return;
         }
         setIsTestSending(true);
@@ -181,7 +204,7 @@ export const GlobalSmtpSettingsPage = () => {
                         initialValues={initialValues}
                         titleKey="globalSettings.smtp.title"
                         subTitleKey="globalSettings.smtp.description"
-                        onSave={mutate}
+                        onSave={handleSave}
                         formProp={form}
                     >
                         <div className={styles.fieldGrid}>
@@ -207,11 +230,19 @@ export const GlobalSmtpSettingsPage = () => {
 
                             <MuiFormField label={t('globalSettings.smtp.host')} name={['globalSmtpHost']} />
                             <MuiNumberFormField label={t('globalSettings.smtp.port')} name={['globalSmtpPort']} />
-                            <MuiFormField label={t('globalSettings.smtp.username')} name={['globalSmtpUsername']} />
+                            <MuiFormField
+                                label={t('globalSettings.smtp.username')}
+                                name={['globalSmtpUsername']}
+                                placeholder={t('globalSettings.smtp.username.placeholder')}
+                                helpText={t('globalSettings.smtp.username.helpText')}
+                                autoComplete="off"
+                            />
                             <MuiPasswordFormField
                                 label={t('globalSettings.smtp.password')}
                                 name={['globalSmtpPassword']}
-                                autoComplete="current-password"
+                                placeholder={t('globalSettings.smtp.password.placeholder')}
+                                helpText={t('globalSettings.smtp.password.helpText')}
+                                autoComplete="new-password"
                             />
                             <MuiFormField label={t('globalSettings.smtp.from')} name={['globalSmtpFrom']} />
                             <MuiColorField

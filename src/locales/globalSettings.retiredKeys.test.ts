@@ -31,3 +31,32 @@ describe('retired globalSettings i18n keys (ORISO-Admin#678)', () => {
         expect(en['globalSettings.smtp.host']).toBeTruthy();
     });
 });
+
+/**
+ * CTS-C01 set-only SMTP credentials: the test-mail gate no longer requires
+ * username/password (the backend test endpoint reads the STORED credentials),
+ * so the old error text naming them is wrong and retired. The gate now only
+ * checks the connection fields and uses `errorMissingConnection` instead.
+ */
+describe('retired SMTP test-mail gate key (CTS-C01 set-only credentials)', () => {
+    it('drops globalSettings.smtp.test.errorMissingSmtp from de, en, and the English manual file', () => {
+        expect(de['globalSettings.smtp.test.errorMissingSmtp']).toBeUndefined();
+        expect(en['globalSettings.smtp.test.errorMissingSmtp']).toBeUndefined();
+        expect(manual['globalSettings.smtp.test.errorMissingSmtp']).toBeUndefined();
+    });
+
+    it('carries the replacement key and the set-only credential copy in all files', () => {
+        const addedKeys = [
+            'globalSettings.smtp.test.errorMissingConnection',
+            'globalSettings.smtp.username.placeholder',
+            'globalSettings.smtp.username.helpText',
+            'globalSettings.smtp.password.placeholder',
+            'globalSettings.smtp.password.helpText',
+        ];
+        addedKeys.forEach((key) => {
+            expect(de[key], `de is missing ${key}`).toBeTruthy();
+            expect(en[key], `en is missing ${key}`).toBeTruthy();
+            expect(manual[key], `manual en file is missing ${key}`).toBeTruthy();
+        });
+    });
+});
