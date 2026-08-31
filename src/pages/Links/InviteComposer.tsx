@@ -243,7 +243,7 @@ export const InviteComposer = ({
     // cannot tell the two apart, so the text must not promise a resend.
     const emailTakenMessage = t(
         'links.composer.emailTaken',
-        'Diese E-Mail-Adresse ist bereits vergeben – für ein bestehendes Konto oder eine bestehende Einladung. Bitte eine andere Adresse verwenden.',
+        'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
     );
     // Auto is always sendable; a manual id only once the check confirmed it free.
     const tenantIdValid = !requireTenantId || tenantAllocation.canSubmit;
@@ -282,7 +282,7 @@ export const InviteComposer = ({
         if (emailTaken) {
             return t(
                 'links.composer.blocked.emailTaken',
-                'Diese E-Mail-Adresse ist bereits vergeben – bitte eine andere Adresse eingeben.',
+                'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
             );
         }
         if (!namesValid) {
