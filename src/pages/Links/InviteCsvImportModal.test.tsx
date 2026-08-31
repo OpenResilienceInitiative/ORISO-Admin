@@ -178,6 +178,9 @@ describe('InviteCsvImportModal', () => {
 
         expect(await rowCells('a@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
         expect(await rowCells('b@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
+        // The role rejection applies to every row — after the first 403 the run must
+        // NOT keep firing doomed requests; the rest is marked forbidden client-side.
+        expect(createInvite).toHaveBeenCalledTimes(1);
         const roleToasts = await screen.findAllByText('Only platform admins can create administrative accounts');
         expect(roleToasts).toHaveLength(1);
         // The count summary stays — the cause toast comes ON TOP of it.
@@ -204,6 +207,40 @@ describe('InviteCsvImportModal', () => {
             await screen.findByText('Nur Plattform-Administratoren können Träger-Admins einladen.'),
         ).toBeInTheDocument();
         expect(await screen.findByText('0 Empfänger angelegt, 1 fehlgeschlagen')).toBeInTheDocument();
+        // Nothing was created: no table refresh, and the modal stays open.
+        expect(onCreated).not.toHaveBeenCalled();
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('stops calling createInvite after the first role-level 403 and marks the rest forbidden', async () => {
+        createInvite.mockImplementation(async (row: { recipientEmail: string }) => {
+            if (row.recipientEmail === 'a@example.org') {
+                return;
+            }
+            // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's FORBIDDEN_WITH_RESPONSE rejection (a raw Response)
+            throw new Response(null, { status: 403 });
+        });
+        renderModal(
+            parseResultOf({
+                rows: [
+                    { line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', missingName: false },
+                    { line: 2, email: 'b@example.org', firstName: 'B', lastName: 'Two', missingName: false },
+                    { line: 3, email: 'c@example.org', firstName: 'C', lastName: 'Three', missingName: false },
+                ],
+            }),
+        );
+
+        await userEvent.click(screen.getByRole('button', { name: '3 Empfänger anlegen' }));
+
+        expect(await rowCells('a@example.org').findByText('Angelegt')).toBeInTheDocument();
+        expect(await rowCells('b@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
+        // Row c was never attempted — the 403 on row b already condemned it.
+        expect(await rowCells('c@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
+        expect(createInvite).toHaveBeenCalledTimes(2);
+        expect(await screen.findByText('1 Empfänger angelegt, 2 fehlgeschlagen')).toBeInTheDocument();
+        // The successful row still refreshes the table; the modal stays open for the report.
+        expect(onCreated).toHaveBeenCalledTimes(1);
+        expect(onClose).not.toHaveBeenCalled();
     });
 
     it('lists rejected rows read-only, supports removing rows and editing names', async () => {

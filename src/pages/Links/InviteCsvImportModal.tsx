@@ -185,6 +185,22 @@ export const InviteCsvImportModal = ({
                         conflict &&
                         (error as Response).headers.get(FETCH_ERRORS.X_REASON) === X_REASON.EMAIL_NOT_AVAILABLE,
                 });
+                if (forbidden) {
+                    // A role-level 403 applies to EVERY row — the remaining requests
+                    // would all fail the same way, so mark them forbidden and stop
+                    // instead of hammering the backend once per row.
+                    const remaining = pendingRows.slice(i + 1);
+                    failed += remaining.length;
+                    remaining.forEach((skipped) =>
+                        patchRow(skipped.line, {
+                            state: 'failed',
+                            conflict: false,
+                            emailTaken: false,
+                            forbidden: true,
+                        }),
+                    );
+                    break;
+                }
             }
         }
 

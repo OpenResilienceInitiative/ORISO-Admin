@@ -255,7 +255,27 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         expect(logout).toHaveBeenCalledTimes(1);
         expect(messageError).toHaveBeenCalledTimes(1);
         // i18next is mocked as t: (key) => key, so the content IS the key.
-        expect(messageError.mock.calls[0][0]).toMatchObject({ content: 'message.error.sessionExpired' });
+        expect(messageError.mock.calls[0][0]).toMatchObject({
+            content: 'message.error.sessionExpired',
+            key: 'session-expired',
+        });
+    });
+
+    // A page with many active queries fires several 401s at once; they all share the
+    // failed refresh and each reaches the logout fallback. The stable antd key makes
+    // antd collapse the repeats into ONE visible toast instead of stacking them.
+    it('keys every concurrent session-expired toast identically so antd collapses them', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(response(401));
+        vi.stubGlobal('fetch', fetchMock);
+        tryRefreshAccessToken.mockResolvedValue(false);
+
+        const results = await Promise.allSettled([createAgency(), createAgency(), createAgency()]);
+
+        expect(results.every((outcome) => outcome.status === 'rejected')).toBe(true);
+        expect(messageError.mock.calls.length).toBeGreaterThan(0);
+        messageError.mock.calls.forEach(([notice]) => {
+            expect(notice).toMatchObject({ key: 'session-expired' });
+        });
     });
 
     // AD-H07 / #143: every request must eventually fail instead of hanging forever.

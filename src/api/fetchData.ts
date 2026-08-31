@@ -254,9 +254,13 @@ export const fetchData = async (props: FetchDataProps): Promise<any> => {
             // Tell the user WHY they are being taken to the login page. Without this,
             // a dead session ended an in-progress action (e.g. sending a Träger-admin
             // invite) with nothing but a spinner and a silent redirect.
+            // Stable key: concurrent 401s (a page with many active queries) all reach
+            // this fallback once the shared refresh has failed — antd collapses repeats
+            // with the same key into ONE toast instead of stacking identical ones.
             message.error({
                 content: i18next.t('message.error.sessionExpired') as string,
                 duration: 8,
+                key: 'session-expired',
             });
             logout(true, routePathNames.login);
         }
