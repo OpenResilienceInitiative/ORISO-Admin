@@ -107,6 +107,10 @@ export const Default: Story = {};
  * and not a drawing of it.
  */
 export const ForwardedMailWithFooter: Story = {
+    // The branded render comes from the ADMIN-ONLY backend endpoint; on the
+    // public surface it is never requested (#712/#836), so the framed mail is
+    // an admin-surface sight by definition.
+    args: { surface: 'admin' },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.type(await body.findByLabelText(/Name der Person|Name of the person/), 'Dr. Ruth Recht');
@@ -134,8 +138,10 @@ export const LinkRequested: Story = {
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         await createLink(body);
+        // By role, not by label text: the dialog's own title mentions the
+        // Signaturlink too, and the modal carries it via aria-labelledby.
         await waitFor(async () =>
-            expect(await body.findByLabelText(/Signaturlink|Signing link/)).toHaveValue(LINK.signUrl),
+            expect(await body.findByRole('textbox', { name: /Signaturlink|Signing link/ })).toHaveValue(LINK.signUrl),
         );
     },
 };
