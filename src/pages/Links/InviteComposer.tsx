@@ -234,9 +234,12 @@ export const InviteComposer = ({
     // place that may answer this), so the block lasts exactly as long as the
     // refused address stays in the field.
     const emailTaken = emailTakenAddress !== null && recipientEmail.trim().toLowerCase() === emailTakenAddress;
+    // Owner request (#893, live finding): the refusal was too subtle to notice.
+    // The field-level text now says WHAT happened and WHAT TO DO — and it stays
+    // under the input for as long as the refused address is in the field.
     const emailTakenMessage = t(
         'links.composer.emailTaken',
-        'E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.',
+        'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
     );
     // Auto is always sendable; a manual id only once the check confirmed it free.
     const tenantIdValid = !requireTenantId || tenantAllocation.canSubmit;
@@ -275,7 +278,7 @@ export const InviteComposer = ({
         if (emailTaken) {
             return t(
                 'links.composer.blocked.emailTaken',
-                'E-Mail-Adresse bereits vorhanden. Bitte eine andere Adresse eingeben.',
+                'Diese E-Mail-Adresse wurde bereits eingeladen – andere Adresse verwenden oder die bestehende Einladung erneut senden.',
             );
         }
         if (!namesValid) {

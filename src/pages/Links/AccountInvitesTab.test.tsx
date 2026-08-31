@@ -469,7 +469,11 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
 
         await fillAndSend();
 
-        expect(await screen.findByText('E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.')).toBeInTheDocument();
+        expect(
+            await screen.findByText(
+                'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+            ),
+        ).toBeInTheDocument();
         expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
         // Nothing the admin typed is lost — only the address needs correcting.
         expect(screen.getByLabelText('E-Mail')).toHaveValue('lisa.simpson@oriso.org');

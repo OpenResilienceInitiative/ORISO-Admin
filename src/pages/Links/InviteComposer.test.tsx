@@ -410,7 +410,15 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             await user.click(sendButton);
 
             expect(
-                await screen.findByText('E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.'),
+                await screen.findByText(
+                    'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                ),
+            ).toBeInTheDocument();
+            // The send hint under the bar names the same actionable reason.
+            expect(
+                await screen.findByText(
+                    'Diese E-Mail-Adresse wurde bereits eingeladen – andere Adresse verwenden oder die bestehende Einladung erneut senden.',
+                ),
             ).toBeInTheDocument();
             // Inline, not a global toast: the generic create-failed toast must not appear.
             expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
@@ -433,7 +441,9 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             await user.click(sendButton);
 
             expect(
-                await screen.findByText('E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.'),
+                await screen.findByText(
+                    'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                ),
             ).toBeInTheDocument();
             expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
             expect(mocks.createAccountInvite.mock.calls[0][0].templateId).toBeUndefined();
@@ -450,17 +460,65 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             const sendButton = await findSendButton('Direkt Versenden');
             await waitFor(() => expect(sendButton).toBeEnabled());
             await user.click(sendButton);
-            await screen.findByText('E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.');
+            await screen.findByText(
+                'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+            );
 
             await user.clear(emailField);
             await user.type(emailField, 'frei@example.org');
 
             await waitFor(() =>
                 expect(
-                    screen.queryByText('E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.'),
+                    screen.queryByText(
+                        'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                    ),
                 ).not.toBeInTheDocument(),
             );
             await waitFor(() => expect(sendButton).toBeEnabled());
+        });
+
+        it('re-raises the field error from the client-side pre-check when the taken address is typed again', async () => {
+            mocks.createAccountInvite.mockRejectedValueOnce(emailTakenResponse());
+
+            await renderTenantTab();
+            const user = userEvent.setup();
+
+            const emailField = await screen.findByLabelText('E-Mail');
+            await user.type(emailField, 'taken@example.org');
+            const sendButton = await findSendButton('Direkt Versenden');
+            await waitFor(() => expect(sendButton).toBeEnabled());
+            await user.click(sendButton);
+            await screen.findByText(
+                'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+            );
+
+            // Correct it away, then type the SAME refused address again.
+            await user.clear(emailField);
+            await user.type(emailField, 'frei@example.org');
+            await waitFor(() =>
+                expect(
+                    screen.queryByText(
+                        'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                    ),
+                ).not.toBeInTheDocument(),
+            );
+            await user.clear(emailField);
+            await user.type(emailField, 'taken@example.org');
+
+            // The pre-check alone (no new server call) blocks the send and puts the
+            // actionable explanation back under the field AND under the bar.
+            expect(
+                await screen.findByText(
+                    'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                ),
+            ).toBeInTheDocument();
+            expect(
+                await screen.findByText(
+                    'Diese E-Mail-Adresse wurde bereits eingeladen – andere Adresse verwenden oder die bestehende Einladung erneut senden.',
+                ),
+            ).toBeInTheDocument();
+            await waitFor(() => expect(sendButton).toBeDisabled());
+            expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1);
         });
 
         it('still shows the tenant-ID message for a 409 without that reason', async () => {
@@ -476,7 +534,9 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
             expect(await screen.findByText('This tenant ID is already taken.')).toBeInTheDocument();
             expect(
-                screen.queryByText('E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.'),
+                screen.queryByText(
+                    'Diese E-Mail-Adresse wurde bereits eingeladen. Andere Adresse verwenden – oder die bestehende Einladung in der Liste erneut senden.',
+                ),
             ).not.toBeInTheDocument();
         });
     });
