@@ -15,6 +15,14 @@ const templates = [
     { id: 2, name: 'Kurzfassung' },
 ];
 
+/**
+ * The styled root carries the size/variant classes. Resolve it by its own class rather
+ * than by `parentElement`: a harmless wrapper change would otherwise break a size
+ * assertion before the size behaviour actually changed. Same lookup as InviteComposer.test.
+ */
+const pillOf = (name: RegExp) =>
+    screen.getByRole('button', { name }).closest(`.${splitButtonStyles.splitButton}`) as HTMLElement;
+
 describe('TemplateSplitButton', () => {
     it('shows the active template name on the main segment', () => {
         render(<TemplateSplitButton activeTemplateId={2} templates={templates} onSelectTemplate={() => {}} />);
@@ -130,9 +138,8 @@ describe('TemplateSplitButton', () => {
      */
     it('rests on the small (40px) pill by default', () => {
         render(<TemplateSplitButton activeTemplateId={1} templates={templates} onSelectTemplate={() => {}} />);
-        const rootClasses = screen.getByRole('button', { name: /Standard-Einladung/ }).parentElement?.classList;
-        expect(rootClasses?.contains(splitButtonStyles.small)).toBe(true);
-        expect(rootClasses?.contains(splitButtonStyles.medium)).toBe(false);
+        expect(pillOf(/Standard-Einladung/)).toHaveClass(splitButtonStyles.small);
+        expect(pillOf(/Standard-Einladung/)).not.toHaveClass(splitButtonStyles.medium);
     });
 
     it('takes the medium (56px) pill when the surrounding row asks for it', () => {
@@ -144,8 +151,7 @@ describe('TemplateSplitButton', () => {
                 onSelectTemplate={() => {}}
             />,
         );
-        const rootClasses = screen.getByRole('button', { name: /Standard-Einladung/ }).parentElement?.classList;
-        expect(rootClasses?.contains(splitButtonStyles.medium)).toBe(true);
-        expect(rootClasses?.contains(splitButtonStyles.small)).toBe(false);
+        expect(pillOf(/Standard-Einladung/)).toHaveClass(splitButtonStyles.medium);
+        expect(pillOf(/Standard-Einladung/)).not.toHaveClass(splitButtonStyles.small);
     });
 });
