@@ -120,4 +120,32 @@ describe('TemplateSplitButton', () => {
         expect(rootClasses?.contains(splitButtonStyles.outlined)).toBe(true);
         expect(rootClasses?.contains(splitButtonStyles.elevated)).toBe(false);
     });
+
+    /*
+     * The 40px pill is the legal editors' geometry (their neighbouring pickers are
+     * 36px); rows built from default-size buttons ask for `medium` instead. Both
+     * halves are pinned: a chooser that silently grew would tower over the legal
+     * editors again, and one that ignored `size` would stay a size short of the
+     * invite composer's send button.
+     */
+    it('rests on the small (40px) pill by default', () => {
+        render(<TemplateSplitButton activeTemplateId={1} templates={templates} onSelectTemplate={() => {}} />);
+        const rootClasses = screen.getByRole('button', { name: /Standard-Einladung/ }).parentElement?.classList;
+        expect(rootClasses?.contains(splitButtonStyles.small)).toBe(true);
+        expect(rootClasses?.contains(splitButtonStyles.medium)).toBe(false);
+    });
+
+    it('takes the medium (56px) pill when the surrounding row asks for it', () => {
+        render(
+            <TemplateSplitButton
+                activeTemplateId={1}
+                size="medium"
+                templates={templates}
+                onSelectTemplate={() => {}}
+            />,
+        );
+        const rootClasses = screen.getByRole('button', { name: /Standard-Einladung/ }).parentElement?.classList;
+        expect(rootClasses?.contains(splitButtonStyles.medium)).toBe(true);
+        expect(rootClasses?.contains(splitButtonStyles.small)).toBe(false);
+    });
 });

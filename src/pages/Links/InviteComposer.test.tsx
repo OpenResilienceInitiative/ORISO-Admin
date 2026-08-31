@@ -132,6 +132,24 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         mocks.tenantIdAllocationClient.nextFreeId.mockResolvedValue({ id: 21 });
     });
 
+    // The composer row is one row of controls: the template chooser must stand at the
+    // same height as the send button beside it. The chooser's own default is the legal
+    // editors' 40px pill, which left it visibly a size short here.
+    it("renders the template chooser at the row's medium height, like the send button", async () => {
+        await renderTenantTab();
+
+        const templatePill = (await screen.findByRole('button', { name: /Standard/ })).closest(
+            `.${splitButtonStyles.splitButton}`,
+        ) as HTMLElement;
+        const sendPill = (await findSendButton('Direkt Versenden')).closest(
+            `.${splitButtonStyles.splitButton}`,
+        ) as HTMLElement;
+
+        expect(templatePill).toHaveClass(splitButtonStyles.medium);
+        expect(templatePill).not.toHaveClass(splitButtonStyles.small);
+        expect(sendPill).toHaveClass(splitButtonStyles.medium);
+    });
+
     it('keeps the send action outlined + disabled until valid, then flips to primary', async () => {
         await renderTenantTab();
         const user = userEvent.setup();
