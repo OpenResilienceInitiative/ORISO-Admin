@@ -1,3 +1,5 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
 /* Case-handover specific pieces inside the shared chat-type card shell:
    reason tabs (M3 primary tabs), consent rows, language chips, notification
    sample field, footer text actions. */
@@ -24,16 +26,6 @@
     align-items: center;
     padding: 4px 0;
     gap: 16px;
-}
-
-.featureLabel {
-    min-width: 0;
-    flex: 1;
-    color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
-    font-size: 16px;
-    font-weight: 400;
-    letter-spacing: 0.5px;
-    line-height: 24px;
 }
 
 /* M3 body-medium helper line under the master row. */
@@ -145,16 +137,27 @@
 .notificationField {
     min-height: 128px;
     box-sizing: border-box;
-    padding: 8px 16px 10px;
+    padding: 0;
     border: 1px solid var(--input-border-color, var(--m3-outline, #747878));
     background: var(--input-bg, var(--m3-surface-container-low, #f6f3f3));
     border-radius: 4px;
     overflow-wrap: anywhere;
 }
 
+.durationField {
+    display: flex;
+    justify-content: center;
+    margin: calc(mui.$mui-unit * 2) 0 mui.$mui-unit;
+
+    > * {
+        width: min(100%, 420px);
+    }
+}
+
 .notificationFieldLabel {
     display: block;
     margin-bottom: 2px;
+    padding: mui.$mui-unit calc(mui.$mui-unit * 2) 0;
     color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
     font-size: 12px;
     letter-spacing: 0.4px;
@@ -162,9 +165,12 @@
 }
 
 .notificationFieldInput {
+    display: block;
+    min-height: 102px;
     width: 100%;
+    box-sizing: border-box;
     margin: 0;
-    padding: 0;
+    padding: 0 calc(mui.$mui-unit * 2) 10px;
     border: 0;
     background: transparent;
     resize: vertical;
@@ -186,13 +192,6 @@
     }
 }
 
-.notificationFieldHint {
-    margin: 6px 0 0;
-    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
-    font-size: 12px;
-    line-height: 16px;
-}
-
 .notificationFieldText {
     margin: 0;
     color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
@@ -202,16 +201,14 @@
     overflow-wrap: anywhere;
 }
 
-.enforceHint {
+.templateHintBelow {
     margin: 14px 0 4px;
-
-    /* Figma M3/sys/light/on-primary-fixed (#410001), body-medium-emphasized. */
-    color: var(--m3-on-primary-fixed, #410001);
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.25px;
-    line-height: 20px;
-    text-align: center;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+    text-align: left;
 }
 
 .footerActions {

@@ -19,9 +19,9 @@ import { M3NumberField } from '../../components/M3NumberField';
 import { TemplateSplitButton } from '../../components/PlaceholderTemplate';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
+import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
+import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as FileSaveIcon } from '../../resources/img/svg/oriso/file_save_24px.svg';
-import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
-import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
 import styles from './inviteComposer.module.scss';
 
 /**
@@ -30,6 +30,13 @@ import styles from './inviteComposer.module.scss';
  * by simply omitting `templateId`).
  */
 export type InviteSendMode = 'direct' | 'createOnly';
+
+/**
+ * What a create attempt did. `true`/`false` keep the original success/failure
+ * contract; `'emailTaken'` is the P3 case that the composer renders inline on
+ * the e-mail field rather than as a global toast.
+ */
+export type InviteSubmitOutcome = boolean | 'emailTaken';
 
 export interface InviteComposerValues {
     recipientEmail: string;
@@ -71,8 +78,14 @@ export interface InviteComposerProps {
     submitting?: boolean;
     /** Discriminator for the persisted send mode (one per tab), e.g. the target role. */
     persistKey: string;
-    /** Resolve `true` on success — the composer then clears its fields. */
-    onSubmit: (values: InviteComposerValues) => Promise<boolean> | boolean;
+    /**
+     * Resolve `true` on success — the composer then clears its fields.
+     * Resolve `'emailTaken'` when the backend refused the address because it
+     * already belongs to a registered user (409 + `X-Reason:
+     * EMAIL_NOT_AVAILABLE`, P3): the composer then keeps every value and marks
+     * the e-mail field inline instead of clearing the row.
+     */
+    onSubmit: (values: InviteComposerValues) => Promise<InviteSubmitOutcome> | InviteSubmitOutcome;
     /** Open the EmailTemplatesDialog in the requested view (`list` is the picker). */
     onManageTemplates: (intent: 'create' | 'delete' | 'list') => void;
     /**
@@ -190,6 +203,10 @@ export const InviteComposer = ({
     const { t } = useTranslation();
     const [recipientEmail, setRecipientEmail] = useState('');
     const [emailTouched, setEmailTouched] = useState(false);
+    // P3: the address the backend last refused as already registered, normalized.
+    // Kept as a value (not a flag) so simply editing the field clears the error
+    // and re-typing the same address brings it straight back.
+    const [emailTakenAddress, setEmailTakenAddress] = useState<string | null>(null);
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     // `null` = untouched → the field renders the admin's own tenant (non-Träger
@@ -213,6 +230,14 @@ export const InviteComposer = ({
     const selectedTemplate = activeTemplates.find((template) => template.id === templateId);
 
     const emailValid = EMAIL_PATTERN.test(recipientEmail.trim());
+    // P3: the create call itself is the authority (it is the only admin-authorised
+    // place that may answer this), so the block lasts exactly as long as the
+    // refused address stays in the field.
+    const emailTaken = emailTakenAddress !== null && recipientEmail.trim().toLowerCase() === emailTakenAddress;
+    const emailTakenMessage = t(
+        'links.composer.emailTaken',
+        'E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.',
+    );
     // Auto is always sendable; a manual id only once the check confirmed it free.
     const tenantIdValid = !requireTenantId || tenantAllocation.canSubmit;
     const agencyIdValid = !includeAgencyField || agencyAllocation.canSubmit;
@@ -220,7 +245,7 @@ export const InviteComposer = ({
     // Counsellor invites provision a person (#384): without names the invite
     // cannot create a usable counsellor account, so the send button stays off.
     const namesValid = !requireNames || (firstName.trim().length > 0 && lastName.trim().length > 0);
-    const isValid = emailValid && tenantIdValid && agencyIdValid && templateValid && namesValid;
+    const isValid = emailValid && !emailTaken && tenantIdValid && agencyIdValid && templateValid && namesValid;
     const showEmailError = emailTouched && recipientEmail.length > 0 && !emailValid;
 
     // Bulk mode (#316): while rows are checked, sending acts on the selection
@@ -246,6 +271,12 @@ export const InviteComposer = ({
         }
         if (!emailValid) {
             return t('links.composer.blocked.email', 'Bitte eine gültige E-Mail-Adresse eingeben.');
+        }
+        if (emailTaken) {
+            return t(
+                'links.composer.blocked.emailTaken',
+                'E-Mail-Adresse bereits vorhanden. Bitte eine andere Adresse eingeben.',
+            );
         }
         if (!namesValid) {
             return t('links.composer.blocked.names', 'Bitte Vorname und Name eingeben.');
@@ -277,7 +308,7 @@ export const InviteComposer = ({
             return;
         }
 
-        const succeeded = await onSubmit({
+        const outcome = await onSubmit({
             recipientEmail: recipientEmail.trim(),
             firstName: firstName.trim() || undefined,
             lastName: lastName.trim() || undefined,
@@ -290,9 +321,17 @@ export const InviteComposer = ({
             sendMode,
         });
 
-        if (succeeded) {
+        if (outcome === 'emailTaken') {
+            // Keep everything the admin typed; only the address needs correcting.
+            setEmailTakenAddress(recipientEmail.trim().toLowerCase());
+            setEmailTouched(true);
+            return;
+        }
+
+        if (outcome) {
             setRecipientEmail('');
             setEmailTouched(false);
+            setEmailTakenAddress(null);
             setFirstName('');
             setLastName('');
             setTenantIdOverride(null);
@@ -404,16 +443,40 @@ export const InviteComposer = ({
             : t('links.composer.sendCreateOnly', 'Empfänger nur anlegen');
     const bulkSendLabel = t('links.bulk.sendSelected', '{{count}} ausgewählte senden', { count: selectionCount });
 
+    /**
+     * Glyph on the main send segment (#574). It has to say what pressing the
+     * button DOES, which is the one thing the two send modes differ in: `direct`
+     * puts an e-mail on the wire — mail glyph, filled once the action is live —
+     * while `createOnly` only files the recipient away, so it takes the same file
+     * glyph its own menu entry carries. The paper plane said "send" for both.
+     */
+    const renderSendGlyph = () => {
+        if (sendMode === 'createOnly') {
+            return <FileSaveIcon data-glyph="file-save" data-testid="composer-send-icon" />;
+        }
+        if (sendReady) {
+            return <MailFilledIcon data-glyph="mail-filled" data-testid="composer-send-icon" />;
+        }
+        return <MailIcon data-glyph="mail" data-testid="composer-send-icon" />;
+    };
+
     const sendMenu: MenuProps = {
         items: [
             {
                 key: 'direct',
-                icon: <SendIcon aria-hidden className={styles.menuIcon} />,
+                // Same glyph rule as the button (#574): mail, filled while this
+                // is the mode that will actually fire.
+                icon:
+                    sendMode === 'direct' ? (
+                        <MailFilledIcon aria-hidden className={styles.menuIcon} data-glyph="mail-filled" />
+                    ) : (
+                        <MailIcon aria-hidden className={styles.menuIcon} data-glyph="mail" />
+                    ),
                 label: t('links.composer.sendDirect', 'Direkt Versenden'),
             },
             {
                 key: 'createOnly',
-                icon: <FileSaveIcon aria-hidden className={styles.menuIcon} />,
+                icon: <FileSaveIcon aria-hidden className={styles.menuIcon} data-glyph="file-save" />,
                 label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen'),
             },
         ],
@@ -453,11 +516,14 @@ export const InviteComposer = ({
             >
                 <FloatingLabelInput
                     className={styles.emailField}
-                    error={showEmailError}
+                    error={showEmailError || emailTaken}
                     label={t('links.accountInvites.email', 'E-Mail')}
                     name="recipientEmail"
                     supportingText={
-                        showEmailError
+                        // eslint-disable-next-line no-nested-ternary -- three mutually exclusive field states
+                        emailTaken
+                            ? emailTakenMessage
+                            : showEmailError
                             ? t('links.composer.emailInvalid', 'Bitte gültige E-Mail-Adresse eingeben.')
                             : undefined
                     }
@@ -516,7 +582,7 @@ export const InviteComposer = ({
                 stays in both states — a send button without its glyph was the
                 "icons are missing" note. */}
                 <SplitButton
-                    icon={bulkMode ? <SelectAllIcon fontSize="small" /> : <SendFilledIcon />}
+                    icon={bulkMode ? <SelectAllIcon fontSize="small" /> : renderSendGlyph()}
                     label={bulkMode ? String(selectionCount) : singleSendLabel}
                     mainDisabled={!sendReady || submitting}
                     mainDescribedBy={sendBlockedReason ? sendHintId : undefined}

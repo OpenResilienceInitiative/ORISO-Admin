@@ -24,6 +24,13 @@ export interface PlaceholderTemplateFieldConfig<V extends Record<string, string>
 export interface PlaceholderTemplateEditorProps<V extends Record<string, string>> {
     /** Module heading (visible; also groups the editor for screen readers). */
     heading: string;
+    /**
+     * Decorative head icon, M3 anatomy icon → title. Optional and supplied by
+     * the variant: this frame is shared with the invite e-mail, so it must not
+     * decide that both carry the same symbol. Purely decorative — it is
+     * `aria-hidden`, the `<section aria-label>` stays the accessible name.
+     */
+    icon?: ReactNode;
     fields: PlaceholderTemplateFieldConfig<V>[];
     /** Tokens every field's picker offers. */
     tokens: PlaceholderTokenDef[];
@@ -42,12 +49,22 @@ export interface PlaceholderTemplateEditorProps<V extends Record<string, string>
     onManageTemplates?: () => void;
     /** Live preview column, computed by the variant from the current values. */
     preview: ReactNode;
+    /** Leading glyph of the template split button; see TemplateSplitButton. */
+    templateIcon?: ReactNode;
     /**
      * Read-only surface (no edit permission, or looking at an archived version):
      * fields, token pickers and the template chooser go inert. They stay visible —
      * hiding them would also hide what this level offers.
      */
     readOnly?: boolean;
+    /**
+     * The HOST already shows the template chooser somewhere else and this module
+     * must not draw a second one. Not a read-only variant and not a way to take
+     * the choice away: `readOnly` is what makes a chooser inert, this only says
+     * where it lives. Used by the department data-protection card, which lifts
+     * the chooser into the editor's function bar.
+     */
+    hideTemplateChooser?: boolean;
 }
 
 /**
@@ -59,6 +76,7 @@ export interface PlaceholderTemplateEditorProps<V extends Record<string, string>
  */
 export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
     heading,
+    icon,
     fields,
     tokens,
     values,
@@ -69,19 +87,29 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
     onCreateFromTemplate,
     onManageTemplates,
     preview,
+    templateIcon,
     readOnly = false,
+    hideTemplateChooser = false,
 }: PlaceholderTemplateEditorProps<V>) => (
     <section aria-label={heading} className={styles.editor}>
         <header className={styles.header}>
+            {icon && (
+                <span aria-hidden className={styles.headIcon} data-head-icon>
+                    {icon}
+                </span>
+            )}
             <h3 className={styles.heading}>{heading}</h3>
-            <TemplateSplitButton
-                activeTemplateId={activeTemplateId}
-                disabled={readOnly}
-                templates={templates}
-                onCreateFromTemplate={onCreateFromTemplate}
-                onMainClick={onManageTemplates}
-                onSelectTemplate={onSelectTemplate}
-            />
+            {!hideTemplateChooser && (
+                <TemplateSplitButton
+                    activeTemplateId={activeTemplateId}
+                    disabled={readOnly}
+                    icon={templateIcon}
+                    templates={templates}
+                    onCreateFromTemplate={onCreateFromTemplate}
+                    onMainClick={onManageTemplates}
+                    onSelectTemplate={onSelectTemplate}
+                />
+            )}
         </header>
         <div className={styles.formAndPreview}>
             <div className={styles.fields}>

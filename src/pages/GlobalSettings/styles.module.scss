@@ -1,9 +1,31 @@
+@use '../../styles/muiSpacing' as mui;
+
+.globalConfigViewport {
+    width: 100%;
+    min-width: 0;
+    container-name: global-settings;
+    container-type: inline-size;
+}
+
 .globalConfigGrid {
     display: grid;
+    width: 100%;
+    min-width: 0;
     max-width: 1164px;
     align-items: start;
-    gap: 24px;
-    grid-template-columns: minmax(280px, 340px) minmax(360px, 800px);
+    gap: mui.$mui-unit * 3;
+    grid-template-areas:
+        'compact'
+        'document';
+    grid-template-columns: minmax(280px, 1fr);
+}
+
+.compactCardColumn {
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: mui.$mui-unit * 3;
+    grid-area: compact;
 }
 
 .globalConfigCardSlot,
@@ -16,29 +38,16 @@
 
 .documentMasterDataCardSlot {
     min-width: 0;
-    grid-column: 1 / -1;
+    grid-area: document;
 }
 
 .loginFunctionCard {
     width: 100%;
-    min-height: 240px;
-
-    :global([class*='cardTitle']) {
-        align-items: flex-start;
-    }
-
-    :global(h5.ant-typography) {
-        color: #1b1b1c;
-        font-family: var(--m3-body-font-family);
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: 0;
-        line-height: 28px;
-    }
+    min-height: 0;
 }
 
 .checkGroup {
-    margin-top: 40px;
+    margin-top: 0;
     margin-bottom: 0;
 
     :global(.MuiFormControlLabel-label) {
@@ -129,48 +138,6 @@
     grid-template-columns: 1fr;
 }
 
-.colorField {
-    max-width: none;
-    margin-bottom: 20px;
-
-    :global(.colorSelector) {
-        width: 100%;
-        padding: 0;
-        background: transparent;
-        border-radius: 0;
-        gap: 16px;
-    }
-
-    :global(.colorIndicator) {
-        width: 48px;
-        height: 48px;
-        flex: 0 0 48px;
-        border-radius: 0;
-    }
-
-    :global(.colorSelector span) {
-        color: var(--m3-on-surface-variant, #444748);
-        font-family: var(--m3-body-font-family);
-        font-size: 12px;
-        letter-spacing: 0.4px;
-        line-height: 16px;
-    }
-
-    :global(.colorSelector h4) {
-        margin: 0;
-        color: #2c3a4b;
-        font-family: var(--m3-body-font-family);
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: 0;
-        line-height: 24px;
-    }
-
-    :global(.pickerWrapper) {
-        z-index: 20;
-    }
-}
-
 .testForm {
     display: flex;
     min-height: 0;
@@ -206,10 +173,10 @@
     margin-top: 4px;
 }
 
-@media only screen and (max-width: 760px) {
+@container global-settings (min-width: 904px) {
     .globalConfigGrid {
-        max-width: 100%;
-        grid-template-columns: minmax(280px, 1fr);
+        grid-template-areas: 'compact document';
+        grid-template-columns: minmax(360px, 400px) minmax(520px, 740px);
     }
 }
 
@@ -219,11 +186,15 @@
     }
 }
 
-@media only screen and (max-width: 640px) {
+@container global-settings (max-width: 640px) {
     .globalConfigGrid {
-        gap: 16px;
+        gap: mui.$mui-unit * 2;
     }
+}
 
+/* SMTP lives on a separate route outside .globalConfigViewport, so these must
+   stay viewport media queries — a global-settings container never exists there. */
+@media only screen and (max-width: 640px) {
     .smtpPage {
         max-width: 100%;
     }

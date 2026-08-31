@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
     applyClientConsent,
+    applyClientConsentPolicy,
     applyModuleEnabled,
     buildDisplayReasons,
-    getNotificationTemplateSample,
     isAdvisorConsentImplicit,
     isHandoverModuleEnabled,
     LEGAL_VIOLATION_PLACEHOLDER_CODE,
     NOTIFICATION_LANGUAGES,
-    NOTIFICATION_TEMPLATE_SAMPLES,
     sortPoliciesByDisplayOrder,
     applyNotificationTemplate,
     getNotificationTemplate,
+    resolvedClientConsentPolicy,
 } from './caseHandoverCardUtils';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
 
@@ -53,6 +53,29 @@ describe('caseHandoverCardUtils', () => {
         expect(result.find((p) => p.code === 'B')?.clientConsentRequired).toBe(true);
     });
 
+    it('maps legacy boolean consent to the canonical three-value policy and writes both during transition', () => {
+        expect(resolvedClientConsentPolicy(policy({ clientConsentRequired: true }))).toEqual({
+            value: 'OPT_IN',
+            mode: 'SUGGESTED',
+        });
+        expect(resolvedClientConsentPolicy(policy({ clientConsentRequired: false }))).toEqual({
+            value: 'NONE',
+            mode: 'SUGGESTED',
+        });
+
+        const result = applyClientConsentPolicy([policy({ code: 'A' }), policy({ code: 'B' })], 'B', {
+            value: 'OPT_OUT',
+            mode: 'ENFORCED',
+        });
+        expect(result[0].clientConsent).toBeUndefined();
+        expect(result[1]).toEqual(
+            expect.objectContaining({
+                clientConsent: { value: 'OPT_OUT', mode: 'ENFORCED' },
+                clientConsentRequired: false,
+            }),
+        );
+    });
+
     it('appends the legal-violation placeholder tab unless the backend seeds it', () => {
         const reasons = buildDisplayReasons([policy({ code: 'A', displayOrder: 10 })]);
         expect(reasons.map((r) => r.code)).toEqual(['A', LEGAL_VIOLATION_PLACEHOLDER_CODE]);
@@ -64,24 +87,30 @@ describe('caseHandoverCardUtils', () => {
         expect(seeded[0].isPlaceholder).toBe(false);
     });
 
+    it('keeps legacy emergency data out of the current visible reason catalogue', () => {
+        const reasons = buildDisplayReasons([
+            policy({ code: 'COUNSELLOR_ASKED_FOR_ADVICE', displayOrder: 10 }),
+            policy({ code: 'OTHER_EMERGENCY', displayOrder: 20 }),
+            policy({ code: 'COUNSELLOR_IS_ILL', displayOrder: 30 }),
+        ]);
+
+        expect(reasons.map((reason) => reason.code)).not.toContain('OTHER_EMERGENCY');
+        expect(reasons.map((reason) => reason.code)).toContain('COUNSELLOR_IS_ILL');
+    });
+
     it('advisor consent is implicit only for advice requests', () => {
         expect(isAdvisorConsentImplicit('COUNSELLOR_ASKED_FOR_ADVICE')).toBe(true);
         expect(isAdvisorConsentImplicit('COUNSELLOR_IS_ILL')).toBe(false);
     });
 
-    it('prefers the stored backend template over the sample', () => {
+    it('uses only stored backend templates and leaves missing translations empty', () => {
         const stored = policy({
             code: 'COUNSELLOR_IS_ILL',
             clientNotificationTemplates: { de: 'Eigener Text mit {{newAdvisor}}.' },
         });
-        expect(getNotificationTemplate(stored, 'COUNSELLOR_IS_ILL', 'de')).toEqual('Eigener Text mit {{newAdvisor}}.');
-        // missing language falls back to the sample copy
-        expect(getNotificationTemplate(stored, 'COUNSELLOR_IS_ILL', 'en')).toEqual(
-            getNotificationTemplateSample('COUNSELLOR_IS_ILL', 'en'),
-        );
-        expect(getNotificationTemplate(null, 'COUNSELLOR_IS_ILL', 'de')).toEqual(
-            getNotificationTemplateSample('COUNSELLOR_IS_ILL', 'de'),
-        );
+        expect(getNotificationTemplate(stored, 'de')).toEqual('Eigener Text mit {{newAdvisor}}.');
+        expect(getNotificationTemplate(stored, 'en')).toEqual('');
+        expect(getNotificationTemplate(null, 'de')).toEqual('');
     });
 
     it('writes, trims and clears per-language templates on the matching reason only', () => {
@@ -94,12 +123,7 @@ describe('caseHandoverCardUtils', () => {
         expect(cleared[0].clientNotificationTemplates).toBeNull();
     });
 
-    it('provides a notification sample for every seeded reason in every language', () => {
-        Object.keys(NOTIFICATION_TEMPLATE_SAMPLES).forEach((code) => {
-            NOTIFICATION_LANGUAGES.forEach((language) => {
-                expect(getNotificationTemplateSample(code, language)).not.toEqual('');
-            });
-        });
-        expect(getNotificationTemplateSample('UNKNOWN', 'de')).toEqual('');
+    it('uses the complete canonical language registry', () => {
+        expect(NOTIFICATION_LANGUAGES).toEqual(['de', 'en', 'fr', 'ru', 'tr', 'uk', 'ti']);
     });
 });

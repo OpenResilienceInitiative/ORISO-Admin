@@ -10,6 +10,8 @@ import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook
 import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
 import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegalContent.hook';
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
+import { useUserData } from '../../../../../hooks/useUserData.hook';
+import { useLegalDraft } from '../../hooks/useLegalDraft';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { AgencyData } from '../../../../../types/agency';
@@ -131,52 +133,28 @@ export const AgencyLegalTextContainer = ({
         [tenantData, agencyData, agencyContentKey],
     );
 
+    const { data: userData } = useUserData();
+    /*
+     * The agency record has no draft state, exactly like the Träger record one level up —
+     * so the parked wording lives on the device (`LegalText` + `useLegalDraft` set this
+     * precedent, and its LegalDraftNotice is what tells the admin the draft is local).
+     *
+     * The agency id has to be in the scope. Both levels store the same `privacy` document
+     * for the same user, so without it a Beratungsstelle's parked wording and the Träger's
+     * would share one key and silently overwrite each other.
+     */
+    const agencyDraftScope =
+        userData?.id && agencyData?.id ? `${agencyData.tenantId}:${userData.id}:agency:${agencyData.id}` : undefined;
+    const {
+        draft: agencyDraft,
+        saveDraft: saveAgencyDraft,
+        discardDraft: discardAgencyDraft,
+    } = useLegalDraft(field, agencyDraftScope);
+
     const departmentContent = useMemo(
         () => parseLegalContentMap(departmentQuery.data?.content),
         [departmentQuery.data?.content],
     );
-
-    /**
-     * The consent sentence (ADR-021 decision 4) is a FIELD of the data-protection policy, never of
-     * the imprint (decision 7), so it follows exactly the same source as the body above it: the
-     * Fachbereich's own sentence when one is selected, the agency-wide one otherwise.
-     *
-     * Like the history above, this reached the Beratungsstelle level only through the
-     * per-department containers #555 replaced; the switcher inherited the card but not the wiring,
-     * so the live editor offered no consent field at all.
-     *
-     * `undefined` in both branches is load-bearing — it is how the card decides not to offer the
-     * consent editor, which is what must happen while a backend has no such field.
-     */
-    const departmentConsent = useMemo(
-        () =>
-            dppQuery.data && dppQuery.data.consentText !== undefined
-                ? parseLegalContentMap(dppQuery.data.consentText)
-                : undefined,
-        [dppQuery.data],
-    );
-    const agencyWideConsent = useMemo(() => {
-        const inherited = tenantData?.content?.privacyConsent;
-        const own = agencyData?.content?.privacyConsent;
-        if (inherited === undefined && own === undefined) {
-            return undefined;
-        }
-        return { ...(inherited ?? {}), ...(own ?? {}) };
-    }, [tenantData?.content?.privacyConsent, agencyData?.content?.privacyConsent]);
-    const consentByLanguage = useMemo(() => {
-        if (field !== 'privacy') {
-            return undefined;
-        }
-        return isDepartment ? departmentConsent : agencyWideConsent;
-    }, [field, isDepartment, departmentConsent, agencyWideConsent]);
-    // Under "Alle Fachbereiche" the sentence shown may still be the Träger's, so the card says so
-    // on the languages this Beratungsstelle has not overridden. A Fachbereich reads its own stored
-    // sentence, which carries no such distinction.
-    const ownConsentByLanguage = isDepartment ? undefined : agencyData?.content?.privacyConsent;
-    const consentInheritedFrom =
-        !isDepartment && tenantData?.content?.privacyConsent !== undefined
-            ? t('legal.consent.level.tenant')
-            : undefined;
 
     // The draft copy: a department with no own text yet starts from what it currently shows, which
     // is the inherited agency-wide text. "Alle Fachbereiche" always edits that same agency-wide text.
@@ -187,7 +165,61 @@ export const AgencyLegalTextContainer = ({
     // That is the same silent-overwrite class this whole epic exists to remove, so a failed read
     // blocks the editor instead (see the isError branch below).
     const hasOwnText = isDepartment && departmentQuery.isSuccess && Object.keys(departmentContent).length > 0;
-    const contentByLanguage = hasOwnText ? departmentContent : agencyWideContent;
+    // A parked draft is the admin's unfinished wording; it wins over the stored agency text
+    // until it is published or discarded. Departments keep their own seeding rules above.
+    const agencyWideSeed = agencyDraft?.content ?? agencyWideContent;
+    const contentByLanguage = hasOwnText ? departmentContent : agencyWideSeed;
+
+    /**
+     * The consent sentence (ADR-021 decision 4) is a FIELD of the data-protection policy, never of
+     * the imprint (decision 7). On the agency editor it is offered only for a concrete Fachbereich
+     * (#862) — "Alle Fachbereiche" edits the agency-wide body without the consent dialog.
+     *
+     * `undefined` is load-bearing — it is how the card decides not to offer the consent editor,
+     * which is what must happen while a backend has no such field, and while the switcher is on
+     * the agency-wide entry.
+     */
+    const departmentConsent = useMemo(
+        () =>
+            dppQuery.data && dppQuery.data.consentText !== undefined
+                ? parseLegalContentMap(dppQuery.data.consentText)
+                : undefined,
+        [dppQuery.data],
+    );
+    // Inherited agency-wide sentence (Träger overlay + agency override). Used only to seed a
+    // not-yet-forked Fachbereich — #862 keeps "Alle Fachbereiche" consent-free.
+    const agencyWideConsent = useMemo(() => {
+        const inherited = tenantData?.content?.privacyConsent;
+        const own = agencyData?.content?.privacyConsent;
+        if (inherited === undefined && own === undefined) {
+            return undefined;
+        }
+        return { ...(inherited ?? {}), ...(own ?? {}) };
+    }, [tenantData?.content?.privacyConsent, agencyData?.content?.privacyConsent]);
+    /**
+     * A Fachbereich that has NOT forked yet edits a draft copy of what it currently shows. The body
+     * above is already seeded that way (`contentByLanguage`), and the sentence must follow the same
+     * source: publishing forks the Fachbereich away from the inherited text for good (ADR-014
+     * amendment), and a fork that carried the body but not its consent sentence would ship a policy
+     * whose consent screen was left behind on the level above — the exact de-synchronisation
+     * ADR-021 decision 4 exists to prevent.
+     *
+     * Once the Fachbereich HAS its own policy its stored sentence stands as it is, blank included:
+     * blank means the level above still governs at runtime (decision 1), and re-seeding it here
+     * would silently re-author a legal sentence nobody wrote.
+     */
+    const forkSeedsConsent = isDepartment && !hasOwnText && departmentConsent !== undefined;
+    const consentByLanguage = useMemo(() => {
+        if (field !== 'privacy' || !isDepartment) {
+            return undefined;
+        }
+        return forkSeedsConsent ? agencyWideConsent ?? departmentConsent : departmentConsent;
+    }, [field, isDepartment, forkSeedsConsent, departmentConsent, agencyWideConsent]);
+    // A not-yet-forked Fachbereich shows the agency-level inheritance notice on languages it has
+    // not overridden; a forked one reads its own stored sentence with no such distinction.
+    const ownConsentByLanguage = forkSeedsConsent ? departmentConsent : undefined;
+    const consentInheritedFrom =
+        forkSeedsConsent && agencyWideConsent !== undefined ? t('legal.consent.level.agency') : undefined;
 
     const languages = useMemo(
         () => getEditableLanguages(tenantAdminData?.settings?.activeLanguages, contentByLanguage),
@@ -206,13 +238,24 @@ export const AgencyLegalTextContainer = ({
             }
             return;
         }
-        // The agency-wide text has no draft state of its own — it is stored on the agency record.
+        // `publish === false` is the editor's "Save draft" action. Writing the agency record
+        // here would publish the live legal text under a label promising the opposite — so the
+        // draft goes to device-local storage and the record is left alone.
+        if (!publish) {
+            saveAgencyDraft(content, consent);
+            return;
+        }
         // NOTE: unlike the department publishes above, this path cannot invalidate the agency
         // version history — it goes through the shared agency-card mutation, which has no legal
         // hook. The look-back catches up on its own `staleTime` (60s).
+        // Agency-wide ("Alle Fachbereiche") never edits consent in this card (#862) — do not
+        // stamp privacyConsent from a leftover third argument.
         onSaveAgencyWide({
-            content: { [agencyContentKey]: content, ...(consent ? { privacyConsent: consent } : {}) },
+            content: { [agencyContentKey]: content },
         });
+        // The parked wording has become the published text; keeping it would re-seed the editor
+        // with a stale copy on the next mount.
+        discardAgencyDraft();
     };
 
     const selectedDepartment = departments.find(({ id }) => id === topicId);

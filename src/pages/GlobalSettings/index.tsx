@@ -5,12 +5,9 @@ import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Outlet } from 'react-router-dom';
-import { Page } from '../../components/Page';
 import { CardDeck } from '../../components/CardDeck';
 import { CardEditable } from '../../components/CardEditable';
 import { Card } from '../../components/Card';
-import { MuiColorField } from '../../components/mui/MuiColorField';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { MuiSwitchField } from '../../components/mui/MuiSwitchField/index';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
@@ -26,27 +23,6 @@ import { DocumentMasterDataCardContainer } from '../../components/GlobalSettings
 import styles from './styles.module.scss';
 import { resolveTenantId } from '../../utils/resolveTenantId';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
-
-export const GlobalSettingsPage = () => {
-    return (
-        <Page>
-            <Page.Title
-                titleKey="globalSettings.pageTitle"
-                tabs={[
-                    {
-                        to: '/admin/global-settings/login',
-                        titleKey: 'globalSettings.tabs.login',
-                    },
-                    {
-                        to: '/admin/global-settings/smtp',
-                        titleKey: 'globalSettings.tabs.smtp',
-                    },
-                ]}
-            />
-            <Outlet />
-        </Page>
-    );
-};
 
 export const GlobalLoginSettingsPage = () => {
     const { t } = useTranslation();
@@ -65,47 +41,51 @@ export const GlobalLoginSettingsPage = () => {
     const initialValues = useMemo(() => ({ ...data }), [data]);
 
     return (
-        <div className={styles.globalConfigGrid}>
-            <section className={styles.globalConfigCardSlot}>
-                <ThemeProvider theme={orisoMuiTheme}>
-                    <CardEditable
-                        className={styles.loginFunctionCard}
-                        isLoading={isLoading}
-                        initialValues={initialValues}
-                        titleKey="tenants.globalSettings.anonymousChat.title"
-                        onSave={mutate}
-                        variant="dialog"
-                        editButtonPlacement="footer"
-                        headerIcon={<LoginOutlinedIcon />}
-                    >
-                        <div className={styles.checkGroup}>
-                            <MuiSwitchField
-                                label={t('tenants.permissions.anonymousChat.title')}
-                                name={['settings', 'featureAnonymousChatEnabled']}
-                            />
-                            {/* ORISO-Admin#602: this switch used to carry no visible
-                                description at all, while the string behind it promised
-                                "wird auf der Login-Seite nicht angezeigt" — behaviour
-                                nothing implements (`featureAnonymousChatEnabled` is read
-                                by no consumer in Frontend or UserService). Rather than
-                                invent the behaviour, the description now says what the
-                                switch actually does, and it is rendered so an admin can
-                                read it before deciding. */}
-                            <p className={styles.settingDescription}>
-                                {t('tenants.permissions.anonymousChat.description')}
-                            </p>
-                        </div>
-                    </CardEditable>
-                </ThemeProvider>
-            </section>
-            <section className={styles.translationCardSlot}>
-                <TranslationApiKeysCardContainer />
-            </section>
-            {/* ORISO-Admin#735: operator master data for the living DPIA and the other legal
-                documents. Spans the full grid width — it carries four field groups. */}
-            <section className={styles.documentMasterDataCardSlot}>
-                <DocumentMasterDataCardContainer />
-            </section>
+        <div className={styles.globalConfigViewport}>
+            <div className={styles.globalConfigGrid}>
+                <div className={styles.compactCardColumn}>
+                    <section className={styles.globalConfigCardSlot}>
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <CardEditable
+                                className={styles.loginFunctionCard}
+                                isLoading={isLoading}
+                                initialValues={initialValues}
+                                titleKey="tenants.globalSettings.anonymousChat.title"
+                                onSave={mutate}
+                                variant="dialog"
+                                editButtonPlacement="footer"
+                                headerIcon={<LoginOutlinedIcon />}
+                            >
+                                <div className={styles.checkGroup}>
+                                    <MuiSwitchField
+                                        label={t('tenants.permissions.anonymousChat.title')}
+                                        name={['settings', 'featureAnonymousChatEnabled']}
+                                    />
+                                    {/* ORISO-Admin#602: this switch used to carry no visible
+                                    description at all, while the string behind it promised
+                                    "wird auf der Login-Seite nicht angezeigt" — behaviour
+                                    nothing implements (`featureAnonymousChatEnabled` is read
+                                    by no consumer in Frontend or UserService). Rather than
+                                    invent the behaviour, the description now says what the
+                                    switch actually does, and it is rendered so an admin can
+                                    read it before deciding. */}
+                                    <p className={styles.settingDescription}>
+                                        {t('tenants.permissions.anonymousChat.description')}
+                                    </p>
+                                </div>
+                            </CardEditable>
+                        </ThemeProvider>
+                    </section>
+                    <section className={styles.translationCardSlot}>
+                        <TranslationApiKeysCardContainer />
+                    </section>
+                </div>
+                {/* ORISO-Admin#735: operator master data for the living DPIA and the other legal
+                    documents. The desktop grid keeps it beside the two compact configuration cards. */}
+                <section className={styles.documentMasterDataCardSlot}>
+                    <DocumentMasterDataCardContainer />
+                </section>
+            </div>
         </div>
     );
 };
@@ -126,12 +106,50 @@ export const GlobalSmtpSettingsPage = () => {
             globalSmtpHost: settings.globalSmtpHost ?? '',
             globalSmtpPort: settings.globalSmtpPort ?? '587',
             globalSmtpSecure: settings.globalSmtpSecure ?? false,
-            globalSmtpUsername: settings.globalSmtpUsername ?? '',
-            globalSmtpPassword: settings.globalSmtpPassword ?? '',
+            // CTS-C01: the public settings payload never carries the stored SMTP
+            // credentials, so these two fields are set-only. They always start
+            // empty; an empty field on save means "keep the stored value".
+            globalSmtpUsername: '',
+            globalSmtpPassword: '',
             globalSmtpFrom: settings.globalSmtpFrom ?? '',
-            globalSmtpEmailThemeColor: settings.globalSmtpEmailThemeColor ?? '#0f3b8f',
         }),
         [settings],
+    );
+    // Set-only credentials: an empty username/password field means "keep the
+    // stored value", so the key must not appear in the PATCH body at all — an
+    // empty string would destroy the stored credential server-side (CTS-C01).
+    // Whitespace-only input is deliberately treated the same as empty: the
+    // settings PATCH contract (ORISO-ConsultingTypeService#98, CTS PR #138)
+    // treats blank/whitespace-only credential values as "unchanged", so
+    // sending "  " would be a no-op server-side while the UI pretended a
+    // credential change happened.
+    const handleSave = useCallback(
+        (formData: unknown, options?: { onError?: () => void }) => {
+            const { globalSmtpUsername, globalSmtpPassword, ...rest } = (formData ?? {}) as Record<string, unknown>;
+            mutate(
+                {
+                    ...rest,
+                    ...(typeof globalSmtpUsername === 'string' && globalSmtpUsername.trim() !== ''
+                        ? { globalSmtpUsername }
+                        : {}),
+                    ...(typeof globalSmtpPassword === 'string' && globalSmtpPassword.trim() !== ''
+                        ? { globalSmtpPassword }
+                        : {}),
+                },
+                {
+                    ...options,
+                    // Once a credential is saved it must not linger in the DOM:
+                    // the fields would still hold the typed values when the card
+                    // is reopened, and the next unrelated save would re-send
+                    // them. Reset both to their (empty) initial values — same
+                    // write-only pattern as the tenant SMTP card (#730).
+                    onSuccess: () => {
+                        form.resetFields([['globalSmtpUsername'], ['globalSmtpPassword']]);
+                    },
+                },
+            );
+        },
+        [form, mutate],
     );
     const handleSendTestEmail = useCallback(async () => {
         const values = form.getFieldsValue(true);
@@ -143,14 +161,13 @@ export const GlobalSmtpSettingsPage = () => {
             return;
         }
 
-        if (
-            !values.globalSmtpHost ||
-            !values.globalSmtpPort ||
-            !values.globalSmtpUsername ||
-            !values.globalSmtpPassword ||
-            !values.globalSmtpFrom
-        ) {
-            message.error(t('globalSettings.smtp.test.errorMissingSmtp'));
+        // Only the connection fields are required here. The backend test
+        // endpoint reads the STORED credentials and ignores whatever the
+        // request carries, so empty username/password fields (set-only since
+        // CTS-C01) must never block the test mail. If no credentials are
+        // stored, the server answers with a clear error that is surfaced below.
+        if (!values.globalSmtpHost || !values.globalSmtpPort || !values.globalSmtpFrom) {
+            message.error(t('globalSettings.smtp.test.errorMissingConnection'));
             return;
         }
         setIsTestSending(true);
@@ -163,7 +180,6 @@ export const GlobalSmtpSettingsPage = () => {
                 password: values.globalSmtpPassword || '',
                 from: values.globalSmtpFrom || '',
                 recipientEmail: cleanedRecipientEmail,
-                emailThemeColor: values.globalSmtpEmailThemeColor || '#0f3b8f',
             });
             message.success(t('globalSettings.smtp.test.success', { email: cleanedRecipientEmail }));
         } catch (error) {
@@ -200,7 +216,7 @@ export const GlobalSmtpSettingsPage = () => {
                         initialValues={initialValues}
                         titleKey="globalSettings.smtp.title"
                         subTitleKey="globalSettings.smtp.description"
-                        onSave={mutate}
+                        onSave={handleSave}
                         formProp={form}
                     >
                         <div className={styles.fieldGrid}>
@@ -226,18 +242,21 @@ export const GlobalSmtpSettingsPage = () => {
 
                             <MuiFormField label={t('globalSettings.smtp.host')} name={['globalSmtpHost']} />
                             <MuiNumberFormField label={t('globalSettings.smtp.port')} name={['globalSmtpPort']} />
-                            <MuiFormField label={t('globalSettings.smtp.username')} name={['globalSmtpUsername']} />
+                            <MuiFormField
+                                label={t('globalSettings.smtp.username')}
+                                name={['globalSmtpUsername']}
+                                placeholder={t('globalSettings.smtp.username.placeholder')}
+                                helpText={t('globalSettings.smtp.username.helpText')}
+                                autoComplete="off"
+                            />
                             <MuiPasswordFormField
                                 label={t('globalSettings.smtp.password')}
                                 name={['globalSmtpPassword']}
-                                autoComplete="current-password"
+                                placeholder={t('globalSettings.smtp.password.placeholder')}
+                                helpText={t('globalSettings.smtp.password.helpText')}
+                                autoComplete="new-password"
                             />
                             <MuiFormField label={t('globalSettings.smtp.from')} name={['globalSmtpFrom']} />
-                            <MuiColorField
-                                className={styles.colorField}
-                                labelKey="globalSettings.smtp.emailThemeColor"
-                                name={['globalSmtpEmailThemeColor']}
-                            />
                             <MuiSwitchField
                                 className={styles.smtpSwitch}
                                 label={renderSwitchLabel(
@@ -288,5 +307,3 @@ export const GlobalSmtpSettingsPage = () => {
         </ThemeProvider>
     );
 };
-
-export const GlobalSettingsIndexRedirect = () => <Navigate to="/admin/global-settings/login" replace />;

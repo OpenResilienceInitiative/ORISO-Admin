@@ -42,7 +42,7 @@ export const COUNSELLOR_PHASE_KEYS: readonly PhaseKey[] = ['invited', 'accountCr
 export const PHASE_LABEL_FALLBACKS: Record<PhaseKey, string> = {
     invited: 'Eingeladen',
     registered: 'Registriert',
-    dpaConfirmed: 'AVV bestätigt',
+    dpaConfirmed: 'Vertragsunterlagen bestätigt',
     twoFactorActive: '2FA aktiv',
     accountCreated: 'Konto angelegt',
     completed: 'Abgeschlossen',

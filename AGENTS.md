@@ -23,6 +23,7 @@
     -   `npm run lint:css`
     -   `npm run build`
 -   All `lint:*` scripts are check-only and never write to the working tree, so they are safe to use as gates. The mutating variants are explicit: `lint:css:fix` and `lint:formatting:fix`.
+-   After editing, run `npx prettier --write` on the touched paths. CI runs `npx prettier . --check --ignore-unknown` and fails on unformatted Markdown and JSON, not only source.
 -   `lint:css` reports `order/properties-order` as a warning. Warnings do not fail the gate; only errors do.
 -   If a full command is too expensive or blocked by existing unrelated failures, run the narrowest relevant command and state the blocker precisely.
 

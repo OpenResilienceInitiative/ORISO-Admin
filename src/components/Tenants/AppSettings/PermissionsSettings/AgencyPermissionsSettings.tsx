@@ -1,5 +1,5 @@
 import { notification } from 'antd';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAgencyData } from '../../../../hooks/useAgencyData';
 import { useAgencyUpdate } from '../../../../hooks/useAgencyUpdate';
@@ -28,6 +28,7 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
     const { t } = useTranslation();
     const { data: agencyData, isLoading } = useAgencyData({ id: agencyId });
     const { mutate: updateAgency } = useAgencyUpdate(agencyId);
+    const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
 
     const allowedPermissionToggles = agencyData?.settings?.agencyAdminControls?.allowedPermissionToggles;
     const enforcedPermissionToggles = agencyData?.settings?.agencyAdminControls?.enforcedPermissionToggles;
@@ -51,9 +52,9 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
     );
 
     const formStateKey = useMemo(() => Array.from(restrictedFields).sort().join('|'), [restrictedFields]);
-
     const saveSettings = useCallback(
-        (settings: Record<string, unknown> | undefined) => {
+        (settings: Record<string, unknown> | undefined, policyField?: string) => {
+            if (policyField) setPendingPolicyFields(new Set([policyField]));
             updateAgency(
                 {
                     settings: applyPermissionConstraintsToSettings(
@@ -66,6 +67,10 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
                     onSuccess: () => {
                         notification.success({ message: t('message.agency.updated'), duration: 3 });
                     },
+                    onError: () => notification.error({ message: t('tenants.permissions.policy.saveError') }),
+                    onSettled: () => {
+                        if (policyField) setPendingPolicyFields(new Set());
+                    },
                 },
             );
         },
@@ -76,22 +81,18 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
         (fieldPath, value, currentFormData) => {
             if (!agencyData) return;
 
+            const fieldKey = Array.isArray(fieldPath) ? fieldPath.at(-1) : fieldPath;
             const toggleUpdate = buildTogglePayload(fieldPath, value) as { settings?: Record<string, boolean> };
-            saveSettings({
-                ...stripAgencyAdminControls(agencyData.settings ?? {}),
-                ...(currentFormData?.settings ?? {}),
-                ...toggleUpdate.settings,
-            });
+            saveSettings(
+                {
+                    ...stripAgencyAdminControls(agencyData.settings ?? {}),
+                    ...(currentFormData?.settings ?? {}),
+                    ...toggleUpdate.settings,
+                },
+                fieldKey,
+            );
         },
         [agencyData, saveSettings],
-    );
-
-    const handleSave = useCallback(
-        (formData: unknown) => {
-            const savedFormData = formData as { settings?: Record<string, unknown> };
-            saveSettings(savedFormData.settings);
-        },
-        [saveSettings],
     );
 
     return (
@@ -103,7 +104,8 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
             formStateKey={formStateKey}
             restrictedFields={restrictedFields}
             onToggleUpdate={handleToggleUpdate}
-            onSave={handleSave}
+            policyLevel="agency"
+            pendingPolicyFields={pendingPolicyFields}
         />
     );
 };

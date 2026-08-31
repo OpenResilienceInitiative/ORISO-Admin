@@ -1,5 +1,6 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CheckBoxIcon } from '../CustomIcons/LegalIcons';
 import { M3Checkbox } from '../M3Checkbox';
 import {
     PlaceholderTemplateEditor,
@@ -13,6 +14,16 @@ import styles from './PlaceholderTemplateEditor.module.scss';
 export interface LegalConsentTemplateValues extends Record<string, string> {
     text: string;
 }
+
+/**
+ * Head symbol of the consent sentence — the house checkbox glyph, because the
+ * sentence IS the checkbox the help-seeker ticks during registration (owner
+ * call 2026-08-20; the earlier MUI `FactCheckOutlined` was not from the house
+ * set). An alias, not a wrapper, so the full-page editor head, the dialog hero
+ * icon and the template split button use one symbol instead of drifting apart.
+ * Decorative everywhere it is used.
+ */
+export const LegalConsentHeadIcon = CheckBoxIcon;
 
 export interface LegalConsentTemplateEditorProps {
     values: LegalConsentTemplateValues;
@@ -38,6 +49,8 @@ export interface LegalConsentTemplateEditorProps {
      * archived version.
      */
     readOnly?: boolean;
+    /** The host draws the template chooser itself — see PlaceholderTemplateEditor. */
+    hideTemplateChooser?: boolean;
 }
 
 /**
@@ -57,6 +70,7 @@ export const LegalConsentTemplateEditor = ({
     addendum,
     languageLabel,
     readOnly = false,
+    hideTemplateChooser = false,
 }: LegalConsentTemplateEditorProps) => {
     const { t } = useTranslation();
     const sentenceId = useId();
@@ -79,7 +93,9 @@ export const LegalConsentTemplateEditor = ({
         <PlaceholderTemplateEditor
             activeTemplateId={activeTemplateId}
             fields={fields}
+            hideTemplateChooser={hideTemplateChooser}
             heading={t('placeholderTemplate.legal.heading', 'Einwilligung (Registrierung)')}
+            icon={<LegalConsentHeadIcon />}
             preview={
                 <section
                     aria-label={t('placeholderTemplate.legal.previewLabel', 'Vorschau der Einwilligung')}
@@ -107,6 +123,11 @@ export const LegalConsentTemplateEditor = ({
                 </section>
             }
             readOnly={readOnly}
+            // The consent sentence is rendered as a CHECKBOX label in registration
+            // (see the preview below), so the checkbox is the glyph that names this
+            // template — not the generic document icon the invite templates use.
+            // Outline, not filled: filled is this set's selected state.
+            templateIcon={<CheckBoxIcon />}
             templates={templates}
             tokens={LEGAL_CONSENT_TOKENS}
             values={values}

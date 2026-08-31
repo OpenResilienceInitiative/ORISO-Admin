@@ -1,15 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Alert } from 'antd';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { LegalConsentTemplateEditor, type LegalConsentTemplateValues } from '../../../../PlaceholderTemplate';
+import {
+    LegalConsentHeadIcon,
+    LegalConsentTemplateEditor,
+    PlaceholderTemplateDialog,
+} from '../../../../PlaceholderTemplate';
+import { useConsentTemplates } from '../../hooks/useConsentTemplates';
 import {
     hasMandatoryConsentToken,
     isBlankConsentText,
     MANDATORY_CONSENT_TOKEN,
 } from '../../utils/consentTextValidation';
 import styles from './styles.module.scss';
-
-const PLATFORM_TEMPLATE_ID = 'platform';
 
 export interface LegalConsentFieldProps {
     /** The consent sentence of the language currently being edited. */
@@ -25,102 +29,140 @@ export interface LegalConsentFieldProps {
      * valid statement, so the card says which one it is showing).
      */
     inheritedFrom?: string;
+    /**
+     * The HOST already offers the template chooser — the department card lifts it
+     * into the editor's function bar (agency level, owner decision 2026-08-19), so
+     * this module must not draw a second, identical one. The choice itself is not
+     * taken away; only its location moves.
+     */
+    hideTemplateChooser?: boolean;
 }
 
 /**
- * The consent sentence a help-seeker ticks — a FIELD of the data-protection
- * policy, not a document of its own (ADR-021 decision 4). It therefore lives
- * inside the DPP card and is published with it: changing the wording means
- * publishing a new policy version whose body text may be unchanged.
+ * Consent sentence of the data-protection policy (ADR-021 decision 4) — edited in
+ * the house placeholder-template dialog (#862 / Storybook `LegalConsentInDialog`).
  *
- * Two rules are visible here:
- * - `{{legal_links}}` is mandatory. A Träger sentence REPLACES the platform
- *   sentence, so without the links the help-seeker could not reach the documents
- *   being agreed to. The server rejects such a publish (ADR-021 decision 2); this
- *   is the same check, run before the request so the admin is not sent into a 400.
- * - the cookie/authentication notice is appended by the platform and is not
- *   editable — shown in the preview so the admin sees the real sentence.
+ * Closed surface is an outline CTA matching the M3 function-bar split buttons,
+ * meant to sit left of the Fachbereich dropdown inside the card. The dialog
+ * portals out so the fixed 800×740 card never stretches.
  */
-export const LegalConsentField = ({ value, language, onChange, readOnly, inheritedFrom }: LegalConsentFieldProps) => {
+export const LegalConsentField = ({
+    value,
+    language,
+    onChange,
+    readOnly,
+    inheritedFrom,
+    hideTemplateChooser,
+}: LegalConsentFieldProps) => {
     const { t } = useTranslation();
+    const [open, setOpen] = useState(false);
+    const [draft, setDraft] = useState(value);
     const [activeTemplateId, setActiveTemplateId] = useState<number | string | undefined>(undefined);
+    const templates = useConsentTemplates(language);
 
-    const templates = useMemo(
-        () => [
-            {
-                id: PLATFORM_TEMPLATE_ID,
-                name: t('legal.consent.template.platform.name'),
-                values: { text: t('legal.consent.template.platform.text') } as LegalConsentTemplateValues,
-            },
-        ],
-        [t],
-    );
-
-    // Only an authored sentence can violate the rule — an empty field means the
-    // level above still applies, which is a valid state, not an error.
     const missingMandatoryToken = !isBlankConsentText(value) && !hasMandatoryConsentToken(value);
+    const draftMissingMandatoryToken = !isBlankConsentText(draft) && !hasMandatoryConsentToken(draft);
+
+    const openDialog = () => {
+        setDraft(value);
+        setActiveTemplateId(undefined);
+        setOpen(true);
+    };
+
+    const closeDialog = () => {
+        setOpen(false);
+        setDraft(value);
+        setActiveTemplateId(undefined);
+    };
+
+    const saveDialog = () => {
+        if (!readOnly) {
+            onChange(draft);
+        }
+        setOpen(false);
+        setActiveTemplateId(undefined);
+    };
 
     const applyTemplate = (id: number | string) => {
         const template = templates.find((entry) => entry.id === id);
         if (!template || readOnly) return;
         setActiveTemplateId(id);
-        onChange(template.values.text);
+        setDraft(template.values.text);
     };
 
+    const cookieAddendum = (
+        <p className={styles.addendum} data-testid="consent-fixed-addendum">
+            <span className={styles.addendumText}>{t('legal.consent.cookieNotice.text')}</span>
+            <span className={styles.addendumCaption}>{t('legal.consent.cookieNotice.caption')}</span>
+        </p>
+    );
+
     return (
-        <section aria-label={t('legal.consent.section.label')} className={styles.consentField}>
-            <p className={styles.description}>{t('legal.consent.description')}</p>
-            {/* An empty field is a valid state, not a gap: it means the level above
-                still governs. Saying so beats leaving an ambiguous blank box (#769). */}
-            {(inheritedFrom || isBlankConsentText(value)) && (
-                <Alert
-                    className={styles.notice}
-                    type="info"
-                    showIcon
-                    data-testid="consent-inherited-notice"
-                    message={
-                        inheritedFrom
-                            ? t('legal.consent.inherited', { level: inheritedFrom })
-                            : t('legal.consent.emptyMeansInherited')
-                    }
-                />
+        <>
+            <button
+                type="button"
+                className={classNames(styles.trigger, missingMandatoryToken && styles.triggerDanger)}
+                data-testid="consent-edit-trigger"
+                data-missing-token={missingMandatoryToken || undefined}
+                onClick={openDialog}
+            >
+                {readOnly ? t('legal.consent.viewButton') : t('legal.consent.editButton')}
+            </button>
+            {open && (
+                <PlaceholderTemplateDialog
+                    icon={<LegalConsentHeadIcon data-testid="legal-consent-head-icon" />}
+                    titleKey="placeholderTemplate.dialog.legalTitle"
+                    descriptionKey="legal.consent.description"
+                    onSave={saveDialog}
+                    onClose={closeDialog}
+                    saveDisabled={readOnly}
+                >
+                    <div className={styles.dialogBody}>
+                        {(inheritedFrom || isBlankConsentText(value)) && (
+                            <Alert
+                                className={styles.notice}
+                                type="info"
+                                showIcon
+                                data-testid="consent-inherited-notice"
+                                message={
+                                    inheritedFrom
+                                        ? t('legal.consent.inherited', { level: inheritedFrom })
+                                        : t('legal.consent.emptyMeansInherited')
+                                }
+                            />
+                        )}
+                        {draftMissingMandatoryToken && (
+                            <Alert
+                                className={styles.notice}
+                                type="error"
+                                showIcon
+                                data-testid="consent-missing-token-error"
+                                message={t('legal.consent.error.missingLegalLinks.title')}
+                                description={
+                                    <>
+                                        {t('legal.consent.error.missingLegalLinks.description')}{' '}
+                                        <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
+                                    </>
+                                }
+                            />
+                        )}
+                        <LegalConsentTemplateEditor
+                            activeTemplateId={activeTemplateId}
+                            addendum={cookieAddendum}
+                            hideTemplateChooser={hideTemplateChooser}
+                            languageLabel={t(`language.${language}`, language.toUpperCase())}
+                            readOnly={readOnly}
+                            templates={templates}
+                            values={{ text: draft }}
+                            onChange={(next) => {
+                                if (!readOnly) setDraft(next.text);
+                            }}
+                            onSelectTemplate={applyTemplate}
+                        />
+                    </div>
+                </PlaceholderTemplateDialog>
             )}
-            <LegalConsentTemplateEditor
-                activeTemplateId={activeTemplateId}
-                addendum={
-                    <p className={styles.addendum} data-testid="consent-fixed-addendum">
-                        <span className={styles.addendumText}>{t('legal.consent.cookieNotice.text')}</span>
-                        <span className={styles.addendumCaption}>{t('legal.consent.cookieNotice.caption')}</span>
-                    </p>
-                }
-                languageLabel={t(`language.${language}`, language.toUpperCase())}
-                readOnly={readOnly}
-                templates={templates}
-                values={{ text: value }}
-                onChange={(next) => {
-                    if (!readOnly) onChange(next.text);
-                }}
-                onSelectTemplate={applyTemplate}
-            />
-            {missingMandatoryToken && (
-                <Alert
-                    className={styles.notice}
-                    type="error"
-                    showIcon
-                    data-testid="consent-missing-token-error"
-                    message={t('legal.consent.error.missingLegalLinks.title')}
-                    description={
-                        <>
-                            {t('legal.consent.error.missingLegalLinks.description')}{' '}
-                            {/* The token is composed in JSX, never interpolated: i18next
-                                treats `{{…}}` inside a translation as its own syntax and
-                                would swallow the very string we are naming. */}
-                            <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
-                        </>
-                    }
-                />
-            )}
-        </section>
+        </>
     );
 };
 

@@ -20,8 +20,8 @@
     // The menu lies ON TOP of the rows instead, so nothing but the FAB's own
     // icon changes when you open it.
     position: absolute;
-    // 6px clear of the FAB, matching the bar row's own inset.
-    bottom: calc(100% + 6px);
+    // Figma FAB menu: 8px between the primary FAB and the related-action stack.
+    bottom: calc(100% + 8px);
     left: 0;
     // With every destination a permission grants, the stack is taller than a
     // phone: eight sections plus the account group already overflow a 650px
@@ -81,6 +81,11 @@
     &:hover,
     &:focus-visible {
         text-decoration: none;
+    }
+
+    &:disabled {
+        cursor: wait;
+        opacity: 0.55;
     }
 
     &:focus-visible {
@@ -150,4 +155,85 @@
 
 .fabGlyph {
     fill: currentcolor;
+}
+
+.action {
+    // The shared Admin palette still carries historical inverted container
+    // names. Keep the Figma roles local to this component so the policy menu
+    // can match M3 without changing unrelated sidebar and field surfaces.
+    --m3-fab-menu-primary-container: var(--oriso-app-action, #cc1e1c);
+    --m3-fab-menu-on-primary-container: var(--oriso-app-accent-light, #ffe2de);
+    --m3-fab-menu-secondary: var(--m3-secondary, #4c555f);
+    --m3-fab-menu-on-secondary-container: var(--m3-on-secondary-container, #e7effc);
+
+    align-items: flex-end;
+
+    .stack {
+        right: 0;
+        left: auto;
+        z-index: 20;
+        align-items: flex-end;
+    }
+
+    .item {
+        background: var(--m3-fab-menu-primary-container);
+        color: var(--m3-fab-menu-on-primary-container);
+    }
+
+    .item:focus-visible {
+        // M3 focus state-layer: visible to keyboard users without introducing
+        // the border-like ring that is absent from both Figma variants.
+        background: color-mix(
+            in srgb,
+            var(--m3-fab-menu-on-primary-container) 8%,
+            var(--m3-fab-menu-primary-container)
+        );
+        box-shadow: none;
+    }
+
+    .fab {
+        background: var(--m3-primary, #a5000a);
+        color: var(--m3-fab-menu-on-primary-container);
+
+        svg[data-icon='switch-on'],
+        svg[data-icon='switch-off'],
+        svg[data-icon='silent'] {
+            width: 24px;
+            height: 24px;
+        }
+    }
+}
+
+.action.neutral {
+    .item,
+    .fab {
+        background: var(--m3-fab-menu-secondary);
+        color: var(--m3-fab-menu-on-secondary-container);
+    }
+
+    .item:focus-visible {
+        background: color-mix(in srgb, var(--m3-fab-menu-on-secondary-container) 8%, var(--m3-fab-menu-secondary));
+    }
+}
+
+.action.openDownward {
+    .stack {
+        top: calc(100% + 8px);
+        bottom: auto;
+    }
+}
+
+@media screen and (max-width: 767px) {
+    .action {
+        .stack,
+        .item {
+            max-width: calc(100vw - 12px);
+        }
+
+        .item {
+            padding-right: 16px;
+            padding-left: 16px;
+            font-size: 14px;
+        }
+    }
 }

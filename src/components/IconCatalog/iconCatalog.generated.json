@@ -812,6 +812,32 @@
         "usage": "catalogued-only"
     },
     {
+        "id": "ui-icon:check-box:filled",
+        "family": "check-box",
+        "state": "filled",
+        "role": "selected",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "check-box-filled.svg",
+        "sourcePath": "src/resources/img/svg/check-box-filled.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:check-box:base",
+        "family": "check-box",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "check-box.svg",
+        "sourcePath": "src/resources/img/svg/check-box.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:checkmark:base",
         "family": "checkmark",
         "state": "base",
@@ -1576,8 +1602,8 @@
         "fileName": "settings_active.svg",
         "sourcePath": "src/resources/img/svg/navbar/settings_active.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "sidebar-icon:navbar:settings:hover",
@@ -1589,8 +1615,8 @@
         "fileName": "settings_hover.svg",
         "sourcePath": "src/resources/img/svg/navbar/settings_hover.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "sidebar-icon:navbar:settings:outline",
@@ -1602,8 +1628,8 @@
         "fileName": "settings_inactive.svg",
         "sourcePath": "src/resources/img/svg/navbar/settings_inactive.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "sidebar-icon:navbar:statistics:filled",
@@ -1844,6 +1870,35 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:oriso:lock-open-right:400",
+        "family": "lock-open-right",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 20,
+        "fileName": "lock_open_right_400_20px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/lock_open_right_400_20px.svg",
+        "exportNames": [],
+        "usageFiles": [],
+        "usage": "catalogued-only"
+    },
+    {
+        "id": "ui-icon:oriso:lock-open-right:filled",
+        "family": "lock-open-right",
+        "state": "filled",
+        "role": "selected",
+        "kind": "ui-icon",
+        "size": 20,
+        "fileName": "lock_open_right_filled_20px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/lock_open_right_filled_20px.svg",
+        "exportNames": [],
+        "usageFiles": [
+            "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
+            "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx"
+        ],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:oriso:mail:base",
         "family": "mail",
         "state": "base",
@@ -1853,8 +1908,8 @@
         "fileName": "mail_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_24px.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:oriso:mail:filled",
@@ -1866,8 +1921,8 @@
         "fileName": "mail_filled_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_filled_24px.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:oriso:nearby-conv-type:200",
@@ -1957,8 +2012,8 @@
         "fileName": "send_400_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/send_400_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:oriso:send:filled",
@@ -1970,7 +2025,46 @@
         "fileName": "send_filled_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/send_filled_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
+        "usageFiles": [],
+        "usage": "catalogued-only"
+    },
+    {
+        "id": "ui-icon:oriso:silent:400",
+        "family": "silent",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "silent_400_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/silent_400_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:oriso:switch-off:400",
+        "family": "switch-off",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "switch_off_400_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/switch_off_400_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:oriso:switch-on:400",
+        "family": "switch-on",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "switch_on_400_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/switch_on_400_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
         "usage": "app-used"
     },
     {

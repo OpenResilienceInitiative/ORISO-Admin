@@ -1,7 +1,24 @@
 import { PermissionToggleVisibility } from '../../../../types/PermissionToggleVisibility';
 import { TenantAdminControls } from '../../../../types/TenantAdminControls';
 import type { TenantSettings } from '../../../../types/tenant';
+import type { PolicyValue } from '../../../../types/permissionPolicy';
 import type { ChatTypeCardDef } from './types';
+
+export const resolvePermissionPolicy = (
+    permissionPolicies: Record<string, PolicyValue<boolean>> | undefined,
+    fieldKey: string,
+    currentValue: unknown,
+    restrictedFields: ReadonlySet<string>,
+): PolicyValue<boolean> => {
+    const restricted = restrictedFields.has(fieldKey);
+    return (
+        permissionPolicies?.[fieldKey] ?? {
+            value: currentValue !== false,
+            mode: restricted ? 'ENFORCED' : 'SUGGESTED',
+            inherited: restricted,
+        }
+    );
+};
 
 export const DEFAULT_PERMISSION_SETTINGS = {
     featureAnonymousChatEnabled: true,

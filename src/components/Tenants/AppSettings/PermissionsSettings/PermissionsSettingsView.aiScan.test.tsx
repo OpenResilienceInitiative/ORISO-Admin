@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // CardDeck measures/scrolls on mount; jsdom has no scrollTo.
@@ -39,12 +39,22 @@ const renderOneOnOne = async () => {
             formStateKey="k1"
             restrictedFields={new Set()}
             onToggleUpdate={vi.fn()}
-            onSave={vi.fn()}
         />,
     );
 };
 
-const aiScanSwitch = () => screen.getByRole('switch', { name: 'tenants.permissions.feature.mediaAiScan' });
+const labelsByField: Record<string, string> = {
+    featureMediaAiScanOneOnOneChatsEnabled: 'tenants.permissions.feature.mediaAiScan',
+    featureMediaUploadOneOnOneChatsEnabled: 'tenants.permissions.feature.mediaUpload',
+    featureMediaInlineDisplayOneOnOneChatsEnabled: 'tenants.permissions.feature.mediaInlineDisplay',
+};
+
+const policyButton = (field: string) => {
+    const control = document.querySelector(`[data-feature-policy="${field}"]`) as HTMLElement;
+    return within(control).getByRole('button', { name: new RegExp(labelsByField[field]) });
+};
+
+const aiScanControl = () => policyButton('featureMediaAiScanOneOnOneChatsEnabled');
 
 /**
  * ORISO-Admin#734. The AI media check is switchable in this panel but does
@@ -63,7 +73,7 @@ describe('AI media check availability gate', () => {
 
         await renderOneOnOne();
 
-        expect(aiScanSwitch()).toBeDisabled();
+        expect(aiScanControl()).toBeDisabled();
     });
 
     it('says why, rather than looking arbitrarily broken', async () => {
@@ -79,7 +89,7 @@ describe('AI media check availability gate', () => {
 
         await renderOneOnOne();
 
-        expect(aiScanSwitch()).toBeInTheDocument();
+        expect(aiScanControl()).toBeInTheDocument();
     });
 
     it('leaves the sibling media toggles alone', async () => {
@@ -87,8 +97,8 @@ describe('AI media check availability gate', () => {
 
         await renderOneOnOne();
 
-        expect(screen.getByRole('switch', { name: 'tenants.permissions.feature.mediaUpload' })).toBeEnabled();
-        expect(screen.getByRole('switch', { name: 'tenants.permissions.feature.mediaInlineDisplay' })).toBeEnabled();
+        expect(policyButton('featureMediaUploadOneOnOneChatsEnabled')).toBeEnabled();
+        expect(policyButton('featureMediaInlineDisplayOneOnOneChatsEnabled')).toBeEnabled();
     });
 
     it('becomes switchable once the environment declares the AI scan available', async () => {
@@ -96,7 +106,7 @@ describe('AI media check availability gate', () => {
 
         await renderOneOnOne();
 
-        expect(aiScanSwitch()).toBeEnabled();
+        expect(aiScanControl()).toBeEnabled();
         expect(screen.queryByText('tenants.permissions.feature.mediaAiScanUnavailable')).not.toBeInTheDocument();
     });
 });

@@ -1,0 +1,10 @@
+@use '../../../../styles/muiSpacing' as mui;
+
+.frame {
+    width: 100%;
+    max-width: calc(mui.$mui-unit * 53);
+}
+
+.wide {
+    max-width: calc(mui.$mui-unit * 60);
+}

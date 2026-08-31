@@ -1,31 +1,11 @@
-import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { fn } from 'storybook/test';
 import { UseAppConfigProvider } from '../../../../context/useAppConfig';
-import { PermissionsSettingsView, type PermissionsSettingsViewProps } from './PermissionsSettingsView';
+import { PermissionsSettingsView } from './PermissionsSettingsView';
 import { DEFAULT_PERMISSION_SETTINGS, getForcedOffFields } from './permissionsSettingsUtils';
 
 const filledSettings = { ...DEFAULT_PERMISSION_SETTINGS };
-
-/** Stateful wrapper so the enforce checkboxes toggle in isolation (no backend). */
-const EnforcePermissionsCard = (args: PermissionsSettingsViewProps) => {
-    const [enforced, setEnforced] = useState<Set<string>>(new Set(['featureVoiceMessagesOneOnOneChatsEnabled']));
-    return (
-        <PermissionsSettingsView
-            {...args}
-            enforcedFields={enforced}
-            onEnforceChange={(fieldKey, next) => {
-                setEnforced((prev) => {
-                    const nextSet = new Set(prev);
-                    if (next) nextSet.add(fieldKey);
-                    else nextSet.delete(fieldKey);
-                    return nextSet;
-                });
-            }}
-        />
-    );
-};
 
 const meta = {
     title: 'Organisms/Permissions/PermissionsSettings',
@@ -55,7 +35,6 @@ const meta = {
         formStateKey: 'story',
         restrictedFields: new Set<string>(),
         onToggleUpdate: fn(),
-        onSave: fn(),
     },
     decorators: [
         (Story) => (
@@ -74,43 +53,6 @@ type Story = StoryObj<typeof meta>;
 export const TenantView: Story = {
     args: {
         initialValues: { settings: filledSettings },
-    },
-};
-
-/** Focused visual contract for the generic permission-card anatomy:
- *  feature icon + title, leading neutral info copy, then the master switch. */
-export const OneOnOneCardHierarchy: Story = {
-    args: {
-        excludeCardKeys: ['liveChat', 'group', 'groupInternal'],
-        initialValues: { settings: filledSettings },
-    },
-    play: async ({ canvasElement, step }) => {
-        const canvas = within(canvasElement);
-
-        await step('description leads with a neutral 16px info icon', async () => {
-            const title = await canvas.findByRole('heading', { name: '1 zu 1 Beratungen' });
-            const cardItem = title.closest('[data-admin-card-deck-item]');
-            expect(cardItem).not.toBeNull();
-
-            const card = within(cardItem as HTMLElement);
-            const description = card.getByText(/Ratsuchende finden lokale Beratende/).closest('p');
-            const infoIcon = description?.firstElementChild;
-
-            expect(description).not.toBeNull();
-            expect(infoIcon?.tagName).toBe('svg');
-            expect(getComputedStyle(infoIcon as Element).width).toBe('16px');
-            expect(getComputedStyle(infoIcon as Element).color).toBe('rgb(68, 71, 72)');
-        });
-
-        await step('description appears before the activated switch', async () => {
-            const title = canvas.getByRole('heading', { name: '1 zu 1 Beratungen' });
-            const cardItem = title.closest('[data-admin-card-deck-item]') as HTMLElement;
-            const card = within(cardItem);
-            const description = card.getByText(/Ratsuchende finden lokale Beratende/).closest('p') as HTMLElement;
-            const activated = card.getByRole('switch', { name: 'Aktiviert' });
-
-            expect(description.compareDocumentPosition(activated)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-        });
     },
 };
 
@@ -154,33 +96,24 @@ export const SuperAdminView: Story = {
  *  master is enabled again, matching tenant and agency behavior. */
 export const SuperAdminMasterOff: Story = {
     args: {
-        enforceMode: true,
+        policyLevel: 'platform',
+        permissionPolicies: {
+            featureCallsEnabled: { value: false, mode: 'SUGGESTED' },
+        },
         initialValues: { settings: { ...filledSettings, featureCallsEnabled: false } },
     },
 };
 
-/** "Enforce active states" mode (Figma 105:11334): an upper role checks the box next to a
- *  feature to lock it on for every lower role, so it can no longer be hidden. */
-export const EnforceActiveStates: Story = {
+/** Each visible feature carries its own value and inheritance mode; no global enforcement mode. */
+export const PerFeaturePolicies: Story = {
     args: {
-        enforceMode: true,
+        policyLevel: 'platform',
+        permissionPolicies: {
+            featureCallsEnabled: { value: true, mode: 'ENFORCED' },
+            featureVideoCallsOneOnOneChatsEnabled: { value: false, mode: 'ENFORCED' },
+            featureAudioCallsOneOnOneChatsEnabled: { value: true, mode: 'SUGGESTED' },
+            featureVoiceMessagesOneOnOneChatsEnabled: { value: false, mode: 'SUGGESTED' },
+        },
         initialValues: { settings: filledSettings },
-    },
-    render: (args) => <EnforcePermissionsCard {...args} />,
-    play: async ({ canvasElement, step }) => {
-        const canvas = within(canvasElement);
-        await step('start editing so the card controls are interactive', async () => {
-            await userEvent.click((await canvas.findAllByRole('button', { name: 'Edit' }))[0]);
-        });
-        await step('enforce checkboxes are rendered for each feature', async () => {
-            const checkboxes = await canvas.findAllByRole('checkbox');
-            expect(checkboxes.length).toBeGreaterThan(0);
-        });
-        await step('checking a video-calls feature enforces it on for lower roles', async () => {
-            const videoEnforce = (await canvas.findAllByRole('checkbox', { name: /Video calls/i }))[0];
-            expect(videoEnforce).toHaveAttribute('aria-checked', 'false');
-            await userEvent.click(videoEnforce);
-            expect(videoEnforce).toHaveAttribute('aria-checked', 'true');
-        });
     },
 };

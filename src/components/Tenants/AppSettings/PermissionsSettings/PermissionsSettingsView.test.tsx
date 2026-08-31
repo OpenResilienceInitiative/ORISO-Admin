@@ -1,15 +1,13 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import type { ComponentProps, SVGProps } from 'react';
 import userEvent from '@testing-library/user-event';
-import type { SVGProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 
-// CardDeck measures/scrolls on mount; jsdom has no scrollTo (mirrors CardDeck's own test).
 beforeEach(() => {
     Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: vi.fn() });
 });
 
-// Identity t + a trivial Trans so labels are the raw i18n keys.
 vi.mock('react-i18next', () => {
     const t = (key?: string) => key ?? '';
     return {
@@ -19,10 +17,7 @@ vi.mock('react-i18next', () => {
     };
 });
 
-// The Case-handover card has its own data hooks; render it inert to isolate the generic cards.
 vi.mock('./CaseHandoverCard', () => ({ CaseHandoverCard: () => null }));
-
-// vitest has no svgr plugin — stub the card icons.
 vi.mock('../../../../resources/img/svg/permissions/one_on_one.svg', () => ({ ReactComponent: () => null }));
 vi.mock('../../../../resources/img/svg/permissions/live_chat.svg', () => ({ ReactComponent: () => null }));
 vi.mock('../../../../resources/img/svg/permissions/group.svg', () => ({ ReactComponent: () => null }));
@@ -31,39 +26,45 @@ vi.mock('../../../../resources/img/svg/i.svg', () => ({
     ReactComponent: (props: SVGProps<SVGSVGElement>) => <svg data-testid="permission-description-info" {...props} />,
 }));
 
-const MASTER = ['settings', 'featureCallsEnabled'];
-const VIDEO = ['settings', 'featureVideoCallsOneOnOneChatsEnabled'];
-
-/**
- * Data-parity contract for the generic chat-type cards. Renders ONLY the 1-on-1
- * card and pins that the Form.Item-bound CheckToggles read from `initialValues`
- * and write the exact `settings.<key>` path via onToggleUpdate. Must stay green
- * across the `.chatTypeCard` → <Card> shell swap.
- */
-const renderOneOnOne = (initialSettings: Record<string, boolean>, onToggleUpdate = vi.fn()) => {
+const renderOneOnOne = (
+    onPolicyChange = vi.fn(),
+    props: Partial<ComponentProps<typeof PermissionsSettingsView>> = {},
+) => {
     render(
         <PermissionsSettingsView
             tenantId="t1"
             excludeCardKeys={['liveChat', 'group', 'groupInternal']}
             isLoading={false}
-            initialValues={{ settings: initialSettings }}
+            initialValues={{
+                settings: {
+                    featureCallsEnabled: true,
+                    featureVideoCallsOneOnOneChatsEnabled: false,
+                },
+            }}
             formStateKey="k1"
             restrictedFields={new Set()}
-            onToggleUpdate={onToggleUpdate}
-            onSave={vi.fn()}
+            onToggleUpdate={vi.fn()}
+            permissionPolicies={{
+                featureCallsEnabled: { value: true, mode: 'SUGGESTED' },
+                featureVideoCallsOneOnOneChatsEnabled: { value: false, mode: 'SUGGESTED' },
+            }}
+            onPolicyChange={onPolicyChange}
+            {...props}
         />,
     );
-    return { onToggleUpdate };
+    return onPolicyChange;
 };
 
-describe('PermissionsSettingsView data parity (1-on-1 card)', () => {
+describe('PermissionsSettingsView per-feature policy controls', () => {
     it('orders the title, leading description info, and activated control for quick scanning', () => {
-        renderOneOnOne({ featureCallsEnabled: true });
+        renderOneOnOne();
 
         const title = screen.getByRole('heading', { name: 'tenants.permissions.card.oneOnOne.title' });
         const description = screen.getByText('tenants.permissions.card.oneOnOne.description').closest('p');
         const descriptionInfo = screen.getByTestId('permission-description-info');
-        const activated = screen.getByRole('switch', { name: 'tenants.permissions.card.activated' });
+        const activated = screen.getByRole('button', {
+            name: /tenants.permissions.card.activated: tenants.permissions.policy.openMenu/,
+        });
 
         expect(description).not.toBeNull();
         expect(description?.firstElementChild).toBe(descriptionInfo);
@@ -72,53 +73,184 @@ describe('PermissionsSettingsView data parity (1-on-1 card)', () => {
         expect((description as Node).compareDocumentPosition(activated)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
-    it('reads: master + child toggles reflect initialValues', () => {
-        renderOneOnOne({ featureCallsEnabled: true, featureVideoCallsOneOnOneChatsEnabled: false });
+    it('shows policy buttons instead of the former global enforcement UI', () => {
+        renderOneOnOne();
 
-        expect(screen.getByRole('switch', { name: 'tenants.permissions.card.activated' })).toBeChecked();
-        expect(screen.getByRole('switch', { name: 'tenants.permissions.feature.videoCalls' })).not.toBeChecked();
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.activated: tenants.permissions.policy.openMenu/,
+            }),
+        ).toBeTruthy();
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.feature.videoCalls: tenants.permissions.policy.openMenu/,
+            }),
+        ).toBeTruthy();
+        expect(screen.queryByRole('switch')).toBeNull();
+        expect(screen.queryByRole('checkbox')).toBeNull();
     });
 
-    it('writes: toggling the master emits the exact settings path + new value', async () => {
+    it('keeps at most one feature menu open', async () => {
         const user = userEvent.setup();
-        const { onToggleUpdate } = renderOneOnOne({ featureCallsEnabled: true });
+        renderOneOnOne();
 
-        await user.click(screen.getByRole('switch', { name: 'tenants.permissions.card.activated' }));
-
-        expect(onToggleUpdate).toHaveBeenCalledWith(
-            MASTER,
-            false,
-            expect.objectContaining({ settings: expect.objectContaining({ featureCallsEnabled: false }) }),
-        );
-    });
-
-    it('writes: toggling a child emits its own settings path', async () => {
-        const user = userEvent.setup();
-        const { onToggleUpdate } = renderOneOnOne({
-            featureCallsEnabled: true,
-            featureVideoCallsOneOnOneChatsEnabled: false,
+        const masterTrigger = screen.getByRole('button', {
+            name: /tenants.permissions.card.activated: tenants.permissions.policy.openMenu/,
         });
+        const videoTrigger = screen.getByRole('button', {
+            name: /tenants.permissions.feature.videoCalls: tenants.permissions.policy.openMenu/,
+        });
+        await user.click(masterTrigger);
+        expect(document.querySelectorAll('[data-admin-fab-menu-stack]')).toHaveLength(1);
+        expect(masterTrigger).toHaveAttribute('aria-expanded', 'true');
 
-        await user.click(screen.getByRole('switch', { name: 'tenants.permissions.feature.videoCalls' }));
+        await user.click(videoTrigger);
+        expect(document.querySelectorAll('[data-admin-fab-menu-stack]')).toHaveLength(1);
+        expect(masterTrigger).toHaveAttribute('aria-expanded', 'false');
+        expect(videoTrigger).toHaveAttribute('aria-expanded', 'true');
+    });
 
-        expect(onToggleUpdate).toHaveBeenCalledWith(
-            VIDEO,
-            true,
-            expect.objectContaining({
-                settings: expect.objectContaining({ featureVideoCallsOneOnOneChatsEnabled: true }),
+    it('auto-reports the exact feature and selected policy', async () => {
+        const user = userEvent.setup();
+        const onPolicyChange = renderOneOnOne();
+
+        await user.click(
+            screen.getByRole('button', {
+                name: /tenants.permissions.feature.videoCalls: tenants.permissions.policy.openMenu/,
             }),
         );
+        await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.activationEnforced' }));
+
+        expect(onPolicyChange).toHaveBeenCalledWith('featureVideoCallsOneOnOneChatsEnabled', {
+            value: true,
+            mode: 'ENFORCED',
+        });
     });
 
-    it('keeps child features visible but disabled until the platform card master is enabled', async () => {
+    it('keeps form state synchronized across agency-style autosaves and master shutdown', async () => {
         const user = userEvent.setup();
-        renderOneOnOne({ featureCallsEnabled: false, featureVideoCallsOneOnOneChatsEnabled: true });
+        const onToggleUpdate = vi.fn();
+        render(
+            <PermissionsSettingsView
+                tenantId="agency-55"
+                excludeCardKeys={['liveChat', 'group', 'groupInternal']}
+                isLoading={false}
+                initialValues={{
+                    settings: {
+                        featureCallsEnabled: true,
+                        featureVideoCallsOneOnOneChatsEnabled: true,
+                        featureAudioCallsOneOnOneChatsEnabled: true,
+                    },
+                }}
+                formStateKey="agency"
+                restrictedFields={new Set()}
+                onToggleUpdate={onToggleUpdate}
+                policyLevel="agency"
+            />,
+        );
 
-        const videoCalls = screen.getByRole('switch', { name: 'tenants.permissions.feature.videoCalls' });
-        expect(videoCalls).toBeDisabled();
+        const video = document.querySelector(
+            '[data-feature-policy="featureVideoCallsOneOnOneChatsEnabled"]',
+        ) as HTMLElement;
+        await user.click(within(video).getByRole('button', { name: /openMenu/ }));
+        await user.click(within(video).getByRole('button', { name: /deactivationSuggested/ }));
 
-        await user.click(screen.getByRole('switch', { name: 'tenants.permissions.card.activated' }));
+        const audio = document.querySelector(
+            '[data-feature-policy="featureAudioCallsOneOnOneChatsEnabled"]',
+        ) as HTMLElement;
+        await user.click(within(audio).getByRole('button', { name: /openMenu/ }));
+        await user.click(within(audio).getByRole('button', { name: /deactivationSuggested/ }));
 
-        expect(videoCalls).toBeEnabled();
+        expect(onToggleUpdate.mock.calls[1][2]).toMatchObject({
+            settings: {
+                featureVideoCallsOneOnOneChatsEnabled: false,
+                featureAudioCallsOneOnOneChatsEnabled: false,
+            },
+        });
+
+        const master = document.querySelector('[data-feature-policy="featureCallsEnabled"]') as HTMLElement;
+        await user.click(within(master).getByRole('button', { name: /openMenu/ }));
+        await user.click(within(master).getByRole('button', { name: /deactivationSuggested/ }));
+        expect(onToggleUpdate.mock.calls[2][2]).toMatchObject({
+            settings: {
+                featureCallsEnabled: false,
+                featureVideoCallsOneOnOneChatsEnabled: false,
+                featureAudioCallsOneOnOneChatsEnabled: false,
+            },
+        });
+    });
+
+    it('opens the information dialog rather than a menu for inherited enforcement', async () => {
+        const user = userEvent.setup();
+        render(
+            <PermissionsSettingsView
+                tenantId="t1"
+                excludeCardKeys={['liveChat', 'group', 'groupInternal']}
+                isLoading={false}
+                initialValues={{ settings: { featureCallsEnabled: true } }}
+                formStateKey="k2"
+                restrictedFields={new Set(['featureCallsEnabled'])}
+                onToggleUpdate={vi.fn()}
+                permissionPolicies={{
+                    featureCallsEnabled: { value: true, mode: 'ENFORCED', inherited: true },
+                }}
+            />,
+        );
+
+        await user.click(
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.activated: tenants.permissions.policy.moreInformation/,
+            }),
+        );
+        expect(screen.getByRole('dialog')).toBeTruthy();
+        expect(document.querySelector('[data-admin-fab-menu-stack]')).toBeNull();
+    });
+
+    it('uses false form values when an asker policy is absent from a partial response', () => {
+        render(
+            <PermissionsSettingsView
+                tenantId="t1"
+                excludeCardKeys={['liveChat', 'group', 'groupInternal']}
+                isLoading={false}
+                initialValues={{
+                    settings: {
+                        featureDisplayNameEditable: false,
+                        featureAskerEmailEnabled: false,
+                    },
+                }}
+                formStateKey="partial-asker"
+                restrictedFields={new Set()}
+                onToggleUpdate={vi.fn()}
+                permissionPolicies={{}}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.asker.displayName.label:.*tenants.permissions.policy.deactivationSuggested/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.asker.email.label:.*tenants.permissions.policy.deactivationSuggested/,
+            }),
+        ).toBeInTheDocument();
+    });
+
+    it('locks only a pending policy control', () => {
+        renderOneOnOne(vi.fn(), {
+            pendingPolicyFields: new Set(['featureVideoCallsOneOnOneChatsEnabled']),
+        });
+
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.feature.videoCalls: tenants.permissions.policy.openMenu/,
+            }),
+        ).toBeDisabled();
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.activated: tenants.permissions.policy.openMenu/,
+            }),
+        ).toBeEnabled();
     });
 });

@@ -167,6 +167,9 @@ export const OrganisationDpaForwardedOnHold: Story = {
         await userEvent.click(
             await canvas.findByRole('button', { name: /nicht unterschriftsberechtigt|not authorised/ }),
         );
+        // Opening mints nothing (#712/#836): the sign link is created by the
+        // explicit act, and only then can the forward be confirmed.
+        await userEvent.click(await body.findByRole('button', { name: /Signaturlink erzeugen|Create signing link/ }));
         const confirm = await body.findByRole('button', {
             name: /Weiterleitung abschließen|Complete forwarding/,
         });

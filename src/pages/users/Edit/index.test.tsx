@@ -35,7 +35,10 @@ const mocks = vi.hoisted(() => ({
     agenciesResult: { data: { data: [] as any[] }, isLoading: false },
     topicsResult: { data: [] as any[], isLoading: false },
     consultantsResult: { data: { data: [] as any[] }, isLoading: false },
+    supervisorCandidatesResult: { data: { data: [] as any[] }, isLoading: false, isError: false },
     counselorResult: { data: undefined as any, isLoading: false },
+    /** Swapped per test so the same harness can drive the create AND the edit form. */
+    params: { id: 'add', typeOfUsers: 'consultants' } as { id: string; typeOfUsers: string },
 }));
 
 const TENANT = { id: 7, name: 'Caritas Augsburg' };
@@ -58,6 +61,11 @@ const translations: Record<string, string> = {
     'counselor.position': 'Funktion',
     'counselor.personalTitle': 'Titel',
     'counselor.adminRemarks': 'Interne Anmerkungen',
+    'counselor.assignedSupervisor': 'Fester Supervisor',
+    'counselor.assignedSupervisor.loadFailed': 'Liste konnte nicht geladen werden.',
+    'counselor.assignedSupervisor.detailsUnavailable': 'Gespeicherte Zuweisung nicht ladbar.',
+    'counselor.assignedSupervisor.noCandidates': 'Noch niemand freigegeben.',
+    'counselor.assignedSupervisor.truncated': 'Nur die ersten 1000 werden durchsucht.',
     'tenantAdmins.form.tenantAssignment': 'Trägerzuordnung',
     agency: 'Beratungsstelle',
     'topics.title': 'Themen',
@@ -77,9 +85,10 @@ vi.mock('react-router-dom', async () => {
     return {
         ...actual,
         useNavigate: () => mocks.navigate,
-        // The consultant *create* form: no `id`, so nothing is read-only and the
-        // save button is available without first unlocking the form.
-        useParams: () => ({ id: 'add', typeOfUsers: 'consultants' }),
+        // Defaults to the consultant *create* form (`id: 'add'`): nothing is read-only and the
+        // save button is available without first unlocking the form. Tests that need the edit
+        // form set `mocks.params.id` to a consultant id.
+        useParams: () => mocks.params,
     };
 });
 
@@ -136,7 +145,11 @@ vi.mock('../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin', () => ({
 }));
 
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
-    useConsultantsOrAdminsData: () => mocks.consultantsResult,
+    // The page runs this hook twice: once searching for the edited consultant (`search: id`) and
+    // once, unsearched, for the supervisor candidates. They have to be distinguishable, otherwise
+    // a candidate-query failure cannot be simulated at all.
+    useConsultantsOrAdminsData: (args: { search?: string }) =>
+        args?.search ? mocks.consultantsResult : mocks.supervisorCandidatesResult,
 }));
 
 vi.mock('../../../hooks/useAgencysData', () => ({
@@ -240,7 +253,9 @@ beforeEach(() => {
     mocks.agenciesResult = { data: { data: [] }, isLoading: false };
     mocks.topicsResult = { data: [], isLoading: false };
     mocks.consultantsResult = { data: { data: [] }, isLoading: false };
+    mocks.supervisorCandidatesResult = { data: { data: [] }, isLoading: false, isError: false };
     mocks.counselorResult = { data: undefined, isLoading: false };
+    mocks.params = { id: 'add', typeOfUsers: 'consultants' };
 });
 
 describe('admin remarks are gated on the tenant-level admin role (#994)', () => {
@@ -364,5 +379,336 @@ describe('assignment fields', () => {
         await chooseOption(user, 'Beratungsstelle', '20095 Beratungsstelle Nord Hamburg');
 
         expect(await screen.findAllByLabelText('Themen')).toHaveLength(1);
+    });
+});
+
+describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
+    const CONSULTANT_ID = 'consultant-1';
+    const SUPERVISOR_ID = 'supervisor-9';
+
+    const editExistingConsultant = (counselorData: any) => {
+        mocks.params = { id: CONSULTANT_ID, typeOfUsers: 'consultants' };
+        const edited = {
+            id: CONSULTANT_ID,
+            firstname: 'Ada',
+            lastname: 'Lovelace',
+            email: 'ada.lovelace@example.org',
+            username: 'ada-lovelace',
+            tenantId: TENANT.id,
+            agencies: [],
+            // Ada may BE a supervisor for others — that must still not let her supervise herself.
+            isSupervisor: true,
+            // The list endpoint never fills this — see the comment in index.tsx.
+            assignedSupervisorId: null,
+        };
+        mocks.consultantsResult = { data: { data: [edited] }, isLoading: false };
+        mocks.supervisorCandidatesResult = {
+            data: {
+                data: [
+                    edited,
+                    {
+                        id: SUPERVISOR_ID,
+                        firstname: 'Grace',
+                        lastname: 'Hopper',
+                        isSupervisor: true,
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                    {
+                        id: 'colleague-plain',
+                        firstname: 'Plain',
+                        lastname: 'Colleague',
+                        isSupervisor: false,
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                    {
+                        id: 'supervisor-disabled',
+                        firstname: 'Disabled',
+                        lastname: 'Supervisor',
+                        isSupervisor: true,
+                        active: false,
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                    {
+                        id: 'supervisor-absent-disabled',
+                        firstname: 'AbsentDisabled',
+                        lastname: 'Supervisor',
+                        isSupervisor: true,
+                        // Absent AND disabled: resolveDisplayStatus reports ABSENT and never looks
+                        // at `active`, which is exactly how this one used to slip through.
+                        absent: true,
+                        active: false,
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                    {
+                        id: 'supervisor-absent-only',
+                        firstname: 'AbsentOnly',
+                        lastname: 'Supervisor',
+                        isSupervisor: true,
+                        // Absence alone is temporary; ADR-008 lets supervision lapse rather than
+                        // block, so this one must stay assignable.
+                        absent: true,
+                        active: true,
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                    {
+                        id: 'supervisor-deleting',
+                        firstname: 'Deleting',
+                        lastname: 'Supervisor',
+                        isSupervisor: true,
+                        status: 'IN_DELETION',
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                    {
+                        id: 'supervisor-foreign',
+                        firstname: 'Foreign',
+                        lastname: 'Supervisor',
+                        isSupervisor: true,
+                        tenantId: TENANT.id + 1,
+                        agencies: [],
+                    },
+                ],
+            },
+            isLoading: false,
+            isError: false,
+        };
+        mocks.counselorResult = { data: counselorData, isLoading: false };
+    };
+
+    const unlockAndSubmit = async (user: ReturnType<typeof userEvent.setup>) => {
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        return submit(user);
+    };
+
+    /**
+     * The dangerous case. Only `GET /useradmin/consultants/{id}` carries the stored assignment;
+     * when it fails the form still renders. Sending `assignedSupervisorId: ''` then would clear a
+     * standing supervisor the admin never touched, on any unrelated edit.
+     */
+    it('never writes the field when the stored assignment could not be read', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant(undefined);
+        renderForm();
+
+        expect(await unlockAndSubmit(user)).not.toHaveProperty('assignedSupervisorId');
+    });
+
+    it('clears the assignment when the admin empties the field', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID });
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        // Hover is what a real admin does to reveal the clear affordance.
+        await user.hover(screen.getByLabelText('Fester Supervisor'));
+        // Query it by its visible title rather than MUI's internal class, so a class rename in
+        // the library cannot silently turn this assertion into a no-op. `getByRole` is not usable
+        // here: MUI keeps the button mounted at `visibility: hidden` and reveals it through a CSS
+        // `:hover` rule that jsdom never applies, and dom-accessibility-api computes no accessible
+        // name for a visibility-hidden element — so role+name finds nothing even with
+        // `hidden: true`. `fireEvent` for the same reason: user-event refuses to click an element
+        // it considers invisible.
+        fireEvent.click(screen.getByTitle('Clear'));
+
+        // '' is the backend's "clear it" signal; undefined would leave the supervisor in place.
+        expect(await submit(user)).toMatchObject({ assignedSupervisorId: '' });
+    });
+
+    /**
+     * The field is written only on a deliberate change. Anything else risks submitting a value we
+     * did not actually know — a stale detail cache is enough — and '' means "clear it" to the
+     * backend, so an unrelated edit could drop a supervisor nobody touched.
+     */
+    it('leaves the stored assignment alone when the admin does not touch the field', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID });
+        renderForm();
+
+        expect(await unlockAndSubmit(user)).not.toHaveProperty('assignedSupervisorId');
+    });
+
+    /**
+     * Three predicates, one list: the colleague must hold the supervisor capability, must not be
+     * the consultant being edited, and must sit in the same tenant. A platform admin's search
+     * spans tenants, and a foreign assignment is stored but never honoured at accept time — it
+     * would look configured and supervise nothing.
+     */
+    it("offers only eligible supervisors from the edited consultant's own tenant", async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, tenantId: TENANT.id, assignedSupervisorId: undefined });
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(screen.getByLabelText('Fester Supervisor'));
+
+        expect(await screen.findByRole('option', { name: 'Grace Hopper' })).toBeTruthy();
+        // Ada herself, even though she holds the capability.
+        expect(screen.queryByRole('option', { name: 'Ada Lovelace' })).toBeNull();
+        // A colleague without the capability.
+        expect(screen.queryByRole('option', { name: 'Plain Colleague' })).toBeNull();
+        // A supervisor in another tenant.
+        expect(screen.queryByRole('option', { name: 'Foreign Supervisor' })).toBeNull();
+        // Accounts that cannot work: they keep the capability flag but would supervise nothing.
+        expect(screen.queryByRole('option', { name: 'Disabled Supervisor' })).toBeNull();
+        expect(screen.queryByRole('option', { name: 'Deleting Supervisor' })).toBeNull();
+        expect(screen.queryByRole('option', { name: 'AbsentDisabled Supervisor' })).toBeNull();
+        // Absence on its own is not a reason to exclude anybody.
+        expect(screen.queryByRole('option', { name: 'AbsentOnly Supervisor' })).toBeTruthy();
+    });
+
+    /**
+     * An outage must not read as "nobody is eligible". The candidate search swallows failures into
+     * an empty list unless the query opts into rethrowing, so without this the admin would be told
+     * there is nobody to pick while the API was down — and could not tell the difference.
+     */
+    it('says the list could not be loaded, and locks the field, when the candidate query fails', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        mocks.supervisorCandidatesResult = { data: undefined, isLoading: false, isError: true };
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect(screen.getByText('Liste konnte nicht geladen werden.')).toBeTruthy();
+        expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('disabled', true);
+    });
+
+    it('locks the field and says so when the stored assignment could not be read', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant(undefined);
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect(screen.getByText('Gespeicherte Zuweisung nicht ladbar.')).toBeTruthy();
+        expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('disabled', true);
+    });
+
+    /**
+     * The candidate query reads one page. Beyond it, eligible supervisors exist that the admin
+     * cannot select — so the short list must not be presented as if it were complete.
+     */
+    it('warns when there are more consultants than the candidate query reads', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        mocks.supervisorCandidatesResult = {
+            ...mocks.supervisorCandidatesResult,
+            data: { ...mocks.supervisorCandidatesResult.data, total: 1001 },
+        };
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect(screen.getByText('Nur die ersten 1000 werden durchsucht.')).toBeTruthy();
+    });
+
+    /**
+     * antd applies `initialValues` once, at mount, and the detail query is invalidated on every
+     * save — so without an explicit sync the selector keeps showing what the form mounted with
+     * while the backend already holds something else.
+     */
+    it('picks up the stored assignment when the detail record arrives after mount', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        const { rerender } = renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await waitFor(() => expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', ''));
+
+        mocks.counselorResult = {
+            data: { id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID },
+            isLoading: false,
+        };
+        rerender(
+            <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+
+        await waitFor(() => expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', 'Grace Hopper'));
+
+        // The sync must not count as an admin edit. If `setFieldsValue` marked the field touched,
+        // this unrelated save would start writing a value nobody chose — the same data-loss shape
+        // the touched-field guard exists to prevent.
+        expect(await submit(user)).not.toHaveProperty('assignedSupervisorId');
+    });
+
+    /**
+     * The other half of the sync: a background refetch must never overwrite what the admin just
+     * picked. Otherwise their selection silently reverts to whatever the server last said, and
+     * they save a value they did not choose.
+     */
+    it("keeps the admin's pick when a detail refetch brings a different value", async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        const { rerender } = renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
+
+        // A refetch lands, saying somebody else is stored.
+        mocks.counselorResult = {
+            data: { id: CONSULTANT_ID, assignedSupervisorId: 'supervisor-other' },
+            isLoading: false,
+        };
+        rerender(
+            <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+
+        expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', 'Grace Hopper');
+    });
+
+    /**
+     * A stored supervisor who has since been disabled must stay VISIBLE — the admin has to see the
+     * stale assignment to correct it — but must not be selectable again, or they could switch away
+     * and pick it straight back, storing an assignment that supervises nothing.
+     */
+    it('shows a stale stored supervisor but does not let it be picked again', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: 'supervisor-disabled' });
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(screen.getByLabelText('Fester Supervisor'));
+
+        const staleOption = await screen.findByRole('option', { name: 'Disabled Supervisor' });
+        expect(staleOption.getAttribute('aria-disabled')).toBe('true');
+    });
+
+    /**
+     * Both conditions at once. The locked field is what stops the admin working, so that has to be
+     * what the field says — a truncation note would send them looking in the wrong place.
+     */
+    it('explains the locked field rather than the capped search when both apply', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant(undefined);
+        mocks.supervisorCandidatesResult = {
+            ...mocks.supervisorCandidatesResult,
+            data: { ...mocks.supervisorCandidatesResult.data, total: 1001 },
+        };
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect(screen.getByText('Gespeicherte Zuweisung nicht ladbar.')).toBeTruthy();
+        expect(screen.queryByText('Nur die ersten 1000 werden durchsucht.')).toBeNull();
+    });
+
+    it('writes the new supervisor when the admin picks one', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
+
+        expect(await submit(user)).toMatchObject({ assignedSupervisorId: SUPERVISOR_ID });
     });
 });

@@ -22,6 +22,12 @@ export interface CounselorData {
     twoFactorAuth?: boolean;
     isGroupchatConsultant?: boolean;
     isSupervisor?: boolean;
+    /**
+     * Supervision (auto-assigned), ADR-008: the consultant id of this counsellor's standing
+     * supervisor, auto-attached read-only to every case the counsellor accepts. At most one.
+     * Backend semantics: omitted/null keeps the stored value, '' clears it.
+     */
+    assignedSupervisorId?: string;
     /** The PUBLIC display name — the name advice seekers see. */
     displayName?: string;
     /** Optional internal display name; internal surfaces fall back to displayName when empty. */
