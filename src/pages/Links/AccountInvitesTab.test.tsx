@@ -239,6 +239,66 @@ describe('TenantInvitesTab Träger-ID field', () => {
 });
 
 /*
+ * A 403 on create means the admin's ROLE cannot invite admins (UserService#1006:
+ * "Only platform admins can create administrative accounts"). Swallowing that
+ * into the generic "Could not create link" left the admin guessing — the toast
+ * must explain the role problem, preferring the backend's own message.
+ */
+describe('TenantInvitesTab 403 role surfacing (UserService#1006)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+    });
+
+    const submitInvite = async () => {
+        await renderTenantTab();
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalled());
+    };
+
+    it('shows the backend message when create is answered 403', async () => {
+        mocks.createAccountInvite.mockRejectedValue(
+            new Response(JSON.stringify({ message: 'Only platform admins can create administrative accounts' }), {
+                status: 403,
+            }),
+        );
+
+        await submitInvite();
+
+        expect(await screen.findByText('Only platform admins can create administrative accounts')).toBeInTheDocument();
+        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the translated role explanation on a bodyless 403', async () => {
+        mocks.createAccountInvite.mockRejectedValue(new Response(null, { status: 403 }));
+
+        await submitInvite();
+
+        expect(
+            await screen.findByText('Nur Plattform-Administratoren können Träger-Admins einladen.'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+    });
+
+    it('keeps the generic create-failed toast for non-403 failures', async () => {
+        mocks.createAccountInvite.mockRejectedValue(new Error('network down'));
+
+        await submitInvite();
+
+        expect(await screen.findByText('Could not create link')).toBeInTheDocument();
+    });
+});
+
+/*
  * `loadInvites` is called from the mount effect AND after every invite action,
  * so two runs can be in flight at once — each walks several pages, so the older
  * one can finish last. Only the newest run may write the list or clear the

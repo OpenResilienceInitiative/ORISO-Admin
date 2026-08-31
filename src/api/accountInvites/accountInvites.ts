@@ -199,8 +199,14 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
         skipAuth: false,
         // CONFLICT_WITH_RESPONSE lets a 409 (e.g. a colliding tenantId) reject with the
         // raw Response instead of a swallowed generic toast, so callers can surface a
-        // specific message (see AccountInvitesTab's onCreate).
-        responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.CONFLICT_WITH_RESPONSE],
+        // specific message (see AccountInvitesTab's onCreate). FORBIDDEN_WITH_RESPONSE
+        // does the same for a 403 — the backend explains WHY the caller's role cannot
+        // invite (UserService#1006), and that explanation must reach the admin.
+        responseHandling: [
+            FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
+            FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
+        ],
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
             agencyId,
@@ -235,7 +241,9 @@ export const sendAccountInvite = async (
         url: `${accountInvitesEndpoint}/${inviteId}/send`,
         method: FETCH_METHODS.POST,
         skipAuth: false,
-        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        // FORBIDDEN_WITH_RESPONSE: surface the backend's role explanation on 403
+        // (UserService#1006) instead of the generic failure toast.
+        responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE],
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
             templateId: body.templateId,
@@ -252,7 +260,8 @@ export const resendAccountInvite = async (
         url: `${accountInvitesEndpoint}/${inviteId}/resend`,
         method: FETCH_METHODS.POST,
         skipAuth: false,
-        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        // FORBIDDEN_WITH_RESPONSE: same 403 surfacing as send (UserService#1006).
+        responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE],
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
             templateId: body.templateId,

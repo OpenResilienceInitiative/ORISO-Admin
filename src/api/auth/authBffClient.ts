@@ -55,11 +55,30 @@ export const bootstrapAuthSessionViaBff = async (): Promise<LoginData | null> =>
     return response.json();
 };
 
+/**
+ * Hard ceiling for the BFF token refresh. The refresh is the ONE request in the app
+ * with no other timeout in front of it, and `auth.ts` caches the in-flight refresh
+ * promise for every concurrent caller — so a single hanging refresh used to freeze
+ * every 401-retry in the tab forever (endless invite-send spinner on a dead session).
+ * `fetchData`'s own default is 30s; the refresh must give up sooner so the original
+ * request's retry-or-logout decision still happens within that window.
+ */
+export const AUTH_BFF_REQUEST_TIMEOUT_MS = 10_000;
+
 export const refreshAuthTokensViaBff = async (): Promise<LoginData> => {
-    const response = await fetch(authRefreshTokenEndpoint, {
-        method: 'POST',
-        credentials: 'include',
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), AUTH_BFF_REQUEST_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+        response = await fetch(authRefreshTokenEndpoint, {
+            method: 'POST',
+            credentials: 'include',
+            signal: controller.signal,
+        });
+    } finally {
+        clearTimeout(timer);
+    }
 
     if (!response.ok) {
         throw new Error('keycloakLogin');

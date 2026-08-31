@@ -19,6 +19,7 @@ import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
 import { Modal } from '../../components/Modal';
+import { extractApiErrorMessageOrNull } from '../../utils/extractApiErrorMessage';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
@@ -343,6 +344,20 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         return false;
                     }
                 }
+                // 403 = the admin's ROLE cannot create administrative accounts
+                // (UserService#1006). Prefer the backend's own explanation; fall back
+                // to a translated role hint. Never the generic create-failed text —
+                // that left the admin retrying an action their role can never perform.
+                if (error instanceof Response && error.status === 403) {
+                    message.error(
+                        (await extractApiErrorMessageOrNull(error)) ??
+                            t(
+                                'links.accountInvites.forbidden',
+                                'Nur Plattform-Administratoren können Träger-Admins einladen.',
+                            ),
+                    );
+                    return false;
+                }
                 message.error(t('links.error.createFailed', 'Could not create link'));
                 return false;
             } finally {
@@ -401,7 +416,18 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 rememberGeneratedLink(resent);
                 message.success(t('links.accountInvites.resent', 'Invite resent'));
                 await loadInvites();
-            } catch {
+            } catch (error) {
+                // Same role surfacing as onCreate (UserService#1006).
+                if (error instanceof Response && error.status === 403) {
+                    message.error(
+                        (await extractApiErrorMessageOrNull(error)) ??
+                            t(
+                                'links.accountInvites.forbidden',
+                                'Nur Plattform-Administratoren können Träger-Admins einladen.',
+                            ),
+                    );
+                    return;
+                }
                 message.error(t('links.accountInvites.resendFailed', 'Could not resend invite'));
             }
         },
@@ -492,6 +518,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         if (targets.length === 0) return;
         setBulkRunning(true);
         const failed: AccountInviteDTO[] = [];
+        // A 403 fails EVERY row for the same role reason (UserService#1006) — remember
+        // the first one so the admin gets the cause once, on top of the count summary.
+        let firstForbidden: Response | null = null;
         for (let i = 0; i < targets.length; i += 1) {
             try {
                 const deliver = targets[i].inviteStatus === 'DRAFT' ? sendAccountInvite : resendAccountInvite;
@@ -501,11 +530,20 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     templateId,
                 });
                 rememberGeneratedLink(delivered);
-            } catch {
+            } catch (error) {
+                if (firstForbidden == null && error instanceof Response && error.status === 403) {
+                    firstForbidden = error;
+                }
                 failed.push(targets[i]);
             }
         }
         setBulkRunning(false);
+        if (firstForbidden) {
+            message.error(
+                (await extractApiErrorMessageOrNull(firstForbidden)) ??
+                    t('links.accountInvites.forbidden', 'Nur Plattform-Administratoren können Träger-Admins einladen.'),
+            );
+        }
         if (failed.length === 0) {
             message.success(
                 t('links.bulk.sendSummaryAll', '{{count}} Einladungen gesendet', { count: targets.length }),
