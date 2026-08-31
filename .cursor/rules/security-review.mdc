@@ -1,0 +1,12 @@
+---
+description: Scope-limited security review policy for changes touching auth, input handling, storage, network, or uploads
+alwaysApply: false
+---
+
+# Security Review
+
+- Review only the touched scope; do not audit unrelated files.
+- Trigger a security pass (via the `security-auditor` subagent) when a change touches: authentication or authorization, user input handling, secrets or tokens, network requests to new endpoints, file uploads, or localStorage/sessionStorage of sensitive data.
+- ORISO Admin invariants: never paper over 401/403 with UI success; never assume JWT claims exist; never surface raw server error strings.
+- Classify findings by severity (critical/high/medium/low) and prefer the least disruptive safe fix.
+- Record the outcome in the task folder as `05-security-review.md`, even if the result is "no findings".
