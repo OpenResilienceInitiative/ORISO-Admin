@@ -11,6 +11,7 @@
 -   Never implement directly on `pre-dev`. Branch as `cursor/<ticket-or-feature>/<short-slug>`.
 -   Reuse existing table, form, query, mutation, role, and validation patterns.
 -   Do not paper over 401/403/API failures with UI-only success states.
+-   After every edit, `npx prettier --write` the touched paths. CI fails `npx prettier . --check --ignore-unknown` on Markdown and JSON, not only source.
 
 ## Open failures
 
@@ -18,8 +19,10 @@
 
 ## Lessons learned
 
-(none yet — see `LEARNINGS.md` once the first Admin agent task closes)
+-   See `LEARNINGS.md`: sibling unused i18n keys (`navTitle` next to `pageTitle`) when retiring a section.
 
 ## Last session
 
+-   2026-08-30: #678 — removed retired `/admin/global-settings` page shell, NavIcon case, and dead i18n keys. Branch `cursor/678/remove-dead-global-settings`. Redirects kept.
+-   2026-08-30: #874 — original ten PRs already on `pre-dev`. Leftovers: live consent dialog icon, unlock/pending wording, template content-language. Branch `cursor/874/legal-review-gaps`.
 -   2026-08-29: Scaffolded `.cursor/` agent harness (rules, skills, subagents, hooks), `docs/agent-tasks/index.md`, and `.learnings/` templates.

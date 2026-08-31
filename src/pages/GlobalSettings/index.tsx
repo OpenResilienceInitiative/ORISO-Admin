@@ -5,8 +5,6 @@ import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Outlet } from 'react-router-dom';
-import { Page } from '../../components/Page';
 import { CardDeck } from '../../components/CardDeck';
 import { CardEditable } from '../../components/CardEditable';
 import { Card } from '../../components/Card';
@@ -26,27 +24,6 @@ import { DocumentMasterDataCardContainer } from '../../components/GlobalSettings
 import styles from './styles.module.scss';
 import { resolveTenantId } from '../../utils/resolveTenantId';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
-
-export const GlobalSettingsPage = () => {
-    return (
-        <Page>
-            <Page.Title
-                titleKey="globalSettings.pageTitle"
-                tabs={[
-                    {
-                        to: '/admin/global-settings/login',
-                        titleKey: 'globalSettings.tabs.login',
-                    },
-                    {
-                        to: '/admin/global-settings/smtp',
-                        titleKey: 'globalSettings.tabs.smtp',
-                    },
-                ]}
-            />
-            <Outlet />
-        </Page>
-    );
-};
 
 export const GlobalLoginSettingsPage = () => {
     const { t } = useTranslation();
@@ -292,5 +269,3 @@ export const GlobalSmtpSettingsPage = () => {
         </ThemeProvider>
     );
 };
-
-export const GlobalSettingsIndexRedirect = () => <Navigate to="/admin/global-settings/login" replace />;
