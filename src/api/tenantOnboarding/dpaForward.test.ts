@@ -101,6 +101,21 @@ describe('createHttpDpaForwardClient', () => {
         );
     });
 
+    it('carries the recipient name on the wire with the send (#842)', async () => {
+        mocks.fetchData.mockResolvedValue(RESPONSE);
+
+        await createHttpDpaForwardClient().forward('tok', {
+            recipientEmail: 'legal@example.org',
+            recipientName: 'Dr. Ruth Recht',
+        });
+
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                bodyData: JSON.stringify({ recipientEmail: 'legal@example.org', recipientName: 'Dr. Ruth Recht' }),
+            }),
+        );
+    });
+
     it('reports the mail failure from the first response without minting a second link', async () => {
         // Every forward call mints a NEW link, and only five may be outstanding
         // at once. The old 502 fallback made a second call to obtain a link, so

@@ -121,6 +121,37 @@ describe('DpaForwardDialog link minting', () => {
         });
     });
 
+    /**
+     * #842: the name drives the previewed salutation, so it must reach the
+     * backend with the send — a preview greeting "Dr. Ruth Recht" while the
+     * mail greets neutrally would be a false promise.
+     */
+    it('sends the collected recipient name with the mail (#842)', async () => {
+        const user = userEvent.setup();
+        const { forward } = renderDialog();
+
+        await user.type(screen.getByLabelText('dpaForward.dialog.recipientName'), '  Dr. Ruth Recht  ');
+        await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+
+        await screen.findByTestId('dpa-forward-sent');
+        expect(forward).toHaveBeenCalledTimes(1);
+        // Trimmed, because the salutation is typographic output.
+        expect(forward).toHaveBeenCalledWith({ recipientEmail: 'legal@example.org', recipientName: 'Dr. Ruth Recht' });
+    });
+
+    it('sends no name field when none was typed, so the backend greets neutrally (#842)', async () => {
+        const user = userEvent.setup();
+        const { forward } = renderDialog();
+
+        await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+
+        await screen.findByTestId('dpa-forward-sent');
+        // Absent, not empty-string: '' would ask the backend to greet nobody.
+        expect(forward).toHaveBeenCalledWith({ recipientEmail: 'legal@example.org' });
+    });
+
     it('copies the requested link to the clipboard with success feedback', async () => {
         // userEvent installs a working clipboard stub in jsdom.
         const user = userEvent.setup();
@@ -204,7 +235,8 @@ describe('DpaForwardDialog link minting', () => {
         await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
 
         await screen.findByTestId('dpa-forward-sent');
-        expect(forward).toHaveBeenLastCalledWith({ recipientEmail: 'legal@example.org' });
+        // The typed name travels with the send (#842).
+        expect(forward).toHaveBeenLastCalledWith({ recipientEmail: 'legal@example.org', recipientName: 'Dr. Ruth Recht' });
         // The newest issued link is the one on offer to copy.
         await waitFor(() =>
             expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(freshLink.signUrl),

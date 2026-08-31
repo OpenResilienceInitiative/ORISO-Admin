@@ -388,8 +388,10 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         // The send IS the minting act: one forward costs one link, with no
         // warm-up call on open (#712).
         expect(forwardClient.forward).toHaveBeenCalledTimes(1);
+        // The typed name travels with the send (#842).
         expect(forwardClient.forward).toHaveBeenLastCalledWith('raw-token', {
             recipientEmail: 'legal@example.org',
+            recipientName: 'Dr. Ruth Recht',
         });
         // …and the link that send issued is the one on offer to copy.
         await waitFor(() =>

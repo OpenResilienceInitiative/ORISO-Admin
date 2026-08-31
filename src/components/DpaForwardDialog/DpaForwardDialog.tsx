@@ -47,7 +47,7 @@ export interface DpaForwardDialogProps {
      * Every issued link stays valid until a signature lands, and only five may
      * be outstanding per onboarding, so a call is a resource, not a warm-up.
      */
-    forward: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
+    forward: (request: { recipientEmail?: string; recipientName?: string }) => Promise<DpaForwardOutcome>;
     onClose: () => void;
     /** Confirms the delegation — the host flips into its forwarded state. */
     onForwarded: (result: DpaForwardResult) => void;
@@ -153,8 +153,16 @@ export const DpaForwardDialog = ({
         if (sendState === 'pending') return;
         setSendState('pending');
         const recipientEmail = values.recipientEmail.trim();
+        // The name drives the salutation the preview shows, so it must travel
+        // with the send — otherwise the preview promises a greeting the
+        // backend cannot deliver (#842). Empty stays absent: the backend's
+        // neutral salutation is the truth for that case.
+        const trimmedName = values.recipientName?.trim();
         try {
-            const outcome = await forward({ recipientEmail });
+            const outcome = await forward({
+                recipientEmail,
+                ...(trimmedName ? { recipientName: trimmedName } : {}),
+            });
             // The send issues a fresh link — show THAT one, so the link the
             // admin copies is the newest of the still-valid set.
             setLinkState({ kind: 'ready', link: outcome.link });
