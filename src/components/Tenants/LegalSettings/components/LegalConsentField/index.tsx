@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { Alert } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { LegalConsentTemplateEditor, PlaceholderTemplateDialog } from '../../../../PlaceholderTemplate';
+import {
+    LegalConsentHeadIcon,
+    LegalConsentTemplateEditor,
+    PlaceholderTemplateDialog,
+} from '../../../../PlaceholderTemplate';
 import { useConsentTemplates } from '../../hooks/useConsentTemplates';
 import {
     hasMandatoryConsentToken,
@@ -54,7 +58,7 @@ export const LegalConsentField = ({
     const [open, setOpen] = useState(false);
     const [draft, setDraft] = useState(value);
     const [activeTemplateId, setActiveTemplateId] = useState<number | string | undefined>(undefined);
-    const templates = useConsentTemplates();
+    const templates = useConsentTemplates(language);
 
     const missingMandatoryToken = !isBlankConsentText(value) && !hasMandatoryConsentToken(value);
     const draftMissingMandatoryToken = !isBlankConsentText(draft) && !hasMandatoryConsentToken(draft);
@@ -106,6 +110,7 @@ export const LegalConsentField = ({
             </button>
             {open && (
                 <PlaceholderTemplateDialog
+                    icon={<LegalConsentHeadIcon data-testid="legal-consent-head-icon" />}
                     titleKey="placeholderTemplate.dialog.legalTitle"
                     descriptionKey="legal.consent.description"
                     onSave={saveDialog}

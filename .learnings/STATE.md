@@ -19,7 +19,7 @@
 
 ## Lessons learned
 
--   See `LEARNINGS.md`: sibling unused i18n keys (`navTitle` next to `pageTitle`) when retiring a section.
+-   See `LEARNINGS.md`: Prettier on every touched path (including Markdown); sibling unused i18n keys when retiring a section.
 
 ## Last session
 

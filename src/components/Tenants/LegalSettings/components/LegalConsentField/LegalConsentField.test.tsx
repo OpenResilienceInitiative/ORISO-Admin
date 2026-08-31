@@ -41,6 +41,16 @@ describe('LegalConsentField — dialog (#862)', () => {
         expect(screen.getByTestId('consent-fixed-addendum')).toBeInTheDocument();
     });
 
+    it('puts the house checkbox in the dialog head', async () => {
+        render(
+            <LegalConsentField language="de" value="Ich habe {{legal_links}} gelesen." onChange={() => undefined} />,
+        );
+
+        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
+
+        expect(screen.getByTestId('legal-consent-head-icon')).toBeInTheDocument();
+    });
+
     it('commits the draft on Save and closes', async () => {
         const onChange = vi.fn();
         render(<LegalConsentField language="de" value="Alt {{legal_links}}." onChange={onChange} />);

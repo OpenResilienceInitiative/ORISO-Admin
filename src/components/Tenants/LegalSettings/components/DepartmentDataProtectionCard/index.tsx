@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
@@ -132,7 +132,6 @@ export const DepartmentDataProtectionCard = ({
     // decision 7 — the imprint is an information duty and never a consent gate).
     const consentEnabled = documentType === 'privacy' && consentByLanguage !== undefined;
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
-    const consentTemplates = useConsentTemplates();
     const [consentTemplateId, setConsentTemplateId] = useState<number | string | undefined>(undefined);
     const consentMap = useMemo(
         () => ({ ...(consentByLanguage ?? {}), ...consentEdits }),
@@ -184,6 +183,10 @@ export const DepartmentDataProtectionCard = ({
         onPublish: (contentByLanguage) =>
             consentEnabled ? onSave(contentByLanguage, true, consentMap) : onSave(contentByLanguage, true),
     });
+    const consentTemplates = useConsentTemplates(activeLanguage);
+    useEffect(() => {
+        setConsentTemplateId(undefined);
+    }, [activeLanguage, departmentName]);
 
     const editorVersions = useMemo(
         () => toEditorVersions(versions, activeLanguage, locale, t('tenants.legal.version.current')),
