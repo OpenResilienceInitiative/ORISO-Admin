@@ -120,6 +120,11 @@ export const GlobalSmtpSettingsPage = () => {
     // Set-only credentials: an empty username/password field means "keep the
     // stored value", so the key must not appear in the PATCH body at all — an
     // empty string would destroy the stored credential server-side (CTS-C01).
+    // Whitespace-only input is deliberately treated the same as empty: the
+    // settings PATCH contract (ORISO-ConsultingTypeService#98, CTS PR #138)
+    // treats blank/whitespace-only credential values as "unchanged", so
+    // sending "  " would be a no-op server-side while the UI pretended a
+    // credential change happened.
     const handleSave = useCallback(
         (formData: unknown, options?: { onError?: () => void }) => {
             const { globalSmtpUsername, globalSmtpPassword, ...rest } = (formData ?? {}) as Record<string, unknown>;
@@ -133,10 +138,20 @@ export const GlobalSmtpSettingsPage = () => {
                         ? { globalSmtpPassword }
                         : {}),
                 },
-                options,
+                {
+                    ...options,
+                    // Once a credential is saved it must not linger in the DOM:
+                    // the fields would still hold the typed values when the card
+                    // is reopened, and the next unrelated save would re-send
+                    // them. Reset both to their (empty) initial values — same
+                    // write-only pattern as the tenant SMTP card (#730).
+                    onSuccess: () => {
+                        form.resetFields([['globalSmtpUsername'], ['globalSmtpPassword']]);
+                    },
+                },
             );
         },
-        [mutate],
+        [form, mutate],
     );
     const handleSendTestEmail = useCallback(async () => {
         const values = form.getFieldsValue(true);

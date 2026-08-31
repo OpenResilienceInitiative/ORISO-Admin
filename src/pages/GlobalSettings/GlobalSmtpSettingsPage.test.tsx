@@ -151,6 +151,54 @@ describe('GlobalSmtpSettingsPage (set-only SMTP credentials)', () => {
         expect(body.globalSmtpPassword).toBe('S3cret!pass');
     });
 
+    it('treats whitespace-only credentials as "not a change" and omits them from the PATCH body', async () => {
+        // Contract: the settings PATCH endpoint (CTS#98, CTS PR #138) treats
+        // blank/whitespace-only credential values as "unchanged" — sending
+        // "   " would be a server-side no-op while the UI pretended a
+        // credential change happened, so the client omits it up front.
+        const user = userEvent.setup();
+        renderPage();
+
+        await startEditing(user);
+        await user.type(screen.getByLabelText('globalSettings.smtp.username'), '   ');
+        await save(user);
+
+        await waitFor(() => expect(mocks.fetchData).toHaveBeenCalled());
+        const body = patchedBody();
+        expect(body).not.toHaveProperty('globalSmtpUsername');
+        expect(body).not.toHaveProperty('globalSmtpPassword');
+    });
+
+    it('clears the credential fields after a successful save so a later unrelated save cannot re-send them', async () => {
+        const user = userEvent.setup();
+        renderPage();
+
+        await startEditing(user);
+        await user.type(screen.getByLabelText('globalSettings.smtp.username'), 'mailer@example.org');
+        await user.type(screen.getByLabelText('globalSettings.smtp.password'), 'S3cret!pass');
+        await save(user);
+
+        await waitFor(() => expect(mocks.fetchData).toHaveBeenCalledTimes(1));
+        expect(patchedBody().globalSmtpUsername).toBe('mailer@example.org');
+
+        // The typed credentials must not linger in the DOM after the save.
+        await waitFor(() => expect(screen.getByLabelText('globalSettings.smtp.username')).toHaveValue(''));
+        expect(screen.getByLabelText('globalSettings.smtp.password')).toHaveValue('');
+
+        // A follow-up save of an unrelated change must not re-send them.
+        await startEditing(user);
+        const hostField = screen.getByLabelText('globalSettings.smtp.host');
+        await user.clear(hostField);
+        await user.type(hostField, 'smtp.other.org');
+        await save(user);
+
+        await waitFor(() => expect(mocks.fetchData).toHaveBeenCalledTimes(2));
+        const secondBody = JSON.parse(mocks.fetchData.mock.calls[1][0].bodyData);
+        expect(secondBody).not.toHaveProperty('globalSmtpUsername');
+        expect(secondBody).not.toHaveProperty('globalSmtpPassword');
+        expect(secondBody.globalSmtpHost).toBe('smtp.other.org');
+    });
+
     it('sends the test email without credentials in the form — the backend uses the stored ones', async () => {
         const user = userEvent.setup();
         renderPage();
