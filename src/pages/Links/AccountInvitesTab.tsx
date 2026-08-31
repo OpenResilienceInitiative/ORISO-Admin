@@ -539,10 +539,16 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 });
                 rememberGeneratedLink(delivered);
             } catch (error) {
-                if (firstForbidden == null && error instanceof Response && error.status === 403) {
-                    firstForbidden = error;
-                }
                 failed.push(targets[i]);
+                if (error instanceof Response && error.status === 403) {
+                    // A role-level 403 fails EVERY remaining row the same way
+                    // (UserService#1006) — mark them failed and stop, instead of
+                    // firing one doomed request per row. Same early-stop as the
+                    // CSV import.
+                    firstForbidden ??= error;
+                    failed.push(...targets.slice(i + 1));
+                    break;
+                }
             }
         }
         setBulkRunning(false);

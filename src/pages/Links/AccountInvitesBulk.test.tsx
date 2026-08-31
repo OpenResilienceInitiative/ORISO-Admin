@@ -546,7 +546,7 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
     });
 
     it(
-        'surfaces the backend message ONCE when both bulk delivery verbs fail with 403',
+        'stops after the first role-level 403 — one toast, no request for the condemned rows',
         { timeout: 90_000 },
         async () => {
             mocks.sendAccountInvite.mockRejectedValue(forbiddenWithMessage());
@@ -561,16 +561,46 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
             await waitFor(() => expect(sendButton).toBeEnabled());
             await user.click(sendButton);
 
+            // The first 403 already answers for every remaining row (same
+            // early-stop as the CSV import): /resend is never even attempted.
             await waitFor(() => expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1));
-            expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(1);
+            expect(mocks.resendAccountInvite).not.toHaveBeenCalled();
             const roleToasts = await screen.findAllByText('Only platform admins can create administrative accounts');
             expect(roleToasts).toHaveLength(1);
-            // The count summary stays — the cause toast comes ON TOP of it.
+            // The count summary stays — the cause toast comes ON TOP of it, and
+            // the skipped row counts as failed.
             expect(
                 await screen.findByText('0 gesendet, 2 fehlgeschlagen: person21@example.org, person22@example.org'),
             ).toBeInTheDocument();
         },
     );
+
+    it('delivers up to the 403, then stops: one call per row before it, none after', { timeout: 90_000 }, async () => {
+        mocks.listAccountInvites.mockResolvedValue(
+            invitesPage([invite(21, 'DRAFT'), invite(22, 'EMAIL_SENT'), invite(25, 'EMAIL_SENT')]),
+        );
+        mocks.sendAccountInvite.mockImplementation((id: number) => Promise.resolve(invite(id, 'EMAIL_SENT')));
+        mocks.resendAccountInvite.mockRejectedValue(forbiddenWithMessage());
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowCheckbox('person21@example.org')); // DRAFT -> /send, succeeds
+        await user.click(await rowCheckbox('person22@example.org')); // EMAIL_SENT -> /resend, 403
+        await user.click(await rowCheckbox('person25@example.org')); // EMAIL_SENT -> never attempted
+
+        const sendButton = await screen.findByRole('button', { name: '3 ausgewählte senden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        await waitFor(() => expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.sendAccountInvite).toHaveBeenCalledWith(21, expect.anything());
+        // Exactly ONE resend: the 403 on person22 condemns person25 without a request.
+        expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(1);
+        expect(mocks.resendAccountInvite).toHaveBeenCalledWith(22, expect.anything());
+        expect(
+            await screen.findByText('1 gesendet, 2 fehlgeschlagen: person22@example.org, person25@example.org'),
+        ).toBeInTheDocument();
+    });
 
     it(
         'falls back to the Träger-admin wording for a bodyless bulk-send 403 on the tenant tab',
@@ -591,6 +621,9 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
             expect(
                 await screen.findByText('Nur Plattform-Administratoren können Träger-Admins einladen.'),
             ).toBeInTheDocument();
+            // Early-stop on the tenant tab too: the first 403 ends the run.
+            expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1);
+            expect(mocks.resendAccountInvite).not.toHaveBeenCalled();
         },
     );
 });

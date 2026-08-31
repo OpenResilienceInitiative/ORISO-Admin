@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../appConfig', () => ({ default: { root: '/admin' } }));
 
 // eslint-disable-next-line import/first
-import { AUTH_BFF_REQUEST_TIMEOUT_MS, refreshAuthTokensViaBff } from './authBffClient';
+import { AUTH_BFF_REQUEST_TIMEOUT_MS, clearAuthTokensViaBff, refreshAuthTokensViaBff } from './authBffClient';
 
 /**
  * Root cause of the endless invite spinner on a dead admin session: the BFF
@@ -94,6 +94,41 @@ describe('refreshAuthTokensViaBff timeout guard', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         await expect(refreshAuthTokensViaBff()).resolves.toMatchObject({ access_token: 'a' });
+    });
+
+    /*
+     * logout() awaits the clear-token call (via invalidateAuthSession) BEFORE the
+     * redirect to the login page, and its in-progress flag is never reset — so a
+     * stalled clear-token used to strand the user with every retry swallowed.
+     * Once this promise settles (even by rejection), invalidateAuthSession's
+     * catch lets the redirect proceed.
+     */
+    it('aborts a hanging clear-token request so the logout redirect stays reachable', async () => {
+        vi.useFakeTimers();
+        const fetchMock = vi.fn(
+            (_url: string, init?: RequestInit) =>
+                new Promise((_resolve, reject) => {
+                    init?.signal?.addEventListener('abort', () => {
+                        const abortError = new Error('aborted');
+                        abortError.name = 'AbortError';
+                        reject(abortError);
+                    });
+                }),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        const pending = clearAuthTokensViaBff();
+        const assertion = expect(pending).rejects.toThrow();
+
+        let settled = false;
+        pending.catch(() => {
+            settled = true;
+        });
+        await vi.advanceTimersByTimeAsync(AUTH_BFF_REQUEST_TIMEOUT_MS - 1);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        await assertion;
+        expect(settled).toBe(true);
     });
 
     it('still maps a non-OK refresh answer to the keycloakLogin error', async () => {
