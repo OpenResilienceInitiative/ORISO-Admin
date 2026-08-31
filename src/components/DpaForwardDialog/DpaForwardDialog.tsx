@@ -268,7 +268,7 @@ export const DpaForwardDialog = ({
                         visitor out (#712), so the public surface previews the
                         wording it composed itself instead. */}
                     <div className={styles.preview}>
-{/* The kind is what makes this the FORWARD mail rather than a
+                        {/* The kind is what makes this the FORWARD mail rather than a
                             generic invite. Without it the backend renderer defaults to
                             TENANT_INVITE (`InviteEmailPreviewService`: a null kind falls
                             back to TENANT_INVITE), so the sample call-to-action pointed

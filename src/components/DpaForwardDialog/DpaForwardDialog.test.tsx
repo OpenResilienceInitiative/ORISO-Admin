@@ -236,7 +236,10 @@ describe('DpaForwardDialog link minting', () => {
 
         await screen.findByTestId('dpa-forward-sent');
         // The typed name travels with the send (#842).
-        expect(forward).toHaveBeenLastCalledWith({ recipientEmail: 'legal@example.org', recipientName: 'Dr. Ruth Recht' });
+        expect(forward).toHaveBeenLastCalledWith({
+            recipientEmail: 'legal@example.org',
+            recipientName: 'Dr. Ruth Recht',
+        });
         // The newest issued link is the one on offer to copy.
         await waitFor(() =>
             expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(freshLink.signUrl),

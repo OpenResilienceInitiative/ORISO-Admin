@@ -169,9 +169,7 @@ export const OrganisationDpaForwardedOnHold: Story = {
         );
         // Opening mints nothing (#712/#836): the sign link is created by the
         // explicit act, and only then can the forward be confirmed.
-        await userEvent.click(
-            await body.findByRole('button', { name: /Signaturlink erzeugen|Create signing link/ }),
-        );
+        await userEvent.click(await body.findByRole('button', { name: /Signaturlink erzeugen|Create signing link/ }));
         const confirm = await body.findByRole('button', {
             name: /Weiterleitung abschließen|Complete forwarding/,
         });
