@@ -19,9 +19,10 @@
 
 ## Lessons learned
 
-(none yet — see `LEARNINGS.md` once the first Admin agent task closes)
+-   See `LEARNINGS.md`: Prettier on every touched path (including Markdown); sibling unused i18n keys when retiring a section.
 
 ## Last session
 
+-   2026-08-30: #678 — removed retired `/admin/global-settings` page shell, NavIcon case, and dead i18n keys. Branch `cursor/678/remove-dead-global-settings`. Redirects kept.
 -   2026-08-30: #874 — original ten PRs already on `pre-dev`. Leftovers: live consent dialog icon, unlock/pending wording, template content-language. Branch `cursor/874/legal-review-gaps`.
 -   2026-08-29: Scaffolded `.cursor/` agent harness (rules, skills, subagents, hooks), `docs/agent-tasks/index.md`, and `.learnings/` templates.

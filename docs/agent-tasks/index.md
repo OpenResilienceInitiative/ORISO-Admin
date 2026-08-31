@@ -25,3 +25,4 @@ Created as needed — not every file is mandatory for every task.
 <!-- newest first: [YYYY-MM-DD_slug](YYYY-MM-DD_slug/00-problem-brief.md) — one-line status -->
 
 -   [2026-08-30_874-legal-review-gaps](2026-08-30_874-legal-review-gaps/00-problem-brief.md) — leftovers after merged #874 PRs; PR pending
+-   [2026-08-30_678-dead-global-settings](2026-08-30_678-dead-global-settings/00-problem-brief.md) — remove retired `/admin/global-settings` page shell; PR-ready
