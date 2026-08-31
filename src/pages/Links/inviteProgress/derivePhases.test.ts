@@ -50,9 +50,11 @@ describe('derivePhases — Träger (TENANT_ADMIN)', () => {
         ]);
     });
 
-    it('keeps a DRAFT on the first bead as current (nothing sent yet)', () => {
+    it('renders a DRAFT all-neutral: no done, no current — nothing has happened yet', () => {
+        // Owner request on #893: an active "Eingeladen" bead on a never-sent
+        // draft is simply untrue; every bead stays pending until the send.
         expect(states(invite({ inviteStatus: 'DRAFT', emailDeliveryStatus: null }))).toEqual([
-            'invited:current',
+            'invited:pending',
             'registered:pending',
             'dpaConfirmed:pending',
             'twoFactorActive:pending',
@@ -149,6 +151,14 @@ describe('derivePhases — Berater (COUNSELLOR)', () => {
         expect(states(invite({ targetRole: 'COUNSELLOR' }))).toEqual([
             'invited:done',
             'accountCreated:current',
+            'completed:pending',
+        ]);
+    });
+
+    it('renders a DRAFT all-neutral on the three-phase track too', () => {
+        expect(states(invite({ targetRole: 'COUNSELLOR', inviteStatus: 'DRAFT', emailDeliveryStatus: null }))).toEqual([
+            'invited:pending',
+            'accountCreated:pending',
             'completed:pending',
         ]);
     });

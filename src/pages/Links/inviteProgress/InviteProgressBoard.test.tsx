@@ -76,6 +76,23 @@ describe('InviteProgressBoard', () => {
         expect(screen.getByRole('button', { name: '1 Abgelaufen / Problem' })).toBeInTheDocument();
     });
 
+    it('renders a DRAFT row all-grey with the draft label instead of an active "Eingeladen"', () => {
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                invites={[invite(9, { inviteStatus: 'DRAFT', emailDeliveryStatus: null })]}
+            />,
+        );
+
+        const row = screen.getByText('person9@example.org').closest('tr') as HTMLElement;
+        // The label under the track states the truth: nothing was sent yet.
+        expect(within(row).getByText('Entwurf – noch nicht eingeladen')).toBeInTheDocument();
+        // Every bead is neutral — no done, no current, and no "Eingeladen" claim.
+        expect(within(row).getByText('Eingeladen – ausstehend')).toBeInTheDocument();
+        expect(within(row).queryByText(/aktueller Schritt/)).not.toBeInTheDocument();
+        expect(within(row).queryByText(/– abgeschlossen/)).not.toBeInTheDocument();
+    });
+
     it('filters the table via a summary tile and clears on the second click', async () => {
         const user = userEvent.setup();
         render(<InviteProgressBoard {...baseProps()} />);

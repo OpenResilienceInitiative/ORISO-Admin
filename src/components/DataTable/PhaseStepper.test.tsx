@@ -56,6 +56,27 @@ describe('PhaseStepper', () => {
         expect(screen.getAllByText(/Abgeschlossen/)).toHaveLength(2);
     });
 
+    it('shows the idle label when no phase is active (all pending)', () => {
+        render(
+            <PhaseStepper
+                phases={[
+                    { key: 'invited', label: 'Eingeladen', state: 'pending' },
+                    { key: 'completed', label: 'Abgeschlossen', state: 'pending' },
+                ]}
+                idleLabel="Entwurf – noch nicht eingeladen"
+            />,
+        );
+        expect(screen.getByText('Entwurf – noch nicht eingeladen')).toBeInTheDocument();
+        // Nothing pretends to be active on an idle track.
+        expect(screen.queryByText(/aktueller Schritt/)).not.toBeInTheDocument();
+    });
+
+    it('never shows the idle label while a phase is active', () => {
+        render(<PhaseStepper phases={PHASES} idleLabel="Entwurf – noch nicht eingeladen" />);
+        expect(screen.queryByText('Entwurf – noch nicht eingeladen')).not.toBeInTheDocument();
+        expect(screen.getAllByText(/Registriert/)).toHaveLength(2);
+    });
+
     it('can hide the visible label for ultra-compact cells', () => {
         render(<PhaseStepper phases={PHASES} showActiveLabel={false} />);
         // Only the sr-only phrase remains.

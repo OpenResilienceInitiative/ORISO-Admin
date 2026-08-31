@@ -30,6 +30,7 @@ import {
     countInviteBuckets,
     deriveInviteBucket,
     derivePhases,
+    isDraftInvite,
     formatRelativeTime,
     INVITE_BUCKETS,
     InviteBucket,
@@ -400,6 +401,11 @@ export const InviteProgressBoard = ({
                             <DataTableCell className={styles.progressCell}>
                                 <PhaseStepper
                                     phases={phases}
+                                    idleLabel={
+                                        isDraftInvite(invite)
+                                            ? t('links.inviteProgress.draftLabel', 'Entwurf – noch nicht eingeladen')
+                                            : undefined
+                                    }
                                     ariaLabel={t('links.inviteProgress.col.progress', 'Onboarding-Fortschritt')}
                                 />
                             </DataTableCell>

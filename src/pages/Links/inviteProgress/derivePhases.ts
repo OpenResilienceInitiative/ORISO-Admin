@@ -61,6 +61,10 @@ type PhaseFacts = Pick<
 export const isDeadInvite = (invite: Pick<AccountInviteDTO, 'inviteStatus'>): boolean =>
     DEAD_STATUSES.has(invite.inviteStatus);
 
+/** A draft has never been sent — no mail went out, nothing has happened yet. */
+export const isDraftInvite = (invite: Pick<AccountInviteDTO, 'inviteStatus'>): boolean =>
+    invite.inviteStatus === 'DRAFT';
+
 const hasAccepted = (invite: PhaseFacts) => invite.acceptedAt != null || invite.inviteStatus === 'ACCEPTED';
 
 /**
@@ -101,6 +105,8 @@ export const phaseKeysForRole = (targetRole: AccountInviteTargetRole): readonly 
 /**
  * Map one invite to its stepper phases.
  *
+ * - A DRAFT (never sent) renders every phase `pending` — nothing has happened
+ *   yet, so no bead may claim completion or activity.
  * - Proven phases are `done`.
  * - On a live invite, the first unproven phase is `current`, later ones `pending`
  *   — except a failed e-mail delivery, which turns the `invited` bead into a
@@ -109,6 +115,13 @@ export const phaseKeysForRole = (targetRole: AccountInviteTargetRole): readonly 
  *   is `error` (the magenta error role), later ones `pending`.
  */
 export const derivePhases = (invite: PhaseFacts): InvitePhase[] => {
+    // A DRAFT is truthfully empty: no mail went out, so neither a done bead nor
+    // an active "Eingeladen" would be honest. Every bead stays neutral until the
+    // send (owner request on #893). The accepted-guard is defensive only — an
+    // accepted DRAFT cannot exist in the data model.
+    if (isDraftInvite(invite) && !hasAccepted(invite)) {
+        return phaseKeysForRole(invite.targetRole).map((key) => ({ key, state: 'pending' as const }));
+    }
     const dead = isDeadInvite(invite);
     const deliveryFailed = !dead && invite.emailDeliveryStatus === 'FAILED' && !hasAccepted(invite);
     let blockingSeen = false;

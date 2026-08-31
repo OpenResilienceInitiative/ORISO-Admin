@@ -464,6 +464,7 @@
     "links.inviteProgress.col.select": "Selection",
     "links.inviteProgress.col.recipient": "Recipient",
     "links.inviteProgress.col.progress": "Onboarding progress",
+    "links.inviteProgress.draftLabel": "Draft – not invited yet",
     "links.inviteProgress.col.invitedAt": "Invited on",
     "links.inviteProgress.col.lastActivity": "Last activity",
     "links.inviteProgress.col.status": "Status",
