@@ -223,11 +223,12 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
     it('rejects with the raw response on 403 when FORBIDDEN_WITH_RESPONSE is requested, without redirecting', async () => {
         const location = { href: '' };
         vi.stubGlobal('window', { location });
-        const fetchMock = vi
-            .fn()
-            .mockResolvedValue(response(403, { message: 'Only platform admins can create administrative accounts' }));
+        const forbiddenResponse = response(403, { message: 'Only platform admins can create administrative accounts' });
+        const fetchMock = vi.fn().mockResolvedValue(forbiddenResponse);
         vi.stubGlobal('fetch', fetchMock);
 
+        // Identity, not shape: the caller must receive the VERY response object so it
+        // can read the backend's message from headers/body.
         await expect(
             fetchData({
                 url: 'https://api.test/service/useradmin/account-invites',
@@ -235,7 +236,7 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
                 responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE],
                 bodyData: JSON.stringify({ recipientEmail: 'neu@example.org' }),
             }),
-        ).rejects.toMatchObject({ status: 403 });
+        ).rejects.toBe(forbiddenResponse);
 
         expect(location.href).toBe('');
         expect(logout).not.toHaveBeenCalled();

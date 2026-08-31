@@ -233,6 +233,24 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         setGeneratedLinks((current) => ({ ...current, [invite.id]: invite.acceptUrl as string }));
     }, []);
 
+    // Role-aware fallback for a 403 without a usable backend message
+    // (UserService#1006): the same component serves the Träger-admin AND the
+    // counsellor tab, so the explanation must name the role that could not be
+    // invited instead of always talking about Träger-Admins.
+    const forbiddenFallbackFor = useCallback(
+        (role: AccountInviteTargetRole) =>
+            role === 'COUNSELLOR'
+                ? t(
+                      'links.accountInvites.forbiddenCounsellor',
+                      'Ihre Rolle ist nicht berechtigt, Berater*innen einzuladen.',
+                  )
+                : t(
+                      'links.accountInvites.forbiddenTenantAdmin',
+                      'Nur Plattform-Administratoren können Träger-Admins einladen.',
+                  ),
+        [t],
+    );
+
     const onCreate = useCallback(
         async (values: InviteComposerValues): Promise<InviteSubmitOutcome> => {
             setSubmitting(true);
@@ -349,13 +367,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 // to a translated role hint. Never the generic create-failed text —
                 // that left the admin retrying an action their role can never perform.
                 if (error instanceof Response && error.status === 403) {
-                    message.error(
-                        (await extractApiErrorMessageOrNull(error)) ??
-                            t(
-                                'links.accountInvites.forbidden',
-                                'Nur Plattform-Administratoren können Träger-Admins einladen.',
-                            ),
-                    );
+                    message.error((await extractApiErrorMessageOrNull(error)) ?? forbiddenFallbackFor(targetRole));
                     return false;
                 }
                 message.error(t('links.error.createFailed', 'Could not create link'));
@@ -364,7 +376,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 setSubmitting(false);
             }
         },
-        [isTenantInvite, loadInvites, rememberGeneratedLink, targetRole, t],
+        [forbiddenFallbackFor, isTenantInvite, loadInvites, rememberGeneratedLink, targetRole, t],
     );
 
     // One row of the CSV batch. Uses the send mode captured at file-pick time:
@@ -420,18 +432,14 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 // Same role surfacing as onCreate (UserService#1006).
                 if (error instanceof Response && error.status === 403) {
                     message.error(
-                        (await extractApiErrorMessageOrNull(error)) ??
-                            t(
-                                'links.accountInvites.forbidden',
-                                'Nur Plattform-Administratoren können Träger-Admins einladen.',
-                            ),
+                        (await extractApiErrorMessageOrNull(error)) ?? forbiddenFallbackFor(invite.targetRole),
                     );
                     return;
                 }
                 message.error(t('links.accountInvites.resendFailed', 'Could not resend invite'));
             }
         },
-        [activeTemplates, loadInvites, rememberGeneratedLink, selectedTemplateId, t],
+        [activeTemplates, forbiddenFallbackFor, loadInvites, rememberGeneratedLink, selectedTemplateId, t],
     );
 
     const onRevoke = useCallback(
@@ -539,10 +547,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         }
         setBulkRunning(false);
         if (firstForbidden) {
-            message.error(
-                (await extractApiErrorMessageOrNull(firstForbidden)) ??
-                    t('links.accountInvites.forbidden', 'Nur Plattform-Administratoren können Träger-Admins einladen.'),
-            );
+            message.error((await extractApiErrorMessageOrNull(firstForbidden)) ?? forbiddenFallbackFor(targetRole));
         }
         if (failed.length === 0) {
             message.success(
@@ -560,7 +565,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             setSelectedIds(failed.map((invite) => invite.id));
         }
         await loadInvites();
-    }, [loadInvites, rememberGeneratedLink, selectedInvites, selectedTemplateId, t]);
+    }, [forbiddenFallbackFor, loadInvites, rememberGeneratedLink, selectedInvites, selectedTemplateId, targetRole, t]);
 
     // Empty-state CTA: the composer IS the invite entry point and sits right
     // above the board — bring it into view and focus its first field.
@@ -637,6 +642,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             {csvImport && (
                 <InviteCsvImportModal
                     createInvite={createCsvInvite}
+                    forbiddenFallback={forbiddenFallbackFor(targetRole)}
                     idKind={isTenantInvite ? 'tenant' : 'agency'}
                     parseResult={csvImport.result}
                     takenTenantIds={isTenantInvite ? takenTenantIds : undefined}

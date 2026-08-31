@@ -51,6 +51,41 @@ describe('refreshAuthTokensViaBff timeout guard', () => {
         expect(settled).toBe(true);
     });
 
+    it('aborts a refresh whose BODY stalls after the headers arrived', async () => {
+        vi.useFakeTimers();
+        // Headers arrive fine (ok: true), but the body read never finishes on its
+        // own — a proxy/BFF stalling mid-response. The abort timer must stay armed
+        // through json(), or this promise (and the cached in-flight refresh) hangs
+        // forever, recreating the endless spinner.
+        const fetchMock = vi.fn((_url: string, init?: RequestInit) =>
+            Promise.resolve({
+                ok: true,
+                json: () =>
+                    new Promise((_resolve, reject) => {
+                        init?.signal?.addEventListener('abort', () => {
+                            const abortError = new Error('aborted');
+                            abortError.name = 'AbortError';
+                            reject(abortError);
+                        });
+                    }),
+            }),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        const pending = refreshAuthTokensViaBff();
+        const assertion = expect(pending).rejects.toThrow();
+
+        let settled = false;
+        pending.catch(() => {
+            settled = true;
+        });
+        await vi.advanceTimersByTimeAsync(AUTH_BFF_REQUEST_TIMEOUT_MS - 1);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        await assertion;
+        expect(settled).toBe(true);
+    });
+
     it('resolves normally when the BFF answers in time', async () => {
         const fetchMock = vi.fn().mockResolvedValue({
             ok: true,

@@ -69,20 +69,24 @@ export const refreshAuthTokensViaBff = async (): Promise<LoginData> => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), AUTH_BFF_REQUEST_TIMEOUT_MS);
 
-    let response: Response;
     try {
-        response = await fetch(authRefreshTokenEndpoint, {
+        const response = await fetch(authRefreshTokenEndpoint, {
             method: 'POST',
             credentials: 'include',
             signal: controller.signal,
         });
+
+        if (!response.ok) {
+            throw new Error('keycloakLogin');
+        }
+
+        // The timer must stay armed THROUGH the body read: a BFF that returns
+        // headers but stalls mid-body would otherwise leave this promise — and
+        // with it auth.ts's cached in-flight refresh — pending forever, which is
+        // exactly the endless-spinner failure this timeout exists to prevent.
+        // Aborting the signal also rejects an in-progress json() read.
+        return await response.json();
     } finally {
         clearTimeout(timer);
     }
-
-    if (!response.ok) {
-        throw new Error('keycloakLogin');
-    }
-
-    return response.json();
 };

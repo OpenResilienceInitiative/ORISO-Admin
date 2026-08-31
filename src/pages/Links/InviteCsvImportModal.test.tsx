@@ -73,6 +73,7 @@ describe('InviteCsvImportModal', () => {
         render(
             <InviteCsvImportModal
                 createInvite={createInvite}
+                forbiddenFallback="Nur Plattform-Administratoren können Träger-Admins einladen."
                 idKind="tenant"
                 parseResult={parseResult}
                 takenTenantIds={new Set([1, 2, 4])}
@@ -150,6 +151,59 @@ describe('InviteCsvImportModal', () => {
         expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeInTheDocument();
         // Deterministically consume the partial-summary message instead of leaving it mid-render.
         expect(await screen.findByText('1 Empfänger angelegt, 1 fehlgeschlagen')).toBeInTheDocument();
+    });
+
+    /*
+     * A 403 fails every row for the same ROLE reason (UserService#1006). The run
+     * must say so once — preferring the backend's own message — instead of
+     * reducing it to anonymous "Fehlgeschlagen" rows.
+     */
+    it('surfaces the backend role message once when rows fail with 403', async () => {
+        createInvite.mockImplementation(async () => {
+            // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's FORBIDDEN_WITH_RESPONSE rejection (a raw Response)
+            throw new Response(JSON.stringify({ message: 'Only platform admins can create administrative accounts' }), {
+                status: 403,
+            });
+        });
+        renderModal(
+            parseResultOf({
+                rows: [
+                    { line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', missingName: false },
+                    { line: 2, email: 'b@example.org', firstName: 'B', lastName: 'Two', missingName: false },
+                ],
+            }),
+        );
+
+        await userEvent.click(screen.getByRole('button', { name: '2 Empfänger anlegen' }));
+
+        expect(await rowCells('a@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
+        expect(await rowCells('b@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
+        const roleToasts = await screen.findAllByText('Only platform admins can create administrative accounts');
+        expect(roleToasts).toHaveLength(1);
+        // The count summary stays — the cause toast comes ON TOP of it.
+        expect(await screen.findByText('0 Empfänger angelegt, 2 fehlgeschlagen')).toBeInTheDocument();
+        expect(onCreated).not.toHaveBeenCalled();
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the tab-provided role wording on a bodyless 403', async () => {
+        createInvite.mockImplementation(async () => {
+            // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's FORBIDDEN_WITH_RESPONSE rejection (a raw Response)
+            throw new Response(null, { status: 403 });
+        });
+        renderModal(
+            parseResultOf({
+                rows: [{ line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', missingName: false }],
+            }),
+        );
+
+        await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+
+        expect(await rowCells('a@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
+        expect(
+            await screen.findByText('Nur Plattform-Administratoren können Träger-Admins einladen.'),
+        ).toBeInTheDocument();
+        expect(await screen.findByText('0 Empfänger angelegt, 1 fehlgeschlagen')).toBeInTheDocument();
     });
 
     it('lists rejected rows read-only, supports removing rows and editing names', async () => {

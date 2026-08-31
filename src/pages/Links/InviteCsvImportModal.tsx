@@ -4,6 +4,7 @@ import { Button, Input, message, Tag, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
+import { extractApiErrorMessageOrNull } from '../../utils/extractApiErrorMessage';
 import { ListingTable } from '../../components/ListingTable';
 import { Modal, DialogButton } from '../../components/Modal';
 import { assignBatchTenantIds, type InviteCsvRejectionReason, type ParseInviteCsvResult } from './csv/parseInviteCsv';
@@ -48,6 +49,12 @@ interface ImportRow {
      * collision would send the admin to fix the wrong column.
      */
     emailTaken?: boolean;
+    /**
+     * `failed` flavour: the backend answered 403 — the admin's ROLE cannot create
+     * these invites (UserService#1006). Every retry would fail the same way, so
+     * the row must not look like a fixable data problem.
+     */
+    forbidden?: boolean;
 }
 
 export interface InviteCsvImportModalProps {
@@ -58,6 +65,12 @@ export interface InviteCsvImportModalProps {
     takenTenantIds?: Set<number>;
     /** Creates ONE invite; rejections (e.g. a 409 `Response`) mark the row as failed. */
     createInvite: (row: InviteCsvCreateRow) => Promise<void>;
+    /**
+     * Role-aware explanation shown when a row fails with a 403 that carries no
+     * usable backend message (UserService#1006). Provided by the tab, which
+     * knows whether Träger admins or counsellors are being invited here.
+     */
+    forbiddenFallback: string;
     onClose: () => void;
     /** Called once per invite run that created at least one invite — refresh the invites table. */
     onCreated: () => void;
@@ -79,6 +92,7 @@ export const InviteCsvImportModal = ({
     idKind,
     takenTenantIds,
     createInvite,
+    forbiddenFallback,
     onClose,
     onCreated,
 }: InviteCsvImportModalProps) => {
@@ -136,13 +150,16 @@ export const InviteCsvImportModal = ({
         const assigned = idByLine;
         let created = 0;
         let failed = 0;
+        // A 403 fails EVERY row for the same role reason (UserService#1006) — remember
+        // the first one so the admin gets the cause once, on top of the row states.
+        let firstForbidden: Response | null = null;
 
         // Sequential on purpose: one POST per invite keeps failures attributable per
         // row, and the backend's id collision checks stay race-free.
         for (let i = 0; i < pendingRows.length; i += 1) {
             const row = pendingRows[i];
             const id = assigned.get(row.line);
-            patchRow(row.line, { state: 'creating', conflict: false, emailTaken: false });
+            patchRow(row.line, { state: 'creating', conflict: false, emailTaken: false, forbidden: false });
             try {
                 // eslint-disable-next-line no-await-in-loop
                 await createInvite({
@@ -156,9 +173,14 @@ export const InviteCsvImportModal = ({
             } catch (error) {
                 failed += 1;
                 const conflict = error instanceof Response && error.status === 409;
+                const forbidden = error instanceof Response && error.status === 403;
+                if (forbidden && firstForbidden == null) {
+                    firstForbidden = error as Response;
+                }
                 patchRow(row.line, {
                     state: 'failed',
                     conflict,
+                    forbidden,
                     emailTaken:
                         conflict &&
                         (error as Response).headers.get(FETCH_ERRORS.X_REASON) === X_REASON.EMAIL_NOT_AVAILABLE,
@@ -167,6 +189,11 @@ export const InviteCsvImportModal = ({
         }
 
         setRunning(false);
+        if (firstForbidden) {
+            // Surface the role explanation once, distinct from the per-row states —
+            // the backend's own message where it sends one (UserService#1006).
+            message.error((await extractApiErrorMessageOrNull(firstForbidden)) ?? forbiddenFallback);
+        }
         if (created > 0) {
             onCreated();
         }
@@ -187,6 +214,22 @@ export const InviteCsvImportModal = ({
     const idLabel = isTenantId
         ? t('links.accountInvites.tenantId', 'Träger-ID')
         : t('links.accountInvites.agencyId', 'Beratungsstellen-ID');
+
+    // Four mutually exclusive failure flavours — an if-chain instead of nested
+    // ternaries, and `forbidden` first: a role rejection is not a fixable data
+    // problem, so it must not be mislabelled as an id or address collision.
+    const failedRowLabel = (row: ImportRow) => {
+        if (row.forbidden) {
+            return t('links.csvImport.status.forbidden', 'Nicht berechtigt');
+        }
+        if (row.emailTaken) {
+            return t('links.csvImport.status.emailTaken', 'E-Mail-Adresse bereits vorhanden');
+        }
+        if (row.conflict) {
+            return t('links.csvImport.status.idTaken', '{{idLabel}} vergeben', { idLabel });
+        }
+        return t('links.csvImport.status.failed', 'Fehlgeschlagen');
+    };
 
     const statusTag = (row: ImportRow) => {
         if (row.rejectedReason) {
@@ -211,16 +254,7 @@ export const InviteCsvImportModal = ({
             case 'created':
                 return <Tag color="green">{t('links.csvImport.status.created', 'Angelegt')}</Tag>;
             case 'failed':
-                return (
-                    <Tag color="red">
-                        {/* eslint-disable-next-line no-nested-ternary -- three mutually exclusive failure flavours */}
-                        {row.emailTaken
-                            ? t('links.csvImport.status.emailTaken', 'E-Mail-Adresse bereits vorhanden')
-                            : row.conflict
-                            ? t('links.csvImport.status.idTaken', '{{idLabel}} vergeben', { idLabel })
-                            : t('links.csvImport.status.failed', 'Fehlgeschlagen')}
-                    </Tag>
-                );
+                return <Tag color="red">{failedRowLabel(row)}</Tag>;
             default:
                 return <Tag color="green">{t('links.csvImport.status.valid', 'Gültig')}</Tag>;
         }
