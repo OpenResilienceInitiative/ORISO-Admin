@@ -161,6 +161,7 @@ describe('GlobalSmtpSettingsPage (set-only SMTP credentials)', () => {
 
         await startEditing(user);
         await user.type(screen.getByLabelText('globalSettings.smtp.username'), '   ');
+        await user.type(screen.getByLabelText('globalSettings.smtp.password'), '   ');
         await save(user);
 
         await waitFor(() => expect(mocks.fetchData).toHaveBeenCalled());
