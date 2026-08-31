@@ -909,7 +909,6 @@
     "globalSettings.smtp.description": "Konfigurieren Sie den SMTP-Server und den Versand von System-E-Mails der Plattform.",
     "globalSettings.smtp.systemEmailToggle.description": "Erlaubt den Versand von Systembenachrichtigungen per E-Mail für die Plattform.",
     "globalSettings.smtp.smtpToggle.description": "Versendet Plattform-E-Mails über die unten hinterlegte SMTP-Verbindung.",
-    "globalSettings.smtp.emailThemeColor": "E-Mail Designfarbe",
     "globalSettings.smtp.from": "Absender E-Mail",
     "globalSettings.smtp.host": "SMTP Host",
     "globalSettings.smtp.password": "SMTP Passwort",

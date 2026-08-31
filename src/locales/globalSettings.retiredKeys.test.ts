@@ -82,3 +82,19 @@ describe('secure-toggle description explains that OFF is mandatory STARTTLS, not
         expect(en[key]).toContain('Unencrypted sending');
     });
 });
+
+/**
+ * Owner request on ORISO-Admin PR #892: the e-mail theme color field is gone
+ * from the SMTP card — e-mail design comes from the e-mail design system /
+ * tenant theming, and the backend deliberately ignores this value (see the
+ * #914 decision in UserService InviteMailDispatchService.renderBrandedMail:
+ * "a transport setting is not a design token"). The tenant-level
+ * `tenants.appSettings.smtp.emailThemeColor` key is NOT retired here.
+ */
+describe('retired SMTP e-mail theme color key (#914: transport settings are not design tokens)', () => {
+    it('drops globalSettings.smtp.emailThemeColor from de, en, and the English manual file', () => {
+        expect(de['globalSettings.smtp.emailThemeColor']).toBeUndefined();
+        expect(en['globalSettings.smtp.emailThemeColor']).toBeUndefined();
+        expect(manual['globalSettings.smtp.emailThemeColor']).toBeUndefined();
+    });
+});

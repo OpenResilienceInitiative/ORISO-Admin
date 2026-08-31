@@ -216,7 +216,6 @@
     "form.errors.required.multiSelect": "Please select at least one option from the dropdown list.",
     "gender.female": "Ms.",
     "gender.male": "Mr.",
-    "globalSettings.smtp.emailThemeColor": "Email theme color",
     "globalSettings.smtp.from": "Sender email",
     "globalSettings.smtp.host": "SMTP host",
     "globalSettings.smtp.password": "SMTP password",

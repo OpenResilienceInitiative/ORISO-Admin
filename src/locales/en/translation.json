@@ -382,7 +382,6 @@
     "globalSettings.smtp.test.errorMissingConnection": "Please fill in SMTP host, port and sender email first.",
     "globalSettings.smtp.password": "SMTP password",
     "globalSettings.smtp.from": "Sender email",
-    "globalSettings.smtp.emailThemeColor": "Email theme color",
     "globalSettings.smtp.secure": "SMTP secure (TLS/SSL)",
     "globalSettings.smtp.test.recipientEmail": "Recipient test email",
     "globalSettings.smtp.test.title": "SMTP test email",

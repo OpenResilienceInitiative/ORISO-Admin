@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next';
 import { CardDeck } from '../../components/CardDeck';
 import { CardEditable } from '../../components/CardEditable';
 import { Card } from '../../components/Card';
-import { MuiColorField } from '../../components/mui/MuiColorField';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { MuiSwitchField } from '../../components/mui/MuiSwitchField/index';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
@@ -113,7 +112,6 @@ export const GlobalSmtpSettingsPage = () => {
             globalSmtpUsername: '',
             globalSmtpPassword: '',
             globalSmtpFrom: settings.globalSmtpFrom ?? '',
-            globalSmtpEmailThemeColor: settings.globalSmtpEmailThemeColor ?? '#0f3b8f',
         }),
         [settings],
     );
@@ -182,7 +180,6 @@ export const GlobalSmtpSettingsPage = () => {
                 password: values.globalSmtpPassword || '',
                 from: values.globalSmtpFrom || '',
                 recipientEmail: cleanedRecipientEmail,
-                emailThemeColor: values.globalSmtpEmailThemeColor || '#0f3b8f',
             });
             message.success(t('globalSettings.smtp.test.success', { email: cleanedRecipientEmail }));
         } catch (error) {
@@ -260,11 +257,6 @@ export const GlobalSmtpSettingsPage = () => {
                                 autoComplete="new-password"
                             />
                             <MuiFormField label={t('globalSettings.smtp.from')} name={['globalSmtpFrom']} />
-                            <MuiColorField
-                                className={styles.colorField}
-                                labelKey="globalSettings.smtp.emailThemeColor"
-                                name={['globalSmtpEmailThemeColor']}
-                            />
                             <MuiSwitchField
                                 className={styles.smtpSwitch}
                                 label={renderSwitchLabel(

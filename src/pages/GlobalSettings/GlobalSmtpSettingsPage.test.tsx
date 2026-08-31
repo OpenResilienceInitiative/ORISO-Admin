@@ -111,6 +111,26 @@ describe('GlobalSmtpSettingsPage (set-only SMTP credentials)', () => {
         );
     });
 
+    it('renders no e-mail theme color field and never echoes the stored color into the PATCH body (#914)', async () => {
+        const user = userEvent.setup();
+        renderPage();
+
+        // Design comes from the e-mail design system / tenant theming; the
+        // backend deliberately ignores this value ("a transport setting is not
+        // a design token", UserService #914) — so the card must not offer it.
+        expect(screen.queryByLabelText('globalSettings.smtp.emailThemeColor')).not.toBeInTheDocument();
+        expect(screen.queryByText('globalSettings.smtp.emailThemeColor')).not.toBeInTheDocument();
+
+        await startEditing(user);
+        const hostField = screen.getByLabelText('globalSettings.smtp.host');
+        await user.clear(hostField);
+        await user.type(hostField, 'smtp.changed.org');
+        await save(user);
+
+        await waitFor(() => expect(mocks.fetchData).toHaveBeenCalled());
+        expect(patchedBody()).not.toHaveProperty('globalSmtpEmailThemeColor');
+    });
+
     it('starts with empty credential fields even though other settings are prefilled', () => {
         renderPage();
 
@@ -215,6 +235,9 @@ describe('GlobalSmtpSettingsPage (set-only SMTP credentials)', () => {
                 recipientEmail: 'admin@example.org',
             }),
         );
+        // The theme color is retired from the card (#914): the optional
+        // emailThemeColor is simply no longer sent with the test mail.
+        expect(mocks.sendGlobalSmtpTestEmail.mock.calls[0][0]).not.toHaveProperty('emailThemeColor');
         expect(screen.queryByText('globalSettings.smtp.test.errorMissingConnection')).not.toBeInTheDocument();
     });
 
