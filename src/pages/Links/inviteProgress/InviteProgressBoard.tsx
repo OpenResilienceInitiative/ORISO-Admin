@@ -30,6 +30,7 @@ import {
     countInviteBuckets,
     deriveInviteBucket,
     derivePhases,
+    isDraftInvite,
     formatRelativeTime,
     INVITE_BUCKETS,
     InviteBucket,
@@ -37,7 +38,9 @@ import {
     inviteLastActivity,
     isDeadInvite,
     matchesInviteQuery,
+    PHASE_AWAITING_FALLBACKS,
     PHASE_LABEL_FALLBACKS,
+    phaseAwaitingLabelKey,
     phaseLabelKey,
 } from './derivePhases';
 import styles from './inviteProgressBoard.module.scss';
@@ -359,7 +362,13 @@ export const InviteProgressBoard = ({
                     const phases = derivePhases(invite).map((phase) => ({
                         key: phase.key,
                         state: phase.state,
-                        label: t(phaseLabelKey(phase.key), PHASE_LABEL_FALLBACKS[phase.key]),
+                        // A CURRENT phase is awaited, not reached: its label says
+                        // what the row waits FOR ("Wartet auf Registrierung")
+                        // instead of printing the reached-state word.
+                        label:
+                            phase.state === 'current'
+                                ? t(phaseAwaitingLabelKey(phase.key), PHASE_AWAITING_FALLBACKS[phase.key])
+                                : t(phaseLabelKey(phase.key), PHASE_LABEL_FALLBACKS[phase.key]),
                     }));
 
                     return (
@@ -400,6 +409,11 @@ export const InviteProgressBoard = ({
                             <DataTableCell className={styles.progressCell}>
                                 <PhaseStepper
                                     phases={phases}
+                                    idleLabel={
+                                        isDraftInvite(invite)
+                                            ? t('links.inviteProgress.draftLabel', 'Entwurf – noch nicht eingeladen')
+                                            : undefined
+                                    }
                                     ariaLabel={t('links.inviteProgress.col.progress', 'Onboarding-Fortschritt')}
                                 />
                             </DataTableCell>

@@ -17,6 +17,12 @@ export interface PhaseStepperProps {
     ariaLabel?: string;
     /** Show the label of the phase that needs attention (or "done") under the track. */
     showActiveLabel?: boolean;
+    /**
+     * Label under the track when NO phase is active — e.g. a draft invite whose
+     * beads are all pending because nothing has happened yet. Without it the
+     * track renders no label at all in that state.
+     */
+    idleLabel?: string;
     className?: string;
 }
 
@@ -63,7 +69,13 @@ const activePhase = (phases: PhaseStepperPhase[]): PhaseStepperPhase | undefined
  * Screen readers get the full list ("Eingeladen – abgeschlossen, …"); sighted
  * users get the beads plus the label of the phase that currently matters.
  */
-export const PhaseStepper = ({ phases, ariaLabel, showActiveLabel = true, className }: PhaseStepperProps) => {
+export const PhaseStepper = ({
+    phases,
+    ariaLabel,
+    showActiveLabel = true,
+    idleLabel,
+    className,
+}: PhaseStepperProps) => {
     const { t } = useTranslation();
     const active = activePhase(phases);
     const allDone = phases.length > 0 && phases.every((phase) => phase.state === 'done');
@@ -110,6 +122,13 @@ export const PhaseStepper = ({ phases, ariaLabel, showActiveLabel = true, classN
                     })}
                 >
                     {active.label}
+                </span>
+            )}
+            {showActiveLabel && !active && idleLabel && (
+                // Neutral by design: the idle state accents nothing, exactly like
+                // its all-pending beads.
+                <span aria-hidden className={styles.activeLabel}>
+                    {idleLabel}
                 </span>
             )}
         </div>

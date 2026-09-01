@@ -84,10 +84,12 @@ const extractFromBody = (body: unknown): string | null => {
     return null;
 };
 
-export const extractApiErrorMessage = async (
-    error: unknown,
-    fallbackKey = 'message.error.default',
-): Promise<string> => {
+/**
+ * Like {@link extractApiErrorMessage}, but returns `null` when the response carries no
+ * usable message — for callers that supply their own (react-i18next translated)
+ * fallback text instead of the global i18next key lookup.
+ */
+export const extractApiErrorMessageOrNull = async (error: unknown): Promise<string | null> => {
     if (error instanceof Response) {
         const xReason = translateXReason(await extractApiErrorReason(error));
         if (xReason) {
@@ -112,8 +114,11 @@ export const extractApiErrorMessage = async (
         }
     }
 
-    return i18next.t(fallbackKey);
+    return null;
 };
+
+export const extractApiErrorMessage = async (error: unknown, fallbackKey = 'message.error.default'): Promise<string> =>
+    (await extractApiErrorMessageOrNull(error)) ?? i18next.t(fallbackKey);
 
 export const showApiErrorMessage = async (
     error: unknown,
