@@ -118,7 +118,15 @@ vi.mock('../../../components/mui/MuiSelectField', async () => {
     const { Form } = await import('antd');
     const ReactModule = await import('react');
 
-    const ValueProbe = ({ value, disabled, optionLabels }: { value?: unknown; disabled?: boolean; optionLabels: string }) => (
+    const ValueProbe = ({
+        value,
+        disabled,
+        optionLabels,
+    }: {
+        value?: unknown;
+        disabled?: boolean;
+        optionLabels: string;
+    }) => (
         <output
             aria-label="tenant-select"
             data-value={value == null ? '' : String(value)}

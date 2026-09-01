@@ -51,7 +51,10 @@ export const TenantAdminEditOrAdd = () => {
     const { data, isLoading: isLoadingConsultants } = useTenantUserAdminData({ id, enabled: isEditing });
     // Tenant-scoped admins may not list all tenants — and the locked field only ever
     // shows their own, which useTenantData already provides.
-    const { data: tenants, isLoading } = useTenantsData({ perPage: 1000, enabled: !isPlatformAdmin && !lockTenantToOwn });
+    const { data: tenants, isLoading } = useTenantsData({
+        perPage: 1000,
+        enabled: !isPlatformAdmin && !lockTenantToOwn,
+    });
     const { data: ownTenant } = useTenantData();
 
     const tenantOptions = useMemo(() => {
