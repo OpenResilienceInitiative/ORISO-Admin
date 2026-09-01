@@ -38,6 +38,18 @@ export interface AccountInviteDTO {
     twoFactorWaivedAt: string | null;
     twoFactorWaiverReason: string | null;
     createDate: string;
+    /**
+     * DPA forward/signature signals (#722/#725). CONTRACT GAP (2026-09-01,
+     * verified against UserService pre-dev): the AccountInvite ENTITY stores
+     * `dpa_forwarded_at`, but AccountInviteResponseDTO does not serialize it
+     * yet, and no "DPA signed" field exists on the invite at all (the
+     * signature lives in TenantService's tenant_dpa_signature). Until the
+     * backend serves these, both stay undefined and the derived DPA phases
+     * render as pending — the board lights them up the day the fields arrive,
+     * with no further frontend change.
+     */
+    dpaForwardedAt?: string | null;
+    dpaSignedAt?: string | null;
     rawToken?: string;
     acceptUrl?: string;
 }

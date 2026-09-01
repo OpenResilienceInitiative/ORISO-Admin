@@ -40,12 +40,20 @@ const invite = (overrides: Partial<AccountInviteDTO> = {}): AccountInviteDTO => 
 const states = (input: AccountInviteDTO) => derivePhases(input).map((phase) => `${phase.key}:${phase.state}`);
 
 describe('derivePhases — Träger (TENANT_ADMIN)', () => {
-    it('marks a freshly sent invite as invited-done, registration current, the rest pending', () => {
+    /*
+     * Owner model (#725 / live defect on pre-dev): sending the mail proves ONLY
+     * "Eingeladen" — never registration. "Vertrag unterschrieben" is the FINAL
+     * gate before completion, and the gate status READY (accepted + e-mail +
+     * 2FA) says NOTHING about the DPA — a forwarded, unsigned contract must
+     * never render as complete.
+     */
+    it('proves only the invitation after the mail went out — registration is NOT reached', () => {
         expect(states(invite())).toEqual([
             'invited:done',
             'registered:current',
-            'dpaConfirmed:pending',
+            'tenantCreated:pending',
             'twoFactorActive:pending',
+            'dpaSigned:pending',
             'completed:pending',
         ]);
     });
@@ -56,37 +64,23 @@ describe('derivePhases — Träger (TENANT_ADMIN)', () => {
         expect(states(invite({ inviteStatus: 'DRAFT', emailDeliveryStatus: null }))).toEqual([
             'invited:pending',
             'registered:pending',
-            'dpaConfirmed:pending',
+            'tenantCreated:pending',
             'twoFactorActive:pending',
+            'dpaSigned:pending',
             'completed:pending',
         ]);
     });
 
-    it('completes registration once accepted; DPA stays pending because the API carries no DPA signal', () => {
+    it('acceptance proves registration AND the created Träger; 2FA becomes the current step', () => {
+        // The accept flow registers the account and creates the tenant from its
+        // reservation in one server-side step — the DTO carries no finer signal,
+        // so both beads light together on acceptance.
         expect(states(invite({ inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z' }))).toEqual([
             'invited:done',
             'registered:done',
-            'dpaConfirmed:current',
-            'twoFactorActive:pending',
-            'completed:pending',
-        ]);
-    });
-
-    it('lights the 2FA bead from its own signal even while DPA cannot be proven yet', () => {
-        expect(
-            states(
-                invite({
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    twoFactorStatus: 'ACTIVE',
-                    accessGateStatus: 'BLOCKED_EMAIL',
-                }),
-            ),
-        ).toEqual([
-            'invited:done',
-            'registered:done',
-            'dpaConfirmed:current',
-            'twoFactorActive:done',
+            'tenantCreated:done',
+            'twoFactorActive:current',
+            'dpaSigned:pending',
             'completed:pending',
         ]);
     });
@@ -102,7 +96,11 @@ describe('derivePhases — Träger (TENANT_ADMIN)', () => {
         expect(phases.find((phase) => phase.key === 'twoFactorActive')?.state).toBe('done');
     });
 
-    it('completes every bead when the access gate is READY (also proves DPA and a NOT_REQUIRED 2FA)', () => {
+    it('READY does NOT prove the signature: the stepper must never show complete while the DPA is outstanding', () => {
+        // This is the live pre-dev defect: gate READY = accepted + e-mail + 2FA
+        // (verified in AccountInviteService.calculateAccessGate) — the DPA is
+        // not part of the gate, so READY may complete every bead EXCEPT the
+        // signature and the final completion.
         expect(
             states(
                 invite({
@@ -112,15 +110,86 @@ describe('derivePhases — Träger (TENANT_ADMIN)', () => {
                     accessGateStatus: 'READY',
                 }),
             ),
-        ).toEqual(['invited:done', 'registered:done', 'dpaConfirmed:done', 'twoFactorActive:done', 'completed:done']);
+        ).toEqual([
+            'invited:done',
+            'registered:done',
+            'tenantCreated:done',
+            'twoFactorActive:done',
+            'dpaSigned:current',
+            'completed:pending',
+        ]);
+    });
+
+    it('a forwarded, unsigned DPA shows the forwarded bead as done and waits on the signature — NOT complete', () => {
+        expect(
+            states(
+                invite({
+                    inviteStatus: 'ACCEPTED',
+                    acceptedAt: '2026-08-02T10:00:00Z',
+                    accessGateStatus: 'READY',
+                    dpaForwardedAt: '2026-08-03T10:00:00Z',
+                }),
+            ),
+        ).toEqual([
+            'invited:done',
+            'registered:done',
+            'tenantCreated:done',
+            'twoFactorActive:done',
+            'dpaForwarded:done',
+            'dpaSigned:current',
+            'completed:pending',
+        ]);
+    });
+
+    it('the landed signature is the final gate: only then is the track complete', () => {
+        expect(
+            states(
+                invite({
+                    inviteStatus: 'ACCEPTED',
+                    acceptedAt: '2026-08-02T10:00:00Z',
+                    accessGateStatus: 'READY',
+                    dpaForwardedAt: '2026-08-03T10:00:00Z',
+                    dpaSignedAt: '2026-08-04T10:00:00Z',
+                }),
+            ),
+        ).toEqual([
+            'invited:done',
+            'registered:done',
+            'tenantCreated:done',
+            'twoFactorActive:done',
+            'dpaForwarded:done',
+            'dpaSigned:done',
+            'completed:done',
+        ]);
+    });
+
+    it('a self-signed tenant (no forward) completes without the forwarded bead', () => {
+        expect(
+            states(
+                invite({
+                    inviteStatus: 'ACCEPTED',
+                    acceptedAt: '2026-08-02T10:00:00Z',
+                    accessGateStatus: 'READY',
+                    dpaSignedAt: '2026-08-04T10:00:00Z',
+                }),
+            ),
+        ).toEqual([
+            'invited:done',
+            'registered:done',
+            'tenantCreated:done',
+            'twoFactorActive:done',
+            'dpaSigned:done',
+            'completed:done',
+        ]);
     });
 
     it('turns the invited bead into a warning when the e-mail bounced (a resend repairs it)', () => {
         expect(states(invite({ emailDeliveryStatus: 'FAILED' }))).toEqual([
             'invited:warning',
             'registered:pending',
-            'dpaConfirmed:pending',
+            'tenantCreated:pending',
             'twoFactorActive:pending',
+            'dpaSigned:pending',
             'completed:pending',
         ]);
     });
@@ -129,8 +198,9 @@ describe('derivePhases — Träger (TENANT_ADMIN)', () => {
         expect(states(invite({ inviteStatus: 'EXPIRED' }))).toEqual([
             'invited:done',
             'registered:error',
-            'dpaConfirmed:pending',
+            'tenantCreated:pending',
             'twoFactorActive:pending',
+            'dpaSigned:pending',
             'completed:pending',
         ]);
     });
@@ -139,8 +209,9 @@ describe('derivePhases — Träger (TENANT_ADMIN)', () => {
         expect(states(invite({ inviteStatus: 'REVOKED', emailDeliveryStatus: null }))).toEqual([
             'invited:error',
             'registered:pending',
-            'dpaConfirmed:pending',
+            'tenantCreated:pending',
             'twoFactorActive:pending',
+            'dpaSigned:pending',
             'completed:pending',
         ]);
     });
@@ -197,10 +268,48 @@ describe('deriveInviteBucket', () => {
         );
     });
 
-    it('buckets READY invites as completed', () => {
+    it('keeps a READY tenant invite in progress while the DPA signature is outstanding', () => {
+        // The tile must not contradict the stepper: gate READY without a landed
+        // signature is "waiting on the signature", never "Abgeschlossen".
         expect(
             deriveInviteBucket(
                 invite({ inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z', accessGateStatus: 'READY' }),
+            ),
+        ).toBe('inProgress');
+        expect(
+            deriveInviteBucket(
+                invite({
+                    inviteStatus: 'ACCEPTED',
+                    acceptedAt: '2026-08-02T10:00:00Z',
+                    accessGateStatus: 'READY',
+                    dpaForwardedAt: '2026-08-03T10:00:00Z',
+                }),
+            ),
+        ).toBe('inProgress');
+    });
+
+    it('buckets a READY tenant invite as completed once the signature landed', () => {
+        expect(
+            deriveInviteBucket(
+                invite({
+                    inviteStatus: 'ACCEPTED',
+                    acceptedAt: '2026-08-02T10:00:00Z',
+                    accessGateStatus: 'READY',
+                    dpaSignedAt: '2026-08-04T10:00:00Z',
+                }),
+            ),
+        ).toBe('completed');
+    });
+
+    it('buckets READY counsellor invites as completed — no DPA gate on that track', () => {
+        expect(
+            deriveInviteBucket(
+                invite({
+                    targetRole: 'COUNSELLOR',
+                    inviteStatus: 'ACCEPTED',
+                    acceptedAt: '2026-08-02T10:00:00Z',
+                    accessGateStatus: 'READY',
+                }),
             ),
         ).toBe('completed');
     });
@@ -223,6 +332,7 @@ describe('deriveInviteBucket', () => {
                     acceptedAt: '2026-08-02T10:00:00Z',
                     emailDeliveryStatus: 'FAILED',
                     accessGateStatus: 'READY',
+                    dpaSignedAt: '2026-08-04T10:00:00Z',
                 }),
             ),
         ).toBe('completed');
@@ -242,7 +352,12 @@ describe('deriveInviteBucket', () => {
             countInviteBuckets([
                 invite(),
                 invite({ inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z' }),
-                invite({ inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z', accessGateStatus: 'READY' }),
+                invite({
+                    inviteStatus: 'ACCEPTED',
+                    acceptedAt: '2026-08-02T10:00:00Z',
+                    accessGateStatus: 'READY',
+                    dpaSignedAt: '2026-08-04T10:00:00Z',
+                }),
                 invite({ inviteStatus: 'EXPIRED' }),
                 invite({ inviteStatus: 'EXPIRED' }),
             ]),
