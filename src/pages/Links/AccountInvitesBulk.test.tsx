@@ -6,6 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { configure, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';
+// Imported statically, NOT with `await import(...)` inside a test: every `vi.mock`
+// below is hoisted above this line, so the mocks still apply, while a dynamic
+// import would bill the transform + evaluation of this tab's module graph
+// (~12.5s idle, 15.4s under a 4-worker run) to whichever test happens to load it
+// first. That is what timed out AccountInvitesTab.test.tsx on CI.
+import { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
 
 // CI runners are heavily contended; the 1s default for findBy*/waitFor flakes there.
 configure({ asyncUtilTimeout: 10_000 });
@@ -128,15 +134,9 @@ const invitesPage = (content: unknown[]) => ({
 
 const MIXED_INVITES = [invite(21, 'DRAFT'), invite(22, 'EMAIL_SENT'), invite(23, 'ACCEPTED'), invite(24, 'REVOKED')];
 
-const renderCounsellorTab = async () => {
-    const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
-    return render(<CounsellorInvitesTab />);
-};
+const renderCounsellorTab = () => render(<CounsellorInvitesTab />);
 
-const renderTenantTab = async () => {
-    const { TenantInvitesTab } = await import('./AccountInvitesTab');
-    return render(<TenantInvitesTab />);
-};
+const renderTenantTab = () => render(<TenantInvitesTab />);
 
 const rowCheckbox = async (email: string) => {
     const row = (await screen.findByText(email)).closest('tr') as HTMLElement;
@@ -156,7 +156,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         mocks.listAccountInvites.mockResolvedValue(
             invitesPage([...MIXED_INVITES, invite(25, 'EXPIRED'), invite(26, 'SUPERSEDED')]),
         );
-        await renderCounsellorTab();
+        renderCounsellorTab();
 
         // Scoped to the table: the same labels also exist as filter chips above it.
         await screen.findByText('person21@example.org');
@@ -170,7 +170,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
     });
 
     it('only offers checkboxes for DRAFT and EMAIL_SENT rows; terminal rows are disabled', async () => {
-        await renderCounsellorTab();
+        renderCounsellorTab();
 
         expect(await rowCheckbox('person21@example.org')).toBeEnabled();
         expect(await rowCheckbox('person22@example.org')).toBeEnabled();
@@ -185,7 +185,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         'disables "Ausgewählte löschen" without a selection and surfaces the selection count',
         { timeout: 90_000 },
         async () => {
-            await renderCounsellorTab();
+            renderCounsellorTab();
             const user = userEvent.setup();
 
             await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }));
@@ -211,7 +211,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
             mocks.revokeAccountInvite.mockImplementation((id: number) =>
                 id === 22 ? Promise.reject(new Error('boom')) : Promise.resolve(invite(id, 'REVOKED')),
             );
-            await renderCounsellorTab();
+            renderCounsellorTab();
             const user = userEvent.setup();
 
             await user.click(await rowCheckbox('person21@example.org'));
@@ -240,7 +240,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
     it('bulk send uses /send for a never-sent DRAFT and /resend only for an already sent invite', async () => {
         mocks.sendAccountInvite.mockImplementation((id: number) => Promise.resolve(invite(id, 'EMAIL_SENT')));
         mocks.resendAccountInvite.mockImplementation((id: number) => Promise.resolve(invite(id, 'EMAIL_SENT')));
-        await renderCounsellorTab();
+        renderCounsellorTab();
         const user = userEvent.setup();
 
         await user.click(await rowCheckbox('person21@example.org')); // DRAFT
@@ -273,7 +273,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
     // a dead one has to look dead. Tonal is reserved for "this can fire now".
     it('renders the multi-select counter outlined + disabled and names why it cannot send', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE, { ...TEMPLATE, id: 8, name: 'Zweite Vorlage' }]);
-        await renderCounsellorTab();
+        renderCounsellorTab();
         const user = userEvent.setup();
 
         await user.click(await rowCheckbox('person21@example.org'));
@@ -288,7 +288,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
     });
 
     it('turns the counter tonal once a template is chosen and it can actually send', async () => {
-        await renderCounsellorTab();
+        renderCounsellorTab();
         const user = userEvent.setup();
 
         await user.click(await rowCheckbox('person21@example.org'));
@@ -304,7 +304,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
     // only applies to the single-create flow, so its chevron is dead weight on
     // the selection counter.
     it('drops the send-mode chevron in multi-select and keeps the clear-selection one', async () => {
-        await renderCounsellorTab();
+        renderCounsellorTab();
         const user = userEvent.setup();
 
         expect(await screen.findByRole('button', { name: 'Sendeoptionen' })).toBeInTheDocument();
@@ -325,7 +325,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
                 { ...invite(32, 'EMAIL_SENT', 'ronny.bauer@example.org'), firstName: 'Ronny', lastName: 'Bauer' },
             ]),
         );
-        await renderCounsellorTab();
+        renderCounsellorTab();
         const user = userEvent.setup();
 
         await screen.findByText('karla.fischer@example.org');
@@ -342,7 +342,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
     // "Ausgewählte löschen", which REVOKES. A destructive action must never run
     // on a row the operator can no longer see.
     it('drops a row from the bulk selection once the search hides it', async () => {
-        await renderCounsellorTab();
+        renderCounsellorTab();
         const user = userEvent.setup();
 
         await user.click(await rowCheckbox('person21@example.org'));
@@ -358,7 +358,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
     });
 
     it('empties the bulk selection when the search hides every selected row', async () => {
-        await renderCounsellorTab();
+        renderCounsellorTab();
         const user = userEvent.setup();
 
         await user.click(await rowCheckbox('person21@example.org'));
@@ -407,7 +407,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
                 },
             ]),
         );
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await screen.findByText('amina.yildiz@example.org');
@@ -444,7 +444,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         mocks.listAccountInvites.mockResolvedValue(
             invitesPage([{ ...invite(41, 'EMAIL_SENT', 'amina.yildiz@example.org'), targetRole: 'TENANT_ADMIN' }]),
         );
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await screen.findByText('amina.yildiz@example.org');
@@ -466,7 +466,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
     // stale invite loads and prune selection on filter change"); this file
     // covers the search variant that PR predates and does not reach.
     it('does not resurrect a stale selection when the search hides then reshows the row', async () => {
-        await renderCounsellorTab();
+        renderCounsellorTab();
         const user = userEvent.setup();
 
         await user.click(await rowCheckbox('person21@example.org')); // DRAFT

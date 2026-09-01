@@ -36,6 +36,14 @@ export interface DpaForwardRequest {
      * sharing.
      */
     recipientEmail?: string;
+    /**
+     * Optional salutation name for the mail (#842). The dialog collects it and
+     * previews the salutation with it, so it must travel with the send — a
+     * preview that shows a name the backend never receives is a false promise.
+     * Only meaningful alongside `recipientEmail`; a server predating
+     * ORISO-TenantService#191's name support ignores the extra field.
+     */
+    recipientName?: string;
 }
 
 /**

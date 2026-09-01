@@ -138,48 +138,6 @@
     grid-template-columns: 1fr;
 }
 
-.colorField {
-    max-width: none;
-    margin-bottom: 20px;
-
-    :global(.colorSelector) {
-        width: 100%;
-        padding: 0;
-        background: transparent;
-        border-radius: 0;
-        gap: 16px;
-    }
-
-    :global(.colorIndicator) {
-        width: 48px;
-        height: 48px;
-        flex: 0 0 48px;
-        border-radius: 0;
-    }
-
-    :global(.colorSelector span) {
-        color: var(--m3-on-surface-variant, #444748);
-        font-family: var(--m3-body-font-family);
-        font-size: 12px;
-        letter-spacing: 0.4px;
-        line-height: 16px;
-    }
-
-    :global(.colorSelector h4) {
-        margin: 0;
-        color: #2c3a4b;
-        font-family: var(--m3-body-font-family);
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: 0;
-        line-height: 24px;
-    }
-
-    :global(.pickerWrapper) {
-        z-index: 20;
-    }
-}
-
 .testForm {
     display: flex;
     min-height: 0;
