@@ -282,6 +282,87 @@ describe('DpaForwardDialog link minting', () => {
         expect(onClose).not.toHaveBeenCalled();
     });
 
+    /**
+     * The owner's triple-send (2026-08-31): mail sent, "Weiterleitung
+     * abschließen" overlooked, dialog closed — and the flow forgot the forward
+     * ever happened, inviting a re-send. Three of those spent the whole
+     * per-invite forward budget on one recipient. Once anything was minted,
+     * every close gesture must pass the guard.
+     */
+    it('guards the close once a link was minted, and completing from the guard forwards', async () => {
+        const user = userEvent.setup();
+        const { onClose, onForwarded } = renderDialog();
+        await requestLink(user);
+
+        await user.click(screen.getByRole('button', { name: 'cancel' }));
+
+        // Not closed — the guard asks first.
+        expect(onClose).not.toHaveBeenCalled();
+        expect(screen.getByText('dpaForward.closeGuard.title')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'dpaForward.closeGuard.complete' }));
+        expect(onForwarded).toHaveBeenCalledWith({ link: LINK, recipientEmail: null, mailFailed: false });
+    });
+
+    it('lets the guard close anyway — deliberately, as the second choice', async () => {
+        const user = userEvent.setup();
+        const { onClose, onForwarded } = renderDialog();
+        await requestLink(user);
+
+        await user.click(screen.getByRole('button', { name: 'cancel' }));
+        await user.click(screen.getByRole('button', { name: 'dpaForward.closeGuard.closeAnyway' }));
+
+        expect(onClose).toHaveBeenCalledTimes(1);
+        expect(onForwarded).not.toHaveBeenCalled();
+    });
+
+    it('guards the close after a send, naming the mail that is pending completion', async () => {
+        const user = userEvent.setup();
+        const { onClose } = renderDialog();
+
+        await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+        await screen.findByTestId('dpa-forward-sent');
+
+        await user.click(screen.getByRole('button', { name: 'cancel' }));
+
+        expect(onClose).not.toHaveBeenCalled();
+        // The sent variant of the guard: it reminds WHOM the mail went to.
+        expect(screen.getByText('dpaForward.closeGuard.descriptionSent')).toBeInTheDocument();
+    });
+
+    it('relabels the send action once a mail went out, so a second send reads as the repeat it is', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+
+        expect(screen.getByRole('button', { name: 'dpaForward.dialog.send' })).toBeInTheDocument();
+
+        await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+        await screen.findByTestId('dpa-forward-sent');
+
+        // The success notice names the recipient, and the action now says "again".
+        expect(screen.getByTestId('dpa-forward-sent')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'dpaForward.dialog.send' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'dpaForward.dialog.resend' })).toBeInTheDocument();
+    });
+
+    /**
+     * #1065: the per-invite forward budget is spent. Unlike the retryable
+     * failures this one has no second chance on this invitation, so the
+     * message must say that instead of "please try again".
+     */
+    it('phrases the exhausted forward budget specifically', async () => {
+        const user = userEvent.setup();
+        renderDialog({ forward: vi.fn().mockRejectedValue(new DpaForwardError('FORWARD_BUDGET_EXHAUSTED')) });
+
+        await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+
+        const alert = await screen.findByTestId('dpa-forward-send-failed');
+        expect(alert).toHaveTextContent('dpaForward.dialog.errorBudgetExhausted');
+    });
+
     it('closes without forwarding via cancel', async () => {
         const user = userEvent.setup();
         const { onClose, onForwarded, forward } = renderDialog();
