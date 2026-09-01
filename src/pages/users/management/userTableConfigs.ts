@@ -203,3 +203,14 @@ export const getVisibleColumns = (sectionId: TypeOfUser, options: { showTenant: 
 
 export const canReadSection = (sectionId: TypeOfUser, can: (action: PermissionAction, resource: Resource) => boolean) =>
     can(PermissionAction.Read, USER_TABLE_CONFIGS[sectionId].readResource);
+
+/**
+ * #902: the Träger-Admins and Platform-Admins sections share Resource.TenantAdminUser,
+ * so the permission map alone cannot scope manage actions (create/update/delete) per
+ * section. The platform-admins section mirrors the isSuperAdmin gate of its pill in
+ * UserSectionPills: a tenant-scoped admin who opens the list by direct URL may read
+ * it, but never sees create/edit/delete there. Every other section is governed by the
+ * permission map only.
+ */
+export const canManageSectionActions = (sectionId: TypeOfUser, isSuperAdmin: boolean): boolean =>
+    sectionId !== TypeOfUser.PlatformAdmins || isSuperAdmin;

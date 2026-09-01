@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button, Col, Row, Form, notification } from 'antd';
@@ -10,6 +10,8 @@ import { MuiSelectField } from '../../../components/mui/MuiSelectField';
 import { useTenantUserAdminData } from '../../../hooks/useTenantUserAdminData';
 import { Card } from '../../../components/Card';
 import { useTenantsData } from '../../../hooks/useTenantsData';
+import { useTenantData } from '../../../hooks/useTenantData.hook';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import routePathNames from '../../../appConfig';
 import { useAddOrUpdateTenantAdmin } from '../../../hooks/useAddOrUpdateTenantAdmin.hook';
 import styles from './styles.module.scss';
@@ -26,7 +28,18 @@ export const TenantAdminEditOrAdd = () => {
     const { search, pathname } = useLocation();
     // Platform admins are tenant admins with the fixed platform id 0 (MT-04-12)
     const isPlatformAdmin = pathname.includes('/platform-admins/');
-    const tenantId = isPlatformAdmin ? '0' : new URLSearchParams(search).get('tenantId');
+    const { isSuperAdmin, isTenantScopedAdmin, tenantId: ownTenantId } = useUserRoles();
+    // #902: a tenant-scoped admin only ever manages admins of their own tenant, so the
+    // tenant defaults to (and stays locked to) the caller's own. The "+ Neu" navigation
+    // passes no ?tenantId=, and a crafted query param must not repoint the locked field.
+    // Super admins keep the free choice with an optional ?tenantId= preselection.
+    const queryTenantId = new URLSearchParams(search).get('tenantId');
+    const lockTenantToOwn = isTenantScopedAdmin && !isPlatformAdmin;
+    const tenantId = (() => {
+        if (isPlatformAdmin) return '0';
+        if (lockTenantToOwn && ownTenantId !== null) return String(ownTenantId);
+        return queryTenantId;
+    })();
     const listPath = isPlatformAdmin ? routePathNames.platformAdmins : routePathNames.tenantAdmins;
     const { can } = useUserPermissions();
     const navigate = useNavigate();
@@ -36,7 +49,17 @@ export const TenantAdminEditOrAdd = () => {
     const isEditing = id !== 'add';
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const { data, isLoading: isLoadingConsultants } = useTenantUserAdminData({ id, enabled: isEditing });
-    const { data: tenants, isLoading } = useTenantsData({ perPage: 1000, enabled: !isPlatformAdmin });
+    // Tenant-scoped admins may not list all tenants — and the locked field only ever
+    // shows their own, which useTenantData already provides.
+    const { data: tenants, isLoading } = useTenantsData({ perPage: 1000, enabled: !isPlatformAdmin && !lockTenantToOwn });
+    const { data: ownTenant } = useTenantData();
+
+    const tenantOptions = useMemo(() => {
+        if (lockTenantToOwn) {
+            return ownTenant?.id != null ? [{ id: ownTenant.id, name: ownTenant.name }] : [];
+        }
+        return tenants?.data ?? [];
+    }, [lockTenantToOwn, ownTenant?.id, ownTenant?.name, tenants?.data]);
 
     const { mutate } = useAddOrUpdateTenantAdmin({
         id: id !== 'add' ? id : '',
@@ -72,6 +95,10 @@ export const TenantAdminEditOrAdd = () => {
     // Platform admins stay excluded from the grant mechanism (route is shared).
     const showGrantConsultantIdentity =
         !isPlatformAdmin && canGrantConsultantIdentity(isEditing, TypeOfUser.TenantAdmins, data);
+    // #902: the Edit action follows the update permission (it used to render
+    // unconditionally). The shared /platform-admins/ route variant additionally stays
+    // super-admin-only, mirroring canManageSectionActions for the list.
+    const canUpdate = can(PermissionAction.Update, Resource.TenantAdminUser) && (!isPlatformAdmin || isSuperAdmin);
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading}>
@@ -83,7 +110,7 @@ export const TenantAdminEditOrAdd = () => {
                         onSuccess={() => navigate(listPath)}
                     />
                 )}
-                {isReadOnly && (
+                {isReadOnly && canUpdate && (
                     <Button type="primary" onClick={() => setReadOnly(false)}>
                         {t('edit')}
                     </Button>
@@ -177,10 +204,14 @@ export const TenantAdminEditOrAdd = () => {
                                         name="tenantId"
                                         placeholder="tenantAdmins.form.tenant"
                                         required
-                                        disabled={isReadOnly || !can(PermissionAction.Update, Resource.TenantAdminUser)}
+                                        disabled={
+                                            isReadOnly ||
+                                            lockTenantToOwn ||
+                                            !can(PermissionAction.Update, Resource.TenantAdminUser)
+                                        }
                                         className={styles.select}
                                     >
-                                        {tenants?.data.map((option) => (
+                                        {tenantOptions.map((option) => (
                                             <MuiSelectField.Option
                                                 key={option.id}
                                                 className={styles.option}
