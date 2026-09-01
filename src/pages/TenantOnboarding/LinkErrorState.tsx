@@ -15,6 +15,12 @@ const REASON_KEYS: Record<InviteLinkErrorReason, { title: string; description: s
         title: 'tenantOnboarding.linkError.expired.title',
         description: 'tenantOnboarding.linkError.expired.description',
     },
+    // Unlike the other deaths this one has a live remedy: the resend that
+    // superseded this link also delivered its replacement — say so.
+    SUPERSEDED: {
+        title: 'tenantOnboarding.linkError.superseded.title',
+        description: 'tenantOnboarding.linkError.superseded.description',
+    },
     INVALID: {
         title: 'tenantOnboarding.linkError.invalid.title',
         description: 'tenantOnboarding.linkError.invalid.description',

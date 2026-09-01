@@ -111,7 +111,7 @@ const LINK_ERROR_BY_STATUS: Record<number, InviteLinkErrorReason> = {
 };
 
 const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
-    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'INVALID';
+    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'SUPERSEDED' || value === 'INVALID';
 
 /** Body-first error mapping — an explicit `reason` wins over the status code. */
 const toOnboardingError = async (error: unknown): Promise<unknown> => {
