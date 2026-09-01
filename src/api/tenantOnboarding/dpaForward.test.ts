@@ -168,22 +168,24 @@ describe('createHttpDpaForwardClient', () => {
         expect((error as DpaForwardError).kind).toBe(kind);
     });
 
-    it.each(['CONSUMED', 'REVOKED', 'EXPIRED'] as const)('maps a 410 with reason %s body-first', async (reason) => {
-        mocks.fetchData.mockRejectedValue(new Response(JSON.stringify({ reason }), { status: 410 }));
-
-        await expect(createHttpDpaForwardClient().forward('tok')).rejects.toMatchObject(new InviteLinkError(reason));
-    });
-
-    it.each(['SUPERSEDED', 'NOT_ACTIVE'] as const)(
-        'collapses the %s link death onto the terminal invalid state',
+    it.each(['CONSUMED', 'REVOKED', 'EXPIRED', 'SUPERSEDED'] as const)(
+        'maps a 410 with reason %s body-first',
         async (reason) => {
             mocks.fetchData.mockRejectedValue(new Response(JSON.stringify({ reason }), { status: 410 }));
 
             await expect(createHttpDpaForwardClient().forward('tok')).rejects.toMatchObject(
-                new InviteLinkError('INVALID'),
+                new InviteLinkError(reason),
             );
         },
     );
+
+    // SUPERSEDED keeps its own reason since the owner's stale-tab case
+    // (2026-08-31) — only NOT_ACTIVE still collapses onto INVALID.
+    it.each(['NOT_ACTIVE'] as const)('collapses the %s link death onto the terminal invalid state', async (reason) => {
+        mocks.fetchData.mockRejectedValue(new Response(JSON.stringify({ reason }), { status: 410 }));
+
+        await expect(createHttpDpaForwardClient().forward('tok')).rejects.toMatchObject(new InviteLinkError('INVALID'));
+    });
 });
 
 describe('isAwaitingForwardedSignature', () => {

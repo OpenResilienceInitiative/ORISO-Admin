@@ -101,12 +101,12 @@ export const isAwaitingForwardedSignature = (
 };
 
 const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
-    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'INVALID';
+    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'SUPERSEDED' || value === 'INVALID';
 
 /**
  * 410 carries `{ reason }` — mapped body-first, exactly like `…/onboarding`.
- * `SUPERSEDED`/`NOT_ACTIVE` are link deaths the wizard has no distinct state
- * for; they collapse onto the terminal INVALID state.
+ * `NOT_ACTIVE` is the one link death the wizard has no distinct state for; it
+ * collapses onto the terminal INVALID state.
  */
 const toLinkDeath = async (response: Response): Promise<InviteLinkError> => {
     try {

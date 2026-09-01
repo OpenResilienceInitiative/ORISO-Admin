@@ -26,8 +26,16 @@ import { publicAccountInvitesEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 import { TwoFactorCodeInvalidError } from './TwoFactorCodeInvalidError';
 
-/** Why an invite link cannot (or can no longer) be used. */
-export type InviteLinkErrorReason = 'CONSUMED' | 'REVOKED' | 'EXPIRED' | 'INVALID';
+/**
+ * Why an invite link cannot (or can no longer) be used. Mirrors the backend's
+ * `AccountInviteLinkException.Reason` (410 + `{ "reason": … }`), minus
+ * NOT_ACTIVE, which collapses onto INVALID. SUPERSEDED is its own state on
+ * purpose: an invite replaced by a resend has a working successor, and the
+ * owner hit exactly this with an old tab — telling that person "expired" or
+ * "something is missing above" sends them nowhere, while "use the link from
+ * the newest e-mail" is the whole remedy.
+ */
+export type InviteLinkErrorReason = 'CONSUMED' | 'REVOKED' | 'EXPIRED' | 'SUPERSEDED' | 'INVALID';
 
 /** The link is not usable — consumed, revoked, expired or unknown. */
 export class InviteLinkError extends Error {
@@ -156,7 +164,7 @@ const LINK_ERROR_BY_STATUS: Record<number, InviteLinkErrorReason> = {
 };
 
 const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
-    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'INVALID';
+    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'SUPERSEDED' || value === 'INVALID';
 
 /**
  * Translates a rejected public-endpoint call into the typed client errors: an
@@ -368,7 +376,12 @@ export const createStubTenantAdminOnboardingClient = (
         if (!inviteToken) {
             throw new InviteLinkError('INVALID');
         }
-        if (inviteState === 'REVOKED' || inviteState === 'EXPIRED' || inviteState === 'INVALID') {
+        if (
+            inviteState === 'REVOKED' ||
+            inviteState === 'EXPIRED' ||
+            inviteState === 'SUPERSEDED' ||
+            inviteState === 'INVALID'
+        ) {
             throw new InviteLinkError(inviteState);
         }
         if (twoFactorActivated) {

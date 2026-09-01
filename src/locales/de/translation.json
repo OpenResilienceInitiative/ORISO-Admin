@@ -156,6 +156,8 @@
     "tenantOnboarding.linkError.revoked.description": "Der Plattformbetreiber hat diesen Einladungslink zurückgezogen. Er kann nicht mehr verwendet werden.",
     "tenantOnboarding.linkError.expired.title": "Diese Einladung ist abgelaufen",
     "tenantOnboarding.linkError.expired.description": "Der Einladungslink ist nicht mehr gültig, da sein Ablaufdatum überschritten wurde.",
+    "tenantOnboarding.linkError.superseded.title": "Dieser Einladungslink wurde ersetzt",
+    "tenantOnboarding.linkError.superseded.description": "Dieser Einladungslink wurde durch einen neueren ersetzt und ist nicht mehr gültig. Bitte verwenden Sie den Link aus der neuesten E-Mail.",
     "tenantOnboarding.linkError.invalid.title": "Dieser Einladungslink ist nicht gültig",
     "tenantOnboarding.linkError.invalid.description": "Der Link ist unvollständig oder unbekannt. Bitte öffnen Sie den Link aus der Einladungs-E-Mail erneut.",
     "tenantOnboarding.linkError.contactHint": "Bitte wenden Sie sich an den Plattformbetreiber, um eine neue Einladung zu erhalten.",

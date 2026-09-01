@@ -68,7 +68,7 @@ describe('useTenantAdminOnboardingFlow', () => {
         expect(client.activateTwoFactor).toHaveBeenCalledWith('raw-token', '123456');
     });
 
-    it.each(['CONSUMED', 'REVOKED', 'EXPIRED', 'INVALID'] as const)(
+    it.each(['CONSUMED', 'REVOKED', 'EXPIRED', 'SUPERSEDED', 'INVALID'] as const)(
         'maps a %s link to a distinct link-error state on load',
         async (reason) => {
             const client = createClient({

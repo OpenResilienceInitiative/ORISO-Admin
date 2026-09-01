@@ -161,6 +161,8 @@
     "tenantOnboarding.linkError.revoked.description": "The platform operator has withdrawn this invite link. It can no longer be used.",
     "tenantOnboarding.linkError.expired.title": "This invite has expired",
     "tenantOnboarding.linkError.expired.description": "The invite link is no longer valid because its expiry date has passed.",
+    "tenantOnboarding.linkError.superseded.title": "This invitation link has been replaced",
+    "tenantOnboarding.linkError.superseded.description": "This invitation link was replaced by a newer one and is no longer valid. Please use the link from the most recent e-mail.",
     "tenantOnboarding.linkError.invalid.title": "This invite link is not valid",
     "tenantOnboarding.linkError.invalid.description": "The link is incomplete or unknown. Please open the link from the invitation email again.",
     "tenantOnboarding.linkError.contactHint": "Please contact the platform operator to receive a new invite.",
