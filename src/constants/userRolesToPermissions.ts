@@ -80,7 +80,7 @@ export const enforceRestrictedAgencyAdminCeiling = (
 };
 
 export const useUserRolesToPermission = () => {
-    const { roles, isSuperAdmin } = useUserRoles();
+    const { roles, isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
     const { data } = useTenantData();
     const { settings } = useAppConfigContext();
 
@@ -118,11 +118,16 @@ export const useUserRolesToPermission = () => {
             Language: { update: true },
             LegalText: { read: true, update: true },
             Statistic: { read: true },
+            // #902: tenant admins manage the tenant admins of their own tenant by design.
+            // Commit 9fd581b73 regressed create/update/delete to isSuperAdmin and the
+            // next-day hotfix 1665b33f4 restored only read — this restores the rest.
+            // Backend tenant scoping is pending in UserService#1098; the Platform-Admins
+            // SECTION (same resource) stays super-admin-only via canManageSectionActions.
             TenantAdminUser: {
                 read: true,
-                create: isSuperAdmin,
-                update: isSuperAdmin,
-                delete: isSuperAdmin,
+                create: isTenantScopedAdmin || isSuperAdmin,
+                update: isTenantScopedAdmin || isSuperAdmin,
+                delete: isTenantScopedAdmin || isSuperAdmin,
             },
             // Tenant admins also manage the agency admins inside their tenant.
             AgencyAdminUser: { read: true, create: true, update: true, delete: true },
