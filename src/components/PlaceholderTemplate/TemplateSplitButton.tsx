@@ -4,7 +4,7 @@ import type { MenuProps } from 'antd';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
-import { SplitButton } from '../GlobalSearch/SplitButton';
+import { SplitButton, type SplitButtonSize } from '../GlobalSearch/SplitButton';
 import styles from './PlaceholderTemplateEditor.module.scss';
 
 export interface TemplateOption {
@@ -30,6 +30,14 @@ export interface TemplateSplitButtonProps {
      * rendered as a checkbox label in registration).
      */
     icon?: ReactNode;
+    /**
+     * Pill height. Defaults to `small` (40px) for the legal editors, whose row of
+     * language/Fachbereich/version pickers sits at 36px. Surfaces whose row is
+     * built from default-size (56px) buttons — the invite composer — pass
+     * `medium`, so the chooser lines up with its neighbours instead of sitting
+     * a size below them.
+     */
+    size?: SplitButtonSize;
 }
 
 const SELECT_PREFIX = 'select:';
@@ -50,6 +58,7 @@ export const TemplateSplitButton = ({
     onMainClick,
     disabled = false,
     icon = <DescriptionOutlinedIcon />,
+    size = 'small',
 }: TemplateSplitButtonProps) => {
     const { t } = useTranslation();
     const active = templates.find((template) => template.id === activeTemplateId);
@@ -127,11 +136,12 @@ export const TemplateSplitButton = ({
             // fill was the sheet's Elevated colourway — a state claim the resting
             // picker has no business making. It lifts only while its menu is open.
             variant="outlined"
-            // Small (40px), not the SplitButton default medium (56px): this picker sits in
-            // the same row as the legal editors' language/Fachbereich/version SplitDropdowns,
-            // whose pills are 36px. At 56px it towered over them and read as the row's main
-            // action, which a template chooser is not.
-            size="small"
+            // Defaults to small (40px), not the SplitButton default medium (56px): in the
+            // legal editors this picker sits in the same row as the language/Fachbereich/
+            // version SplitDropdowns, whose pills are 36px. At 56px it towered over them and
+            // read as the row's main action, which a template chooser is not. Rows built from
+            // default-size buttons pass `size` explicitly — see the invite composer.
+            size={size}
             // Without a main action the segment is inert — take it out of the
             // tab order instead of offering a button that does nothing (#727
             // post-merge review). The chevron menu stays fully interactive.
