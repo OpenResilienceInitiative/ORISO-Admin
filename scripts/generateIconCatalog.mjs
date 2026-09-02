@@ -6,6 +6,10 @@
  * IconCatalog component itself) and writes a deterministic, sorted catalog to
  * `src/components/IconCatalog/iconCatalog.generated.json`.
  *
+ * Usage is matched on whole file-name tokens (see `iconUsageMatch.mjs`), not on
+ * bare substrings — otherwise short names are credited with usages belonging to
+ * longer ones (`x.svg` inside `keyboard_arrow_down_24px.svg`).
+ *
  * The generated JSON is committed so Storybook builds without running this
  * script; output is deterministic, so diffs stay reviewable.
  *
@@ -19,6 +23,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import prettier from 'prettier';
+
+import { createIconReferenceMatcher } from './iconUsageMatch.mjs';
 
 const repoRoot = process.cwd();
 const outputPath = path.join(repoRoot, 'src/components/IconCatalog/iconCatalog.generated.json');
@@ -98,8 +104,9 @@ const entries = walk(assetRoot)
             .split(path.sep)
             .join('-')
             .replace(/^\.$/, '');
+        const referencesIcon = createIconReferenceMatcher(fileName);
         const usageFiles = sourceContents
-            .filter(({ content }) => content.includes(fileName))
+            .filter(({ content }) => referencesIcon.test(content))
             .map(({ path: sourcePath }) => sourcePath)
             .filter((sourcePath, index, values) => values.indexOf(sourcePath) === index)
             .sort((a, b) => a.localeCompare(b));

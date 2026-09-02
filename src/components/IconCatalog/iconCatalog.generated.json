@@ -41,8 +41,8 @@
         "fileName": "ant.svg",
         "sourcePath": "src/resources/img/svg/avatars/ant.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:avatars:antelope:base",
@@ -1329,7 +1329,7 @@
         "fileName": "users.svg",
         "sourcePath": "src/resources/img/svg/nav-glyphs/users.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/NavGlyph/index.tsx", "src/pages/users/management/UserSectionPills.tsx"],
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
         "usage": "app-used"
     },
     {
@@ -1602,8 +1602,8 @@
         "fileName": "settings_active.svg",
         "sourcePath": "src/resources/img/svg/navbar/settings_active.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "sidebar-icon:navbar:settings:hover",
@@ -1615,8 +1615,8 @@
         "fileName": "settings_hover.svg",
         "sourcePath": "src/resources/img/svg/navbar/settings_hover.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "sidebar-icon:navbar:settings:outline",
@@ -1628,8 +1628,8 @@
         "fileName": "settings_inactive.svg",
         "sourcePath": "src/resources/img/svg/navbar/settings_inactive.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "sidebar-icon:navbar:statistics:filled",
@@ -2163,7 +2163,6 @@
         "sourcePath": "src/resources/img/svg/permissions/case_handover.svg",
         "exportNames": [],
         "usageFiles": [
-            "src/components/Card/styles.module.scss",
             "src/components/Tenants/AppSettings/PermissionsSettings/CaseHandoverCard/CaseHandoverCardView.tsx"
         ],
         "usage": "app-used"
@@ -3177,21 +3176,7 @@
         "fileName": "x.svg",
         "sourcePath": "src/resources/img/svg/x.svg",
         "exportNames": [],
-        "usageFiles": [
-            "src/components/AdminEmpty/index.tsx",
-            "src/components/cards/CaseTakeoverCard/index.tsx",
-            "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
-            "src/components/CustomIcons/LegalIcons.tsx",
-            "src/components/GlobalSearch/GlobalSearchBar.tsx",
-            "src/components/GlobalSearch/SplitButton.tsx",
-            "src/components/M3NumberField/index.tsx",
-            "src/components/overlay/Overlay.tsx",
-            "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx",
-            "src/components/PillSelect/index.tsx",
-            "src/pages/Links/index.tsx",
-            "src/pages/Links/InviteComposer.tsx",
-            "src/pages/Links/inviteProgress/InviteProgressBoard.tsx"
-        ],
+        "usageFiles": ["src/components/overlay/Overlay.tsx"],
         "usage": "app-used"
     }
 ]
