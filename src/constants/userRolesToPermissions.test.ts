@@ -227,26 +227,36 @@ describe('restricted agency admin permission policy', () => {
 // scoping is the backend's job, and the platform-admins SECTION stays super-admin-only in
 // the UI, which UserManagementTable enforces per section, not this map).
 describe('useUserRolesToPermission — TenantAdminUser (#902)', () => {
-    const resolvePermissions = (roles: UserRole[], isSuperAdmin: boolean): UserPermissions => {
-        hookMocks.useUserRoles.mockReturnValue({ roles, isSuperAdmin });
+    const resolvePermissions = (
+        roles: UserRole[],
+        isSuperAdmin: boolean,
+        isTenantScopedAdmin: boolean,
+    ): UserPermissions => {
+        hookMocks.useUserRoles.mockReturnValue({ roles, isSuperAdmin, isTenantScopedAdmin });
 
         return renderHook(() => useUserRolesToPermission()).result.current;
     };
 
     it('grants a tenant-scoped tenant admin read, create, update and delete on TenantAdminUser', () => {
-        const permissions = resolvePermissions([UserRole.TenantAdmin], false);
+        const permissions = resolvePermissions([UserRole.TenantAdmin], false, true);
 
         expect(permissions.TenantAdminUser).toEqual({ read: true, create: true, update: true, delete: true });
     });
 
     it('grants a platform admin (super admin) read, create, update and delete on TenantAdminUser', () => {
-        const permissions = resolvePermissions([UserRole.TenantAdmin, UserRole.AgencyAdmin], true);
+        const permissions = resolvePermissions([UserRole.TenantAdmin, UserRole.AgencyAdmin], true, false);
 
         expect(permissions.TenantAdminUser).toEqual({ read: true, create: true, update: true, delete: true });
     });
 
+    it('denies create/update/delete when the token has no usable tenant scope', () => {
+        const permissions = resolvePermissions([UserRole.TenantAdmin], false, false);
+
+        expect(permissions.TenantAdminUser).toEqual({ read: true, create: false, update: false, delete: false });
+    });
+
     it('keeps Tenant create/delete super-admin-only for a tenant-scoped tenant admin', () => {
-        const permissions = resolvePermissions([UserRole.TenantAdmin], false);
+        const permissions = resolvePermissions([UserRole.TenantAdmin], false, true);
 
         // The #902 revert is scoped to TenantAdminUser: managing tenants themselves
         // stays a super-admin surface.
@@ -254,7 +264,7 @@ describe('useUserRolesToPermission — TenantAdminUser (#902)', () => {
     });
 
     it('keeps Tenant create/delete granted for a platform admin (super admin)', () => {
-        const permissions = resolvePermissions([UserRole.TenantAdmin, UserRole.AgencyAdmin], true);
+        const permissions = resolvePermissions([UserRole.TenantAdmin, UserRole.AgencyAdmin], true, false);
 
         expect(permissions.Tenant).toEqual({ read: true, update: true, create: true, delete: true });
     });
