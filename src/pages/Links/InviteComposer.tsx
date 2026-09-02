@@ -234,9 +234,16 @@ export const InviteComposer = ({
     // place that may answer this), so the block lasts exactly as long as the
     // refused address stays in the field.
     const emailTaken = emailTakenAddress !== null && recipientEmail.trim().toLowerCase() === emailTakenAddress;
+    // Owner request (#893, live finding): the refusal was too subtle to notice.
+    // The field-level text now says WHAT happened and WHAT TO DO — and it stays
+    // under the input for as long as the refused address is in the field.
+    // Deliberately generic: the backend's EMAIL_NOT_AVAILABLE covers an address
+    // with an existing INVITE as well as one belonging to a registered ACCOUNT
+    // (no invite row), and this state is fed only by that 409 — the client
+    // cannot tell the two apart, so the text must not promise a resend.
     const emailTakenMessage = t(
         'links.composer.emailTaken',
-        'E-Mail-Adresse bereits vorhanden. Anlegen nicht möglich.',
+        'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
     );
     // Auto is always sendable; a manual id only once the check confirmed it free.
     const tenantIdValid = !requireTenantId || tenantAllocation.canSubmit;
@@ -275,7 +282,7 @@ export const InviteComposer = ({
         if (emailTaken) {
             return t(
                 'links.composer.blocked.emailTaken',
-                'E-Mail-Adresse bereits vorhanden. Bitte eine andere Adresse eingeben.',
+                'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
             );
         }
         if (!namesValid) {

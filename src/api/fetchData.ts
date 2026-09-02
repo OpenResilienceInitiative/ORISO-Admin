@@ -27,6 +27,11 @@ export const FETCH_ERRORS = {
     // caller can render its own inline access-denied state. Additive — every existing caller
     // that doesn't pass this flag keeps the redirect exactly as before.
     FORBIDDEN_SILENT: 'FORBIDDEN_SILENT',
+    // Opt-in: reject a 403 with the RAW Response (like CONFLICT_WITH_RESPONSE) so the
+    // caller can surface the backend's own explanation (e.g. "Only platform admins can
+    // create administrative accounts", UserService#1006) instead of a generic toast.
+    // Also skips the global access-denied redirect for this one call.
+    FORBIDDEN_WITH_RESPONSE: 'FORBIDDEN_WITH_RESPONSE',
     CONFLICT: 'CONFLICT',
     CONFLICT_WITH_RESPONSE: 'CONFLICT_WITH_RESPONSE',
     EMPTY: 'EMPTY',
@@ -166,6 +171,13 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                                 ? response
                                 : new Error(FETCH_ERRORS.CONFLICT),
                         );
+                    } else if (
+                        response.status === 403 &&
+                        props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE)
+                    ) {
+                        // Reject with the raw response so the caller can read the backend's
+                        // message (see FORBIDDEN_WITH_RESPONSE above). No redirect.
+                        reject(response);
                     } else if (response.status === 403 && props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN)) {
                         // Reject locally so the caller can render an in-place "no access"
                         // state instead of losing the whole page to the redirect below.
@@ -240,6 +252,17 @@ export const fetchData = async (props: FetchDataProps): Promise<any> => {
         }
 
         if (isUnauthorized && !props.skipAuth) {
+            // Tell the user WHY they are being taken to the login page. Without this,
+            // a dead session ended an in-progress action (e.g. sending a Träger-admin
+            // invite) with nothing but a spinner and a silent redirect.
+            // Stable key: concurrent 401s (a page with many active queries) all reach
+            // this fallback once the shared refresh has failed — antd collapses repeats
+            // with the same key into ONE toast instead of stacking identical ones.
+            message.error({
+                content: i18next.t('message.error.sessionExpired') as string,
+                duration: 8,
+                key: 'session-expired',
+            });
             logout(true, routePathNames.login);
         }
 

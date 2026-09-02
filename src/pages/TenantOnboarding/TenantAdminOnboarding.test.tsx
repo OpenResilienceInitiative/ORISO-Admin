@@ -151,6 +151,7 @@ describe('TenantAdminOnboarding', () => {
         ['CONSUMED', 'link-error-consumed'],
         ['REVOKED', 'link-error-revoked'],
         ['EXPIRED', 'link-error-expired'],
+        ['SUPERSEDED', 'link-error-superseded'],
         ['INVALID', 'link-error-invalid'],
     ] as const)('shows the distinct %s error state without any form', async (reason, testId) => {
         const client = createClient({
@@ -178,6 +179,36 @@ describe('TenantAdminOnboarding', () => {
         expect(await screen.findByTestId('link-error-consumed')).toBeInTheDocument();
         expect(screen.queryByRole('button')).not.toBeInTheDocument();
         expect(client.registerTenantAdmin).toHaveBeenCalledTimes(1);
+    });
+
+    /**
+     * The owner's tab held an invite link that a resend had replaced in the
+     * meantime (2026-08-31). The register was rejected server-side with 410
+     * SUPERSEDED — and the UI answered with the generic "something is
+     * missing above" validation banner, with nothing marked. A superseded
+     * link is a terminal link state, not a form problem: it must land on the
+     * dedicated terminal page that points at the newest e-mail, with no
+     * field-validation framing anywhere.
+     */
+    it('lands a mid-flow SUPERSEDED rejection on its terminal page, never on field-validation framing', async () => {
+        const client = createClient({
+            registerTenantAdmin: vi.fn().mockRejectedValue(new InviteLinkError('SUPERSEDED')),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await completeOrganisationStep(user);
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
+
+        expect(await screen.findByTestId('link-error-superseded')).toBeInTheDocument();
+        // The remedy is named — the newest mail holds the working link.
+        expect(screen.getByText('tenantOnboarding.linkError.superseded.description')).toBeInTheDocument();
+        // Terminal: nothing to resubmit, and no validation language in sight.
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+        expect(screen.queryByText('tenantOnboarding.validation.incomplete')).not.toBeInTheDocument();
+        expect(screen.queryByText('tenantOnboarding.account.registrationError')).not.toBeInTheDocument();
     });
 
     it('treats a missing token as an invalid link', async () => {

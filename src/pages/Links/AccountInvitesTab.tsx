@@ -19,6 +19,7 @@ import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
 import { Modal } from '../../components/Modal';
+import { extractApiErrorMessageOrNull } from '../../utils/extractApiErrorMessage';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
@@ -232,6 +233,24 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         setGeneratedLinks((current) => ({ ...current, [invite.id]: invite.acceptUrl as string }));
     }, []);
 
+    // Role-aware fallback for a 403 without a usable backend message
+    // (UserService#1006): the same component serves the Träger-admin AND the
+    // counsellor tab, so the explanation must name the role that could not be
+    // invited instead of always talking about Träger-Admins.
+    const forbiddenFallbackFor = useCallback(
+        (role: AccountInviteTargetRole) =>
+            role === 'COUNSELLOR'
+                ? t(
+                      'links.accountInvites.forbiddenCounsellor',
+                      'Ihre Rolle ist nicht berechtigt, Berater*innen einzuladen.',
+                  )
+                : t(
+                      'links.accountInvites.forbiddenTenantAdmin',
+                      'Nur Plattform-Administratoren können Träger-Admins einladen.',
+                  ),
+        [t],
+    );
+
     const onCreate = useCallback(
         async (values: InviteComposerValues): Promise<InviteSubmitOutcome> => {
             setSubmitting(true);
@@ -343,13 +362,21 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         return false;
                     }
                 }
+                // 403 = the admin's ROLE cannot create administrative accounts
+                // (UserService#1006). Prefer the backend's own explanation; fall back
+                // to a translated role hint. Never the generic create-failed text —
+                // that left the admin retrying an action their role can never perform.
+                if (error instanceof Response && error.status === 403) {
+                    message.error((await extractApiErrorMessageOrNull(error)) ?? forbiddenFallbackFor(targetRole));
+                    return false;
+                }
                 message.error(t('links.error.createFailed', 'Could not create link'));
                 return false;
             } finally {
                 setSubmitting(false);
             }
         },
-        [isTenantInvite, loadInvites, rememberGeneratedLink, targetRole, t],
+        [forbiddenFallbackFor, isTenantInvite, loadInvites, rememberGeneratedLink, targetRole, t],
     );
 
     // One row of the CSV batch. Uses the send mode captured at file-pick time:
@@ -401,11 +428,18 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 rememberGeneratedLink(resent);
                 message.success(t('links.accountInvites.resent', 'Invite resent'));
                 await loadInvites();
-            } catch {
+            } catch (error) {
+                // Same role surfacing as onCreate (UserService#1006).
+                if (error instanceof Response && error.status === 403) {
+                    message.error(
+                        (await extractApiErrorMessageOrNull(error)) ?? forbiddenFallbackFor(invite.targetRole),
+                    );
+                    return;
+                }
                 message.error(t('links.accountInvites.resendFailed', 'Could not resend invite'));
             }
         },
-        [activeTemplates, loadInvites, rememberGeneratedLink, selectedTemplateId, t],
+        [activeTemplates, forbiddenFallbackFor, loadInvites, rememberGeneratedLink, selectedTemplateId, t],
     );
 
     const onRevoke = useCallback(
@@ -492,6 +526,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         if (targets.length === 0) return;
         setBulkRunning(true);
         const failed: AccountInviteDTO[] = [];
+        // A 403 fails EVERY row for the same role reason (UserService#1006) — remember
+        // the first one so the admin gets the cause once, on top of the count summary.
+        let firstForbidden: Response | null = null;
         for (let i = 0; i < targets.length; i += 1) {
             try {
                 const deliver = targets[i].inviteStatus === 'DRAFT' ? sendAccountInvite : resendAccountInvite;
@@ -501,11 +538,23 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     templateId,
                 });
                 rememberGeneratedLink(delivered);
-            } catch {
+            } catch (error) {
                 failed.push(targets[i]);
+                if (error instanceof Response && error.status === 403) {
+                    // A role-level 403 fails EVERY remaining row the same way
+                    // (UserService#1006) — mark them failed and stop, instead of
+                    // firing one doomed request per row. Same early-stop as the
+                    // CSV import.
+                    firstForbidden ??= error;
+                    failed.push(...targets.slice(i + 1));
+                    break;
+                }
             }
         }
         setBulkRunning(false);
+        if (firstForbidden) {
+            message.error((await extractApiErrorMessageOrNull(firstForbidden)) ?? forbiddenFallbackFor(targetRole));
+        }
         if (failed.length === 0) {
             message.success(
                 t('links.bulk.sendSummaryAll', '{{count}} Einladungen gesendet', { count: targets.length }),
@@ -522,7 +571,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             setSelectedIds(failed.map((invite) => invite.id));
         }
         await loadInvites();
-    }, [loadInvites, rememberGeneratedLink, selectedInvites, selectedTemplateId, t]);
+    }, [forbiddenFallbackFor, loadInvites, rememberGeneratedLink, selectedInvites, selectedTemplateId, targetRole, t]);
 
     // Empty-state CTA: the composer IS the invite entry point and sits right
     // above the board — bring it into view and focus its first field.
@@ -599,6 +648,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             {csvImport && (
                 <InviteCsvImportModal
                     createInvite={createCsvInvite}
+                    forbiddenFallback={forbiddenFallbackFor(targetRole)}
                     idKind={isTenantInvite ? 'tenant' : 'agency'}
                     parseResult={csvImport.result}
                     takenTenantIds={isTenantInvite ? takenTenantIds : undefined}

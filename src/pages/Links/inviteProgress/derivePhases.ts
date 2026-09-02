@@ -19,19 +19,33 @@ import type {
 
 export type PhaseState = 'done' | 'current' | 'pending' | 'warning' | 'error';
 
-export type PhaseKey = 'invited' | 'registered' | 'dpaConfirmed' | 'twoFactorActive' | 'accountCreated' | 'completed';
+export type PhaseKey =
+    | 'invited'
+    | 'registered'
+    | 'tenantCreated'
+    | 'twoFactorActive'
+    | 'dpaForwarded'
+    | 'dpaSigned'
+    | 'accountCreated'
+    | 'completed';
 
 export interface InvitePhase {
     key: PhaseKey;
     state: PhaseState;
 }
 
-/** Träger onboarding: Eingeladen → Registriert → AVV bestätigt → 2FA aktiv → Abgeschlossen. */
+/**
+ * Träger onboarding (#725, owner model): Eingeladen → Registriert → Träger
+ * angelegt → 2FA aktiv → [Vertragsunterlagen weitergeleitet, only when a
+ * forward happened] → Vertrag unterschrieben → Abgeschlossen. The signature is
+ * the FINAL gate: the track may never read complete while it is outstanding.
+ */
 export const TENANT_PHASE_KEYS: readonly PhaseKey[] = [
     'invited',
     'registered',
-    'dpaConfirmed',
+    'tenantCreated',
     'twoFactorActive',
+    'dpaSigned',
     'completed',
 ];
 
@@ -42,32 +56,66 @@ export const COUNSELLOR_PHASE_KEYS: readonly PhaseKey[] = ['invited', 'accountCr
 export const PHASE_LABEL_FALLBACKS: Record<PhaseKey, string> = {
     invited: 'Eingeladen',
     registered: 'Registriert',
-    dpaConfirmed: 'Vertragsunterlagen bestätigt',
+    tenantCreated: 'Träger angelegt',
     twoFactorActive: '2FA aktiv',
+    dpaForwarded: 'Vertragsunterlagen weitergeleitet',
+    dpaSigned: 'Vertrag unterschrieben',
     accountCreated: 'Konto angelegt',
     completed: 'Abgeschlossen',
 };
 
+/**
+ * Wording for the phase that is CURRENT (awaited, not reached). The compact
+ * label under the track used to print the reached-state word ("Registriert")
+ * for a step that had merely become due — right after the mail went out the
+ * row read as if registration had happened. An awaited step says what it is
+ * waiting FOR.
+ */
+export const PHASE_AWAITING_FALLBACKS: Record<PhaseKey, string> = {
+    invited: 'Wartet auf Versand',
+    registered: 'Wartet auf Registrierung',
+    tenantCreated: 'Wartet auf Träger-Anlage',
+    twoFactorActive: 'Wartet auf 2FA-Einrichtung',
+    dpaForwarded: 'Wartet auf Weiterleitung',
+    dpaSigned: 'Wartet auf Vertragsunterschrift',
+    accountCreated: 'Wartet auf Kontoanlage',
+    completed: 'Wartet auf Abschluss',
+};
+
 export const phaseLabelKey = (key: PhaseKey) => `links.inviteProgress.phase.${key}`;
+export const phaseAwaitingLabelKey = (key: PhaseKey) => `links.inviteProgress.phaseAwaiting.${key}`;
 
 /** Terminal states in which the invite can never progress again (magenta error treatment). */
 const DEAD_STATUSES: ReadonlySet<AccountInviteStatus> = new Set(['EXPIRED', 'REVOKED', 'SUPERSEDED']);
 
 type PhaseFacts = Pick<
     AccountInviteDTO,
-    'inviteStatus' | 'emailDeliveryStatus' | 'twoFactorStatus' | 'accessGateStatus' | 'acceptedAt' | 'targetRole'
+    | 'inviteStatus'
+    | 'emailDeliveryStatus'
+    | 'twoFactorStatus'
+    | 'accessGateStatus'
+    | 'acceptedAt'
+    | 'targetRole'
+    | 'dpaForwardedAt'
+    | 'dpaSignedAt'
 >;
 
 export const isDeadInvite = (invite: Pick<AccountInviteDTO, 'inviteStatus'>): boolean =>
     DEAD_STATUSES.has(invite.inviteStatus);
 
+/** A draft has never been sent — no mail went out, nothing has happened yet. */
+export const isDraftInvite = (invite: Pick<AccountInviteDTO, 'inviteStatus'>): boolean =>
+    invite.inviteStatus === 'DRAFT';
+
 const hasAccepted = (invite: PhaseFacts) => invite.acceptedAt != null || invite.inviteStatus === 'ACCEPTED';
 
 /**
  * What each phase can be PROVEN with from the DTO. `accessGateStatus === 'READY'`
- * means every gate (invite, e-mail, 2FA) has passed, so it completes the phases
- * whose own signal the API does not carry (DPA) or does not apply (2FA
- * NOT_REQUIRED / DISABLED_BY_POLICY never turn ACTIVE, yet the gate is open).
+ * means the invite/e-mail/2FA gates have passed (verified against
+ * AccountInviteService.calculateAccessGate) — it says NOTHING about the DPA.
+ * Treating READY as DPA proof was the live pre-dev defect that showed a
+ * forwarded, unsigned contract as "Abgeschlossen" (#725): the signature is
+ * proven ONLY by its own signal, and completion waits for it.
  */
 const isPhaseProven = (key: PhaseKey, invite: PhaseFacts): boolean => {
     const ready = invite.accessGateStatus === 'READY';
@@ -83,12 +131,25 @@ const isPhaseProven = (key: PhaseKey, invite: PhaseFacts): boolean => {
         case 'registered':
         case 'accountCreated':
             return hasAccepted(invite);
-        case 'dpaConfirmed':
-            // No DPA field in the DTO (yet) — only the fully open gate proves it.
-            return ready;
+        case 'tenantCreated':
+            // The accept flow registers the account AND creates the tenant from
+            // its reservation in one server-side step; the DTO carries no finer
+            // signal, so acceptance is the honest proof for both beads.
+            return hasAccepted(invite);
+        case 'dpaForwarded':
+            return invite.dpaForwardedAt != null;
+        case 'dpaSigned':
+            // Only the explicit signal proves the signature — NEVER the gate.
+            // Until the backend serializes it (see the contract-gap note on the
+            // DTO), this bead stays honest by staying open.
+            return invite.dpaSignedAt != null;
         case 'twoFactorActive':
             return invite.twoFactorStatus === 'ACTIVE' || invite.twoFactorStatus === 'WAIVED' || ready;
         case 'completed':
+            // The signature is the FINAL gate of the tenant track.
+            if (invite.targetRole === 'TENANT_ADMIN') {
+                return ready && hasAccepted(invite) && invite.dpaSignedAt != null;
+            }
             return ready && hasAccepted(invite);
         default:
             return false;
@@ -99,8 +160,23 @@ export const phaseKeysForRole = (targetRole: AccountInviteTargetRole): readonly 
     targetRole === 'TENANT_ADMIN' ? TENANT_PHASE_KEYS : COUNSELLOR_PHASE_KEYS;
 
 /**
+ * The concrete track of ONE invite: the forwarded bead exists only on rows
+ * where a forward actually happened (#725 "when applicable") — a self-signing
+ * tenant never sees a permanently-idle forward bead.
+ */
+const phaseKeysForInvite = (invite: PhaseFacts): readonly PhaseKey[] => {
+    const keys = phaseKeysForRole(invite.targetRole);
+    if (invite.targetRole !== 'TENANT_ADMIN' || invite.dpaForwardedAt == null) {
+        return keys;
+    }
+    return keys.flatMap((key) => (key === 'dpaSigned' ? (['dpaForwarded', 'dpaSigned'] as const) : [key]));
+};
+
+/**
  * Map one invite to its stepper phases.
  *
+ * - A DRAFT (never sent) renders every phase `pending` — nothing has happened
+ *   yet, so no bead may claim completion or activity.
  * - Proven phases are `done`.
  * - On a live invite, the first unproven phase is `current`, later ones `pending`
  *   — except a failed e-mail delivery, which turns the `invited` bead into a
@@ -109,11 +185,18 @@ export const phaseKeysForRole = (targetRole: AccountInviteTargetRole): readonly 
  *   is `error` (the magenta error role), later ones `pending`.
  */
 export const derivePhases = (invite: PhaseFacts): InvitePhase[] => {
+    // A DRAFT is truthfully empty: no mail went out, so neither a done bead nor
+    // an active "Eingeladen" would be honest. Every bead stays neutral until the
+    // send (owner request on #893). The accepted-guard is defensive only — an
+    // accepted DRAFT cannot exist in the data model.
+    if (isDraftInvite(invite) && !hasAccepted(invite)) {
+        return phaseKeysForInvite(invite).map((key) => ({ key, state: 'pending' as const }));
+    }
     const dead = isDeadInvite(invite);
     const deliveryFailed = !dead && invite.emailDeliveryStatus === 'FAILED' && !hasAccepted(invite);
     let blockingSeen = false;
 
-    return phaseKeysForRole(invite.targetRole).map((key) => {
+    return phaseKeysForInvite(invite).map((key) => {
         if (isPhaseProven(key, invite)) {
             return { key, state: 'done' as const };
         }
@@ -143,7 +226,9 @@ export const deriveInviteBucket = (invite: PhaseFacts): InviteBucket => {
     if (isDeadInvite(invite) || (invite.emailDeliveryStatus === 'FAILED' && !hasAccepted(invite))) {
         return 'problem';
     }
-    if (invite.accessGateStatus === 'READY' && hasAccepted(invite)) {
+    // "Abgeschlossen" follows the stepper's final gate: a tenant invite is only
+    // complete once the DPA signature landed — READY alone is not completion.
+    if (isPhaseProven('completed', invite)) {
         return 'completed';
     }
     if (hasAccepted(invite)) {

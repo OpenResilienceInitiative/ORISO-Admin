@@ -168,22 +168,63 @@ describe('createHttpDpaForwardClient', () => {
         expect((error as DpaForwardError).kind).toBe(kind);
     });
 
-    it.each(['CONSUMED', 'REVOKED', 'EXPIRED'] as const)('maps a 410 with reason %s body-first', async (reason) => {
-        mocks.fetchData.mockRejectedValue(new Response(JSON.stringify({ reason }), { status: 410 }));
+    /**
+     * The forward-budget rejection (#1065) is a plain 400 whose only
+     * discriminator is the message text — no reason code, no header. It is the
+     * one 400 the dialog must phrase specifically: the budget is per invite
+     * and never replenished, so "try again" would be a lie.
+     */
+    it('maps the budget-exhausted 400 by its message body', async () => {
+        mocks.fetchData.mockRejectedValue(
+            new Response(
+                JSON.stringify({
+                    message:
+                        'This invitation has already forwarded the data processing agreement 3 times;' +
+                        ' ask the platform operator for a new invitation',
+                }),
+                { status: 400 },
+            ),
+        );
 
-        await expect(createHttpDpaForwardClient().forward('tok')).rejects.toMatchObject(new InviteLinkError(reason));
+        const error = await createHttpDpaForwardClient()
+            .forward('tok', { recipientEmail: 'legal@example.org' })
+            .catch((caught: unknown) => caught);
+
+        expect(error).toBeInstanceOf(DpaForwardError);
+        expect((error as DpaForwardError).kind).toBe('FORWARD_BUDGET_EXHAUSTED');
     });
 
-    it.each(['SUPERSEDED', 'NOT_ACTIVE'] as const)(
-        'collapses the %s link death onto the terminal invalid state',
+    it('keeps any other 400 message generic — never fakes a budget verdict', async () => {
+        mocks.fetchData.mockRejectedValue(
+            new Response(JSON.stringify({ message: 'recipientEmail must be a well-formed address' }), { status: 400 }),
+        );
+
+        const error = await createHttpDpaForwardClient()
+            .forward('tok', { recipientEmail: 'legal@example.org' })
+            .catch((caught: unknown) => caught);
+
+        expect(error).toBeInstanceOf(DpaForwardError);
+        expect((error as DpaForwardError).kind).toBe('TECHNICAL');
+    });
+
+    it.each(['CONSUMED', 'REVOKED', 'EXPIRED', 'SUPERSEDED'] as const)(
+        'maps a 410 with reason %s body-first',
         async (reason) => {
             mocks.fetchData.mockRejectedValue(new Response(JSON.stringify({ reason }), { status: 410 }));
 
             await expect(createHttpDpaForwardClient().forward('tok')).rejects.toMatchObject(
-                new InviteLinkError('INVALID'),
+                new InviteLinkError(reason),
             );
         },
     );
+
+    // SUPERSEDED keeps its own reason since the owner's stale-tab case
+    // (2026-08-31) — only NOT_ACTIVE still collapses onto INVALID.
+    it.each(['NOT_ACTIVE'] as const)('collapses the %s link death onto the terminal invalid state', async (reason) => {
+        mocks.fetchData.mockRejectedValue(new Response(JSON.stringify({ reason }), { status: 410 }));
+
+        await expect(createHttpDpaForwardClient().forward('tok')).rejects.toMatchObject(new InviteLinkError('INVALID'));
+    });
 });
 
 describe('isAwaitingForwardedSignature', () => {

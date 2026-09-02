@@ -47,7 +47,12 @@ const invite = (id: number, overrides: Partial<AccountInviteDTO> = {}): AccountI
 const INVITES: AccountInviteDTO[] = [
     invite(1),
     invite(2, { inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z' }),
-    invite(3, { inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z', accessGateStatus: 'READY' }),
+    invite(3, {
+        inviteStatus: 'ACCEPTED',
+        acceptedAt: '2026-08-02T10:00:00Z',
+        accessGateStatus: 'READY',
+        dpaSignedAt: '2026-08-04T10:00:00Z',
+    }),
     invite(4, { inviteStatus: 'EXPIRED' }),
 ];
 
@@ -74,6 +79,23 @@ describe('InviteProgressBoard', () => {
         expect(screen.getByRole('button', { name: '1 In Bearbeitung' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: '1 Abgeschlossen' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: '1 Abgelaufen / Problem' })).toBeInTheDocument();
+    });
+
+    it('renders a DRAFT row all-grey with the draft label instead of an active "Eingeladen"', () => {
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                invites={[invite(9, { inviteStatus: 'DRAFT', emailDeliveryStatus: null })]}
+            />,
+        );
+
+        const row = screen.getByText('person9@example.org').closest('tr') as HTMLElement;
+        // The label under the track states the truth: nothing was sent yet.
+        expect(within(row).getByText('Entwurf – noch nicht eingeladen')).toBeInTheDocument();
+        // Every bead is neutral — no done, no current, and no "Eingeladen" claim.
+        expect(within(row).getByText('Eingeladen – ausstehend')).toBeInTheDocument();
+        expect(within(row).queryByText(/aktueller Schritt/)).not.toBeInTheDocument();
+        expect(within(row).queryByText(/– abgeschlossen/)).not.toBeInTheDocument();
     });
 
     it('filters the table via a summary tile and clears on the second click', async () => {
@@ -109,10 +131,57 @@ describe('InviteProgressBoard', () => {
         render(<InviteProgressBoard {...baseProps()} />);
 
         const table = within(screen.getByRole('table'));
-        // Fresh EMAIL_SENT tenant row: registration is the current phase.
-        expect(table.getAllByText('Registriert – aktueller Schritt').length).toBeGreaterThan(0);
-        // Expired row: the blocked phase reads as failed.
+        // Fresh EMAIL_SENT tenant row: registration is AWAITED, not reached —
+        // the label must not claim "Registriert" right after the mail went out.
+        expect(table.getAllByText('Wartet auf Registrierung – aktueller Schritt').length).toBeGreaterThan(0);
+        // Expired row: the blocked phase reads as failed (plain label).
         expect(table.getByText('Registriert – fehlgeschlagen')).toBeInTheDocument();
+    });
+
+    it('shows a forwarded, unsigned DPA as waiting on the signature — never as complete (owner scenario)', () => {
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                invites={[
+                    invite(7, {
+                        inviteStatus: 'ACCEPTED',
+                        acceptedAt: '2026-08-02T10:00:00Z',
+                        accessGateStatus: 'READY',
+                        dpaForwardedAt: '2026-08-03T10:00:00Z',
+                    }),
+                ]}
+            />,
+        );
+
+        const row = within(screen.getByText('person7@example.org').closest('tr') as HTMLElement);
+        // Compact label under the track: the signature is outstanding.
+        expect(row.getByText('Wartet auf Vertragsunterschrift')).toBeInTheDocument();
+        // The forwarded bead is done and announced as such.
+        expect(row.getByText('Vertragsunterlagen weitergeleitet – abgeschlossen')).toBeInTheDocument();
+        // The track must NOT claim completion anywhere in this row.
+        expect(row.queryByText('Abgeschlossen – abgeschlossen')).not.toBeInTheDocument();
+        expect(row.queryByText('Vertrag unterschrieben – abgeschlossen')).not.toBeInTheDocument();
+    });
+
+    it('completes the track only once the signature landed', () => {
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                invites={[
+                    invite(8, {
+                        inviteStatus: 'ACCEPTED',
+                        acceptedAt: '2026-08-02T10:00:00Z',
+                        accessGateStatus: 'READY',
+                        dpaForwardedAt: '2026-08-03T10:00:00Z',
+                        dpaSignedAt: '2026-08-04T10:00:00Z',
+                    }),
+                ]}
+            />,
+        );
+
+        const row = within(screen.getByText('person8@example.org').closest('tr') as HTMLElement);
+        expect(row.getByText('Vertrag unterschrieben – abgeschlossen')).toBeInTheDocument();
+        expect(row.getByText('Abgeschlossen – abgeschlossen')).toBeInTheDocument();
     });
 
     it('wires resend/copy/revoke and disables ALL THREE actions on terminal rows (C4/C5)', async () => {
