@@ -15,6 +15,14 @@ const templates = [
     { id: 2, name: 'Kurzfassung' },
 ];
 
+/**
+ * The styled root carries the size/variant classes. Resolve it by its own class rather
+ * than by `parentElement`: a harmless wrapper change would otherwise break a size
+ * assertion before the size behaviour actually changed. Same lookup as InviteComposer.test.
+ */
+const pillOf = (name: RegExp) =>
+    screen.getByRole('button', { name }).closest(`.${splitButtonStyles.splitButton}`) as HTMLElement;
+
 describe('TemplateSplitButton', () => {
     it('shows the active template name on the main segment', () => {
         render(<TemplateSplitButton activeTemplateId={2} templates={templates} onSelectTemplate={() => {}} />);
@@ -119,5 +127,31 @@ describe('TemplateSplitButton', () => {
         const rootClasses = screen.getByRole('button', { name: /Standard-Einladung/ }).parentElement?.classList;
         expect(rootClasses?.contains(splitButtonStyles.outlined)).toBe(true);
         expect(rootClasses?.contains(splitButtonStyles.elevated)).toBe(false);
+    });
+
+    /*
+     * The 40px pill is the legal editors' geometry (their neighbouring pickers are
+     * 36px); rows built from default-size buttons ask for `medium` instead. Both
+     * halves are pinned: a chooser that silently grew would tower over the legal
+     * editors again, and one that ignored `size` would stay a size short of the
+     * invite composer's send button.
+     */
+    it('rests on the small (40px) pill by default', () => {
+        render(<TemplateSplitButton activeTemplateId={1} templates={templates} onSelectTemplate={() => {}} />);
+        expect(pillOf(/Standard-Einladung/)).toHaveClass(splitButtonStyles.small);
+        expect(pillOf(/Standard-Einladung/)).not.toHaveClass(splitButtonStyles.medium);
+    });
+
+    it('takes the medium (56px) pill when the surrounding row asks for it', () => {
+        render(
+            <TemplateSplitButton
+                activeTemplateId={1}
+                size="medium"
+                templates={templates}
+                onSelectTemplate={() => {}}
+            />,
+        );
+        expect(pillOf(/Standard-Einladung/)).toHaveClass(splitButtonStyles.medium);
+        expect(pillOf(/Standard-Einladung/)).not.toHaveClass(splitButtonStyles.small);
     });
 });

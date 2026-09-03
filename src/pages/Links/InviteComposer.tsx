@@ -583,6 +583,11 @@ export const InviteComposer = ({
                     }
                     onMainClick={() => onManageTemplates('list')}
                     onSelectTemplate={(id) => onSelectTemplate?.(typeof id === 'number' ? id : Number(id))}
+                    // The composer row is built from default-size (56px) SplitButtons — the
+                    // send button right next to it is one. The chooser's own default is the
+                    // legal editors' 40px pill, which left it a size short of every other
+                    // control in this row.
+                    size="medium"
                 />
                 {/* Filled primary is reserved for the selected item / main CTA; every
                 other resting state is tonal M3 secondary (owner call). The icon
