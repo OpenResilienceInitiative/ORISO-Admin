@@ -25,9 +25,11 @@
     width: 100%;
 }
 
-/* Legal editor cards: comfortable reading width — never narrower than a small
-   phone (375), never wider than a long-form text column. */
+/* Fill the available column on narrow screens without widening the page;
+   retain the long-form reading maximum on desktop. */
 .card {
-    min-width: 375px;
+    width: 100%;
+    min-width: 0;
     max-width: 960px;
+    box-sizing: border-box;
 }

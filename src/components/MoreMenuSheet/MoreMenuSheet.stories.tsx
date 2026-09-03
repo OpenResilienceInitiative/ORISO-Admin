@@ -21,8 +21,8 @@ const destinations: MoreMenuSheetGroup = {
     entries: [
         { key: 'settings', label: 'Einstellungen', icon: <SettingsOutlined /> },
         { key: 'tenants', label: 'Träger', icon: <HolidayVillageOutlined /> },
-        { key: 'agency', label: 'Beratungsstelle', icon: <RealEstateAgentOutlined /> },
-        { key: 'users', label: 'Nutzer*innen', icon: <PeopleOutlined /> },
+        { key: 'agency', label: 'Beratungsstellen', icon: <RealEstateAgentOutlined /> },
+        { key: 'users', label: 'Konten', icon: <PeopleOutlined /> },
         { key: 'statistics', label: 'Statistiken', icon: <AssessmentOutlined /> },
         { key: 'links', label: 'Links', icon: <LinkOutlined /> },
         { key: 'logs', label: 'Logs', icon: <ListAltOutlined /> },

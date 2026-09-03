@@ -16,7 +16,7 @@ vi.mock('react-i18next', () => ({
 const superAdminItems: AdminSidebarNavItem[] = [
     { key: 'theme', to: '/admin/settings/general', label: 'Einstellungen', iconPath: '/admin/settings' },
     { key: 'tenants', to: '/admin/tenants', label: 'Träger', iconPath: '/admin/tenants' },
-    { key: 'agency', to: '/admin/agency', label: 'Beratungsstelle', iconPath: '/admin/agency' },
+    { key: 'agency', to: '/admin/agency', label: 'Beratungsstellen', iconPath: '/admin/agency' },
     { key: 'counselors', to: '/admin/users', label: 'Nutzer*innen', iconPath: '/admin/users' },
     { key: 'statistics', to: '/admin/statistic', label: 'Statistiken', iconPath: '/admin/statistic' },
     { key: 'links', to: '/admin/links', label: 'Links', iconPath: '/admin/links' },
