@@ -4,6 +4,7 @@ FROM $DOCKER_MATRIX/onlineberatung/onlineberatung-nginx/onlineberatung-nginx:doc
 # The nginx base image does not include Node.js; auth BFF sidecar requires it.
 RUN set -eux; \
     if [ -f /etc/alpine-release ]; then \
+        apk upgrade --no-cache; \
         apk add --no-cache nodejs; \
     elif command -v apt-get >/dev/null 2>&1; then \
         apt-get update; \
