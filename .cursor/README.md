@@ -6,13 +6,13 @@ How to run tickets in Cursor. Superpowers is **optional**: use it when installed
 
 In Cursor chat you can type `/` and pick a skill, or `@` a file/folder.
 
-| You type or attach | When |
-| --- | --- |
-| Paste a GitHub issue URL | Start from a real ticket |
-| `/goal-loop` | Iterate until acceptance criteria pass |
-| `/using-superpowers` | Prefer Superpowers method (only if the plugin is installed) |
-| `@AGENTS.md` | Force the agent to use this repo’s test commands |
-| `@.cursor/README.md` | Re-read these prompts |
+| You type or attach       | When                                                        |
+| ------------------------ | ----------------------------------------------------------- |
+| Paste a GitHub issue URL | Start from a real ticket                                    |
+| `/goal-loop`             | Iterate until acceptance criteria pass                      |
+| `/using-superpowers`     | Prefer Superpowers method (only if the plugin is installed) |
+| `@AGENTS.md`             | Force the agent to use this repo’s test commands            |
+| `@.cursor/README.md`     | Re-read these prompts                                       |
 
 Branch: `cursor/<issue-number>/<short-slug>` from `origin/dev`. Link the issue in the PR (`Refs #<n>` or `Closes #<n>`).
 
@@ -58,21 +58,26 @@ Post a comment on the **parent GitHub issue** (not only in Slack/chat). Attach s
 
 ```markdown
 ### Status
+
 Done for this repo / blocked / in review — PR: <url>
 
 ### What changed
+
 <2–4 bullets, user language>
 
 ### User-visible behavior
+
 Before: …
 After: …
 
 ### Proof
-- Command: `<exact command>` → pass (counts or one-line result)
-- Screenshot / recording: <attached>
-- PR: <url> (base `dev`)
+
+-   Command: `<exact command>` → pass (counts or one-line result)
+-   Screenshot / recording: <attached>
+-   PR: <url> (base `dev`)
 
 ### Risks / follow-up
+
 <none, or what is still open>
 ```
 
