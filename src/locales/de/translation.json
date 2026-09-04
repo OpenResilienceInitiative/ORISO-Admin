@@ -1753,6 +1753,7 @@
     "theme.builder.summary.errorLabel": "Error State",
     "theme.builder.summary.error": "Fester Farbton bei Fehlern und Abbrüchen.",
     "theme.builder.tooPale": "Die gewählte dunkle Akzentfarbe ist sehr blass. Das Theme wirkt dadurch eher grau.",
+    "theme.builder.seedUnusable": "Diese Farbe ergibt keine brauchbare Palette — sie ist zu dunkel oder zu grau. Bitte eine kräftigere Farbe wählen.",
     "theme.builder.preview.current": "Aktuelle Farbgebung",
     "theme.builder.preview.new": "Veränderte Farbansicht",
     "theme.builder.preview.scroll": "Farbvorschauen scrollen",

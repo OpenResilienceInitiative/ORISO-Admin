@@ -1783,6 +1783,7 @@
     "theme.builder.summary.primary": "Dark accent color for prominent actions.",
     "theme.builder.title": "Theme",
     "theme.builder.tooPale": "The selected dark accent color is very pale. As a result, the theme appears rather gray.",
+    "theme.builder.seedUnusable": "This colour cannot produce a usable palette — it is too dark or too grey. Choose a more saturated colour.",
     "topic": "Topic",
     "topic.modal.headline.add": "Add topic",
     "topic.modal.headline.edit": "Edit topic",
