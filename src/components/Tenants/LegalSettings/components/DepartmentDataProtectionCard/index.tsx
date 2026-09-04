@@ -242,16 +242,17 @@ export const DepartmentDataProtectionCard = ({
                 // draft; the published chain stays append-only and untouched.
                 onRestoreVersion={handleEditorChange}
                 onViewVersionChange={onViewVersionChange}
+                /* Same disable-never-hide rule as the consent template button below:
+                   a Träger with one active language must still see the switcher
+                   (it went missing in #811, owner report 2026-09-03). */
                 languageSlot={
-                    languages.length > 1 ? (
-                        <LegalContentLanguageSelect
-                            languages={languages}
-                            value={activeLanguage}
-                            onChange={setActiveLanguage}
-                            sourceLanguage={sourceLanguage}
-                            contentMap={contentMapWithEdits}
-                        />
-                    ) : undefined
+                    <LegalContentLanguageSelect
+                        languages={languages}
+                        value={activeLanguage}
+                        onChange={setActiveLanguage}
+                        sourceLanguage={sourceLanguage}
+                        contentMap={contentMapWithEdits}
+                    />
                 }
                 /* The consent sentence is a FIELD of this policy (ADR-021 decision 4),
                    so its template chooser belongs in this editor's function bar —

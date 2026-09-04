@@ -856,21 +856,24 @@ export const M3RichTextEditor = ({
     // Reader: no formatting bar at all. The version control only earns its
     // place when there is something to look back at.
     const showToolbar = !editorSlot && !readOnly;
-    const languageControl =
-        languageSlot ??
-        (languages.length > 1 ? (
-            <SplitDropdown
-                icon={<Language />}
-                label={language.toUpperCase()}
-                title={t('legal.m3Editor.chooseLanguage', 'Sprache wählen')}
-                menu={{
-                    selectable: true,
-                    selectedKeys: [language],
-                    items: languages.map((l) => ({ key: l.value, label: l.label })),
-                    onClick: ({ key }) => onLanguageChange?.(key),
-                }}
-            />
-        ) : null);
+    // Disable, never hide (admin design rule): a tenant with a single active
+    // language keeps the control — inert — so the admin sees WHICH language the
+    // text is written in and that further languages exist as a concept at all.
+    // Hiding it made the field look role-dependent (owner report 2026-09-03).
+    const languageControl = languageSlot ?? (
+        <SplitDropdown
+            icon={<Language />}
+            label={language.toUpperCase()}
+            title={t('legal.m3Editor.chooseLanguage', 'Sprache wählen')}
+            disabled={languages.length <= 1}
+            menu={{
+                selectable: true,
+                selectedKeys: [language],
+                items: languages.map((l) => ({ key: l.value, label: l.label })),
+                onClick: ({ key }) => onLanguageChange?.(key),
+            }}
+        />
+    );
     const showVersionControl = !readOnly || versions.length > 0;
 
     const card = (
