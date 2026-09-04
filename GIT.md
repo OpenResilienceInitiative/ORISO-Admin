@@ -36,6 +36,7 @@ Many changes span repositories (admin UI + backend service + deployment). The pa
 ## 4. Pull requests
 
 -   Target `dev`. One concern per PR; link counterpart PRs in other repos.
+-   Dependabot **version** updates also target `dev` (`.github/dependabot.yml`). Dependabot **security** updates still open against `main` (GitHub default-branch limitation); treat that as an exception and port needed fixes onto `dev`.
 -   Description ≤ ~150 words: Problem (1–2 sentences) · Changes (3–6 bullets) · Verification (commands, one line each). No diff narration — AI reviewers re-read the body on every push, so keep it cheap.
 -   Reference the parent issue (see §2).
 -   Run the repo's validation gates before pushing (this repo: `npm run test`, `npx eslint . --max-warnings=0`, `npx prettier . --check`, `npm run build` — see `AGENTS.md`).
