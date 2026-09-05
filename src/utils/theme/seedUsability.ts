@@ -26,7 +26,7 @@ const linearized = (rgbComponent: number): number => {
     if (normalized <= 0.040449936) {
         return (normalized / 12.92) * 100.0;
     }
-    return Math.pow((normalized + 0.055) / 1.055, 2.4) * 100.0;
+    return ((normalized + 0.055) / 1.055) ** 2.4 * 100.0;
 };
 
 const signum = (num: number): number => {
@@ -67,9 +67,9 @@ export const hctChromaFromHex = (hex: string): number => {
     const rD = DEFAULT_VIEWING.rgbD[0] * rC;
     const gD = DEFAULT_VIEWING.rgbD[1] * gC;
     const bD = DEFAULT_VIEWING.rgbD[2] * bC;
-    const rAF = Math.pow((DEFAULT_VIEWING.fl * Math.abs(rD)) / 100.0, 0.42);
-    const gAF = Math.pow((DEFAULT_VIEWING.fl * Math.abs(gD)) / 100.0, 0.42);
-    const bAF = Math.pow((DEFAULT_VIEWING.fl * Math.abs(bD)) / 100.0, 0.42);
+    const rAF = ((DEFAULT_VIEWING.fl * Math.abs(rD)) / 100.0) ** 0.42;
+    const gAF = ((DEFAULT_VIEWING.fl * Math.abs(gD)) / 100.0) ** 0.42;
+    const bAF = ((DEFAULT_VIEWING.fl * Math.abs(bD)) / 100.0) ** 0.42;
     const rA = (signum(rD) * 400.0 * rAF) / (rAF + 27.13);
     const gA = (signum(gD) * 400.0 * gAF) / (gAF + 27.13);
     const bA = (signum(bD) * 400.0 * bAF) / (bAF + 27.13);
@@ -80,12 +80,12 @@ export const hctChromaFromHex = (hex: string): number => {
     const atanDegrees = (Math.atan2(b, a) * 180.0) / Math.PI;
     const hue = sanitizeDegrees(atanDegrees);
     const ac = p2 * DEFAULT_VIEWING.nbb;
-    const j = 100.0 * Math.pow(ac / DEFAULT_VIEWING.aw, DEFAULT_VIEWING.c * DEFAULT_VIEWING.z);
+    const j = 100.0 * (ac / DEFAULT_VIEWING.aw) ** (DEFAULT_VIEWING.c * DEFAULT_VIEWING.z);
     const huePrime = hue < 20.14 ? hue + 360 : hue;
     const eHue = 0.25 * (Math.cos((huePrime * Math.PI) / 180.0 + 2.0) + 3.8);
     const p1 = (50000.0 / 13.0) * eHue * DEFAULT_VIEWING.nc * DEFAULT_VIEWING.ncb;
     const t = (p1 * Math.sqrt(a * a + b * b)) / (u + 0.305);
-    const alpha = Math.pow(t, 0.9) * Math.pow(1.64 - Math.pow(0.29, DEFAULT_VIEWING.n), 0.73);
+    const alpha = t ** 0.9 * (1.64 - 0.29 ** DEFAULT_VIEWING.n) ** 0.73;
     return alpha * Math.sqrt(j / 100.0);
 };
 

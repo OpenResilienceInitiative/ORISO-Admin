@@ -130,6 +130,7 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = fa
                                 if (value && brandSeedCannotYieldPalette(value)) {
                                     return Promise.reject(new Error(unusableSeedMessage));
                                 }
+                                return Promise.resolve();
                             },
                         },
                     ]}
