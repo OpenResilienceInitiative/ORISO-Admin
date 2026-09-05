@@ -32,7 +32,8 @@ export const MiniChatPreview = ({ seeds, labelKey, className, previewClassName, 
     const { t } = useTranslation();
     const accentDark = getAccentDark(seeds);
     const accentLight = getAccentLight(seeds);
-    const palette = useMemo(() => computeOrisoPalette(seeds), [accentDark, accentLight]);
+    const { signal } = seeds;
+    const palette = useMemo(() => computeOrisoPalette(seeds), [accentDark, accentLight, signal]);
 
     return (
         <div className={classNames(styles.previewColumn, className)}>
