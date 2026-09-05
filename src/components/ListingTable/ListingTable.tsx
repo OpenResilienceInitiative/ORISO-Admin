@@ -12,7 +12,7 @@ const scrollYCssVar = (scrollY: string | number | undefined): CSSProperties => {
     if (scrollY === undefined || scrollY === 'auto') {
         return {};
     }
-    return { '--admin-table-scroll-y': scrollYToCssValue(scrollY) };
+    return { '--admin-table-scroll-y': scrollYToCssValue(scrollY) } as CSSProperties;
 };
 
 export const ListingTable = <T extends object>({ className, scroll, style, ...props }: TableProps<T>) => {
