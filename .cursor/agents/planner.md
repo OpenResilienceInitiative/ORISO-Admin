@@ -16,6 +16,6 @@ When invoked:
 3. Produce content for `01-spike.md` (current behavior, root cause or gap, chosen approach, risks) and `02-implementation-plan.md` (impacted files, subtask table with per-subtask verify commands, test strategy).
 4. Every subtask must be small enough for one focused loop iteration and have a concrete verification command.
 5. If requirements are incomplete, list only the smallest set of blocking questions.
-6. Respect ORISO Admin invariants: branch from `pre-dev`, reuse existing table/form/query/mutation patterns, preserve auth and permission semantics (never paper over 401/403 with UI success).
+6. Respect ORISO Admin invariants: branch from `dev`, reuse existing table/form/query/mutation patterns, preserve auth and permission semantics (never paper over 401/403 with UI success).
 
 Keep output concise, actionable, and file-oriented. No narrative essays.
