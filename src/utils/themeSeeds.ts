@@ -1,3 +1,5 @@
+import { normalizeSeedHex } from './theme/seedUsability';
+
 export interface ThemingSeedFields {
     primaryColor?: string | null;
     secondaryColor?: string | null;
@@ -30,14 +32,18 @@ export const readSeeds = (theming?: ThemingSeedFields | null): TenantSeeds => {
     };
 };
 
-export const buildSeedUpdate = (seeds: TenantSeeds): Required<ThemingSeedFields> => {
-    const accentDark = getAccentDark(seeds);
-    const accentLight = getAccentLight(seeds);
+export const buildSeedUpdate = (seeds: TenantSeeds): ThemingSeedFields => {
+    const accentDark = normalizeSeedHex(getAccentDark(seeds));
+    const accentLight = normalizeSeedHex(getAccentLight(seeds));
+    const update: ThemingSeedFields = {};
 
-    return {
-        primaryColor: accentDark ?? null,
-        accent: accentLight ?? null,
-        secondaryColor: null,
-        signal: null,
-    };
+    if (accentDark) {
+        update.primaryColor = accentDark;
+    }
+
+    if (accentLight) {
+        update.accent = accentLight;
+    }
+
+    return update;
 };
