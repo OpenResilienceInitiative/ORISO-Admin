@@ -60,8 +60,7 @@ import {
 import { LogsTabsLayout } from './pages/Logs/LogsTabsLayout';
 import { useUserData } from './hooks/useUserData.hook';
 import { DpaBlockerGate } from './components/DpaBlocker/DpaBlockerGate';
-import { requiresPlatformAdminTwoFactor } from './utils/platformAdminTwoFactorGate';
-import { useTwoFactorSetupDeferral } from './hooks/useTwoFactorSetupDeferral.hook';
+import { hasMandatoryTwoFactorRole, requiresMandatoryTwoFactor } from './utils/adminTwoFactorGate';
 import { MandatoryTwoFactorSetup } from './pages/Profile/MandatoryTwoFactorSetup';
 
 const AgencyInitialMeetingRedirect = () => {
@@ -82,10 +81,16 @@ export const App = () => {
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
     const location = useLocation();
-    const { hasRole, isSuperAdmin } = useUserRoles();
-    const { isDeferred: isTwoFactorSetupDeferred, deferSetup: deferTwoFactorSetup } = useTwoFactorSetupDeferral(
-        userData?.username,
-    );
+    const { hasRole, isSuperAdmin, roles, isTechnicalAccount, tokenUnreadable } = useUserRoles();
+
+    /**
+     * Accounts that have to prove a second factor before any admin screen
+     * renders (#891). Kept separate from the gate itself so the loading and
+     * error branches below can hold these accounts too: rendering the admin
+     * area while the profile — and with it the 2FA state — is still unknown
+     * would be the very bypass this gate exists to close.
+     */
+    const mustProveTwoFactor = tokenUnreadable || (!isTechnicalAccount && hasMandatoryTwoFactorRole(roles));
     const { can } = useUserPermissions();
     const { isEnabled: isReleaseEnabled } = useReleasesToggle();
 
@@ -129,13 +134,18 @@ export const App = () => {
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
-    const requiresTwoFactorSetup = requiresPlatformAdminTwoFactor(isSuperAdmin, userData, isTwoFactorSetupDeferred);
+    const requiresTwoFactorSetup = requiresMandatoryTwoFactor({
+        roles,
+        isTechnicalAccount,
+        tokenUnreadable,
+        userData,
+    });
 
-    if (isLoading || (isSuperAdmin && isUserDataLoading)) {
+    if (isLoading || (mustProveTwoFactor && isUserDataLoading)) {
         return <Initialization />;
     }
 
-    if (isSuperAdmin && (isUserDataError || !userData)) {
+    if (mustProveTwoFactor && (isUserDataError || !userData)) {
         return (
             <div role="alert" style={{ maxWidth: '480px', margin: '15vh auto 0', padding: '0 24px' }}>
                 <h1 style={{ fontSize: '22px', marginBottom: '8px' }}>
@@ -156,11 +166,11 @@ export const App = () => {
     if (requiresTwoFactorSetup) {
         return (
             <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
-                {/* Defense in depth: the DPA gate targets tenant-scoped admins and the 2FA
-                    gate platform admins, but if both ever apply the DPA lock must win. */}
+                {/* Defense in depth: both gates now target the same tenant- and
+                    agency-scoped admins, and if both apply the DPA lock must win. */}
                 <DpaBlockerGate>
-                    <ProtectedPageLayoutWrapper>
-                        <MandatoryTwoFactorSetup onSkip={deferTwoFactorSetup} />
+                    <ProtectedPageLayoutWrapper restricted>
+                        <MandatoryTwoFactorSetup />
                     </ProtectedPageLayoutWrapper>
                 </DpaBlockerGate>
             </FeatureProvider>

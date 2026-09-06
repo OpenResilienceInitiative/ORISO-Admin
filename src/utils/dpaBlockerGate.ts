@@ -3,7 +3,7 @@ import { TenantDpaStatus } from '../types/dpa';
 /**
  * TEN-INV-U10 (#572, parent #569): decision logic for the global,
  * non-bypassable DPA blocker. Pure functions so the route-guard behavior is
- * unit-testable in isolation (mirrors `platformAdminTwoFactorGate.ts`).
+ * unit-testable in isolation (mirrors `adminTwoFactorGate.ts`).
  *
  * Frontend enforcement only locks the UI — the backend write-guard is
  * TenantService/UserService scope (TEN-INV-U9/U3): every mutating endpoint

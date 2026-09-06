@@ -103,14 +103,14 @@ describe('DpiaDocumentPage', () => {
         });
     });
 
-    it('marks 2FA deferral as a platform-admin-only affordance, not for tenant admins', () => {
+    it('marks 2FA as a hard block on every admin tier, with no deferral left (#891)', () => {
         render(<DpiaDocumentPage />);
 
-        // App.tsx: requiresPlatformAdminTwoFactor returns false outright for non-platform-admins.
-        // TenantOnboarding/TwoFactorStep.tsx is a separate, non-skippable "Step 3 (#571): mandatory
-        // 2FA setup" for tenant admins — no deferral for them.
-        expect(screen.getByText('2FA erforderlich, Aufschub möglich')).toBeInTheDocument();
-        expect(screen.getByText('2FA Pflicht')).toBeInTheDocument();
+        // The document is compliance text: it has to state the rule the code
+        // actually enforces. adminTwoFactorGate.ts blocks all three admin tiers
+        // and takes no "set up later" input, so no tier may still advertise one.
+        expect(screen.getAllByText('2FA Pflicht')).toHaveLength(3);
+        expect(screen.queryByText(/Aufschub möglich/)).not.toBeInTheDocument();
     });
 
     it("sets the chapter-nav sticky offset from the app bar's actual measured height", () => {
