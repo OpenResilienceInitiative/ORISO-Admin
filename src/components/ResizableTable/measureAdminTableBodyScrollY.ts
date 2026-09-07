@@ -11,9 +11,6 @@ export const ADMIN_TABLE_SCROLL_Y_FALLBACK = 'calc(100dvh - 280px)';
 /** Matches `data-admin-mobile-nav` on `AdminMobileNav`. */
 export const ADMIN_MOBILE_NAV_SELECTOR = '[data-admin-mobile-nav]';
 
-/** Matches `.table` / listing padding-bottom that sits below the body. */
-const TABLE_BOTTOM_PADDING_PX = 24;
-
 /** Floor so an empty / mid-layout measure cannot collapse the body. */
 const MIN_BODY_SCROLL_Y_PX = 120;
 
@@ -38,6 +35,20 @@ const elementHeight = (root: ParentNode, selectors: string[]): number => {
 };
 
 /**
+ * Reads `.table` padding-bottom from the measure host's child (the antd root
+ * that receives `styles.table`). Hardcoding this value silently desyncs
+ * `scroll.y` when SCSS padding changes (#900 sticky-header regression).
+ */
+const tableBottomPaddingPx = (tableRoot: HTMLElement): number => {
+    const padded = tableRoot.firstElementChild;
+    if (!(padded instanceof HTMLElement)) {
+        return 0;
+    }
+    const parsed = Number.parseFloat(getComputedStyle(padded).paddingBottom);
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+/**
  * @returns Pixel height for antd `scroll.y` (table body only).
  */
 export const measureAdminTableBodyScrollY = (tableRoot: HTMLElement): number => {
@@ -50,6 +61,6 @@ export const measureAdminTableBodyScrollY = (tableRoot: HTMLElement): number => 
     const headerHeight = elementHeight(tableRoot, ['.ant-table-header', '.ant-table-thead']);
     const paginationHeight = elementHeight(tableRoot, ['.ant-table-pagination']);
 
-    const bodyY = Math.floor(availableForTable - headerHeight - paginationHeight - TABLE_BOTTOM_PADDING_PX);
+    const bodyY = Math.floor(availableForTable - headerHeight - paginationHeight - tableBottomPaddingPx(tableRoot));
     return Math.max(MIN_BODY_SCROLL_Y_PX, bodyY);
 };
