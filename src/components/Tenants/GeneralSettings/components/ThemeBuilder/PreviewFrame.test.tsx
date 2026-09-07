@@ -54,6 +54,28 @@ describe('buildPreviewUrl', () => {
         expect(buildPreviewUrl(STUB_APP_BASE_URL, {})).toBeNull();
     });
 
+    // A blank, relative or same-origin base leaves the frame on the admin's own
+    // origin. allow-same-origin then gives it admin cookies and Keycloak tokens,
+    // and /theme-demo does not exist there anyway. runtimeConfig falls back to
+    // the admin's origin when no app URL is configured, so this is the default
+    // in local development, not an exotic misconfiguration.
+    it.each([
+        ['empty', ''],
+        ['root-relative', '/'],
+        ['path-relative', 'theme-preview.test'],
+        ['protocol-relative', '//theme-preview.test'],
+        ['non-http scheme', 'ftp://theme-preview.test'],
+        ["the admin's own origin", window.location.origin],
+    ])('returns null for a %s base URL rather than embedding the admin in itself', (_label, base) => {
+        expect(buildPreviewUrl(base, DRAFT)).toBeNull();
+    });
+
+    it('accepts a plain http origin (local development)', () => {
+        expect(buildPreviewUrl('http://localhost:9001', { accentDark: '#A5000A' })).toBe(
+            'http://localhost:9001/theme-demo?themePreviewPrimary=a5000a',
+        );
+    });
+
     it('still builds a URL when only the deprecated primary alias is set', () => {
         expect(buildPreviewUrl(STUB_APP_BASE_URL, { primary: '#A5000A', accent: '#646d78' })).toBe(
             `${STUB_APP_BASE_URL}/theme-demo?themePreviewPrimary=a5000a&themePreviewAccent=646d78`,

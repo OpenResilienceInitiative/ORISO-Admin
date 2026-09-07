@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, within } from 'storybook/test';
 import { ThemeEditorModal } from './index';
 
@@ -45,13 +46,13 @@ export const ThreePickers: Story = {
         const frames = (await body.findAllByTestId('preview-frame')) as HTMLIFrameElement[];
         expect(frames.length).toBeGreaterThanOrEqual(1);
 
-        for (const frame of frames) {
+        frames.forEach((frame) => {
             expect(frame.getAttribute('sandbox')).toBe('allow-scripts allow-same-origin');
             expect(frame.getAttribute('src')).toContain(`${STUB_APP_BASE_URL}/theme-demo?`);
             expect(frame.getAttribute('src')).toContain('themePreviewPrimary=');
             expect(frame.getAttribute('src')).toContain('themePreviewAccent=');
             expect(frame.getAttribute('src')).toContain('themePreviewSignal=');
-        }
+        });
 
         expect(body.getAllByTestId('preview-frame-shield').length).toBe(frames.length);
         expect(doc.querySelectorAll('img[aria-hidden="true"]').length).toBeGreaterThanOrEqual(2);
