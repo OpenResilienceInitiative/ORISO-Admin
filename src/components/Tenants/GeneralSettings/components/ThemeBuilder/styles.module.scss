@@ -142,7 +142,10 @@
     overflow-y: hidden;
     padding: 44px clamp(28px, 5vw, 72px);
     gap: clamp(24px, 4vw, 52px);
-    grid-template-columns: repeat(2, minmax(336px, 350px));
+
+    /* min 0 so the two phones shrink inside the preview region instead of
+       forcing a horizontal overflow band between the 1100px / 760px steps. */
+    grid-template-columns: repeat(2, minmax(0, 350px));
     scroll-padding: clamp(28px, 5vw, 72px);
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
@@ -387,11 +390,14 @@
     .themePreviewPanel {
         align-content: center;
         justify-content: flex-start;
-        grid-template-columns: repeat(2, minmax(230px, 320px));
+        grid-template-columns: repeat(2, minmax(0, 320px));
     }
 }
 
-@media (max-width: 760px) {
+/* Stacks at 860px, not 760px: side by side, the two phones are down to ~165px
+   wide by 800px and the chat inside the frame clips its own text, so the
+   preview stops being one. Stacked, the panel gets the full width back. */
+@media (max-width: 860px) {
     .themeEditorShell {
         min-height: 100vh;
         grid-template-columns: minmax(0, 1fr);
@@ -406,7 +412,7 @@
 
     .themePreviewPanel {
         padding: 28px 24px 40px;
-        grid-template-columns: minmax(240px, 320px);
+        grid-template-columns: minmax(0, 320px);
     }
 
     .themePreviewScrollerFooter {

@@ -113,3 +113,28 @@ export const EmptyPreview: Story = {
         },
     },
 };
+
+/**
+ * Regression for #906: inside the former 1101–1250 overflow band the preview
+ * panel must fit without horizontal scroll (scrollWidth ≤ clientWidth).
+ */
+export const PreviewFitsOverflowBand: Story = {
+    globals: { viewport: { value: 'overflowBand1200', isRotated: false } },
+    parameters: {
+        viewport: {
+            options: {
+                overflowBand1200: {
+                    name: 'Overflow band 1200',
+                    styles: { width: '1200px', height: '800px' },
+                },
+            },
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const doc = canvasElement.ownerDocument;
+        const body = within(doc.body);
+        const panel = await body.findByRole('region', { name: /^(Colors|Farben)$/ });
+
+        expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth);
+    },
+};

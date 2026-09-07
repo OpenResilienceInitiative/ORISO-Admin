@@ -361,9 +361,14 @@ export const ThemeEditorModal = ({
                         </div>
                     </aside>
                     <div className={styles.themePreviewRegion}>
+                        {/* Focusable scroll region: keyboard users must reach the panel
+                            to pan between phones when it still overflows (axe:
+                            scrollable-region-focusable). */}
+                        {/* eslint-disable jsx-a11y/no-noninteractive-tabindex */}
                         <section
                             className={styles.themePreviewPanel}
                             ref={previewScrollerRef}
+                            tabIndex={0}
                             aria-label={t('settings.colors')}
                         >
                             <PhoneThemePreview
@@ -377,6 +382,7 @@ export const ThemeEditorModal = ({
                                 appBaseUrl={appBaseUrl}
                             />
                         </section>
+                        {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
                         <SideScrollerFooter
                             className={styles.themePreviewScrollerFooter}
                             ariaLabel={t('theme.builder.preview.scroll')}
