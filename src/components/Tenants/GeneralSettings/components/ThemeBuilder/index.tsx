@@ -10,6 +10,7 @@ import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.ho
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { isReadOnlySetting } from '../../../../../utils/serverSettingsMeta';
 import { computeOrisoPalette } from '../../../../../utils/theme/orisoScheme';
+import { brandSeedCannotYieldPalette } from '../../../../../utils/theme/seedUsability';
 import {
     buildSeedUpdate,
     getAccentDark,
@@ -32,6 +33,7 @@ interface ThemeBuilderFormProps {
     storedSeeds: TenantSeeds;
     locks: { accentDark: boolean; accentLight: boolean; signal: boolean };
     editing: boolean;
+    saveRejected?: boolean;
 }
 
 interface ThemeEditorModalProps {
@@ -44,10 +46,8 @@ interface ThemeEditorModalProps {
 }
 
 const seedIsTooPale = (seeds: TenantSeeds): boolean => {
-    if (!getAccentDark(seeds)) {
-        return false;
-    }
-    return computeOrisoPalette(seeds).tooPale;
+    const accentDark = getAccentDark(seeds);
+    return Boolean(accentDark && brandSeedCannotYieldPalette(accentDark));
 };
 
 const seedSignalTooClose = (seeds: TenantSeeds): boolean => {
@@ -101,7 +101,7 @@ const ThemeSummary = ({ seeds }: { seeds: TenantSeeds }) => {
     );
 };
 
-const ThemeBuilderForm = ({ form, storedSeeds, locks, editing }: ThemeBuilderFormProps) => {
+const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = false }: ThemeBuilderFormProps) => {
     const { t } = useTranslation();
     const accentDark = Form.useWatch(['theming', 'primaryColor'], form);
     const accentLight = Form.useWatch(['theming', 'accent'], form);
@@ -113,6 +113,7 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing }: ThemeBuilderFor
     };
     const tooPale = seedIsTooPale(draftSeeds);
     const signalTooClose = seedSignalTooClose(draftSeeds);
+    const unusableSeedMessage = t('theme.builder.seedUnusable');
 
     if (!editing) {
         return <ThemeSummary seeds={storedSeeds} />;
@@ -127,6 +128,16 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing }: ThemeBuilderFor
                     name={['theming', 'primaryColor']}
                     required
                     disabled={locks.accentDark}
+                    rules={[
+                        {
+                            validator: async (_, value) => {
+                                if (value && brandSeedCannotYieldPalette(value)) {
+                                    return Promise.reject(new Error(unusableSeedMessage));
+                                }
+                                return Promise.resolve();
+                            },
+                        },
+                    ]}
                 />
                 <MuiColorField
                     className={styles.colorField}
@@ -141,7 +152,10 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing }: ThemeBuilderFor
                     disabled={locks.signal}
                 />
             </div>
-            {tooPale && (
+            {saveRejected && tooPale && (
+                <Alert className={styles.tooPaleAlert} type="error" showIcon message={unusableSeedMessage} />
+            )}
+            {tooPale && !saveRejected && (
                 <Alert className={styles.tooPaleAlert} type="warning" showIcon message={t('theme.builder.tooPale')} />
             )}
             {signalTooClose && (
@@ -191,6 +205,7 @@ export const ThemeEditorModal = ({
 }: ThemeEditorModalProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
+    const [saveRejected, setSaveRejected] = useState(false);
     const previewScrollerRef = useRef<HTMLDivElement>(null);
     const [previewScrollState, setPreviewScrollState] = useState({
         canScrollBackward: false,
@@ -208,8 +223,37 @@ export const ThemeEditorModal = ({
     useEffect(() => {
         if (open) {
             form.setFieldsValue(initialValues);
+            setSaveRejected(false);
         }
     }, [form, initialValues, open]);
+
+    const handleFinish = (values: { theming?: { primaryColor?: string; accent?: string } }) => {
+        if (brandSeedCannotYieldPalette(values.theming?.primaryColor)) {
+            setSaveRejected(true);
+            form.setFields([
+                {
+                    name: ['theming', 'primaryColor'],
+                    errors: [t('theme.builder.seedUnusable')],
+                },
+            ]);
+            return;
+        }
+
+        setSaveRejected(false);
+        onSubmit(values);
+    };
+
+    const handleFinishFailed = () => {
+        if (brandSeedCannotYieldPalette(form.getFieldValue(['theming', 'primaryColor']))) {
+            setSaveRejected(true);
+        }
+    };
+
+    useEffect(() => {
+        if (!brandSeedCannotYieldPalette(accentDark)) {
+            setSaveRejected(false);
+        }
+    }, [accentDark]);
 
     const updatePreviewScrollState = useCallback(() => {
         const previewScroller = previewScrollerRef.current;
@@ -312,7 +356,8 @@ export const ThemeEditorModal = ({
                 form={form}
                 size="large"
                 initialValues={initialValues}
-                onFinish={onSubmit}
+                onFinish={handleFinish}
+                onFinishFailed={handleFinishFailed}
                 className={styles.themeEditorForm}
             >
                 <div className={styles.themeEditorShell}>
@@ -322,7 +367,13 @@ export const ThemeEditorModal = ({
                             <h2>{t('settings.colors')}</h2>
                             <p>{t('settings.colors.howto')}</p>
                         </div>
-                        <ThemeBuilderForm form={form} storedSeeds={storedSeeds} locks={locks} editing />
+                        <ThemeBuilderForm
+                            form={form}
+                            storedSeeds={storedSeeds}
+                            locks={locks}
+                            editing
+                            saveRejected={saveRejected}
+                        />
                         <div className={styles.themeEditorActions}>
                             <button className={styles.themeTextButton} type="button" onClick={onCancel}>
                                 {t('card.edit.cancel')}

@@ -1,4 +1,5 @@
 import { getAccentDark, getAccentLight, getSignal, TenantSeeds } from '../themeSeeds';
+import { brandSeedCannotYieldPalette } from './seedUsability';
 
 export type OrisoSchemeName = 'light' | 'inverted';
 
@@ -65,13 +66,6 @@ const contrastRatio = (hexA: string, hexB: string) => {
     const a = relativeLuminance(hexA);
     const b = relativeLuminance(hexB);
     return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-};
-
-const saturation = (hex: string) => {
-    const { r, g, b } = hexToRgb(hex);
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    return max === 0 ? 0 : (max - min) / max;
 };
 
 const DEFAULT_ACCENT_DARK = '#a5000a';
@@ -302,7 +296,7 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
     const onAccentDark = readableOn(accentDark);
     const onAccentLight = readableOn(accentLight);
     const onAccentAction = readableOn(accentAction);
-    const tooPale = saturation(accentDark) < 0.12;
+    const tooPale = brandSeedCannotYieldPalette(getAccentDark(seeds));
     const signalTooClose = signalTooCloseToBrand(seeds);
 
     if (scheme === 'inverted') {

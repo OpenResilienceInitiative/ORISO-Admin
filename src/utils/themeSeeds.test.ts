@@ -24,17 +24,23 @@ describe('theme seed helpers', () => {
         expect(buildSeedUpdate({ accentDark: '#111111', accentLight: '#eeeeee', signal: '#00aa55' })).toEqual({
             accent: '#eeeeee',
             primaryColor: '#111111',
-            secondaryColor: null,
             signal: '#00aa55',
         });
     });
 
-    it('writes null signal when the seed is absent', () => {
-        expect(buildSeedUpdate({ accentDark: '#111111', accentLight: '#eeeeee' })).toEqual({
+    it('omits blank, whitespace, and absent seeds instead of writing empty values', () => {
+        expect(buildSeedUpdate({ accentDark: '#111111' })).toEqual({ primaryColor: '#111111' });
+        expect(buildSeedUpdate({ accentDark: '#111111', accentLight: '' })).toEqual({ primaryColor: '#111111' });
+        expect(buildSeedUpdate({ accentDark: '  ', accentLight: '   ' })).toEqual({});
+        expect(buildSeedUpdate({ accentDark: '#111111', accentLight: '#eeeeee', signal: '' })).toEqual({
             accent: '#eeeeee',
             primaryColor: '#111111',
-            secondaryColor: null,
-            signal: null,
         });
+        expect(buildSeedUpdate({})).toEqual({});
+    });
+
+    it('never writes secondaryColor or signal as empty placeholders', () => {
+        expect(buildSeedUpdate({ accentDark: '#111111', accentLight: '#eeeeee' })).not.toHaveProperty('secondaryColor');
+        expect(buildSeedUpdate({ accentDark: '#111111', accentLight: '#eeeeee' })).not.toHaveProperty('signal');
     });
 });
