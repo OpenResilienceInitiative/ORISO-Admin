@@ -1,55 +1,46 @@
 import { describe, expect, it } from 'vitest';
-import { isRemoteLogoUrl, resolveEmailLogoFallbackReason } from './emailBrandingHint';
+import { resolveEmailLogoFallbackReason, resolveEmailLogoUrl } from './emailBrandingHint';
 
-describe('isRemoteLogoUrl', () => {
+const origin = 'https://predev.oriso.org';
+const uploaded = 'data:image/png;base64,iVBORw0KGgo=';
+
+describe('email logo eligibility', () => {
+    it('uses the effective returned tenant id for uploaded images', () => {
+        expect(resolveEmailLogoUrl({ logo: uploaded }, 1, origin)).toBe(
+            `${origin}/service/tenant/public/branding/1/logo`,
+        );
+        expect(resolveEmailLogoFallbackReason({ logo: uploaded }, 1, origin)).toBeNull();
+    });
+
+    it.each([undefined, null, -1, NaN])('does not invent an asset tenant for %s', (id) => {
+        expect(resolveEmailLogoUrl({ logo: uploaded }, id, origin)).toBeNull();
+    });
+
+    it.each(['data:image/jpeg;base64,/9j/AA==', 'iVBORw0KGgo='])('accepts stored image candidate %s', (logo) => {
+        expect(resolveEmailLogoUrl({ logo }, 40, origin)).toContain('/branding/40/logo');
+    });
+
+    it('accepts a same-origin URL and association-logo fallback', () => {
+        expect(resolveEmailLogoUrl({ associationLogo: `${origin}/logo.png` }, 1, origin)).toBe(`${origin}/logo.png`);
+    });
+
     it.each([
-        ['https://cdn.example.org/logo.png', true],
-        ['http://cdn.example.org/logo.png', true],
-        ['  https://cdn.example.org/logo.png  ', true],
-        ['data:image/png;base64,iVBORw0KGgo=', false],
-        ['/admin/images/logo.png', false],
-        ['https://cdn.example.org/my logo.png', false],
-        ['https://cdn.example.org/"logo".png', false],
-        ['ftp://cdn.example.org/logo.png', false],
-        ['httpsx://cdn.example.org/logo.png', false],
-        ['', false],
-        ['   ', false],
-        [null, false],
-        [undefined, false],
-    ])('%s -> %s', (value, expected) => {
-        expect(isRemoteLogoUrl(value as string | null)).toBe(expected);
+        'https://external.example/logo.png',
+        'http://predev.oriso.org/logo.png',
+        'https://',
+        'https:///logo.png',
+        'https://user:password@predev.oriso.org/logo.png',
+        'https://predev.oriso.org/my logo.png',
+        'https://predev.oriso.org/logo.png?token=secret',
+        'https://predev.oriso.org/logo.png#secret',
+        'data:image/svg+xml;base64,AAAA',
+        '/relative/logo.png',
+    ])('rejects an unsafe or unsupported candidate %s', (logo) => {
+        expect(resolveEmailLogoFallbackReason({ logo }, 1, origin)).toBe('LOGO_NOT_REMOTE');
     });
 
-    // Pinned mirror behaviour, not an oversight: `EmailBrandingResolver#firstAbsoluteUrl` accepts
-    // these too and mails an <img> with them, so the wordmark hint must stay hidden. If the backend
-    // ever rejects hostless URLs, change it there and flip these cases in the same pass.
-    it.each([
-        ['https://', true],
-        ['http://', true],
-        ['https:///logo.png', true],
-    ])('mirrors the backend and accepts the hostless value %s -> %s', (value, expected) => {
-        expect(isRemoteLogoUrl(value as string)).toBe(expected);
-    });
-});
-
-describe('resolveEmailLogoFallbackReason', () => {
-    it('reports no fallback when the tenant logo is a remote URL', () => {
-        expect(resolveEmailLogoFallbackReason({ logo: 'https://cdn.example.org/logo.png' })).toBeNull();
-    });
-
-    it('accepts the association logo as the second candidate, like the backend resolver', () => {
-        expect(
-            resolveEmailLogoFallbackReason({ logo: '', associationLogo: 'https://cdn.example.org/assoc.png' }),
-        ).toBeNull();
-    });
-
-    it('flags a base64 logo separately — it exists but e-mail clients cannot show it', () => {
-        expect(resolveEmailLogoFallbackReason({ logo: 'data:image/png;base64,iVBORw0KGgo=' })).toBe('LOGO_NOT_REMOTE');
-    });
-
-    it('flags a missing logo', () => {
-        expect(resolveEmailLogoFallbackReason({})).toBe('NO_LOGO');
-        expect(resolveEmailLogoFallbackReason(null)).toBe('NO_LOGO');
-        expect(resolveEmailLogoFallbackReason({ logo: '   ' })).toBe('NO_LOGO');
+    it('distinguishes absent data from an unsupported logo', () => {
+        expect(resolveEmailLogoFallbackReason({}, 1, origin)).toBe('NO_LOGO');
+        expect(resolveEmailLogoFallbackReason(null, 1, origin)).toBe('NO_LOGO');
     });
 });
