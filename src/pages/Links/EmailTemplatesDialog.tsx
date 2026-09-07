@@ -1,4 +1,4 @@
-import { Button, Input, message, Select, Tag, Tooltip } from 'antd';
+import { Alert, Button, Input, message, Select, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,9 @@ import {
     type InviteEmailTemplateValues,
     type PlaceholderTemplateDefinition,
 } from '../../components/PlaceholderTemplate';
+import { useUserRoles } from '../../hooks/useUserRoles.hook';
+import { useTenantsData } from '../../hooks/useTenantsData';
+import { convertToOptions } from '../../utils/convertToOptions';
 import { MuiSwitch } from '../../components/mui/MuiSwitchField';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { Modal, DialogButton } from '../../components/Modal';
@@ -100,6 +103,21 @@ export const EmailTemplatesDialog = ({
     const [loadCompleted, setLoadCompleted] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [view, setView] = useState<'list' | 'form'>('list');
+    const { isSuperAdmin, tenantId: activeTenantId } = useUserRoles();
+    // Preview context is deliberately separate from the persisted template draft.
+    const [previewTenant, setPreviewTenant] = useState('platform');
+    const {
+        data: previewTenants,
+        isLoading: previewTenantsLoading,
+        isError: previewTenantsFailed,
+    } = useTenantsData({
+        perPage: 1000,
+        enabled: isSuperAdmin && view === 'form',
+    });
+    const selectedPreviewTenantId = previewTenant === 'platform' ? undefined : Number(previewTenant);
+    const scopedTenantId = activeTenantId && activeTenantId > 0 ? activeTenantId : undefined;
+    const previewTenantId = isSuperAdmin ? selectedPreviewTenantId : scopedTenantId;
+
     const [editingTemplate, setEditingTemplate] = useState<InviteEmailTemplateDTO | null>(null);
     const [draftMeta, setDraftMeta] = useState<TemplateDraftMeta>({
         kind: templateKind,
@@ -565,7 +583,36 @@ export const EmailTemplatesDialog = ({
                             />
                         </div>
                     </div>
+                    {isSuperAdmin && (
+                        <div className={styles.metaField}>
+                            <label className={styles.metaLabel} htmlFor={`${fieldId}-preview-tenant`}>
+                                {t('links.templates.previewTenant', 'Vorschau für')}
+                            </label>
+                            <Select
+                                id={`${fieldId}-preview-tenant`}
+                                value={previewTenant}
+                                onChange={setPreviewTenant}
+                                showSearch
+                                optionFilterProp="label"
+                                loading={previewTenantsLoading}
+                                options={[
+                                    { value: 'platform', label: t('links.templates.previewPlatform', 'Plattform') },
+                                    ...convertToOptions(previewTenants?.data ?? [], 'name', 'id'),
+                                ]}
+                            />
+                            {previewTenantsFailed && (
+                                <Alert
+                                    type="error"
+                                    message={t(
+                                        'links.templates.previewTenantsFailed',
+                                        'Träger für die Vorschau konnten nicht geladen werden.',
+                                    )}
+                                />
+                            )}
+                        </div>
+                    )}
                     <InviteEmailTemplateEditor
+                        tenantId={previewTenantId}
                         activeTemplateId={editingTemplate?.id}
                         // The preview follows the template's own language, not the admin UI locale.
                         language={draftMeta.language}
