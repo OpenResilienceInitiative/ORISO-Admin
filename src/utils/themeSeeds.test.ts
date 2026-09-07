@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSeedUpdate, getAccentDark, getAccentLight, readSeeds } from './themeSeeds';
+import { buildSeedUpdate, getAccentDark, getAccentLight, getSignal, readSeeds } from './themeSeeds';
 
 describe('theme seed helpers', () => {
     it('prefers new seed names while keeping compatibility aliases', () => {
@@ -7,21 +7,24 @@ describe('theme seed helpers', () => {
         expect(getAccentDark({ primary: '#222222' })).toBe('#222222');
         expect(getAccentLight({ accentLight: '#aaaaaa', accent: '#bbbbbb' })).toBe('#aaaaaa');
         expect(getAccentLight({ accent: '#bbbbbb' })).toBe('#bbbbbb');
+        expect(getSignal({ signal: '#b1005e' })).toBe('#b1005e');
     });
 
     it('reads backend theming fields into seed aliases', () => {
-        expect(readSeeds({ primaryColor: '#123456', accent: '#abcdef' })).toEqual({
+        expect(readSeeds({ primaryColor: '#123456', accent: '#abcdef', signal: '#00aa55' })).toEqual({
             accent: '#abcdef',
             accentDark: '#123456',
             accentLight: '#abcdef',
             primary: '#123456',
+            signal: '#00aa55',
         });
     });
 
-    it('builds backend update payloads from seed values', () => {
-        expect(buildSeedUpdate({ accentDark: '#111111', accentLight: '#eeeeee' })).toEqual({
+    it('builds backend update payloads from seed values including signal', () => {
+        expect(buildSeedUpdate({ accentDark: '#111111', accentLight: '#eeeeee', signal: '#00aa55' })).toEqual({
             accent: '#eeeeee',
             primaryColor: '#111111',
+            signal: '#00aa55',
         });
     });
 
@@ -29,6 +32,10 @@ describe('theme seed helpers', () => {
         expect(buildSeedUpdate({ accentDark: '#111111' })).toEqual({ primaryColor: '#111111' });
         expect(buildSeedUpdate({ accentDark: '#111111', accentLight: '' })).toEqual({ primaryColor: '#111111' });
         expect(buildSeedUpdate({ accentDark: '  ', accentLight: '   ' })).toEqual({});
+        expect(buildSeedUpdate({ accentDark: '#111111', accentLight: '#eeeeee', signal: '' })).toEqual({
+            accent: '#eeeeee',
+            primaryColor: '#111111',
+        });
         expect(buildSeedUpdate({})).toEqual({});
     });
 
