@@ -678,8 +678,8 @@ export const UserEditOrAdd = () => {
                                     label={t('counselor.username')}
                                     placeholder={t('placeholder.username')}
                                     disabled={isEditing}
-                                    helpText={t('message.error.username.format')}
-                                    rules={usernameFormRules(t)}
+                                    helpText={isEditing ? undefined : t('message.error.username.format')}
+                                    rules={isEditing ? undefined : usernameFormRules(t)}
                                 />
 
                                 {!isEditing &&

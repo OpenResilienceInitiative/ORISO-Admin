@@ -712,3 +712,49 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         expect(await submit(user)).toMatchObject({ assignedSupervisorId: SUPERVISOR_ID });
     });
 });
+
+describe('existing consultant username validation', () => {
+    it('saves added agency membership without revalidating or changing an immutable email-style username', async () => {
+        const topic = { id: 2, name: 'Kinder und Jugendliche' };
+        const originalAgency = {
+            id: 12,
+            name: 'Original agency',
+            postcode: '10115',
+            city: 'Berlin',
+            tenantId: TENANT.id,
+            topics: [topic],
+        };
+        const addedAgency = { ...originalAgency, id: 14, name: 'Isolated test agency' };
+        const existing = {
+            id: 'bart',
+            firstname: 'Bart',
+            lastname: 'Simpson',
+            email: 'bart.simpson@example.org',
+            username: 'bart.simpson@example.org',
+            tenantId: TENANT.id,
+            agencies: [originalAgency],
+            isSupervisor: false,
+        };
+        mocks.params = { id: existing.id, typeOfUsers: 'consultants' };
+        mocks.consultantsResult = { data: { data: [existing] }, isLoading: false };
+        mocks.counselorResult = { data: { ...existing, topics: [topic] }, isLoading: false };
+        mocks.agenciesResult = { data: { data: [originalAgency, addedAgency] }, isLoading: false };
+        mocks.topicsResult = { data: [topic], isLoading: false };
+        const user = userEvent.setup();
+        renderForm();
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        expect(screen.getByLabelText('Benutzername')).toBeDisabled();
+        expect(screen.getByLabelText('Benutzername')).toHaveValue(existing.username);
+        await chooseOption(user, 'Beratungsstelle', '10115 Isolated test agency Berlin');
+        const payload = await submit(user);
+        expect(payload.username).toBe(existing.username);
+        expect(payload.agencies.map(({ value }: { value: number }) => Number(value)).sort()).toEqual([12, 14]);
+        expect(payload).toMatchObject({
+            firstname: existing.firstname,
+            lastname: existing.lastname,
+            email: existing.email,
+            isSupervisor: false,
+        });
+        expect(screen.getByLabelText('Benutzername')).toBeDisabled();
+    });
+});
