@@ -38,11 +38,16 @@ vi.mock('../../components/ListingTable', () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
+    useUserRoles: vi.fn(),
+    useTenantsData: vi.fn(),
     listInviteEmailTemplates: vi.fn(),
     createInviteEmailTemplate: vi.fn(),
     updateInviteEmailTemplate: vi.fn(),
     previewInviteEmailTemplateContent: vi.fn(),
 }));
+
+vi.mock('../../hooks/useUserRoles.hook', () => ({ useUserRoles: mocks.useUserRoles }));
+vi.mock('../../hooks/useTenantsData', () => ({ useTenantsData: mocks.useTenantsData }));
 
 vi.mock('../../api/accountInvites/accountInvites', () => ({
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
@@ -143,6 +148,12 @@ describe('EmailTemplatesDialog', () => {
         mocks.listInviteEmailTemplates.mockReset();
         mocks.createInviteEmailTemplate.mockReset();
         mocks.updateInviteEmailTemplate.mockReset();
+        mocks.useUserRoles.mockReturnValue({ isSuperAdmin: true, tenantId: 0 });
+        mocks.useTenantsData.mockReturnValue({
+            data: { data: [{ id: 40, name: 'Springfield' }], total: 1 },
+            isLoading: false,
+            isError: false,
+        });
         mocks.previewInviteEmailTemplateContent.mockReset();
         mocks.previewInviteEmailTemplateContent.mockResolvedValue({
             templateId: null,
@@ -194,6 +205,7 @@ describe('EmailTemplatesDialog', () => {
         // Kind is preset to the opening tab's kind — no manual selection needed.
         expect(withinDialog.getByLabelText('Kind')).toHaveValue('TENANT_INVITE');
 
+        await user.selectOptions(withinDialog.getByLabelText('Vorschau für'), '40');
         await user.type(withinDialog.getByLabelText('Vorlagenname'), 'New tenant welcome');
         await user.type(withinDialog.getByLabelText('Betreff'), 'Hi there');
         // fireEvent.change avoids userEvent's {{/}} key-sequence escaping for literal braces.
@@ -211,6 +223,7 @@ describe('EmailTemplatesDialog', () => {
                 active: true,
             }),
         );
+        expect(mocks.createInviteEmailTemplate.mock.calls[0][0]).not.toHaveProperty('tenantId');
         expect(onChanged).toHaveBeenCalledWith(saved);
 
         // Back on the list view, which refetches (3 kinds on mount, 3 more on refresh).
@@ -239,6 +252,44 @@ describe('EmailTemplatesDialog', () => {
      * new boundary rather than deleted: what the composer hands the renderer, and
      * what it does with the answer.
      */
+    it('changes only unsaved preview context between platform and Springfield', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+        const dialog = await openCreateForm(user);
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
+                expect.objectContaining({ tenantId: undefined }),
+            ),
+        );
+        await user.selectOptions(dialog.getByLabelText('Vorschau für'), '40');
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
+                expect.objectContaining({ tenantId: 40 }),
+            ),
+        );
+        expect(mocks.createInviteEmailTemplate).not.toHaveBeenCalled();
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+        await user.selectOptions(dialog.getByLabelText('Vorschau für'), 'platform');
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
+                expect.objectContaining({ tenantId: undefined }),
+            ),
+        );
+    });
+
+    it('uses the active tenant without offering cross-tenant preview selection', async () => {
+        mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: 40 });
+        renderDialog();
+        await openCreateForm(userEvent.setup());
+        expect(screen.queryByLabelText('Vorschau für')).not.toBeInTheDocument();
+        expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
+                expect.objectContaining({ tenantId: 40 }),
+            ),
+        );
+    });
+
     it('previews through the backend renderer, not a local re-implementation', async () => {
         const user = userEvent.setup();
         renderDialog();
