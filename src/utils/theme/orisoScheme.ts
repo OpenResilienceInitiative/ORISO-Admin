@@ -1,10 +1,15 @@
-import { getAccentDark, getAccentLight, TenantSeeds } from '../themeSeeds';
+import { getAccentDark, getAccentLight, getSignal, TenantSeeds } from '../themeSeeds';
 
 export type OrisoSchemeName = 'light' | 'inverted';
+
+/** Angular hue distance (degrees) below which error and brand read as the same family. */
+export const SIGNAL_BRAND_HUE_MIN_DISTANCE = 30;
 
 export interface OrisoPaletteResult {
     tokens: Record<string, string>;
     tooPale: boolean;
+    /** True when a custom signal seed is too close in hue to the brand accent. */
+    signalTooClose: boolean;
 }
 
 const normalizeHex = (value?: string): string | undefined => {
@@ -70,6 +75,50 @@ const saturation = (hex: string) => {
 };
 
 const DEFAULT_ACCENT_DARK = '#a5000a';
+/** Default error/signal seed — matches Frontend `DEFAULT_SIGNAL.light.error`. */
+const SYSTEM_ERROR = '#b1005e';
+
+/** sRGB hex → hue degrees in [0, 360). Greys return 0. */
+const hueDegrees = (hex: string): number => {
+    const { r, g, b } = hexToRgb(hex);
+    const rn = r / 255;
+    const gn = g / 255;
+    const bn = b / 255;
+    const max = Math.max(rn, gn, bn);
+    const min = Math.min(rn, gn, bn);
+    const delta = max - min;
+    if (delta === 0) {
+        return 0;
+    }
+    let hue = 0;
+    if (max === rn) {
+        hue = ((gn - bn) / delta) % 6;
+    } else if (max === gn) {
+        hue = (bn - rn) / delta + 2;
+    } else {
+        hue = (rn - gn) / delta + 4;
+    }
+    hue *= 60;
+    return hue < 0 ? hue + 360 : hue;
+};
+
+/** Smallest angular distance between two hues (degrees). */
+export const hueDistance = (hexA: string, hexB: string): number => {
+    const delta = Math.abs(hueDegrees(hexA) - hueDegrees(hexB)) % 360;
+    return Math.min(delta, 360 - delta);
+};
+
+export const signalTooCloseToBrand = (seeds: TenantSeeds): boolean => {
+    const brand = normalizeHex(getAccentDark(seeds));
+    const signal = normalizeHex(getSignal(seeds));
+    if (!brand || !signal) {
+        return false;
+    }
+    return hueDistance(brand, signal) < SIGNAL_BRAND_HUE_MIN_DISTANCE;
+};
+
+const resolveErrorSeed = (seeds: TenantSeeds): string => normalizeHex(getSignal(seeds)) ?? SYSTEM_ERROR;
+
 /**
  * The rose SURFACE of the active pill — Figma's `M3/sys/light/on-primary-container`
  * value (#594.13b: "Figma hat Vorrang"). It lands on `--m3-primary-container`
@@ -83,8 +132,8 @@ const DEFAULT_ACCENT_DIM = '#ffb4aa';
 const DEFAULT_ACCENT_ACTION = '#cc1e1c';
 /**
  * Active-indicator tone of the mobile bottom navigation for the default seed
- * #A5000A, taken 1:1 from Figma 56576:34607 ("Figma hat Vorrang"). Numerically
- * identical to SYSTEM_ALERT below, but a different role — do not merge them.
+ * #A5000A, taken 1:1 from Figma 56576:34607 ("Figma hat Vorrang"). Deep brand
+ * red — not an alert/warning role (that Admin-only token was removed with #905).
  */
 const DEFAULT_NAV_INDICATOR = '#410001';
 /**
@@ -98,8 +147,6 @@ const DEFAULT_NAV_INDICATOR = '#410001';
  * src/app.css before renaming or re-valuing this.
  */
 const STAGE_SURFACE = '#281715';
-const SYSTEM_ALERT = '#410001';
-const SYSTEM_ERROR = '#b1005e';
 const DARK_TEXT = '#141c25';
 const ADMIN_TABLE_TOKENS = {
     '--admin-workspace-background': '#e4e2e2',
@@ -183,10 +230,19 @@ const adminNavTokens = (navIndicator: string) => ({
     '--admin-nav-indicator-icon': readableOn(navIndicator),
 });
 
-const invertedTokens = (accentDark: string, accentLight: string, accentDim: string, onAccentLightVariant: string) => {
+const invertedTokens = (
+    accentDark: string,
+    accentLight: string,
+    accentDim: string,
+    onAccentLightVariant: string,
+    errorSeed: string,
+) => {
     const primary = accentLight;
     const primaryContainer = accentDark;
     const action = mix(accentLight, '#ffffff', 0.1);
+    // Softened error for dark surfaces — same seed as light, lifted toward white.
+    const error = errorSeed === SYSTEM_ERROR ? '#ffb1c8' : mix(errorSeed, '#ffffff', 0.35);
+    const errorContainer = mix(errorSeed, '#000000', 0.35);
 
     return {
         ...ADMIN_TABLE_TOKENS,
@@ -205,12 +261,10 @@ const invertedTokens = (accentDark: string, accentLight: string, accentDim: stri
         '--m3-on-secondary': DARK_TEXT,
         '--m3-secondary-container': '#39414b',
         '--m3-on-secondary-container': '#e7effc',
-        '--m3-error': '#ffb1c8',
-        '--m3-on-error': '#41001f',
-        '--m3-error-container': '#8a0049',
-        '--m3-on-error-container': '#ffd9e5',
-        '--m3-warning': '#ffb4ab',
-        '--m3-on-warning': SYSTEM_ALERT,
+        '--m3-error': error,
+        '--m3-on-error': readableOn(error),
+        '--m3-error-container': errorContainer,
+        '--m3-on-error-container': readableOn(errorContainer),
         '--m3-surface': '#303030',
         '--m3-on-surface': '#f4eff0',
         '--m3-surface-container-lowest': '#252324',
@@ -240,6 +294,7 @@ const invertedTokens = (accentDark: string, accentLight: string, accentDim: stri
 export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName = 'light'): OrisoPaletteResult => {
     const accentDark = normalizeHex(getAccentDark(seeds)) ?? DEFAULT_ACCENT_DARK;
     const explicitAccentLight = normalizeHex(getAccentLight(seeds));
+    const errorSeed = resolveErrorSeed(seeds);
     const { accentLight, accentDim, accentAction, onAccentLightVariant, navIndicator } = defaultAccentTokens(
         accentDark,
         explicitAccentLight,
@@ -248,16 +303,19 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
     const onAccentLight = readableOn(accentLight);
     const onAccentAction = readableOn(accentAction);
     const tooPale = saturation(accentDark) < 0.12;
+    const signalTooClose = signalTooCloseToBrand(seeds);
 
     if (scheme === 'inverted') {
         return {
             tooPale,
-            tokens: invertedTokens(accentDark, accentLight, accentDim, onAccentLightVariant),
+            signalTooClose,
+            tokens: invertedTokens(accentDark, accentLight, accentDim, onAccentLightVariant, errorSeed),
         };
     }
 
     return {
         tooPale,
+        signalTooClose,
         tokens: {
             ...ADMIN_TABLE_TOKENS,
             ...adminFieldTokens(accentLight, onAccentLightVariant),
@@ -273,10 +331,8 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
             '--m3-on-secondary': '#ffffff',
             '--m3-secondary-container': '#646d78',
             '--m3-on-secondary-container': '#e7effc',
-            '--m3-error': SYSTEM_ERROR,
-            '--m3-on-error': '#ffffff',
-            '--m3-warning': SYSTEM_ALERT,
-            '--m3-on-warning': '#ffffff',
+            '--m3-error': errorSeed,
+            '--m3-on-error': readableOn(errorSeed),
             '--m3-surface': '#fcf9f9',
             '--m3-on-surface': '#1a1c1e',
             '--m3-surface-container-low': '#f7f3f4',

@@ -14,6 +14,7 @@ import {
     buildSeedUpdate,
     getAccentDark,
     getAccentLight,
+    getSignal,
     readSeeds,
     TenantSeeds,
 } from '../../../../../utils/themeSeeds';
@@ -29,7 +30,7 @@ interface ThemeBuilderProps {
 interface ThemeBuilderFormProps {
     form: FormInstance;
     storedSeeds: TenantSeeds;
-    locks: { accentDark: boolean; accentLight: boolean };
+    locks: { accentDark: boolean; accentLight: boolean; signal: boolean };
     editing: boolean;
 }
 
@@ -37,7 +38,7 @@ interface ThemeEditorModalProps {
     open: boolean;
     initialValues: Record<string, unknown>;
     storedSeeds: TenantSeeds;
-    locks: { accentDark: boolean; accentLight: boolean };
+    locks: { accentDark: boolean; accentLight: boolean; signal: boolean };
     onCancel: () => void;
     onSubmit: (values: any) => void;
 }
@@ -47,6 +48,13 @@ const seedIsTooPale = (seeds: TenantSeeds): boolean => {
         return false;
     }
     return computeOrisoPalette(seeds).tooPale;
+};
+
+const seedSignalTooClose = (seeds: TenantSeeds): boolean => {
+    if (!getSignal(seeds) || !getAccentDark(seeds)) {
+        return false;
+    }
+    return computeOrisoPalette(seeds).signalTooClose;
 };
 
 const SCROLL_EPSILON = 8;
@@ -61,11 +69,6 @@ const getThemeRows = (tokens: Record<string, string>, t: (key: string) => string
         color: tokens['--oriso-app-accent-light'],
         label: t('theme.builder.accentLightColor'),
         description: t('theme.builder.summary.accentLight'),
-    },
-    {
-        color: tokens['--m3-warning'],
-        label: t('theme.builder.summary.alertLabel'),
-        description: t('theme.builder.summary.alert'),
     },
     {
         color: tokens['--m3-error'],
@@ -102,13 +105,14 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing }: ThemeBuilderFor
     const { t } = useTranslation();
     const accentDark = Form.useWatch(['theming', 'primaryColor'], form);
     const accentLight = Form.useWatch(['theming', 'accent'], form);
+    const signal = Form.useWatch(['theming', 'signal'], form);
     const draftSeeds: TenantSeeds = {
         accentDark: accentDark ?? getAccentDark(storedSeeds),
         accentLight: accentLight ?? getAccentLight(storedSeeds),
+        signal: signal ?? getSignal(storedSeeds),
     };
     const tooPale = seedIsTooPale(draftSeeds);
-    const { tokens } = computeOrisoPalette(draftSeeds);
-    const fixedRows = getThemeRows(tokens, t).slice(2);
+    const signalTooClose = seedSignalTooClose(draftSeeds);
 
     if (!editing) {
         return <ThemeSummary seeds={storedSeeds} />;
@@ -130,12 +134,23 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing }: ThemeBuilderFor
                     name={['theming', 'accent']}
                     disabled={locks.accentLight}
                 />
-                {fixedRows.map((row) => (
-                    <ColorSummaryRow {...row} key={row.label} />
-                ))}
+                <MuiColorField
+                    className={styles.colorField}
+                    labelKey="theme.builder.signalColor"
+                    name={['theming', 'signal']}
+                    disabled={locks.signal}
+                />
             </div>
             {tooPale && (
                 <Alert className={styles.tooPaleAlert} type="warning" showIcon message={t('theme.builder.tooPale')} />
+            )}
+            {signalTooClose && (
+                <Alert
+                    className={styles.tooPaleAlert}
+                    type="warning"
+                    showIcon
+                    message={t('theme.builder.signalTooClose')}
+                />
             )}
         </>
     );
@@ -166,7 +181,14 @@ const PhoneThemePreview = ({ labelKey, seeds }: { labelKey: string; seeds: Tenan
     );
 };
 
-const ThemeEditorModal = ({ open, initialValues, storedSeeds, locks, onCancel, onSubmit }: ThemeEditorModalProps) => {
+export const ThemeEditorModal = ({
+    open,
+    initialValues,
+    storedSeeds,
+    locks,
+    onCancel,
+    onSubmit,
+}: ThemeEditorModalProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
     const previewScrollerRef = useRef<HTMLDivElement>(null);
@@ -176,9 +198,11 @@ const ThemeEditorModal = ({ open, initialValues, storedSeeds, locks, onCancel, o
     });
     const accentDark = Form.useWatch(['theming', 'primaryColor'], form);
     const accentLight = Form.useWatch(['theming', 'accent'], form);
+    const signal = Form.useWatch(['theming', 'signal'], form);
     const draftSeeds: TenantSeeds = {
         accentDark: accentDark ?? getAccentDark(storedSeeds),
         accentLight: accentLight ?? getAccentLight(storedSeeds),
+        signal: signal ?? getSignal(storedSeeds),
     };
 
     useEffect(() => {
@@ -354,14 +378,19 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
         accentLight:
             readOnly ||
             isReadOnlySetting(settings.serverSettingsMeta, ['accent', 'theming.accent', 'brandingAccentColor']),
+        signal:
+            readOnly ||
+            isReadOnlySetting(settings.serverSettingsMeta, ['signal', 'theming.signal', 'brandingSignalColor']),
     };
     const storedSeeds = readSeeds(data?.theming);
     const inheritedSeeds = readSeeds(inheritedData?.theming);
     const effectiveAccentDark = getAccentDark(storedSeeds) || getAccentDark(inheritedSeeds);
     const effectiveAccentLight = getAccentLight(storedSeeds) || getAccentLight(inheritedSeeds);
+    const effectiveSignal = getSignal(storedSeeds) || getSignal(inheritedSeeds);
     const effectiveSeeds: TenantSeeds = {
         accentDark: effectiveAccentDark,
         accentLight: effectiveAccentLight,
+        signal: effectiveSignal,
         primary: effectiveAccentDark,
         accent: effectiveAccentLight,
     };
@@ -370,6 +399,7 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
         theming: {
             primaryColor: effectiveAccentDark ?? tokens['--oriso-app-accent-dark'],
             accent: effectiveAccentLight ?? tokens['--oriso-app-accent-light'],
+            signal: effectiveSignal ?? tokens['--m3-error'],
         },
     };
     const onSubmit = (values) => {
@@ -377,16 +407,17 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
             theming: buildSeedUpdate({
                 accentDark: values.theming?.primaryColor,
                 accentLight: values.theming?.accent,
+                signal: values.theming?.signal,
             }),
         });
         setEditorOpen(false);
     };
-    const canEdit = !(locks.accentDark && locks.accentLight);
+    const canEdit = !(locks.accentDark && locks.accentLight && locks.signal);
 
     return (
         <>
             <CardEditable
-                key={`theme-builder-${effectiveAccentDark}-${effectiveAccentLight}-${locks.accentDark}-${locks.accentLight}`}
+                key={`theme-builder-${effectiveAccentDark}-${effectiveAccentLight}-${effectiveSignal}-${locks.accentDark}-${locks.accentLight}-${locks.signal}`}
                 allowEdit={canEdit}
                 isLoading={isLoading}
                 titleKey="settings.colors"
