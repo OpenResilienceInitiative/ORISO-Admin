@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Form, FormInstance, Modal } from 'antd';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import { useTranslation } from 'react-i18next';
+import { appURL } from '../../../../../appConfig';
 import { CardEditable } from '../../../../CardEditable';
 import { MuiColorField } from '../../../../mui/MuiColorField';
 import { SideScrollerFooter } from '../../../../SideScrollerFooter';
@@ -20,7 +21,7 @@ import {
     TenantSeeds,
 } from '../../../../../utils/themeSeeds';
 import iphoneFrame from '../../../../../resources/img/theme-preview/iphone-14-pro.png';
-import { MiniChatPreview } from './MiniChatPreview';
+import { buildPreviewUrl } from './previewUrl';
 import styles from './styles.module.scss';
 
 interface ThemeBuilderProps {
@@ -43,6 +44,11 @@ interface ThemeEditorModalProps {
     locks: { accentDark: boolean; accentLight: boolean; signal: boolean };
     onCancel: () => void;
     onSubmit: (values: any) => void;
+    /**
+     * Origin serving the end-user app. Defaults to configured `appURL`.
+     * Stories and unit tests MUST pass a stub so they never hit the network.
+     */
+    appBaseUrl?: string;
 }
 
 const seedIsTooPale = (seeds: TenantSeeds): boolean => {
@@ -170,21 +176,42 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = fa
     );
 };
 
-const PhoneThemePreview = ({ labelKey, seeds }: { labelKey: string; seeds: TenantSeeds }) => {
+const PhoneThemePreview = ({
+    labelKey,
+    seeds,
+    appBaseUrl = appURL,
+}: {
+    labelKey: string;
+    seeds: TenantSeeds;
+    appBaseUrl?: string;
+}) => {
     const { t } = useTranslation();
+    const url = buildPreviewUrl(appBaseUrl, seeds);
 
     return (
         <figure className={styles.phonePreview}>
             <figcaption className={styles.phonePreviewLabel}>{t(labelKey)}</figcaption>
             <div className={styles.phoneFrame}>
                 <div className={styles.phoneScreen}>
-                    <MiniChatPreview
-                        className={styles.phonePreviewColumn}
-                        previewClassName={styles.phonePreviewCanvas}
-                        seeds={seeds}
-                        labelKey={labelKey}
-                        hideLabel
-                    />
+                    {url ? (
+                        <div className={styles.frameWrap}>
+                            {/* No CSP frame-ancestors on the app today; recommended
+                                in ORISO-Frontend#144 if embedding constraints are
+                                added later. Do not invent a CSP in this repo. */}
+                            <iframe
+                                key={url}
+                                className={styles.frame}
+                                src={url}
+                                title={t('theme.builder.preview.frameTitle')}
+                                data-testid="preview-frame"
+                                sandbox="allow-scripts allow-same-origin"
+                                tabIndex={-1}
+                            />
+                            <div className={styles.frameShield} data-testid="preview-frame-shield" />
+                        </div>
+                    ) : (
+                        <div className={styles.frameEmpty}>{t('theme.builder.preview.empty')}</div>
+                    )}
                 </div>
                 <img className={styles.phoneFrameImage} src={iphoneFrame} alt="" aria-hidden="true" />
                 <span className={styles.phoneAddressText} aria-hidden="true">
@@ -202,6 +229,7 @@ export const ThemeEditorModal = ({
     locks,
     onCancel,
     onSubmit,
+    appBaseUrl = appURL,
 }: ThemeEditorModalProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
@@ -384,14 +412,28 @@ export const ThemeEditorModal = ({
                         </div>
                     </aside>
                     <div className={styles.themePreviewRegion}>
+                        {/* Focusable scroll region: keyboard users must reach the panel
+                            to pan between phones when it still overflows (axe:
+                            scrollable-region-focusable). */}
+                        {/* eslint-disable jsx-a11y/no-noninteractive-tabindex */}
                         <section
                             className={styles.themePreviewPanel}
                             ref={previewScrollerRef}
+                            tabIndex={0}
                             aria-label={t('settings.colors')}
                         >
-                            <PhoneThemePreview labelKey="theme.builder.preview.current" seeds={storedSeeds} />
-                            <PhoneThemePreview labelKey="theme.builder.preview.new" seeds={draftSeeds} />
+                            <PhoneThemePreview
+                                labelKey="theme.builder.preview.current"
+                                seeds={storedSeeds}
+                                appBaseUrl={appBaseUrl}
+                            />
+                            <PhoneThemePreview
+                                labelKey="theme.builder.preview.new"
+                                seeds={draftSeeds}
+                                appBaseUrl={appBaseUrl}
+                            />
                         </section>
+                        {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
                         <SideScrollerFooter
                             className={styles.themePreviewScrollerFooter}
                             ariaLabel={t('theme.builder.preview.scroll')}
