@@ -1,4 +1,4 @@
-import { Col, notification, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { RuleRender } from 'antd/es/form';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../components/CardEditable';
@@ -6,15 +6,16 @@ import { FormInputPasswordField } from '../../../components/FormInputPasswordFie
 import { useUpdateUserPassword } from '../../../hooks/useUpdateUserPassword.hook';
 import { validatePasswordCriteria } from '../../../utils/validateInputValue';
 import styles from './styles.module.scss';
+import { showAdminSnackbar } from '../../../components/AdminSnackbar/adminSnackbar';
 
 export const PasswordChange = () => {
     const { t } = useTranslation();
     const { mutate: updateData } = useUpdateUserPassword({
         onSuccess: () => {
-            notification.success({ message: t('profile.passwordChange.success') });
+            showAdminSnackbar({ severity: 'success', message: t('profile.passwordChange.success') });
         },
         onError: () => {
-            notification.error({ message: t('profile.passwordChange.error') });
+            showAdminSnackbar({ severity: 'error', message: t('profile.passwordChange.error') });
         },
     });
 

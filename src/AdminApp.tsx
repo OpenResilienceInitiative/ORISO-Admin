@@ -31,6 +31,7 @@ import { PasswordResetConfirmPage } from './pages/PasswordReset/PasswordResetCon
 import { TenantAdminOnboardingPage } from './pages/TenantOnboarding/TenantAdminOnboardingPage';
 import { CounsellorOnboardingPage } from './pages/CounsellorOnboarding/CounsellorOnboardingPage';
 import { TenantFavicon } from './components/TenantFavicon/TenantFavicon';
+import { AdminSnackbarProvider } from './components/AdminSnackbar/AdminSnackbarProvider';
 
 interface LangMap {
     [key: string]: Locale;
@@ -93,7 +94,8 @@ export const AdminApp = () => (
             <UseAppConfigProvider>
                 <AppSettingsWrapper>
                     <LanguageAwareConfigProvider>
-                        <Router>
+                        <AdminSnackbarProvider>
+                            <Router>
                             {/* Outside <Routes> on purpose: the branding favicon has to reach
                                 anonymous visitors on /admin/login, the onboarding and
                                 password-reset pages too, not only the protected tree behind
@@ -139,7 +141,8 @@ export const AdminApp = () => (
                                     }
                                 />
                             </Routes>
-                        </Router>
+                            </Router>
+                        </AdminSnackbarProvider>
                     </LanguageAwareConfigProvider>
                 </AppSettingsWrapper>
             </UseAppConfigProvider>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
@@ -17,6 +17,7 @@ import { ADMIN_PORTAL_ACCESS_DENIED, TENANT_ACCESS_DENIED, useLoginMutation } fr
 import { TwoFactorType } from '../../enums/TwoFactorType';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 import { LoginCredentialsHint } from './LoginCredentialsHint';
+import { showAdminSnackbar } from '../../components/AdminSnackbar/adminSnackbar';
 
 const startIcon = (icon: React.ReactNode) => <InputAdornment position="start">{icon}</InputAdornment>;
 
@@ -47,11 +48,11 @@ const LoginForm = () => {
                     setOtpDisabled(false);
                     setTwoFactorType(error.options?.data?.otpType || TwoFactorType.None);
                 } else if (error.message === ADMIN_PORTAL_ACCESS_DENIED) {
-                    message.error(t('message.error.auth.adminOnly'));
+                    showAdminSnackbar({ severity: 'error', message: t('message.error.auth.adminOnly') });
                 } else if (error.message === TENANT_ACCESS_DENIED) {
-                    message.error(t('message.error.auth.tenantAccessDenied'));
+                    showAdminSnackbar({ severity: 'error', message: t('message.error.auth.tenantAccessDenied') });
                 } else if (error.message === FETCH_ERRORS.TIMEOUT) {
-                    message.error(t('message.error.auth.network'));
+                    showAdminSnackbar({ severity: 'error', message: t('message.error.auth.network') });
                 } else {
                     // TEN-INV-U10 (#572): invalid credentials and a not-yet-registered
                     // invitee get ONE combined, privacy-preserving hint — deliberately

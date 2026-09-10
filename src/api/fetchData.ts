@@ -1,4 +1,3 @@
-import { message } from 'antd';
 import i18next from 'i18next';
 import { getAccessTokenForRequests, tryRefreshAccessToken } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
@@ -6,6 +5,7 @@ import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
 
 import logout from './auth/logout';
 import routePathNames, { CSRF_WHITELIST_HEADER } from '../appConfig';
+import { showAdminSnackbar } from '../components/AdminSnackbar/adminSnackbar';
 
 const isLocalDevelopment = import.meta.env.DEV;
 
@@ -199,12 +199,13 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                         // Reject without showing a toast so the caller can decide how to handle it.
                         reject(response);
                     } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL)) {
-                        message.error({
-                            content: i18next.t([
+                        showAdminSnackbar({
+                            key: `request-error-${response.status}-${response.headers.get(FETCH_ERRORS.X_REASON) ?? 'default'}`,
+                            severity: 'error',
+                            message: i18next.t([
                                 `message.error.${response.headers.get(FETCH_ERRORS.X_REASON)}`,
                                 'message.error.default',
                             ]) as string,
-                            duration: 8,
                         });
 
                         reject(new Error(FETCH_ERRORS.CATCH_ALL));
@@ -258,10 +259,10 @@ export const fetchData = async (props: FetchDataProps): Promise<any> => {
             // Stable key: concurrent 401s (a page with many active queries) all reach
             // this fallback once the shared refresh has failed — antd collapses repeats
             // with the same key into ONE toast instead of stacking identical ones.
-            message.error({
-                content: i18next.t('message.error.sessionExpired') as string,
-                duration: 8,
+            showAdminSnackbar({
                 key: 'session-expired',
+                severity: 'error',
+                message: i18next.t('message.error.sessionExpired') as string,
             });
             logout(true, routePathNames.login);
         }
