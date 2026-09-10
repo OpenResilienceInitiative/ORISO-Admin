@@ -115,6 +115,22 @@ export const EmptyPreview: Story = {
 };
 
 /**
+ * Regression for #906: the scroll-arrow footer and its 250ms scroll-state
+ * poller are gone now that the overflow band (fixed by #934) makes them dead
+ * weight. The preview panel itself must stay keyboard-reachable.
+ */
+export const PreviewHasNoScrollerFooter: Story = {
+    play: async ({ canvasElement }) => {
+        const doc = canvasElement.ownerDocument;
+        const body = within(doc.body);
+        const panel = await body.findByRole('region', { name: /^(Colors|Farben)$/ });
+
+        expect(panel.getAttribute('tabindex')).toBe('0');
+        expect(body.queryAllByRole('navigation').length).toBe(0);
+    },
+};
+
+/**
  * Regression for #906: inside the former 1101–1250 overflow band the preview
  * panel must fit without horizontal scroll (scrollWidth ≤ clientWidth).
  */

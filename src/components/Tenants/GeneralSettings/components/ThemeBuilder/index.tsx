@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Form, FormInstance, Modal } from 'antd';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import { useTranslation } from 'react-i18next';
 import { appURL } from '../../../../../appConfig';
 import { CardEditable } from '../../../../CardEditable';
 import { MuiColorField } from '../../../../mui/MuiColorField';
-import { SideScrollerFooter } from '../../../../SideScrollerFooter';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
 import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.hook';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
@@ -62,8 +61,6 @@ const seedSignalTooClose = (seeds: TenantSeeds): boolean => {
     }
     return computeOrisoPalette(seeds).signalTooClose;
 };
-
-const SCROLL_EPSILON = 8;
 
 const getThemeRows = (tokens: Record<string, string>, t: (key: string) => string) => [
     {
@@ -234,11 +231,6 @@ export const ThemeEditorModal = ({
     const { t } = useTranslation();
     const [form] = Form.useForm();
     const [saveRejected, setSaveRejected] = useState(false);
-    const previewScrollerRef = useRef<HTMLDivElement>(null);
-    const [previewScrollState, setPreviewScrollState] = useState({
-        canScrollBackward: false,
-        canScrollForward: false,
-    });
     const accentDark = Form.useWatch(['theming', 'primaryColor'], form);
     const accentLight = Form.useWatch(['theming', 'accent'], form);
     const signal = Form.useWatch(['theming', 'signal'], form);
@@ -282,88 +274,6 @@ export const ThemeEditorModal = ({
             setSaveRejected(false);
         }
     }, [accentDark]);
-
-    const updatePreviewScrollState = useCallback(() => {
-        const previewScroller = previewScrollerRef.current;
-
-        if (!previewScroller) {
-            return;
-        }
-
-        const maxScrollLeft = previewScroller.scrollWidth - previewScroller.clientWidth;
-        setPreviewScrollState({
-            canScrollBackward: previewScroller.scrollLeft > SCROLL_EPSILON,
-            canScrollForward: previewScroller.scrollLeft < maxScrollLeft - SCROLL_EPSILON,
-        });
-    }, []);
-
-    const scrollPreview = (direction: -1 | 1) => {
-        const previewScroller = previewScrollerRef.current;
-
-        if (!previewScroller) {
-            return;
-        }
-
-        previewScroller.scrollBy({
-            left: direction * Math.min(previewScroller.clientWidth * 0.82, 520),
-            behavior: 'smooth',
-        });
-    };
-
-    useEffect(() => {
-        let previewScroller: HTMLDivElement | null = null;
-        let frameId: number | undefined;
-        let timeoutId: number | undefined;
-        let intervalId: number | undefined;
-        let resizeObserver: ResizeObserver | undefined;
-
-        if (!open) {
-            return undefined;
-        }
-
-        const bindPreviewScroller = () => {
-            previewScroller = previewScrollerRef.current;
-
-            if (!previewScroller) {
-                frameId = window.requestAnimationFrame(bindPreviewScroller);
-                return;
-            }
-
-            updatePreviewScrollState();
-            timeoutId = window.setTimeout(updatePreviewScrollState, 0);
-            intervalId = window.setInterval(updatePreviewScrollState, 250);
-            resizeObserver =
-                typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updatePreviewScrollState) : undefined;
-
-            resizeObserver?.observe(previewScroller);
-            previewScroller.addEventListener('scroll', updatePreviewScrollState, { passive: true });
-            window.addEventListener('resize', updatePreviewScrollState);
-        };
-
-        bindPreviewScroller();
-
-        return () => {
-            if (frameId) {
-                window.cancelAnimationFrame(frameId);
-            }
-
-            if (timeoutId) {
-                window.clearTimeout(timeoutId);
-            }
-
-            if (intervalId) {
-                window.clearInterval(intervalId);
-            }
-
-            resizeObserver?.disconnect();
-
-            if (previewScroller) {
-                previewScroller.removeEventListener('scroll', updatePreviewScrollState);
-            }
-
-            window.removeEventListener('resize', updatePreviewScrollState);
-        };
-    }, [open, updatePreviewScrollState]);
 
     return (
         <Modal
@@ -413,15 +323,10 @@ export const ThemeEditorModal = ({
                     </aside>
                     <div className={styles.themePreviewRegion}>
                         {/* Focusable scroll region: keyboard users must reach the panel
-                            to pan between phones when it still overflows (axe:
-                            scrollable-region-focusable). */}
+                            to pan between phones on the rare width where it still
+                            overflows (axe: scrollable-region-focusable). */}
                         {/* eslint-disable jsx-a11y/no-noninteractive-tabindex */}
-                        <section
-                            className={styles.themePreviewPanel}
-                            ref={previewScrollerRef}
-                            tabIndex={0}
-                            aria-label={t('settings.colors')}
-                        >
+                        <section className={styles.themePreviewPanel} tabIndex={0} aria-label={t('settings.colors')}>
                             <PhoneThemePreview
                                 labelKey="theme.builder.preview.current"
                                 seeds={storedSeeds}
@@ -434,16 +339,6 @@ export const ThemeEditorModal = ({
                             />
                         </section>
                         {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
-                        <SideScrollerFooter
-                            className={styles.themePreviewScrollerFooter}
-                            ariaLabel={t('theme.builder.preview.scroll')}
-                            previousLabel={t('theme.builder.preview.previous')}
-                            nextLabel={t('theme.builder.preview.next')}
-                            canScrollBackward={previewScrollState.canScrollBackward}
-                            canScrollForward={previewScrollState.canScrollForward}
-                            onScrollBackward={() => scrollPreview(-1)}
-                            onScrollForward={() => scrollPreview(1)}
-                        />
                     </div>
                 </div>
             </Form>

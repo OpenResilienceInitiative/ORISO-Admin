@@ -155,19 +155,6 @@
     display: none;
 }
 
-.themePreviewScrollerFooter {
-    --side-scroller-button-width: 128px;
-    --side-scroller-button-height: 96px;
-
-    position: absolute;
-    right: clamp(28px, 5vw, 72px);
-    bottom: 38px;
-    left: clamp(28px, 5vw, 72px);
-    display: flex;
-    justify-content: space-between;
-    pointer-events: none;
-}
-
 .phonePreview {
     display: flex;
     min-width: 0;
@@ -413,14 +400,5 @@
     .themePreviewPanel {
         padding: 28px 24px 40px;
         grid-template-columns: minmax(0, 320px);
-    }
-
-    .themePreviewScrollerFooter {
-        --side-scroller-button-width: 88px;
-        --side-scroller-button-height: 56px;
-
-        right: 24px;
-        bottom: 20px;
-        left: 24px;
     }
 }
