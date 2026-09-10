@@ -137,7 +137,6 @@ export const SplitButton = ({
                 aria-describedby={mainDescribedBy}
                 data-testid={mainTestId}
                 data-missing-token={mainDataMissingToken || undefined}
-                aria-invalid={mainInvalid || undefined}
                 className={classNames(styles.segment, styles.main, { [styles.invalid]: mainInvalid })}
                 disabled={disabled || mainDisabled}
                 title={title}
