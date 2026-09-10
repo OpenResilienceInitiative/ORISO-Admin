@@ -104,6 +104,19 @@ const matchesFilter = (invite: AccountInviteDTO, filter: InviteFilter | null) =>
 const isActionable = (invite: AccountInviteDTO) =>
     invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
 
+const inviteStatusHint = (invite: AccountInviteDTO, t: ReturnType<typeof useTranslation>['t']) => {
+    if (invite.inviteStatus === 'EMAIL_SENT' && invite.emailDeliveryStatus !== 'SENT') {
+        return t(
+            'links.accountInvites.statusHint.deliveryUnconfirmed',
+            'Der Versand konnte nicht bestätigt werden. Die Einladung bleibt erhalten und kann erneut gesendet werden.',
+        );
+    }
+    return t(
+        `links.accountInvites.statusHint.${invite.inviteStatus}`,
+        INVITE_STATUS_FALLBACK_HINTS[invite.inviteStatus],
+    );
+};
+
 export interface InviteProgressBoardProps {
     invites: AccountInviteDTO[];
     loading: boolean;
@@ -443,12 +456,7 @@ export const InviteProgressBoard = ({
                                 {/* tabIndex on a badge: the explanation is the only
                                     place the vocabulary is defined, so it has to be
                                     reachable without a mouse as well (C3). */}
-                                <M3Tooltip
-                                    text={t(
-                                        `links.accountInvites.statusHint.${invite.inviteStatus}`,
-                                        INVITE_STATUS_FALLBACK_HINTS[invite.inviteStatus],
-                                    )}
-                                >
+                                <M3Tooltip text={inviteStatusHint(invite, t)}>
                                     {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge is the only place the status vocabulary is explained, so it must be reachable without a mouse */}
                                     <span tabIndex={0} className={statusChipClass}>
                                         {t(
