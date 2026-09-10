@@ -22,7 +22,7 @@ describe('ChatRecoverySettingsCard', () => {
         expect(screen.getAllByText('globalSettings.chatRecovery.newUsersHelp')).toHaveLength(2);
 
         await userEvent.click(screen.getByRole('button', { name: 'edit' }));
-        await userEvent.click(screen.getAllByRole('combobox')[0]);
+        await userEvent.click(screen.getByLabelText(/globalSettings.chatRecovery.asker/));
         expect(screen.getByText('globalSettings.chatRecovery.mode.loginPassword')).toBeVisible();
         expect(screen.getByText('globalSettings.chatRecovery.mode.recoveryKey')).toBeVisible();
     });
@@ -31,7 +31,7 @@ describe('ChatRecoverySettingsCard', () => {
         render(<ChatRecoverySettingsCard data={confirmed} isLoading={false} isSaving={false} onSave={onSave} />);
         await userEvent.click(screen.getByRole('button', { name: 'edit' }));
 
-        const asker = screen.getAllByRole('combobox')[0];
+        const asker = screen.getByLabelText(/globalSettings.chatRecovery.asker/);
         await userEvent.click(asker);
         await userEvent.click(screen.getByText('globalSettings.chatRecovery.mode.recoveryKey'));
         expect(onSave).not.toHaveBeenCalled();
@@ -57,20 +57,25 @@ describe('ChatRecoverySettingsCard', () => {
         });
         render(<ChatRecoverySettingsCard data={confirmed} isLoading={false} isSaving={false} onSave={onSave} />);
         await userEvent.click(screen.getByRole('button', { name: 'edit' }));
-        const asker = screen.getAllByRole('combobox')[0];
+        const asker = screen.getByLabelText(/globalSettings.chatRecovery.asker/);
         await userEvent.click(asker);
         await userEvent.click(screen.getByText('globalSettings.chatRecovery.mode.recoveryKey'));
         fireEvent.click(screen.getByRole('button', { name: 'card.edit.save' }));
 
         await waitFor(() => {
-            expect(screen.getAllByRole('combobox')[0]).toBeDisabled();
-            expect(screen.getAllByRole('combobox')[0]).toHaveValue('globalSettings.chatRecovery.mode.recoveryKey');
+            expect(screen.getByLabelText(/globalSettings.chatRecovery.asker/)).toBeDisabled();
+            expect(screen.getByLabelText(/globalSettings.chatRecovery.asker/)).toHaveValue(
+                'globalSettings.chatRecovery.mode.recoveryKey',
+            );
         });
         act(() => rejectSave?.());
 
-        await waitFor(() =>
-            expect(screen.getAllByRole('combobox')[0]).toHaveValue('globalSettings.chatRecovery.mode.recoveryKey'),
-        );
+        await waitFor(() => {
+            expect(screen.getByLabelText(/globalSettings.chatRecovery.asker/)).toBeEnabled();
+            expect(screen.getByLabelText(/globalSettings.chatRecovery.asker/)).toHaveValue(
+                'globalSettings.chatRecovery.mode.recoveryKey',
+            );
+        });
     });
 
     it('displays a newly confirmed server response when its revision changes', async () => {
@@ -88,7 +93,9 @@ describe('ChatRecoverySettingsCard', () => {
         );
 
         await waitFor(() =>
-            expect(screen.getAllByRole('combobox')[0]).toHaveValue('globalSettings.chatRecovery.mode.recoveryKey'),
+            expect(screen.getByLabelText(/globalSettings.chatRecovery.asker/)).toHaveValue(
+                'globalSettings.chatRecovery.mode.recoveryKey',
+            ),
         );
     });
 });
