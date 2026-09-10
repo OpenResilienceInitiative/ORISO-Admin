@@ -55,10 +55,19 @@ describe('DpaBlocker — secondary actions', () => {
         expect(onLogout).not.toHaveBeenCalled();
     });
 
-    it('keeps the exits reachable while the sign form is shown', () => {
-        render(<DpaBlocker {...props} reason="UNSIGNED" signable dpaContent={JSON.stringify({ de: '<p>AVV</p>' })} />);
+    it('keeps signing, forwarding and exits reachable while the sign form is shown', () => {
+        render(
+            <DpaBlocker
+                {...props}
+                reason="UNSIGNED"
+                signable
+                dpaContent={JSON.stringify({ de: '<p>AVV</p>' })}
+                onForward={vi.fn()}
+            />,
+        );
 
         expect(screen.getByRole('button', { name: 'dpaBlocker.sign.submit' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'dpaForward.action.notAuthorised' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'dpaBlocker.retry' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'dpaBlocker.logout' })).toBeInTheDocument();
     });
