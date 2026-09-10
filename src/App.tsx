@@ -62,6 +62,7 @@ import { useUserData } from './hooks/useUserData.hook';
 import { DpaBlockerGate } from './components/DpaBlocker/DpaBlockerGate';
 import { hasMandatoryTwoFactorRole, requiresMandatoryTwoFactor } from './utils/adminTwoFactorGate';
 import { MandatoryTwoFactorSetup } from './pages/Profile/MandatoryTwoFactorSetup';
+import { TwoFactorSecurityNotice } from './components/AdminSnackbar/TwoFactorSecurityNotice';
 
 const AgencyInitialMeetingRedirect = () => {
     const { id } = useParams();
@@ -187,6 +188,10 @@ export const App = () => {
                 page while the tenant's DPA is unsigned/outdated. */}
             <DpaBlockerGate>
                 <ProtectedPageLayoutWrapper>
+                    <TwoFactorSecurityNotice
+                        active={userData?.twoFactorAuth?.isActive}
+                        available={userData?.twoFactorAuth?.isEnabled}
+                    />
                     {/* Page-level boundary: a crash inside one admin page keeps the
                     navigation usable and resets when the route changes. */}
                     <ErrorBoundary scope="page" resetKeys={[location.pathname]}>

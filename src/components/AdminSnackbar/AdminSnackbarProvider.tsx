@@ -5,6 +5,7 @@ import { message as legacyMessage, notification as legacyNotification } from 'an
 import { type ReactNode, useEffect, useState } from 'react';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import {
+    clearVisibleAdminSnackbar,
     type AdminSnackbarNotification,
     subscribeToAdminSnackbar,
 } from './adminSnackbar';
@@ -22,11 +23,16 @@ const textFromLegacyNotice = (notice: LegacyNotice) => {
 export const AdminSnackbarProvider = ({ children }: { children: ReactNode }) => {
     const [notification, setNotification] = useState<AdminSnackbarNotification | null>(null);
 
-    useEffect(() => subscribeToAdminSnackbar((nextNotification) => {
+    useEffect(() => subscribeToAdminSnackbar((event) => {
+        if (event.type === 'clear') {
+            setNotification((current) => (!event.key || current?.key === event.key ? null : current));
+            return;
+        }
+
         // A stable key makes repeated failures replace their visible counterpart
         // instead of building an inaccessible stack of identical alerts.
         setNotification((current) =>
-            current?.key && current.key === nextNotification.key ? { ...nextNotification } : nextNotification,
+            current?.key && current.key === event.notification.key ? { ...event.notification } : event.notification,
         );
     }), []);
 
@@ -59,7 +65,11 @@ export const AdminSnackbarProvider = ({ children }: { children: ReactNode }) => 
         }, () => {});
     }, []);
 
-    const close = () => setNotification(null);
+    const close = () => {
+        notification?.onClose?.();
+        clearVisibleAdminSnackbar(notification?.key);
+        setNotification(null);
+    };
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
