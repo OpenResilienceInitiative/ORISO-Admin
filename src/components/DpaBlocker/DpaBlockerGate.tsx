@@ -108,6 +108,32 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
         },
     });
 
+    // Creating a forwarding link does not soften the gate. The next status
+    // read reports `forwardPending`, which renders the dedicated waiting gate
+    // until the authorised signer has completed the agreement.
+    const mintLink = async (): Promise<DpaForwardLink> => {
+        const invite = await createDpaSignInvite(tenantId ?? 0);
+        return { signUrl: resolveDpaSignLink(invite.signLink), expiresAt: invite.expiresAt ?? null };
+    };
+
+    const forward = async ({ recipientEmail }: { recipientEmail?: string }): Promise<DpaForwardOutcome> => {
+        const link = await mintLink();
+        if (!recipientEmail) {
+            return { link, mailFailed: false };
+        }
+        try {
+            await sendDpaInviteEmail({
+                tenantId: tenantId ?? 0,
+                recipientEmail,
+                signLink: link.signUrl,
+                expiresAt: link.expiresAt ?? '',
+            });
+            return { link, mailFailed: false };
+        } catch {
+            return { link, mailFailed: true };
+        }
+    };
+
     if (decision.kind === 'inactive') {
         return children;
     }
@@ -153,32 +179,6 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
         // Post-login there is no "read the active link" endpoint: issuing a
         // fresh one is the supported way, and every issued link stays valid
         // until a signature lands (#723 contract).
-        const mintLink = async (): Promise<DpaForwardLink> => {
-            const invite = await createDpaSignInvite(tenantId ?? 0);
-            return { signUrl: resolveDpaSignLink(invite.signLink), expiresAt: invite.expiresAt ?? null };
-        };
-        const forward = async ({ recipientEmail }: { recipientEmail?: string }): Promise<DpaForwardOutcome> => {
-            const link = await mintLink();
-            if (!recipientEmail) {
-                return { link, mailFailed: false };
-            }
-            try {
-                // The authenticated delivery endpoint (UserService #530)
-                // carries no recipient name — the salutation falls back to the
-                // template default.
-                await sendDpaInviteEmail({
-                    tenantId: tenantId ?? 0,
-                    recipientEmail,
-                    signLink: link.signUrl,
-                    expiresAt: link.expiresAt ?? '',
-                });
-                return { link, mailFailed: false };
-            } catch {
-                // Same shape as the public 502: the link exists, only the mail
-                // did not go out — never present that as a total failure.
-                return { link, mailFailed: true };
-            }
-        };
         // No `children`: an unsigned tenant may not reach the admin area at
         // all, so there is nothing behind the dialog to click (JOB7).
         return (
@@ -219,6 +219,8 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
             signPending={signMutation.isPending}
             signFailed={signMutation.isError}
             onSign={onSign}
+            onForward={blockedSignable ? forward : undefined}
+            onForwarded={() => statusQuery.refetch()}
             onRetry={onRetry}
             retryPending={statusQuery.isFetching}
             onLogout={() => logout(true)}

@@ -16,6 +16,8 @@ import { M3Button } from '../M3Button';
 import { pickLegalContentLanguage } from '../Tenants/LegalSettings/utils/legalContentLanguages';
 import { DpaBlockerReason } from '../../utils/dpaBlockerGate';
 import { focusFirstInvalidField } from '../../utils/formErrorNavigation';
+import { DpaForwardDialog } from '../DpaForwardDialog/DpaForwardDialog';
+import { DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 import styles from './styles.module.scss';
 
 export interface DpaBlockerSignData {
@@ -37,6 +39,10 @@ export interface DpaBlockerProps {
     signPending?: boolean;
     signFailed?: boolean;
     onSign?: (data: DpaBlockerSignData) => void;
+    /** Delegates the signature to an authorised signer without accepting it locally. */
+    onForward?: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
+    /** Refreshes the gate after the delegation was explicitly completed. */
+    onForwarded?: () => void;
     onRetry: () => void;
     retryPending?: boolean;
     onLogout: () => void;
@@ -78,6 +84,8 @@ export const DpaBlocker = ({
     signPending = false,
     signFailed = false,
     onSign,
+    onForward,
+    onForwarded,
     onRetry,
     retryPending = false,
     onLogout,
@@ -86,6 +94,7 @@ export const DpaBlocker = ({
     const [form] = Form.useForm<DpaBlockerFormValues>();
     const [dpaAccepted, setDpaAccepted] = useState(false);
     const [acceptTouched, setAcceptTouched] = useState(false);
+    const [forwardOpen, setForwardOpen] = useState(false);
     // Why the last submit did not go through — surfaced AT the button (#594.6).
     const [submitBlocker, setSubmitBlocker] = useState<'fields' | 'consent' | null>(null);
 
@@ -240,6 +249,16 @@ export const DpaBlocker = ({
                                     >
                                         {t('dpaBlocker.sign.submit')}
                                     </M3Button>
+                                    {onForward && (
+                                        <M3Button
+                                            type="button"
+                                            variant="outlined"
+                                            block
+                                            onClick={() => setForwardOpen(true)}
+                                        >
+                                            {t('dpaForward.action.notAuthorised')}
+                                        </M3Button>
+                                    )}
                                 </div>
                             </Form>
                         )}
@@ -270,6 +289,17 @@ export const DpaBlocker = ({
                         {t('dpaBlocker.actionsHint')}
                     </p>
                 </div>
+                {forwardOpen && onForward && (
+                    <DpaForwardDialog
+                        forward={onForward}
+                        surface="admin"
+                        onClose={() => setForwardOpen(false)}
+                        onForwarded={() => {
+                            setForwardOpen(false);
+                            onForwarded?.();
+                        }}
+                    />
+                )}
             </div>
         </ThemeProvider>
     );
