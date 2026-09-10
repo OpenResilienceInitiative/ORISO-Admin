@@ -264,6 +264,23 @@ describe('InviteProgressBoard', () => {
         expect(new Set(hints).size).toBe(6);
     });
 
+    it('marks a sent invite without a delivery receipt as unconfirmed and recoverable', async () => {
+        const user = userEvent.setup();
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                invites={[invite(10, { inviteStatus: 'EMAIL_SENT', emailDeliveryStatus: null })]}
+            />,
+        );
+
+        const row = within(screen.getByText('person10@example.org').closest('tr') as HTMLElement);
+        await user.hover(row.getByText('Gesendet'));
+        expect(await screen.findByRole('tooltip')).toHaveTextContent(
+            'Der Versand konnte nicht bestätigt werden. Die Einladung bleibt erhalten und kann erneut gesendet werden.',
+        );
+        expect(row.getByRole('button', { name: 'Erinnerung erneut senden' })).toBeEnabled();
+    });
+
     it('reports selection changes through row checkboxes', async () => {
         const user = userEvent.setup();
         const props = baseProps();
