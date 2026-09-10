@@ -23,6 +23,9 @@ import { DocumentMasterDataCardContainer } from '../../components/GlobalSettings
 import styles from './styles.module.scss';
 import { resolveTenantId } from '../../utils/resolveTenantId';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
+import { ChatRecoverySettingsCard } from '../../components/GlobalSettings/ChatRecoverySettingsCard';
+import { useChatRecoverySettings } from '../../hooks/useChatRecoverySettings.hook';
+import { useUserRoles } from '../../hooks/useUserRoles.hook';
 
 export const GlobalLoginSettingsPage = () => {
     const { t } = useTranslation();
@@ -39,6 +42,8 @@ export const GlobalLoginSettingsPage = () => {
         successMessageKey: 'tenants.message.settingsUpdate',
     });
     const initialValues = useMemo(() => ({ ...data }), [data]);
+    const { isSuperAdmin } = useUserRoles();
+    const recoverySettings = useChatRecoverySettings(isSuperAdmin);
 
     return (
         <div className={styles.globalConfigViewport}>
@@ -79,6 +84,21 @@ export const GlobalLoginSettingsPage = () => {
                     <section className={styles.translationCardSlot}>
                         <TranslationApiKeysCardContainer />
                     </section>
+                    {isSuperAdmin && (
+                        <section className={styles.globalConfigCardSlot}>
+                            <ThemeProvider theme={orisoMuiTheme}>
+                                <ChatRecoverySettingsCard
+                                    data={recoverySettings.data}
+                                    isLoading={recoverySettings.isLoading}
+                                    isSaving={recoverySettings.isSaving}
+                                    error={recoverySettings.error}
+                                    onSave={(settings, options) =>
+                                        recoverySettings.save(settings, { onError: options?.onError })
+                                    }
+                                />
+                            </ThemeProvider>
+                        </section>
+                    )}
                 </div>
                 {/* ORISO-Admin#735: operator master data for the living DPIA and the other legal
                     documents. The desktop grid keeps it beside the two compact configuration cards. */}
