@@ -133,6 +133,7 @@ export const DepartmentDataProtectionCard = ({
     const consentEnabled = documentType === 'privacy' && consentByLanguage !== undefined;
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
     const [consentTemplateId, setConsentTemplateId] = useState<number | string | undefined>(undefined);
+    const [consentDialogOpen, setConsentDialogOpen] = useState(false);
     const consentMap = useMemo(
         () => ({ ...(consentByLanguage ?? {}), ...consentEdits }),
         [consentByLanguage, consentEdits],
@@ -263,7 +264,11 @@ export const DepartmentDataProtectionCard = ({
                         <TemplateSplitButton
                             activeTemplateId={consentTemplateId}
                             disabled={consentLocked}
+                            label={t('legal.consent.editButton')}
+                            mainTestId="consent-edit-trigger"
+                            mainDataMissingToken={blockedLanguages.length > 0}
                             templates={consentTemplates}
+                            onMainClick={() => setConsentDialogOpen(true)}
                             onSelectTemplate={applyConsentTemplate}
                         />
                     ) : undefined
@@ -274,6 +279,7 @@ export const DepartmentDataProtectionCard = ({
                             {consentEnabled && (
                                 <LegalConsentField
                                     hideTemplateChooser
+                                    hideTrigger
                                     inheritedFrom={
                                         // The notice describes the CURRENT state. While an archived version is on
                                         // screen it would answer a question nobody asked about the version being
@@ -285,6 +291,8 @@ export const DepartmentDataProtectionCard = ({
                                             : undefined
                                     }
                                     language={activeLanguage}
+                                    open={consentDialogOpen}
+                                    onOpenChange={setConsentDialogOpen}
                                     readOnly={consentLocked}
                                     value={(viewedConsent ?? consentMap)[activeLanguage] ?? ''}
                                     onChange={(next) =>

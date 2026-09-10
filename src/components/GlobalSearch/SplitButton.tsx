@@ -56,6 +56,10 @@ export interface SplitButtonProps {
      * stays the visible label, so tests and screen readers still find it by it).
      */
     mainDescribedBy?: string;
+    /** Stable hook for the main action when the control replaces a legacy button. */
+    mainTestId?: string;
+    /** Visual/error-state hook retained when a legacy action moves into this control. */
+    mainDataMissingToken?: boolean;
     /** Pressing the main segment triggers the action itself. */
     onClick?: () => void;
     /** Dropdown menu opened by the chevron segment (secondary options). */
@@ -94,6 +98,8 @@ export const SplitButton = ({
     disabled = false,
     mainDisabled = false,
     mainDescribedBy,
+    mainTestId,
+    mainDataMissingToken,
     onClick,
     menu,
     menuLabel,
@@ -126,6 +132,8 @@ export const SplitButton = ({
                 type="button"
                 aria-label={title}
                 aria-describedby={mainDescribedBy}
+                data-testid={mainTestId}
+                data-missing-token={mainDataMissingToken || undefined}
                 className={classNames(styles.segment, styles.main)}
                 disabled={disabled || mainDisabled}
                 title={title}
