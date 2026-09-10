@@ -118,15 +118,17 @@ export const LegalConsentField = ({
 
     return (
         <>
-            {!hideTrigger && <button
-                type="button"
-                className={classNames(styles.trigger, missingMandatoryToken && styles.triggerDanger)}
-                data-testid="consent-edit-trigger"
-                data-missing-token={missingMandatoryToken || undefined}
-                onClick={openDialog}
-            >
-                {readOnly ? t('legal.consent.viewButton') : t('legal.consent.editButton')}
-            </button>}
+            {!hideTrigger && (
+                <button
+                    type="button"
+                    className={classNames(styles.trigger, missingMandatoryToken && styles.triggerDanger)}
+                    data-testid="consent-edit-trigger"
+                    data-missing-token={missingMandatoryToken || undefined}
+                    onClick={openDialog}
+                >
+                    {readOnly ? t('legal.consent.viewButton') : t('legal.consent.editButton')}
+                </button>
+            )}
             {dialogOpen && (
                 <PlaceholderTemplateDialog
                     icon={<LegalConsentHeadIcon data-testid="legal-consent-head-icon" />}
