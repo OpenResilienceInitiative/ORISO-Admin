@@ -26,7 +26,7 @@ export const LoadError: Story = { args: { data: undefined, error: new Error('net
 export const Editable: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await userEvent.click(canvas.getByRole('button', { name: /edit/i }));
+        await userEvent.click(canvas.getByRole('button', { name: /edit|bearbeiten/i }));
         await expect(canvas.getAllByRole('combobox')[0]).toBeEnabled();
     },
 };
