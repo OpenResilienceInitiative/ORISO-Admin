@@ -267,6 +267,7 @@ export const DepartmentDataProtectionCard = ({
                             label={t('legal.consent.editButton')}
                             mainTestId="consent-edit-trigger"
                             mainDataMissingToken={blockedLanguages.length > 0}
+                            mainInvalid={blockedLanguages.length > 0}
                             templates={consentTemplates}
                             onMainClick={() => setConsentDialogOpen(true)}
                             onSelectTemplate={applyConsentTemplate}

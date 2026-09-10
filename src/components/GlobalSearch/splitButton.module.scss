@@ -159,6 +159,11 @@
     white-space: nowrap;
 }
 
+.main.invalid {
+    border-color: var(--m3-error, #ba1a1a);
+    color: var(--m3-error, #ba1a1a);
+}
+
 /* No chevron: a single-action pill (e.g. template opener) stays fully rounded. */
 .splitButton:not(:has(.chevron)) .main {
     border-radius: var(--sb-radius);

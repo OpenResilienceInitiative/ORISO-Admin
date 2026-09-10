@@ -53,6 +53,12 @@ describe('SplitButton style contract (#741, Figma 57994-15744)', () => {
         // colon it uses everywhere else, and `:before` === `::before` here.
         expect(source).toMatch(/\.segment::?before/);
     });
+
+    it('makes an invalid main action visibly use the error colour', () => {
+        const invalid = source.match(/\.main\.invalid\s*\{([^{}]*)\}/ms)?.[1] ?? '';
+        expect(invalid).toMatch(/border-color:\s*var\(--m3-error/);
+        expect(invalid).toMatch(/color:\s*var\(--m3-error/);
+    });
 });
 
 /*

@@ -42,6 +42,7 @@ export interface TemplateSplitButtonProps {
     label?: ReactNode;
     mainTestId?: string;
     mainDataMissingToken?: boolean;
+    mainInvalid?: boolean;
 }
 
 const SELECT_PREFIX = 'select:';
@@ -66,6 +67,7 @@ export const TemplateSplitButton = ({
     label,
     mainTestId,
     mainDataMissingToken,
+    mainInvalid,
 }: TemplateSplitButtonProps) => {
     const { t } = useTranslation();
     const active = templates.find((template) => template.id === activeTemplateId);
@@ -155,6 +157,7 @@ export const TemplateSplitButton = ({
             mainDisabled={!onMainClick}
             mainTestId={mainTestId}
             mainDataMissingToken={mainDataMissingToken}
+            mainInvalid={mainInvalid}
             onClick={onMainClick}
         />
     );

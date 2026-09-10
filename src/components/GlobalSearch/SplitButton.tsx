@@ -60,6 +60,8 @@ export interface SplitButtonProps {
     mainTestId?: string;
     /** Visual/error-state hook retained when a legacy action moves into this control. */
     mainDataMissingToken?: boolean;
+    /** Marks the main action as invalid for both assistive technology and visible error styling. */
+    mainInvalid?: boolean;
     /** Pressing the main segment triggers the action itself. */
     onClick?: () => void;
     /** Dropdown menu opened by the chevron segment (secondary options). */
@@ -100,6 +102,7 @@ export const SplitButton = ({
     mainDescribedBy,
     mainTestId,
     mainDataMissingToken,
+    mainInvalid = false,
     onClick,
     menu,
     menuLabel,
@@ -134,7 +137,8 @@ export const SplitButton = ({
                 aria-describedby={mainDescribedBy}
                 data-testid={mainTestId}
                 data-missing-token={mainDataMissingToken || undefined}
-                className={classNames(styles.segment, styles.main)}
+                aria-invalid={mainInvalid || undefined}
+                className={classNames(styles.segment, styles.main, { [styles.invalid]: mainInvalid })}
                 disabled={disabled || mainDisabled}
                 title={title}
                 onClick={onClick}
