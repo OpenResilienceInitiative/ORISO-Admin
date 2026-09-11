@@ -122,6 +122,8 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
             return { link, mailFailed: false };
         }
         try {
+            // The authenticated delivery endpoint (UserService #530) carries no
+            // recipient name — the salutation falls back to the template default.
             await sendDpaInviteEmail({
                 tenantId: tenantId ?? 0,
                 recipientEmail,
