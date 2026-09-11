@@ -43,6 +43,8 @@ export interface TemplateSplitButtonProps {
     mainTestId?: string;
     mainDataMissingToken?: boolean;
     mainInvalid?: boolean;
+    /** Id of the element explaining why the main action is invalid or disabled. */
+    mainDescribedBy?: string;
 }
 
 const SELECT_PREFIX = 'select:';
@@ -68,6 +70,7 @@ export const TemplateSplitButton = ({
     mainTestId,
     mainDataMissingToken,
     mainInvalid,
+    mainDescribedBy,
 }: TemplateSplitButtonProps) => {
     const { t } = useTranslation();
     const active = templates.find((template) => template.id === activeTemplateId);
@@ -158,6 +161,7 @@ export const TemplateSplitButton = ({
             mainTestId={mainTestId}
             mainDataMissingToken={mainDataMissingToken}
             mainInvalid={mainInvalid}
+            mainDescribedBy={mainDescribedBy}
             onClick={onMainClick}
         />
     );

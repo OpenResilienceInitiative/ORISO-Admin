@@ -206,6 +206,20 @@ describe('DepartmentDataProtectionCard — consent field', () => {
         expect(onSave).not.toHaveBeenCalled();
         expect(screen.getByText(/legal.consent.publishBlocked.description/)).toHaveTextContent('de');
     });
+
+    it('tells assistive technology why the consent action is marked invalid', () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Ich stimme zu.' }}
+                initialContentByLanguage={{ de: '<p>x</p>' }}
+                languages={['de']}
+                onSave={() => undefined}
+            />,
+        );
+        expect(screen.getByTestId('consent-edit-trigger')).toHaveAccessibleDescription(
+            /legal\.consent\.publishBlocked\.title/,
+        );
+    });
 });
 
 /**

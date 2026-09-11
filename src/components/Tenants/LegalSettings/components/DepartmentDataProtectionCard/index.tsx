@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Alert, Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
@@ -142,6 +142,8 @@ export const DepartmentDataProtectionCard = ({
         () => (consentEnabled ? consentPublicationBlockers(consentMap) : []),
         [consentEnabled, consentMap],
     );
+    // Links the blocked-publication notice to the consent action it marks invalid.
+    const consentBlockedId = useId();
     // Named the way the admin reads them ("Deutsch, Englisch"), not as wire codes:
     // the whole point of the notice is to send them to the right language tab.
     const blockedLanguageNames = useMemo(
@@ -268,6 +270,7 @@ export const DepartmentDataProtectionCard = ({
                             mainTestId="consent-edit-trigger"
                             mainDataMissingToken={blockedLanguages.length > 0}
                             mainInvalid={blockedLanguages.length > 0}
+                            mainDescribedBy={blockedLanguages.length > 0 ? consentBlockedId : undefined}
                             templates={consentTemplates}
                             onMainClick={() => setConsentDialogOpen(true)}
                             onSelectTemplate={applyConsentTemplate}
@@ -392,6 +395,7 @@ export const DepartmentDataProtectionCard = ({
                 <Alert
                     type="error"
                     showIcon
+                    id={consentBlockedId}
                     data-testid="consent-publish-blocked"
                     message={t('legal.consent.publishBlocked.title')}
                     description={

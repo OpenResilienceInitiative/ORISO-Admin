@@ -60,7 +60,7 @@ export interface SplitButtonProps {
     mainTestId?: string;
     /** Visual/error-state hook retained when a legacy action moves into this control. */
     mainDataMissingToken?: boolean;
-    /** Marks the main action as invalid for both assistive technology and visible error styling. */
+    /** Visible error styling only; pass `mainDescribedBy` so assistive technology hears the reason. */
     mainInvalid?: boolean;
     /** Pressing the main segment triggers the action itself. */
     onClick?: () => void;
