@@ -111,7 +111,8 @@ const invite = (id: number, inviteStatus: string, recipientEmail = `person${id}@
     provisioningStatus: null,
     inviteStatus,
     emailVerificationStatus: 'PENDING',
-    emailDeliveryStatus: null,
+    // A successful send always records a SENT delivery; null would read as unconfirmed.
+    emailDeliveryStatus: inviteStatus === 'EMAIL_SENT' ? 'SENT' : null,
     twoFactorStatus: 'NOT_REQUIRED',
     accessGateStatus: 'BLOCKED_INVITE',
     expiresAt: null,

@@ -16,6 +16,8 @@ import { M3Button } from '../M3Button';
 import { pickLegalContentLanguage } from '../Tenants/LegalSettings/utils/legalContentLanguages';
 import { DpaBlockerReason } from '../../utils/dpaBlockerGate';
 import { focusFirstInvalidField } from '../../utils/formErrorNavigation';
+import { DpaForwardDialog, DpaForwardResult } from '../DpaForwardDialog/DpaForwardDialog';
+import { DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 import styles from './styles.module.scss';
 
 export interface DpaBlockerSignData {
@@ -37,6 +39,10 @@ export interface DpaBlockerProps {
     signPending?: boolean;
     signFailed?: boolean;
     onSign?: (data: DpaBlockerSignData) => void;
+    /** Delegates the signature to an authorised signer without accepting it locally. */
+    onForward?: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
+    /** Hands the created link back before refreshing into the pending gate. */
+    onForwarded?: (result: DpaForwardResult) => void;
     onRetry: () => void;
     retryPending?: boolean;
     onLogout: () => void;
@@ -78,6 +84,8 @@ export const DpaBlocker = ({
     signPending = false,
     signFailed = false,
     onSign,
+    onForward,
+    onForwarded,
     onRetry,
     retryPending = false,
     onLogout,
@@ -86,6 +94,7 @@ export const DpaBlocker = ({
     const [form] = Form.useForm<DpaBlockerFormValues>();
     const [dpaAccepted, setDpaAccepted] = useState(false);
     const [acceptTouched, setAcceptTouched] = useState(false);
+    const [forwardOpen, setForwardOpen] = useState(false);
     // Why the last submit did not go through — surfaced AT the button (#594.6).
     const [submitBlocker, setSubmitBlocker] = useState<'fields' | 'consent' | null>(null);
 
@@ -133,6 +142,13 @@ export const DpaBlocker = ({
 
     const showSignForm = signable && !dpaContentLoading && !!dpaHtml;
     const showContentUnavailable = signable && !dpaContentLoading && !dpaHtml;
+    // Forwarding needs no DPA text on this screen, so a failed text load must
+    // not take it away — otherwise the unauthorised admin is back at a dead end.
+    const forwardButton = onForward && (
+        <M3Button type="button" variant="outlined" block onClick={() => setForwardOpen(true)}>
+            {t('dpaForward.action.notAuthorised')}
+        </M3Button>
+    );
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
@@ -174,9 +190,12 @@ export const DpaBlocker = ({
                         )}
 
                         {showContentUnavailable && (
-                            <Alert severity="error" sx={{ mb: 2 }}>
-                                {t('dpaBlocker.contentUnavailable')}
-                            </Alert>
+                            <>
+                                <Alert severity="error" sx={{ mb: 2 }}>
+                                    {t('dpaBlocker.contentUnavailable')}
+                                </Alert>
+                                {forwardButton}
+                            </>
                         )}
 
                         {showSignForm && (
@@ -240,6 +259,7 @@ export const DpaBlocker = ({
                                     >
                                         {t('dpaBlocker.sign.submit')}
                                     </M3Button>
+                                    {forwardButton}
                                 </div>
                             </Form>
                         )}
@@ -270,6 +290,17 @@ export const DpaBlocker = ({
                         {t('dpaBlocker.actionsHint')}
                     </p>
                 </div>
+                {forwardOpen && onForward && (
+                    <DpaForwardDialog
+                        forward={onForward}
+                        surface="admin"
+                        onClose={() => setForwardOpen(false)}
+                        onForwarded={(result) => {
+                            setForwardOpen(false);
+                            onForwarded?.(result);
+                        }}
+                    />
+                )}
             </div>
         </ThemeProvider>
     );

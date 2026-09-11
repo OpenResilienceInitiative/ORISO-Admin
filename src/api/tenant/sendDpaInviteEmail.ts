@@ -8,6 +8,10 @@ export interface SendDpaInviteEmailRequest {
     expiresAt: string;
 }
 
+/** The backend uses 502 specifically when the signing link exists but mail delivery failed. */
+export const isDpaInviteEmailDeliveryFailure = (error: unknown): error is Response =>
+    error instanceof Response && error.status === 502;
+
 export const sendDpaInviteEmail = (body: SendDpaInviteEmailRequest) =>
     fetchData({
         url: dpaInviteEmailEndpoint,

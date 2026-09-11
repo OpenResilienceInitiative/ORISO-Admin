@@ -15,6 +15,8 @@ export interface DpaPendingSignatureDialogProps {
      * every issued link stays valid until a signature lands (#723 contract).
      */
     ensureSignLink: () => Promise<DpaForwardLink>;
+    /** Link just created by the blocker; avoids minting a duplicate during the transition. */
+    initialLink?: DpaForwardLink;
     /** Sends the DPA_FORWARD mail again (or to a different address). */
     forward: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
     /**
@@ -48,6 +50,7 @@ type LinkState = { kind: 'loading' } | { kind: 'ready'; link: DpaForwardLink } |
  */
 export const DpaPendingSignatureDialog = ({
     ensureSignLink,
+    initialLink,
     forward,
     onLogout,
     onForwardCompleted,
@@ -55,9 +58,12 @@ export const DpaPendingSignatureDialog = ({
 }: DpaPendingSignatureDialogProps) => {
     const { t } = useTranslation();
     const [resendOpen, setResendOpen] = useState(false);
-    const [linkState, setLinkState] = useState<LinkState>({ kind: 'loading' });
+    const [linkState, setLinkState] = useState<LinkState>(
+        initialLink ? { kind: 'ready', link: initialLink } : { kind: 'loading' },
+    );
 
     useEffect(() => {
+        if (initialLink) return undefined;
         let cancelled = false;
         ensureSignLink()
             .then((link) => {

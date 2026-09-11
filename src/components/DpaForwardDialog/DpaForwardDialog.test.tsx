@@ -440,6 +440,18 @@ describe('DpaForwardDialog preview surface', () => {
         );
     });
 
+    it('does not collect a recipient name that the authenticated send endpoint cannot deliver', async () => {
+        const user = userEvent.setup();
+        const { forward } = renderDialog({ surface: 'admin' });
+
+        expect(screen.queryByLabelText('dpaForward.dialog.recipientName')).not.toBeInTheDocument();
+        await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+
+        await screen.findByTestId('dpa-forward-sent');
+        expect(forward).toHaveBeenCalledWith({ recipientEmail: 'legal@example.org' });
+    });
+
     /**
      * JOB11. The mail frame — header, call-to-action and the house FOOTER (brand
      * name, Impressum · Datenschutz, "Diese E-Mail wurde automatisch versendet …")

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Alert, Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
@@ -133,6 +133,7 @@ export const DepartmentDataProtectionCard = ({
     const consentEnabled = documentType === 'privacy' && consentByLanguage !== undefined;
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
     const [consentTemplateId, setConsentTemplateId] = useState<number | string | undefined>(undefined);
+    const [consentDialogOpen, setConsentDialogOpen] = useState(false);
     const consentMap = useMemo(
         () => ({ ...(consentByLanguage ?? {}), ...consentEdits }),
         [consentByLanguage, consentEdits],
@@ -141,6 +142,8 @@ export const DepartmentDataProtectionCard = ({
         () => (consentEnabled ? consentPublicationBlockers(consentMap) : []),
         [consentEnabled, consentMap],
     );
+    // Links the blocked-publication notice to the consent action it marks invalid.
+    const consentBlockedId = useId();
     // Named the way the admin reads them ("Deutsch, Englisch"), not as wire codes:
     // the whole point of the notice is to send them to the right language tab.
     const blockedLanguageNames = useMemo(
@@ -263,7 +266,13 @@ export const DepartmentDataProtectionCard = ({
                         <TemplateSplitButton
                             activeTemplateId={consentTemplateId}
                             disabled={consentLocked}
+                            label={t('legal.consent.editButton')}
+                            mainTestId="consent-edit-trigger"
+                            mainDataMissingToken={blockedLanguages.length > 0}
+                            mainInvalid={blockedLanguages.length > 0}
+                            mainDescribedBy={blockedLanguages.length > 0 ? consentBlockedId : undefined}
                             templates={consentTemplates}
+                            onMainClick={() => setConsentDialogOpen(true)}
                             onSelectTemplate={applyConsentTemplate}
                         />
                     ) : undefined
@@ -274,6 +283,7 @@ export const DepartmentDataProtectionCard = ({
                             {consentEnabled && (
                                 <LegalConsentField
                                     hideTemplateChooser
+                                    hideTrigger
                                     inheritedFrom={
                                         // The notice describes the CURRENT state. While an archived version is on
                                         // screen it would answer a question nobody asked about the version being
@@ -285,6 +295,8 @@ export const DepartmentDataProtectionCard = ({
                                             : undefined
                                     }
                                     language={activeLanguage}
+                                    open={consentDialogOpen}
+                                    onOpenChange={setConsentDialogOpen}
                                     readOnly={consentLocked}
                                     value={(viewedConsent ?? consentMap)[activeLanguage] ?? ''}
                                     onChange={(next) =>
@@ -383,6 +395,7 @@ export const DepartmentDataProtectionCard = ({
                 <Alert
                     type="error"
                     showIcon
+                    id={consentBlockedId}
                     data-testid="consent-publish-blocked"
                     message={t('legal.consent.publishBlocked.title')}
                     description={

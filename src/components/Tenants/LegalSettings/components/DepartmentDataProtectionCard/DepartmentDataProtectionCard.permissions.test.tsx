@@ -1,7 +1,6 @@
 import React from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { DepartmentDataProtectionCard } from './index';
 
 vi.mock('react-i18next', () => ({
@@ -20,6 +19,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onChange,
         onPublish,
         onSaveDraft,
+        consentSlot,
         topicSlot,
         aboveEditorSlot,
         belowSlot,
@@ -29,6 +29,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onChange?: (html: string) => void;
         onPublish?: () => void;
         onSaveDraft?: () => void;
+        consentSlot?: React.ReactNode;
         topicSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
@@ -45,6 +46,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
                     saveDraft
                 </button>
             )}
+            {consentSlot}
             {topicSlot}
             {belowSlot}
             <span>{value}</span>
@@ -105,10 +107,10 @@ describe('DepartmentDataProtectionCard — legal-text permission gate', () => {
         expect(editor).toHaveAttribute('data-editable', 'false');
     });
 
-    it('makes the consent sentence inert too — it is published with the policy', async () => {
+    it('disables both segments of the consent split button for a viewer', () => {
         renderCard(true);
-        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
-        expect(screen.getByRole('textbox')).toBeDisabled();
+        expect(screen.getByTestId('consent-edit-trigger')).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' })).toBeDisabled();
     });
 
     it('still shows the document, so a viewer can read what the Fachbereich has', () => {

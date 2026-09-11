@@ -45,6 +45,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onPublish,
         onSaveDraft,
         onViewVersionChange,
+        consentSlot,
         topicSlot,
         belowSlot,
     }: {
@@ -53,6 +54,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onPublish?: (html: string) => void;
         onSaveDraft?: (html: string) => void;
         onViewVersionChange?: (versionId: string | null) => void;
+        consentSlot?: React.ReactNode;
         topicSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
     }) => (
@@ -81,6 +83,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
                     saveDraft
                 </button>
             )}
+            {consentSlot}
             {topicSlot}
             {belowSlot}
         </div>
@@ -203,6 +206,20 @@ describe('DepartmentDataProtectionCard — consent field', () => {
         expect(onSave).not.toHaveBeenCalled();
         expect(screen.getByText(/legal.consent.publishBlocked.description/)).toHaveTextContent('de');
     });
+
+    it('tells assistive technology why the consent action is marked invalid', () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Ich stimme zu.' }}
+                initialContentByLanguage={{ de: '<p>x</p>' }}
+                languages={['de']}
+                onSave={() => undefined}
+            />,
+        );
+        expect(screen.getByTestId('consent-edit-trigger')).toHaveAccessibleDescription(
+            /legal\.consent\.publishBlocked\.title/,
+        );
+    });
 });
 
 /**
@@ -239,24 +256,23 @@ describe('DepartmentDataProtectionCard — consent follows the selected version'
 
     const consentInput = () => screen.getByRole('textbox') as HTMLTextAreaElement;
 
-    it('shows the archived sentence while that version is on screen', async () => {
+    it('keeps both consent split-button segments disabled while an archived version is on screen', async () => {
         renderCard();
         await openConsent();
         expect(consentInput()).toHaveValue('Heutiger Satz mit {{legal_links}}.');
         await userEvent.click(screen.getByRole('button', { name: 'cancel' }));
 
         await userEvent.click(screen.getByRole('button', { name: 'view 17' }));
-        await openConsent();
-
-        expect(consentInput()).toHaveValue('Alter Satz mit {{legal_links}}.');
+        expect(screen.getByTestId('consent-edit-trigger')).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' })).toBeDisabled();
     });
 
-    it('makes the archived sentence read-only — the published chain is append-only', async () => {
+    it('re-enables the consent split button when the look-back ends', async () => {
         renderCard();
         await userEvent.click(screen.getByRole('button', { name: 'view 17' }));
-        await openConsent();
-
-        expect(consentInput()).toBeDisabled();
+        await userEvent.click(screen.getByRole('button', { name: 'back to draft' }));
+        expect(screen.getByTestId('consent-edit-trigger')).toBeEnabled();
+        expect(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' })).toBeEnabled();
     });
 
     it('returns to the editable current sentence when the look-back ends', async () => {
