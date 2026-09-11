@@ -72,7 +72,7 @@ export interface DpaForwardDialogProps {
 }
 
 interface RecipientFormValues {
-    recipientName: string;
+    recipientName?: string;
     recipientEmail: string;
 }
 
@@ -132,6 +132,9 @@ export const DpaForwardDialog = ({
     const [mailFailed, setMailFailed] = useState(false);
     const [recipientName, setRecipientName] = useState('');
     const [closeGuardOpen, setCloseGuardOpen] = useState(false);
+    // The authenticated UserService endpoint has no recipient-name field. Only
+    // the public onboarding endpoint may promise a personalised salutation.
+    const supportsRecipientName = surface === 'public';
 
     const link = linkState.kind === 'ready' ? linkState.link : null;
 
@@ -203,7 +206,10 @@ export const DpaForwardDialog = ({
 
     // The preview shows the REAL mail: the actual link once it exists, and the
     // salutation the recipient will see — never a raw {{token}}.
-    const preview = buildForwardMailPreview(t, { recipientName, signUrl: link?.signUrl ?? null });
+    const preview = buildForwardMailPreview(t, {
+        recipientName: supportsRecipientName ? recipientName : '',
+        signUrl: link?.signUrl ?? null,
+    });
 
     return (
         <>
@@ -237,10 +243,13 @@ export const DpaForwardDialog = ({
                             }}
                             initialValues={{ recipientName: '', recipientEmail: '' }}
                         >
-                            {/* Name and address share one row wherever the sheet is
-                            wide enough for two 240px tracks, and stack below it. */}
+                            {/* Public onboarding lays name and address out together.
+                                Authenticated forwarding offers only the address its
+                                UserService request can actually deliver. */}
                             <FieldGrid minColumnWidth={240} maxColumns={2}>
-                                <MuiFormField name="recipientName" label={t('dpaForward.dialog.recipientName')} />
+                                {supportsRecipientName && (
+                                    <MuiFormField name="recipientName" label={t('dpaForward.dialog.recipientName')} />
+                                )}
                                 <MuiFormField
                                     name="recipientEmail"
                                     label={t('dpaForward.dialog.recipientEmail')}

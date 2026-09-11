@@ -113,14 +113,15 @@ export const ForwardedMailWithFooter: Story = {
     args: { surface: 'admin' },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
-        await userEvent.type(await body.findByLabelText(/Name der Person|Name of the person/), 'Dr. Ruth Recht');
+        expect(body.queryByLabelText(/Name der Person|Name of the person/)).not.toBeInTheDocument();
 
         const frame = (await body.findByTitle(/Vorschau der E-Mail|Preview of the e-mail/)) as HTMLIFrameElement;
         await waitFor(() => {
             const mail = frame.contentDocument?.body?.innerText ?? '';
-            // The composed content …
-            expect(mail).toContain('Dr. Ruth Recht');
-            // … inside the house frame, footer and all.
+            // The authenticated send contract has no recipient name, so this
+            // preview stays neutral and only promises what the endpoint sends.
+            expect(mail).not.toContain('Dr. Ruth Recht');
+            // The composed content stays inside the house frame, footer and all.
             expect(mail).toContain('Impressum');
             expect(mail).toContain('Datenschutz');
             expect(mail).toContain('Diese E-Mail wurde automatisch versendet');

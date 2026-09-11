@@ -16,7 +16,7 @@ import { M3Button } from '../M3Button';
 import { pickLegalContentLanguage } from '../Tenants/LegalSettings/utils/legalContentLanguages';
 import { DpaBlockerReason } from '../../utils/dpaBlockerGate';
 import { focusFirstInvalidField } from '../../utils/formErrorNavigation';
-import { DpaForwardDialog } from '../DpaForwardDialog/DpaForwardDialog';
+import { DpaForwardDialog, DpaForwardResult } from '../DpaForwardDialog/DpaForwardDialog';
 import { DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 import styles from './styles.module.scss';
 
@@ -41,8 +41,8 @@ export interface DpaBlockerProps {
     onSign?: (data: DpaBlockerSignData) => void;
     /** Delegates the signature to an authorised signer without accepting it locally. */
     onForward?: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
-    /** Refreshes the gate after the delegation was explicitly completed. */
-    onForwarded?: () => void;
+    /** Hands the created link back before refreshing into the pending gate. */
+    onForwarded?: (result: DpaForwardResult) => void;
     onRetry: () => void;
     retryPending?: boolean;
     onLogout: () => void;
@@ -295,9 +295,9 @@ export const DpaBlocker = ({
                         forward={onForward}
                         surface="admin"
                         onClose={() => setForwardOpen(false)}
-                        onForwarded={() => {
+                        onForwarded={(result) => {
                             setForwardOpen(false);
-                            onForwarded?.();
+                            onForwarded?.(result);
                         }}
                     />
                 )}

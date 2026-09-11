@@ -373,6 +373,23 @@ describe('DpaBlockerGate', () => {
         // DTO — the enum stays MISSING|UNSIGNED|OUTDATED|VALID|INCONSISTENT.
         const forwarded = (status: TenantDpaStatus) => ({ ...statusInfo(status), forwardPending: true });
 
+        it('reuses the link created by the blocker when the pending gate takes over', async () => {
+            mocks.getDpaStatus.mockResolvedValueOnce(statusInfo('UNSIGNED')).mockResolvedValue(forwarded('UNSIGNED'));
+            const user = userEvent.setup();
+
+            renderGate();
+
+            await user.click(await screen.findByRole('button', { name: 'dpaForward.action.notAuthorised' }));
+            await user.click(await screen.findByRole('button', { name: 'dpaForward.dialog.linkCreate' }));
+            await user.click(await screen.findByRole('button', { name: 'dpaForward.dialog.confirm' }));
+
+            expect(await screen.findByTestId('dpa-pending-dialog')).toBeInTheDocument();
+            expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(
+                'https://app.example.org/dpa-sign/minted-token',
+            );
+            expect(mocks.createDpaSignInvite).toHaveBeenCalledTimes(1);
+        });
+
         it('shows the waiting dialog INSTEAD of the admin app — nothing renders behind it (JOB7)', async () => {
             mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
 

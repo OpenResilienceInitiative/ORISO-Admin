@@ -56,9 +56,9 @@ describe('SplitButton style contract (#741, Figma 57994-15744)', () => {
 
     it('makes an invalid main action visibly use the error colour', () => {
         const invalid = source.match(/\.main\.invalid\s*\{([^{}]*)\}/ms)?.[1] ?? '';
-        expect(invalid).toMatch(/border-color:\s*var\(--m3-error/);
+        expect(invalid).toMatch(/border-color:\s*var\(--m3-error(?:\s*,[^)]*)?\)/);
         // Anchored so `border-color` above cannot satisfy it on its own.
-        expect(invalid).toMatch(/(?:^|[;\s])color:\s*var\(--m3-error/);
+        expect(invalid).toMatch(/(?:^|[;\s])color:\s*var\(--m3-error(?:\s*,[^)]*)?\)/);
     });
 });
 

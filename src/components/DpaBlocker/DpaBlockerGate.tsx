@@ -58,6 +58,8 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
     const awaitedForwardedSignature = useRef(false);
     /** The re-check confirmed the signature — the app may render. */
     const [platformUnlocked, setPlatformUnlocked] = useState(false);
+    /** Link created on this screen, reused by the pending gate instead of spending another slot. */
+    const [forwardedLink, setForwardedLink] = useState<DpaForwardLink | null>(null);
     const [recheckPending, setRecheckPending] = useState(false);
     /** The re-check came back without a signature — explained on the gate. */
     const [recheckRejected, setRecheckRejected] = useState(false);
@@ -91,6 +93,12 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
             // Re-gated after an unlock (e.g. a new DPA version): the next
             // signature has to be acknowledged again.
             setPlatformUnlocked(false);
+        }
+    }, [decision.kind]);
+
+    useEffect(() => {
+        if (decision.kind === 'inactive' || decision.kind === 'unlock-confirm') {
+            setForwardedLink(null);
         }
     }, [decision.kind]);
 
@@ -186,6 +194,7 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
         return (
             <DpaPendingSignatureDialog
                 ensureSignLink={mintLink}
+                initialLink={forwardedLink ?? undefined}
                 forward={forward}
                 onLogout={() => logout(true)}
                 recheckRejected={recheckRejected}
@@ -222,7 +231,10 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
             signFailed={signMutation.isError}
             onSign={onSign}
             onForward={blockedSignable ? forward : undefined}
-            onForwarded={() => statusQuery.refetch()}
+            onForwarded={(result) => {
+                setForwardedLink(result.link);
+                statusQuery.refetch();
+            }}
             onRetry={onRetry}
             retryPending={statusQuery.isFetching}
             onLogout={() => logout(true)}
