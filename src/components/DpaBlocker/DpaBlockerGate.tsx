@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import logout from '../../api/auth/logout';
 import { signDpaAdmin } from '../../api/tenant/signDpaAdmin';
 import { createDpaSignInvite, resolveDpaSignLink } from '../../api/tenant/createDpaSignInvite';
-import { sendDpaInviteEmail } from '../../api/tenant/sendDpaInviteEmail';
+import { isDpaInviteEmailDeliveryFailure, sendDpaInviteEmail } from '../../api/tenant/sendDpaInviteEmail';
 import { DpaForwardLink, DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 import { Initialization } from '../Layout/Initialization';
 import { UserRole } from '../../enums/UserRole';
@@ -139,7 +139,10 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
                 expiresAt: link.expiresAt ?? '',
             });
             return { link, mailFailed: false };
-        } catch {
+        } catch (error) {
+            if (!isDpaInviteEmailDeliveryFailure(error)) {
+                throw error;
+            }
             return { link, mailFailed: true };
         }
     };
