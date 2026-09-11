@@ -30,11 +30,20 @@ export const IdAllocationField = ({ label, allocation, disabled = false, classNa
     const isAuto = mode === 'auto';
     const isError = BLOCKING_STATES.includes(validation);
 
-    const supportingText: Record<IdValidationState, string> = {
-        auto: t('idAllocationField.autoHint', 'Die nächste freie ID wird automatisch vergeben.'),
+    /*
+     * Owner rule: the supporting line is for a PROBLEM or a pending action, never
+     * for a confirmation. „Die nächste freie ID wird automatisch vergeben" states
+     * an expectation and „ID 21 ist frei" confirms the expected case — both are
+     * noise under a field that is already visibly on `Auto` / already accepted.
+     * `auto` and `available` therefore map to `undefined`, which makes
+     * M3NumberField skip the element entirely (an empty string would still
+     * reserve the 16px line and keep the control 76px tall).
+     */
+    const supportingText: Record<IdValidationState, string | undefined> = {
+        auto: undefined,
         empty: t('idAllocationField.emptyHint', 'ID eingeben oder Auto wählen.'),
         checking: t('idAllocationField.checking', 'Verfügbarkeit wird geprüft …'),
-        available: t('idAllocationField.available', 'ID {{id}} ist frei.', { id: value }),
+        available: undefined,
         reserved: t('idAllocationField.reserved', 'Diese ID ist durch eine offene Einladung reserviert.'),
         assigned: t('idAllocationField.assigned', 'Diese ID ist bereits vergeben.'),
         error: t('idAllocationField.serviceError', 'Verfügbarkeit konnte nicht geprüft werden.'),

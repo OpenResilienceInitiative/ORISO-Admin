@@ -137,6 +137,11 @@ export const runtimeConfig = {
         .map((entry) => entry.trim())
         .filter(Boolean),
     observabilityEnabled: readExplicitTrueConfig('OBSERVABILITY_ENABLED'),
+    // Whether the AI media check can do anything here: it needs a deployed
+    // content scanner and a signed zero-retention sub-processor agreement
+    // (ADR-019, ORISO-Admin#734). Opt-in, so an unconfigured environment is
+    // honest by default rather than by accident.
+    mediaAiScanAvailable: readExplicitTrueConfig('MEDIA_AI_SCAN_AVAILABLE'),
     otelMetricsUrl,
     otelExportIntervalMillis,
     platformVersion: readConfigValue('PLATFORM_VERSION') ?? '',

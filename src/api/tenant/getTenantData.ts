@@ -3,6 +3,7 @@ import { tenantEndpoint } from '../../appConfig';
 import { TenantData } from '../../types/tenant';
 import { getAccessTokenForRequests } from '../auth/auth';
 import parseJwt from '../../utils/parseJWT';
+import { decodeTenantBrandingAssets } from '../../utils/decodeTenantAsset';
 
 /**
  * retrieve all needed tenant data
@@ -61,7 +62,11 @@ const getTenantData = (tenantData: TenantData, useMultiTenancyWithSingleDomain: 
             };
 
             // console.log('🔍 getTenantData: SUCCESS - Final result:', result);
-            return result;
+            // Same decode the public seam does. Without it the stored `&#43;` /
+            // `&#61;` survive into `theming.favicon`, `getSafeFaviconUrl`'s
+            // entity guard rejects the value, and the tenant override silently
+            // loses to the platform default.
+            return decodeTenantBrandingAssets(result);
         })
         .catch((error) => {
             // console.error('🔍 getTenantData: ERROR:', error);

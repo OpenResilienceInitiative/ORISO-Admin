@@ -4,12 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import InputAdornment from '@mui/material/InputAdornment';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import VerifiedUserOutlined from '@mui/icons-material/VerifiedUserOutlined';
+import { M3Button } from '../../components/M3Button';
 import { MuiFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import routePathNames from '../../appConfig';
@@ -114,17 +113,25 @@ const LoginForm = () => {
                             const { username, password } = getFieldsValue();
                             const formIsComplete = !!username && !!password;
                             return (
-                                <Button
+                                // The public surface's shared primary action — the same
+                                // control the tenant-admin onboarding submits with (see
+                                // TenantOnboarding/OrganisationDpaStep). It carries the
+                                // M3 filled treatment (--m3-primary / --m3-on-primary,
+                                // flat at rest, state-layer hover, visible focus ring)
+                                // instead of MUI's default contained button, whose
+                                // colour came from the hardcoded #273270 in
+                                // theme/orisoMuiTheme.ts and whose resting elevation
+                                // made it read as a stuck hover state.
+                                <M3Button
                                     type="submit"
-                                    variant="contained"
-                                    fullWidth
-                                    size="large"
-                                    disabled={!formIsComplete || postLoading}
-                                    startIcon={postLoading ? <CircularProgress size={18} color="inherit" /> : undefined}
-                                    sx={{ mt: 2, borderRadius: '100px', textTransform: 'none' }}
+                                    variant="filled"
+                                    block
+                                    className="loginSubmit"
+                                    disabled={!formIsComplete}
+                                    loading={postLoading}
                                 >
                                     {t('message.form.login.loginBtn')}
-                                </Button>
+                                </M3Button>
                             );
                         }}
                     </Form.Item>

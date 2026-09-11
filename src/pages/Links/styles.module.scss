@@ -16,6 +16,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 24px;
+
     /* 12px breathing room around the pill row on every side (design baseline),
        keeping the larger gap to the content below. */
     padding: 12px 12px 20px;
@@ -24,6 +25,7 @@
 
 /* The M3 select needs a width of its own — the inline form gives it none, and
    a floating label needs room for the longest topic name. */
+
 .inboundField {
     min-width: 220px;
 }

@@ -1,8 +1,6 @@
 import * as React from 'react';
-import { useContext } from 'react';
-import { Form } from 'antd';
+import { ConfigProvider, Form } from 'antd';
 import type { Rule } from 'antd/lib/form';
-import DisabledContext from 'antd/es/config-provider/DisabledContext';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
 import Switch from '@mui/material/Switch';
@@ -26,6 +24,39 @@ const checkedThumb = (
     <span className={styles.thumb}>
         <CheckIcon sx={{ fontSize: 16, color: 'var(--admin-control-selected, var(--m3-primary, #a5000a))' }} />
     </span>
+);
+
+export interface MuiSwitchProps {
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+    disabled?: boolean;
+    /** Accessible name. Pass the id of an external <label> via `id` instead when one exists. */
+    ariaLabel?: string;
+    id?: string;
+    className?: string;
+}
+
+/**
+ * The bare M3 switch, without antd Form binding — for call sites that own their
+ * own state and label (D2: the template dialog's "Aktiv" toggle, which is a
+ * plain controlled value next to its own `<label htmlFor>`, not a Form.Item).
+ *
+ * Extracted so those call sites have somewhere to go other than antd's `Switch`.
+ * When there IS a Form.Item, use {@link MuiSwitchField} — it adds the binding,
+ * validation status and helper text on top of this.
+ */
+export const MuiSwitch = ({ checked, onChange, disabled, ariaLabel, id, className }: MuiSwitchProps) => (
+    <Switch
+        checked={checked}
+        className={classNames(styles.switch, { [styles.switchDisabled]: disabled }, className)}
+        checkedIcon={checkedThumb}
+        disabled={disabled}
+        disableRipple
+        focusVisibleClassName=".Mui-focusVisible"
+        icon={uncheckedThumb}
+        slotProps={{ input: { 'aria-label': ariaLabel, id } }}
+        onChange={(_event, next) => onChange(next)}
+    />
 );
 
 type FieldName = string | Array<string | number>;
@@ -55,8 +86,8 @@ const MuiSwitchControl = ({
     helpText,
     switchLabel,
 }: MuiSwitchControlProps) => {
-    const contextDisabled = useContext(DisabledContext);
-    const isDisabled = contextDisabled || disabled;
+    const { componentDisabled } = ConfigProvider.useConfig();
+    const isDisabled = componentDisabled || disabled;
     const { status } = Form.Item.useStatus();
     const form = Form.useFormInstance();
     const isError = status === 'error';

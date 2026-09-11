@@ -47,7 +47,7 @@ const ComposerActions = ({ ready }: { ready: boolean }) => {
                 icon={<MailFilledIcon />}
                 label={template}
                 menuLabel="E-Mail-Vorlage wählen"
-                variant="tonal"
+                variant="outlined"
                 menu={{
                     items: [
                         {
@@ -199,7 +199,7 @@ export const MenuOpen: Story = {
                 }}
                 open
             >
-                <SplitButton icon={<MailFilledIcon />} label={TEMPLATE_NAMES[0]} variant="tonal" />
+                <SplitButton icon={<MailFilledIcon />} label={TEMPLATE_NAMES[0]} variant="outlined" />
             </GlobalSearchMenu>
         </div>
     ),

@@ -96,7 +96,7 @@
     :global {
         .ant-table {
             background: transparent;
-            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+            font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
         }
 
         .ant-table-container,
@@ -110,7 +110,7 @@
             border-bottom: none;
             border-radius: 0 !important;
             color: var(--admin-table-header-text, #1b1b1c);
-            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+            font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
             font-size: 14px;
             font-weight: 500;
             padding-top: 14px;
@@ -315,11 +315,13 @@
 
 .tagOnline {
     @extend .tag;
+
     background-color: var(--admin-status-success, var(--tag-success));
 }
 
 .tagOffline {
     @extend .tag;
+
     background-color: var(--admin-status-error, var(--form-error));
 }
 

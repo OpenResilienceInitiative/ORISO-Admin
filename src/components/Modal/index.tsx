@@ -29,6 +29,15 @@ export interface ModalProps {
     children?: ReactNode;
     onConfirm?: () => void;
     onClose?: () => void;
+    /**
+     * Dismiss gestures (X button, Escape, mask click) when they must behave
+     * differently from the Cancel text button — e.g. a sub-view whose Cancel
+     * goes back one step while X closes the whole dialog. Defaults to
+     * `onClose`, so existing dialogs keep one close path.
+     */
+    onDismiss?: () => void;
+    /** Id of an element describing the confirm button (e.g. why it is disabled). */
+    confirmDescribedBy?: string;
     /** Custom footer content; replaces the standard text-button actions. */
     footer?: ReactNode;
     width?: number | string;
@@ -40,6 +49,22 @@ export interface ModalProps {
     confirmDisabled?: boolean;
     /** Show the top-right close (X) affordance. Defaults to true. */
     closable?: boolean;
+    /**
+     * Clicking the mask dismisses the dialog. Defaults to true. Set false for
+     * a GATE dialog whose whole point is that there is no way past it.
+     */
+    maskClosable?: boolean;
+    /** Escape dismisses the dialog. Defaults to true; see {@link maskClosable}. */
+    keyboard?: boolean;
+    /** Extra class on the dialog root, for per-dialog sheet rules (e.g. a viewport bound). */
+    className?: string;
+    /**
+     * Lets the description use the dialog's full width instead of the 52ch reading
+     * cap. For wide working dialogs (the 1080px editor sheets) only, where the cap
+     * leaves the sentence as a narrow column over a much wider body. Confirm
+     * dialogs keep the cap.
+     */
+    descriptionFullWidth?: boolean;
 }
 
 /**
@@ -61,6 +86,8 @@ export const Modal = ({
     children,
     onConfirm,
     onClose,
+    onDismiss,
+    confirmDescribedBy,
     contentKey,
     contentKeyOptions,
     footer,
@@ -69,6 +96,10 @@ export const Modal = ({
     showDivider = true,
     confirmDisabled = false,
     closable = true,
+    maskClosable = true,
+    keyboard = true,
+    className,
+    descriptionFullWidth = false,
 }: ModalProps) => {
     const { t } = useTranslation();
 
@@ -84,6 +115,7 @@ export const Modal = ({
             {okLabelKey && (
                 <button
                     type="button"
+                    aria-describedby={confirmDescribedBy}
                     className={classNames(styles.actionButton, styles.actionButtonPrimary)}
                     disabled={confirmDisabled}
                     onClick={onConfirm}
@@ -98,7 +130,7 @@ export const Modal = ({
 
     return (
         <AntModal
-            className={styles.modal}
+            className={classNames(styles.modal, className)}
             styles={{
                 mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
             }}
@@ -112,7 +144,11 @@ export const Modal = ({
                         )}
                         <div className={styles.title}>{titleKey ? t(titleKey, titleKeyOptions) : title}</div>
                         {(descriptionKey || description) && (
-                            <p className={styles.description}>
+                            <p
+                                className={classNames(styles.description, {
+                                    [styles.descriptionFullWidth]: descriptionFullWidth,
+                                })}
+                            >
                                 {descriptionKey ? t(descriptionKey, descriptionKeyOptions) : description}
                             </p>
                         )}
@@ -122,10 +158,10 @@ export const Modal = ({
             open
             destroyOnClose
             centered
-            maskClosable
-            keyboard
+            maskClosable={maskClosable}
+            keyboard={keyboard}
             closable={closable}
-            onCancel={onClose}
+            onCancel={onDismiss ?? onClose}
             footer={
                 resolvedFooter ? (
                     <>

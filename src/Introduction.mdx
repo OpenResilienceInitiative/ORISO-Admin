@@ -1,0 +1,77 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Introduction" />
+
+# ORISO Admin — Storybook
+
+Every component in the Admin control plane, rendered without a backend. Use it to
+build and review UI in isolation, and to run the component tests that guard it.
+
+## How the catalogue is organised
+
+Stories are sorted `Atoms → Molecules → Organisms → everything else`
+(`.storybook/preview.tsx`, `options.storySort`). Pages live under their feature
+name. If you are looking for a screen rather than a building block, start at the
+bottom of the sidebar.
+
+## Data comes from MSW, never from a real server
+
+Request mocking is global: `.storybook/preview.tsx` calls `initialize()` with
+`onUnhandledRequest: 'bypass'`. A story that needs a response declares it itself:
+
+```tsx
+export const WithAgencies: Story = {
+    parameters: {
+        msw: { handlers: [http.get('*/service/agencies', () => HttpResponse.json(agencyFixture))] },
+    },
+};
+```
+
+No handler means the request passes through untouched — convenient, but it also
+means a story can silently depend on a network call. If a story only renders
+correctly on your machine, that is usually why.
+
+## Stories are the test suite
+
+`play` functions are not decoration. `npm run test:storybook` executes every story
+in a real Chromium (Vitest browser mode): it renders the story, runs its `play`
+function, and fails the run on any axe violation, because `.storybook/preview.tsx`
+sets `a11y.test: 'error'` for WCAG 2.2 AA.
+
+```bash
+npm run test:storybook            # all stories, headless
+npm run test:storybook:coverage   # + coverage report in ./coverage
+npm test                          # the jsdom unit tests, unchanged
+```
+
+You can also run them from the sidebar: expand the test widget at the bottom left
+and press ▶. The same run, with per-story results and a coverage summary in the UI.
+
+One caveat on the coverage variant: on a cold `node_modules/.cache/storybook` it
+can fail a few files with "Failed to import test file" or "Vitest failed to find
+the runner". That is Vite re-optimizing dependencies mid-run, not your code — run
+it again and the warm cache makes it green. The plain `test:storybook` run, which
+is what CI executes, does not have this problem.
+
+Two things the runner pins that your browser does not:
+
+-   **Locale `de-DE` and timezone `Europe/Berlin`.** Headless Chromium reports
+    `en-US`, and `src/i18n.ts` derives the initial language from the browser. Without
+    pinning, a `play` function asserting a German label would pass for a reviewer in
+    Germany and fail in CI. Assert behaviour, not copy — and where copy is
+    unavoidable, match both languages.
+-   **A story can opt out** with `tags: ['!test']`. Only for stories that cannot run
+    headlessly, and always with a comment saying why.
+
+## Accessibility
+
+The a11y panel runs axe against the rendered story with `wcag2a`, `wcag2aa`,
+`wcag21a`, `wcag21aa` and `wcag22aa`. A violation is an error, not a warning: it
+fails the component test. Fix the component — suppressing a rule needs a written
+reason in the story's `parameters.a11y`.
+
+## Design references
+
+Stories that implement a Figma frame link it via `@storybook/addon-designs`
+(`parameters.design`). The Design tab then shows the source frame next to the
+implementation, which is the fastest way to check a deviation before filing one.

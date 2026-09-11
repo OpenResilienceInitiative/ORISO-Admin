@@ -7,6 +7,7 @@ import {
     createHttpTenantAdminOnboardingClient,
     TenantAdminOnboardingClient,
 } from '../../api/tenantOnboarding/tenantOnboarding';
+import { createHttpDpaForwardClient, DpaForwardClient } from '../../api/tenantOnboarding/dpaForward';
 import { M3Button } from '../../components/M3Button';
 import { OnboardingSheet as Sheet } from './OnboardingSheet';
 import { useTenantAdminOnboardingFlow } from './useTenantAdminOnboardingFlow';
@@ -25,6 +26,11 @@ interface TenantAdminOnboardingProps {
      * inject the stub here.
      */
     client?: TenantAdminOnboardingClient;
+    /**
+     * Seam for the DPA forward endpoints (#723) — defaults to the real public
+     * client; tests and Storybook inject the stub.
+     */
+    forwardClient?: DpaForwardClient;
 }
 
 const STEP_ORDER = { organisation: 1, account: 2, 'two-factor': 3 } as const;
@@ -35,17 +41,20 @@ const STEP_ORDER = { organisation: 1, account: 2, 'two-factor': 3 } as const;
  * confirmation, creates the account + the INACTIVE tenant (consuming the
  * reservation atomically) and finishes with the mandatory 2FA setup.
  */
-export const TenantAdminOnboarding = ({ inviteToken, client }: TenantAdminOnboardingProps) => {
+export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: TenantAdminOnboardingProps) => {
     const { t } = useTranslation();
     const resolvedClient = useMemo(() => client ?? createHttpTenantAdminOnboardingClient(), [client]);
+    const resolvedForwardClient = useMemo(() => forwardClient ?? createHttpDpaForwardClient(), [forwardClient]);
     const {
         state,
         invite,
         organisation,
         dpa,
+        dpaForward,
         submitError,
         busy,
         retryLoad,
+        markDpaForwarded,
         submitOrganisationDpa,
         goBackToOrganisation,
         submitAccount,
@@ -93,7 +102,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client }: TenantAdminOnboar
     if (state.phase === 'done') {
         return (
             <Sheet>
-                <DoneStep tenantId={state.tenantId} />
+                <DoneStep tenantId={state.tenantId} forwarded={dpaForward !== null} />
             </Sheet>
         );
     }
@@ -113,6 +122,10 @@ export const TenantAdminOnboarding = ({ inviteToken, client }: TenantAdminOnboar
                     invite={invite}
                     initialOrganisation={organisation}
                     initialDpa={dpa}
+                    forward={dpaForward}
+                    inviteToken={inviteToken}
+                    forwardClient={resolvedForwardClient}
+                    onForwarded={markDpaForwarded}
                     onSubmit={submitOrganisationDpa}
                 />
             )}

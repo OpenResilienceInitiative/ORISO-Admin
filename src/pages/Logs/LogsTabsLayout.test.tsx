@@ -11,6 +11,12 @@ vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t }),
 }));
 
+// jsdom's global matchMedia stub reports mobile; these cases assert the desktop
+// segmented tablist that is hidden below 768px in favour of the bottom-bar chips.
+vi.mock('../../hooks/useIsDesktopLayout.hook', () => ({
+    useIsDesktopLayout: () => true,
+}));
+
 vi.mock('../../components/Page', () => {
     const Page = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
     Page.Title = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;

@@ -33,4 +33,36 @@ export const decodeTenantAsset = (value?: string | null): string | undefined => 
         .replace(/&amp;/g, '&');
 };
 
+/**
+ * The three stored strings that are URLs rather than markup. Every seam that
+ * hands tenant theming to the UI has to decode exactly these — see
+ * {@link decodeTenantBrandingAssets}.
+ */
+export const BRANDING_ASSETS = ['logo', 'favicon', 'associationLogo'] as const;
+
+/**
+ * Decode the branding assets of a tenant response, whichever endpoint produced
+ * it. Both the public and the authenticated seam need this: the public one
+ * feeds anonymous theming, the authenticated one feeds the tenant favicon
+ * override. Having it in one place is what keeps them from drifting apart
+ * again — they already did once, which silently killed the override.
+ *
+ * Returns the input unchanged when it carries no `theming`, and never invents
+ * keys the response did not have.
+ */
+export const decodeTenantBrandingAssets = <T extends { theming?: Record<string, unknown> }>(result: T): T => {
+    if (!result?.theming) {
+        return result;
+    }
+
+    const theming = { ...result.theming };
+    BRANDING_ASSETS.forEach((asset) => {
+        if (typeof theming[asset] === 'string') {
+            theming[asset] = decodeTenantAsset(theming[asset] as string);
+        }
+    });
+
+    return { ...result, theming };
+};
+
 export default decodeTenantAsset;

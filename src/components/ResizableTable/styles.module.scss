@@ -38,7 +38,7 @@
             color: var(--admin-table-header-text, #1b1b1c);
         }
 
-        .ant-table-thead > tr > th::before {
+        .ant-table-thead > tr > th:before {
             background-color: var(--admin-table-border, #eae7e8) !important;
         }
 
@@ -57,10 +57,10 @@
             background: inherit !important;
         }
 
-        .ant-table-cell-fix-left-last::after,
-        .ant-table-cell-fix-right-first::after,
-        .ant-table-ping-left .ant-table-cell-fix-left-last::after,
-        .ant-table-ping-right .ant-table-cell-fix-right-first::after {
+        .ant-table-cell-fix-left-last:after,
+        .ant-table-cell-fix-right-first:after,
+        .ant-table-ping-left .ant-table-cell-fix-left-last:after,
+        .ant-table-ping-right .ant-table-cell-fix-right-first:after {
             box-shadow: none !important;
         }
 
@@ -69,6 +69,7 @@
             z-index: 850;
             left: 0;
             right: 0;
+
             /* Flush with the viewport bottom: at 24px the table container kept
                peeking through the gap below the sticky bar on tall pages
                (owner report 2026-07-18, Logs page). The 24px breathing room

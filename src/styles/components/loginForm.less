@@ -59,17 +59,45 @@
         max-width: 290px;
     }
 
+    /*
+     * The password-reset link is the only shrink-to-fit child of a form whose
+     * fields and submit button are full-width blocks, so left-aligned it sat
+     * ~100px left of the axis everything else shares (owner review of
+     * predev.oriso.org/admin: "Muss zentrierter sein"). A block-level box with
+     * auto inline margins puts it on that axis while keeping the hit target the
+     * size of the label — `text-align: center` on a full-width anchor would make
+     * the whole 320px row clickable.
+     *
+     * Its colour is the primary token, not the legacy `@primary-color` navy
+     * (#273270): that literal is the retired antd `colorPrimary` (see
+     * theme/antdM3Theme.ts) and it is what made the link read as off-palette
+     * next to the M3 submit button below it.
+     */
+
     .forgotPW {
-        display: inline-block;
+        display: block;
+        width: fit-content;
         padding: 0;
         margin-top: @spacing-m;
-        color: @primary-color;
+        margin-right: auto;
+        margin-left: auto;
+        color: var(--m3-primary, #a5000a);
         text-decoration: underline;
 
         span {
-            color: @primary-color;
+            color: var(--m3-primary, #a5000a);
             text-decoration: underline;
         }
+    }
+
+    /*
+     * The submit action is the shared M3 filled button (components/M3Button),
+     * which owns its own height, shape and colour tokens — only the gap to the
+     * link above it belongs to this form.
+     */
+
+    .loginSubmit {
+        margin-top: @spacing-sm;
     }
 
     .passwordResetForm .MuiTextField-root {

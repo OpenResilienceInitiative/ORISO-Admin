@@ -5,18 +5,44 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ChevronDownIcon } from '../../resources/img/svg/oriso/keyboard_arrow_down_24px.svg';
 import styles from './splitButton.module.scss';
 
+/**
+ * Colour variants per the M3 spec sheet (Figma 57994-15744):
+ * - `filled`: brand surface — the page's main CTA (alias: `primary`).
+ * - `tonal`: M3 secondary container — resting actions that are not the CTA
+ *   (alias: `secondary`).
+ * - `outlined`: transparent with outline — the default resting look.
+ * - `elevated`: light container with primary text and a resting shadow. The
+ *   shadow is this variant's identity — never use it just for the light fill.
+ */
+export type SplitButtonVariant = 'filled' | 'tonal' | 'outlined' | 'elevated' | 'primary' | 'secondary';
+
+/** Size scale per the M3 spec sheet: 32/40/56/96/136px container heights. */
+export type SplitButtonSize = 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge';
+
+/** Legacy variant names map onto the sheet's vocabulary. */
+const VARIANT_ALIASES: Partial<Record<SplitButtonVariant, SplitButtonVariant>> = {
+    primary: 'filled',
+    secondary: 'tonal',
+};
+
 export interface SplitButtonProps {
     /** Main segment content (action label). */
     label: ReactNode;
-    /** Leading icon (24px), inherits the segment text colour. */
+    /** Leading icon, sized by the size scale, inherits the segment text colour. */
     icon?: ReactNode;
+    /** Colour variant, see {@link SplitButtonVariant}. */
+    variant?: SplitButtonVariant;
     /**
-     * Visual variant per the Figma composer spec: `tonal` = light fill with
-     * primary text (e.g. template picker), `primary` = filled brand surface
-     * (e.g. send). Use `outlined` for the resting/not-ready state — the caller
-     * flips to `primary` once the form is validly filled.
+     * M3 size (XSmall 32px … XLarge 136px). Defaults to `medium` — the 56px
+     * geometry every existing caller was built against.
      */
-    variant?: 'outlined' | 'tonal' | 'secondary' | 'primary';
+    size?: SplitButtonSize;
+    /**
+     * Controlled open state of the chevron menu — pass it only when the caller
+     * (a story, a test) must pin the open appearance; leave it out for the
+     * normal self-managed dropdown.
+     */
+    open?: boolean;
     disabled?: boolean;
     /**
      * Disables only the main (action) segment while the chevron menu stays
@@ -24,6 +50,12 @@ export interface SplitButtonProps {
      * gated on form validity but whose send-mode menu must remain reachable.
      */
     mainDisabled?: boolean;
+    /**
+     * Id of an element describing the main segment — used to attach the reason
+     * a disabled action is disabled without touching its accessible NAME (which
+     * stays the visible label, so tests and screen readers still find it by it).
+     */
+    mainDescribedBy?: string;
     /** Pressing the main segment triggers the action itself. */
     onClick?: () => void;
     /** Dropdown menu opened by the chevron segment (secondary options). */
@@ -57,8 +89,11 @@ export const SplitButton = ({
     label,
     icon,
     variant = 'outlined',
+    size = 'medium',
+    open: openProp,
     disabled = false,
     mainDisabled = false,
+    mainDescribedBy,
     onClick,
     menu,
     menuLabel,
@@ -68,20 +103,21 @@ export const SplitButton = ({
     className,
 }: SplitButtonProps) => {
     const { t } = useTranslation();
-    const [open, setOpen] = useState(false);
+    const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+    const open = !disabled && (openProp ?? uncontrolledOpen);
+    const resolvedVariant = VARIANT_ALIASES[variant] ?? variant;
 
-    const handleOpenChange: Required<DropdownProps>['onOpenChange'] = (nextOpen) => setOpen(nextOpen);
+    const handleOpenChange: Required<DropdownProps>['onOpenChange'] = (nextOpen) => setUncontrolledOpen(nextOpen);
 
     const segments = (
         <span
             className={classNames(
                 styles.splitButton,
+                styles[size],
+                styles[resolvedVariant],
                 {
-                    [styles.tonal]: variant === 'tonal',
-                    [styles.secondary]: variant === 'secondary',
-                    [styles.primary]: variant === 'primary',
                     [styles.disabled]: disabled,
-                    [styles.open]: open && !disabled,
+                    [styles.open]: open,
                 },
                 className,
             )}
@@ -89,6 +125,7 @@ export const SplitButton = ({
             <button
                 type="button"
                 aria-label={title}
+                aria-describedby={mainDescribedBy}
                 className={classNames(styles.segment, styles.main)}
                 disabled={disabled || mainDisabled}
                 title={title}
@@ -105,7 +142,7 @@ export const SplitButton = ({
                 <Dropdown
                     trigger={['click']}
                     disabled={disabled}
-                    open={!disabled && open}
+                    open={open}
                     onOpenChange={handleOpenChange}
                     menu={menu}
                     // The sheet carries the same, one step higher shadow as the
@@ -117,7 +154,7 @@ export const SplitButton = ({
                         className={classNames(styles.segment, styles.chevron)}
                         disabled={disabled}
                         aria-haspopup="menu"
-                        aria-expanded={!disabled && open}
+                        aria-expanded={open}
                         aria-label={menuLabel ?? t('globalSearch.moreOptions', 'Weitere Optionen')}
                     >
                         <ChevronDownIcon className={styles.chevronIcon} aria-hidden />

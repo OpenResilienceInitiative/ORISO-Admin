@@ -66,4 +66,41 @@ describe('addCounselorData', () => {
             topicIds: [7, 12],
         });
     });
+
+    it('sends the personal-info fields including admin remarks when provided', async () => {
+        await addCounselorData({
+            firstname: 'Ada',
+            lastname: 'Lovelace',
+            email: 'ada@example.org',
+            username: 'ada',
+            password: 'StrongPass1!',
+            tenantId: '3',
+            salutation: 'counsellor_female',
+            position: 'Head of counselling centre',
+            title: 'Dipl.-Soz.Päd.',
+            adminRemarks: 'Internal note',
+        });
+
+        const request = vi.mocked(fetchData).mock.calls[0][0];
+        expect(JSON.parse(request.bodyData as string)).toMatchObject({
+            salutation: 'counsellor_female',
+            position: 'Head of counselling centre',
+            title: 'Dipl.-Soz.Päd.',
+            adminRemarks: 'Internal note',
+        });
+    });
+
+    it('omits adminRemarks when the form did not render the field', async () => {
+        await addCounselorData({
+            firstname: 'Ada',
+            lastname: 'Lovelace',
+            email: 'ada@example.org',
+            username: 'ada',
+            password: 'StrongPass1!',
+            tenantId: '3',
+        });
+
+        const request = vi.mocked(fetchData).mock.calls[0][0];
+        expect(JSON.parse(request.bodyData as string)).not.toHaveProperty('adminRemarks');
+    });
 });

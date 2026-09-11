@@ -14,7 +14,7 @@ import { useUserPermissions } from './hooks/useUserPermission';
 import { PermissionAction } from './enums/PermissionAction';
 import { Resource } from './enums/Resource';
 import { getDefaultSettingsPath } from './constants/settingsTabs';
-import { getSafeFaviconUrl } from './utils/getSafeFaviconUrl';
+import { TenantFavicon } from './components/TenantFavicon/TenantFavicon';
 import { ReleaseToggle } from './enums/ReleaseToggle';
 import { useReleasesToggle } from './hooks/useReleasesToggle.hook';
 import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
@@ -101,16 +101,6 @@ export const App = () => {
         multitenancyWithSingleDomainEnabled: settings.multitenancyWithSingleDomainEnabled,
     });
 
-    // Apply tenant favicon when appearance config is available
-    useEffect(() => {
-        const favicon = getSafeFaviconUrl(publicTenantData?.theming?.favicon);
-        if (!favicon) return;
-        const link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
-        if (link) {
-            link.href = favicon;
-        }
-    }, [publicTenantData?.theming?.favicon]);
-
     useEffect(() => {
         if (location.pathname === routePathNames.root || location.pathname === `${routePathNames.root}/`) {
             if (can(PermissionAction.Create, Resource.Tenant)) {
@@ -179,6 +169,9 @@ export const App = () => {
 
     return (
         <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
+            {/* The signed-in admin's OWN tenant icon overrides the platform default that
+                the globally mounted <TenantFavicon /> (index.tsx) already applied. */}
+            <TenantFavicon tenantFavicon={data?.theming?.favicon} />
             {/* TEN-INV-U10 (#572): global non-bypassable DPA blocker. Wraps the WHOLE
                 protected tree, so every direct URL renders the blocker instead of the
                 page while the tenant's DPA is unsigned/outdated. */}

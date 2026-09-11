@@ -26,6 +26,7 @@ import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 import StatusIcons from '../../../components/EditableTable/StatusIcons';
 import EditButtons from '../../../components/EditableTable/EditButtons';
 import { Page } from '../../../components/Page';
+import { PageMobileActions } from '../../../components/Page/PageMobileActions';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { ResizeTable } from '../../../components/ResizableTable';
 import { useTopicList } from '../../../hooks/useTopicList';
@@ -181,36 +182,50 @@ export const TopicList = () => {
         <Page isLoading={isLoading}>
             <Page.Title titleKey="topics.title" subTitleKey="topics.title.text" />
 
-            <GlobalSearchBar
-                className={styles.toolbar}
-                expandedWidth={499}
-                onSearch={updateSearch}
-                onSearchChange={setSearchDebounced}
-                searchPlaceholder={t('search-placeholder')}
+            <PageMobileActions
+                id="topics"
+                search={{
+                    label: t('search-placeholder'),
+                    placeholder: t('search-placeholder'),
+                    onSearch: updateSearch,
+                }}
+                add={
+                    can(PermissionAction.Create, Resource.Topic)
+                        ? { label: t('new'), onAdd: () => navigate(`${routePathNames.topics}/add`) }
+                        : undefined
+                }
             >
-                {can(PermissionAction.Create, Resource.Topic) && (
-                    <Button
-                        className="mb-m mr-sm"
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => navigate(`${routePathNames.topics}/add`)}
-                    >
-                        {t('new')}
-                    </Button>
-                )}
+                <GlobalSearchBar
+                    className={styles.toolbar}
+                    expandedWidth={499}
+                    onSearch={updateSearch}
+                    onSearchChange={setSearchDebounced}
+                    searchPlaceholder={t('search-placeholder')}
+                >
+                    {can(PermissionAction.Create, Resource.Topic) && (
+                        <Button
+                            className="mb-m mr-sm"
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => navigate(`${routePathNames.topics}/add`)}
+                        >
+                            {t('new')}
+                        </Button>
+                    )}
 
-                {canShowTopicSwitch && (
-                    <div className={styles.featureToggle}>
-                        <M3Switch
-                            checked={isTopicsFeatureActive}
-                            disabled={isTopicsSwitchPending}
-                            label={t('topics.featureToggle')}
-                            onChange={() => onTopicsSwitch()}
-                        />
-                        {t('topics.featureToggle')}
-                    </div>
-                )}
-            </GlobalSearchBar>
+                    {canShowTopicSwitch && (
+                        <div className={styles.featureToggle}>
+                            <M3Switch
+                                checked={isTopicsFeatureActive}
+                                disabled={isTopicsSwitchPending}
+                                label={t('topics.featureToggle')}
+                                onChange={() => onTopicsSwitch()}
+                            />
+                            {t('topics.featureToggle')}
+                        </div>
+                    )}
+                </GlobalSearchBar>
+            </PageMobileActions>
 
             <ResizeTable
                 rowKey="id"

@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import routePathNames from '../../appConfig';
 import { getDefaultSettingsPath } from '../../constants/settingsTabs';
-import SiteFooter from './SiteFooter';
 import { handleTokenRefresh } from '../../api/auth/auth';
 import logout from '../../api/auth/logout';
 import getLocationVariables from '../../utils/getLocationVariables';
@@ -15,7 +14,8 @@ import { useTenantData } from '../../hooks/useTenantData.hook';
 import { UserRole } from '../../enums/UserRole';
 import { useFeatureContext } from '../../context/FeatureContext';
 import AdminSidebar, { AdminSidebarNavItem } from './AdminSidebar';
-import AdminBottomNav from './AdminBottomNav';
+import AdminMobileNavBar from './AdminMobileNavBar';
+import { MobileNavProvider } from '../AdminMobileNav/MobileNavContext';
 import { buildAdminNavItems } from './adminNavItems';
 import { FeatureFlag } from '../../enums/FeatureFlag';
 import { useAppConfigContext } from '../../context/useAppConfig';
@@ -126,7 +126,7 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     };
 
     return (
-        <>
+        <MobileNavProvider>
             <Layout className="protectedLayout">
                 {/* One resolved item list, two presentations. Rendering only the
                     one that applies keeps a single navigation landmark in the
@@ -140,24 +140,20 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
                         currentPath={location.pathname}
                     />
                 ) : (
-                    <AdminBottomNav
+                    <AdminMobileNavBar
                         items={upperNavItems}
                         account={accountNavItem}
                         logout={{ label: navLabels.logout, onLogout: handleLogout }}
-                        lang={navLanguage}
                         currentPath={location.pathname}
                     />
                 )}
 
                 <Layout className={classNames(styles.mainContent)}>
-                    <Content className={styles.content}>
-                        {children}
-                        <SiteFooter />
-                    </Content>
+                    <Content className={styles.content}>{children}</Content>
                 </Layout>
             </Layout>
             {isEnabled(FeatureFlag.Developer) && <ReactQueryDevtools />}
-        </>
+        </MobileNavProvider>
     );
 };
 

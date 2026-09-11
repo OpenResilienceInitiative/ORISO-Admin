@@ -2,8 +2,6 @@
     --dialog-card-height: clamp(540px, 68vh, 720px);
     --appearance-stack-top-offset: 165px;
     --card-deck-gap: 24px;
-    --card-deck-footer-margin-top: 40px;
-    --card-deck-footer-padding: 0 24px;
 
     display: flex;
     min-height: max(0px, calc(100dvh - var(--appearance-stack-top-offset)));
@@ -89,11 +87,7 @@
     .appearancePage {
         --dialog-card-height: clamp(500px, 64vh, 640px);
         --card-deck-gap: 16px;
-        --card-deck-item-max-width: calc(100vw - 144px);
-        --card-deck-footer-margin-top: 32px;
-        --card-deck-footer-padding: 0 8px;
-        --side-scroller-button-width: 88px;
-        --side-scroller-button-height: 56px;
+        --card-deck-item-max-width: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
 
         min-height: auto;
         justify-content: flex-start;

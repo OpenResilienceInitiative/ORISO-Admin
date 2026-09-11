@@ -244,6 +244,35 @@ describe('createHttpTenantAdminOnboardingClient', () => {
         expect(JSON.parse(mocks.fetchData.mock.calls[0][0].bodyData)).toEqual(REGISTRATION);
     });
 
+    /**
+     * The owner's case (2026-08-31): the register POST answered 410 with
+     * `{ "reason": "SUPERSEDED" }` (a resend had replaced the link in his
+     * open tab). Before this mapping the reason fell through the guard onto
+     * the 410 status fallback — EXPIRED — which points the user at the wrong
+     * remedy. The body reason must survive for every state the backend can
+     * answer with mid-flow.
+     */
+    it.each(['SUPERSEDED', 'EXPIRED', 'REVOKED'] as const)(
+        'keeps the %s reason of a rejected registration body-first',
+        async (reason) => {
+            mocks.fetchData.mockRejectedValueOnce(
+                new Response(JSON.stringify({ reason }), {
+                    status: 410,
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+            const client = createHttpTenantAdminOnboardingClient();
+
+            const error = await client.registerTenantAdmin('raw-token', REGISTRATION).then(
+                () => null,
+                (caught: unknown) => caught,
+            );
+
+            expect(error).toBeInstanceOf(InviteLinkError);
+            expect((error as InviteLinkError).reason).toBe(reason);
+        },
+    );
+
     it('surfaces a non-link registration failure as a retryable generic error, never a fake success', async () => {
         mocks.fetchData.mockRejectedValueOnce(new Response(null, { status: 500 }));
         const client = createHttpTenantAdminOnboardingClient();

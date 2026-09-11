@@ -20,10 +20,10 @@ const versions = [
         label: '13. Jul 2026 – 10:22 (aktuell)',
         content: JSON.stringify({
             de:
-                '<h1>Auftragsverarbeitungsvertrag</h1>' +
+                '<h1>Vertragsunterlagen</h1>' +
                 '<p>Aktuelle Fassung. Weisungsbindung, Vertraulichkeit, TOMs, Löschung/Rückgabe.</p>',
             en:
-                '<h1>Data processing agreement</h1>' +
+                '<h1>Contract documents</h1>' +
                 '<p>Current version. Instruction binding, confidentiality, TOMs, deletion/return.</p>',
         }),
     },
@@ -31,7 +31,7 @@ const versions = [
         id: '2026-05-02T09:00',
         label: '2. Mai 2026 – 09:00',
         content: JSON.stringify({
-            de: '<h1>Auftragsverarbeitungsvertrag</h1><p>Ältere Fassung vom Mai 2026.</p>',
+            de: '<h1>Vertragsunterlagen</h1><p>Ältere Fassung vom Mai 2026.</p>',
         }),
     },
 ];
@@ -43,8 +43,8 @@ const versions = [
 export const WithHistory: Story = {
     args: {
         initialContentByLanguage: {
-            de: '<h1>Auftragsverarbeitungsvertrag</h1><p>Aktueller Entwurf, bereit zum Veröffentlichen …</p>',
-            en: '<h1>Data processing agreement</h1><p>Current draft, ready to publish …</p>',
+            de: '<h1>Vertragsunterlagen</h1><p>Aktueller Entwurf, bereit zum Veröffentlichen …</p>',
+            en: '<h1>Contract documents</h1><p>Current draft, ready to publish …</p>',
         },
         languages: ['de', 'en'],
         defaultLanguage: 'de',
@@ -68,8 +68,8 @@ export const FirstPublish: Story = {
 export const WithMachineTranslatedLanguage: Story = {
     args: {
         initialContentByLanguage: {
-            de: '<h1>Auftragsverarbeitungsvertrag</h1><p>Deutscher Originaltext …</p>',
-            en: '<h1>Data processing agreement</h1><p>Machine-translated English text …</p>',
+            de: '<h1>Vertragsunterlagen</h1><p>Deutscher Originaltext …</p>',
+            en: '<h1>Contract documents</h1><p>Machine-translated English text …</p>',
             en__meta: '{"mt":true,"src":"de","at":"2026-07-01T10:00:00Z"}',
         },
         languages: ['de', 'en', 'fr'],
@@ -88,12 +88,46 @@ export const WithMachineTranslatedLanguage: Story = {
 export const ReadOnly: Story = {
     args: {
         initialContentByLanguage: {
-            de: '<h1>Auftragsverarbeitungsvertrag</h1><p>Veröffentlichte Fassung — auf Träger-Ebene verwaltet.</p>',
-            en: '<h1>Data processing agreement</h1><p>Published version — managed at tenant level.</p>',
+            de: '<h1>Vertragsunterlagen</h1><p>Veröffentlichte Fassung — auf Träger-Ebene verwaltet.</p>',
+            en: '<h1>Contract documents</h1><p>Published version — managed at tenant level.</p>',
         },
         languages: ['de', 'en'],
         defaultLanguage: 'de',
         versions,
         readOnly: true,
+    },
+};
+
+/**
+ * The draft action (ORISO-Admin#708): "Entwurf bearbeiten" sits next to
+ * "Veröffentlichen" so unfinished wording can be parked without stamping a new
+ * published DPA version that every tenant would have to sign again.
+ */
+export const WithDraftAction: Story = {
+    args: {
+        initialContentByLanguage: {
+            de: '<h1>Vertragsunterlagen</h1><p>Halbfertiger Text, noch nicht zum Veröffentlichen …</p>',
+        },
+        languages: ['de'],
+        defaultLanguage: 'de',
+        versions,
+        onSaveDraft: () => undefined,
+        onDiscardDraft: () => undefined,
+    },
+};
+
+/** A restored draft: the notice names the save time and that it is device-local. */
+export const WithRestoredDraft: Story = {
+    args: {
+        ...WithDraftAction.args,
+        draftSavedAt: '2026-08-12T08:30:00.000Z',
+    },
+};
+
+/** A newer version was published after the draft was saved — publishing would overwrite it. */
+export const WithStaleDraft: Story = {
+    args: {
+        ...WithRestoredDraft.args,
+        draftStale: true,
     },
 };

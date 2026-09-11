@@ -4,6 +4,7 @@
    (14/20, +0.25 tracking), full-width divider, right-aligned M3 text buttons
    (label-large, primary color). Every dialog rendered through the shared
    Modal component inherits this anatomy. */
+
 .modal {
     :global {
         .ant-modal-content {
@@ -21,6 +22,7 @@
 
         /* Round the close affordance so its hover state matches the 28px surface
            instead of clashing with a square highlight. Standard for every dialog. */
+
         .ant-modal-close {
             width: 40px;
             height: 40px;
@@ -54,6 +56,7 @@
 /* Icon → title → description. The 16px between icon and title is carried by the
    icon itself so the title and its description can sit the closer 8px apart —
    they are one unit, the icon is above it. */
+
 .titleBlock {
     display: flex;
     flex-direction: column;
@@ -65,6 +68,7 @@
     display: inline-flex;
     margin-bottom: 8px;
     color: var(--m3-secondary, #4c555f);
+
     /* antd's `Icon` renders its SVG at `1em`, and the ORISO icon set clips
        itself against a rect expressed in the same unit. Sizing by font-size —
        not only by width/height — keeps both in step, so an icon can never come
@@ -90,6 +94,7 @@
 /* The card-box anatomy's third line: what the dialog is for. Body-small under
    the headline, same measure as the title so it centres with it, and capped at a
    reading width so a long sentence does not stretch a wide dialog edge to edge. */
+
 .description {
     max-width: 52ch;
     margin: 0;
@@ -98,6 +103,21 @@
     font-weight: 400;
     line-height: 20px;
     text-align: center;
+}
+
+/* Opt-out of the reading-width cap, for the WIDE working dialogs (1080px editor
+   sheets) whose body is a full-bleed two-column workspace. There the 52ch cap
+   left the sentence as a narrow column above a box more than twice its width,
+   which reads as a layout fault rather than as a measure. Confirm dialogs keep
+   the cap — that is where a short sentence in a narrow sheet needs it. */
+
+.descriptionFullWidth {
+    /* `align-self` as well as the cap: `.titleBlock` is a centered flex column, so a
+       child without it is sized shrink-to-fit and lifting `max-width` alone would
+       only trade the narrow column for a max-content one. Stretch makes the
+       paragraph box the width of the sheet; the text stays centered inside it. */
+    max-width: none;
+    align-self: stretch;
 }
 
 .divider {
@@ -111,6 +131,7 @@
 /* Uniform padding for EVERY footer — standard actions and custom footers alike —
    so no action row sits flush against the rounded surface. Custom footers should
    therefore NOT add their own outer padding. */
+
 .footerBody {
     padding: 16px 24px 20px;
 }
@@ -145,6 +166,7 @@
 /* Base = secondary/neutral action (e.g. Cancel): M3 grey. Keeping secondary actions
    neutral and only the primary action coloured stops multi-button rows reading as
    "all primary". Hover tint follows `currentColor` so it works for both variants. */
+
 .actionButton {
     display: inline-flex;
     align-items: center;
@@ -182,6 +204,14 @@
 /* Primary/confirming action — brand primary colour. */
 .actionButtonPrimary {
     color: var(--m3-primary, #a5000a);
+}
+
+/* Destructive action (discard, delete) — the M3 error role, which in this
+   scheme is magenta, deliberately distinct from the red brand primary so
+   "confirm" and "lose data" never read as the same button. */
+
+.actionButtonDestructive {
+    color: var(--m3-error, #b1005e);
 }
 
 .actionSpinner {

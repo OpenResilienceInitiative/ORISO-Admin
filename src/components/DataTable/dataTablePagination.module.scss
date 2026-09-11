@@ -1,0 +1,66 @@
+@use '../../styles/muiSpacing' as mui;
+
+.pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    padding: mui.$mui-unit mui.$mui-unit * 1.5 mui.$mui-unit mui.$mui-unit * 2;
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 14px/20px var(--m3-body-font-family);
+    gap: mui.$mui-unit * 2;
+    letter-spacing: 0.25px;
+}
+
+.pageSize {
+    display: inline-flex;
+    align-items: center;
+    gap: mui.$mui-unit;
+}
+
+.pageSizeLabel {
+    white-space: nowrap;
+}
+
+/* Compact M3 outlined select — native element, admin tokens. Height sits on the
+   MUI 8px grid; border width, radius and the focus ring stay literal (the repo
+   has no token for either, and `outline: 2px solid var(--m3-primary)` is the
+   house focus pattern at every other site). */
+
+.pageSizeSelect {
+    height: mui.$mui-unit * 4;
+    padding: 0 mui.$mui-unit;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: transparent;
+    border-radius: 8px;
+    color: var(--m3-on-surface, #1b1b1c);
+    cursor: pointer;
+    font: 500 14px/20px var(--m3-body-font-family);
+}
+
+.pageSizeSelect:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 1px;
+}
+
+.pageSizeSelect:disabled {
+    cursor: not-allowed;
+    opacity: 0.38;
+}
+
+.range {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.nav {
+    display: inline-flex;
+    gap: mui.$mui-unit * 0.5;
+}
+
+@media (max-width: 767px) {
+    .pagination {
+        justify-content: space-between;
+        padding: mui.$mui-unit mui.$mui-unit mui.$mui-unit mui.$mui-unit * 2;
+    }
+}

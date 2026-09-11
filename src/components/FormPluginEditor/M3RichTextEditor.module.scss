@@ -2,15 +2,33 @@
 // node 1:34903). Mirrors the M3 sys tokens; brand primary #273270, M3 seed
 // primary #a5000a (publish accent).
 
+@use '../../styles/scrollbars' as scrollbars;
+
 $m3-surface: #eae7e8;
 $m3-on-surface: #1b1b1c;
 $m3-on-surface-variant: #444748;
 $m3-outline-variant: #c4c7c8;
-$m3-divider: rgba(100, 109, 120, 0.11);
+$m3-divider: rgb(100 109 120 / 11%);
 $m3-primary: #273270;
 $m3-publish: #a5000a;
-$m3-state-hover: rgba(68, 71, 72, 0.08);
-$m3-state-active: rgba(39, 50, 112, 0.12);
+$m3-state-hover: rgb(68 71 72 / 8%);
+$m3-state-active: rgb(39 50 112 / 12%);
+
+/* The reading viewport of the legal reader — the box in the owner's JOB10
+   screenshot with a permanent grey scroll track down its right edge. It turns
+   into a scroller in three places (the 800x740 deck card at >=600px, the
+   fullscreen dialog, and the bounded fluid READ card), so the treatment is
+   declared once here for all of them; on the non-scrolling variants these two
+   declarations are inert.
+
+   Trackless-thin rather than hidden: a DPA runs to several screens and the
+   thumb is the only thing telling the reader that the contract continues
+   below the fold. The chapter bar underneath navigates BETWEEN chapters, it
+   does not signal WITHIN one. See src/styles/_scrollbars.scss. */
+
+.editorContentScroll {
+    @include scrollbars.quiet;
+}
 
 .module {
     display: flex;
@@ -21,7 +39,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     overflow: hidden;
     background: $m3-surface;
     border-radius: 28px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px 1px rgb(0 0 0 / 15%);
     color: $m3-on-surface;
     font-family: 'Inter Variable', Inter, Arial, sans-serif;
 
@@ -116,12 +134,10 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 // column width. The desktop rule above pins the deck card to 800x740, which
 // would overflow a sign-in-sized column.
 //
-// Scrolling (#594.3, decided against #572's "no nested scroller" criterion):
-// the fluid card is NOT a scroll container. Its host scrolls — the
-// viewport-bounded sheet on the desktop, the page on a phone — so there is
-// exactly ONE scroller on screen, and a step that contains a 60-page agreement
-// can still be bounded and centred. The chapter chips keep working because
-// they stick to the bottom of the card while the agreement is on screen.
+// Scrolling in WRITE mode (#594.3): the fluid card is NOT a scroll container.
+// Its host scrolls, and the chapter chips stay reachable by sticking to the
+// bottom of the host scrollport. READ mode no longer works this way — see
+// `.module.fluid.readMode` below (owner demo 2026-08-19).
 .module.fluid:not(.inDialog) {
     width: 100%;
     max-width: 100%;
@@ -138,10 +154,17 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
        sticky chapter bar below, which has to mask the text scrolling under it. */
     background: none;
     border: 0;
+
+    /* The radius framed the card, so it goes with the card. `.module`'s 28px
+       rounds an 800px surface that still paints a background and a shadow;
+       here there is nothing left to round — but `overflow: clip` kept obeying
+       it, and the arc sliced the maximize control sitting in that corner
+       (owner report 2026-08-19: "abgeschnitten … obere rechte Ecke"). Clipping
+       to a plain rectangle costs nothing visually and gives the control back. */
+    border-radius: 0;
     box-shadow: none;
 
     /* The rules that framed the removed box go with it. */
-
     .headerDivider {
         display: none;
     }
@@ -165,6 +188,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 
     .editorContentScroll {
         max-height: none;
+
         /* Clearance so the last lines can always be brought above the pinned
            chapter bar, and so a chip jump does not park a heading under it. */
         padding-bottom: 56px;
@@ -172,17 +196,23 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         scroll-margin-bottom: 56px;
     }
 
-    /* Chapter navigation follows the reading position: pinned to the bottom of
-       the host's scrollport for as long as the agreement is on screen. An
-       opaque bar with a hairline, so text scrolling underneath reads as
-       "behind the bar" rather than as clipped. */
+    /* WRITE mode only (READ mode un-sticks this — see `.module.fluid.readMode`
+       below): chapter navigation follows the writing position, pinned to the
+       bottom of the host's scrollport for as long as the document is on
+       screen. An opaque bar with a hairline, so text scrolling underneath
+       reads as "behind the bar" rather than as clipped. */
 
     .editor .anchorNav {
         position: sticky;
         z-index: 2;
         bottom: 0;
-        padding: 8px 0;
+
+        /* 16px inset left and right: the chips are a control strip, not body
+           text — flush with the text edge they read as clipped (owner request
+           2026-08-18). */
+        padding: 16px 16px 8px;
         border-top: 1px solid var(--m3-outline-variant, #c4c7c8);
+
         /* The ONE surface tone of the public page (#594.12) — the bar has to be
            opaque so text scrolling underneath reads as "behind the bar" instead
            of clipped. It is not a box around the text; it is the page showing
@@ -194,25 +224,45 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         height: auto;
     }
 
-    // The display-size heading scale is made for the 800px deck card. In a
-    // sign-in-sized column it swallows the surface, so the fluid reader keeps
-    // the compact headline scale at every width.
-    .editor {
-        :global(.ProseMirror h1) {
-            font-size: 32px;
-            letter-spacing: 0;
-            line-height: 40px;
-        }
+    // No heading override here any more: since the owner's 2026-08-19 call
+    // the base scale IS the compact M3 headline scale at every width, so the
+    // fluid reader simply inherits it (headingScale.styles.test.ts pins one
+    // uniform scale across all surfaces).
+}
 
-        :global(.ProseMirror h2) {
-            font-size: 26px;
-            line-height: 34px;
-        }
+// Fluid READ mode (owner demo 2026-08-19, reversing #594.3 for reading): with
+// the HOST as the only scroller, the sticky chapter bar travelled up and down
+// with the page — and detached entirely once the card's end scrolled into
+// view — and a chip click re-scrolled the page so the bar moved out from
+// under the cursor: selecting "Anlage 3" took two clicks. Reading therefore
+// uses the same internal-scroll pattern the 800x740 deck card and the
+// fullscreen dialog already use: the text viewport is bounded and scrolls by
+// itself („der Text in der Textbox sich bewegt"), and the chapter bar stands
+// statically below the box („das Menü einfach starr bleibt, wo es ist").
+// Fluid WRITE mode (the Erstantwort editor) keeps growing with its content.
+.module.fluid.readMode:not(.inDialog) {
+    .editorContentScroll {
+        /* Floor: keeps a readable run of text on tiny landscape viewports.
+           60vh: box + chapter bar + the signer form below stay reachable on
+           every tested viewport (390/820/1440). Cap: keeps the line count of
+           the reading measure near the deck card's on very tall screens. */
+        max-height: clamp(280px, 60vh, 640px);
+        overflow-y: auto;
 
-        :global(.ProseMirror h3) {
-            font-size: 22px;
-            line-height: 30px;
-        }
+        /* The bar no longer overlays the text, so the 56px sticky clearance
+           would only scroll the last lines away from the box edge. 8px keeps
+           the owner's "8px on all four sides" inset INSIDE the scrollport,
+           where the clipping actually happens. */
+        padding: 8px;
+        scroll-margin-bottom: 0;
+    }
+
+    /* The bar stops following the host scrollport: it stands below the box.
+       Background, hairline and 16px control inset stay — text scrolling up to
+       the box edge still reads as "behind the bar". */
+
+    .editor .anchorNav {
+        position: static;
     }
 }
 
@@ -222,6 +272,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     @media (max-width: 599px) {
         top: 0;
         padding: 0;
+
         /* antd injects its own mobile .ant-modal max-width/margin at runtime
            (cssinjs loads after this sheet) — hence the importants. */
         /* stylelint-disable declaration-no-important */
@@ -229,7 +280,6 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         margin: 0 !important;
         width: 100vw !important;
         /* stylelint-enable declaration-no-important */
-
         :global(.ant-modal-content) {
             padding: 0;
         }
@@ -255,7 +305,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     border: 0;
     background: $m3-on-surface-variant;
     border-radius: 50%;
-    color: #fff;
+    color: #ffffff;
     cursor: pointer;
 
     &:hover {
@@ -414,7 +464,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    scrollbar-width: auto;
 
     &::-webkit-scrollbar {
         display: none;
@@ -490,7 +540,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     width: 36px;
     height: 36px;
     background: $m3-publish;
-    color: #fff;
+    color: #ffffff;
 
     svg {
         width: 18px;
@@ -539,7 +589,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 
     &:disabled {
-        color: rgba(68, 71, 72, 0.38);
+        color: rgb(68 71 72 / 38%);
         cursor: default;
     }
 
@@ -579,8 +629,11 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 // .RichEditor-anchorNav base rules regardless of bundle order.
 .editor .anchorNav {
     flex-shrink: 0;
-    padding: 8px 0 0;
-    background: #fff;
+
+    // 16px inset left and right, matching the fluid reader's bar (owner
+    // request 2026-08-18): chips must not sit flush with the text edge.
+    padding: 16px 16px 0;
+    background: #ffffff;
     border-bottom: 0;
 
     :global(.ant-tag) {
@@ -603,7 +656,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     padding: 4px;
     background: #f6f3f3;
     border-radius: 12px;
-    box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08);
+    box-shadow: 0 3px 6px -4px rgb(0 0 0 / 12%), 0 6px 16px 0 rgb(0 0 0 / 8%);
 }
 
 // "Mit Abschnitt verknüpfen" trigger: dark M3 secondary label, cross-reference
@@ -624,7 +677,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     letter-spacing: 0.1px;
 
     &:hover {
-        background: rgba(76, 85, 95, 0.08);
+        background: rgb(76 85 95 / 8%);
     }
 
     svg {
@@ -679,7 +732,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 
 .versionMenuRange {
     display: block;
-    color: rgba(68, 71, 72, 0.8);
+    color: rgb(68 71 72 / 80%);
     font-size: 12px;
     line-height: 16px;
     white-space: normal;
@@ -743,7 +796,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     padding: 4px 4px 4px 16px;
     background: #303031;
     border-radius: 4px;
-    box-shadow: 0 4px 4px rgba(0, 0, 0, 0.15), 0 1px 1.5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 4px rgb(0 0 0 / 15%), 0 1px 1.5px rgb(0 0 0 / 30%);
     color: #f3f0f0;
 
     @media (max-width: 599px) {
@@ -765,6 +818,27 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         .hintSnackbarClose {
             grid-column: 2;
         }
+    }
+}
+
+/* Success tone (Figma 1261-51137): same snackbar, secondary-container blue with
+   dark text. Used when the message confirms something that happened rather than
+   blocking an action — e.g. the DPA was signed. */
+
+.hintSnackbarSuccess {
+    background: var(--m3-on-secondary-container, #e7effc);
+    color: #000000;
+
+    .hintSnackbarAction {
+        color: var(--m3-error, #b1005e);
+
+        &:hover {
+            background: rgb(177 0 94 / 12%);
+        }
+    }
+
+    .hintSnackbarClose {
+        color: #000000;
     }
 }
 
@@ -808,7 +882,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     cursor: pointer;
 
     &:hover {
-        background: rgba(255, 180, 170, 0.12);
+        background: rgb(255 180 170 / 12%);
     }
 }
 
@@ -832,7 +906,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 
     &:hover {
-        background: rgba(243, 240, 240, 0.12);
+        background: rgb(243 240 240 / 12%);
     }
 }
 
@@ -848,7 +922,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     position: relative;
     min-height: 280px;
     padding: 16px;
-    background: #fff;
+    background: #ffffff;
     border: 1px solid $m3-outline-variant;
     border-radius: 14px;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -882,7 +956,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     // Without this both toggles looked identical in the editor.
     :global(.ProseMirror code) {
         padding: 1px 6px;
-        background: rgba(100, 109, 120, 0.15);
+        background: rgb(100 109 120 / 15%);
         border-radius: 6px;
         font-family: 'SF Mono', 'Cascadia Mono', Consolas, Menlo, monospace;
         font-size: 0.85em;
@@ -945,25 +1019,31 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         cursor: pointer;
     }
 
-    // Heading scale (Figma 1280-73020): M3 display sizes on desktop, headline
-    // sizes on mobile — body text follows body-large / body-medium.
+    // Heading scale: M3 HEADLINE roles at every width — body text follows
+    // body-large / body-medium. Figma 1280-73020 put the M3 DISPLAY sizes
+    // (57/45/36, the hero/marketing role) on the desktop editor; the owner
+    // overrode that on 2026-08-19 ("die Header sind ... eindeutig oft zu
+    // groß ... das muss nicht so riesig sein"): running document text keeps
+    // the document relationship (h1 = 2x body, not 3.5x), which is exactly
+    // the scale the mobile breakpoint used all along. Contract-tested in
+    // headingScale.styles.test.ts — do not re-grow one surface only.
     :global(.ProseMirror h1) {
-        font-size: 57px;
+        font-size: 32px;
         font-weight: 400;
-        letter-spacing: -0.25px;
-        line-height: 64px;
+        letter-spacing: 0;
+        line-height: 40px;
     }
 
     :global(.ProseMirror h2) {
-        font-size: 45px;
+        font-size: 28px;
         font-weight: 400;
-        line-height: 52px;
+        line-height: 36px;
     }
 
     :global(.ProseMirror h3) {
-        font-size: 36px;
+        font-size: 24px;
         font-weight: 400;
-        line-height: 44px;
+        line-height: 32px;
     }
 
     :global(.ProseMirror p) {
@@ -973,22 +1053,6 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 
     @media (max-width: 599px) {
-        :global(.ProseMirror h1) {
-            font-size: 32px;
-            letter-spacing: 0;
-            line-height: 40px;
-        }
-
-        :global(.ProseMirror h2) {
-            font-size: 28px;
-            line-height: 36px;
-        }
-
-        :global(.ProseMirror h3) {
-            font-size: 24px;
-            line-height: 32px;
-        }
-
         :global(.ProseMirror p) {
             font-size: 14px;
             letter-spacing: 0.25px;
@@ -996,11 +1060,11 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         }
     }
 
-    :global(.ProseMirror p.is-editor-empty:first-child::before) {
+    :global(.ProseMirror p.is-editor-empty:first-child:before) {
         content: attr(data-placeholder);
         float: left;
         height: 0;
-        color: rgba(0, 0, 0, 0.4);
+        color: rgb(0 0 0 / 40%);
         pointer-events: none;
     }
 }
@@ -1039,22 +1103,42 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     }
 }
 
-// Lower function bar (Figma 1261-48667): up to three split buttons in ONE
-// horizontal row — overflow scrolls sideways instead of stacking.
+// Lower function bar (Figma 1261-48667 / #862): one horizontal row of split
+// buttons. Must stay scrollable with a visible thin scrollbar when consent +
+// language + department + version no longer fit the 800px card.
 .functionBar {
     display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     flex-wrap: nowrap;
     gap: 12px;
     align-items: center;
-    justify-content: flex-end;
-    padding: 12px 16px 4px;
+    // Spacer pushes controls right when they fit; shrinks away so overflow can
+    // scroll from the start (flex-end alone leaves left items unreachable).
+    justify-content: flex-start;
+    padding: 12px 16px 8px;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--m3-outline, #747778) transparent;
+
+    &:before {
+        content: '';
+        flex: 1 1 0;
+        min-width: 0;
+    }
 
     &::-webkit-scrollbar {
-        display: none;
+        height: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border-radius: 2px;
+        background: var(--m3-outline, #747778);
     }
 
     > * {
@@ -1063,7 +1147,10 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 
     @media (max-width: 599px) {
         gap: 8px;
-        justify-content: flex-start;
+
+        &:before {
+            display: none;
+        }
     }
 }
 
@@ -1097,12 +1184,6 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     .versionSplit:hover & {
         background: $m3-state-hover;
     }
-
-    svg {
-        width: 18px;
-        height: 18px;
-        flex-shrink: 0;
-    }
 }
 
 .versionLeading {
@@ -1114,9 +1195,21 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     font-weight: 500;
     letter-spacing: 0.1px;
 
-    // antd Icon wrappers size via font-size (1em) — match the MUI icons.
+    // Leading icon box 24x24 (owner call 2026-08-19, "revert squeezing"):
+    // the version-history glyph rendered distorted at 18px — the box is now
+    // the standard 24px icon size and shrink-proof, and the clock SVG source
+    // keeps its aspect ratio again (it no longer ships the "none" value for
+    // preserveAspectRatio), so the box can never squeeze the glyph.
+    svg {
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+
+    // antd Icon wrappers size via font-size (1em) — must agree with the svg
+    // box above or the wrapper mis-centres the glyph.
     :global(.anticon) {
-        font-size: 18px;
+        font-size: 24px;
     }
 
     > span {
@@ -1143,9 +1236,9 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 .splitOpen {
     .versionLeading,
     .versionTrailing {
-        background: #fff;
+        background: #ffffff;
         border-color: transparent;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px 1px rgb(0 0 0 / 15%);
         color: $m3-publish;
     }
 }
@@ -1163,11 +1256,29 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
         }
     }
 
+    /* Owner call 2026-08-18 (before-state H1/H2), REVERSING the owner call of
+       2026-07-30 that made the reading text run edge to edge: „text braucht
+       padding min. 8px … an allen 4 Seiten!". Measured before this rule the
+       text sat 0-1px from its clipping frame (`editorContentScroll`) in every
+       read surface — wizard step, DPA blocker, fullscreen reader, settings
+       deck. The inset lives HERE and not on `.editor`, because the chapter bar
+       is a sibling inside `.editor` and must keep spanning the full surface
+       (its opaque sticky background masks text scrolling underneath). The
+       vertical 8px comes from `.editor` above; the fluid variant's 56px
+       bottom clearance wins by specificity, which is intended. */
+
+    .editorContentScroll {
+        padding-inline: 8px;
+    }
+
     // Owner call 2026-07-30, desktop AND mobile: with the outer box gone there
     // is no edge left for the text to keep its distance from, so the side inset
     // goes too — the reading measure gets those 16px back on both sides. The
     // chapter row lives in the same wrapper, which is why its arrows move out
     // to the edges with it.
+    // (Partially superseded 2026-08-18: the text now keeps an 8px inset — see
+    // `.editorContentScroll` above — while the chapter row still spans the
+    // full width with its own 16px control inset from #818.)
     .editorWrap {
         padding-inline: 0;
     }
@@ -1202,7 +1313,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     small {
         display: block;
         max-width: 210px;
-        color: rgba(68, 71, 72, 0.72);
+        color: rgb(68 71 72 / 72%);
         font-size: 11px;
         line-height: 14px;
         white-space: normal;
@@ -1211,7 +1322,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 
 .menuItemHint {
     margin-left: 12px;
-    color: rgba(68, 71, 72, 0.6);
+    color: rgb(68 71 72 / 60%);
     font-size: 12px;
 }
 
@@ -1220,7 +1331,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     display: inline-block;
     width: 16px;
     height: 16px;
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    border: 1px solid rgb(0 0 0 / 15%);
     border-radius: 50%;
 }
 
@@ -1232,7 +1343,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     padding: 8px 0;
     background: #f6f3f3;
     border-radius: 12px;
-    box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 3px 6px -4px rgb(0 0 0 / 12%), 0 6px 16px 0 rgb(0 0 0 / 8%), 0 9px 28px 8px rgb(0 0 0 / 5%);
 }
 
 .headingMenuRow {
@@ -1245,7 +1356,7 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
 }
 
 .headingMenuRowActive {
-    background: rgba(165, 0, 10, 0.08);
+    background: rgb(165 0 10 / 8%);
     color: $m3-publish;
 
     .menuItemGlyph {
@@ -1331,12 +1442,39 @@ $m3-state-active: rgba(39, 50, 112, 0.12);
     color: $m3-on-surface-variant;
 }
 
+// Figma 1285-80496, "Footer Legal Editor": the publish/edit row is 68px tall.
 .actions {
     display: flex;
+    min-height: var(--admin-card-footer-height, 68px);
     gap: 8px;
     align-items: center;
     justify-content: flex-end;
     padding: 8px 16px 16px;
+}
+
+.actionsLeading {
+    display: flex;
+    margin-right: auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.readOnlyFooter {
+    display: flex;
+    min-height: var(--admin-card-footer-height, 68px);
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 24px;
+    color: $m3-on-surface-variant;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
 }
 
 .textBtn {

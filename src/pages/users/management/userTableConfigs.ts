@@ -52,16 +52,17 @@ const col = (key: UserTableColumnKey, visible: boolean, sortable = false, width?
     width,
 });
 
-// Width budget: at 1440px the sidebar rail and the table padding leave ~1310px, so the fixed
-// widths of a section must stay inside that. Anything wider silently pushes the trailing
-// columns (Träger, "also …" checkmark, actions) out of sight (ORISO-Admin#99).
+// Width budget: at 1440px the sidebar rail (128px, Figma 1285-80496) and the table padding
+// leave ~1278px, so the fixed widths of a section must stay inside that. Anything wider
+// silently pushes the trailing columns (Träger, "also …" checkmark, actions) out of sight
+// (ORISO-Admin#99). Email and username truncate with an ellipsis, so they carry the trim.
 const baseIdentityColumns = (): UserTableColumnConfig[] => [
     col('lastUpdated', true, true, 150),
     col('status', true, false, 80),
     col('lastname', true, true, 130),
     col('firstname', true, true, 120),
-    col('email', true, true, 150),
-    col('username', true, true, 150),
+    col('email', true, true, 134),
+    col('username', true, true, 134),
 ];
 
 const tenantAdminIdentityColumns = (): UserTableColumnConfig[] => [
@@ -69,8 +70,8 @@ const tenantAdminIdentityColumns = (): UserTableColumnConfig[] => [
     col('status', true, false, 80),
     col('lastname', true, true, 130),
     col('firstname', true, true, 120),
-    col('email', true, true, 150),
-    col('username', true, false, 150),
+    col('email', true, true, 134),
+    col('username', true, false, 134),
 ];
 
 const defaultSort: { field: string; order: 'ASC' | 'DESC' } = {

@@ -6,12 +6,12 @@ import { TenantAdminControls } from '../types/TenantAdminControls';
 import { TENANT_ADMIN_CONTROLS_KEY } from './useTenantAdminControls.hook';
 
 interface TenantAdminControlsMutationOptions
-    extends UseMutationOptions<unknown, unknown, Partial<TenantAdminControls>> {
+    extends UseMutationOptions<TenantAdminControls, unknown, Partial<TenantAdminControls>> {
     successMessageKey?: string | false;
 }
 
 export const useTenantAdminControlsMutation = ({
-    successMessageKey = 'tenants.message.setting.update',
+    successMessageKey = 'tenants.message.settingsUpdate',
     ...options
 }: TenantAdminControlsMutationOptions = {}) => {
     const { t } = useTranslation();

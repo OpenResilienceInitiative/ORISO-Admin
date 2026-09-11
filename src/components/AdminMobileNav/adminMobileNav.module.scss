@@ -1,0 +1,202 @@
+/*
+ * Figma 1683:39455. Layout only — fixing the bar to the viewport belongs to the
+ * layout wrapper, the same split the desktop sidebar uses.
+ */
+
+.root {
+    display: flex;
+    flex-direction: column;
+    // Inset comes from whoever places the bar (see adminMobileNavBar.module.scss)
+    // so the safe-area handling lives in one place.
+    gap: 12px;
+    pointer-events: none;
+
+    // The controls float over the page; the gaps between them must not swallow
+    // taps meant for the content behind.
+    > * {
+        pointer-events: auto;
+    }
+}
+
+// Always present, always above the bar. Its height is reserved even when a
+// section has neither filters nor a create action, so opening the menu never
+// moves the rows underneath it.
+.searchRow {
+    display: flex;
+    min-width: 0;
+    min-height: 56px;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.row {
+    display: flex;
+    min-width: 0;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+// The menu must not be clipped by the row's own overflow handling, and it grows
+// upward past the search row.
+.fabMenu {
+    position: relative;
+    z-index: 2;
+}
+
+.back {
+    display: inline-flex;
+    width: 56px;
+    height: 56px;
+    box-sizing: border-box;
+    flex: 0 0 56px;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    border: 0;
+    border-radius: var(--corner-extra-large, 28px);
+    background: var(--m3-primary, #a5000a);
+    color: var(--m3-on-primary, #ffffff);
+    cursor: pointer;
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.search,
+.action {
+    display: inline-flex;
+    width: 56px;
+    height: 56px;
+    box-sizing: border-box;
+    flex: 0 0 56px;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    border: 0;
+    border-radius: 100px;
+    cursor: pointer;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+.search {
+    background: var(--admin-search-surface, #eae7e8);
+    box-shadow: inset 4px 4px 8px rgb(0 0 0 / 12%);
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+// The page's primary action: same tonal pill as on the desktop toolbar, so it
+// reads as "create a thing" rather than as an anonymous round control.
+.add {
+    display: inline-flex;
+    height: 56px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 24px;
+    border: 0;
+    border-radius: 100px;
+    background: var(--m3-secondary, #4c555f);
+    color: var(--m3-on-primary, #ffffff);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    gap: 8px;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    outline: none;
+    white-space: nowrap;
+
+    svg {
+        width: 24px;
+        height: 24px;
+        flex: 0 0 24px;
+    }
+
+    &:focus-visible {
+        box-shadow: 0 0 0 3px var(--m3-on-secondary-container, #e7effc);
+    }
+}
+
+// Expanded search takes the row; the action shrinks to its icon rather than
+// pushing the field off-screen.
+.addCompact {
+    width: 56px;
+    padding: 16px;
+}
+
+.addLabel {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+// The expanded search takes the row and pushes the create action to the edge;
+// the row height never changes, so nothing below it moves (Figma 1683:41452).
+.searchField {
+    display: flex;
+    height: 56px;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    padding: 0 8px 0 16px;
+    border-radius: 28px;
+    background: var(--admin-search-surface, #eae7e8);
+    box-shadow: inset 4px 4px 8px rgb(0 0 0 / 12%);
+    color: var(--m3-on-surface-variant, #444748);
+    gap: 8px;
+}
+
+.searchFieldIcon {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+}
+
+.searchInput {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    font-size: 16px;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    outline: none;
+
+    &::-webkit-search-cancel-button {
+        display: none;
+    }
+}
+
+.searchClose {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 100px;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}

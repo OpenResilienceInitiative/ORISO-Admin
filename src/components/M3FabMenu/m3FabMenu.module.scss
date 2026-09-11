@@ -1,0 +1,239 @@
+/*
+ * Figma 1683:39454 (open) and 1683:39456 (closed).
+ *
+ * Colours map by ROLE, not by Figma's style name: this palette deliberately
+ * inverts some M3 `on-*` names (see src/app.css at --m3-primary-container).
+ * Figma's `on-primary-fixed` fill is --admin-nav-indicator-surface here, and
+ * its `on-primary-container` fill is --m3-primary-container.
+ */
+
+.root {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.stack {
+    // Absolute, not a flex sibling: an in-flow stack pushes everything above the
+    // FAB — the search row was shoved off-screen every time the menu opened.
+    // The menu lies ON TOP of the rows instead, so nothing but the FAB's own
+    // icon changes when you open it.
+    position: absolute;
+    // Figma FAB menu: 8px between the primary FAB and the related-action stack.
+    bottom: calc(100% + 8px);
+    left: 0;
+    // With every destination a permission grants, the stack is taller than a
+    // phone: eight sections plus the account group already overflow a 650px
+    // screen and the first entry disappears off the top. Cap it against the
+    // viewport minus the two rows below and let it scroll instead.
+    display: flex;
+    max-height: calc(100dvh - 140px);
+    overflow-y: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+
+    // Left edges line up with the FAB, right edges stay ragged: every pill hugs
+    // its label. Figma right-aligns the content *inside* each pill, which has no
+    // visible effect on a hug-width box — do not mistake that for a right-aligned
+    // stack.
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0;
+    margin: 0;
+    gap: 4px;
+    filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 30%)) drop-shadow(0 4px 4px rgb(0 0 0 / 15%));
+    list-style: none;
+}
+
+.item {
+    display: flex;
+    height: 56px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 16px 24px;
+    border: 0;
+    border-radius: 28px;
+    background: var(--m3-primary-container, #ffe2de);
+    color: var(--admin-nav-indicator-surface, #410001);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    gap: 8px;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    text-align: right;
+    text-decoration: none;
+    white-space: nowrap;
+    outline: none;
+
+    svg {
+        width: 24px;
+        height: 24px;
+        flex: 0 0 24px;
+    }
+
+    &:hover,
+    &:focus-visible {
+        text-decoration: none;
+    }
+
+    &:disabled {
+        cursor: wait;
+        opacity: 0.55;
+    }
+
+    &:focus-visible {
+        box-shadow: 0 0 0 3px var(--admin-nav-indicator-surface, #410001);
+    }
+}
+
+.itemActive {
+    background: var(--admin-nav-indicator-surface, #410001);
+    color: var(--m3-primary-container, #ffe2de);
+}
+
+// Account and sign-out are not places — a hairline sets them apart from the
+// destinations without giving them a second surface.
+.itemFooter {
+    position: relative;
+    margin-top: 4px;
+
+    &:before {
+        position: absolute;
+        top: -6px;
+        right: 24px;
+        left: 24px;
+        height: 1px;
+        background: var(--m3-outline-variant, #c4c7c8);
+        content: '';
+    }
+
+    & + .itemFooter {
+        margin-top: 0;
+
+        &:before {
+            content: none;
+        }
+    }
+}
+
+.fab {
+    display: inline-flex;
+    width: 56px;
+    height: 56px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    border: 0;
+    border-radius: var(--corner-extra-large, 28px);
+    background: var(--admin-nav-indicator-surface, #410001);
+    // M3/Elevation Light/3
+    box-shadow: 0 1px 3px rgb(0 0 0 / 30%), 0 4px 8px 3px rgb(0 0 0 / 15%);
+    color: var(--m3-primary-container, #ffe2de);
+    cursor: pointer;
+    // The global focus style paints an orange ring that reads as a warning on a
+    // round dark control. Keyboard users still get a ring — in the palette.
+    outline: none;
+
+    &:focus-visible {
+        box-shadow: 0 0 0 3px var(--m3-primary-container, #ffe2de), 0 1px 3px rgb(0 0 0 / 30%),
+            0 4px 8px 3px rgb(0 0 0 / 15%);
+    }
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.fabGlyph {
+    fill: currentcolor;
+}
+
+.action {
+    // The shared Admin palette still carries historical inverted container
+    // names. Keep the Figma roles local to this component so the policy menu
+    // can match M3 without changing unrelated sidebar and field surfaces.
+    --m3-fab-menu-primary-container: var(--oriso-app-action, #cc1e1c);
+    --m3-fab-menu-on-primary-container: var(--oriso-app-accent-light, #ffe2de);
+    --m3-fab-menu-secondary: var(--m3-secondary, #4c555f);
+    --m3-fab-menu-on-secondary-container: var(--m3-on-secondary-container, #e7effc);
+
+    align-items: flex-end;
+
+    .stack {
+        right: 0;
+        left: auto;
+        z-index: 20;
+        align-items: flex-end;
+    }
+
+    .item {
+        background: var(--m3-fab-menu-primary-container);
+        color: var(--m3-fab-menu-on-primary-container);
+    }
+
+    .item:focus-visible {
+        // M3 focus state-layer: visible to keyboard users without introducing
+        // the border-like ring that is absent from both Figma variants.
+        background: color-mix(
+            in srgb,
+            var(--m3-fab-menu-on-primary-container) 8%,
+            var(--m3-fab-menu-primary-container)
+        );
+        box-shadow: none;
+    }
+
+    .fab {
+        background: var(--m3-primary, #a5000a);
+        color: var(--m3-fab-menu-on-primary-container);
+
+        svg[data-icon='switch-on'],
+        svg[data-icon='switch-off'],
+        svg[data-icon='silent'] {
+            width: 24px;
+            height: 24px;
+        }
+    }
+}
+
+.action.neutral {
+    .item,
+    .fab {
+        background: var(--m3-fab-menu-secondary);
+        color: var(--m3-fab-menu-on-secondary-container);
+    }
+
+    .item:focus-visible {
+        background: color-mix(in srgb, var(--m3-fab-menu-on-secondary-container) 8%, var(--m3-fab-menu-secondary));
+    }
+}
+
+.action.openDownward {
+    .stack {
+        top: calc(100% + 8px);
+        bottom: auto;
+    }
+}
+
+@media screen and (max-width: 767px) {
+    .action {
+        .stack,
+        .item {
+            max-width: calc(100vw - 12px);
+        }
+
+        .item {
+            padding-right: 16px;
+            padding-left: 16px;
+            font-size: 14px;
+        }
+    }
+}

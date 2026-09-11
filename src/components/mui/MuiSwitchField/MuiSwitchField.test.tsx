@@ -1,5 +1,8 @@
 import React from 'react';
-import Form from 'antd/es/form';
+// Root antd import on purpose: the deep path `antd/es/form` resolves to a
+// second antd instance under Vitest and would bypass the ConfigProvider the
+// components actually read (#689/#735).
+import { Form } from 'antd';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';

@@ -9,6 +9,7 @@ import routePathNames from '../../../appConfig';
 import { EditButtons } from '../../../components/EditableTable/EditButtons';
 import { Modal } from '../../../components/Modal';
 import { Page } from '../../../components/Page';
+import { PageMobileActions } from '../../../components/Page/PageMobileActions';
 import { ResizeTable } from '../../../components/ResizableTable';
 import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { useAppConfigContext } from '../../../context/useAppConfig';
@@ -191,19 +192,43 @@ export const TenantsList = () => {
         },
     ] as Array<ColumnProps<TenantData>>;
 
+    const canCreateTenant =
+        can(PermissionAction.Create, Resource.Tenant) &&
+        (isSuperAdmin || isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING));
+
     return (
         <Page>
             <Page.Title titleKey="tenants.title" subTitle={t<string>('tenants.subTitle', { count: data?.total || 0 })}>
-                <div className={styles.searchContainer}>
-                    <GlobalSearchBar
-                        className={styles.searchWithButton}
-                        expandedWidth={499}
-                        onSearch={handleSearch}
-                        onSearchChange={handleSearchDebounced}
-                        searchPlaceholder={t('tenants.searchPlaceholder')}
-                    >
-                        {can(PermissionAction.Create, Resource.Tenant) &&
-                            (isSuperAdmin || isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING)) && (
+                <PageMobileActions
+                    id="tenants"
+                    search={{
+                        label: t('tenants.searchPlaceholder'),
+                        placeholder: t('tenants.searchPlaceholder'),
+                        onSearch: handleSearch,
+                    }}
+                    add={
+                        canCreateTenant
+                            ? {
+                                  label: t('tenants.list.new'),
+                                  onAdd: () =>
+                                      navigate(
+                                          `${routePathNames.tenants}/add/general${
+                                              data?.total === 0 ? '?main=true' : ''
+                                          }`,
+                                      ),
+                              }
+                            : undefined
+                    }
+                >
+                    <div className={styles.searchContainer}>
+                        <GlobalSearchBar
+                            className={styles.searchWithButton}
+                            expandedWidth={499}
+                            onSearch={handleSearch}
+                            onSearchChange={handleSearchDebounced}
+                            searchPlaceholder={t('tenants.searchPlaceholder')}
+                        >
+                            {canCreateTenant && (
                                 <div className={styles.toolbarActions}>
                                     <Button
                                         className={styles.createButton}
@@ -221,8 +246,9 @@ export const TenantsList = () => {
                                     </Button>
                                 </div>
                             )}
-                    </GlobalSearchBar>
-                </div>
+                        </GlobalSearchBar>
+                    </div>
+                </PageMobileActions>
             </Page.Title>
             <div className={styles.tableContainer}>
                 <ResizeTable

@@ -43,6 +43,20 @@ export interface DpaFormSectionProps {
     hideTextHeader?: boolean;
     /** Language of the shown agreement — passed to the reader for hyphenation. */
     textLanguage?: string;
+    /**
+     * Rendered between the agreement and the signer section — the slot the
+     * onboarding wizard puts its "Stammdaten Organisation" block in, so the
+     * organisation the contract is signed FOR stands directly above the person
+     * signing it (owner report 2026-08-19). It is deliberately outside the
+     * signer section: it belongs to the host, not to the signature.
+     */
+    beforeSignerFields?: React.ReactNode;
+    /**
+     * Heading level of the signer section header. The block must not skip a
+     * level in its host's outline (WCAG 2.2 / axe `heading-order`): the DPA
+     * blocker states its own h1 above it, the onboarding wizard an h2.
+     */
+    signerHeadingLevel?: 2 | 3;
     accepted: boolean;
     acceptTouched: boolean;
     /** Toggle handler — the host owns the accepted/touched state (it gates its own submit). */
@@ -67,11 +81,14 @@ export const DpaFormSection = ({
     textDescription,
     hideTextHeader,
     textLanguage,
+    beforeSignerFields,
+    signerHeadingLevel = 2,
     accepted,
     acceptTouched,
     onAcceptedChange,
 }: DpaFormSectionProps) => {
     const { t } = useTranslation();
+    const SignerHeading = `h${signerHeadingLevel}` as const;
     const showAcceptError = acceptTouched && !accepted;
 
     // No text, no consent. Confirming is a legal act ON THE AGREEMENT SHOWN
@@ -86,9 +103,15 @@ export const DpaFormSection = ({
     // for every surface that reuses the block.
     if (!dpaHtml) {
         return (
-            <Alert severity="error" role="alert" data-testid="dpa-content-unavailable" sx={{ mb: 2 }}>
-                {t('tenantOnboarding.dpa.unavailable')}
-            </Alert>
+            <>
+                <Alert severity="error" role="alert" data-testid="dpa-content-unavailable" sx={{ mb: 2 }}>
+                    {t('tenantOnboarding.dpa.unavailable')}
+                </Alert>
+                {/* The host's own block is NOT part of the signature — it must
+                    survive the withdrawn signing block, or the wizard would
+                    lose its organisation fields with the agreement. */}
+                {beforeSignerFields}
+            </>
         );
     }
 
@@ -101,6 +124,14 @@ export const DpaFormSection = ({
                 contentLanguage={textLanguage}
                 hideHeader={hideTextHeader}
             />
+            {beforeSignerFields}
+            {/* A real heading, not a styled div (WCAG 2.2): the block was an
+                unnamed run of four inputs, and its labels had to spell out
+                "der unterzeichnenden Person" one by one to say what the header
+                now says once (owner report 2026-08-19). */}
+            <SignerHeading className={styles.sectionTitle} data-testid="dpa-signer-section-title">
+                {t('tenantOnboarding.dpa.signerSectionTitle')}
+            </SignerHeading>
             <div className={classNames(styles.fieldStack, styles.fieldStackPaired)}>
                 <MuiFormField
                     name="signerName"

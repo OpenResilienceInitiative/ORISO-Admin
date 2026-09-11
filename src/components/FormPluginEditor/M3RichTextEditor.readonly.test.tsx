@@ -28,6 +28,7 @@ beforeAll(() => {
 });
 
 const anchored = '<h2 id="intro">Intro</h2><p>Hello</p><h2 id="details">Details</h2><p>World</p>';
+const legacyAnchored = '<h2>Intro</h2><p>Hello</p><h2>Details</h2><p>World</p>';
 
 /**
  * #594.2 — read-only is a READER, not a disabled editor: formatting controls
@@ -113,6 +114,13 @@ describe('M3RichTextEditor — read-only mode hides the editing affordances', ()
  * focus to the section" behaviour that DpaLegalText had must live here.
  */
 describe('M3RichTextEditor — anchor jump moves keyboard focus (reading mode)', () => {
+    it('builds chapter navigation for legacy published HTML without stored heading ids', async () => {
+        const { container } = render(<M3RichTextEditor title="AVV" value={legacyAnchored} readOnly />);
+
+        await waitFor(() => expect(container.querySelectorAll('[data-anchor-chip]')).toHaveLength(2));
+        expect(container.querySelector('#details')).not.toBeNull();
+    });
+
     it('focuses the target heading when a chapter chip is used', async () => {
         const { container } = render(<M3RichTextEditor title="AVV" value={anchored} readOnly />);
         await waitFor(() => expect(container.querySelectorAll('[data-anchor-chip]')).toHaveLength(2));
@@ -132,6 +140,29 @@ describe('M3RichTextEditor — anchor jump moves keyboard focus (reading mode)',
         fireEvent.click(container.querySelector('[data-anchor-chip="details"] .RichEditor-anchorChipLabel')!);
 
         expect(document.activeElement).not.toBe(container.querySelector('#details'));
+    });
+});
+
+describe('M3RichTextEditor — read-only footer', () => {
+    it('keeps the footer row when no status content is available yet', async () => {
+        render(<M3RichTextEditor title="AVV" value={anchored} readOnly />);
+
+        expect(await screen.findByTestId('m3-readonly-footer')).toBeEmptyDOMElement();
+    });
+
+    it('shows status content inside the persistent read-only footer', async () => {
+        render(
+            <M3RichTextEditor
+                title="AVV"
+                value={anchored}
+                readOnly
+                readOnlyFooter={<span>Zugestimmt am 18.08.2026, durch Daniel Legrum</span>}
+            />,
+        );
+
+        expect(await screen.findByTestId('m3-readonly-footer')).toHaveTextContent(
+            'Zugestimmt am 18.08.2026, durch Daniel Legrum',
+        );
     });
 });
 

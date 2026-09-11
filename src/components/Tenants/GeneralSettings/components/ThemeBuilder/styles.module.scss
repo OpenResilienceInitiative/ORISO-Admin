@@ -192,7 +192,7 @@
     aspect-ratio: 500 / 1056;
 }
 
-.phoneFrame::before {
+.phoneFrame:before {
     position: absolute;
     z-index: 0;
     top: 2.8%;
@@ -536,7 +536,7 @@
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    padding: 2px 18px 14px 18px;
+    padding: 2px 18px 14px;
     gap: 8px;
 }
 
@@ -628,11 +628,11 @@
     max-width: none;
     padding: 18px 20px 11px;
     background: var(--oriso-app-accent-container, #ffdad5);
-    border-radius: 16px 16px 0 16px;
+    border-radius: 16px 16px 0;
     color: var(--m3-on-surface, #1a1c1e);
 }
 
-.outgoingBubble::after {
+.outgoingBubble:after {
     position: absolute;
     right: -24px;
     bottom: 0;
@@ -829,7 +829,7 @@
     display: inline-flex;
 }
 
-.toolbarIconWithCaret::after {
+.toolbarIconWithCaret:after {
     position: absolute;
     right: -8px;
     top: 5px;

@@ -5,9 +5,6 @@ import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import { ReactComponent as DisplaySettingsActiveIcon } from '../../resources/img/svg/navbar/display_settings_active.svg';
 import { ReactComponent as DisplaySettingsHoverIcon } from '../../resources/img/svg/navbar/display_settings_hover.svg';
 import { ReactComponent as DisplaySettingsInactiveIcon } from '../../resources/img/svg/navbar/display_settings_inactive.svg';
-import { ReactComponent as SettingsActiveIcon } from '../../resources/img/svg/navbar/settings_active.svg';
-import { ReactComponent as SettingsHoverIcon } from '../../resources/img/svg/navbar/settings_hover.svg';
-import { ReactComponent as SettingsInactiveIcon } from '../../resources/img/svg/navbar/settings_inactive.svg';
 import { ReactComponent as TenantsActiveIcon } from '../../resources/img/svg/navbar/tenants_active.svg';
 import { ReactComponent as TenantsHoverIcon } from '../../resources/img/svg/navbar/tenants_hover.svg';
 import { ReactComponent as TenantsInactiveIcon } from '../../resources/img/svg/navbar/tenants_inactive.svg';
@@ -75,12 +72,6 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
                 active: <DisplaySettingsActiveIcon />,
                 hover: <DisplaySettingsHoverIcon />,
                 inactive: <DisplaySettingsInactiveIcon />,
-            });
-        case routePathNames.globalSettings:
-            return selectIcon(iconState, {
-                active: <SettingsActiveIcon />,
-                hover: <SettingsHoverIcon />,
-                inactive: <SettingsInactiveIcon />,
             });
         case '/admin/users':
             return selectIcon(iconState, {

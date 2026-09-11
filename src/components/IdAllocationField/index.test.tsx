@@ -30,12 +30,46 @@ const allocationState = (overrides: Partial<UseIdAllocationResult> = {}): UseIdA
 });
 
 describe('IdAllocationField', () => {
-    it('starts visibly on Auto with the helper text and a pressed Auto toggle', () => {
+    it('starts visibly on Auto with a pressed Auto toggle and NO supporting text', () => {
         render(<IdAllocationField label="Träger-ID" allocation={allocationState()} />);
 
         expect(screen.getByRole('textbox', { name: 'Träger-ID' })).toHaveValue('Auto');
-        expect(screen.getByText('Die nächste freie ID wird automatisch vergeben.')).toBeInTheDocument();
+        // Owner call: the supporting line states a problem, never an expectation.
+        expect(screen.queryByText('Die nächste freie ID wird automatisch vergeben.')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Automatische ID-Vergabe' })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    /*
+     * The row must COLLAPSE, not render an empty one: an empty string still
+     * occupies the 16px supporting-text line and keeps the control 76px tall,
+     * which is what put the toolbar's field boxes on different baselines.
+     */
+    it('renders no supporting-text element at all in the quiet states', () => {
+        const { rerender } = render(<IdAllocationField label="Träger-ID" allocation={allocationState()} />);
+        const supportingTextOf = () => {
+            const input = screen.getByRole('textbox', { name: 'Träger-ID' });
+            const id = input.getAttribute('aria-describedby');
+            return id ? document.getElementById(id) : null;
+        };
+
+        expect(supportingTextOf()).toBeNull();
+
+        rerender(
+            <IdAllocationField
+                label="Träger-ID"
+                allocation={allocationState({ mode: 'manual', value: 21, validation: 'available' })}
+            />,
+        );
+        expect(supportingTextOf()).toBeNull();
+
+        // …but a real problem still gets its line.
+        rerender(
+            <IdAllocationField
+                label="Träger-ID"
+                allocation={allocationState({ mode: 'manual', value: 21, validation: 'assigned' })}
+            />,
+        );
+        expect(supportingTextOf()).toHaveTextContent('Diese ID ist bereits vergeben.');
     });
 
     it('routes typing into manual mode via setManualValue', async () => {
@@ -120,7 +154,7 @@ describe('IdAllocationField', () => {
                 allocation={allocationState({ mode: 'manual', value: 21, validation: 'available' })}
             />,
         );
-        expect(screen.getByText('ID 21 ist frei.')).toBeInTheDocument();
+        expect(screen.queryByText('ID 21 ist frei.')).not.toBeInTheDocument();
         expect(screen.getByRole('textbox', { name: 'Träger-ID' })).not.toHaveAttribute('aria-invalid');
     });
 

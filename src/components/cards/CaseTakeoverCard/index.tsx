@@ -142,10 +142,6 @@ export const CaseTakeoverCard = ({ value, onChange, onConfig, onEnforce, classNa
                 value={value.notificationText}
                 onChange={(e) => onChange({ notificationText: e.target.value })}
             />
-
-            <Typography variant="body-small" color="var(--m3-error, #ba1a1a)" className={styles.warning}>
-                Selected options prevent lower roles from hiding functions.
-            </Typography>
         </div>
     </Card>
 );

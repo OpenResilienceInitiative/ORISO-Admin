@@ -1,8 +1,6 @@
-import { Form, Switch } from 'antd';
+import { ConfigProvider, Form, Switch } from 'antd';
 import Paragraph from 'antd/lib/typography/Paragraph';
 import classNames from 'classnames';
-import DisabledContext from 'antd/es/config-provider/DisabledContext';
-import { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { M3Switch } from '../M3Switch';
 import styles from './styles.module.scss';
@@ -54,8 +52,8 @@ const FormSwitchFieldLocal = ({
     switchVariant,
 }: FormSwitchFieldLocalProps) => {
     const { t } = useTranslation();
-    const contextDisabled = useContext(DisabledContext);
-    const isDisabled = contextDisabled || disabled;
+    const { componentDisabled } = ConfigProvider.useConfig();
+    const isDisabled = componentDisabled || disabled;
     const fieldChecked = inverseValue ? !checked : checked;
     const onSwitchChange = (value: boolean) => onChange?.(inverseValue ? !value : value);
 

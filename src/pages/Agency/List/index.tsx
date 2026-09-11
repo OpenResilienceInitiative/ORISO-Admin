@@ -19,6 +19,7 @@ import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { Page } from '../../../components/Page';
+import { PageMobileActions } from '../../../components/Page/PageMobileActions';
 import { useAgenciesData } from '../../../hooks/useAgencysData';
 import { ResizeTable } from '../../../components/ResizableTable';
 import { GlobalSearchBar } from '../../../components/GlobalSearch';
@@ -328,30 +329,44 @@ export const AgencyList = () => {
                 titleKey="agency"
                 subTitleKey={`agency.title.text${can(PermissionAction.Create, Resource.Agency) ? '' : '.self'}`}
             >
-                <div className={styles.searchNewContainer}>
-                    <GlobalSearchBar
-                        className={styles.searchField}
-                        expandedWidth={499}
-                        onSearch={updateSearch}
-                        onSearchChange={setSearchDebounced}
-                        searchPlaceholder={t('agency.list.searchPlaceholder')}
-                    >
-                        {can(PermissionAction.Create, Resource.Agency) && (
-                            <div className={styles.toolbarActions}>
-                                <Button
-                                    className={styles.addButton}
-                                    type="primary"
-                                    icon={<PlusOutlined className={styles.addButtonIcon} />}
-                                    disabled={isAgencyCreationDpaBlocked}
-                                    title={isAgencyCreationDpaBlocked ? t('agency.dpaGate.title') : undefined}
-                                    onClick={() => navigate(`${routePathNames.agencyAdd}`)}
-                                >
-                                    {t('new')}
-                                </Button>
-                            </div>
-                        )}
-                    </GlobalSearchBar>
-                </div>
+                <PageMobileActions
+                    id="agencies"
+                    search={{
+                        label: t('agency.list.searchPlaceholder'),
+                        placeholder: t('agency.list.searchPlaceholder'),
+                        onSearch: updateSearch,
+                    }}
+                    add={
+                        can(PermissionAction.Create, Resource.Agency) && !isAgencyCreationDpaBlocked
+                            ? { label: t('new'), onAdd: () => navigate(routePathNames.agencyAdd) }
+                            : undefined
+                    }
+                >
+                    <div className={styles.searchNewContainer}>
+                        <GlobalSearchBar
+                            className={styles.searchField}
+                            expandedWidth={499}
+                            onSearch={updateSearch}
+                            onSearchChange={setSearchDebounced}
+                            searchPlaceholder={t('agency.list.searchPlaceholder')}
+                        >
+                            {can(PermissionAction.Create, Resource.Agency) && (
+                                <div className={styles.toolbarActions}>
+                                    <Button
+                                        className={styles.addButton}
+                                        type="primary"
+                                        icon={<PlusOutlined className={styles.addButtonIcon} />}
+                                        disabled={isAgencyCreationDpaBlocked}
+                                        title={isAgencyCreationDpaBlocked ? t('agency.dpaGate.title') : undefined}
+                                        onClick={() => navigate(`${routePathNames.agencyAdd}`)}
+                                    >
+                                        {t('new')}
+                                    </Button>
+                                </div>
+                            )}
+                        </GlobalSearchBar>
+                    </div>
+                </PageMobileActions>
             </Page.Title>
 
             <div className={styles.tableContainer}>

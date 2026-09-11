@@ -1,18 +1,59 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SideScrollerButton } from '../SideScrollerFooter';
+import { CardDeckNavProvider, useCardDeckNav } from './CardDeckNavContext';
 import { CardDeck } from './index';
 
-const renderDeck = (children = ['One', 'Two', 'Three']) =>
-    render(
-        <CardDeck ariaLabel="Admin cards" previousLabel="Previous card" nextLabel="Next card">
-            {children.map((label) => (
-                <CardDeck.Item key={label}>
-                    <div>{label}</div>
-                </CardDeck.Item>
-            ))}
-        </CardDeck>,
+/**
+ * Stands in for the arrow rail in the page header (`PageDeckNav`): the deck no
+ * longer renders its own footer, it publishes its scroll state and the header
+ * drives it from there.
+ */
+const HeaderNavHarness = () => {
+    const nav = useCardDeckNav();
+
+    if (!nav) {
+        return null;
+    }
+
+    return (
+        <nav aria-label="Admin cards Navigation">
+            <SideScrollerButton
+                controlsId={nav.controlsId}
+                direction="backward"
+                enabled={nav.canScrollBackward}
+                label={nav.previousLabel}
+                onClick={() => nav.scroll(-1)}
+            />
+            <SideScrollerButton
+                controlsId={nav.controlsId}
+                direction="forward"
+                enabled={nav.canScrollForward}
+                label={nav.nextLabel}
+                onClick={() => nav.scroll(1)}
+            />
+        </nav>
     );
+};
+
+const Harness = ({ children }: { children: React.ReactNode }) => (
+    <CardDeckNavProvider>
+        <HeaderNavHarness />
+        <CardDeck ariaLabel="Admin cards" previousLabel="Previous card" nextLabel="Next card">
+            {children}
+        </CardDeck>
+    </CardDeckNavProvider>
+);
+
+const items = (labels: Array<string>) =>
+    labels.map((label) => (
+        <CardDeck.Item key={label}>
+            <div>{label}</div>
+        </CardDeck.Item>
+    ));
+
+const renderDeck = (labels = ['One', 'Two', 'Three']) => render(<Harness>{items(labels)}</Harness>);
 
 const setElementMetric = (element: Element, property: 'clientWidth' | 'offsetWidth' | 'scrollWidth', value: number) => {
     Object.defineProperty(element, property, {
@@ -49,38 +90,36 @@ describe('CardDeck', () => {
         window.getComputedStyle = originalGetComputedStyle;
     });
 
-    it('only renders the side-scroll footer for multi-card decks', () => {
-        const { container, rerender } = renderDeck(['One']);
+    it('never renders arrows of its own — they belong to the page header', () => {
+        const { container } = renderDeck();
 
-        expect(container.querySelector('[data-admin-card-deck-footer]')).not.toBeInTheDocument();
-
-        rerender(
-            <CardDeck ariaLabel="Admin cards" previousLabel="Previous card" nextLabel="Next card">
-                <CardDeck.Item>
-                    <div>One</div>
-                </CardDeck.Item>
-                <CardDeck.Item>
-                    <div>Two</div>
-                </CardDeck.Item>
-            </CardDeck>,
-        );
-
-        expect(container.querySelector('[data-admin-card-deck-footer]')).toBeInTheDocument();
+        expect(container.querySelector('[data-admin-card-deck]')?.querySelector('button')).toBeNull();
     });
 
-    it('uses semantic region, list, listitem and footer navigation markup', () => {
+    it('only registers with the header navigation for multi-card decks', () => {
+        const { rerender } = renderDeck(['One']);
+
+        expect(screen.queryByRole('button', { name: 'Next card' })).not.toBeInTheDocument();
+
+        rerender(<Harness>{items(['One', 'Two'])}</Harness>);
+
+        expect(screen.getByRole('button', { name: 'Next card' })).toBeInTheDocument();
+    });
+
+    it('uses semantic region, list and listitem markup and wires the header arrows to the scroller', () => {
         renderDeck();
 
         const region = screen.getByRole('region', { name: 'Admin cards' });
         const scrollGroup = screen.getByRole('group', { name: 'Admin cards' });
         const list = screen.getByRole('list', { name: 'Admin cards' });
-        const footerNavigation = screen.getByRole('navigation', { name: 'Admin cards Navigation' });
+        const headerNavigation = screen.getByRole('navigation', { name: 'Admin cards Navigation' });
         const nextButton = screen.getByRole('button', { name: 'Next card' });
 
         expect(region).toContainElement(scrollGroup);
         expect(scrollGroup).toContainElement(list);
         expect(screen.getAllByRole('listitem')).toHaveLength(3);
-        expect(footerNavigation).toContainElement(nextButton);
+        expect(region).not.toContainElement(headerNavigation);
+        expect(headerNavigation).toContainElement(nextButton);
         expect(nextButton).toHaveAttribute('aria-controls', scrollGroup.id);
     });
 

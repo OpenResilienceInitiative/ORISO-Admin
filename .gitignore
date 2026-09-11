@@ -37,3 +37,8 @@ storybook-static
 
 # local testing notes (contains credentials) — never commit
 TESTING-CONTEXT.md
+
+# Agent task scratch: ignore new folders under docs/agent-tasks/.
+# docs/ itself stays trackable. Commit a trail by adding a negation for that folder.
+docs/agent-tasks/*
+!docs/agent-tasks/index.md

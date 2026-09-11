@@ -1,0 +1,33 @@
+/* M3 plain tooltip: inverse-surface bubble, body/small type, one line height of
+   offset from the trigger. Colours are M3 CSS variables only. */
+
+.wrapper {
+    position: relative;
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+}
+
+.bubble {
+    position: absolute;
+    z-index: 10;
+    left: 50%;
+    width: max-content;
+    max-width: 260px;
+    padding: 4px 8px;
+    background: var(--m3-inverse-surface, #303031);
+    border-radius: 4px;
+    color: var(--m3-inverse-on-surface, #f3f0f0);
+    font: 400 12px/16px var(--m3-body-font-family);
+    letter-spacing: 0.4px;
+    pointer-events: none;
+    transform: translateX(-50%);
+}
+
+.top {
+    bottom: calc(100% + 4px);
+}
+
+.bottom {
+    top: calc(100% + 4px);
+}

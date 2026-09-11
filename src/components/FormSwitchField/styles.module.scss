@@ -40,21 +40,23 @@
         justify-content: space-between;
         flex-wrap: nowrap;
     }
+
     :global(.ant-form-item-label) {
         flex-grow: 1;
+
+        &,
+        label {
+            padding-bottom: 0;
+        }
     }
+
     :global(.ant-col.ant-form-item-control) {
         width: auto;
         display: flex;
         align-items: flex-end;
     }
+
     :global(.ant-form-item-control-input) {
         min-height: 22px;
-    }
-    :global(.ant-form-item-label) {
-        &,
-        label {
-            padding-bottom: 0;
-        }
     }
 }

@@ -1,8 +1,6 @@
 import * as React from 'react';
-import { useContext } from 'react';
-import { Form } from 'antd';
+import { ConfigProvider, Form } from 'antd';
 import type { Rule } from 'antd/lib/form';
-import DisabledContext from 'antd/es/config-provider/DisabledContext';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
@@ -63,8 +61,8 @@ const MuiRadioControl = ({
     vertical,
     options,
 }: MuiRadioControlProps) => {
-    const contextDisabled = useContext(DisabledContext);
-    const isDisabled = contextDisabled || disabled;
+    const { componentDisabled } = ConfigProvider.useConfig();
+    const isDisabled = componentDisabled || disabled;
     const { status } = Form.Item.useStatus();
     const form = Form.useFormInstance();
     const isError = status === 'error';

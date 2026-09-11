@@ -8,6 +8,7 @@
 .providerHint {
     display: block;
     margin-bottom: 8px;
+
     /* Match the dialog body contrast (M3 on-surface-variant) — antd's `secondary`
        grey is too low-contrast for supporting text on the dialog surface. */
     color: var(--m3-on-surface-variant, #444748);

@@ -2,7 +2,7 @@ import { ComponentProps, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ReactComponent as NumberV2Icon } from '../../resources/img/svg/oriso/number_v2_400_24px.svg';
 import { ReactComponent as NumberV2FilledIcon } from '../../resources/img/svg/oriso/number_v2_filled_24px.svg';
-import { M3NumberField } from './index';
+import { M3DurationField, M3NumberField } from './index';
 
 const InteractiveExample = (args: ComponentProps<typeof M3NumberField>) => {
     const [value, setValue] = useState<number | undefined>(3);
@@ -75,3 +75,30 @@ export const Interactive: Story = {
 export const Disabled: Story = {
     args: { variant: 'outlined', value: 42, disabled: true },
 };
+
+export const AutoWithIntegratedAction: Story = {
+    args: {
+        displayText: 'Auto',
+        trailing: <button type="button">Auto</button>,
+    },
+};
+
+export const ReadOnly: Story = {
+    args: { value: 42, readOnly: true },
+};
+
+export const SessionDuration = {
+    render: () => (
+        <div style={{ maxWidth: 420 }}>
+            <M3DurationField label="Maximum Session Duration" value={180} onChange={() => {}} />
+        </div>
+    ),
+} satisfies StoryObj<typeof M3DurationField>;
+
+export const SessionDurationReadOnly = {
+    render: () => (
+        <div style={{ maxWidth: 420 }}>
+            <M3DurationField label="Maximum Session Duration" value={180} readOnly />
+        </div>
+    ),
+} satisfies StoryObj<typeof M3DurationField>;

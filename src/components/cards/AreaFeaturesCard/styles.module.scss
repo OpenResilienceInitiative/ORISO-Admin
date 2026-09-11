@@ -28,6 +28,7 @@
 
 /* .body is flex-direction:column with default align-items:stretch — pin the
    pill-shaped "add" button to its natural width instead of stretching full-width. */
+
 .addRangeButton {
     align-self: flex-start;
 }

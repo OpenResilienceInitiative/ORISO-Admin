@@ -1,0 +1,69 @@
+/* Outline control matching the M3 function-bar split buttons
+   (M3RichTextEditor .outlineBtn / .versionLeading). */
+
+.trigger {
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 4px;
+    align-items: center;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 18px;
+    background: transparent;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+
+    &:hover {
+        background: rgb(68 71 72 / 8%);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #273270);
+        outline-offset: 1px;
+    }
+}
+
+.triggerDanger {
+    border-color: var(--m3-error, #ba1a1a);
+    color: var(--m3-error, #ba1a1a);
+}
+
+.dialogBody {
+    display: grid;
+    gap: 12px;
+}
+
+.notice {
+    width: 100%;
+}
+
+/* The platform's fixed addendum: shown exactly where the help-seeker reads it,
+   visibly not part of the editable sentence. */
+
+.addendum {
+    display: grid;
+    margin: 0;
+    padding: 10px 12px;
+    border-left: 3px solid var(--m3-outline-variant, #cac4d0);
+    border-radius: 4px;
+    background: var(--m3-surface-container, #f3edf7);
+    gap: 4px;
+}
+
+.addendumText {
+    color: var(--m3-on-surface, #1d1b20);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.addendumCaption {
+    color: var(--m3-on-surface-variant, #49454f);
+    font-size: 12px;
+    font-style: italic;
+}

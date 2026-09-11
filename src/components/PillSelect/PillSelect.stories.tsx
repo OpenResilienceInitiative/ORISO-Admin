@@ -17,7 +17,7 @@ const topicOptions = [
 ];
 
 const conversationTypeOptions = [
-    { value: 'nearby', label: 'Nähe' },
+    { value: 'nearby', label: 'Mail' },
     { value: 'chat', label: 'Chat' },
     { value: 'video', label: 'Video' },
 ];

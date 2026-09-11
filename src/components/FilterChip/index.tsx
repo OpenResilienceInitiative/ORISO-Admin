@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import classNames from 'classnames';
+import { M3Tooltip } from '../M3Tooltip';
 import styles from './styles.module.scss';
 
 export interface FilterChipProps {
@@ -11,6 +12,12 @@ export interface FilterChipProps {
     className?: string;
     /** Accessible name when `label` is not a plain string. */
     ariaLabel?: string;
+    /**
+     * Explanation shown on hover / focus. A chip label is a single word of
+     * domain vocabulary ("Ersetzt") and is not self-explaining; omit only when
+     * the label genuinely needs no gloss.
+     */
+    tooltip?: string;
 }
 
 const CheckIcon = () => (
@@ -31,17 +38,20 @@ export const FilterChip = ({
     onChange,
     className,
     ariaLabel,
+    tooltip,
 }: FilterChipProps) => (
-    <button
-        type="button"
-        role="checkbox"
-        aria-checked={selected}
-        aria-label={ariaLabel}
-        disabled={disabled}
-        className={classNames(styles.chip, { [styles.selected]: selected }, className)}
-        onClick={() => onChange?.(!selected)}
-    >
-        {selected && <CheckIcon />}
-        <span className={styles.label}>{label}</span>
-    </button>
+    <M3Tooltip text={tooltip ?? ''}>
+        <button
+            type="button"
+            role="checkbox"
+            aria-checked={selected}
+            aria-label={ariaLabel}
+            disabled={disabled}
+            className={classNames(styles.chip, { [styles.selected]: selected }, className)}
+            onClick={() => onChange?.(!selected)}
+        >
+            {selected && <CheckIcon />}
+            <span className={styles.label}>{label}</span>
+        </button>
+    </M3Tooltip>
 );

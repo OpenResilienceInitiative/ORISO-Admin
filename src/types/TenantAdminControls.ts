@@ -1,4 +1,5 @@
 import { PermissionToggleVisibility } from './PermissionToggleVisibility';
+import type { PolicyValue } from './permissionPolicy';
 
 export type TenantAdminControls = {
     permissionsPageEnabled?: boolean | null;
@@ -9,4 +10,5 @@ export type TenantAdminControls = {
     enforcedPermissionToggles?: PermissionToggleVisibility & {
         appearance?: boolean | null;
     };
+    permissionPolicies?: Record<string, PolicyValue<boolean>>;
 };

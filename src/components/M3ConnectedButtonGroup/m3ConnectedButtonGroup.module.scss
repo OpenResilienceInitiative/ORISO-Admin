@@ -1,0 +1,89 @@
+/*
+ * Figma 1683:39456, `Active Subheaders`. Colours map by role, not by Figma's
+ * style name — see the note in m3FabMenu.module.scss.
+ */
+
+.group {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 2px;
+    // Wider than the space beside the FAB on purpose: subsections run off the
+    // right edge and are swiped into view.
+    overflow-x: auto;
+    border-radius: 28px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.segment {
+    display: inline-flex;
+    height: 56px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 24px;
+    border: 0;
+    // Unselected segments are slabs; only the selected one is a pill.
+    border-radius: 8px;
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    gap: 8px;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    min-width: 48px;
+    text-decoration: none;
+    // The shape morph is the selection affordance, so it must be visible.
+    transition: border-radius 0.2s ease, background 0.2s ease;
+    white-space: nowrap;
+
+    svg {
+        width: 24px;
+        height: 24px;
+        flex: 0 0 24px;
+    }
+
+    &:hover,
+    &:focus-visible {
+        text-decoration: none;
+    }
+
+    // No inherited orange ring on a dark pill.
+    &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--m3-on-secondary-container, #e7effc);
+    }
+}
+
+.segmentSelected {
+    border-radius: 100px;
+    background: var(--m3-secondary, #4c555f);
+    // The role Figma names here is primary-fixed, so that is the token used,
+    // with Figma's own #FFDAD5 as the fallback. Note the value drift: at runtime
+    // orisoScheme writes #ffe2de into --m3-primary-fixed (DEFAULT_ACCENT_LIGHT),
+    // so the app renders the rose one shade lighter than the design until the
+    // token is corrected globally — deliberately not patched from here.
+    color: var(--m3-primary-fixed, #ffdad5);
+}
+
+// The last segment rounds its outer side to close the group.
+.segmentLast {
+    border-radius: 8px 28px 28px 8px;
+
+    &.segmentSelected {
+        border-radius: 100px;
+    }
+}
+
+.label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

@@ -1,0 +1,13 @@
+---
+description: Format every touched file with Prettier before considering a change done
+alwaysApply: true
+---
+
+# Prettier on every change
+
+CI runs `npx prettier . --check --ignore-unknown` and fails the build on any unformatted tracked file, including Markdown and JSON.
+
+- After editing, run `npx prettier --write` on **every touched path** (or `npm run lint:formatting:fix` for the whole tree).
+- Then re-check those paths with `npx prettier --check`. Check-only is not enough if you just wrote the files.
+- Markdown, JSON, and YAML count. PR #888 failed because `docs/agent-tasks/index.md` was committed unformatted.
+- Do not leave formatting for a later commit. Unformatted files are not done.

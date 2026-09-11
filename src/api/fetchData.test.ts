@@ -28,7 +28,8 @@ vi.mock('../appConfig', () => ({
         return appConfigMock.csrfWhitelistHeader;
     },
 }));
-vi.mock('antd', () => ({ message: { error: vi.fn() } }));
+const messageError = vi.hoisted(() => vi.fn());
+vi.mock('antd', () => ({ message: { error: messageError } }));
 vi.mock('i18next', () => ({ default: { resolvedLanguage: 'de', language: 'de', t: (key: unknown) => key } }));
 
 // eslint-disable-next-line import/first
@@ -55,6 +56,7 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         getAccessTokenForRequests.mockReset();
         getAccessTokenForRequests.mockReturnValue('access-token');
         appConfigMock.csrfWhitelistHeader = 'X-CSRF-Token';
+        messageError.mockReset();
     });
 
     // Guarantee cleanup even if an assertion throws mid-test, so fake timers and
@@ -212,6 +214,68 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         ).rejects.toThrow(FETCH_ERRORS.FORBIDDEN);
 
         expect(location.href).toBe('');
+    });
+
+    // UserService#1006 (client half): a 403 on invite create carries the backend's
+    // role explanation. Callers opting into FORBIDDEN_WITH_RESPONSE get the raw
+    // Response (to read that message) and must NOT lose the page to the
+    // access-denied redirect.
+    it('rejects with the raw response on 403 when FORBIDDEN_WITH_RESPONSE is requested, without redirecting', async () => {
+        const location = { href: '' };
+        vi.stubGlobal('window', { location });
+        const forbiddenResponse = response(403, { message: 'Only platform admins can create administrative accounts' });
+        const fetchMock = vi.fn().mockResolvedValue(forbiddenResponse);
+        vi.stubGlobal('fetch', fetchMock);
+
+        // Identity, not shape: the caller must receive the VERY response object so it
+        // can read the backend's message from headers/body.
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/useradmin/account-invites',
+                method: FETCH_METHODS.POST,
+                responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE],
+                bodyData: JSON.stringify({ recipientEmail: 'neu@example.org' }),
+            }),
+        ).rejects.toBe(forbiddenResponse);
+
+        expect(location.href).toBe('');
+        expect(logout).not.toHaveBeenCalled();
+    });
+
+    // Dead-session UX: when the refresh fails and we fall back to logout, the
+    // admin must be TOLD the session expired instead of watching a spinner or a
+    // silent redirect.
+    it('shows the session-expired toast when falling back to logout', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(response(401));
+        vi.stubGlobal('fetch', fetchMock);
+        tryRefreshAccessToken.mockResolvedValue(false);
+
+        await expect(createAgency()).rejects.toThrow(FETCH_ERRORS.UNAUTHORIZED);
+
+        expect(logout).toHaveBeenCalledTimes(1);
+        expect(messageError).toHaveBeenCalledTimes(1);
+        // i18next is mocked as t: (key) => key, so the content IS the key.
+        expect(messageError.mock.calls[0][0]).toMatchObject({
+            content: 'message.error.sessionExpired',
+            key: 'session-expired',
+        });
+    });
+
+    // A page with many active queries fires several 401s at once; they all share the
+    // failed refresh and each reaches the logout fallback. The stable antd key makes
+    // antd collapse the repeats into ONE visible toast instead of stacking them.
+    it('keys every concurrent session-expired toast identically so antd collapses them', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(response(401));
+        vi.stubGlobal('fetch', fetchMock);
+        tryRefreshAccessToken.mockResolvedValue(false);
+
+        const results = await Promise.allSettled([createAgency(), createAgency(), createAgency()]);
+
+        expect(results.every((outcome) => outcome.status === 'rejected')).toBe(true);
+        expect(messageError.mock.calls.length).toBeGreaterThan(0);
+        messageError.mock.calls.forEach(([notice]) => {
+            expect(notice).toMatchObject({ key: 'session-expired' });
+        });
     });
 
     // AD-H07 / #143: every request must eventually fail instead of hanging forever.

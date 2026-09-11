@@ -73,4 +73,37 @@ describe('mapTenantDataToTenantAdminData', () => {
         expect(mapped.content.termsAndConditions).toEqual({ de: 'Top-level terms' });
         expect(mapped.content.claim).toEqual({ de: 'Top-level claim' });
     });
+
+    // ADR-021 decision 4: the consent sentence is a field of the privacy policy.
+    // Dropping it here hid the consent editor on the normal tenant-admin path,
+    // because the card offers it only when the backend actually carries the field.
+    it('carries the consent sentence through', () => {
+        const mapped = mapTenantDataToTenantAdminData({
+            ...baseTenantData(),
+            content: {
+                ...baseTenantData().content,
+                privacyConsent: { de: 'Ich habe die {{legal_links}} gelesen.' },
+            } as unknown as TenantData['content'],
+        });
+
+        expect(mapped.content.privacyConsent).toEqual({ de: 'Ich habe die {{legal_links}} gelesen.' });
+    });
+
+    it('leaves the consent field absent when the backend does not carry it', () => {
+        const mapped = mapTenantDataToTenantAdminData(baseTenantData());
+
+        // NOT `{}`: absence is what tells the editors "this deployment cannot store
+        // a consent sentence", so offering the input would lose what is typed into it.
+        expect(mapped.content.privacyConsent).toBeUndefined();
+        expect('privacyConsent' in mapped.content).toBe(false);
+    });
+
+    it('keeps an explicitly empty consent map distinguishable from an absent one', () => {
+        const mapped = mapTenantDataToTenantAdminData({
+            ...baseTenantData(),
+            content: { ...baseTenantData().content, privacyConsent: {} } as unknown as TenantData['content'],
+        });
+
+        expect(mapped.content.privacyConsent).toEqual({});
+    });
 });

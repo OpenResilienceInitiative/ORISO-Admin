@@ -103,11 +103,13 @@ const SYSTEM_ERROR = '#b1005e';
 const DARK_TEXT = '#141c25';
 const ADMIN_TABLE_TOKENS = {
     '--admin-workspace-background': '#e4e2e2',
-    '--admin-search-surface': '#fcf9f9',
+    // Keep in lockstep with src/app.css — the search control sits on
+    // `--m3-surface-container-high`, the same surface as the outlined fields.
+    '--admin-search-surface': '#eae7e8',
     '--admin-search-text': '#444748',
     '--admin-search-placeholder': '#444748',
     '--admin-search-icon': '#444748',
-    '--admin-search-hover-surface': '#f0edee',
+    '--admin-search-hover-surface': '#e4e2e2',
     '--admin-table-surface': '#f6f3f3',
     '--admin-table-header-surface': '#e4e2e2',
     '--admin-table-row-hover-surface': '#f0edee',

@@ -6,8 +6,12 @@ import DOMPurify from 'dompurify';
 import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 import ArrowForward from '@mui/icons-material/ArrowForward';
+import ForwardToInboxRounded from '@mui/icons-material/ForwardToInboxRounded';
+import HourglassTopRounded from '@mui/icons-material/HourglassTopRounded';
 import { useTranslation } from 'react-i18next';
 import { DpaFormSection, focusDpaConsent } from '../../components/DpaLegalForm/DpaFormSection';
+import { DpaLegalReader } from '../../components/DpaLegalForm/DpaLegalReader';
+import { DpaForwardDialog } from '../../components/DpaForwardDialog/DpaForwardDialog';
 import { M3Button } from '../../components/M3Button';
 import { MuiFormField } from '../../components/mui/MuiFormField';
 import { focusFirstInvalidField } from '../../utils/formErrorNavigation';
@@ -17,6 +21,8 @@ import {
     OrganisationData,
     TenantAdminOnboardingInviteDTO,
 } from '../../api/tenantOnboarding/tenantOnboarding';
+import { DpaForwardClient } from '../../api/tenantOnboarding/dpaForward';
+import { WizardDpaForwardState } from './useTenantAdminOnboardingFlow';
 import styles from './styles.module.scss';
 
 interface OrganisationDpaStepProps {
@@ -24,7 +30,13 @@ interface OrganisationDpaStepProps {
     /** Previously entered values when navigating back from the account step. */
     initialOrganisation: OrganisationData | null;
     initialDpa: DpaAcceptanceData | null;
-    onSubmit: (organisation: OrganisationData, dpa: DpaAcceptanceData) => void;
+    /** Declared delegation (#723) — the step renders the calm on-hold state. */
+    forward: WizardDpaForwardState | null;
+    /** Raw invite token — the only credential of the public forward endpoints. */
+    inviteToken: string;
+    forwardClient: DpaForwardClient;
+    onForwarded: (forward: WizardDpaForwardState) => void;
+    onSubmit: (organisation: OrganisationData, dpa: DpaAcceptanceData | null) => void;
 }
 
 interface OrganisationDpaFormValues {
@@ -64,11 +76,21 @@ const FORM_NAME = 'tenantOnboarding';
  * A failed submit never dead-ends (#594.6): the reason appears next to the
  * button that was just pressed, and the flow jumps to whatever is missing —
  * the first invalid field, or the consent act.
+ *
+ * Forward path (#723, epic #722): an administrator who is not authorised to
+ * sign delegates through the forward dialog. The step then flips to a calm
+ * on-hold state — no signer fields, no consent — and the wizard continues
+ * with the organisation data alone; the register call carries the forwarded
+ * state instead of a self-signature.
  */
 export const OrganisationDpaStep = ({
     invite,
     initialOrganisation,
     initialDpa,
+    forward,
+    inviteToken,
+    forwardClient,
+    onForwarded,
     onSubmit,
 }: OrganisationDpaStepProps) => {
     const { t, i18n } = useTranslation();
@@ -76,6 +98,7 @@ export const OrganisationDpaStep = ({
     const [dpaAccepted, setDpaAccepted] = useState(initialDpa?.accepted ?? false);
     const [acceptTouched, setAcceptTouched] = useState(false);
     const [submitBlocker, setSubmitBlocker] = useState<SubmitBlocker | null>(null);
+    const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
 
     const dpaHtml = useMemo(
         () => DOMPurify.sanitize(pickLegalContentLanguage(invite.dpaContent, i18n.language)),
@@ -92,7 +115,25 @@ export const OrganisationDpaStep = ({
      */
     const dpaUnavailable = !dpaHtml;
 
+    // `!= null` on purpose, not `!== null`: an omitted prop arrives as
+    // `undefined`, and `undefined !== null` is true — a caller that simply
+    // does not pass `forward` would silently render the on-hold state and
+    // withhold the consent control.
+    const forwarded = forward != null;
+
     const onFinish = (values: OrganisationDpaFormValues) => {
+        const organisation: OrganisationData = {
+            name: values.name.trim(),
+            subdomain: values.subdomain.trim(),
+            address: values.address.trim(),
+        };
+        if (forwarded) {
+            // The delegation replaces the consent act — the signature arrives
+            // through the sign link; only the organisation data is submitted.
+            setSubmitBlocker(null);
+            onSubmit(organisation, null);
+            return;
+        }
         if (dpaUnavailable) {
             setSubmitBlocker('dpa');
             return;
@@ -104,54 +145,46 @@ export const OrganisationDpaStep = ({
             return;
         }
         setSubmitBlocker(null);
-        onSubmit(
-            { name: values.name.trim(), subdomain: values.subdomain.trim(), address: values.address.trim() },
-            {
-                accepted: true,
-                signerName: values.signerName.trim(),
-                signerPosition: values.signerPosition.trim(),
-                signerEmail: values.signerEmail.trim(),
-                signerOrganisation: values.signerOrganisation.trim(),
-            },
-        );
+        onSubmit(organisation, {
+            accepted: true,
+            signerName: values.signerName.trim(),
+            signerPosition: values.signerPosition.trim(),
+            signerEmail: values.signerEmail.trim(),
+            signerOrganisation: values.signerOrganisation.trim(),
+        });
     };
 
     const onFinishFailed = ({ errorFields }: ValidateErrorEntity<OrganisationDpaFormValues>) => {
         // The consent state is part of "incomplete" as well — show its own
         // inline error from now on, whatever else is missing.
         setAcceptTouched(true);
-        setSubmitBlocker(dpaUnavailable ? 'dpa' : 'fields');
+        setSubmitBlocker(dpaUnavailable && !forwarded ? 'dpa' : 'fields');
         // Actually move the viewport AND the caret to what is missing. antd's
         // own `scrollToField` silently did nothing here (#594.6 review).
-        if (!focusFirstInvalidField(errorFields, FORM_NAME) && !dpaAccepted) {
+        if (!focusFirstInvalidField(errorFields, FORM_NAME) && !forwarded && !dpaAccepted) {
             focusDpaConsent();
         }
     };
 
-    return (
-        <Form
-            form={form}
-            name={FORM_NAME}
-            layout="vertical"
-            requiredMark={false}
-            onFinish={onFinish}
-            onFinishFailed={onFinishFailed}
-            onValuesChange={() => setSubmitBlocker(null)}
-            initialValues={{
-                name: initialOrganisation?.name ?? '',
-                subdomain: initialOrganisation?.subdomain ?? '',
-                address: initialOrganisation?.address ?? '',
-                signerName: initialDpa?.signerName ?? [invite.firstName, invite.lastName].filter(Boolean).join(' '),
-                signerPosition: initialDpa?.signerPosition ?? '',
-                signerEmail: initialDpa?.signerEmail ?? invite.recipientEmail,
-                // The slot is a free note now, not the organisation name — seeding it
-                // from the field three rows up is exactly the duplication that went.
-                signerOrganisation: initialDpa?.signerOrganisation ?? '',
-            }}
-        >
-            <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1 }}>
-                {t('tenantOnboarding.organisation.title')}
-            </Typography>
+    /**
+     * The organisation master data (owner report 2026-08-19). It used to open
+     * the step, above the agreement — three unnamed fields the user filled in
+     * before ever seeing what they were signing. It now sits directly above
+     * the signer block, under its own header, so the organisation and the
+     * person signing for it read as one statement.
+     *
+     * `h3`: the page owns the h1, the step title the h2 — the outline must not
+     * skip a level (WCAG 2.2 / axe `heading-order`).
+     */
+    const organisationSection = (
+        <div className={styles.masterDataSection}>
+            <h3 className={styles.sectionTitle} data-testid="organisation-master-data-title">
+                {t('tenantOnboarding.organisation.masterDataTitle')}
+            </h3>
+            {/* Moved here from the top of the step: the reserved tenant id is
+                explained where it is actually entered. Left above the agreement
+                it sat ~800px and a whole contract away from the fields it
+                describes. */}
             <Typography sx={{ mb: 2 }} color="text.secondary">
                 {t('tenantOnboarding.organisation.description', { tenantId: invite.reservedTenantId })}
             </Typography>
@@ -178,39 +211,164 @@ export const OrganisationDpaStep = ({
                     rules={[{ required: true, whitespace: true, message: t('tenantOnboarding.validation.required') }]}
                 />
             </div>
+        </div>
+    );
 
-            <div className={styles.dpaBlock}>
-                <DpaFormSection
-                    dpaHtml={dpaHtml}
-                    textLabel={t('tenantOnboarding.dpa.title')}
-                    textDescription={t('tenantOnboarding.dpa.description')}
-                    accepted={dpaAccepted}
-                    acceptTouched={acceptTouched}
-                    onAcceptedChange={(value) => {
-                        // Belt and braces: the control is not rendered without
-                        // an agreement, so this cannot fire — and if a future
-                        // host ever renders one, it still cannot set consent.
-                        if (dpaUnavailable) return;
-                        setDpaAccepted(value);
-                        setAcceptTouched(true);
-                        if (value) setSubmitBlocker(null);
+    return (
+        <>
+            <Form
+                form={form}
+                name={FORM_NAME}
+                layout="vertical"
+                requiredMark={false}
+                onFinish={onFinish}
+                onFinishFailed={onFinishFailed}
+                onValuesChange={() => setSubmitBlocker(null)}
+                initialValues={{
+                    name: initialOrganisation?.name ?? '',
+                    subdomain: initialOrganisation?.subdomain ?? '',
+                    address: initialOrganisation?.address ?? '',
+                    signerName: initialDpa?.signerName ?? [invite.firstName, invite.lastName].filter(Boolean).join(' '),
+                    signerPosition: initialDpa?.signerPosition ?? '',
+                    signerEmail: initialDpa?.signerEmail ?? invite.recipientEmail,
+                    // The slot is a free note now, not the organisation name — seeding it
+                    // from the field three rows up is exactly the duplication that went.
+                    signerOrganisation: initialDpa?.signerOrganisation ?? '',
+                }}
+            >
+                {/* The step subtitle stays here: it titles the STEP. The sentence
+                    that explains the reserved id moved down to the master-data
+                    block, because it describes the fields, not the step — owner
+                    note on the *2 screenshot, 2026-08-19. */}
+                <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 2 }}>
+                    {t('tenantOnboarding.organisation.title')}
+                </Typography>
+                <div className={styles.dpaBlock}>
+                    {forwarded ? (
+                        <>
+                            {/* On hold, not an error (#723): the delegation IS the
+                                valid completion of this step; the agreement stays
+                                readable while the signer fields and the consent
+                                act are withdrawn. */}
+                            <Alert severity="success" data-testid="dpa-forwarded-notice" sx={{ mb: 2 }}>
+                                {t('tenantOnboarding.dpa.forwarded.notice')}
+                            </Alert>
+                            {!dpaUnavailable && (
+                                <DpaLegalReader
+                                    html={dpaHtml}
+                                    label={t('tenantOnboarding.dpa.title')}
+                                    // Same block, same reason as the signing
+                                    // branch below (owner report 2026-08-18,
+                                    // H3/I2): the on-hold view states the
+                                    // agreement in its own alert, so the
+                                    // reader card must not repeat icon, title
+                                    // and info line.
+                                    hideHeader
+                                    contentLanguage={i18n.language}
+                                />
+                            )}
+                            {organisationSection}
+                            <div className={styles.forwardOnHold} data-testid="dpa-forwarded-onhold">
+                                <HourglassTopRounded aria-hidden className={styles.forwardOnHoldIcon} />
+                                <div>
+                                    <p className={styles.forwardOnHoldTitle}>
+                                        {t('tenantOnboarding.dpa.forwarded.title')}
+                                    </p>
+                                    <p className={styles.forwardOnHoldText}>
+                                        {t('tenantOnboarding.dpa.forwarded.description')}
+                                    </p>
+                                    {forward?.recipientEmail && (
+                                        <p className={styles.forwardOnHoldText} data-testid="dpa-forwarded-sent-to">
+                                            {t('tenantOnboarding.dpa.forwarded.sentTo', {
+                                                email: forward.recipientEmail,
+                                            })}
+                                        </p>
+                                    )}
+                                    {forward?.mailFailed && (
+                                        <p className={styles.forwardOnHoldText} data-testid="dpa-forwarded-mail-failed">
+                                            {t('tenantOnboarding.dpa.forwarded.mailFailed')}
+                                        </p>
+                                    )}
+                                    <M3Button
+                                        variant="text"
+                                        icon={<ForwardToInboxRounded fontSize="small" />}
+                                        onClick={() => setForwardDialogOpen(true)}
+                                    >
+                                        {t('tenantOnboarding.dpa.forwarded.showLink')}
+                                    </M3Button>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <DpaFormSection
+                                dpaHtml={dpaHtml}
+                                textLabel={t('tenantOnboarding.dpa.title')}
+                                // Owner annotation 2026-08-18 (I2): the reader's own icon +
+                                // title + info line goes in this view — mirrors DpaBlocker,
+                                // which withholds the same block for the same reason
+                                // (H3, same block, the "reader modal" this card becomes
+                                // when maximized).
+                                hideTextHeader
+                                beforeSignerFields={organisationSection}
+                                signerHeadingLevel={3}
+                                accepted={dpaAccepted}
+                                acceptTouched={acceptTouched}
+                                onAcceptedChange={(value) => {
+                                    // Belt and braces: the control is not rendered without
+                                    // an agreement, so this cannot fire — and if a future
+                                    // host ever renders one, it still cannot set consent.
+                                    if (dpaUnavailable) return;
+                                    setDpaAccepted(value);
+                                    setAcceptTouched(true);
+                                    if (value) setSubmitBlocker(null);
+                                }}
+                            />
+                            {/* The second path (#723): visible without completing the
+                                signature form, directly below the consent act. */}
+                            <div className={styles.forwardAction}>
+                                <M3Button
+                                    variant="text"
+                                    icon={<ForwardToInboxRounded fontSize="small" />}
+                                    onClick={() => setForwardDialogOpen(true)}
+                                >
+                                    {t('dpaForward.action.notAuthorised')}
+                                </M3Button>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                {submitBlocker && (
+                    <Alert severity="error" role="alert" data-testid="onboarding-submit-error" sx={{ mt: 3 }}>
+                        {t(BLOCKER_MESSAGE[submitBlocker])}
+                    </Alert>
+                )}
+
+                <div className={styles.actions}>
+                    {/* Every action on these surfaces carries its icon — the
+                        blocker's do, so the primary here must too (#594 review). */}
+                    <M3Button type="submit" variant="filled" block icon={<ArrowForward fontSize="small" />}>
+                        {t('tenantOnboarding.continue')}
+                    </M3Button>
+                </div>
+            </Form>
+
+            {forwardDialogOpen && (
+                <DpaForwardDialog
+                    forward={(request) => forwardClient.forward(inviteToken, request)}
+                    onClose={() => setForwardDialogOpen(false)}
+                    onForwarded={({ link, recipientEmail, mailFailed }) => {
+                        setForwardDialogOpen(false);
+                        onForwarded({
+                            signUrl: link.signUrl,
+                            expiresAt: link.expiresAt,
+                            recipientEmail,
+                            mailFailed,
+                        });
                     }}
                 />
-            </div>
-
-            {submitBlocker && (
-                <Alert severity="error" role="alert" data-testid="onboarding-submit-error" sx={{ mt: 3 }}>
-                    {t(BLOCKER_MESSAGE[submitBlocker])}
-                </Alert>
             )}
-
-            <div className={styles.actions}>
-                {/* Every action on these surfaces carries its icon — the
-                    blocker's do, so the primary here must too (#594 review). */}
-                <M3Button type="submit" variant="filled" block icon={<ArrowForward fontSize="small" />}>
-                    {t('tenantOnboarding.continue')}
-                </M3Button>
-            </div>
-        </Form>
+        </>
     );
 };

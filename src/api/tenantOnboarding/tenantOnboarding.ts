@@ -26,8 +26,16 @@ import { publicAccountInvitesEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 import { TwoFactorCodeInvalidError } from './TwoFactorCodeInvalidError';
 
-/** Why an invite link cannot (or can no longer) be used. */
-export type InviteLinkErrorReason = 'CONSUMED' | 'REVOKED' | 'EXPIRED' | 'INVALID';
+/**
+ * Why an invite link cannot (or can no longer) be used. Mirrors the backend's
+ * `AccountInviteLinkException.Reason` (410 + `{ "reason": … }`), minus
+ * NOT_ACTIVE, which collapses onto INVALID. SUPERSEDED is its own state on
+ * purpose: an invite replaced by a resend has a working successor, and the
+ * owner hit exactly this with an old tab — telling that person "expired" or
+ * "something is missing above" sends them nowhere, while "use the link from
+ * the newest e-mail" is the whole remedy.
+ */
+export type InviteLinkErrorReason = 'CONSUMED' | 'REVOKED' | 'EXPIRED' | 'SUPERSEDED' | 'INVALID';
 
 /** The link is not usable — consumed, revoked, expired or unknown. */
 export class InviteLinkError extends Error {
@@ -98,6 +106,13 @@ export interface DpaAcceptanceData {
 
 export interface TenantAdminRegistrationRequest {
     organisation: OrganisationData;
+    /**
+     * The request shape is UNCHANGED by the forward flow (#723 contract).
+     * `accepted: false` is accepted ONLY when this invite really forwarded the
+     * DPA — the forward is recorded server-side on the invite (`dpa_forwarded_at`)
+     * and the client cannot claim it by sending a flag. On an invite that never
+     * forwarded, `accepted: false` still answers 400.
+     */
     dpa: DpaAcceptanceData;
     account: {
         password: string;
@@ -149,7 +164,7 @@ const LINK_ERROR_BY_STATUS: Record<number, InviteLinkErrorReason> = {
 };
 
 const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
-    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'INVALID';
+    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'SUPERSEDED' || value === 'INVALID';
 
 /**
  * Translates a rejected public-endpoint call into the typed client errors: an
@@ -292,6 +307,8 @@ export const createHttpTenantAdminOnboardingClient = (): TenantAdminOnboardingCl
 };
 
 export interface StubTenantAdminOnboardingOptions {
+    /** The invite already forwarded the DPA server-side (permits accepted: false). */
+    forwarded?: boolean;
     /**
      * Initial link state presented by the stub. Default: 'VALID'.
      * 'PENDING_2FA_ACTIVATION' = consumed-but-resumable (#569 resume
@@ -312,8 +329,8 @@ const STUB_INVITE: TenantAdminOnboardingInviteDTO = {
     tenantIdReservationToken: '3f2c6d1e-8b1a-4b8e-9f47-stubreserved',
     expiresAt: null,
     dpaContent: JSON.stringify({
-        de: '<h2>Auftragsverarbeitungsvertrag</h2><p>Platzhalter — der veröffentlichte AVV-Text des Betreibers wird hier unverändert angezeigt.</p>',
-        en: '<h2>Data processing agreement</h2><p>Placeholder — the operator’s published DPA text is rendered here unchanged.</p>',
+        de: '<h2>Vertragsunterlagen</h2><p>Platzhalter — der veröffentlichte Vertragstext des Betreibers wird hier unverändert angezeigt.</p>',
+        en: '<h2>Contract documents</h2><p>Placeholder — the operator’s published contract text is rendered here unchanged.</p>',
     }),
 };
 
@@ -345,6 +362,10 @@ export const createStubTenantAdminOnboardingClient = (
     // contract). Only then is the link terminally consumed.
     let registered = inviteState === 'PENDING_2FA_ACTIVATION';
     let twoFactorActivated = inviteState === 'CONSUMED';
+    // Server-side record of the forward (`dpa_forwarded_at`) — the only thing
+    // that permits `accepted: false`. `markForwarded` stands in for the real
+    // endpoint having been called against the same invite.
+    const forwarded = options.forwarded ?? false;
 
     const STUB_TWO_FACTOR = {
         secret: 'ORISOSTUBTOTPSECRET234567ABCDEFG',
@@ -355,7 +376,12 @@ export const createStubTenantAdminOnboardingClient = (
         if (!inviteToken) {
             throw new InviteLinkError('INVALID');
         }
-        if (inviteState === 'REVOKED' || inviteState === 'EXPIRED' || inviteState === 'INVALID') {
+        if (
+            inviteState === 'REVOKED' ||
+            inviteState === 'EXPIRED' ||
+            inviteState === 'SUPERSEDED' ||
+            inviteState === 'INVALID'
+        ) {
             throw new InviteLinkError(inviteState);
         }
         if (twoFactorActivated) {
@@ -390,7 +416,9 @@ export const createStubTenantAdminOnboardingClient = (
                 // matching token with a conflict — surfaced as an unusable link.
                 throw new InviteLinkError('INVALID');
             }
-            if (!request.dpa.accepted) {
+            // Mirrors the server rule: `accepted: false` passes only when THIS
+            // invite forwarded the DPA beforehand — never on a client claim.
+            if (!request.dpa.accepted && !forwarded) {
                 throw new Error('DPA_NOT_ACCEPTED');
             }
             registered = true;

@@ -1,0 +1,71 @@
+.preview {
+    display: grid;
+    min-width: 0;
+    gap: 10px;
+}
+
+/* Inbox strip: what the recipient's mail client lists next to the mail. */
+.meta {
+    display: grid;
+    padding: 12px 16px;
+    border: 1px solid var(--m3-outline-variant, #cac4d0);
+    background: var(--m3-surface, #ffffff);
+    border-radius: 10px;
+    color: var(--m3-on-surface, #1d1b20);
+    gap: 4px;
+    overflow-wrap: anywhere;
+}
+
+/* E1: the caption belongs to the Admin chrome, not to the mail document, so it
+   may carry the tenant primary. Size and casing stay caption-sized — primary is
+   a colour here, not a promotion to a heading. */
+
+.metaLabel {
+    color: var(--m3-primary, #a5000a);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.metaSubject {
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+/* The mail itself, rendered by the ported e-mail kit inside the frame.
+   Background/border colours come inline from the kit's token set. */
+
+.frame {
+    display: block;
+    width: 100%;
+    border: 1px solid;
+    border-radius: 12px;
+}
+
+/* A failed render is shown as a failed render — never as a local approximation
+   that would look plausible and lie about what gets sent (finding E2). */
+
+.error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 120px;
+    padding: 16px;
+    border: 1px solid var(--m3-outline-variant, #cac4d0);
+    background: var(--m3-surface-container-low, #f7f2fa);
+    border-radius: 12px;
+    color: var(--m3-on-surface-variant, #49454f);
+    gap: 12px;
+}
+
+.retry {
+    padding: 8px 16px;
+    border: 1px solid var(--m3-outline, #79747e);
+    background: transparent;
+    border-radius: 20px;
+    color: var(--m3-primary, #a5000a);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 500;
+}

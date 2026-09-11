@@ -6,8 +6,8 @@ const paragraph =
 const section = (index: number, title: string) =>
     `<h2>§ ${index} ${title}</h2>${Array.from({ length: 4 }, () => `<p>${paragraph}</p>`).join('')}`;
 
-/** A realistically long, multi-chapter AVV — the case the chapter chips exist for. */
-export const LONG_DPA_HTML = `<h1>Auftragsverarbeitungsvertrag</h1><p>Zwischen dem Plattformbetreiber und Ihrer Organisation wird der folgende Vertrag geschlossen.</p>${[
+/** Realistically long, multi-chapter contract documents — the case the chapter chips exist for. */
+export const LONG_DPA_HTML = `<h1>Vertragsunterlagen</h1><p>Zwischen dem Plattformbetreiber und Ihrer Organisation werden die folgenden Vertragsunterlagen vereinbart.</p>${[
     'Gegenstand und Dauer',
     'Art und Zweck der Verarbeitung',
     'Kategorien betroffener Personen',

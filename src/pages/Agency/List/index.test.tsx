@@ -282,7 +282,26 @@ describe('AgencyList topic rendering', () => {
         expect(screen.getByTestId('table-empty')).toHaveTextContent('No data available');
     });
 
+    // The toolbar is desktop-only now — on a phone its search and create action
+    // move into the bottom navigation — and the setup stub answers every media
+    // query with `matches: false`, i.e. mobile.
+    const withDesktopLayout = () => {
+        const stub = window.matchMedia as unknown as ReturnType<typeof vi.fn>;
+
+        stub.mockImplementation((query: string) => ({
+            matches: query.includes('min-width: 768px'),
+            media: query,
+            onchange: null,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+        }));
+    };
+
     it('disables agency creation until the tenant DPA is signed', () => {
+        withDesktopLayout();
         mocks.dpaGate = { dpaPublished: true, dpaSigned: false };
 
         render(<AgencyList />);

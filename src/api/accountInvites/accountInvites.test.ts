@@ -5,6 +5,7 @@ import {
     acceptBaseUrlForRole,
     accountInviteAcceptBaseUrl,
     accountInvitesEndpoint,
+    counsellorOnboardingAcceptBaseUrl,
     createAccountInvite,
     createInviteEmailTemplate,
     getInviteEmailPreview,
@@ -152,7 +153,12 @@ describe('acceptBaseUrlForRole', () => {
         expect(tenantAdminOnboardingAcceptBaseUrl.endsWith('/admin/tenant-onboarding')).toBe(true);
     });
 
-    it.each(['AGENCY_ADMIN', 'COUNSELLOR', 'PLATFORM_ADMIN', 'ADVICE_SEEKER'] as const)(
+    it('routes counsellor invites to the public Admin wizard (#997)', () => {
+        expect(acceptBaseUrlForRole('COUNSELLOR')).toBe(counsellorOnboardingAcceptBaseUrl);
+        expect(counsellorOnboardingAcceptBaseUrl.endsWith('/admin/counsellor-onboarding')).toBe(true);
+    });
+
+    it.each(['AGENCY_ADMIN', 'PLATFORM_ADMIN', 'ADVICE_SEEKER'] as const)(
         'keeps %s invites on the app-layer accept route',
         (role) => {
             expect(acceptBaseUrlForRole(role)).toBe(accountInviteAcceptBaseUrl);

@@ -71,13 +71,14 @@ describe('agency column', () => {
     });
 
     it('keeps the identity columns within a 1440px content width', () => {
-        // Sidebar rail (96px) + table padding leave ~1310px; the sum of the fixed column
-        // widths must fit so no column is pushed out of sight without an affordance.
+        // Sidebar rail (128px, Figma 1285-80496) + table padding leave ~1278px; the sum
+        // of the fixed column widths must fit so no column is pushed out of sight
+        // without an affordance.
         const widths = getVisibleColumns(TypeOfUser.Consultants, { showTenant: true, showSubdomain: false }).map(
             (column) => column.width ?? 0,
         );
         const total = widths.reduce((sum, width) => sum + width, 0);
 
-        expect(total).toBeLessThanOrEqual(1310);
+        expect(total).toBeLessThanOrEqual(1278);
     });
 });

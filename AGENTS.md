@@ -22,6 +22,9 @@
     -   `npm run lint:js`
     -   `npm run lint:css`
     -   `npm run build`
+-   All `lint:*` scripts are check-only and never write to the working tree, so they are safe to use as gates. The mutating variants are explicit: `lint:css:fix` and `lint:formatting:fix`.
+-   After editing, run `npx prettier --write` on the touched paths. CI runs `npx prettier . --check --ignore-unknown` and fails on unformatted Markdown and JSON, not only source.
+-   `lint:css` reports `order/properties-order` as a warning. Warnings do not fail the gate; only errors do.
 -   If a full command is too expensive or blocked by existing unrelated failures, run the narrowest relevant command and state the blocker precisely.
 
 ## Review Expectations
@@ -30,3 +33,24 @@
 -   CodeRabbit is optional/manual and should not be treated as the primary automated reviewer.
 -   Automated review should flag missing tests, duplicated admin patterns, unsafe auth/API changes, and mergeability risks.
 -   Only auto-fix issues that are clearly scoped and testable. Leave architectural or ambiguous changes as review comments.
+
+## AI agent delivery rules
+
+Binding for every AI coding agent working in this repository. Canonical text and
+rationale: `ORISO-Docs/oriso-platform/coding-standards.mdx` (section "AI agent
+delivery rules"). Summary:
+
+-   **An agent never merges its own pull request.** Not on green CI, not on "finish
+    it", not for chores or test-only changes. Delivery ends at: verified → PR open
+    with evidence and a reviewer test plan → reviewers requested → issue
+    `In review`. Merge only on an explicit, per-PR instruction naming that PR.
+-   **Request reviewers in the same step that opens the PR.** A PR without
+    requested reviewers is not open for review.
+-   **"Pre-Dev is free" means the server, not the branch.** Deploying images,
+    mutating config or data and running E2E on the Pre-Dev server needs no
+    approval; the `pre-dev` _branch_ is review-gated like any shared branch.
+-   **Restore what you borrowed.** Record image reference _and_ `imagePullPolicy`
+    before swapping anything on Pre-Dev, put both back before reporting done, and
+    say so in the report.
+-   **State where it was verified** in every PR body — environment and image, or
+    plainly "local only".

@@ -33,7 +33,7 @@ const requestsCard: StatisticCardDefinition = {
         },
         {
             key: 'oneToOne',
-            label: 'Nähe (1:1)',
+            label: 'Mail (1:1)',
             value: '420',
             detail: '1:1-Anfragen',
             trend: { value: '~ 18%', tone: 'blue' },

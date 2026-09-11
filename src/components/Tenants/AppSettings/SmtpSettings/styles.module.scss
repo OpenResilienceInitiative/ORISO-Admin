@@ -79,6 +79,17 @@
     line-height: 20px;
 }
 
+.passwordHint {
+    display: block;
+    margin: -8px 0 18px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 20px;
+}
+
 .fieldGrid {
     display: grid;
     gap: 0;

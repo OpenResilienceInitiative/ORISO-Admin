@@ -1,0 +1,15 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
+.hint {
+    /* Match the dialog body contrast (M3 on-surface-variant) — antd's `secondary`
+       grey is too low-contrast for supporting text on the dialog surface. */
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+/* Right-aligned action row; the shared Modal supplies the surrounding padding. */
+.footerActions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: mui.$mui-unit;
+}

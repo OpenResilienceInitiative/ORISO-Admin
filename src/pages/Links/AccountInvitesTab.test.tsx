@@ -3,8 +3,17 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+// Imported statically, NOT with `await import(...)` inside a test. Every `vi.mock`
+// below is hoisted above this line, so the mocks still apply — but a dynamic
+// import inside the first test bills the whole transform + evaluation of this
+// tab's module graph (~12.5s on an idle laptop, measured) to that ONE test's
+// 30s budget. It fit locally and blew the budget on a loaded CI runner, which
+// is why "sends tenant-admin invites with the role-derived accept base URL"
+// timed out in CI while every other test in this file stayed under 4s. A static
+// import moves that cost into the file's (untimed) collection phase.
+import { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
 
 // antd components used by the composer (Dropdown/menus) query matchMedia,
 // which jsdom does not implement.
@@ -43,6 +52,11 @@ vi.mock('./EmailTemplatesDialog', () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
+    previewInviteEmailTemplateContent: vi.fn().mockResolvedValue({
+        subject: 'preview',
+        html: '<html><body>preview</body></html>',
+        plainText: 'preview',
+    }),
     listAccountInvites: vi.fn(),
     createAccountInvite: vi.fn(),
     resendAccountInvite: vi.fn(),
@@ -66,6 +80,10 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
     resendAccountInvite: mocks.resendAccountInvite,
     revokeAccountInvite: mocks.revokeAccountInvite,
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
+    // E2: the editor's preview is rendered by the backend. Without this the real
+    // fetch would run under jsdom — which is a load-dependent hang, not an
+    // honest failure. (Same omission #751 had; see the preview mock there.)
+    previewInviteEmailTemplateContent: mocks.previewInviteEmailTemplateContent,
 }));
 
 vi.mock('../../api/tenant/searchTenantData', () => ({
@@ -142,10 +160,7 @@ const invite = (id: number, tenantId: number | null, inviteStatus: string) => ({
     createDate: '2026-07-01T00:00:00Z',
 });
 
-const renderTenantTab = async () => {
-    const { TenantInvitesTab } = await import('./AccountInvitesTab');
-    return render(<TenantInvitesTab />);
-};
+const renderTenantTab = () => render(<TenantInvitesTab />);
 
 describe('TenantInvitesTab Träger-ID field', () => {
     beforeEach(() => {
@@ -162,7 +177,7 @@ describe('TenantInvitesTab Träger-ID field', () => {
         mocks.createAccountInvite.mockResolvedValue(invite(1, 21, 'EMAIL_SENT'));
         mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/admin/tenant-onboarding');
 
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
@@ -187,11 +202,11 @@ describe('TenantInvitesTab Träger-ID field', () => {
         mocks.searchTenantData.mockResolvedValue({ data: [{ id: 1 }, { id: 2 }, { id: 4 }], total: 3 });
         mocks.listAccountInvites.mockResolvedValue(invitesPage([invite(11, 3, 'DRAFT'), invite(12, 5, 'REVOKED')]));
 
-        await renderTenantTab();
+        renderTenantTab();
 
         const field = await screen.findByLabelText('Träger-ID');
         await waitFor(() => expect(field).toHaveValue('Auto'));
-        expect(screen.getByText('Die nächste freie ID wird automatisch vergeben.')).toBeInTheDocument();
+        expect(screen.queryByText('Die nächste freie ID wird automatisch vergeben.')).not.toBeInTheDocument();
     });
 
     it('shows the dedicated collision message when the backend answers 409', async () => {
@@ -199,7 +214,7 @@ describe('TenantInvitesTab Träger-ID field', () => {
         mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
         mocks.createAccountInvite.mockRejectedValue(new Response(null, { status: 409 }));
 
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
@@ -219,13 +234,162 @@ describe('TenantInvitesTab Träger-ID field', () => {
 
     it('does not auto-fill the Träger-ID on the counsellor tab', async () => {
         mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
-        const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
         render(<CounsellorInvitesTab />);
 
         const field = await screen.findByLabelText('Träger-ID');
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
         expect(field).toHaveValue('');
         expect(mocks.searchTenantData).not.toHaveBeenCalled();
+    });
+});
+
+/*
+ * A 403 on create means the admin's ROLE cannot invite admins (UserService#1006:
+ * "Only platform admins can create administrative accounts"). Swallowing that
+ * into the generic "Could not create link" left the admin guessing — the toast
+ * must explain the role problem, preferring the backend's own message.
+ */
+describe('TenantInvitesTab 403 role surfacing (UserService#1006)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+    });
+
+    const submitInvite = async () => {
+        await renderTenantTab();
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalled());
+    };
+
+    it('shows the backend message when create is answered 403', async () => {
+        mocks.createAccountInvite.mockRejectedValue(
+            new Response(JSON.stringify({ message: 'Only platform admins can create administrative accounts' }), {
+                status: 403,
+            }),
+        );
+
+        await submitInvite();
+
+        expect(await screen.findByText('Only platform admins can create administrative accounts')).toBeInTheDocument();
+        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the translated role explanation on a bodyless 403', async () => {
+        mocks.createAccountInvite.mockRejectedValue(new Response(null, { status: 403 }));
+
+        await submitInvite();
+
+        expect(
+            await screen.findByText('Nur Plattform-Administratoren können Träger-Admins einladen.'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+    });
+
+    it('keeps the generic create-failed toast for non-403 failures', async () => {
+        mocks.createAccountInvite.mockRejectedValue(new Error('network down'));
+
+        await submitInvite();
+
+        expect(await screen.findByText('Could not create link')).toBeInTheDocument();
+    });
+});
+
+/*
+ * `loadInvites` is called from the mount effect AND after every invite action,
+ * so two runs can be in flight at once — each walks several pages, so the older
+ * one can finish last. Only the newest run may write the list or clear the
+ * loading flag; otherwise a stale response resurrects rows the admin just
+ * changed, or hides a spinner while a newer fetch is still running.
+ */
+describe('overlapping invite loads', () => {
+    /** A promise plus its resolver, so a test can decide the completion order. */
+    const deferred = <T,>() => {
+        let resolve!: (value: T) => void;
+        const promise = new Promise<T>((r) => {
+            resolve = r;
+        });
+        return { promise, resolve };
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
+        mocks.createAccountInvite.mockResolvedValue(invite(1, 21, 'EMAIL_SENT'));
+    });
+
+    /** Fill the composer and send, which triggers the second (newer) load. */
+    const sendOneInvite = async (user: ReturnType<typeof userEvent.setup>) => {
+        await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+    };
+
+    it('keeps the newer list when an older load resolves last', async () => {
+        const stale = deferred<ReturnType<typeof invitesPage>>();
+        mocks.listAccountInvites
+            // Mount: slow, and by the time it lands its rows are gone.
+            .mockReturnValueOnce(stale.promise)
+            // Refresh after the create: fast, and authoritative.
+            .mockResolvedValue(invitesPage([invite(1, 21, 'EMAIL_SENT')]));
+
+        renderTenantTab();
+        const user = userEvent.setup();
+        await sendOneInvite(user);
+
+        expect(await screen.findByText('taken1@example.org')).toBeInTheDocument();
+
+        stale.resolve(invitesPage([]));
+
+        // Without the revision guard the stale empty page would land last and
+        // replace the row with the "no invites yet" state.
+        await waitFor(() => expect(mocks.listAccountInvites).toHaveBeenCalledTimes(2));
+        expect(screen.getByText('taken1@example.org')).toBeInTheDocument();
+        expect(screen.queryByText('Noch keine Einladungen')).not.toBeInTheDocument();
+    });
+
+    it('does not let an older load clear the loading flag of a newer one', async () => {
+        const first = deferred<ReturnType<typeof invitesPage>>();
+        const second = deferred<ReturnType<typeof invitesPage>>();
+        mocks.listAccountInvites.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+
+        renderTenantTab();
+        const user = userEvent.setup();
+        await sendOneInvite(user);
+        await waitFor(() => expect(mocks.listAccountInvites).toHaveBeenCalledTimes(2));
+
+        // Settle the older run completely (a macrotask drains every microtask
+        // the component chained behind its await) — a `waitFor` would pass on
+        // its first poll, before React ever processed the stale update.
+        const settle = async (resolve: () => void) => {
+            await act(async () => {
+                resolve();
+                await new Promise((done) => {
+                    setTimeout(done, 0);
+                });
+            });
+        };
+
+        // The older run finishes while the newer one is still fetching.
+        await settle(() => first.resolve(invitesPage([])));
+        expect(screen.getByRole('table')).toHaveAttribute('aria-busy', 'true');
+
+        await settle(() => second.resolve(invitesPage([invite(1, 21, 'EMAIL_SENT')])));
+        expect(screen.getByRole('table')).not.toHaveAttribute('aria-busy');
+        expect(screen.getByText('taken1@example.org')).toBeInTheDocument();
     });
 });
 
@@ -261,7 +425,6 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
 
     /** Fill the composer for a complete counsellor invite and press send. */
     const fillAndSend = async () => {
-        const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
@@ -295,6 +458,31 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
             ),
         );
         expect(mocks.getAgencyDataById).toHaveBeenCalledWith('275');
+    });
+
+    /*
+     * P3: the counsellor invite is the second invite kind and must be guarded the
+     * same way as the tenant invite — inline on the e-mail field, with the rest of
+     * the row (names, Beratungsstellen-ID) preserved.
+     */
+    it('shows the duplicate-address error inline for a counsellor invite (P3)', async () => {
+        mocks.getAgencyDataById.mockResolvedValue(agencyPayload([{ id: 2, name: 'U25 Suizidprävention' }]));
+        mocks.createAccountInvite.mockRejectedValue(
+            new Response(null, { status: 409, headers: { 'X-Reason': 'EMAIL_NOT_AVAILABLE' } }),
+        );
+
+        await fillAndSend();
+
+        expect(
+            await screen.findAllByText(
+                'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
+            ),
+        ).toHaveLength(2);
+        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+        // Nothing the admin typed is lost — only the address needs correcting.
+        expect(screen.getByLabelText('E-Mail')).toHaveValue('lisa.simpson@oriso.org');
+        expect(screen.getByLabelText('Vorname')).toHaveValue('Lisa');
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Direkt Versenden' })).toBeDisabled());
     });
 
     it('refuses with a visible error when the agency has no topic', async () => {
@@ -415,7 +603,6 @@ describe('CSV import payload per tab', () => {
 
     it('sends the counsellor id column as a pinned agency reservation, auto for empty cells', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
-        const { CounsellorInvitesTab } = await import('./AccountInvitesTab');
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
@@ -448,7 +635,7 @@ describe('CSV import payload per tab', () => {
 
     it('keeps the Träger id column a tenant id, without touching the agency space', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
-        await renderTenantTab();
+        renderTenantTab();
         const user = userEvent.setup();
 
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());

@@ -29,6 +29,7 @@
     --lineHeight-xl: calc(var(--fontSize-xl) * 1.8);
     --lineHeight-2xl: calc(var(--fontSize-2xl) * 1.8);
     --m3-body-font-family: 'Inter Variable', Inter, Arial, sans-serif;
+    --m3-title-small-font-family: 'Roboto', var(--m3-body-font-family);
 
     /* FormFields */
     --input-padding: 16px;
@@ -102,11 +103,13 @@
     --m3-surface-container: #f0edee;
     --m3-surface-container-high: #eae7e8;
     --m3-surface-container-highest: #e4e2e2;
+
     /* `M3/sys/light/secondary` — the product's quiet accent. It was only ever
        produced at runtime by computeOrisoPalette, so components that wanted it
        hardcoded the value (editor help icon, success glyph — #594.11). Static
        now, so nothing has to. */
     --m3-secondary: #4c555f;
+
     /* Static defaults for two roles that until now only existed at runtime
        (applyAdminTheme writes the OrisoScheme light values as inline
        properties). Without them every consumer had to carry its own literal
@@ -116,6 +119,7 @@
        (src/utils/theme/orisoScheme.ts) so the token is the single source and
        the fallbacks can go. */
     --m3-error: #b1005e;
+
     /* The rest of the error role, owner-confirmed 2026-07-29: the container is
        the saturated magenta, and both on-colours are near-white. Without these
        every consumer that needed an error surface reached for antd's or MUI's
@@ -125,6 +129,7 @@
     --m3-on-error: #ffffff;
     --m3-on-error-container: #fff7f9;
     --m3-outline-variant: #c4c7c8;
+
     /* M3 container/fixed roles (OrisoScheme, seed #A5000A). secondary-container is
        the mid slate (#646D78) from the runtime OrisoScheme (light) and Figma; the
        previous #e8ebee drifted and left the light on-colour text unreadable. */
@@ -132,6 +137,7 @@
     --m3-on-secondary-container: #e7effc;
     --m3-primary: #a5000a;
     --m3-on-primary: #ffffff;
+
     /* The rose SURFACE of the active sidebar pill. Figma calls that style
        `M3/sys/light/on-primary-container` because it was applied as the pill's
        FILL — see the `--m3-on-background` note below for why this palette's
@@ -146,6 +152,7 @@
     --m3-primary-fixed: #ffe2de;
     --m3-tertiary-container: #ffdad6;
     --m3-on-tertiary-container: #410005;
+
     /*
      * THE DARK STAGE SURFACE — read this before "fixing" the name (#594.13a).
      *
@@ -167,14 +174,51 @@
     --oriso-app-accent-dark: #a5000a;
     --admin-control-selected: var(--oriso-app-accent-dark, var(--m3-primary, #a5000a));
     --admin-workspace-background: #e4e2e2;
+
+    /* Layout raster — Figma "Site Template" 1285-80496.
+       Horizontally: sidebar 128 · arrow-rail gutter 60 · card inset 24, so a
+       card's left edge sits 84px right of the sidebar. Vertically the header is
+       236px: a 144px tab band (24 + 96 + 24) plus a 92px search row. */
+    --admin-sidebar-width: 128px;
+    --admin-page-gutter: 60px;
+    --admin-content-inset: 24px;
+    --admin-header-pad: 24px;
+    --admin-tab-height: 96px;
+    --admin-card-gap: 48px;
+    --admin-dialog-card-width: 360px;
+    --admin-panel-card-width: 800px;
+    --admin-card-footer-height: 68px;
+    --admin-dialog-card-footer-height: 64px;
+
     /* Card elevation. Softer + wider than M3 elevation-1 (which is a tight
        0 1px 3px) — a gentle, diffuse drop like the M3 dialog, tunable here. */
     --admin-card-elevation: 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%);
-    --admin-search-surface: #fcf9f9;
+
+    /*
+     * The search control's surface (#713 follow-up, owner findings 2 + 3:
+     * „farbe von text feldern und den outline felder unterschiedlich" and
+     * „nutze dunkle version").
+     *
+     * It used to be #fcf9f9 (`--m3-surface`), which is all but white. Measured
+     * in the invite toolbar at 1440/820/390: the pill painted rgb(252,249,249)
+     * while its neighbouring outlined text fields are transparent over the
+     * rgb(228,226,226) workspace — the pill read as a white sticker on the row.
+     *
+     * #eae7e8 is `--m3-surface-container-high` — the SAME token
+     * FloatingLabelInput already names for its floating-label chip, so the
+     * search field and the outlined fields now resolve to one surface. It is a
+     * step DOWN the M3 container ramp, i.e. the darker variant the owner asked
+     * for, not a new colour.
+     */
+    --admin-search-surface: #eae7e8;
     --admin-search-text: #444748;
     --admin-search-placeholder: #444748;
     --admin-search-icon: #444748;
-    --admin-search-hover-surface: #f0edee;
+
+    /* The hover state layer has to stay DARKER than the resting surface. With
+       the pill at #eae7e8 the old #f0edee was lighter, so hovering lifted the
+       icon instead of pressing it — one more step down the ramp fixes that. */
+    --admin-search-hover-surface: #e4e2e2;
     --admin-table-surface: #f6f3f3;
     --admin-table-header-surface: #e4e2e2;
     --admin-table-row-hover-surface: #f0edee;
@@ -185,6 +229,7 @@
     --admin-table-chip-surface: #e4e2e2;
     --admin-table-chip-border: #c4c7c8;
     --admin-table-chip-text: #444748;
+
     /* Field anatomy (#313) — static fallbacks; must match the runtime values
        computeOrisoPalette writes for the default seed #A5000A exactly. */
     --admin-form-field-surface: #fcf9f9;
@@ -193,6 +238,7 @@
     --admin-field-surface-hover: #f6f3f3;
     --admin-field-selected-surface: #ffe2de;
     --admin-field-selected-text: #930008;
+
     /* Mobile bottom-navigation active indicator (Figma 56576:34607). The deep
        brand red pill behind the selected destination's icon; the icon on top is
        the readable foreground. Seed-derived at runtime by computeOrisoPalette —
@@ -235,10 +281,9 @@ body {
 /* ── M3 type scale (Figma Admin.ORISO variable defs) ───────────────────────────
    Global utility classes so both CSS-module components and the <Typography> atom
    share one source of truth. Inter for everything except Title Small (Roboto).
-   Sizes/weights/tracking are copied verbatim from the Figma M3/* font variables. */
-:root {
-    --m3-title-small-font-family: 'Roboto', var(--m3-body-font-family);
-}
+   Sizes/weights/tracking are copied verbatim from the Figma M3/* font variables.
+   The scale's own font-family token lives with the other tokens in the :root
+   block at the top of this file. */
 
 .m3-headline-small {
     font: 400 24px/32px var(--m3-body-font-family);
@@ -287,6 +332,7 @@ body {
 /* M3 text button used in edit shells (Edit / Cancel / Save) and other places
    that used to render antd filled/primary buttons. Flat, pill-shaped, sentence
    case, brand-blue label with a subtle state-layer on hover. */
+
 .ant-btn.admin-m3-text-button {
     height: 40px;
     padding: 0 12px;
@@ -303,7 +349,7 @@ body {
 
 .ant-btn.admin-m3-text-button:not(:disabled):hover,
 .ant-btn.admin-m3-text-button:not(:disabled):focus {
-    background: rgba(68, 71, 72, 0.08);
+    background: rgb(68 71 72 / 8%);
     color: #273270;
 }
 
@@ -321,9 +367,9 @@ body {
     --admin-table-fixed-cell-shadow: transparent;
 }
 
-.ant-table-wrapper .ant-table-cell-fix-left-last::after,
-.ant-table-wrapper .ant-table-cell-fix-right-first::after,
-.ant-table-wrapper .ant-table-ping-left .ant-table-cell-fix-left-last::after,
-.ant-table-wrapper .ant-table-ping-right .ant-table-cell-fix-right-first::after {
+.ant-table-wrapper .ant-table-cell-fix-left-last:after,
+.ant-table-wrapper .ant-table-cell-fix-right-first:after,
+.ant-table-wrapper .ant-table-ping-left .ant-table-cell-fix-left-last:after,
+.ant-table-wrapper .ant-table-ping-right .ant-table-cell-fix-right-first:after {
     box-shadow: none !important;
 }

@@ -1,17 +1,17 @@
 name: Reusable Node Build steps
 
-inputs:
-    node_version:
-        required: true
-        type: string
-
 runs:
     using: 'composite'
     steps:
         - name: Set up Node.js
           uses: actions/setup-node@v4
           with:
-              node-version: ${{ inputs.node_version }}
+              # .nvmrc is the single source of truth for the Node version, shared with
+              # local development (`nvm use` / `fnm use`) and declared again as
+              # `engines.node` in package.json. Do NOT hardcode a version here: when CI
+              # and developer machines drift apart, the suite fails locally in ways CI
+              # never shows, and a red suite stops meaning anything.
+              node-version-file: .nvmrc
               cache: npm
 
         - name: Install dependencies
@@ -21,9 +21,41 @@ runs:
           # not rely on any dependency lifecycle script to build.
           run: npm ci --ignore-scripts
 
+        # src/components/IconCatalog/iconCatalog.generated.json has to stay
+        # committed — ESLint resolves the Storybook page's import of it long
+        # before `build-storybook` would generate it (#711) — so it rots
+        # silently whenever a PR touches icon assets or icon references without
+        # re-running the generator. The next contributor to start Storybook
+        # then finds the drift in their own `git status` (#681 caused exactly
+        # that). Catch it on the PR that introduces it instead. Runs before the
+        # slower gates so a stale catalog fails in seconds.
+        #
+        # Scoped to the generated file on purpose: a bare `git diff` also trips
+        # over yarn.lock, which the step above rewrites for the runner's
+        # platform (the committed one carries darwin-arm64 entries, CI resolves
+        # linux-x64). That is a separate problem — this check must not depend
+        # on the whole tree being pristine.
+        - name: Check the generated icon catalog is up to date
+          shell: bash
+          run: |
+              set -euo pipefail
+              catalog=src/components/IconCatalog/iconCatalog.generated.json
+              npm run generate:icon-catalog
+              if ! git diff --quiet -- "$catalog"; then
+                echo "::error file=${catalog}::The committed icon catalog is stale. Run 'npm run generate:icon-catalog' and commit the diff."
+                git --no-pager diff -- "$catalog"
+                exit 1
+              fi
+
         - name: Lint (ESLint, zero warnings)
           shell: bash
           run: npx eslint . --max-warnings=0
+
+        - name: Lint (Stylelint)
+          shell: bash
+          # Check-only on purpose: `lint:css:fix` is the mutating variant and
+          # must never run in CI.
+          run: npm run lint:css
 
         - name: Check formatting (Prettier)
           shell: bash

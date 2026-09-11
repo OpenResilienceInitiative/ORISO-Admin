@@ -38,6 +38,18 @@ export interface AccountInviteDTO {
     twoFactorWaivedAt: string | null;
     twoFactorWaiverReason: string | null;
     createDate: string;
+    /**
+     * DPA forward/signature signals (#722/#725). CONTRACT GAP (2026-09-01,
+     * verified against UserService pre-dev): the AccountInvite ENTITY stores
+     * `dpa_forwarded_at`, but AccountInviteResponseDTO does not serialize it
+     * yet, and no "DPA signed" field exists on the invite at all (the
+     * signature lives in TenantService's tenant_dpa_signature). Until the
+     * backend serves these, both stay undefined and the derived DPA phases
+     * render as pending — the board lights them up the day the fields arrive,
+     * with no further frontend change.
+     */
+    dpaForwardedAt?: string | null;
+    dpaSignedAt?: string | null;
     rawToken?: string;
     acceptUrl?: string;
 }
@@ -140,16 +152,24 @@ export interface TemplateRequestDTO {
 export const accountInviteAcceptBaseUrl = `${appURL.replace(/\/$/, '')}/account-invite`;
 /** Public Admin onboarding page — the accept target for tenant-admin invites (TEN-INV U8, #571). */
 export const tenantAdminOnboardingAcceptBaseUrl = `${appURL.replace(/\/$/, '')}${routePathNames.tenantOnboarding}`;
+/** Public Admin wizard — the accept target for counsellor invites (#997). */
+export const counsellorOnboardingAcceptBaseUrl = `${appURL.replace(/\/$/, '')}${routePathNames.counsellorOnboarding}`;
 
 /**
- * Accept base URL by invited role (TEN-INV U6/U8, #569/#571/UserService#890):
- * the emailed link is `{acceptBaseUrl}/{rawToken}`. A tenant admin completes
- * the invite on the PUBLIC ADMIN onboarding route (the tenant is an
- * organisation, not an app user); every other role keeps the app-layer
- * `/account-invite` route.
+ * Accept base URL by invited role (TEN-INV U6/U8, #569/#571/UserService#890;
+ * #997): the emailed link is `{acceptBaseUrl}/{rawToken}`. A tenant admin
+ * completes the invite on the PUBLIC ADMIN onboarding route (the tenant is an
+ * organisation, not an app user); a counsellor completes it on the PUBLIC
+ * ADMIN wizard (#997 product decision — step-by-step in the Admin SPA); every
+ * other role keeps the app-layer `/account-invite` route. NOTE: the backend
+ * decides the real link server-side (TEN-INV-U6) — this mirror exists for the
+ * UI's link previews and must stay in sync with InviteAcceptUrlBuilder.
  */
-export const acceptBaseUrlForRole = (targetRole: AccountInviteTargetRole): string =>
-    targetRole === 'TENANT_ADMIN' ? tenantAdminOnboardingAcceptBaseUrl : accountInviteAcceptBaseUrl;
+export const acceptBaseUrlForRole = (targetRole: AccountInviteTargetRole): string => {
+    if (targetRole === 'TENANT_ADMIN') return tenantAdminOnboardingAcceptBaseUrl;
+    if (targetRole === 'COUNSELLOR') return counsellorOnboardingAcceptBaseUrl;
+    return accountInviteAcceptBaseUrl;
+};
 export { accountInvitesEndpoint };
 
 const normalizeAllocatedId = (
@@ -191,8 +211,14 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
         skipAuth: false,
         // CONFLICT_WITH_RESPONSE lets a 409 (e.g. a colliding tenantId) reject with the
         // raw Response instead of a swallowed generic toast, so callers can surface a
-        // specific message (see AccountInvitesTab's onCreate).
-        responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.CONFLICT_WITH_RESPONSE],
+        // specific message (see AccountInvitesTab's onCreate). FORBIDDEN_WITH_RESPONSE
+        // does the same for a 403 — the backend explains WHY the caller's role cannot
+        // invite (UserService#1006), and that explanation must reach the admin.
+        responseHandling: [
+            FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
+            FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
+        ],
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
             agencyId,
@@ -211,6 +237,33 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
     return response.json();
 };
 
+/**
+ * First delivery of a never-sent invite (`POST .../{id}/send`).
+ *
+ * Deliberately NOT `resendAccountInvite`: `/resend` supersedes the invite it is
+ * given — the old row becomes `SUPERSEDED` ("Ersetzt") and a replacement id is
+ * created. That is correct for an invite whose mail already went out and wrong
+ * for a `DRAFT`, which has never been mailed at all. Callers dispatch by status.
+ */
+export const sendAccountInvite = async (
+    inviteId: number,
+    body: SendAccountInviteRequest,
+): Promise<AccountInviteDTO> => {
+    const response = await fetchData({
+        url: `${accountInvitesEndpoint}/${inviteId}/send`,
+        method: FETCH_METHODS.POST,
+        skipAuth: false,
+        // FORBIDDEN_WITH_RESPONSE: surface the backend's role explanation on 403
+        // (UserService#1006) instead of the generic failure toast.
+        responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE],
+        bodyData: JSON.stringify({
+            acceptBaseUrl: body.acceptBaseUrl,
+            templateId: body.templateId,
+        }),
+    });
+    return response.json();
+};
+
 export const resendAccountInvite = async (
     inviteId: number,
     body: SendAccountInviteRequest,
@@ -219,7 +272,8 @@ export const resendAccountInvite = async (
         url: `${accountInvitesEndpoint}/${inviteId}/resend`,
         method: FETCH_METHODS.POST,
         skipAuth: false,
-        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        // FORBIDDEN_WITH_RESPONSE: same 403 surfacing as send (UserService#1006).
+        responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE],
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
             templateId: body.templateId,
@@ -270,6 +324,41 @@ export const getInviteEmailPreview = async (params: InviteEmailPreviewParams = {
         responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
     });
 };
+
+export interface InviteEmailPreviewContentParams extends InviteEmailPreviewParams {
+    /** Unsaved subject from the editor. */
+    subject?: string;
+    /** Unsaved body from the editor. */
+    body?: string;
+}
+
+/**
+ * Live preview of UNSAVED editor content through the backend's own renderer
+ * (`POST .../invite-email-templates/preview`).
+ *
+ * This is what keeps the composer honest: the endpoint runs the very
+ * `renderBrandedMail` call the dispatcher runs, so an authored template can be
+ * seen exactly as it will be sent — branding, layout, CTA and all — instead of
+ * through an Admin-side re-implementation of the mail frame. `CATCH_ALL_SILENT`
+ * because the preview panel shows its own inline error with a retry.
+ */
+export const previewInviteEmailTemplateContent = async (
+    params: InviteEmailPreviewContentParams = {},
+): Promise<InviteEmailPreviewDTO> =>
+    fetchData({
+        url: inviteEmailPreviewEndpoint,
+        method: FETCH_METHODS.POST,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+        bodyData: JSON.stringify({
+            body: params.body,
+            kind: params.kind,
+            language: params.language,
+            subject: params.subject,
+            templateId: params.templateId,
+            tenantId: params.tenantId,
+        }),
+    }).then((response) => response.json());
 
 export const createInviteEmailTemplate = async (body: TemplateRequestDTO): Promise<InviteEmailTemplateDTO> => {
     const response = await fetchData({

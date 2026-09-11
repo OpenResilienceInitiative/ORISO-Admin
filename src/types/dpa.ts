@@ -10,6 +10,12 @@ export interface DpaVersion {
 export interface DpaGateStatus {
     dpaPublished: boolean;
     dpaSigned: boolean;
+    /**
+     * Additive flag (ORISO-Admin#723 contract correction): not signed, but an
+     * unexpired forwarded sign link is outstanding. Never true alongside a
+     * valid signature. Absent on older backends.
+     */
+    dpaForwardPending?: boolean;
 }
 
 /** Single-use public DPA signing invitation. The raw token is deliberately not used by the UI. */
@@ -34,6 +40,13 @@ export interface TenantDpaStatusInfo {
     signedDpaVersion?: string | null;
     signedAt?: string | null;
     signedBy?: string | null;
+    /**
+     * Additive flag (ORISO-Admin#723 contract correction): the signature was
+     * forwarded to an authorised signer and an unexpired link is outstanding.
+     * Orthogonal to `status` — never true for VALID, MISSING or INCONSISTENT.
+     * The `status` enum itself is UNCHANGED (no PENDING_FORWARDED value).
+     */
+    forwardPending?: boolean;
 }
 
 /** Request body of the U9 sign endpoint (DpaAdminSignRequestDTO). */

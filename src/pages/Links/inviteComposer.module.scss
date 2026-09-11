@@ -3,22 +3,74 @@
  * flex behaviour live here — colours come from the shared component tokens.
  */
 
+.composer {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+/*
+ * #713: the row wraps rather than scrolls, so the fields must be allowed to
+ * fall under their nominal width on narrow viewports — a hard `width` plus
+ * `flex: 0 0 auto` made the e-mail field alone wider than a 390px phone.
+ */
+
+/*
+ * #713 finding 4 — „diese ecken müssen rund sein". E-Mail and Name are the two
+ * ENDS of the composer's field group; the corners the owner boxed are the ones
+ * facing the search pill (28px) on the left and the Träger-ID group (28px on
+ * its outer edge, 4px at its seam) on the right. Both rendered at the flat 4px
+ * seam radius, so the row's outline broke into squares between two pills.
+ *
+ * The grammar is the design system's own, taken verbatim from M3NumberField
+ * (`28px 4px 4px 28px` / `4px 28px 28px 4px`) and splitButton's
+ * `--sb-radius: 28px` outer / `--sb-radius-inner: 4px` seam: round on the
+ * outside of a group, flat where segments meet. Vorname keeps 4px on both
+ * sides — it is an interior segment.
+ */
+
 .emailField {
+    --fli-radius: 28px 4px 4px 28px;
+
     width: 304px;
-    flex: 0 0 auto;
+    max-width: 100%;
+    flex: 0 1 auto;
 }
 
 .nameField {
     width: 210px;
-    flex: 0 0 auto;
+    max-width: 100%;
+    flex: 0 1 auto;
+}
+
+/* The group's right-hand end: rounded towards the Träger-ID control. */
+.lastNameField {
+    --fli-radius: 4px 28px 28px 4px;
+}
+
+/*
+ * The reason the send action is off (#713). Project rule: disable rather than
+ * hide, but ALWAYS explain — a silently greyed-out primary action is the bug.
+ */
+
+.sendHint {
+    margin: 0 0 8px;
+    padding: 0 4px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
 }
 
 /* "⋮" more-menu trigger before the search pill (#315) — same 48px round icon
  * geometry as the search pill's own icon buttons. */
+
 .moreButton {
     display: inline-flex;
     width: 48px;
-    height: 48px;
+
+    /* A2: 48px round glyph, 56px box — it shares the toolbar's control band
+       instead of floating 8px above it. */
+    height: 56px;
     flex: 0 0 auto;
     align-items: center;
     justify-content: center;

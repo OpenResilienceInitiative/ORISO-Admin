@@ -6,6 +6,11 @@
     flex-direction: column;
 }
 
+// Deliberately free of scroll snapping. A deck of settings cards is a document
+// the reader pans across, not a media carousel: snapping pulled the deck onto
+// the next card edge and made it impossible to rest between two cards and read
+// them side by side. `scroll-behavior: smooth` stays — it only smooths the
+// programmatic scrolls of the header arrows, never the reader's own drag.
 .deck {
     width: 100%;
     min-width: 0;
@@ -16,7 +21,6 @@
     overflow-y: hidden;
     overscroll-behavior-x: contain;
     scroll-behavior: smooth;
-    scroll-snap-type: x proximity;
     scrollbar-width: none;
     touch-action: pan-x pan-y;
 
@@ -31,23 +35,30 @@
     align-items: flex-start;
     padding: 0;
     margin: 0;
-    gap: var(--card-deck-gap, 24px);
+    gap: var(--card-deck-gap, var(--admin-card-gap, 48px));
     list-style: none;
 }
 
 .item {
     display: flex;
+
+    // A single card can never be wider than the viewport minus the sidebar and
+    // both page edges — otherwise it would push the whole page into a horizontal
+    // scroll. Raster from Figma 1285-80496 (sidebar 128, page edge 60 + 24).
+    // Kept as a custom property (not a Sass var) so the styles.test.ts guards
+    // can keep matching the plain min()/var() anatomy below.
+    --deck-item-cap: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
+
     // A deck item is a single vertical page: stack its cards, never let two
     // siblings share the row width and crush each other on narrow screens.
     flex-direction: column;
-    min-width: min(var(--card-deck-item-min-width, 320px), var(--card-deck-item-max-width, calc(100vw - 176px)));
+    min-width: min(var(--card-deck-item-min-width, 320px), var(--card-deck-item-max-width, var(--deck-item-cap)));
 
     // #568: without a max-width a growable item contributes its content
     // max-content width to the `min-width: max-content` list, so a wide
     // toolbar silently doubles the card and pushes its siblings off-screen.
-    max-width: min(var(--card-deck-item-width, 392px), var(--card-deck-item-max-width, calc(100vw - 176px)));
-    flex: 0 0 min(var(--card-deck-item-width, 392px), var(--card-deck-item-max-width, calc(100vw - 176px)));
-    scroll-snap-align: start;
+    max-width: min(var(--card-deck-item-width, 392px), var(--card-deck-item-max-width, var(--deck-item-cap)));
+    flex: 0 0 min(var(--card-deck-item-width, 392px), var(--card-deck-item-max-width, var(--deck-item-cap)));
 
     > * {
         width: 100%;
@@ -62,7 +73,6 @@
     .deck {
         overflow: visible;
         padding: var(--card-deck-mobile-padding, 0);
-        scroll-snap-type: none;
     }
 
     .list {
@@ -78,18 +88,15 @@
     }
 }
 
-.footer {
-    position: sticky;
-    z-index: 20;
-    bottom: var(--card-deck-footer-bottom, 28px);
+// The arrows moved into the page header rail (Figma 1285-80496); what stays
+// under the cards is the #568 position indicator, in normal flow so it can no
+// longer overlap the cards' own footer actions and toasts.
+.dots {
+    display: flex;
     flex: 0 0 auto;
-    padding: var(--card-deck-footer-padding, 0 24px);
+    justify-content: center;
+    padding: var(--card-deck-dots-padding, 16px 24px 0);
     margin-top: auto;
-    pointer-events: none;
-
-    :global(button) {
-        pointer-events: auto;
-    }
 }
 
 @media (max-width: 767px) {
@@ -101,7 +108,6 @@
         overflow: visible;
         padding: var(--card-deck-mobile-padding, 0);
         gap: var(--card-deck-mobile-gap, 24px);
-        scroll-snap-type: none;
     }
 
     .list {
@@ -114,9 +120,5 @@
         width: 100%;
         max-width: none;
         flex-basis: auto;
-    }
-
-    .footer {
-        display: none;
     }
 }

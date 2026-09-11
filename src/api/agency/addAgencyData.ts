@@ -25,6 +25,7 @@ export function buildAgencyDataRequestBody(
         phone: formData.phone,
         phoneSecondary: formData.phoneSecondary,
         email: formData.email,
+        openingHours: formData.openingHours,
         consultingType: consultingTypeResponseId,
         teamAgency: formData.teamAgency ? formData.teamAgency : false,
         // enforced by admin API, without business value for SAAS

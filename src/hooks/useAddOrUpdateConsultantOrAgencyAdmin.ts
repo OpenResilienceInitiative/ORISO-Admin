@@ -25,6 +25,12 @@ export const useAddOrUpdateConsultantOrAdmin = ({ id, typeOfUser, ...options }: 
         onSuccess: (...all) => {
             queryClient.invalidateQueries({ queryKey: ['HAS_CONSULTANTS'] });
             queryClient.invalidateQueries({ queryKey: [typeOfUser.toUpperCase()] });
+            // The list key above is plural; the consultant DETAIL entry (`['CONSULTANT', id]`,
+            // `useCounselorById`) has its own key and was left stale after every save. Reopening
+            // the same consultant then mounted the form from pre-save data — only that record
+            // carries publicSlug and the standing supervisor, so the form showed values the
+            // backend no longer had.
+            queryClient.invalidateQueries({ queryKey: ['CONSULTANT'] });
             options.onSuccess?.(...all);
         },
     });

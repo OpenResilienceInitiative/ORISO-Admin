@@ -21,6 +21,23 @@
     overflow-y: auto;
 
     /*
+     * JOB10. Because this element is the scroll container the app shell took
+     * away from the document, its scrollbar is what a visitor reads as "the
+     * browser scrollbar" on every public page — and below 1200px it is the
+     * ONLY scroller on the signup wizard, full viewport height. On Firefox and
+     * Edge that is a permanent grey track running the whole side of the
+     * screen; that is the "even more visible" half of the owner's report.
+     *
+     * Trackless-thin, not hidden: this scrolls the page, and a page whose
+     * scrollbar is gone gives no clue how much of a long form is left.
+     * Mirrors the `quiet` mixin in src/styles/_scrollbars.scss — repeated
+     * literally because LESS cannot @use an SCSS partial. Keep the two in
+     * step.
+     */
+    scrollbar-width: thin;
+    scrollbar-color: var(--m3-outline-variant, #c4c7c8) transparent;
+
+    /*
      * antd gives the content `flex: auto; min-height: 0`. Inside a
      * viewport-bounded layout that lets a tall page shrink back to the
      * viewport and spill its content over the footer instead of scrolling —

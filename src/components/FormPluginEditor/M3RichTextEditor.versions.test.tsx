@@ -43,6 +43,49 @@ const openVersionMenu = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(trigger);
 };
 
+/**
+ * ADR-021/ORISO-AgencyService#256 keys a legal-text version by a surrogate id and
+ * carries the publication timestamp beside it. The editor must date its entries
+ * from that timestamp — a numeric id fed to `new Date()` yields a year.
+ */
+describe('M3RichTextEditor — version dates from publishedAt (#812)', () => {
+    const surrogate = [
+        { id: '42', publishedAt: '2026-07-01T10:00', label: 'Juli', content: '<p>Fassung Juli</p>' },
+        { id: '17', publishedAt: '2026-05-02T09:00', label: 'Mai', content: '<p>Fassung Mai</p>' },
+    ];
+
+    it('reports online-since from the oldest publication date, not from its id', async () => {
+        const user = userEvent.setup();
+        render(
+            <M3RichTextEditor title="Datenschutz" value="<p>Entwurf</p>" versions={surrogate} enableAnchors={false} />,
+        );
+
+        await openVersionMenu(user);
+
+        const oldest = parseVersionDate('2026-05-02T09:00')!;
+        const formatted = `${oldest.toLocaleDateString('de', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+        })} | ${oldest.toLocaleTimeString('de', { hour: '2-digit', minute: '2-digit' })} Uhr`;
+        expect(await screen.findByText(`legal.m3Editor.versionOnlineSince:${formatted}`)).toBeInTheDocument();
+    });
+
+    it('dates the published range from publishedAt', async () => {
+        const user = userEvent.setup();
+        render(
+            <M3RichTextEditor title="Datenschutz" value="<p>Entwurf</p>" versions={surrogate} enableAnchors={false} />,
+        );
+
+        await openVersionMenu(user);
+
+        // Variant #1 is the older entry: published on 02.05., superseded on 01.07.
+        expect(
+            await screen.findByText(/legal\.m3Editor\.versionRangePublished:02\.05\.26.*01\.07\.26/),
+        ).toBeInTheDocument();
+    });
+});
+
 describe('M3RichTextEditor — version select (#268)', () => {
     it('parses date-only ids as the same local calendar date', () => {
         const parsed = parseVersionDate('2026-07-01');

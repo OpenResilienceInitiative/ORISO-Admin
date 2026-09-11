@@ -1,3 +1,8 @@
+.warning:global(.ant-alert.ant-alert-warning) {
+    padding: 14px 16px;
+    margin-bottom: 16px;
+}
+
 .sliderContainer {
     :global(.ant-form-item-label label) {
         height: 26px;

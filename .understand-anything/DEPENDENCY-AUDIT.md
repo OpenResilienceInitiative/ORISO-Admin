@@ -1,5 +1,7 @@
 # Dependency Audit
 
+> **Historical snapshot (June 2026).** This document is a point-in-time audit and has not been re-run. File counts, versions and findings refer to the June 2026 state of the repository.
+
 Command run during this graph refresh:
 
 ```bash

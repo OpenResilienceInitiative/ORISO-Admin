@@ -38,13 +38,6 @@
     gap: mui.$mui-unit * 1.5;
 }
 
-.settingLabel {
-    font-size: 16px;
-    line-height: 24px;
-    font-weight: 500;
-    color: var(--m3-on-surface, #1b1b1c);
-}
-
 .settingDescription {
     margin: mui.$mui-unit 0 0;
     color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
@@ -64,5 +57,15 @@
 
 /* Matches the enforce checkbox placement on the chat-type cards. */
 .enforceCheckbox {
+    display: inline-flex;
     margin-right: mui.$mui-unit;
+}
+
+.enforceHeaderNote {
+    margin: 0 0 mui.$mui-unit * 1.5;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.33;
+    text-align: center;
+    color: var(--admin-control-selected, var(--m3-primary, #a5000a));
 }

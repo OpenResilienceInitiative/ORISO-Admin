@@ -19,7 +19,16 @@
     box-sizing: border-box;
     align-items: center;
     border: 1px solid var(--m3-outline, #747878);
-    border-radius: 4px;
+
+    /*
+     * 4px is the M3 "segments meet here" radius (`--sb-radius-inner` in
+     * splitButton, the flat sides of M3NumberField). A field that sits at the
+     * END of a control group needs the 28px outer pill radius instead, so the
+     * group's outline reads as one shape. Consumers opt in per instance via
+     * `--fli-radius`; nothing else sets it, so there is no specificity race
+     * with the class the consumer puts on this same element.
+     */
+    border-radius: var(--fli-radius, 4px);
     transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 

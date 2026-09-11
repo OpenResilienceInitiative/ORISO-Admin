@@ -174,11 +174,11 @@
     box-shadow: 0 0 0 1px var(--form-error) inset !important;
 }
 
-.item :global(label.ant-form-item-required:not(.ant-form-item-required-mark-optional))::before {
+.item :global(label.ant-form-item-required:not(.ant-form-item-required-mark-optional)):before {
     content: '';
 }
 
-.item :global(label.ant-form-item-required:not(.ant-form-item-required-mark-optional))::after {
+.item :global(label.ant-form-item-required:not(.ant-form-item-required-mark-optional)):after {
     display: inline-block;
     margin-right: 4px;
     color: var(--form-error);

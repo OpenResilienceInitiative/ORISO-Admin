@@ -111,7 +111,18 @@ const createdTemplate = http.post(TEMPLATES_ENDPOINT, async ({ request }) => {
 const meta = {
     title: 'Organisms/Pages/Links/EmailTemplatesDialog',
     component: DialogHarness,
-    parameters: { layout: 'padded' },
+    parameters: {
+        layout: 'padded',
+        docs: {
+            description: {
+                component:
+                    'Template manager/picker of the invite tabs. Since #746 the create/edit view is the ' +
+                    'placeholder-template module in the house dialog shell: per-kind token pickers, template ' +
+                    'split button (load / new-from) and the live e-mail-kit preview. Persistence stays on the ' +
+                    'existing invite-email-template endpoints.',
+            },
+        },
+    },
     args: {
         templateKind: 'TENANT_INVITE',
         onClose: () => {},
@@ -134,6 +145,16 @@ export const Filled: Story = {
  */
 export const Picker: Story = {
     args: { picker: true, selectedTemplateId: 1 },
+    parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
+};
+
+/**
+ * Straight into the create form (the composer's "Neue E-Mail-Vorlage erstellen"
+ * deep link): the module editor with token pickers, split button and live
+ * e-mail-kit preview inside the house dialog shell (#746).
+ */
+export const CreateView: Story = {
+    args: { initialView: 'create' },
     parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
 };
 

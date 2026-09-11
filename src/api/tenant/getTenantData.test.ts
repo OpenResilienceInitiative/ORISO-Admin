@@ -69,3 +69,49 @@ describe('getTenantData', () => {
         });
     });
 });
+
+describe('getTenantData — branding assets survive the authenticated seam', () => {
+    /*
+     * `getPublicTenantData` decodes `theming.logo` / `favicon` /
+     * `associationLogo`; this module never did. That asymmetry made the tenant
+     * favicon override dead code: `<TenantFavicon tenantFavicon={data?.theming
+     * ?.favicon} />` is fed from HERE, TenantService stores `+` as `&#43;` and
+     * `=` as `&#61;`, and `getSafeFaviconUrl`'s HTML_ENTITY guard rejects any
+     * data URL still carrying them — so the tenant value was silently discarded
+     * and the platform default always won.
+     *
+     * Live evidence for the encoding is in `decodeTenantAsset.test.ts`: one real
+     * stored logo carried 3,284 x `&#43;`, the favicon 249 x `&#43;` plus `&#61;`.
+     */
+    const encodedIco = 'data:image/vnd.microsoft.icon;base64,AAABAAEAICA&#43;&#43;xEAA&#61;';
+    const decodedIco = 'data:image/vnd.microsoft.icon;base64,AAABAAEAICA++xEAA=';
+
+    it('decodes every branding asset, exactly like the public seam', async () => {
+        fetchMock.mockResolvedValue({
+            theming: { favicon: encodedIco, logo: 'a&#43;b', associationLogo: 'c&#61;d' },
+        });
+
+        const result = await getTenantData({ id: 1 } as never, false);
+
+        expect(result.theming.favicon).toBe(decodedIco);
+        expect(result.theming.logo).toBe('a+b');
+        expect(result.theming.associationLogo).toBe('c=d');
+    });
+
+    it('leaves a response without theming untouched', async () => {
+        fetchMock.mockResolvedValue({ impressum: null });
+
+        const result = await getTenantData({ id: 1 } as never, false);
+
+        expect(result.theming).toBeUndefined();
+        expect(result.impressum).toBe('');
+    });
+
+    it('does not invent branding keys that the response never carried', async () => {
+        fetchMock.mockResolvedValue({ theming: { favicon: encodedIco } });
+
+        const result = await getTenantData({ id: 1 } as never, false);
+
+        expect(Object.keys(result.theming)).toEqual(['favicon']);
+    });
+});

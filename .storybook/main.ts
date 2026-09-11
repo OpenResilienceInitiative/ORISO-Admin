@@ -5,9 +5,18 @@ import { mergeConfig } from 'vite';
 // @storybook/addon-mcp exposes the real Admin components+props to coding agents
 // at http://localhost:6006/mcp. antd v4 styling needs less { javascriptEnabled }.
 const config: StorybookConfig = {
-    stories: ['../src/**/*.stories.@(ts|tsx)'],
-    // addon-a11y runs axe (WCAG 2.2 AA) against each story in the a11y panel + test-runner.
-    addons: ['@storybook/addon-mcp', '@storybook/addon-designs', '@storybook/addon-a11y'],
+    stories: ['../src/**/*.mdx', '../src/**/*.stories.@(ts|tsx)'],
+    // addon-a11y runs axe (WCAG 2.2 AA) against each story in the a11y panel + component tests.
+    // addon-docs renders the autodocs pages and the .mdx files under src/.
+    // addon-vitest adds the sidebar test widget; it runs `vitest --project storybook`
+    // (real Chromium) and reports interaction, a11y and coverage results in the UI.
+    addons: [
+        '@storybook/addon-mcp',
+        '@storybook/addon-designs',
+        '@storybook/addon-a11y',
+        '@storybook/addon-docs',
+        '@storybook/addon-vitest',
+    ],
     framework: { name: '@storybook/react-vite', options: {} },
     core: { disableTelemetry: true },
     // Serve public/ so MSW's generated service worker (public/mockServiceWorker.js) is reachable.
@@ -38,6 +47,16 @@ const config: StorybookConfig = {
                         // antd v4 + App.less rely on inline JS in less.
                         less: { javascriptEnabled: true },
                     },
+                },
+                // Pre-bundle the docs blocks. Vite otherwise discovers them only
+                // when the first .mdx / autodocs page is imported, re-optimizes
+                // mid-flight, and every module request already in flight 404s
+                // ("Failed to fetch dynamically imported module …/deps/
+                // @storybook_addon-docs_n_@storybook_react-dom-shim.js"). In the
+                // dev server that is a reload; in `vitest --project storybook` it
+                // fails a handful of unrelated stories at random.
+                optimizeDeps: {
+                    include: ['@storybook/addon-docs > @storybook/react-dom-shim'],
                 },
                 build: { rollupOptions: { output: { manualChunks: undefined } } },
             },

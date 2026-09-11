@@ -1,7 +1,10 @@
-import { Outlet } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Page } from '../../components/Page';
 import { AdminSegmentedTabs, AdminSegmentedTabItem } from '../../components/AdminSegmentedTabs/AdminSegmentedTabs';
+import { useRegisterMobileNav } from '../../components/AdminMobileNav/MobileNavContext';
+import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import routePathNames from '../../appConfig';
 import { ReactComponent as PowerOffIcon } from '../../resources/img/svg/power_off.svg';
 import { ReactComponent as FaceNodIcon } from '../../resources/img/svg/face_nod.svg';
@@ -24,6 +27,8 @@ interface LogsTabsLayoutProps {
  */
 export const LogsTabsLayout = ({ showSupervisor, showCaseHandover, showInactive }: LogsTabsLayoutProps) => {
     const { t } = useTranslation();
+    const { pathname } = useLocation();
+    const isDesktopLayout = useIsDesktopLayout();
 
     const tabs: AdminSegmentedTabItem[] = [];
     if (showSupervisor) {
@@ -54,9 +59,41 @@ export const LogsTabsLayout = ({ showSupervisor, showCaseHandover, showInactive 
         });
     }
 
+    const navigableTabs = tabs.filter((tab) => tab.to);
+
+    const activeSubsectionKey = useMemo(() => {
+        // Honour `end: true` on the supervision landing so `/admin/logs` does
+        // not stay active on every sibling under that prefix.
+        const matches = navigableTabs.filter((tab) => {
+            if (!tab.to) {
+                return false;
+            }
+            if (tab.end) {
+                return pathname === tab.to;
+            }
+            return pathname === tab.to || pathname.startsWith(`${tab.to}/`);
+        });
+
+        return matches.sort((a, b) => (b.to?.length ?? 0) - (a.to?.length ?? 0))[0]?.to;
+    }, [navigableTabs, pathname]);
+
+    useRegisterMobileNav(
+        'logs-sections',
+        navigableTabs.length > 1
+            ? {
+                  subsections: navigableTabs.map((tab) => ({
+                      key: tab.to as string,
+                      label: tab.label,
+                      to: tab.to,
+                  })),
+                  activeSubsectionKey,
+              }
+            : null,
+    );
+
     return (
         <Page>
-            {tabs.length > 0 && (
+            {tabs.length > 0 && isDesktopLayout && (
                 <Page.Title>
                     <AdminSegmentedTabs ariaLabel={String(t('logs.title'))} items={tabs} />
                 </Page.Title>
