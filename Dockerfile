@@ -1,9 +1,10 @@
 ARG DOCKER_MATRIX=ghcr.io
 FROM $DOCKER_MATRIX/onlineberatung/onlineberatung-nginx/onlineberatung-nginx:dockerimage.v.005-main
 
-# The nginx base image does not include Node.js; auth BFF sidecar requires it.
+# Patch fixable OS packages, then install Node.js for the auth BFF sidecar.
 RUN set -eux; \
     if [ -f /etc/alpine-release ]; then \
+        apk upgrade --no-cache; \
         apk add --no-cache nodejs; \
     elif command -v apt-get >/dev/null 2>&1; then \
         apt-get update; \
