@@ -544,6 +544,7 @@
     "links.accountInvites.actions": "Aktionen",
     "links.accountInvites.status.DRAFT": "Draft",
     "links.accountInvites.status.EMAIL_SENT": "Gesendet",
+    "links.accountInvites.status.deliveryUnconfirmed": "Versand unbestätigt",
     "links.accountInvites.status.ACCEPTED": "Angenommen",
     "links.accountInvites.status.EXPIRED": "Abgelaufen",
     "links.accountInvites.status.REVOKED": "Widerrufen",

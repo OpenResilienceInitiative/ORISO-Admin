@@ -104,8 +104,12 @@ const matchesFilter = (invite: AccountInviteDTO, filter: InviteFilter | null) =>
 const isActionable = (invite: AccountInviteDTO) =>
     invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
 
+/** Sent without a delivery receipt — the badge and its hint must both say so. */
+const isDeliveryUnconfirmed = (invite: AccountInviteDTO) =>
+    invite.inviteStatus === 'EMAIL_SENT' && invite.emailDeliveryStatus !== 'SENT';
+
 const inviteStatusHint = (invite: AccountInviteDTO) => {
-    if (invite.inviteStatus === 'EMAIL_SENT' && invite.emailDeliveryStatus !== 'SENT') {
+    if (isDeliveryUnconfirmed(invite)) {
         return {
             key: 'links.accountInvites.statusHint.deliveryUnconfirmed',
             fallback:
@@ -460,10 +464,15 @@ export const InviteProgressBoard = ({
                                 <M3Tooltip text={t(inviteStatusHint(invite).key, inviteStatusHint(invite).fallback)}>
                                     {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge is the only place the status vocabulary is explained, so it must be reachable without a mouse */}
                                     <span tabIndex={0} className={statusChipClass}>
-                                        {t(
-                                            `links.accountInvites.status.${invite.inviteStatus}`,
-                                            INVITE_STATUS_FALLBACK_LABELS[invite.inviteStatus],
-                                        )}
+                                        {isDeliveryUnconfirmed(invite)
+                                            ? t(
+                                                  'links.accountInvites.status.deliveryUnconfirmed',
+                                                  'Versand unbestätigt',
+                                              )
+                                            : t(
+                                                  `links.accountInvites.status.${invite.inviteStatus}`,
+                                                  INVITE_STATUS_FALLBACK_LABELS[invite.inviteStatus],
+                                              )}
                                     </span>
                                 </M3Tooltip>
                             </DataTableCell>

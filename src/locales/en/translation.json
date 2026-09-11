@@ -616,6 +616,7 @@
     "links.accountInvites.actions": "Actions",
     "links.accountInvites.status.DRAFT": "Draft",
     "links.accountInvites.status.EMAIL_SENT": "Sent",
+    "links.accountInvites.status.deliveryUnconfirmed": "Delivery unconfirmed",
     "links.accountInvites.status.ACCEPTED": "Accepted",
     "links.accountInvites.status.EXPIRED": "Expired",
     "links.accountInvites.status.REVOKED": "Revoked",
