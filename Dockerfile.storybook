@@ -25,6 +25,9 @@ FROM nginx:alpine
 
 ARG PORT=80
 
+# Patch fixable Alpine packages flagged by the release vulnerability gate.
+RUN apk upgrade --no-cache
+
 # Copy Storybook build output to nginx html directory
 COPY --from=storybookbuild /app/storybook-static /usr/share/nginx/html
 

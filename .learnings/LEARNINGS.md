@@ -11,6 +11,11 @@ Format:
 -   Lesson: <what to do differently next time>
 ```
 
+## 2026-09-04 PRs target `dev`
+
+-   Context: `docs/agent-tasks/2026-09-04_sync-origin-dev/` (workspace)
+-   Lesson: Feature branches and PRs start from `origin/dev`. Do not treat `pre-dev` as the integration base.
+
 ## 2026-08-30 Prettier every touched file, including Markdown
 
 -   Context: #888 CI failed on `docs/agent-tasks/index.md` (`npx prettier . --check --ignore-unknown`)

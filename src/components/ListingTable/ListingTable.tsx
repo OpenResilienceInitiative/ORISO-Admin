@@ -1,28 +1,47 @@
 import { Table } from 'antd';
 import type { TableProps } from 'antd';
 import classNames from 'classnames';
-import type { CSSProperties } from 'react';
+import { useRef, type CSSProperties } from 'react';
 import styles from './styles.module.scss';
+import { useAdminTableScrollY } from '../ResizableTable/useAdminTableScrollY';
 
-const DEFAULT_TABLE_SCROLL_Y = 'calc(100dvh - 280px)';
+const scrollYToCssValue = (scrollY: string | number): string =>
+    typeof scrollY === 'number' ? `${scrollY}px` : scrollY;
+
+const scrollYCssVar = (scrollY: string | number | undefined): CSSProperties => {
+    if (scrollY === undefined || scrollY === 'auto') {
+        return {};
+    }
+    return { '--admin-table-scroll-y': scrollYToCssValue(scrollY) } as CSSProperties;
+};
 
 export const ListingTable = <T extends object>({ className, scroll, style, ...props }: TableProps<T>) => {
-    const effectiveScroll = { x: 'max-content', y: DEFAULT_TABLE_SCROLL_Y, ...scroll };
+    const hostRef = useRef<HTMLDivElement>(null);
+    const callerScrollY = scroll?.y;
+    const measureDefaultScrollY = callerScrollY === undefined;
+    const measuredScrollY = useAdminTableScrollY(hostRef, measureDefaultScrollY);
+
+    const defaultScrollY = measureDefaultScrollY ? measuredScrollY : callerScrollY;
+    const effectiveScroll = { x: 'max-content', y: defaultScrollY, ...scroll };
     const effectiveScrollY = effectiveScroll.y;
     const tableStyle = {
-        ...(typeof effectiveScrollY === 'string' && effectiveScrollY !== 'auto'
-            ? { '--admin-table-scroll-y': effectiveScrollY }
-            : {}),
+        ...scrollYCssVar(effectiveScrollY),
         ...style,
     } as CSSProperties;
 
     return (
-        <Table
-            {...props}
-            className={classNames(styles.listingTable, { [styles.autoHeight]: effectiveScrollY === 'auto' }, className)}
-            scroll={effectiveScroll}
-            style={tableStyle}
-        />
+        <div ref={hostRef} className={styles.measureHost}>
+            <Table
+                {...props}
+                className={classNames(
+                    styles.listingTable,
+                    { [styles.autoHeight]: effectiveScrollY === 'auto' },
+                    className,
+                )}
+                scroll={effectiveScroll}
+                style={tableStyle}
+            />
+        </div>
     );
 };
 

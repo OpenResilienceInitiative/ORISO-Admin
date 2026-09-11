@@ -28,7 +28,14 @@ import { clearStuckOverlays } from '../../utils/clearStuckOverlays';
 
 const { Content } = Layout;
 
-const ProtectedPageLayoutWrapper = ({ children }: any) => {
+/**
+ * `restricted` strips the layout down to logout only (#891). The 2FA gate
+ * renders in place of every route, so an admin nav behind it would offer
+ * destinations that silently resolve back to the gate — dead links that read
+ * like a way out. Logout stays, because it is one of the operations the gated
+ * account is still allowed.
+ */
+const ProtectedPageLayoutWrapper = ({ children, restricted = false }: any) => {
     const { settings } = useAppConfigContext();
     const { can } = useUserPermissions();
     const { subdomain } = getLocationVariables();
@@ -110,20 +117,24 @@ const ProtectedPageLayoutWrapper = ({ children }: any) => {
     // Nav items are resolved by the pure `buildAdminNavItems` builder so the visible
     // navigation can be asserted per role (see adminNavItems.test.ts); the presentational
     // <AdminSidebar> just renders what it is given.
-    const upperNavItems = buildAdminNavItems({
-        isSuperAdmin,
-        hasRole,
-        can,
-        labels: navLabels,
-        settingsPath,
-    });
+    const upperNavItems = restricted
+        ? []
+        : buildAdminNavItems({
+              isSuperAdmin,
+              hasRole,
+              can,
+              labels: navLabels,
+              settingsPath,
+          });
 
-    const accountNavItem: AdminSidebarNavItem = {
-        key: 'account',
-        to: routePathNames.userProfile,
-        label: navLabels.account,
-        iconPath: routePathNames.userProfile,
-    };
+    const accountNavItem: AdminSidebarNavItem | undefined = restricted
+        ? undefined
+        : {
+              key: 'account',
+              to: routePathNames.userProfile,
+              label: navLabels.account,
+              iconPath: routePathNames.userProfile,
+          };
 
     return (
         <MobileNavProvider>
