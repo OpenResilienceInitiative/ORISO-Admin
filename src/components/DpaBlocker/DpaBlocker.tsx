@@ -142,6 +142,13 @@ export const DpaBlocker = ({
 
     const showSignForm = signable && !dpaContentLoading && !!dpaHtml;
     const showContentUnavailable = signable && !dpaContentLoading && !dpaHtml;
+    // Forwarding needs no DPA text on this screen, so a failed text load must
+    // not take it away — otherwise the unauthorised admin is back at a dead end.
+    const forwardButton = onForward && (
+        <M3Button type="button" variant="outlined" block onClick={() => setForwardOpen(true)}>
+            {t('dpaForward.action.notAuthorised')}
+        </M3Button>
+    );
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
@@ -183,9 +190,12 @@ export const DpaBlocker = ({
                         )}
 
                         {showContentUnavailable && (
-                            <Alert severity="error" sx={{ mb: 2 }}>
-                                {t('dpaBlocker.contentUnavailable')}
-                            </Alert>
+                            <>
+                                <Alert severity="error" sx={{ mb: 2 }}>
+                                    {t('dpaBlocker.contentUnavailable')}
+                                </Alert>
+                                {forwardButton}
+                            </>
                         )}
 
                         {showSignForm && (
@@ -249,16 +259,7 @@ export const DpaBlocker = ({
                                     >
                                         {t('dpaBlocker.sign.submit')}
                                     </M3Button>
-                                    {onForward && (
-                                        <M3Button
-                                            type="button"
-                                            variant="outlined"
-                                            block
-                                            onClick={() => setForwardOpen(true)}
-                                        >
-                                            {t('dpaForward.action.notAuthorised')}
-                                        </M3Button>
-                                    )}
+                                    {forwardButton}
                                 </div>
                             </Form>
                         )}

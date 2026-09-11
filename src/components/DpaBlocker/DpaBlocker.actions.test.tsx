@@ -71,4 +71,10 @@ describe('DpaBlocker — secondary actions', () => {
         expect(screen.getByRole('button', { name: 'dpaBlocker.retry' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'dpaBlocker.logout' })).toBeInTheDocument();
     });
+
+    it('keeps forwarding reachable when the DPA text could not be loaded', () => {
+        render(<DpaBlocker {...props} reason="UNSIGNED" signable dpaContent={null} onForward={vi.fn()} />);
+
+        expect(screen.getByRole('button', { name: 'dpaForward.action.notAuthorised' })).toBeInTheDocument();
+    });
 });
