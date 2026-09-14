@@ -184,13 +184,13 @@ describe('OrganisationDpaStep — named sections, master data next to the signer
 describe('tenant onboarding wording — short signer labels under their section header', () => {
     it('ships both section headers in every locale', () => {
         expect(de['tenantOnboarding.organisation.masterDataTitle']).toBe('Stammdaten Organisation');
-        expect(de['tenantOnboarding.dpa.signerSectionTitle']).toBe('Daten der unterschriftsberechtigten Person');
+        expect(de['tenantOnboarding.dpa.signerSectionTitle']).toBe('Daten der vertretungsberechtigten Person');
         expect(en['tenantOnboarding.organisation.masterDataTitle']).toBeTruthy();
         expect(en['tenantOnboarding.dpa.signerSectionTitle']).toBeTruthy();
     });
 
     it('shortens the four signer labels', () => {
-        expect(de['tenantOnboarding.dpa.signerName']).toBe('Name');
+        expect(de['tenantOnboarding.dpa.signerName']).toBe('Vollständiger Name');
         expect(de['tenantOnboarding.dpa.signerPosition']).toBe('Position');
         expect(de['tenantOnboarding.dpa.signerEmail']).toBe('E-Mail');
         expect(de['tenantOnboarding.dpa.signerNote']).toBe('Anmerkung (optional)');

@@ -49,7 +49,7 @@ export const OrganisationAndDpa: Story = {
 /**
  * Owner report 2026-08-19 — the step is read as three named blocks now: the
  * agreement, "Stammdaten Organisation" (moved down from the top of the step)
- * and "Daten der unterschriftsberechtigten Person" directly below it, whose
+ * and "Daten der vertretungsberechtigten Person" directly below it, whose
  * header is what lets the four signer labels be short.
  */
 export const OrganisationAndDpaSections: Story = {
@@ -67,7 +67,7 @@ export const OrganisationAndDpaSections: Story = {
         await expect(masterData.compareDocumentPosition(signer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         // Language-agnostic, like the forward stories: the point is that the
         // labels are SHORT now, not which locale the preview happens to run in.
-        await expect(canvas.getByLabelText(/^Name$/)).toBeVisible();
+        await expect(canvas.getByLabelText(/^Vollständiger Name$/)).toBeVisible();
         await expect(canvas.getByLabelText(/^E-?Mail$/i)).toBeVisible();
     },
 };
