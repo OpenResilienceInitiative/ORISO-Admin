@@ -107,7 +107,7 @@ describe('DpaFormSection — consent is the deliberate act (#594.5)', () => {
         render(<Host />);
 
         await screen.findByTestId('dpa-consent');
-        await user.click(screen.getByText('tenantOnboarding.dpa.acceptHint'));
+        await user.click(screen.getByText('tenantOnboarding.dpa.accept'));
 
         expect(screen.getByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' })).toHaveAttribute(
             'aria-checked',
@@ -115,17 +115,12 @@ describe('DpaFormSection — consent is the deliberate act (#594.5)', () => {
         );
     });
 
-    it('reads the explanation out to screen readers, not just the bare label', async () => {
+    it('keeps a complete accessible label without a redundant confirmation description', async () => {
         render(<Host />);
 
         const checkbox = await screen.findByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' });
-        const describedBy = checkbox.getAttribute('aria-describedby');
-        expect(describedBy).toBeTruthy();
-
-        const hint = document.getElementById(describedBy!);
-        expect(hint).toHaveTextContent('tenantOnboarding.dpa.acceptHint');
-        // Announceable: neither the hint nor any ancestor may be aria-hidden.
-        expect(hint?.closest('[aria-hidden="true"]')).toBeNull();
+        expect(checkbox).not.toHaveAttribute('aria-describedby');
+        expect(screen.queryByText('tenantOnboarding.dpa.acceptHint')).not.toBeInTheDocument();
     });
 });
 

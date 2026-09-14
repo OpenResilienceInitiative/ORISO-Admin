@@ -11,9 +11,6 @@ import styles from './styles.module.scss';
 /** Wrapper id of the consent control — hosts jump here on an incomplete submit. */
 export const DPA_CONSENT_ANCHOR_ID = 'dpa-consent';
 
-/** Id of the sentence that explains what ticking the box actually does. */
-const DPA_CONSENT_HINT_ID = 'dpa-consent-hint';
-
 /**
  * Brings the deliberate legal act into view and onto the keyboard after a
  * submit that failed because the box is still unticked (#594.6).
@@ -172,16 +169,13 @@ export const DpaFormSection = ({
                 <M3Checkbox
                     checked={accepted}
                     label={t('tenantOnboarding.dpa.accept')}
-                    describedById={DPA_CONSENT_HINT_ID}
                     className={styles.consentCheckbox}
                     onChange={onAcceptedChange}
                 />
                 {/* The block is the pointer target. Only the TITLE is hidden
                     from assistive tech — it repeats the checkbox's accessible
-                    name verbatim and would be announced twice. The hint says
-                    something the name does not, so it stays exposed and is
-                    wired to the box via `aria-describedby` (#596 review): a
-                    binding consent must be understandable by ear as well.
+                    name verbatim and would be announced twice. The complete
+                    confirmation remains the checkbox's accessible name.
 
                     `role="presentation"` on the wrapper, not `aria-hidden`:
                     the div is a redundant POINTER surface for the adjacent
@@ -206,20 +200,6 @@ export const DpaFormSection = ({
                         }}
                     >
                         {t('tenantOnboarding.dpa.accept')}
-                    </Typography>
-                    <Typography
-                        component="p"
-                        id={DPA_CONSENT_HINT_ID}
-                        className={styles.consentHint}
-                        sx={{
-                            mt: '4px',
-                            mb: 0,
-                            color: 'var(--m3-on-surface-variant)',
-                            fontSize: 13,
-                            lineHeight: '18px',
-                        }}
-                    >
-                        {t('tenantOnboarding.dpa.acceptHint')}
                     </Typography>
                 </div>
             </div>
