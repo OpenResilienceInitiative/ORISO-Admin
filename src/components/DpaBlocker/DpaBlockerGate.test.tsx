@@ -380,7 +380,7 @@ describe('DpaBlockerGate', () => {
 
             renderGate();
 
-            await user.click(await screen.findByRole('button', { name: 'dpaForward.action.notAuthorised' }));
+            await user.click(await screen.findByRole('button', { name: 'dpaBlocker.forward' }));
             await user.click(await screen.findByRole('button', { name: 'dpaForward.dialog.linkCreate' }));
             await user.click(await screen.findByRole('button', { name: 'dpaForward.dialog.confirm' }));
 

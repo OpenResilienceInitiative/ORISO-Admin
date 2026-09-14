@@ -62,6 +62,7 @@
     "tenantOnboarding.dpa.acceptHint": "Das Setzen dieses Hakens ist die verbindliche Bestätigung der Vertragsunterlagen oben.",
     "tenantOnboarding.dpa.acceptRequired": "Bitte bestätigen Sie die Vertragsunterlagen, um fortzufahren.",
     "tenantOnboarding.dpa.acceptRequiredShort": "Bestätigung erforderlich",
+    "dpaBlocker.forward": "An berechtigte Person weiterleiten",
     "dpaBlocker.title": "Vertragsunterlagen",
     "dpaBlocker.intro.UNSIGNED": "Ihre Organisation hat die Vertragsunterlagen noch nicht unterzeichnet. Der Verwaltungsbereich bleibt gesperrt, bis die Unterzeichnung erfolgt ist.",
     "dpaBlocker.intro.OUTDATED": "Die Vertragsunterlagen wurden aktualisiert. Der Verwaltungsbereich bleibt gesperrt, bis die aktuelle Version unterzeichnet ist.",

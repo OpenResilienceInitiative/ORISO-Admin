@@ -67,7 +67,7 @@ describe('DpaBlocker — secondary actions', () => {
         );
 
         expect(screen.getByRole('button', { name: 'dpaBlocker.sign.submit' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'dpaForward.action.notAuthorised' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'dpaBlocker.forward' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'dpaBlocker.retry' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'dpaBlocker.logout' })).toBeInTheDocument();
     });
@@ -75,6 +75,17 @@ describe('DpaBlocker — secondary actions', () => {
     it('keeps forwarding reachable when the DPA text could not be loaded', () => {
         render(<DpaBlocker {...props} reason="UNSIGNED" signable dpaContent={null} onForward={vi.fn()} />);
 
-        expect(screen.getByRole('button', { name: 'dpaForward.action.notAuthorised' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'dpaBlocker.forward' })).toBeInTheDocument();
+    });
+    it('opens forwarding above the blocker without signing or creating a link', async () => {
+        const onForward = vi.fn();
+        const onSign = vi.fn();
+        render(<DpaBlocker {...props} reason="UNSIGNED" signable onForward={onForward} onSign={onSign} />);
+        await userEvent.click(screen.getByRole('button', { name: 'dpaBlocker.forward' }));
+        const dialog = await screen.findByTestId('dpa-forward-dialog');
+        const wrap = dialog.closest('.ant-modal-wrap');
+        expect(Number(wrap?.getAttribute('style')?.match(/z-index:\s*(\d+)/)?.[1])).toBeGreaterThan(1300);
+        expect(onForward).not.toHaveBeenCalled();
+        expect(onSign).not.toHaveBeenCalled();
     });
 });

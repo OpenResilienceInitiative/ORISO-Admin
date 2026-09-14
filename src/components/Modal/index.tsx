@@ -41,6 +41,8 @@ export interface ModalProps {
     /** Custom footer content; replaces the standard text-button actions. */
     footer?: ReactNode;
     width?: number | string;
+    /** Layer for dialogs opened above an application overlay. */
+    zIndex?: number;
     /** Optional 32px hero icon centered above the title (M3 basic dialog). */
     icon?: ReactNode;
     /** Full-width divider between content and actions. Defaults to true. */
@@ -92,6 +94,7 @@ export const Modal = ({
     contentKeyOptions,
     footer,
     width,
+    zIndex,
     icon,
     showDivider = true,
     confirmDisabled = false,
@@ -173,6 +176,7 @@ export const Modal = ({
                 ) : null
             }
             width={width}
+            zIndex={zIndex}
             afterClose={() => {
                 document.querySelectorAll('.ant-modal-root:empty').forEach((root) => root.remove());
             }}
