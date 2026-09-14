@@ -67,6 +67,8 @@ export interface DpaForwardDialogProps {
      * costs a branded preview, never a session.
      */
     surface?: DpaForwardSurface;
+    /** Keep the forwarding dialog and its close guard above the host overlay. */
+    zIndex?: number;
     titleKey?: string;
     descriptionKey?: string;
 }
@@ -120,6 +122,7 @@ export const DpaForwardDialog = ({
     onClose,
     onForwarded,
     surface = 'public',
+    zIndex,
     titleKey = 'dpaForward.dialog.title',
     descriptionKey = 'dpaForward.dialog.description',
 }: DpaForwardDialogProps) => {
@@ -224,6 +227,8 @@ export const DpaForwardDialog = ({
                 onClose={requestClose}
                 className={styles.dialog}
                 width={880}
+                zIndex={zIndex}
+                wrapperTestId="dpa-forward-dialog-modal"
             >
                 <div className={styles.body} data-testid="dpa-forward-dialog">
                     {/* The mail comes first: it is the worked example of what the
@@ -399,6 +404,8 @@ export const DpaForwardDialog = ({
                     onDismiss={() => setCloseGuardOpen(false)}
                     closable={false}
                     width={480}
+                    zIndex={zIndex === undefined ? undefined : zIndex + 1}
+                    wrapperTestId="dpa-forward-close-guard-modal"
                 />
             )}
         </>

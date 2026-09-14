@@ -67,6 +67,7 @@
     "tenantOnboarding.dpa.acceptHint": "Ticking this box is the binding confirmation of the contract documents above.",
     "tenantOnboarding.dpa.acceptRequired": "Please confirm the contract documents to continue.",
     "tenantOnboarding.dpa.acceptRequiredShort": "Confirmation required",
+    "dpaBlocker.forward": "Forward to an authorised person",
     "dpaBlocker.title": "Contract documents",
     "dpaBlocker.intro.UNSIGNED": "Your organisation has not yet signed the contract documents. The admin area stays locked until they are signed.",
     "dpaBlocker.intro.OUTDATED": "The contract documents have been updated. The admin area stays locked until the current version is signed.",

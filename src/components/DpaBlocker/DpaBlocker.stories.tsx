@@ -138,3 +138,16 @@ export const FullscreenReaderOverTheBlocker: Story = {
         await expect(dialog.querySelector('.ProseMirror')?.textContent ?? '').toContain('Abschnitt 1');
     },
 };
+
+/** Forwarding from the authenticated contract gate, including narrow layouts. */
+export const ForwardToSigner: Story = {
+    args: {
+        reason: 'UNSIGNED',
+        signable: true,
+        dpaContent: SHORT_DPA,
+        onForward: fn().mockResolvedValue({
+            link: { signUrl: 'https://example.org/dpa-sign/demo', expiresAt: null },
+            mailFailed: false,
+        }),
+    },
+};

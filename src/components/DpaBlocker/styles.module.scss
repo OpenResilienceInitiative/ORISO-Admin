@@ -145,11 +145,13 @@
 
 .actions {
     display: flex;
+    flex-direction: column;
     justify-content: space-between;
     margin-top: 24px;
     gap: 12px;
 
     > * {
+        min-width: 0;
         flex: 1 1 auto;
     }
 }
@@ -168,4 +170,11 @@
     display: flex;
     justify-content: center;
     padding: 32px 0;
+}
+
+.actionLabel {
+    overflow: hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

@@ -291,14 +291,17 @@ describe('DpaForwardDialog link minting', () => {
      */
     it('guards the close once a link was minted, and completing from the guard forwards', async () => {
         const user = userEvent.setup();
-        const { onClose, onForwarded } = renderDialog();
+        const { onClose, onForwarded } = renderDialog({ zIndex: 1400 });
         await requestLink(user);
 
         await user.click(screen.getByRole('button', { name: 'cancel' }));
 
         // Not closed — the guard asks first.
         expect(onClose).not.toHaveBeenCalled();
-        expect(screen.getByText('dpaForward.closeGuard.title')).toBeInTheDocument();
+        const dialog = screen.getByTestId('dpa-forward-dialog-modal');
+        const guard = screen.getByTestId('dpa-forward-close-guard-modal');
+        expect(dialog).toHaveStyle({ zIndex: 1400 });
+        expect(guard).toHaveStyle({ zIndex: 1401 });
 
         await user.click(screen.getByRole('button', { name: 'dpaForward.closeGuard.complete' }));
         expect(onForwarded).toHaveBeenCalledWith({ link: LINK, recipientEmail: null, mailFailed: false });

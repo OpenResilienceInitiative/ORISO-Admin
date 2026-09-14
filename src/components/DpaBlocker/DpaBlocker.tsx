@@ -146,7 +146,7 @@ export const DpaBlocker = ({
     // not take it away — otherwise the unauthorised admin is back at a dead end.
     const forwardButton = onForward && (
         <M3Button type="button" variant="outlined" block onClick={() => setForwardOpen(true)}>
-            {t('dpaForward.action.notAuthorised')}
+            <span className={styles.actionLabel}>{t('dpaBlocker.forward')}</span>
         </M3Button>
     );
 
@@ -257,7 +257,7 @@ export const DpaBlocker = ({
                                         disabled={signPending}
                                         icon={<Draw fontSize="small" />}
                                     >
-                                        {t('dpaBlocker.sign.submit')}
+                                        <span className={styles.actionLabel}>{t('dpaBlocker.sign.submit')}</span>
                                     </M3Button>
                                     {forwardButton}
                                 </div>
@@ -280,10 +280,10 @@ export const DpaBlocker = ({
                             disabled={retryPending}
                             icon={<Refresh fontSize="small" />}
                         >
-                            {t('dpaBlocker.retry')}
+                            <span className={styles.actionLabel}>{t('dpaBlocker.retry')}</span>
                         </M3Button>
                         <M3Button variant="text" onClick={onLogout} icon={<Logout fontSize="small" />}>
-                            {t('dpaBlocker.logout')}
+                            <span className={styles.actionLabel}>{t('dpaBlocker.logout')}</span>
                         </M3Button>
                     </div>
                     <p className={styles.actionsHint} data-testid="dpa-blocker-actions-hint">
@@ -294,6 +294,7 @@ export const DpaBlocker = ({
                     <DpaForwardDialog
                         forward={onForward}
                         surface="admin"
+                        zIndex={1400}
                         onClose={() => setForwardOpen(false)}
                         onForwarded={(result) => {
                             setForwardOpen(false);
