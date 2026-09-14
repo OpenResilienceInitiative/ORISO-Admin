@@ -298,7 +298,9 @@ describe('DpaForwardDialog link minting', () => {
 
         // Not closed — the guard asks first.
         expect(onClose).not.toHaveBeenCalled();
-        const guard = screen.getByText('dpaForward.closeGuard.title').closest('.ant-modal-wrap');
+        const dialog = screen.getByTestId('dpa-forward-dialog-modal');
+        const guard = screen.getByTestId('dpa-forward-close-guard-modal');
+        expect(dialog).toHaveStyle({ zIndex: 1400 });
         expect(guard).toHaveStyle({ zIndex: 1401 });
 
         await user.click(screen.getByRole('button', { name: 'dpaForward.closeGuard.complete' }));

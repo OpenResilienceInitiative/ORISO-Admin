@@ -228,6 +228,7 @@ export const DpaForwardDialog = ({
                 className={styles.dialog}
                 width={880}
                 zIndex={zIndex}
+                wrapperTestId="dpa-forward-dialog-modal"
             >
                 <div className={styles.body} data-testid="dpa-forward-dialog">
                     {/* The mail comes first: it is the worked example of what the
@@ -404,6 +405,7 @@ export const DpaForwardDialog = ({
                     closable={false}
                     width={480}
                     zIndex={zIndex === undefined ? undefined : zIndex + 1}
+                    wrapperTestId="dpa-forward-close-guard-modal"
                 />
             )}
         </>
