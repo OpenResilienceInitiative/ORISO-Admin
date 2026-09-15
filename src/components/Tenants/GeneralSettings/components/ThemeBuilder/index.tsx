@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Form, FormInstance, Modal } from 'antd';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import { useTranslation } from 'react-i18next';
+import { appURL } from '../../../../../appConfig';
 import { CardEditable } from '../../../../CardEditable';
 import { MuiColorField } from '../../../../mui/MuiColorField';
 import { SideScrollerFooter } from '../../../../SideScrollerFooter';
@@ -10,15 +11,17 @@ import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.ho
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { isReadOnlySetting } from '../../../../../utils/serverSettingsMeta';
 import { computeOrisoPalette } from '../../../../../utils/theme/orisoScheme';
+import { brandSeedCannotYieldPalette } from '../../../../../utils/theme/seedUsability';
 import {
     buildSeedUpdate,
     getAccentDark,
     getAccentLight,
+    getSignal,
     readSeeds,
     TenantSeeds,
 } from '../../../../../utils/themeSeeds';
 import iphoneFrame from '../../../../../resources/img/theme-preview/iphone-14-pro.png';
-import { MiniChatPreview } from './MiniChatPreview';
+import { buildPreviewUrl } from './previewUrl';
 import styles from './styles.module.scss';
 
 interface ThemeBuilderProps {
@@ -29,24 +32,35 @@ interface ThemeBuilderProps {
 interface ThemeBuilderFormProps {
     form: FormInstance;
     storedSeeds: TenantSeeds;
-    locks: { accentDark: boolean; accentLight: boolean };
+    locks: { accentDark: boolean; accentLight: boolean; signal: boolean };
     editing: boolean;
+    saveRejected?: boolean;
 }
 
 interface ThemeEditorModalProps {
     open: boolean;
     initialValues: Record<string, unknown>;
     storedSeeds: TenantSeeds;
-    locks: { accentDark: boolean; accentLight: boolean };
+    locks: { accentDark: boolean; accentLight: boolean; signal: boolean };
     onCancel: () => void;
     onSubmit: (values: any) => void;
+    /**
+     * Origin serving the end-user app. Defaults to configured `appURL`.
+     * Stories and unit tests MUST pass a stub so they never hit the network.
+     */
+    appBaseUrl?: string;
 }
 
 const seedIsTooPale = (seeds: TenantSeeds): boolean => {
-    if (!getAccentDark(seeds)) {
+    const accentDark = getAccentDark(seeds);
+    return Boolean(accentDark && brandSeedCannotYieldPalette(accentDark));
+};
+
+const seedSignalTooClose = (seeds: TenantSeeds): boolean => {
+    if (!getSignal(seeds) || !getAccentDark(seeds)) {
         return false;
     }
-    return computeOrisoPalette(seeds).tooPale;
+    return computeOrisoPalette(seeds).signalTooClose;
 };
 
 const SCROLL_EPSILON = 8;
@@ -61,11 +75,6 @@ const getThemeRows = (tokens: Record<string, string>, t: (key: string) => string
         color: tokens['--oriso-app-accent-light'],
         label: t('theme.builder.accentLightColor'),
         description: t('theme.builder.summary.accentLight'),
-    },
-    {
-        color: tokens['--m3-warning'],
-        label: t('theme.builder.summary.alertLabel'),
-        description: t('theme.builder.summary.alert'),
     },
     {
         color: tokens['--m3-error'],
@@ -98,17 +107,19 @@ const ThemeSummary = ({ seeds }: { seeds: TenantSeeds }) => {
     );
 };
 
-const ThemeBuilderForm = ({ form, storedSeeds, locks, editing }: ThemeBuilderFormProps) => {
+const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = false }: ThemeBuilderFormProps) => {
     const { t } = useTranslation();
     const accentDark = Form.useWatch(['theming', 'primaryColor'], form);
     const accentLight = Form.useWatch(['theming', 'accent'], form);
+    const signal = Form.useWatch(['theming', 'signal'], form);
     const draftSeeds: TenantSeeds = {
         accentDark: accentDark ?? getAccentDark(storedSeeds),
         accentLight: accentLight ?? getAccentLight(storedSeeds),
+        signal: signal ?? getSignal(storedSeeds),
     };
     const tooPale = seedIsTooPale(draftSeeds);
-    const { tokens } = computeOrisoPalette(draftSeeds);
-    const fixedRows = getThemeRows(tokens, t).slice(2);
+    const signalTooClose = seedSignalTooClose(draftSeeds);
+    const unusableSeedMessage = t('theme.builder.seedUnusable');
 
     if (!editing) {
         return <ThemeSummary seeds={storedSeeds} />;
@@ -123,6 +134,16 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing }: ThemeBuilderFor
                     name={['theming', 'primaryColor']}
                     required
                     disabled={locks.accentDark}
+                    rules={[
+                        {
+                            validator: async (_, value) => {
+                                if (value && brandSeedCannotYieldPalette(value)) {
+                                    return Promise.reject(new Error(unusableSeedMessage));
+                                }
+                                return Promise.resolve();
+                            },
+                        },
+                    ]}
                 />
                 <MuiColorField
                     className={styles.colorField}
@@ -130,32 +151,67 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing }: ThemeBuilderFor
                     name={['theming', 'accent']}
                     disabled={locks.accentLight}
                 />
-                {fixedRows.map((row) => (
-                    <ColorSummaryRow {...row} key={row.label} />
-                ))}
+                <MuiColorField
+                    className={styles.colorField}
+                    labelKey="theme.builder.signalColor"
+                    name={['theming', 'signal']}
+                    disabled={locks.signal}
+                />
             </div>
-            {tooPale && (
+            {saveRejected && tooPale && (
+                <Alert className={styles.tooPaleAlert} type="error" showIcon message={unusableSeedMessage} />
+            )}
+            {tooPale && !saveRejected && (
                 <Alert className={styles.tooPaleAlert} type="warning" showIcon message={t('theme.builder.tooPale')} />
+            )}
+            {signalTooClose && (
+                <Alert
+                    className={styles.tooPaleAlert}
+                    type="warning"
+                    showIcon
+                    message={t('theme.builder.signalTooClose')}
+                />
             )}
         </>
     );
 };
 
-const PhoneThemePreview = ({ labelKey, seeds }: { labelKey: string; seeds: TenantSeeds }) => {
+const PhoneThemePreview = ({
+    labelKey,
+    seeds,
+    appBaseUrl = appURL,
+}: {
+    labelKey: string;
+    seeds: TenantSeeds;
+    appBaseUrl?: string;
+}) => {
     const { t } = useTranslation();
+    const url = buildPreviewUrl(appBaseUrl, seeds);
 
     return (
         <figure className={styles.phonePreview}>
             <figcaption className={styles.phonePreviewLabel}>{t(labelKey)}</figcaption>
             <div className={styles.phoneFrame}>
                 <div className={styles.phoneScreen}>
-                    <MiniChatPreview
-                        className={styles.phonePreviewColumn}
-                        previewClassName={styles.phonePreviewCanvas}
-                        seeds={seeds}
-                        labelKey={labelKey}
-                        hideLabel
-                    />
+                    {url ? (
+                        <div className={styles.frameWrap}>
+                            {/* No CSP frame-ancestors on the app today; recommended
+                                in ORISO-Frontend#144 if embedding constraints are
+                                added later. Do not invent a CSP in this repo. */}
+                            <iframe
+                                key={url}
+                                className={styles.frame}
+                                src={url}
+                                title={t('theme.builder.preview.frameTitle')}
+                                data-testid="preview-frame"
+                                sandbox="allow-scripts allow-same-origin"
+                                tabIndex={-1}
+                            />
+                            <div className={styles.frameShield} data-testid="preview-frame-shield" />
+                        </div>
+                    ) : (
+                        <div className={styles.frameEmpty}>{t('theme.builder.preview.empty')}</div>
+                    )}
                 </div>
                 <img className={styles.phoneFrameImage} src={iphoneFrame} alt="" aria-hidden="true" />
                 <span className={styles.phoneAddressText} aria-hidden="true">
@@ -166,9 +222,18 @@ const PhoneThemePreview = ({ labelKey, seeds }: { labelKey: string; seeds: Tenan
     );
 };
 
-const ThemeEditorModal = ({ open, initialValues, storedSeeds, locks, onCancel, onSubmit }: ThemeEditorModalProps) => {
+export const ThemeEditorModal = ({
+    open,
+    initialValues,
+    storedSeeds,
+    locks,
+    onCancel,
+    onSubmit,
+    appBaseUrl = appURL,
+}: ThemeEditorModalProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
+    const [saveRejected, setSaveRejected] = useState(false);
     const previewScrollerRef = useRef<HTMLDivElement>(null);
     const [previewScrollState, setPreviewScrollState] = useState({
         canScrollBackward: false,
@@ -176,16 +241,47 @@ const ThemeEditorModal = ({ open, initialValues, storedSeeds, locks, onCancel, o
     });
     const accentDark = Form.useWatch(['theming', 'primaryColor'], form);
     const accentLight = Form.useWatch(['theming', 'accent'], form);
+    const signal = Form.useWatch(['theming', 'signal'], form);
     const draftSeeds: TenantSeeds = {
         accentDark: accentDark ?? getAccentDark(storedSeeds),
         accentLight: accentLight ?? getAccentLight(storedSeeds),
+        signal: signal ?? getSignal(storedSeeds),
     };
 
     useEffect(() => {
         if (open) {
             form.setFieldsValue(initialValues);
+            setSaveRejected(false);
         }
     }, [form, initialValues, open]);
+
+    const handleFinish = (values: { theming?: { primaryColor?: string; accent?: string } }) => {
+        if (brandSeedCannotYieldPalette(values.theming?.primaryColor)) {
+            setSaveRejected(true);
+            form.setFields([
+                {
+                    name: ['theming', 'primaryColor'],
+                    errors: [t('theme.builder.seedUnusable')],
+                },
+            ]);
+            return;
+        }
+
+        setSaveRejected(false);
+        onSubmit(values);
+    };
+
+    const handleFinishFailed = () => {
+        if (brandSeedCannotYieldPalette(form.getFieldValue(['theming', 'primaryColor']))) {
+            setSaveRejected(true);
+        }
+    };
+
+    useEffect(() => {
+        if (!brandSeedCannotYieldPalette(accentDark)) {
+            setSaveRejected(false);
+        }
+    }, [accentDark]);
 
     const updatePreviewScrollState = useCallback(() => {
         const previewScroller = previewScrollerRef.current;
@@ -288,7 +384,8 @@ const ThemeEditorModal = ({ open, initialValues, storedSeeds, locks, onCancel, o
                 form={form}
                 size="large"
                 initialValues={initialValues}
-                onFinish={onSubmit}
+                onFinish={handleFinish}
+                onFinishFailed={handleFinishFailed}
                 className={styles.themeEditorForm}
             >
                 <div className={styles.themeEditorShell}>
@@ -298,7 +395,13 @@ const ThemeEditorModal = ({ open, initialValues, storedSeeds, locks, onCancel, o
                             <h2>{t('settings.colors')}</h2>
                             <p>{t('settings.colors.howto')}</p>
                         </div>
-                        <ThemeBuilderForm form={form} storedSeeds={storedSeeds} locks={locks} editing />
+                        <ThemeBuilderForm
+                            form={form}
+                            storedSeeds={storedSeeds}
+                            locks={locks}
+                            editing
+                            saveRejected={saveRejected}
+                        />
                         <div className={styles.themeEditorActions}>
                             <button className={styles.themeTextButton} type="button" onClick={onCancel}>
                                 {t('card.edit.cancel')}
@@ -309,14 +412,28 @@ const ThemeEditorModal = ({ open, initialValues, storedSeeds, locks, onCancel, o
                         </div>
                     </aside>
                     <div className={styles.themePreviewRegion}>
+                        {/* Focusable scroll region: keyboard users must reach the panel
+                            to pan between phones when it still overflows (axe:
+                            scrollable-region-focusable). */}
+                        {/* eslint-disable jsx-a11y/no-noninteractive-tabindex */}
                         <section
                             className={styles.themePreviewPanel}
                             ref={previewScrollerRef}
+                            tabIndex={0}
                             aria-label={t('settings.colors')}
                         >
-                            <PhoneThemePreview labelKey="theme.builder.preview.current" seeds={storedSeeds} />
-                            <PhoneThemePreview labelKey="theme.builder.preview.new" seeds={draftSeeds} />
+                            <PhoneThemePreview
+                                labelKey="theme.builder.preview.current"
+                                seeds={storedSeeds}
+                                appBaseUrl={appBaseUrl}
+                            />
+                            <PhoneThemePreview
+                                labelKey="theme.builder.preview.new"
+                                seeds={draftSeeds}
+                                appBaseUrl={appBaseUrl}
+                            />
                         </section>
+                        {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
                         <SideScrollerFooter
                             className={styles.themePreviewScrollerFooter}
                             ariaLabel={t('theme.builder.preview.scroll')}
@@ -354,14 +471,19 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
         accentLight:
             readOnly ||
             isReadOnlySetting(settings.serverSettingsMeta, ['accent', 'theming.accent', 'brandingAccentColor']),
+        signal:
+            readOnly ||
+            isReadOnlySetting(settings.serverSettingsMeta, ['signal', 'theming.signal', 'brandingSignalColor']),
     };
     const storedSeeds = readSeeds(data?.theming);
     const inheritedSeeds = readSeeds(inheritedData?.theming);
     const effectiveAccentDark = getAccentDark(storedSeeds) || getAccentDark(inheritedSeeds);
     const effectiveAccentLight = getAccentLight(storedSeeds) || getAccentLight(inheritedSeeds);
+    const effectiveSignal = getSignal(storedSeeds) || getSignal(inheritedSeeds);
     const effectiveSeeds: TenantSeeds = {
         accentDark: effectiveAccentDark,
         accentLight: effectiveAccentLight,
+        signal: effectiveSignal,
         primary: effectiveAccentDark,
         accent: effectiveAccentLight,
     };
@@ -370,6 +492,7 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
         theming: {
             primaryColor: effectiveAccentDark ?? tokens['--oriso-app-accent-dark'],
             accent: effectiveAccentLight ?? tokens['--oriso-app-accent-light'],
+            signal: effectiveSignal ?? tokens['--m3-error'],
         },
     };
     const onSubmit = (values) => {
@@ -377,16 +500,17 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
             theming: buildSeedUpdate({
                 accentDark: values.theming?.primaryColor,
                 accentLight: values.theming?.accent,
+                signal: values.theming?.signal,
             }),
         });
         setEditorOpen(false);
     };
-    const canEdit = !(locks.accentDark && locks.accentLight);
+    const canEdit = !(locks.accentDark && locks.accentLight && locks.signal);
 
     return (
         <>
             <CardEditable
-                key={`theme-builder-${effectiveAccentDark}-${effectiveAccentLight}-${locks.accentDark}-${locks.accentLight}`}
+                key={`theme-builder-${effectiveAccentDark}-${effectiveAccentLight}-${effectiveSignal}-${locks.accentDark}-${locks.accentLight}-${locks.signal}`}
                 allowEdit={canEdit}
                 isLoading={isLoading}
                 titleKey="settings.colors"

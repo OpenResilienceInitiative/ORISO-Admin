@@ -56,8 +56,37 @@ vi.mock('../../hooks/useUserRoles.hook', () => ({
 }));
 vi.mock('../../utils/getLocationVariables', () => ({ default: () => ({ subdomain: '' }) }));
 vi.mock('../AdminMobileNav/MobileNavContext', () => ({ MobileNavProvider: ({ children }: any) => children }));
-vi.mock('./AdminMobileNavBar', () => ({ default: () => <nav data-testid="mobile-navigation" /> }));
-vi.mock('./AdminSidebar', () => ({ default: () => <nav data-testid="desktop-navigation" /> }));
+// Both navs are stubbed as their resolved destinations, so the layout's own
+// choice of what to offer can be asserted rather than just "a nav exists".
+// The factories are inlined because vi.mock is hoisted above any local helper.
+vi.mock('./AdminMobileNavBar', () => ({
+    default: ({ items, account, logout }: any) => (
+        <nav data-testid="mobile-navigation">
+            {[...items, ...(account ? [account] : [])].map((item: any) => (
+                <a key={item.key} href={item.to} data-testid="nav-destination">
+                    {item.label}
+                </a>
+            ))}
+            <button type="button" onClick={logout.onLogout}>
+                {logout.label}
+            </button>
+        </nav>
+    ),
+}));
+vi.mock('./AdminSidebar', () => ({
+    default: ({ items, account, logout }: any) => (
+        <nav data-testid="desktop-navigation">
+            {[...items, ...(account ? [account] : [])].map((item: any) => (
+                <a key={item.key} href={item.to} data-testid="nav-destination">
+                    {item.label}
+                </a>
+            ))}
+            <button type="button" onClick={logout.onLogout}>
+                {logout.label}
+            </button>
+        </nav>
+    ),
+}));
 
 const renderAtRoute = (children: React.ReactNode) =>
     render(<MemoryRouter initialEntries={['/admin/settings']}>{children}</MemoryRouter>);
@@ -94,6 +123,31 @@ describe('Admin layout footer ownership', () => {
         expect(screen.getByText('Protected content')).toBeVisible();
         expect(screen.queryByRole('contentinfo')).toBeNull();
         expect(screen.queryByRole('menuitem', { name: 'footer.label.imprint' })).toBeNull();
+    });
+
+    it('offers the account destination on an ordinary authenticated page', () => {
+        renderAtRoute(
+            <ProtectedPageLayoutWrapper>
+                <main>Protected content</main>
+            </ProtectedPageLayoutWrapper>,
+        );
+
+        expect(screen.getAllByTestId('nav-destination').length).toBeGreaterThan(0);
+    });
+
+    // #891: the 2FA gate renders in place of every route, so any destination
+    // offered here resolves straight back to the gate. Logout is the one
+    // operation a gated admin still has, and it has to survive.
+    it('strips every destination but logout when the layout is restricted', () => {
+        renderAtRoute(
+            <ProtectedPageLayoutWrapper restricted>
+                <main>Two-factor setup</main>
+            </ProtectedPageLayoutWrapper>,
+        );
+
+        expect(screen.getByText('Two-factor setup')).toBeVisible();
+        expect(screen.queryAllByTestId('nav-destination')).toHaveLength(0);
+        expect(screen.getByRole('button', { name: 'logout' })).toBeVisible();
     });
 
     it('honors hideFooter on public pages', () => {

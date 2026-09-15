@@ -41,21 +41,17 @@ export interface RoleTier {
     /** Keycloak realm roles this staff tier maps onto. */
     realmRoles: string[];
     /**
-     * Whether this tier is prompted for 2FA. Not the same as non-bypassable — see
-     * `mfaDeferrable`.
+     * Whether a second factor is enforced for this tier, not merely encouraged.
+     *
+     * Since #891 this is a hard block for every administrator tier. The gate in
+     * `adminTwoFactorGate.ts` (App.tsx) holds tenant-admin, single-tenant-admin,
+     * agency-admin and restricted-agency-admin on the enrolment screen until a
+     * factor is active, and it takes no deferral input at all — the earlier
+     * platform-admin "set up later" affordance no longer exists. Platform
+     * admins carry tenant-admin and agency-admin, so they are covered by the
+     * same rule.
      */
     mfaMandatory: boolean;
-    /**
-     * Whether setup can be deferred. TRUE only for platform admins:
-     * `platformAdminTwoFactorGate.ts` (App.tsx's `requiresPlatformAdminTwoFactor`
-     * gate) explicitly returns `false` for anyone who is not a platform admin,
-     * and lets a platform admin pick "set up later" and reach the normal
-     * screens. Tenant admins get a SEPARATE, non-skippable step
-     * (`TenantOnboarding/TwoFactorStep.tsx`, "Step 3 (#571): mandatory 2FA
-     * setup for the freshly registered tenant admin") with no deferral option
-     * at all — for them `mfaMandatory` really does mean enforced.
-     */
-    mfaDeferrable?: boolean;
 }
 
 /** Source: roles-permissions.mdx §3.3.1 – §3.3.4. */
@@ -74,7 +70,6 @@ export const ROLE_TIERS: RoleTier[] = [
             'nicht einsehen.',
         realmRoles: ['agency-admin', 'tenant-admin', 'user-admin'],
         mfaMandatory: true,
-        mfaDeferrable: true,
     },
     {
         id: 'tenant-admin',
@@ -103,7 +98,7 @@ export const ROLE_TIERS: RoleTier[] = [
             'admin identifiziert die Stufe; user-admin kommt dazu, weil ausschließlich diese Rolle ' +
             'Beratende anlegen/einladen darf (userRolesToPermissions.ts).',
         realmRoles: ['agency-admin', 'restricted-agency-admin', 'restricted-consultant-admin', 'user-admin'],
-        mfaMandatory: false,
+        mfaMandatory: true,
     },
     {
         id: 'consultant',
@@ -156,13 +151,13 @@ export const MATRIX_ROWS: MatrixRow[] = [
     },
     { capability: 'Löschung beim Verlassen', cells: [no, no, no, no, yes] },
     {
-        // The two admin cells are deliberately different: deferral is a platform-admin-only
-        // affordance (`platformAdminTwoFactorGate.ts` / App.tsx's `requiresPlatformAdminTwoFactor`
-        // returns false outright for anyone else), while tenant admins get a separate,
-        // non-skippable onboarding step (`TenantOnboarding/TwoFactorStep.tsx`, "Step 3 (#571):
-        // mandatory 2FA setup") with no deferral at all — for them "Pflicht" is a real hard block.
+        // #891: all three admin cells read the same now. `adminTwoFactorGate.ts` keeps every
+        // tenant- and agency-administrator role on the enrolment screen until a factor is
+        // active and offers no "set up later" — the platform-admin deferral is gone, and the
+        // Stellen-Admin moved from "empfohlen" to a hard block. "empfohlen" is left standing
+        // only for Beratende, whom the issue does not cover.
         capability: '2FA erforderlich',
-        cells: [text('Pflicht, Aufschub möglich'), text('Pflicht'), text('empfohlen'), text('empfohlen'), text('n/a')],
+        cells: [text('Pflicht'), text('Pflicht'), text('Pflicht'), text('empfohlen'), text('n/a')],
     },
 ];
 

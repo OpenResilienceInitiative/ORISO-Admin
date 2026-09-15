@@ -339,11 +339,7 @@ export const DpiaDocumentPage = ({
                                             {realmRole}
                                         </span>
                                     ))}
-                                    {role.mfaMandatory && (
-                                        <span className={styles.mfaFlag}>
-                                            {role.mfaDeferrable ? '2FA erforderlich, Aufschub möglich' : '2FA Pflicht'}
-                                        </span>
-                                    )}
+                                    {role.mfaMandatory && <span className={styles.mfaFlag}>2FA Pflicht</span>}
                                 </div>
                             </section>
                         ))}
@@ -430,9 +426,11 @@ export const DpiaDocumentPage = ({
                             Rollenhierarchie, Realm-Rollen, Matrix und Vererbungskaskade aus{' '}
                             <code>ORISO-Docs/product/roles-permissions.mdx</code> (Abschnitte 3.1–3.5). Maßgeblich ist
                             die Aufzählung in <code>UserRole.java</code>, <code>Authority.java</code> und{' '}
-                            <code>ORISO-Keycloak/realm.json</code>. „2FA empfohlen“ für die beiden unteren Ebenen ist
-                            Dokumentationsstand, keine erzwungene Konfiguration — vor Freigabe gegen den Realm
-                            gegenprüfen.
+                            <code>ORISO-Keycloak/realm.json</code>. „2FA Pflicht“ für die drei Admin-Ebenen wird seit
+                            #891 in der Anwendung erzwungen (<code>adminTwoFactorGate.ts</code>, ohne Aufschub); die
+                            serverseitige Durchsetzung am Authentifizierungs-Rand liegt bei UserService/Realm und ist
+                            vor Freigabe gegenzuprüfen. „2FA empfohlen“ für Beratende ist weiterhin nur
+                            Dokumentationsstand.
                         </div>
                     )}
                 </section>
