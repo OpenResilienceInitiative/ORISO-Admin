@@ -1,10 +1,13 @@
-/* Public counsellor onboarding wizard (#997).
+/* Public counsellor onboarding (#997).
+ *
+ * Since the owner review this is a PLAIN single-column form: no cards, no
+ * icons, fields one below the other with small left-aligned section
+ * headings between the groups and one submit at the end.
  *
  * Surface language inherited from the tenant onboarding (#594.12/#594.17):
  * the neutral `--m3-surface-container-high` tone is the PAGE background of
- * the public surface, the wizard cards sit on it as the product's own card
- * skeletons, and fields stay tonal with their card. Every colour resolves to
- * an ORISO token from src/app.css.
+ * the public surface and the fields stay tonal with it. Every colour
+ * resolves to an ORISO token from src/app.css.
  */
 
 .wizard {
@@ -23,42 +26,94 @@
     }
 }
 
+/* Page header: badge, title, intro — one left-aligned stack so the eye
+   starts where the first field starts. */
+
+.pageHeader {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+/* Tonal circle in the primary-container pair (the same pair the admin's
+   active nav bubble uses), the glyph inherits the on-colour. */
+
+.roleBadge {
+    display: inline-flex;
+    width: 56px;
+    height: 56px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-bottom: 20px;
+    background: var(--m3-primary-container);
+    color: var(--m3-on-primary-container);
+
+    svg path {
+        fill: currentColor;
+    }
+}
+
+.pageTitle {
+    color: var(--m3-on-surface);
+    letter-spacing: -0.01em;
+}
+
+.pageIntro {
+    max-width: 44ch;
+    color: var(--m3-on-surface-variant);
+}
+
 .loading {
     display: flex;
     justify-content: center;
     padding: 48px 0;
 }
 
-/* Desktop composition: the four form cards share rows while they fit
-   (CardGrid handles wrap/stack); the grid must not stretch cards to equal
-   height — each card ends where its content ends. */
+/* One field group. The gap between groups is what separates them — no
+   surface, no rule. */
 
-.grid {
-    align-items: start;
+.section {
+    margin-top: 32px;
 }
 
-/* One primary action for the whole worksheet. Hint and error sit before the
-   button so the reason is read before the disabled control is reached. */
+/* Section header treatment of the admin surfaces (TenantOnboarding
+   `.sectionTitle`, DpaForwardDialog) — no new type scale, colour from the
+   ORISO token. */
 
-.submitRow {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    margin-top: 24px;
-    gap: 12px;
+.sectionTitle {
+    margin: 0 0 4px;
+    color: var(--m3-on-surface);
+    font: 600 15px/22px var(--m3-body-font-family);
 }
 
-.mobileStep {
+.sectionHint {
+    margin: 0 0 16px;
+    color: var(--m3-on-surface-variant);
+    font: 400 14px/20px var(--m3-body-font-family);
+}
+
+.fieldStack {
     display: flex;
     flex-direction: column;
     gap: 16px;
 }
 
-/* Programmatic focus target for step transitions (tabIndex -1, not tabbable):
-   the region receives focus so SR users get the step announcement, but a
-   focus ring around the whole card would read as an error — the ring belongs
-   to the tabbable controls inside. */
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 12px;
+}
 
-.mobileStep:focus {
-    outline: none;
+/* One primary action for the whole form. Hint and error sit before the
+   button so the reason is read before the disabled control is reached. */
+
+.submitRow {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-top: 32px;
+    gap: 12px;
 }

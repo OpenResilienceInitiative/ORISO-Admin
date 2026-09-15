@@ -61,39 +61,48 @@ const renderFlow = (client: CounsellorOnboardingClient, token = 'raw-token') =>
         </MemoryRouter>,
     );
 
-/**
- * NOTE: jsdom's matchMedia stub answers `matches: false`, so these tests run
- * the MOBILE one-card-per-step flow by default (see useIsDesktopLayout docs).
- */
 describe('CounsellorOnboarding', () => {
-    it('walks the mobile step flow and registers with every collected value', async () => {
+    const submit = () => screen.getByRole('button', { name: 'counsellorOnboarding.submit' });
+
+    it('renders one flat form — every group on screen, no cards, no step flow', async () => {
+        renderFlow(createClient());
+
+        expect(await screen.findByTestId('counsellor-onboarding-form')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'cards.advisorAccount.title' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'cards.personalInfo.title' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'cards.avatarName.titleNamesOnly' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'cards.focusTopics.title' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'cards.actions.next' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'cards.actions.back' })).not.toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: 'counsellorOnboarding.submit' })).toHaveLength(1);
+    });
+
+    it('registers with every collected value from the single form', async () => {
         const client = createClient();
         const user = userEvent.setup();
         renderFlow(client);
 
-        // Step 1 — account: the invited email is prefilled and not editable.
+        // Account: the invited email is prefilled and not editable.
         expect(await screen.findByLabelText('cards.advisorAccount.email')).toHaveValue('lena@tenant.example');
         expect(screen.getByLabelText('cards.advisorAccount.email')).toBeDisabled();
         await user.type(screen.getByLabelText('cards.advisorAccount.username'), 'lena_b');
         await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
-        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
 
-        // Step 2 — person: names come from the invite, read-only.
-        expect(await screen.findByLabelText('cards.personalInfo.firstName')).toHaveValue('Lena');
+        // Person: names come from the invite, read-only.
+        expect(screen.getByLabelText('cards.personalInfo.firstName')).toHaveValue('Lena');
         expect(screen.getByLabelText('cards.personalInfo.firstName')).toBeDisabled();
         await user.type(screen.getByLabelText('cards.personalInfo.position'), 'Leitung');
-        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
 
-        // Step 3 — names only: no avatar grid, no picture upload (arrives with #995).
-        expect(await screen.findByLabelText('cards.avatarName.publicName')).toBeInTheDocument();
+        // Names only: no avatar grid, no picture upload (arrives with #995).
         expect(screen.queryByText('cards.avatarName.ownPicture')).not.toBeInTheDocument();
         await user.type(screen.getByLabelText('cards.avatarName.publicName'), 'Lena');
         await user.type(screen.getByLabelText('cards.avatarName.internalName'), 'Lena B.');
-        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
 
-        // Step 4 — topics from the invite coverage; selecting one enables the submit.
-        await user.click(await screen.findByRole('checkbox', { name: 'Familienberatung' }));
-        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
+        // Topics from the invite coverage; selecting one enables the submit.
+        expect(submit()).toBeDisabled();
+        await user.click(screen.getByRole('checkbox', { name: 'Familienberatung' }));
+        expect(submit()).toBeEnabled();
+        await user.click(submit());
 
         await waitFor(() =>
             expect(client.registerCounsellor).toHaveBeenCalledWith('raw-token', {
@@ -114,12 +123,9 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         await screen.findByLabelText('cards.advisorAccount.email');
-        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
-        await user.click(await screen.findByRole('button', { name: 'cards.actions.next' }));
-        await user.click(await screen.findByRole('button', { name: 'cards.actions.next' }));
-
-        // Topics step, but username/password/topics are missing.
-        await user.click(await screen.findByRole('button', { name: 'cards.actions.next' }));
+        expect(submit()).toBeDisabled();
+        // Enter on a field submits the form — the gate must hold there too.
+        await user.type(screen.getByLabelText('cards.advisorAccount.username'), '{Enter}');
 
         expect(client.registerCounsellor).not.toHaveBeenCalled();
         expect(screen.getByTestId('wizard-submit-hint')).toBeInTheDocument();
@@ -131,7 +137,7 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         // Username with an uppercase letter and a dot — valid for nothing in
-        // this product; the admin form rejects it and so must the wizard.
+        // this product; the admin form rejects it and so must the form here.
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'Lena.B');
         expect(screen.getByText('message.error.username.format')).toBeInTheDocument();
 
@@ -139,35 +145,12 @@ describe('CounsellorOnboarding', () => {
         await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'password');
         expect(screen.getByText('message.error.password.policy')).toBeInTheDocument();
 
-        // Walk to the topics step and try to finish — the gate must hold.
-        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
-        await user.click(await screen.findByRole('button', { name: 'cards.actions.next' }));
-        await user.click(await screen.findByRole('button', { name: 'cards.actions.next' }));
-        await user.click(await screen.findByRole('checkbox', { name: 'Familienberatung' }));
-        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
+        await user.click(screen.getByRole('checkbox', { name: 'Familienberatung' }));
+        expect(submit()).toBeDisabled();
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), '{Enter}');
 
         expect(client.registerCounsellor).not.toHaveBeenCalled();
         expect(screen.getByTestId('wizard-submit-hint')).toBeInTheDocument();
-    });
-
-    it('moves focus to the new step region on mobile transitions, both directions', async () => {
-        const client = createClient();
-        const user = userEvent.setup();
-        renderFlow(client);
-
-        await screen.findByLabelText('cards.advisorAccount.email');
-        const stepRegion = () => screen.getByRole('group', { name: 'counsellorOnboarding.stepIndicator' });
-
-        // Forward: the Next button is unmounted with its card — focus must
-        // land on the freshly rendered step region.
-        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
-        await screen.findByLabelText('cards.personalInfo.firstName');
-        expect(stepRegion()).toHaveFocus();
-
-        // Backward transition gets the same treatment.
-        await user.click(screen.getByRole('button', { name: 'cards.actions.back' }));
-        await screen.findByLabelText('cards.advisorAccount.email');
-        expect(stepRegion()).toHaveFocus();
     });
 
     it('resumes a consumed-but-2FA-pending link directly at the 2FA step', async () => {
@@ -216,11 +199,8 @@ describe('CounsellorOnboarding', () => {
 
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
         await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
-        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
-        await user.click(await screen.findByRole('button', { name: 'cards.actions.next' }));
-        await user.click(await screen.findByRole('button', { name: 'cards.actions.next' }));
-        await user.click(await screen.findByRole('checkbox', { name: 'Familienberatung' }));
-        await user.click(screen.getByRole('button', { name: 'cards.actions.next' }));
+        await user.click(screen.getByRole('checkbox', { name: 'Familienberatung' }));
+        await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.submit' }));
 
         expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
         expect(screen.getByText('cards.success.title')).toBeInTheDocument();
