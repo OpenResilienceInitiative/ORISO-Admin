@@ -204,6 +204,42 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         });
     });
 
+    /**
+     * A department whose read carried no sentence now owns the consent field, so the card hands
+     * back an empty map when the admin publishes without touching it. That map IS sent, and it is
+     * not a clear: `ConsentTextService#resolveForUpdate` treats "no entries at all" exactly like an
+     * omitted property and keeps whatever is stored. A clear is `{"de": ""}` — a language key with
+     * empty content — which is why the two must stay distinguishable on the wire.
+     */
+    it('sends an untouched empty consent map, which the backend reads as "keep what is stored"', async () => {
+        storedDepartment();
+
+        renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+        cardProps().onSave({ de: '<p>neu</p>' }, true, {});
+
+        expect(h.publishDpp).toHaveBeenCalledWith({
+            content: { de: '<p>neu</p>' },
+            publish: true,
+            consentText: {},
+        });
+    });
+
+    it('keeps a cleared sentence distinguishable from an untouched empty one', async () => {
+        storedDepartment({ consentText: '{"de":"alt {{legal_links}}"}' });
+
+        renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+        cardProps().onSave({ de: '<p>neu</p>' }, true, { de: '' });
+
+        // A language key with empty content is the ONLY way a client can delete the sentence.
+        expect(h.publishDpp).toHaveBeenCalledWith({
+            content: { de: '<p>neu</p>' },
+            publish: true,
+            consentText: { de: '' },
+        });
+    });
+
     it('omits consentText entirely when the card hands none over', async () => {
         storedDepartment();
 
