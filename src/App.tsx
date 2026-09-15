@@ -7,6 +7,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 're
 import ProtectedPageLayoutWrapper from './components/Layout/ProtectedPageLayoutWrapper';
 import { PageLoader } from './components/Layout/PageLoader';
 import routePathNames from './appConfig';
+import { isAgencyScopedAdmin } from './constants/agencyAdminLanding';
 import { Initialization } from './components/Layout/Initialization';
 import { useTenantData } from './hooks/useTenantData.hook';
 import { FeatureProvider } from './context/FeatureContext';
@@ -114,6 +115,12 @@ export const App = () => {
             }
             if (can(PermissionAction.Read, Resource.Tenant) || can(PermissionAction.Read, Resource.LegalText)) {
                 navigate(defaultSettingsPath);
+                return;
+            }
+
+            if (isAgencyScopedAdmin(hasRole) && can(PermissionAction.Read, Resource.Agency)) {
+                // Beratungsstellen-Admin: own agency first (ORISO-Admin#917).
+                navigate(routePathNames.agency);
                 return;
             }
 

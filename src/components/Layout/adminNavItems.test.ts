@@ -106,6 +106,34 @@ describe('buildAdminNavItems', () => {
         expect(routePathNames.inactiveAccountAuditLogs.startsWith(routePathNames.logs)).toBe(true);
     });
 
+    it('shows the Beratungsstellen entry to a Beratungsstellen-Admin (restricted-agency-admin + user-admin)', () => {
+        // ORISO-Admin#917: the standard bundle has `Agency.read` but no `agency-admin` role and
+        // used to lose the entry to an over-broad role gate.
+        const items = build({
+            isSuperAdmin: false,
+            hasRole: hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin),
+            can: canFor(Resource.Agency, Resource.Consultant),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        const agency = items.find((item) => item.key === 'agency');
+        expect(agency?.to).toBe(routePathNames.agency);
+        expect(agency?.label).toBe(labels.agency);
+    });
+
+    it('hides the Beratungsstellen entry from an admin without Agency read', () => {
+        const items = build({
+            isSuperAdmin: false,
+            hasRole: hasRoleFor(UserRole.UserAdmin),
+            can: canFor(Resource.Consultant),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items.some((item) => item.key === 'agency')).toBe(false);
+    });
+
     it('shows no log entry for an admin without consultant read', () => {
         const items = build({
             isSuperAdmin: false,
