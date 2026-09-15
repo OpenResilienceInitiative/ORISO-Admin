@@ -1744,7 +1744,7 @@
         "fileName": "users_active.svg",
         "sourcePath": "src/resources/img/svg/navbar/users_active.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
+        "usageFiles": ["src/components/Layout/NavIcon.tsx", "src/pages/CounsellorOnboarding/CounsellorOnboarding.tsx"],
         "usage": "app-used"
     },
     {
