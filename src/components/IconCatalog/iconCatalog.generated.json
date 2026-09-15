@@ -1800,6 +1800,45 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:oriso:cycle:200",
+        "family": "cycle",
+        "state": "200",
+        "role": "alternate-outline",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "cycle_200_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/cycle_200_24px.svg",
+        "exportNames": [],
+        "usageFiles": [],
+        "usage": "catalogued-only"
+    },
+    {
+        "id": "ui-icon:oriso:cycle:400",
+        "family": "cycle",
+        "state": "400",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "cycle_400_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/cycle_400_24px.svg",
+        "exportNames": [],
+        "usageFiles": [],
+        "usage": "catalogued-only"
+    },
+    {
+        "id": "ui-icon:oriso:cycle:filled",
+        "family": "cycle",
+        "state": "filled",
+        "role": "selected",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "cycle_filled_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/cycle_filled_24px.svg",
+        "exportNames": [],
+        "usageFiles": [],
+        "usage": "catalogued-only"
+    },
+    {
         "id": "ui-icon:oriso:empty-state-96px:base",
         "family": "empty-state-96px",
         "state": "base",
