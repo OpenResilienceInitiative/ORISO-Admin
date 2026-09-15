@@ -176,15 +176,18 @@ export const AgencyLegalTextContainer = ({
      * (#862) — "Alle Fachbereiche" edits the agency-wide body without the consent dialog.
      *
      * `undefined` is load-bearing — it is how the card decides not to offer the consent editor,
-     * which is what must happen while a backend has no such field, and while the switcher is on
-     * the agency-wide entry.
+     * which is what must happen while the switcher is on the agency-wide entry, on the imprint,
+     * and while the department's policy has not been read successfully.
+     *
+     * What it must NOT mean is "this department has no sentence yet" (#929). A successful read
+     * that omits `consentText` is the empty first-authoring state — the very state in which the
+     * template chooser has to be reachable, because it is the only way to seed the first sentence.
+     * Reading it as "the backend cannot store consent" hid the editor exactly where it was needed.
+     * The question is therefore asked of the REQUEST (did it succeed?), not of the payload.
      */
     const departmentConsent = useMemo(
-        () =>
-            dppQuery.data && dppQuery.data.consentText !== undefined
-                ? parseLegalContentMap(dppQuery.data.consentText)
-                : undefined,
-        [dppQuery.data],
+        () => (isDepartment && dppQuery.isSuccess ? parseLegalContentMap(dppQuery.data?.consentText) : undefined),
+        [isDepartment, dppQuery.isSuccess, dppQuery.data?.consentText],
     );
     // Inherited agency-wide sentence (Träger overlay + agency override). Used only to seed a
     // not-yet-forked Fachbereich — #862 keeps "Alle Fachbereiche" consent-free.
