@@ -1,10 +1,11 @@
-import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Page } from '../../components/Page';
 import { useRegisterMobileNav } from '../../components/AdminMobileNav/MobileNavContext';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
+import { useUserRoles } from '../../hooks/useUserRoles.hook';
+import { type LinksTabKey, resolveVisibleLinksTabs } from '../../constants/linksAccess';
 import routePathNames from '../../appConfig';
 import pageStyles from '../../components/Page/styles.module.scss';
 // The tab glyph is the ORISO icon-master link mark, not the generic permissions
@@ -15,30 +16,42 @@ import styles from './styles.module.scss';
 export { ExternalInboundsTab } from './ExternalInboundsTab';
 export { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
 
-const LINK_TABS = [
+const LINK_TABS: ReadonlyArray<{ key: LinksTabKey; to: string; titleKey: string }> = [
     {
+        key: 'tenants',
         to: routePathNames.linksTenants,
         titleKey: 'links.tabs.tenants',
-        disabled: false,
     },
     {
+        key: 'counsellor',
         to: routePathNames.linksCounsellor,
         titleKey: 'links.tabs.counsellor',
-        disabled: false,
     },
     {
+        key: 'external-inbounds',
         to: routePathNames.linksExternalInbounds,
         titleKey: 'links.tabs.externalInbounds',
-        disabled: false,
     },
-] as const;
+];
+
+/**
+ * Tabs the signed-in admin may see (platform admin: all; tenant admin: counsellor
+ * invites only; agency admins: none — they never reach this page, see `linksAccess.ts`).
+ */
+const useVisibleLinkTabs = () => {
+    const { isSuperAdmin, hasRole } = useUserRoles();
+    return useMemo(() => {
+        const visible = resolveVisibleLinksTabs({ isSuperAdmin, hasRole });
+        return LINK_TABS.filter((tab) => visible.includes(tab.key));
+    }, [isSuperAdmin, hasRole]);
+};
 
 export const LinksPage = () => {
     const { t } = useTranslation();
     const { pathname } = useLocation();
     const isDesktopLayout = useIsDesktopLayout();
 
-    const navigableTabs = useMemo(() => LINK_TABS.filter((tab) => !tab.disabled), []);
+    const navigableTabs = useVisibleLinkTabs();
 
     const activeSubsectionKey = useMemo(() => {
         const matches = navigableTabs
@@ -71,23 +84,12 @@ export const LinksPage = () => {
                 {isDesktopLayout && (
                     <div className={styles.pageHeader}>
                         <div className={pageStyles.tabsContainer}>
-                            {LINK_TABS.map((tab) =>
-                                tab.disabled ? (
-                                    <span
-                                        className={classNames(pageStyles.tab, styles.tabDisabled)}
-                                        key={tab.titleKey}
-                                        aria-disabled="true"
-                                    >
-                                        <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
-                                        <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
-                                    </span>
-                                ) : (
-                                    <NavLink className={pageStyles.tab} to={tab.to} key={tab.titleKey}>
-                                        <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
-                                        <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
-                                    </NavLink>
-                                ),
-                            )}
+                            {navigableTabs.map((tab) => (
+                                <NavLink className={pageStyles.tab} to={tab.to} key={tab.key}>
+                                    <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
+                                    <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
+                                </NavLink>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -97,4 +99,8 @@ export const LinksPage = () => {
     );
 };
 
-export const LinksIndexRedirect = () => <Navigate to={routePathNames.linksTenants} replace />;
+/** `/admin/links` lands on the first tab the admin may see (tenant admins: counsellor invites). */
+export const LinksIndexRedirect = () => {
+    const [firstTab] = useVisibleLinkTabs();
+    return <Navigate to={firstTab?.to ?? routePathNames.root} replace />;
+};

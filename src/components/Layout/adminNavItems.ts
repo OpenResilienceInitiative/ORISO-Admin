@@ -5,6 +5,7 @@ import {
     type CanFn,
     type HasRoleFn,
 } from '../../constants/caseHandoverAccess';
+import { canSeeLinksSection } from '../../constants/linksAccess';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
 import { UserRole } from '../../enums/UserRole';
@@ -144,11 +145,9 @@ export const buildAdminNavItems = ({
             iconPath: routePathNames.statistic,
         });
     }
-    if (
-        can(PermissionAction.Read, Resource.Agency) ||
-        can(PermissionAction.Read, Resource.AgencyAdminUser) ||
-        hasRole(UserRole.RestrictedAgencyAdmin)
-    ) {
+    // "Links" hands out invite links one level below the admin (tenants / counsellors), so
+    // Beratungsstellen-Admins get no entry at all; see `linksAccess.ts` for the per-tab rule.
+    if (canSeeLinksSection({ isSuperAdmin, hasRole })) {
         items.push({
             key: 'links',
             to: routePathNames.links,
