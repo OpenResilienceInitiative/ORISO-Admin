@@ -43,4 +43,12 @@ describe('email logo eligibility', () => {
         expect(resolveEmailLogoFallbackReason({}, 1, origin)).toBe('NO_LOGO');
         expect(resolveEmailLogoFallbackReason(null, 1, origin)).toBe('NO_LOGO');
     });
+
+    it.each(['logo', 'assoc', 'test', '12345', 'placeholder'])(
+        'does not mistake the plain word %s for a base64 upload without a data: prefix',
+        (logo) => {
+            expect(resolveEmailLogoUrl({ logo }, 1, origin)).toBeNull();
+            expect(resolveEmailLogoFallbackReason({ logo }, 1, origin)).toBe('LOGO_NOT_REMOTE');
+        },
+    );
 });
