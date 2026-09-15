@@ -15,6 +15,7 @@ import { useLegalDraft } from '../../hooks/useLegalDraft';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { AgencyData } from '../../../../../types/agency';
+import { isLegalDocumentPayload } from '../../../../../types/dpp';
 import { LegalTextKind } from '../../../../../types/legalVersion';
 import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '../DepartmentSelect';
@@ -151,20 +152,33 @@ export const AgencyLegalTextContainer = ({
         discardDraft: discardAgencyDraft,
     } = useLegalDraft(field, agencyDraftScope);
 
+    /**
+     * A request that succeeded is not yet evidence that a policy document came back. `fetchData`
+     * resolves a `204` with the raw `Response` and a JSON `null` body with `null`, and neither
+     * sets `isError` — so `isSuccess` on its own would let the editor open on the INHERITED text
+     * and a publish then write that text as the department's own. Same silent-overwrite class as
+     * a failed read, so it is answered the same way: the payload has to be a document first.
+     */
+    const departmentDocument =
+        isDepartment && departmentQuery.isSuccess && isLegalDocumentPayload(departmentQuery.data)
+            ? departmentQuery.data
+            : undefined;
+    const departmentWasRead = departmentDocument !== undefined;
+
     const departmentContent = useMemo(
-        () => parseLegalContentMap(departmentQuery.data?.content),
-        [departmentQuery.data?.content],
+        () => parseLegalContentMap(departmentDocument?.content),
+        [departmentDocument?.content],
     );
 
     // The draft copy: a department with no own text yet starts from what it currently shows, which
     // is the inherited agency-wide text. "Alle Fachbereiche" always edits that same agency-wide text.
     //
-    // This inference is only safe once the read SUCCEEDED. A failed request also yields an empty
-    // map, and treating that as "has no own text" would seed the editor with the inherited text —
-    // publishing would then overwrite the department's real, existing text with the inherited one.
-    // That is the same silent-overwrite class this whole epic exists to remove, so a failed read
-    // blocks the editor instead (see the isError branch below).
-    const hasOwnText = isDepartment && departmentQuery.isSuccess && Object.keys(departmentContent).length > 0;
+    // This inference is only safe once a document was actually READ. A failed request — or a
+    // success that carried no document — also yields an empty map, and treating that as "has no
+    // own text" would seed the editor with the inherited text; publishing would then overwrite the
+    // department's real, existing text with the inherited one. That is the silent-overwrite class
+    // this whole epic exists to remove, so both block the editor instead (see the branch below).
+    const hasOwnText = departmentWasRead && Object.keys(departmentContent).length > 0;
     // A parked draft is the admin's unfinished wording; it wins over the stored agency text
     // until it is published or discarded. Departments keep their own seeding rules above.
     const agencyWideSeed = agencyDraft?.content ?? agencyWideContent;
@@ -186,8 +200,11 @@ export const AgencyLegalTextContainer = ({
      * The question is therefore asked of the REQUEST (did it succeed?), not of the payload.
      */
     const departmentConsent = useMemo(
-        () => (isDepartment && dppQuery.isSuccess ? parseLegalContentMap(dppQuery.data?.consentText) : undefined),
-        [isDepartment, dppQuery.isSuccess, dppQuery.data?.consentText],
+        () =>
+            departmentWasRead && field === 'privacy'
+                ? parseLegalContentMap(departmentDocument?.consentText)
+                : undefined,
+        [departmentWasRead, field, departmentDocument?.consentText],
     );
     // Inherited agency-wide sentence (Träger overlay + agency override). Used only to seed a
     // not-yet-forked Fachbereich — #862 keeps "Alle Fachbereiche" consent-free.
@@ -279,8 +296,10 @@ export const AgencyLegalTextContainer = ({
     }
 
     // A department whose text could not be read must not be editable: the editor would show the
-    // inherited text and publishing would replace the department's own with it.
-    if (isDepartment && departmentQuery.isError) {
+    // inherited text and publishing would replace the department's own with it. A request that
+    // resolved without a document (204, JSON `null`) tells us exactly as little as a failed one,
+    // so it lands here too instead of quietly opening the editor on the inherited text.
+    if (isDepartment && (departmentQuery.isError || (!departmentQuery.isLoading && !departmentWasRead))) {
         return (
             <div className={styles.fallbackCard}>
                 <Alert

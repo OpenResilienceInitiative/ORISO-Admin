@@ -15,10 +15,21 @@ export interface DepartmentDataProtectionContent {
      * The consent sentence stored WITH this policy (ADR-021 decision 4) as a
      * multilingual JSON language→sentence map string.
      *
-     * TODO(#250): added by ORISO-AgencyService branch `feat/legal-text-versioning-250`.
-     * `undefined` = the deployed backend does not know the field yet, and the Admin
-     * hides the consent editor rather than offering an input that cannot be saved;
-     * `null` = the backend knows it and nothing was authored.
+     * `null` = the backend knows the field and nothing was authored. `undefined` = it is
+     * simply not in the payload, which since #929 means the same thing: a policy that was
+     * read carries a consent field, empty or not. Whether the key is present is a
+     * serialisation detail of the service and must not decide what the editor offers.
      */
     consentText?: string | null;
 }
+
+/**
+ * Whether a resolved read actually produced one of these documents.
+ *
+ * `fetchData` resolves a `204` with the raw `Response` and a JSON `null` body with `null`,
+ * and neither marks the query as failed. A caller that inferred "this department has no
+ * text" from such a payload would seed its editor with the INHERITED text and let a publish
+ * store that as the department's own — so the shape is checked before it is believed.
+ */
+export const isLegalDocumentPayload = (data: unknown): data is DepartmentDataProtectionContent =>
+    typeof data === 'object' && data !== null && !(data instanceof Response);

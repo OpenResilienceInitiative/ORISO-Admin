@@ -115,6 +115,31 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         expect(cardProps().consentByLanguage).toBeUndefined();
     });
 
+    /**
+     * `fetchData` resolves a 204 with the raw `Response` and a JSON `null` body with `null`, and
+     * neither marks the query as failed. Believing `isSuccess` alone there would open the editor
+     * on the INHERITED agency text and let a publish store it as the department's own — the same
+     * silent overwrite a failed read is already blocked for.
+     */
+    it.each([
+        ['a JSON null body', null],
+        ['a 204 with the raw Response', new Response(null, { status: 204 })],
+    ])('blocks the editor when a successful read returns %s', async (_label, data) => {
+        h.useDepartmentDpp.mockReturnValue({
+            data,
+            isLoading: false,
+            isError: false,
+            isSuccess: true,
+            refetch: vi.fn(),
+        });
+
+        renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+
+        expect(screen.queryByTestId('legal-editor')).not.toBeInTheDocument();
+        expect(screen.getByText('agency.legal.department.loadError.title')).toBeInTheDocument();
+    });
+
     it('is never offered on the imprint', async () => {
         storedDepartment({ consentText: '{"de":"Ich willige ein {{legal_links}}"}' });
         h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Träger-Satz' } } } });
