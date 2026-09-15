@@ -111,10 +111,11 @@ export const buildAdminNavItems = ({
             activeMatch: { paths: [routePathNames.tenants], mode: 'includes' },
         });
     }
-    if (
-        can(PermissionAction.Read, Resource.Agency) &&
-        (hasRole(UserRole.AgencyAdmin) || !hasRole(UserRole.RestrictedAgencyAdmin))
-    ) {
+    // `Agency.read` is the only gate. An earlier role check additionally hid the entry from every
+    // admin holding `restricted-agency-admin` without `agency-admin` — i.e. from the standard
+    // Beratungsstellen-Admin bundle, which then had no path into its own agency (ORISO-Admin#917).
+    // The list itself is filtered server-side to the admin's assigned agencies.
+    if (can(PermissionAction.Read, Resource.Agency)) {
         items.push({
             key: 'agency',
             to: routePathNames.agency,

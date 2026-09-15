@@ -4,7 +4,7 @@ import { Button, Grid, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { ColumnProps } from 'antd/lib/table';
 import classNames from 'classnames';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
 import EditButtons from '../../../components/EditableTable/EditButtons';
 import { AgencyData } from '../../../types/agency';
@@ -31,6 +31,8 @@ import { ReactComponent as RowExpandHoverIcon } from '../../../resources/img/svg
 import { ReactComponent as RowExpandSelectedIcon } from '../../../resources/img/svg/table-actions/row_expand_filled.svg';
 import { getAgencyColumnSortOrder, getNextAgencyTableState } from './agencySort';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
+import { useUserData } from '../../../hooks/useUserData.hook';
+import { isAgencyScopedAdmin, resolveAgencyAdminLanding } from '../../../constants/agencyAdminLanding';
 
 export const AgencyList = () => {
     const screens = Grid.useBreakpoint();
@@ -44,7 +46,16 @@ export const AgencyList = () => {
     const [expandedTopicRows, setExpandedTopicRows] = useState<string[]>([]);
     const { data, isLoading, isError, refetch } = useAgenciesData({ ...tableState });
     const { can } = useUserPermissions();
-    const { isSuperAdmin, isTenantScopedAdmin, tenantId } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin, tenantId, hasRole } = useUserRoles();
+    // ORISO-Admin#917: a Beratungsstellen-Admin with exactly one assigned agency is forwarded
+    // straight into that agency's settings; with several they stay on this (server-side filtered)
+    // list. The assignment comes from `GET /service/users/data` (ORISO-UserService#1101).
+    const isAgencyAdminOnly = isAgencyScopedAdmin(hasRole);
+    const {
+        data: userData,
+        isLoading: isUserDataLoading,
+        isError: isUserDataError,
+    } = useUserData({ enabled: isAgencyAdminOnly });
     const {
         data: dpaGate,
         isLoading: isDpaGateLoading,
@@ -59,6 +70,8 @@ export const AgencyList = () => {
         isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || dpaGate?.dpaSigned !== true);
 
     const navigate = useNavigate();
+
+    const ownAgencyPath = isAgencyAdminOnly && !isUserDataError ? resolveAgencyAdminLanding(userData?.agencies) : null;
 
     const onClose = useCallback(() => {
         setAgencyToDelete(null);
@@ -322,6 +335,14 @@ export const AgencyList = () => {
         showSizeChanger: true,
         pageSizeOptions: ['10', '20', '30'],
     };
+
+    if (isAgencyAdminOnly && !isUserDataError && isUserDataLoading) {
+        // Do not flash the list before we know whether to forward into the single agency.
+        return null;
+    }
+    if (ownAgencyPath && ownAgencyPath !== routePathNames.agency) {
+        return <Navigate to={ownAgencyPath} replace />;
+    }
 
     return (
         <Page>
