@@ -137,7 +137,7 @@ export const OrganisationDpaForwardDialog: Story = {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(
-            await canvas.findByRole('button', { name: /nicht unterschriftsberechtigt|not authorised/ }),
+            await canvas.findByRole('button', { name: /nicht vertretungsberechtigt|not authorised/ }),
         );
         await waitFor(async () => expect(await body.findByTestId('dpa-forward-dialog')).toBeVisible());
     },
@@ -165,7 +165,7 @@ export const OrganisationDpaForwardedOnHold: Story = {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(
-            await canvas.findByRole('button', { name: /nicht unterschriftsberechtigt|not authorised/ }),
+            await canvas.findByRole('button', { name: /nicht vertretungsberechtigt|not authorised/ }),
         );
         // Opening mints nothing (#712/#836): the sign link is created by the
         // explicit act, and only then can the forward be confirmed.
