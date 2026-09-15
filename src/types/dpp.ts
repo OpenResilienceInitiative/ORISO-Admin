@@ -37,10 +37,19 @@ export interface DepartmentDataProtectionContent {
  * nulls. Keying the guard on one of those would re-create #929 — a healthy read of a
  * never-authored department would fail closed and hide the editor again.
  */
-export const isLegalDocumentPayload = (data: unknown): data is DepartmentDataProtectionContent =>
-    typeof data === 'object' &&
-    data !== null &&
-    !Array.isArray(data) &&
-    !(data instanceof Response) &&
-    ((data as DepartmentDataProtectionContent).publicationStatus === 'DRAFT' ||
-        (data as DepartmentDataProtectionContent).publicationStatus === 'PUBLISHED');
+const isStoredJsonMap = (value: unknown): boolean => typeof value === 'string' || value === null || value === undefined;
+
+export const isLegalDocumentPayload = (data: unknown): data is DepartmentDataProtectionContent => {
+    if (typeof data !== 'object' || data === null || Array.isArray(data) || data instanceof Response) {
+        return false;
+    }
+    const candidate = data as DepartmentDataProtectionContent;
+    if (candidate.publicationStatus !== 'DRAFT' && candidate.publicationStatus !== 'PUBLISHED') {
+        return false;
+    }
+    // Both are stored as JSON map STRINGS. `parseLegalContentMap` does not throw on anything else
+    // — its JSON.parse sits in a try/catch — it hands back `{ de: <that value> }`, which would make
+    // a department look like it carries its own text and put a non-string into the editor. Cheaper
+    // to refuse the document here than to reason about that downstream.
+    return isStoredJsonMap(candidate.content) && isStoredJsonMap(candidate.consentText);
+};
