@@ -118,7 +118,7 @@ export const useUserRolesToPermission = () => {
             Language: { update: true },
             LegalText: { read: true, update: true },
             Statistic: { read: true },
-            // #902: tenant admins manage the tenant admins of their own tenant by design.
+            // tenant admins manage the tenant admins of their own tenant by design.
             // Commit 9fd581b73 regressed create/update/delete to isSuperAdmin and the
             // next-day hotfix 1665b33f4 restored only read — this restores the rest.
             // Backend tenant scoping is pending in UserService#1098; the Platform-Admins

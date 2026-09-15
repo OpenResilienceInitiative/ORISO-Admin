@@ -205,7 +205,7 @@ export const canReadSection = (sectionId: TypeOfUser, can: (action: PermissionAc
     can(PermissionAction.Read, USER_TABLE_CONFIGS[sectionId].readResource);
 
 /**
- * #902: the Träger-Admins and Platform-Admins sections share Resource.TenantAdminUser,
+ * the Träger-Admins and Platform-Admins sections share Resource.TenantAdminUser,
  * so the permission map alone cannot scope manage actions (create/update/delete) per
  * section. The platform-admins section mirrors the isSuperAdmin gate of its pill in
  * UserSectionPills: a tenant-scoped admin who opens the list by direct URL may read

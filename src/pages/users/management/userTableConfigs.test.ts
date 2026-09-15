@@ -19,11 +19,11 @@ describe('userTableConfigs hasOtherIdentity column', () => {
     });
 });
 
-// #902: Resource.TenantAdminUser is shared between the Träger-Admins and Platform-Admins
+// Resource.TenantAdminUser is shared between the Träger-Admins and Platform-Admins
 // sections, so restoring create/update/delete for tenant-scoped tenant admins must not
 // surface manage actions on the platform-admins section (reachable by direct URL even
 // though its pill is super-admin-only in UserSectionPills).
-describe('canManageSectionActions (#902)', () => {
+describe('canManageSectionActions', () => {
     it('keeps platform-admins manage actions super-admin-only', () => {
         expect(canManageSectionActions(TypeOfUser.PlatformAdmins, false)).toBe(false);
         expect(canManageSectionActions(TypeOfUser.PlatformAdmins, true)).toBe(true);

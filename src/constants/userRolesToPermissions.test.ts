@@ -220,13 +220,9 @@ describe('restricted agency admin permission policy', () => {
     });
 });
 
-// #902 regression pins: commit 9fd581b73 flipped create/update/delete on TenantAdminUser
-// to isSuperAdmin for the TenantAdmin role; the next-day hotfix 1665b33f4 restored only
-// read. These tests run the real map so the full permission set cannot silently regress
-// again — a Träger-Admin manages the tenant admins of their own tenant by design (tenant
-// scoping is the backend's job, and the platform-admins SECTION stays super-admin-only in
-// the UI, which UserManagementTable enforces per section, not this map).
-describe('useUserRolesToPermission — TenantAdminUser (#902)', () => {
+// Valid tenant administrators can manage their own administrators. The table
+// separately restricts the platform-admin section, and the backend enforces scope.
+describe('useUserRolesToPermission — TenantAdminUser', () => {
     const resolvePermissions = (
         roles: UserRole[],
         isSuperAdmin: boolean,
@@ -258,7 +254,7 @@ describe('useUserRolesToPermission — TenantAdminUser (#902)', () => {
     it('keeps Tenant create/delete super-admin-only for a tenant-scoped tenant admin', () => {
         const permissions = resolvePermissions([UserRole.TenantAdmin], false, true);
 
-        // The #902 revert is scoped to TenantAdminUser: managing tenants themselves
+        // The permission change is scoped to TenantAdminUser: managing tenants themselves
         // stays a super-admin surface.
         expect(permissions.Tenant).toEqual({ read: true, update: true, create: false, delete: false });
     });

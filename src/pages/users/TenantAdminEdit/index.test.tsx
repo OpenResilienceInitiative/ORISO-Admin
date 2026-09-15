@@ -1,11 +1,11 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { TenantAdminEditOrAdd } from './index';
 
-// #902: a Träger-Admin (tenant-scoped tenant admin) regains create/update/delete on
+// A Träger-Admin (tenant-scoped tenant admin) regains create/update/delete on
 // TenantAdminUser. These tests pin the two UI halves of that fix in this page:
 //  - add mode must default AND lock the tenant to the caller's own tenant (the
 //    "+ Neu" navigation passes no ?tenantId=, and a crafted query param must not
@@ -174,7 +174,7 @@ const asTenantScopedAdmin = () =>
 const asSuperAdmin = () =>
     mocks.useUserRoles.mockReturnValue({ isSuperAdmin: true, isTenantScopedAdmin: false, tenantId: 0 });
 
-describe('TenantAdminEditOrAdd (#902)', () => {
+describe('TenantAdminEditOrAdd', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.location = { pathname: '/admin/users/tenant-admins/add', search: '' };
@@ -224,6 +224,83 @@ describe('TenantAdminEditOrAdd (#902)', () => {
             renderPage();
 
             expect(screen.getByLabelText('tenant-select')).toHaveAttribute('data-value', '2');
+        });
+    });
+
+    describe('submission authorization', () => {
+        beforeEach(() => {
+            grantAllPermissions();
+            asTenantScopedAdmin();
+        });
+
+        it('does not offer Save on a direct platform-admin add route', () => {
+            mocks.location.pathname = '/admin/users/platform-admins/add';
+            renderPage();
+            expect(screen.queryByRole('button', { name: 'save' })).not.toBeInTheDocument();
+        });
+
+        it('does not offer Save without Create permission', () => {
+            mocks.can.mockImplementation((action: PermissionAction) => action !== PermissionAction.Create);
+            renderPage();
+            expect(screen.queryByRole('button', { name: 'save' })).not.toBeInTheDocument();
+        });
+
+        it('fails closed without a valid own tenant even with a crafted query', () => {
+            mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, isTenantScopedAdmin: false, tenantId: null });
+            mocks.location.search = '?tenantId=7';
+            renderPage();
+            expect(screen.queryByRole('button', { name: 'save' })).not.toBeInTheDocument();
+            expect(mocks.useTenantsData).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+        });
+
+        it.each([
+            { data: undefined, isLoading: true },
+            { data: undefined, isError: true },
+            { data: { id: 7, name: 'Other tenant' } },
+        ])('does not offer Save until the own tenant is confirmed: %j', (result) => {
+            mocks.useTenantData.mockReturnValue(result);
+            renderPage();
+            expect(screen.queryByRole('button', { name: 'save' })).not.toBeInTheDocument();
+        });
+
+        it('rejects direct form submission on the platform-admin add route', async () => {
+            mocks.location.pathname = '/admin/users/platform-admins/add';
+            const { container } = renderPage();
+            fireEvent.submit(container.querySelector('form')!);
+            await waitFor(() => expect(container.querySelector('form')).toBeInTheDocument());
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('submits the own tenant for an authorized create', async () => {
+            renderPage();
+            fireEvent.click(screen.getByRole('button', { name: 'save' }));
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledWith(expect.objectContaining({ tenantId: '2' })));
+        });
+
+        it('submits an authorized own-tenant update', async () => {
+            mocks.params.id = '42';
+            mocks.location.pathname = '/admin/users/tenant-admins/42';
+            mocks.useTenantUserAdminData.mockReturnValue({ data: { tenantId: '2' }, isLoading: false });
+            renderPage();
+            fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+            fireEvent.click(screen.getByRole('button', { name: 'save' }));
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledWith(expect.objectContaining({ tenantId: '2' })));
+        });
+
+        it('permits a super admin to create a platform admin', async () => {
+            asSuperAdmin();
+            mocks.location.pathname = '/admin/users/platform-admins/add';
+            renderPage();
+            fireEvent.click(screen.getByRole('button', { name: 'save' }));
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledWith(expect.objectContaining({ tenantId: '0' })));
+        });
+
+        it('denies editing a cached record belonging to another tenant', () => {
+            mocks.params.id = '42';
+            mocks.location.pathname = '/admin/users/tenant-admins/42';
+            mocks.useTenantUserAdminData.mockReturnValue({ data: { tenantId: '7' }, isLoading: false });
+            renderPage();
+            expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument();
         });
     });
 

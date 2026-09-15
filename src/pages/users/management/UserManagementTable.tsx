@@ -139,7 +139,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const showTenantColumn = isSuperAdmin && !isTenantAdmins && !isTenants;
     const showSubdomain = !settings.multitenancyWithSingleDomainEnabled && (isTenantAdmins || isTenants);
 
-    // #902: the platform-admins section shares Resource.TenantAdminUser with the
+    // the platform-admins section shares Resource.TenantAdminUser with the
     // tenant-admins section, so its manage actions stay super-admin-only even now
     // that tenant-scoped admins hold create/update/delete on that resource.
     const canManageSection = canManageSectionActions(sectionId, isSuperAdmin);
