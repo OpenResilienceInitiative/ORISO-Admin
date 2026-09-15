@@ -39,6 +39,8 @@ import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
 import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
+import { useCreateConsultantWithPicture } from '../../../hooks/useCreateConsultantWithPicture';
+import { ConsultantPictureControl } from './ConsultantPictureControl';
 
 /**
  * antd prefixes every bound control id with the form name, and
@@ -130,7 +132,11 @@ export const UserEditOrAdd = () => {
     });
     const showGrantConsultantIdentity = canGrantConsultantIdentity(isEditing, typeOfUsers, singleData);
     const [isReadOnly, setReadOnly] = useState(isEditing);
-    const [submitted] = useState(false);
+    const [selectedPicture, setSelectedPicture] = useState<File | null>(null);
+    const pictureCreation = useCreateConsultantWithPicture(`${typeOfUsers}/${id}`);
+    useEffect(() => {
+        setSelectedPicture(null);
+    }, [id, typeOfUsers]);
     const [tenantsData, setTenantsData] = useState([]);
     const [userTenantId, setUserTenantId] = useState<number>(0);
     const [filteredAgencies, setFilteredAgencies] = useState([]);
@@ -353,10 +359,13 @@ export const UserEditOrAdd = () => {
         });
     }, [consultantById, isEditing, isConsultantForm, canManageAdminRemarks, form]);
 
-    const { mutate } = useAddOrUpdateConsultantOrAdmin({
+    const { mutate, mutateAsync } = useAddOrUpdateConsultantOrAdmin({
         id: isEditing ? id : null,
         typeOfUser: typeOfUsers,
-        onSuccess: (response) => {
+        onSuccess: (response, variables) => {
+            // Create-with-picture is deliberately a two-step flow. The stable id returned from
+            // POST is needed for PUT; navigation happens below only after that second step.
+            if (pictureCreation.ownsAccountSuccess(variables)) return;
             const messagePrefix = isConsultantForm ? 'counselor' : 'agencyAdmin';
             message.success({
                 content: t(`message.${messagePrefix}.${isEditing ? 'update' : 'add'}`),
@@ -385,7 +394,8 @@ export const UserEditOrAdd = () => {
     // here means we name the mismatch instead of relying on the assignment request, which
     // the backend used to swallow silently.
     const onSave = useCallback(
-        (data) => {
+        async (data) => {
+            if (pictureCreation.isLocked()) return;
             if (isConsultantForm) {
                 const uncoveredTopics = findUncoveredTopics(
                     data.agencies ?? [],
@@ -406,6 +416,28 @@ export const UserEditOrAdd = () => {
                     return;
                 }
             }
+            if (!isEditing && isConsultantForm) {
+                const createPayload = { ...data };
+                delete createPayload.assignedSupervisorId;
+                await pictureCreation.createWithPicture(
+                    mutateAsync,
+                    createPayload,
+                    selectedPicture,
+                    (createdId, pictureSaved) => {
+                        queryClient.invalidateQueries({ queryKey: ['CONSULTANT', createdId] });
+                        queryClient.invalidateQueries({ queryKey: ['CONSULTANTS'] });
+                        setSelectedPicture(null);
+                        if (pictureSaved) {
+                            message.success({ content: t('message.counselor.add'), duration: 3 });
+                            navigate(`/admin/users/${typeOfUsers}`);
+                        } else {
+                            message.warning({ content: t('message.counselor.picture.partialCreate'), duration: 8 });
+                            navigate(`/admin/users/${typeOfUsers}/${createdId}`);
+                        }
+                    },
+                );
+                return;
+            }
             // Write the standing supervisor ONLY when the admin deliberately changed it. Anything
             // else — the field read-only because the record was unreadable, or the form mounted
             // from a stale detail cache — would mean submitting a value we did not actually know,
@@ -422,7 +454,21 @@ export const UserEditOrAdd = () => {
             // coercion a standing supervisor could be set but never removed.
             mutate({ ...data, assignedSupervisorId: data.assignedSupervisorId ?? '' });
         },
-        [isConsultantForm, filteredAgencies, form, mutate, t, canWriteStandingSupervisor],
+        [
+            isConsultantForm,
+            filteredAgencies,
+            form,
+            mutate,
+            mutateAsync,
+            t,
+            canWriteStandingSupervisor,
+            isEditing,
+            selectedPicture,
+            pictureCreation,
+            queryClient,
+            navigate,
+            typeOfUsers,
+        ],
     );
     const onFinishFailed = useCallback(({ errorFields }: ValidateErrorEntity) => {
         // Keep values; jump to the field that blocked save (#717 / #594.6).
@@ -465,6 +511,10 @@ export const UserEditOrAdd = () => {
     const agencyTenantId = resolveAgencyTenantId(selectedTenant, userTenantId);
 
     const requiredRule = { required: true, message: t('form.errors.required') };
+    const consultantRecord = consultantById || singleData;
+    const consultantPendingDeletion =
+        consultantRecord?.status === 'IN_DELETION' || !isActiveDeleteDate(consultantRecord?.deleteDate);
+    const canUpdateConsultantPicture = can(PermissionAction.Update, Resource.Consultant);
 
     const onAgencyCreated = (agency) => {
         const current = form.getFieldValue('agencies') || [];
@@ -497,14 +547,21 @@ export const UserEditOrAdd = () => {
                 )}
                 {!isReadOnly && (
                     <>
-                        <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
+                        <Button
+                            type="text"
+                            className="admin-m3-text-button"
+                            onClick={onCancel}
+                            disabled={pictureCreation.busy}
+                        >
                             {t('btn.cancel')}
                         </Button>
                         <Button
                             type="text"
                             className="admin-m3-text-button"
                             onClick={() => form.submit()}
-                            disabled={submitted}
+                            disabled={pictureCreation.busy}
+                            loading={pictureCreation.busy}
+                            aria-label={t('save')}
                         >
                             {t('save')}
                         </Button>
@@ -514,7 +571,7 @@ export const UserEditOrAdd = () => {
 
             <ThemeProvider theme={orisoMuiTheme}>
                 <Form
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || pictureCreation.busy}
                     labelAlign="left"
                     labelWrap
                     layout="vertical"
@@ -707,7 +764,7 @@ export const UserEditOrAdd = () => {
                                     <div className={styles.createAgency}>
                                         <CreateAgencyModal
                                             tenantId={agencyTenantId}
-                                            disabled={isReadOnly}
+                                            disabled={isReadOnly || pictureCreation.busy}
                                             onSuccess={onAgencyCreated}
                                         />
                                     </div>
@@ -803,16 +860,30 @@ export const UserEditOrAdd = () => {
                                             <Space>
                                                 <Button
                                                     type="primary"
-                                                    disabled={isReadOnly}
+                                                    disabled={isReadOnly || pictureCreation.busy}
                                                     onClick={approvePendingPublicSlug}
                                                 >
                                                     {t('counselor.publicSlug.approve')}
                                                 </Button>
-                                                <Button disabled={isReadOnly} onClick={rejectPendingPublicSlug}>
+                                                <Button
+                                                    disabled={isReadOnly || pictureCreation.busy}
+                                                    onClick={rejectPendingPublicSlug}
+                                                >
                                                     {t('counselor.publicSlug.reject')}
                                                 </Button>
                                             </Space>
                                         )}
+                                    </Card>
+                                )}
+                                {isConsultantForm && (
+                                    <Card titleKey="counselor.picture.title">
+                                        <ConsultantPictureControl
+                                            showHeading={false}
+                                            consultantId={isEditing ? id : undefined}
+                                            disabled={isReadOnly || pictureCreation.busy || !canUpdateConsultantPicture}
+                                            pendingDeletion={consultantPendingDeletion}
+                                            onSelectedFileChange={setSelectedPicture}
+                                        />
                                     </Card>
                                 )}
                             </Space>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UserEditOrAdd } from './index';
@@ -19,8 +19,12 @@ import { UserRole } from '../../../enums/UserRole';
  */
 
 const mocks = vi.hoisted(() => ({
+    realMutation: false,
+    realPicture: false,
     mutate: vi.fn(),
+    mutateAsync: vi.fn(),
     navigate: vi.fn(),
+    accountSuccess: vi.fn() as (result: { id: string }, variables: object) => void,
     getSingleTenantData: vi.fn(),
     searchTenantData: vi.fn(),
     /** Drives the real `hasRole` logic below, so the role gate is genuinely exercised. */
@@ -47,6 +51,7 @@ const translations: Record<string, string> = {
     firstname: 'Vorname',
     lastname: 'Nachname',
     email: 'E-Mail',
+    'counselor.picture.title': 'Internes Foto',
     'counselor.username': 'Benutzername',
     'counselor.password': 'Passwort',
     'counselor.passwordConfirmation': 'Passwort wiederholen',
@@ -72,6 +77,7 @@ const translations: Record<string, string> = {
     save: 'Speichern',
     edit: 'Bearbeiten',
     'btn.cancel': 'Abbrechen',
+    'message.counselor.picture.partialCreate': 'Konto erstellt, Bild konnte nicht gespeichert werden.',
 };
 
 const t = (key: string) => translations[key] ?? key;
@@ -102,8 +108,10 @@ vi.mock('../../../components/Page', () => {
     return { Page };
 });
 
+const actualCard = await vi.importActual<typeof import('../../../components/Card')>('../../../components/Card');
 vi.mock('../../../components/Card', () => ({
     Card: function Card({ children, titleKey }: { children: React.ReactNode; titleKey: string }) {
+        if (mocks.realPicture) return <actualCard.Card titleKey={titleKey}>{children}</actualCard.Card>;
         return (
             <section>
                 <h2>{t(titleKey)}</h2>
@@ -140,8 +148,56 @@ vi.mock('../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({ permissions: {}, can: () => true }),
 }));
 
+const actualMutation = await vi.importActual<typeof import('../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin')>(
+    '../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin',
+);
+vi.mock('../../../api/counselor/addCounselorData', () => ({
+    addCounselorData: (payload: unknown) => mocks.mutateAsync(payload),
+}));
+vi.mock('../../../api/counselor/editCounselorData', () => ({
+    editCounselorData: (id: string, payload: unknown) => mocks.mutate(id, payload),
+}));
 vi.mock('../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin', () => ({
-    useAddOrUpdateConsultantOrAdmin: () => ({ mutate: mocks.mutate }),
+    useAddOrUpdateConsultantOrAdmin: (
+        options: Parameters<typeof actualMutation.useAddOrUpdateConsultantOrAdmin>[0],
+    ) => {
+        if (mocks.realMutation) return actualMutation.useAddOrUpdateConsultantOrAdmin(options);
+        // The installed MutationObserver updates callbacks when route props change.
+        mocks.accountSuccess = options.onSuccess;
+        return {
+            mutate: mocks.mutate,
+            mutateAsync: async (payload: unknown) => {
+                const result = await mocks.mutateAsync(payload);
+                mocks.accountSuccess(result, payload as object);
+                return result;
+            },
+        };
+    },
+}));
+
+const uploadConsultantPicture = vi.hoisted(() => vi.fn());
+vi.mock('../../../api/counselor/consultantPicture', () => ({
+    uploadConsultantPicture,
+    getConsultantPicture: vi.fn().mockResolvedValue(null),
+}));
+const actualPicture = await vi.importActual<typeof import('./ConsultantPictureControl')>('./ConsultantPictureControl');
+
+vi.mock('./ConsultantPictureControl', () => ({
+    ConsultantPictureControl: (props: React.ComponentProps<typeof actualPicture.ConsultantPictureControl>) => {
+        if (mocks.realPicture) return <actualPicture.ConsultantPictureControl {...props} />;
+        const { onSelectedFileChange, pendingDeletion, disabled } = props;
+        return (
+            <div>
+                <button
+                    type="button"
+                    disabled={pendingDeletion || disabled}
+                    onClick={() => onSelectedFileChange?.(new File(['x'], 'x.png', { type: 'image/png' }))}
+                >
+                    Bild wählen
+                </button>
+            </div>
+        );
+    },
 }));
 
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
@@ -197,11 +253,12 @@ beforeAll(() => {
 
 const renderForm = () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    return render(
+    const view = render(
         <QueryClientProvider client={queryClient}>
             <UserEditOrAdd />
         </QueryClientProvider>,
     );
+    return { ...view, queryClient };
 };
 
 /**
@@ -228,8 +285,10 @@ const fillMandatoryFields = async () => {
 
 const submit = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(screen.getByRole('button', { name: 'Speichern' }));
-    await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
-    return mocks.mutate.mock.calls[0][0];
+    const mutation =
+        mocks.params.id === 'add' && mocks.params.typeOfUsers === 'consultants' ? mocks.mutateAsync : mocks.mutate;
+    await waitFor(() => expect(mutation).toHaveBeenCalledTimes(1));
+    return mutation.mock.calls[0][0];
 };
 
 /** Picks `optionLabel` in the MUI Autocomplete labelled `fieldLabel`. */
@@ -243,7 +302,12 @@ const chooseOption = async (
 };
 
 beforeEach(() => {
+    mocks.realMutation = false;
+    mocks.realPicture = false;
+    translations['counselor.picture.title'] = 'Internes Foto';
     mocks.mutate.mockReset();
+    mocks.mutateAsync.mockReset().mockResolvedValue({ id: 'created-42' });
+    uploadConsultantPicture.mockReset();
     mocks.navigate.mockReset();
     mocks.searchTenantData.mockReset();
     mocks.searchTenantData.mockResolvedValue({ data: [TENANT] });
@@ -256,6 +320,131 @@ beforeEach(() => {
     mocks.supervisorCandidatesResult = { data: { data: [] }, isLoading: false, isError: false };
     mocks.counselorResult = { data: undefined, isLoading: false };
     mocks.params = { id: 'add', typeOfUsers: 'consultants' };
+});
+
+describe('consultant picture create choreography (#1048)', () => {
+    beforeEach(() => {
+        mocks.realMutation = true;
+    });
+    it('locks picture selection and Save even when account creation started without a photo', async () => {
+        mocks.mutateAsync.mockImplementation(() => new Promise(() => {}));
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        expect(screen.getByRole('button', { name: 'Bild wählen' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+    });
+
+    it('guards Save and picture selection across account POST and picture PUT', async () => {
+        let finishCreate!: (value: { id: string }) => void;
+        let finishUpload!: () => void;
+        mocks.mutateAsync.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    finishCreate = resolve;
+                }),
+        );
+        uploadConsultantPicture.mockImplementation(
+            () =>
+                new Promise<void>((resolve) => {
+                    finishUpload = resolve;
+                }),
+        );
+        const user = userEvent.setup();
+        renderForm();
+        await user.click(screen.getByRole('button', { name: 'Bild wählen' }));
+        await fillMandatoryFields();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+        expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Bild wählen' })).toBeDisabled();
+        expect(screen.getByLabelText('Vorname')).toBeDisabled();
+        await act(async () => {
+            finishCreate({ id: 'created-42' });
+        });
+        await waitFor(() => expect(uploadConsultantPicture).toHaveBeenCalledTimes(1));
+        // A second validated form submit must also be guarded, independently of the disabled button.
+        fireEvent.submit(document.querySelector('form')!);
+        await act(async () => {});
+        expect(mocks.mutateAsync).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+        expect(mocks.navigate).not.toHaveBeenCalled();
+        await act(async () => {
+            finishUpload();
+        });
+        await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/consultants'));
+    });
+
+    it('suppresses the mutation success navigation after the route changes during POST', async () => {
+        let finish!: (value: { id: string }) => void;
+        mocks.mutateAsync.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    finish = resolve;
+                }),
+        );
+        const user = userEvent.setup();
+        const { rerender } = renderForm();
+        await user.click(screen.getByRole('button', { name: 'Bild wählen' }));
+        await fillMandatoryFields();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+        mocks.params = { id: 'another-consultant', typeOfUsers: 'consultants' };
+        rerender(
+            <QueryClientProvider client={new QueryClient()}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+        await act(async () => {
+            finish({ id: 'created-42' });
+        });
+        expect(mocks.navigate).not.toHaveBeenCalled();
+        expect(uploadConsultantPicture).not.toHaveBeenCalled();
+    });
+
+    it('forgets an unsubmitted picture when navigation leaves and returns to a new account', async () => {
+        const user = userEvent.setup();
+        const { rerender } = renderForm();
+        await user.click(screen.getByRole('button', { name: 'Bild wählen' }));
+        mocks.params = { id: 'someone-else', typeOfUsers: 'consultants' };
+        rerender(
+            <QueryClientProvider client={new QueryClient()}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+        mocks.params = { id: 'add', typeOfUsers: 'consultants' };
+        rerender(
+            <QueryClientProvider client={new QueryClient()}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+        await fillMandatoryFields();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/consultants'));
+        expect(uploadConsultantPicture).not.toHaveBeenCalled();
+    });
+
+    it('creates once, then routes to the returned edit record when its picture upload fails', async () => {
+        const user = userEvent.setup();
+        mocks.mutateAsync.mockResolvedValue({ id: 'consultant-created-42' });
+        uploadConsultantPicture.mockRejectedValue(
+            new Response(JSON.stringify({ reason: 'PICTURE_REJECTED' }), { status: 422 }),
+        );
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bild wählen' }));
+        await fillMandatoryFields();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        await waitFor(() =>
+            expect(uploadConsultantPicture).toHaveBeenCalledWith('consultant-created-42', expect.any(File)),
+        );
+        expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/consultants/consultant-created-42');
+        expect(mocks.navigate).not.toHaveBeenCalledWith('/admin/users/consultants');
+    });
 });
 
 describe('admin remarks are gated on the tenant-level admin role (#994)', () => {
@@ -757,4 +946,65 @@ describe('existing consultant username validation', () => {
         });
         expect(screen.getByLabelText('Benutzername')).toBeDisabled();
     });
+});
+
+describe('request ownership with the real account mutation (#1048)', () => {
+    it.each([true, false])('runs another account save callback with old POST pending=%s', async (pending) => {
+        mocks.realMutation = true;
+        let finish!: (value: { id: string }) => void;
+        mocks.mutateAsync.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    finish = resolve;
+                }),
+        );
+        mocks.mutate.mockResolvedValue({ id: 'another-consultant' });
+        const user = userEvent.setup();
+        const { rerender, unmount, queryClient } = renderForm();
+        await fillMandatoryFields();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+        if (!pending) {
+            await act(async () => {
+                finish({ id: 'old-created' });
+            });
+            expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith('/admin/users/consultants');
+            mocks.navigate.mockClear();
+        }
+        mocks.params = { id: 'another-consultant', typeOfUsers: 'consultants' };
+        rerender(
+            <QueryClientProvider client={queryClient}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+        expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(mocks.mutate.mock.calls[0][0]).toBe('another-consultant');
+        await act(async () => {});
+        const navigationAfterEdit = mocks.navigate.mock.calls.slice();
+        await act(async () => {
+            finish({ id: 'old-created' });
+        });
+        expect(navigationAfterEdit).toEqual([['/admin/users/consultants']]);
+        // The obsolete POST must not add navigation or upload after the independent save.
+        expect(mocks.navigate.mock.calls).toEqual(navigationAfterEdit);
+        expect(uploadConsultantPicture).not.toHaveBeenCalled();
+        expect(mocks.mutateAsync).toHaveBeenCalledTimes(1);
+        unmount();
+        queryClient.clear();
+    });
+});
+
+describe('normal form picture heading (#1048)', () => {
+    it.each(['Internes Foto', 'Internal photo'])(
+        'renders one accessible %s heading with the real Card and control',
+        (title) => {
+            mocks.realPicture = true;
+            translations['counselor.picture.title'] = title;
+            renderForm();
+            expect(screen.getAllByRole('heading', { name: title })).toHaveLength(1);
+            expect(screen.getByRole('region', { name: title })).toBeInTheDocument();
+        },
+    );
 });
