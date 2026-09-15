@@ -122,6 +122,61 @@ export const Editable: Story = {
     },
 };
 
+/** The shape GET /service/users/case-handover/reason-policies really answers:
+ *  `clientConsent` as the bare enum string, the mode beside it in `clientConsentMode`
+ *  (`CaseHandoverService.CaseHandoverReason`) — not the policy object the card writes.
+ *  Reading only the object shape is what made a saved Opt-Out look discarded after a
+ *  reload (UserService #1131). Every row here is a stored, non-default value. */
+export const StoredPolicyAsReturnedByTheUserService: Story = {
+    args: {
+        policies: [
+            {
+                code: 'COUNSELLOR_ASKED_FOR_ADVICE',
+                label: 'Rat benötigt',
+                clientConsent: 'OPT_OUT' as unknown as CaseHandoverReasonPolicy['clientConsent'],
+                clientConsentMode: 'ENFORCED',
+                clientConsentRequired: false,
+                accessAllowed: true,
+                enabled: true,
+                displayOrder: 10,
+                policyAuthority: 'tenant-admin-case-handover-policy',
+                maxAccessDurationMinutes: 90,
+                clientNotificationTemplates: adviceNotificationTemplates,
+            },
+            {
+                code: 'COUNSELLOR_ON_HOLIDAY',
+                label: 'Geplant verhindert',
+                clientConsent: 'OPT_IN' as unknown as CaseHandoverReasonPolicy['clientConsent'],
+                clientConsentMode: 'SUGGESTED',
+                clientConsentRequired: true,
+                accessAllowed: true,
+                enabled: true,
+                displayOrder: 20,
+                policyAuthority: 'tenant-admin-case-handover-policy',
+            },
+        ],
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(
+            canvas.getByRole('button', {
+                name: /(Consent opt-out \(enforced\)|Zustimmung Opt-Out \(Vorgabe\))/i,
+            }),
+        ).toBeVisible();
+        await expect(canvas.getByDisplayValue(/1 h 30 min/)).toBeVisible();
+
+        await userEvent.click(canvas.getByRole('tab', { name: 'Geplant verhindert' }));
+        await expect(
+            canvas.getByRole('button', {
+                name: /(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))/i,
+            }),
+        ).toBeVisible();
+    },
+};
+
 /** Read-only ceiling: admins without policy-edit permission see the same card
  *  with every control disabled. */
 export const ReadOnly: Story = {
