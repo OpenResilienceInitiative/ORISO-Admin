@@ -8,7 +8,6 @@ import {
 import { canSeeLinksSection } from '../../constants/linksAccess';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
-import { UserRole } from '../../enums/UserRole';
 import { AdminSidebarNavItem } from './AdminSidebar';
 
 /** Resolved sidebar labels. Kept as plain strings so this module stays free of i18n/React. */
