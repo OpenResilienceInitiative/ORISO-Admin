@@ -124,6 +124,9 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
     it.each([
         ['a JSON null body', null],
         ['a 204 with the raw Response', new Response(null, { status: 204 })],
+        ['an array', []],
+        ['an object that is not a policy document', { foo: 'bar' }],
+        ['a publicationStatus the contract does not define', { content: null, publicationStatus: 'WAT' }],
     ])('blocks the editor when a successful read returns %s', async (_label, data) => {
         h.useDepartmentDpp.mockReturnValue({
             data,

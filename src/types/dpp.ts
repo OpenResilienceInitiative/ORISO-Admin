@@ -30,6 +30,17 @@ export interface DepartmentDataProtectionContent {
  * and neither marks the query as failed. A caller that inferred "this department has no
  * text" from such a payload would seed its editor with the INHERITED text and let a publish
  * store that as the department's own — so the shape is checked before it is believed.
+ *
+ * `publicationStatus` is what is checked, and deliberately not `content` or `consentText`:
+ * it is the only property the read contract marks REQUIRED (same for the imprint read), while
+ * the other two are nullable and may or may not appear depending on how the service serialises
+ * nulls. Keying the guard on one of those would re-create #929 — a healthy read of a
+ * never-authored department would fail closed and hide the editor again.
  */
 export const isLegalDocumentPayload = (data: unknown): data is DepartmentDataProtectionContent =>
-    typeof data === 'object' && data !== null && !(data instanceof Response);
+    typeof data === 'object' &&
+    data !== null &&
+    !Array.isArray(data) &&
+    !(data instanceof Response) &&
+    ((data as DepartmentDataProtectionContent).publicationStatus === 'DRAFT' ||
+        (data as DepartmentDataProtectionContent).publicationStatus === 'PUBLISHED');
