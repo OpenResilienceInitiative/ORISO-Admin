@@ -304,6 +304,105 @@ describe('TenantInvitesTab 403 role surfacing (UserService#1006)', () => {
 });
 
 /*
+ * UserService#1160: a 502 `{"reason":"SMTP_SEND_FAILED","detail":<category>}`
+ * means the invite was fine and MAIL DELIVERY is broken platform-wide. Before
+ * this, the call fell into CATCH_ALL and the admin got two generic toasts, so a
+ * misconfigured SMTP looked like a flaky form and admins kept retrying.
+ */
+describe('TenantInvitesTab SMTP delivery failures (UserService#1160)', () => {
+    const smtp502 = (detail?: string) =>
+        new Response(JSON.stringify({ reason: 'SMTP_SEND_FAILED', ...(detail ? { detail } : {}) }), {
+            status: 502,
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+    });
+
+    const submitInvite = async () => {
+        renderTenantTab();
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalled());
+    };
+
+    it.each([
+        [
+            'SMTP_CREDENTIALS_MISSING',
+            'E-Mail-Versand nicht konfiguriert: SMTP-Zugangsdaten fehlen. Bitte Plattform-Admin kontaktieren.',
+        ],
+        [
+            'SMTP_DISABLED_OR_INCOMPLETE',
+            'E-Mail-Versand ist deaktiviert oder unvollständig konfiguriert. Bitte Plattform-Admin kontaktieren.',
+        ],
+        [
+            'SMTP_SETTINGS_UNAVAILABLE',
+            'E-Mail-Einstellungen konnten nicht geladen werden. Bitte später erneut versuchen oder Plattform-Admin kontaktieren.',
+        ],
+        ['SMTP_TRANSPORT_FAILED', 'E-Mail-Server hat den Versand abgelehnt. Bitte Plattform-Admin kontaktieren.'],
+    ])('shows ONE specific toast for %s', { timeout: 90_000 }, async (detail, expected) => {
+        mocks.createAccountInvite.mockRejectedValue(smtp502(detail));
+
+        await submitInvite();
+
+        expect(await screen.findByText(expected)).toBeInTheDocument();
+        // No generic toast stacked on top — that is what hid the cause.
+        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+        expect(screen.queryByText('Invite sent')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the neutral delivery message on an unknown category', { timeout: 90_000 }, async () => {
+        // Never guess a cause the backend did not name.
+        mocks.createAccountInvite.mockRejectedValue(smtp502('SMTP_SOMETHING_NEW'));
+
+        await submitInvite();
+
+        expect(
+            await screen.findByText('E-Mail konnte nicht versendet werden. Bitte Plattform-Admin kontaktieren.'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+    });
+
+    it('reloads the list so the row reflects what the backend kept', { timeout: 90_000 }, async () => {
+        mocks.createAccountInvite.mockRejectedValue(smtp502('SMTP_CREDENTIALS_MISSING'));
+
+        await submitInvite();
+
+        await waitFor(() => expect(mocks.listAccountInvites.mock.calls.length).toBeGreaterThanOrEqual(2));
+    });
+
+    it('keeps the generic create-failed toast for a 502 that is not an SMTP failure', { timeout: 90_000 }, async () => {
+        mocks.createAccountInvite.mockRejectedValue(
+            new Response(JSON.stringify({ reason: 'SOMETHING_ELSE' }), { status: 502 }),
+        );
+
+        await submitInvite();
+
+        expect(await screen.findByText('Could not create link')).toBeInTheDocument();
+    });
+
+    it('leaves the 403 role surfacing intact (UserService#1006)', { timeout: 90_000 }, async () => {
+        mocks.createAccountInvite.mockRejectedValue(new Response(null, { status: 403 }));
+
+        await submitInvite();
+
+        expect(
+            await screen.findByText('Nur Plattform-Administratoren können Träger-Admins einladen.'),
+        ).toBeInTheDocument();
+    });
+});
+
+/*
  * `loadInvites` is called from the mount effect AND after every invite action,
  * so two runs can be in flight at once — each walks several pages, so the older
  * one can finish last. Only the newest run may write the list or clear the
