@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
+// eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import type { AccountInviteDTO, InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
@@ -206,5 +208,58 @@ export const NoTemplates: Story = {
                 }),
             ],
         },
+    },
+};
+
+/**
+ * Mail delivery is misconfigured (UserService#1160): the create is answered
+ * `502 {"reason":"SMTP_SEND_FAILED","detail":"SMTP_CREDENTIALS_MISSING"}`.
+ *
+ * Reviewable state: ONE specific toast naming the cause — "E-Mail-Versand nicht
+ * konfiguriert: SMTP-Zugangsdaten fehlen." — and NO generic "Link konnte nicht
+ * erstellt werden" underneath it. Before this the admin saw only the two generic
+ * toasts and kept retrying a form that can never succeed until SMTP is fixed.
+ */
+export const SmtpCredentialsMissing: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(INVITES_ENDPOINT, () => invitesResponse(INVITES)),
+                // Exactly ONE active template, so the tab auto-selects it and the
+                // send button is reachable without a template pick first.
+                http.get(TEMPLATES_ENDPOINT, () => HttpResponse.json([TEMPLATES[0]])),
+                http.get(TENANT_SEARCH_ENDPOINT, () => HttpResponse.json(TENANTS)),
+                ...idAllocationHandlers,
+                http.post(INVITES_ENDPOINT, () =>
+                    HttpResponse.json(
+                        { reason: 'SMTP_SEND_FAILED', detail: 'SMTP_CREDENTIALS_MISSING' },
+                        { status: 502 },
+                    ),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.type(await canvas.findByLabelText('E-Mail'), 'neu@example.org');
+        // The button re-renders while the Träger-ID allocation resolves, so re-query
+        // it on every attempt instead of holding a stale node.
+        const enabledSendButton = await waitFor(
+            async () => {
+                const button = await canvas.findByRole('button', { name: 'Direkt Versenden' });
+                await expect(button).toBeEnabled();
+                return button;
+            },
+            { timeout: 10_000 },
+        );
+        await userEvent.click(enabledSendButton);
+        // antd renders toasts in a portal outside canvasElement.
+        await waitFor(
+            () =>
+                expect(document.body.querySelector('.ant-message')?.textContent ?? '').toContain(
+                    'SMTP-Zugangsdaten fehlen',
+                ),
+            { timeout: 10_000 },
+        );
     },
 };
