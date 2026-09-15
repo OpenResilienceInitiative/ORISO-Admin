@@ -1,0 +1,20 @@
+/* Storybook preview iframe only — NOT part of the app bundle.
+ *
+ * `src/styles/App.less` (html, body { height: 100%; overflow: hidden }) is what
+ * the real admin shell needs: the app owns the viewport and scrolls inside its
+ * own panes. Storybook imports that same stylesheet to render stories with the
+ * app's globals, so the preview body (`body.sb-show-main`) inherits
+ * `overflow: hidden` too — and any story taller than the iframe (e.g.
+ * Pages/CounsellorOnboarding/Flow at 1654px in a 795px iframe) is clipped with
+ * no way to reach its lower half.
+ *
+ * Relax ONLY the overflow, and only here. Heights stay at 100% so
+ * `layout: 'fullscreen'` stories whose children size against the body keep
+ * working; `visible` lets the overflow propagate to the viewport, so the
+ * preview scrolls with the normal document scrollbar (window.scrollY).
+ */
+
+html,
+body.sb-show-main {
+    overflow: visible;
+}
