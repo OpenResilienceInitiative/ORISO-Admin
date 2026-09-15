@@ -49,7 +49,16 @@ export const DpiaChapter1 = ({ preset, showInternalNotes, masterData }: DpiaChap
                                 kdg="Diözesandatenschutzbeauftragte:r"
                                 dsgvo="Landesbeauftragte:r für Datenschutz"
                             />{' '}
-                            — <DpiaMasterDataValue masterData={masterData} field="authority" />
+                            —{' '}
+                            <DpiaMasterDataValue
+                                masterData={
+                                    masterData?.supervisoryAuthority?.legalFramework ===
+                                    (preset === 'kdg' ? 'KDG' : 'GDPR')
+                                        ? masterData
+                                        : undefined
+                                }
+                                field="authority"
+                            />
                         </td>
                     </tr>
                 </tbody>

@@ -17,6 +17,12 @@ describe('DPIA evidence dialog', () => {
         await waitFor(() => expect(within(dialog).getByText(source.evidence['e2ee-enforced'].what)).toBeVisible());
         expect(within(dialog).getByText('Raumanlage: m.room.encryption')).toBeVisible();
         expect(within(dialog).getByText('Zeilen 112–123')).toBeVisible();
+        expect(
+            within(dialog).getByText(
+                'Quellstand laut HTML: Quelle der Zeilenzahlen: Repo-Clones auf dem Understand-Server, geprüft 16.08.2026.',
+            ),
+        ).toBeVisible();
+        expect(within(dialog).getByText(source.evidence['e2ee-enforced'].when)).toHaveTextContent('14.08.2026');
         within(dialog)
             .getAllByRole('link')
             .forEach((link) => {

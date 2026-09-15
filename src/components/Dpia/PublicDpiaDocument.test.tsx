@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { getPublicDpiaMasterData } from '../../api/tenant/getPublicDpiaMasterData';
 import { PublicDpiaDocument } from './PublicDpiaDocument';
@@ -54,6 +54,57 @@ describe('public DPIA master data through the real query hook', () => {
             expect(within(figures).getByText(`Stand: ${date}`)).toBeInTheDocument(),
         );
         noArtifactFallback();
+    });
+    it.each(['KDG', 'GDPR'] as const)(
+        'keeps saved %s authority details aligned when switching presets',
+        async (legalFramework) => {
+            vi.mocked(getPublicDpiaMasterData).mockResolvedValue({
+                ...populatedMasterData,
+                supervisoryAuthority: { ...populatedMasterData.supervisoryAuthority, legalFramework },
+            });
+            renderPublic();
+            const scope = await screen.findByRole('region', { name: 'Einleitung, Scope und Stammdaten' });
+            const row = within(scope).getByRole('row', { name: /Zuständige Aufsicht/ });
+            const controls = screen.getByRole('radiogroup', { name: 'Compliance-Preset' });
+            expect(row).toHaveTextContent('Test-Aufsichtsbehörde');
+            fireEvent.click(within(controls).getByRole('radio', { name: legalFramework === 'KDG' ? 'DSGVO' : 'KDG' }));
+            expect(row).toHaveTextContent(
+                legalFramework === 'KDG' ? 'Landesbeauftragte:r für Datenschutz' : 'Diözesandatenschutzbeauftragte:r',
+            );
+            expect(row).toHaveTextContent('Nicht hinterlegt');
+            ['Test-Aufsichtsbehörde', 'Prüfweg 5', 'aufsicht@example.invalid'].forEach((value) =>
+                expect(row).not.toHaveTextContent(value),
+            );
+            expect(scope).toHaveTextContent('Beispielberatung Test gGmbH');
+            expect(scope).toHaveTextContent('Datenschutzstelle Test');
+            fireEvent.click(within(controls).getByRole('radio', { name: legalFramework === 'KDG' ? 'KDG' : 'DSGVO' }));
+            ['Test-Aufsichtsbehörde', 'Prüfweg 5', 'aufsicht@example.invalid'].forEach((value) =>
+                expect(row).toHaveTextContent(value),
+            );
+        },
+    );
+    it('does not assign authority details without a declared legal framework', async () => {
+        vi.mocked(getPublicDpiaMasterData).mockResolvedValue({
+            ...populatedMasterData,
+            supervisoryAuthority: { ...populatedMasterData.supervisoryAuthority, legalFramework: null },
+        });
+        renderPublic();
+        const scope = await screen.findByRole('region', { name: 'Einleitung, Scope und Stammdaten' });
+        const row = within(scope).getByRole('row', { name: /Zuständige Aufsicht/ });
+        expect(row).toHaveTextContent('Nicht hinterlegt');
+        expect(row).not.toHaveTextContent('Test-Aufsichtsbehörde');
+    });
+    it('selects the saved KDG preset through the public query composition', async () => {
+        vi.mocked(getPublicDpiaMasterData).mockResolvedValue({
+            ...populatedMasterData,
+            supervisoryAuthority: { ...populatedMasterData.supervisoryAuthority, legalFramework: 'KDG' },
+        });
+        renderPublic();
+        await screen.findByRole('main');
+        expect(
+            within(screen.getByRole('radiogroup', { name: 'Compliance-Preset' })).getByRole('radio', { name: 'KDG' }),
+        ).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByRole('region', { name: 'Einleitung, Scope und Stammdaten' })).toHaveTextContent('§ 28 KDG');
     });
     it.each([
         null,

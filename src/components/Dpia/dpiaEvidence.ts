@@ -303,6 +303,10 @@ export const DPIA_EVIDENCE = {
 } satisfies Record<string, DpiaEvidence>;
 export type DpiaEvidenceKey = keyof typeof DPIA_EVIDENCE;
 
+/** Historical global CODE-map provenance from the issue-named HTML, not a fresh verification. */
+export const DPIA_CODE_PROVENANCE =
+    'Quelle der Zeilenzahlen: Repo-Clones auf dem Understand-Server, geprüft 16.08.2026.';
+
 export interface DpiaCodeLocation {
     slug: string;
     path: string;

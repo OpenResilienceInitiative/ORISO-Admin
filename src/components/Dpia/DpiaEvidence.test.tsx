@@ -2,9 +2,10 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { DpiaDocumentPage } from './DpiaDocumentPage';
 import { DPIA_CHAPTERS } from './DpiaChapters';
-import { DPIA_EVIDENCE } from './dpiaEvidence';
+import { DPIA_CODE_PROVENANCE, DPIA_EVIDENCE } from './dpiaEvidence';
 import * as evidenceModule from './dpiaEvidence';
 import source from './__fixtures__/dsfa-source.json';
+import originalCodeComment from './__fixtures__/dsfa-code-provenance.txt?raw';
 
 const claimText = (node: Element) => {
     const copy = node.cloneNode(true) as Element;
@@ -15,6 +16,13 @@ const claimText = (node: Element) => {
 describe('DPIA evidence source contract', () => {
     it('preserves all 19 records including every field, status and source link', () => {
         expect(DPIA_EVIDENCE).toEqual(source.evidence);
+    });
+    it('labels structured code locations with their original historical provenance', () => {
+        const provenance = originalCodeComment
+            .split('\n')
+            .find((line) => line.includes('Quelle der Zeilenzahlen:'))
+            ?.trim();
+        expect(DPIA_CODE_PROVENANCE).toBe(provenance);
     });
     it('preserves the 13 original code-location metadata groups', () => {
         expect(Reflect.get(evidenceModule, 'DPIA_CODE_LOCATIONS')).toEqual(source.code);

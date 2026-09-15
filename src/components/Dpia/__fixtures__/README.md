@@ -13,6 +13,11 @@ parser with scripts disabled, and evaluated only the two literal object
 initializers. It contains neither the original runtime nor its embedded font.
 No production module imports this fixture or reads the original artifact.
 
+`dsfa-code-provenance.txt` separately preserves the original global CODE-map
+comment (HTML lines 2284–2291). Its 16.08.2026 source-check date is displayed
+as historical HTML provenance, separately from each EVIDENCE record’s date.
+No source revision or per-record verification date is inferred.
+
 The chapter components and evidence registry are the repository-owned source
 of the document. The fixture independently prevents accidental omissions and
 rewording during the port and makes that check portable to CI. It is not a

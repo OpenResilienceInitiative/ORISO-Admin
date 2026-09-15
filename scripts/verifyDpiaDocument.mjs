@@ -122,12 +122,29 @@ try {
                         box.y >= -1 && box.y + box.height <= height + 1,
                         `Dialog escapes ${width}x${height}: ${JSON.stringify(box)}`,
                     );
-                    // Keyboard focus must move into the dialog and stay there when tabbing.
-                    await page.keyboard.press('Tab');
-                    assert(
-                        await dialog.evaluate((element) => element.contains(document.activeElement)),
-                        `${width} ${key}: tab escaped dialog`,
-                    );
+                    // Cover all visible enabled controls plus the wrap in both directions.
+                    const focusableCount = await dialog
+                        .locator('a[href], button, input, select, textarea, [tabindex]')
+                        .evaluateAll(
+                            (elements) =>
+                                elements.filter(
+                                    (element) =>
+                                        element.tabIndex >= 0 &&
+                                        !element.matches(':disabled') &&
+                                        element.getClientRects().length > 0,
+                                ).length,
+                        );
+                    for (const direction of ['Tab', 'Shift+Tab']) {
+                        for (let transition = 0; transition <= focusableCount; transition += 1) {
+                            await page.keyboard.press(direction);
+                            assert(
+                                await dialog.evaluate((element) => element.contains(document.activeElement)),
+                                `${width} ${key}: ${direction} escaped dialog at transition ${transition + 1}/${
+                                    focusableCount + 1
+                                }`,
+                            );
+                        }
+                    }
                     if (width === 390) await capture('evidence');
                     await page.keyboard.press('Escape');
                     await dialog.waitFor({ state: 'hidden' });
@@ -135,7 +152,15 @@ try {
                         (key) => document.querySelector(`[data-evidence-key="${key}"]`) === document.activeElement,
                         key,
                     );
-                    report.dialogs.push({ width, key, fields: 'exact', links: links.length, keyboard: 'PASS' });
+                    report.dialogs.push({
+                        width,
+                        key,
+                        fields: 'exact',
+                        links: links.length,
+                        keyboard: 'PASS',
+                        focusableCount,
+                        transitionsPerDirection: focusableCount + 1,
+                    });
                 }
             }
             for (const chapter of width === 390 ? [1, 7, 10] : width === 1440 ? [2, 10] : [1]) {

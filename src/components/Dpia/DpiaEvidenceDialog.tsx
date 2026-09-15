@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Modal } from '../Modal';
-import { DPIA_CODE_LOCATIONS, DPIA_EVIDENCE } from './dpiaEvidence';
+import { DPIA_CODE_LOCATIONS, DPIA_CODE_PROVENANCE, DPIA_EVIDENCE } from './dpiaEvidence';
 import type { DpiaEvidenceKey } from './dpiaEvidence';
 import styles from './styles.module.scss';
 
@@ -81,6 +81,7 @@ export const DpiaEvidenceDialog = ({ evidenceKey, onClose, trigger }: DpiaEviden
             {DPIA_CODE_LOCATIONS[evidenceKey] && (
                 <section aria-label="Code-Fundstellen">
                     <h3>Code-Fundstellen</h3>
+                    <p>Quellstand laut HTML: {DPIA_CODE_PROVENANCE}</p>
                     <ul className={styles.evidenceLinks}>
                         {DPIA_CODE_LOCATIONS[evidenceKey]?.map((location) => (
                             <li key={`${location.slug}:${location.path}:${location.from}`}>
