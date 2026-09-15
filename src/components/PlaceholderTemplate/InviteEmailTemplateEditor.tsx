@@ -35,6 +35,8 @@ export interface InviteEmailTemplateEditorProps {
     language?: string;
     /** Template kind handed to the renderer so it picks the matching samples. */
     kind?: InviteEmailTemplateKind;
+    /** Tenant used only for the unsaved server-rendered preview. */
+    tenantId?: number;
 }
 
 /**
@@ -62,6 +64,7 @@ export const InviteEmailTemplateEditor = ({
     tokens = INVITE_EMAIL_TOKENS,
     language,
     kind,
+    tenantId,
 }: InviteEmailTemplateEditorProps) => {
     const { t } = useTranslation();
 
@@ -78,6 +81,7 @@ export const InviteEmailTemplateEditor = ({
             heading={t('placeholderTemplate.invite.heading', 'Einladungs-E-Mail')}
             preview={
                 <EmailKitPreview
+                    tenantId={tenantId}
                     body={values.body}
                     kind={kind}
                     language={language}

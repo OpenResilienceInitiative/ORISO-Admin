@@ -29,3 +29,20 @@ export const mergeTenantAdminData = (
 
     return finalData;
 };
+
+/** Normalize only the invalid read-model echo; local cache merges retain the original shape. */
+export const serializeTenantAdminDataUpdate = (
+    currentTenantData: TenantAdminData | undefined,
+    formData: Partial<TenantAdminData>,
+): string => {
+    const payload = mergeTenantAdminData(currentTenantData, formData);
+    if (
+        !Object.prototype.hasOwnProperty.call(formData, 'licensing') &&
+        payload.licensing?.allowedNumberOfUsers === null &&
+        Object.keys(payload.licensing).length === 1
+    ) {
+        // The existing null quota stays null when licensing is omitted. Never omit a populated quota.
+        delete payload.licensing;
+    }
+    return JSON.stringify(payload);
+};
