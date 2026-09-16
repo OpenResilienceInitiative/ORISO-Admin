@@ -155,7 +155,7 @@
     "dpaPending.recheckRejected": "Die Prüfung beim Server hat noch keine gültige Unterschrift ergeben. Funktionen, die eine Unterschrift voraussetzen, bleiben gesperrt, bis die Vertragsunterlagen unterzeichnet sind.",
     "dpaUnlock.title": "Vertragsunterlagen bestätigt",
     "dpaUnlock.description": "Die Vertragsunterlagen für Ihre Organisation wurden bestätigt.",
-    "dpaUnlock.verifyNote": "Beim Freischalten wird noch einmal beim Server geprüft, ob die Vertragsunterlagen bestätigt sind. Danach stehen alle Funktionen der Plattform zur Verfügung.",
+    "dpaUnlock.verifyNote": "Beim Freischalten wird noch einmal beim Server geprüft, ob die Vertragsunterlagen bestätigt sind. Danach stehen auch die Funktionen zur Verfügung, die bestätigte Vertragsunterlagen voraussetzen.",
     "dpaUnlock.action": "Plattform freischalten",
     "dpaUnlock.checking": "Unterschrift wird geprüft …",
     "tenantOnboarding.linkError.consumed.title": "Diese Einladung wurde bereits verwendet",

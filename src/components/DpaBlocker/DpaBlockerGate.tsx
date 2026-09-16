@@ -92,7 +92,12 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
     // Already loaded by the app shell (2FA gate); used only to prefill the
     // sign form with what "Träger anlegen" captured (#990).
     const { data: userData } = useUserData({ enabled: subjectKind === 'subject' });
-    const signerName = [userData?.firstName, userData?.lastName].filter(Boolean).join(' ').trim();
+    // UserService answers camelCase (`UserDataResponseDTO.firstName`); the
+    // lowercase pair is the legacy shape the local `UserData` type still names.
+    const signerName = [userData?.firstName ?? userData?.firstname, userData?.lastName ?? userData?.lastname]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
 
     const statusQuery = useDpaStatus(tenantId ?? 0, subjectKind === 'subject');
 

@@ -331,6 +331,21 @@ describe('DpaBlockerGate', () => {
         expect(screen.getByLabelText('tenantOnboarding.dpa.signerPosition')).toHaveValue('');
     });
 
+    it('also prefills from the legacy lowercase name fields (#990)', async () => {
+        mocks.getUserData.mockResolvedValue({
+            firstname: 'Toni',
+            lastname: 'Tenantadmin',
+            email: 'toni@traeger.example',
+        });
+        const queryClient = makeClient();
+        await queryClient.prefetchQuery({ queryKey: ['user-data'], queryFn: mocks.getUserData });
+        mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
+
+        renderGate('/admin/tenants', queryClient);
+
+        expect(await screen.findByLabelText('tenantOnboarding.dpa.signerName')).toHaveValue('Toni Tenantadmin');
+    });
+
     it('refuses to submit without the explicit acceptance', async () => {
         mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
         const user = userEvent.setup();
