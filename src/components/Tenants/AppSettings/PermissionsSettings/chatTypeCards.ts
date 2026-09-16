@@ -95,6 +95,20 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
         descriptionKey: 'tenants.permissions.card.group.description',
         Icon: GroupIcon,
         masterField: ['settings', 'featureGroupChatV2Enabled'],
+        // ORISO-Admin#988 / ADR-013: the two group formats are switched separately. A format that has
+        // never been stored is null in the backend and falls back to featureGroupChatV2Enabled.
+        formatToggles: [
+            {
+                labelKey: 'tenants.permissions.format.internalGroupChats.label',
+                descriptionKey: 'tenants.permissions.format.internalGroupChats.description',
+                field: ['settings', 'featureInternalGroupChatEnabled'],
+            },
+            {
+                labelKey: 'tenants.permissions.format.conversationCircles.label',
+                descriptionKey: 'tenants.permissions.format.conversationCircles.description',
+                field: ['settings', 'featureSelfHelpGroupsEnabled'],
+            },
+        ],
         toggles: [
             {
                 labelKey: 'tenants.permissions.feature.videoCalls',
@@ -173,6 +187,6 @@ export const MASTER_TOGGLE_CHILDREN: Record<string, string[]> = CHAT_TYPE_CARDS.
     }
 
     const masterKey = card.masterField[1];
-    acc[masterKey] = card.toggles.map((toggle) => toggle.field[1]);
+    acc[masterKey] = [...(card.formatToggles ?? []), ...card.toggles].map((toggle) => toggle.field[1]);
     return acc;
 }, {} as Record<string, string[]>);

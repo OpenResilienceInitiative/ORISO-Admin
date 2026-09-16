@@ -81,6 +81,9 @@ export const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, st
         'featureAudioCallsGroupChatsEnabled',
         'featureVoiceMessagesGroupChatsEnabled',
         'featureThreadsGroupChatsEnabled',
+        // ORISO-Admin#988: both group formats are locked off with the group chat family.
+        'featureInternalGroupChatEnabled',
+        'featureSelfHelpGroupsEnabled',
     ],
     calls: ['featureCallsEnabled'],
     supervision: [

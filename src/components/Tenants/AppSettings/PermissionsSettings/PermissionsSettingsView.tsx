@@ -153,6 +153,7 @@ export const PermissionsSettingsView = ({
                                             <Card
                                                 headerIcon={<CardIcon width={40} height={40} />}
                                                 titleKey={card.titleKey}
+                                                dataTestId={`chat-type-card-${card.key}`}
                                             >
                                                 <p className={styles.cardDescription}>
                                                     <InfoIcon
@@ -199,6 +200,49 @@ export const PermissionsSettingsView = ({
                                                         </>
                                                     )}
                                                 </div>
+
+                                                {card.formatToggles?.length ? (
+                                                    <div className={styles.formatSection}>
+                                                        <div className={styles.togglesSectionLabel}>
+                                                            {t('tenants.permissions.card.formats')}
+                                                        </div>
+                                                        {card.formatToggles.map((format) => {
+                                                            const fieldKey = format.field[1];
+                                                            const storedValue = getFieldValue(format.field);
+                                                            // A never-stored format follows the card master (backend
+                                                            // null-fallback to featureGroupChatV2Enabled).
+                                                            const currentValue =
+                                                                storedValue ??
+                                                                (masterField ? getFieldValue(masterField) : undefined);
+                                                            return (
+                                                                <div key={fieldKey} className={styles.toggleRow}>
+                                                                    <PermissionPolicyControl
+                                                                        featureKey={fieldKey}
+                                                                        label={t(format.labelKey)}
+                                                                        level={policyLevel}
+                                                                        policy={policyFor(fieldKey, currentValue)}
+                                                                        open={openPolicyMenu === fieldKey}
+                                                                        pending={policyPending(fieldKey)}
+                                                                        disabled={!masterEnabled}
+                                                                        supportingText={
+                                                                            masterEnabled
+                                                                                ? t(format.descriptionKey)
+                                                                                : t(
+                                                                                      'tenants.permissions.feature.requiresMaster',
+                                                                                  )
+                                                                        }
+                                                                        onOpenChange={(open) =>
+                                                                            setOpenPolicyMenu(open ? fieldKey : null)
+                                                                        }
+                                                                        onChange={(next) =>
+                                                                            changePolicy(fieldKey, next, form)
+                                                                        }
+                                                                    />
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : null}
 
                                                 <div className={styles.cardDivider} />
 
