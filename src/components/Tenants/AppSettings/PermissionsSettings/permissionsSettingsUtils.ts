@@ -23,6 +23,9 @@ export const resolvePermissionPolicy = (
 export const DEFAULT_PERMISSION_SETTINGS = {
     featureAnonymousChatEnabled: true,
     featureGroupChatV2Enabled: true,
+    // ORISO-Admin#988: the two group cards' own masters, separate from featureGroupChatV2Enabled.
+    featureInternalGroupChatEnabled: true,
+    featureSelfHelpGroupsEnabled: true,
     featureCallsEnabled: true,
     featureSupervisionEnabled: true,
     featureSupervisionAnonymousChatsEnabled: true,

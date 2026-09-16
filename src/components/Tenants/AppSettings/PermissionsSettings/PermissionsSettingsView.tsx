@@ -201,54 +201,15 @@ export const PermissionsSettingsView = ({
                                                     )}
                                                 </div>
 
-                                                {card.formatToggles?.length ? (
-                                                    <div className={styles.formatSection}>
+                                                {card.toggles.length > 0 && (
+                                                    <>
+                                                        <div className={styles.cardDivider} />
+
                                                         <div className={styles.togglesSectionLabel}>
-                                                            {t('tenants.permissions.card.formats')}
+                                                            {t('tenants.permissions.card.configurableFeatures')}
                                                         </div>
-                                                        {card.formatToggles.map((format) => {
-                                                            const fieldKey = format.field[1];
-                                                            const storedValue = getFieldValue(format.field);
-                                                            // A never-stored format follows the card master (backend
-                                                            // null-fallback to featureGroupChatV2Enabled).
-                                                            const currentValue =
-                                                                storedValue ??
-                                                                (masterField ? getFieldValue(masterField) : undefined);
-                                                            return (
-                                                                <div key={fieldKey} className={styles.toggleRow}>
-                                                                    <PermissionPolicyControl
-                                                                        featureKey={fieldKey}
-                                                                        label={t(format.labelKey)}
-                                                                        level={policyLevel}
-                                                                        policy={policyFor(fieldKey, currentValue)}
-                                                                        open={openPolicyMenu === fieldKey}
-                                                                        pending={policyPending(fieldKey)}
-                                                                        disabled={!masterEnabled}
-                                                                        supportingText={
-                                                                            masterEnabled
-                                                                                ? t(format.descriptionKey)
-                                                                                : t(
-                                                                                      'tenants.permissions.feature.requiresMaster',
-                                                                                  )
-                                                                        }
-                                                                        onOpenChange={(open) =>
-                                                                            setOpenPolicyMenu(open ? fieldKey : null)
-                                                                        }
-                                                                        onChange={(next) =>
-                                                                            changePolicy(fieldKey, next, form)
-                                                                        }
-                                                                    />
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                ) : null}
-
-                                                <div className={styles.cardDivider} />
-
-                                                <div className={styles.togglesSectionLabel}>
-                                                    {t('tenants.permissions.card.configurableFeatures')}
-                                                </div>
+                                                    </>
+                                                )}
 
                                                 <div className={styles.togglesList}>
                                                     {card.toggles.map((toggle) => {

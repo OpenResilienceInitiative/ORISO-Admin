@@ -6,8 +6,11 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import i18n from '../../../../i18n';
 
 /**
- * ORISO-Admin#988 — "Internal group chats" and "Conversation circles" are two separately switchable
- * rows on the Functionality access page, identical on platform, Träger and Beratungsstelle level.
+ * ORISO-Admin#988 — Frank's 2026-09-16 correction: "Internal group chats" and "Conversation
+ * circles" are two separate CARDS (conversation types), not two rows inside one "group formats"
+ * card. Supervision is a feature inside conversation types, not a conversation type of its own, so
+ * it must never appear wired to either card — it moved to OtherFunctionsSettings (see
+ * OtherFunctionsSettings.test.tsx).
  *
  * Reads and writes are mocked at the request boundary (`fetchData`); the agency write goes through
  * `useAgencyUpdate`, whose PUT fans out into several agency endpoints, so it is captured there.
@@ -15,6 +18,16 @@ import i18n from '../../../../i18n';
 
 const INTERNAL = 'featureInternalGroupChatEnabled';
 const CIRCLES = 'featureSelfHelpGroupsEnabled';
+const SUPERVISION_FIELDS = [
+    'featureSupervisionEnabled',
+    'featureVideoCallsSupervisionChatsEnabled',
+    'featureAudioCallsSupervisionChatsEnabled',
+    'featureVoiceMessagesSupervisionChatsEnabled',
+    'featureThreadsSupervisionChatsEnabled',
+    'featureMediaUploadSupervisionChatsEnabled',
+    'featureMediaInlineDisplaySupervisionChatsEnabled',
+    'featureMediaAiScanSupervisionChatsEnabled',
+];
 
 type Request = { url: string; method: string; bodyData?: string };
 
@@ -76,17 +89,9 @@ const lastBody = (method: string, suffix: string) => {
     return match?.bodyData ? JSON.parse(match.bodyData) : undefined;
 };
 
-const expectBothRowsInOneCard = async () => {
-    const internal = await findRow(INTERNAL);
-    const circles = await findRow(CIRCLES);
-    expect(within(internal).getByText('Internal group chats')).toBeInTheDocument();
-    expect(within(circles).getByText('Conversation circles')).toBeInTheDocument();
-    // Same card, same control markup: both rows are PermissionPolicyControls under one card.
-    expect(internal.closest('[data-testid="chat-type-card-group"]')).not.toBeNull();
-    expect(internal.closest('[data-testid="chat-type-card-group"]')).toBe(
-        circles.closest('[data-testid="chat-type-card-group"]'),
-    );
-    expect(internal.className).toBe(circles.className);
+/** Neither card may render a supervision field — that wiring was the bug being fixed. */
+const expectNoSupervisionFieldRendered = () => {
+    SUPERVISION_FIELDS.forEach((field) => expect(row(field)).toBeNull());
 };
 
 const expectReadOnly = (field: string) => {
@@ -111,7 +116,7 @@ beforeEach(() => {
 
 afterEach(() => vi.clearAllTimers());
 
-describe('Group chat format rows — platform level (ORISO-Admin#988)', () => {
+describe('Group chat cards — platform level (ORISO-Admin#988)', () => {
     const controls = {
         permissionsPageEnabled: true,
         allowedPermissionToggles: { groupChat: true },
@@ -128,12 +133,34 @@ describe('Group chat format rows — platform level (ORISO-Admin#988)', () => {
         mocks.routes.set('GET /service/tenantadmin/7', () => ({ id: 7, settings: {} }));
     });
 
-    it('shows both rows in the group chat card', async () => {
+    it('renders the conversation-circle card and the internal-group-chat card separately, with no supervision field in either', async () => {
         render(<SuperAdminPermissionsSettings tenantId="7" />);
-        await expectBothRowsInOneCard();
+        const circlesRow = await findRow(CIRCLES);
+        const internalRow = await findRow(INTERNAL);
+
+        expect(circlesRow.closest('[data-testid="chat-type-card-group"]')).not.toBeNull();
+        expect(internalRow.closest('[data-testid="chat-type-card-groupInternal"]')).not.toBeNull();
+        expect(circlesRow.closest('[data-testid="chat-type-card-group"]')).not.toBe(
+            internalRow.closest('[data-testid="chat-type-card-groupInternal"]'),
+        );
+        expectNoSupervisionFieldRendered();
     });
 
-    it('saves a switched row without touching the other format', async () => {
+    it('saves the internal-group-chat card master without touching any other field', async () => {
+        render(<SuperAdminPermissionsSettings tenantId="7" />);
+        await switchOff(INTERNAL);
+
+        await waitFor(() => expect(lastBody('PUT', '/service/tenantadmin/controls')).toBeDefined());
+        const { permissionPolicies } = lastBody('PUT', '/service/tenantadmin/controls');
+        expect(permissionPolicies[INTERNAL]).toEqual({ value: false, mode: 'SUGGESTED' });
+        expect(permissionPolicies[CIRCLES]).toEqual(controls.permissionPolicies[CIRCLES]);
+        expect(permissionPolicies.featureGroupChatV2Enabled).toEqual(
+            controls.permissionPolicies.featureGroupChatV2Enabled,
+        );
+        SUPERVISION_FIELDS.forEach((field) => expect(permissionPolicies[field]).toBeUndefined());
+    });
+
+    it('saves the conversation-circle card master without touching any other field', async () => {
         render(<SuperAdminPermissionsSettings tenantId="7" />);
         await switchOff(CIRCLES);
 
@@ -141,13 +168,11 @@ describe('Group chat format rows — platform level (ORISO-Admin#988)', () => {
         const { permissionPolicies } = lastBody('PUT', '/service/tenantadmin/controls');
         expect(permissionPolicies[CIRCLES]).toEqual({ value: false, mode: 'SUGGESTED' });
         expect(permissionPolicies[INTERNAL]).toEqual(controls.permissionPolicies[INTERNAL]);
-        expect(permissionPolicies.featureGroupChatV2Enabled).toEqual(
-            controls.permissionPolicies.featureGroupChatV2Enabled,
-        );
+        SUPERVISION_FIELDS.forEach((field) => expect(permissionPolicies[field]).toBeUndefined());
     });
 });
 
-describe('Group chat format rows — Träger level (ORISO-Admin#988)', () => {
+describe('Group chat cards — Träger level (ORISO-Admin#988)', () => {
     const policies = (overrides: Record<string, unknown> = {}) => ({
         tenantId: 7,
         policies: {
@@ -166,13 +191,15 @@ describe('Group chat format rows — Träger level (ORISO-Admin#988)', () => {
         );
     };
 
-    it('shows both rows in the group chat card', async () => {
+    it('renders both cards with no supervision field in either', async () => {
         serve({ featureGroupChatV2Enabled: true });
         render(<TenantPermissionsSettings tenantId="7" />);
-        await expectBothRowsInOneCard();
+        await findRow(CIRCLES);
+        await findRow(INTERNAL);
+        expectNoSupervisionFieldRendered();
     });
 
-    it('saves a switched row without touching the other format', async () => {
+    it('saves the internal-group-chat card master without touching the conversation-circle card', async () => {
         serve({ featureGroupChatV2Enabled: true });
         render(<TenantPermissionsSettings tenantId="7" />);
         await switchOff(INTERNAL);
@@ -183,7 +210,18 @@ describe('Group chat format rows — Träger level (ORISO-Admin#988)', () => {
         expect(body.policies[CIRCLES]).toEqual({ value: true, mode: 'SUGGESTED' });
     });
 
-    it('shows a format the platform forced off as disabled, not hidden', async () => {
+    it('saves the conversation-circle card master without touching the internal-group-chat card', async () => {
+        serve({ featureGroupChatV2Enabled: true });
+        render(<TenantPermissionsSettings tenantId="7" />);
+        await switchOff(CIRCLES);
+
+        await waitFor(() => expect(lastBody('PUT', '/7/permission-policies')).toBeDefined());
+        const body = lastBody('PUT', '/7/permission-policies');
+        expect(body.policies[CIRCLES]).toEqual({ value: false, mode: 'SUGGESTED' });
+        expect(body.policies[INTERNAL]).toEqual({ value: true, mode: 'SUGGESTED' });
+    });
+
+    it('shows a card the platform forced off as disabled, not hidden', async () => {
         serve(
             { featureGroupChatV2Enabled: true },
             policies({ [CIRCLES]: { value: false, mode: 'ENFORCED', inherited: true } }),
@@ -196,32 +234,35 @@ describe('Group chat format rows — Träger level (ORISO-Admin#988)', () => {
             within(row(INTERNAL) as HTMLElement).getByRole('button', { name: /Open policy choices/i }),
         ).toBeEnabled();
     });
-
-    it('falls back to the group chat value while a format has never been stored', async () => {
-        serve({ featureGroupChatV2Enabled: false }, { tenantId: 7, policies: {} } as unknown as ReturnType<
-            typeof policies
-        >);
-        render(<TenantPermissionsSettings tenantId="7" />);
-
-        const internal = await findRow(INTERNAL);
-        expect(within(internal).getByTestId('BlockIcon')).toBeInTheDocument();
-    });
 });
 
-describe('Group chat format rows — Beratungsstelle level (ORISO-Admin#988)', () => {
+describe('Group chat cards — Beratungsstelle level (ORISO-Admin#988)', () => {
     const serve = (settings: Record<string, unknown>) => {
         mocks.routes.set('GET /agencies/55', () => ({
             _embedded: { id: '55', name: 'Beratungsstelle Nord', tenantId: 2, settings },
         }));
     };
 
-    it('shows both rows in the group chat card', async () => {
-        serve({ featureGroupChatV2Enabled: true });
+    it('renders both cards with no supervision field in either', async () => {
+        serve({ featureGroupChatV2Enabled: true, [INTERNAL]: true, [CIRCLES]: true });
         render(<AgencyPermissionsSettings agencyId="55" />);
-        await expectBothRowsInOneCard();
+        await findRow(CIRCLES);
+        await findRow(INTERNAL);
+        expectNoSupervisionFieldRendered();
     });
 
-    it('saves a switched row without touching the other format', async () => {
+    it('saves the internal-group-chat card master without touching the conversation-circle card', async () => {
+        serve({ featureGroupChatV2Enabled: true, [INTERNAL]: true, [CIRCLES]: true });
+        render(<AgencyPermissionsSettings agencyId="55" />);
+        await switchOff(INTERNAL);
+
+        expect(mocks.agencyMutate).toHaveBeenCalledTimes(1);
+        const payload = mocks.agencyMutate.mock.calls[0][0] as { settings: Record<string, unknown> };
+        expect(payload.settings[INTERNAL]).toBe(false);
+        expect(payload.settings[CIRCLES]).toBe(true);
+    });
+
+    it('saves the conversation-circle card master without touching the internal-group-chat card', async () => {
         serve({ featureGroupChatV2Enabled: true, [INTERNAL]: true, [CIRCLES]: true });
         render(<AgencyPermissionsSettings agencyId="55" />);
         await switchOff(CIRCLES);
@@ -233,7 +274,7 @@ describe('Group chat format rows — Beratungsstelle level (ORISO-Admin#988)', (
         expect(payload.settings.featureGroupChatV2Enabled).toBe(true);
     });
 
-    it('shows both formats disabled when the Träger forced group chats off', async () => {
+    it('shows both cards disabled when the Träger forced group chats off', async () => {
         serve({
             featureGroupChatV2Enabled: true,
             [INTERNAL]: true,

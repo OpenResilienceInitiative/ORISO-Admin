@@ -30,16 +30,6 @@ export type ChatTypeCardDef = {
     descriptionKey: string;
     Icon: import('react').FunctionComponent<import('react').SVGProps<SVGSVGElement>>;
     masterField?: string[];
-    /**
-     * Separately switchable conversation formats inside this card (ORISO-Admin#988), e.g. internal
-     * group chats and conversation circles. Rendered as policy rows directly under the card master,
-     * on every level with the same control; they depend on the master like feature toggles do.
-     */
-    formatToggles?: Array<{
-        labelKey: string;
-        descriptionKey: string;
-        field: string[];
-    }>;
     toggles: Array<{
         labelKey: string;
         field: string[];

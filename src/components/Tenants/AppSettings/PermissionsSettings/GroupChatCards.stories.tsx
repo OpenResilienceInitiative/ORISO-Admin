@@ -10,9 +10,10 @@ import { SuperAdminPermissionsSettings } from './SuperAdminPermissionsSettings';
 import { TenantPermissionsSettings } from './TenantPermissionsSettings';
 
 /**
- * ORISO-Admin#988 — "Internal group chats" and "Conversation circles" as two separately switchable
- * rows in the group formats card. The same card and the same policy control on all three levels;
- * a format forced off above stays visible and read-only.
+ * ORISO-Admin#988 — Frank's 2026-09-16 correction: "Internal group chats" and "Conversation
+ * circles" are two separate cards on Functionality access, each with its own master switch
+ * (featureInternalGroupChatEnabled / featureSelfHelpGroupsEnabled). Supervision is not part of
+ * either card any more — it moved to OtherFunctionsSettings.
  */
 
 const INTERNAL = 'featureInternalGroupChatEnabled';
@@ -33,7 +34,7 @@ type Policy = { value: boolean; mode: 'ENFORCED' | 'SUGGESTED'; inherited?: bool
 
 const suggested = (value: boolean): Policy => ({ value, mode: 'SUGGESTED' });
 
-const formatPolicies = (overrides: Record<string, Policy> = {}) => ({
+const cardPolicies = (overrides: Record<string, Policy> = {}) => ({
     featureGroupChatV2Enabled: suggested(true),
     [INTERNAL]: suggested(true),
     [CIRCLES]: suggested(true),
@@ -41,7 +42,7 @@ const formatPolicies = (overrides: Record<string, Policy> = {}) => ({
 });
 
 const handlers = ({
-    policies = formatPolicies(),
+    policies = cardPolicies(),
     tenantSettings = { featureGroupChatV2Enabled: true, [INTERNAL]: true, [CIRCLES]: true },
     agencySettings = { featureGroupChatV2Enabled: true, [INTERNAL]: true, [CIRCLES]: true },
 }: {
@@ -78,7 +79,7 @@ const ROLES: Record<Level, UserRole[]> = {
 };
 
 const meta = {
-    title: 'Organisms/Permissions/GroupChatFormatRows',
+    title: 'Organisms/Permissions/GroupChatCards',
     component: LevelView,
     parameters: { layout: 'fullscreen' },
     args: { level: 'platform' },
@@ -96,50 +97,54 @@ type Story = StoryObj<typeof meta>;
 const row = (root: HTMLElement, field: string) =>
     root.querySelector(`[data-feature-policy="${field}"]`) as HTMLElement | null;
 
-const expectBothRows = async (root: HTMLElement) => {
+const expectBothCards = async (root: HTMLElement) => {
     await waitFor(() => expect(row(root, INTERNAL)).not.toBeNull(), { timeout: 5000 });
     await expect(row(root, CIRCLES)).not.toBeNull();
+    const internalCard = (row(root, INTERNAL) as HTMLElement).closest('[data-testid="chat-type-card-groupInternal"]');
+    const circlesCard = (row(root, CIRCLES) as HTMLElement).closest('[data-testid="chat-type-card-group"]');
+    await expect(internalCard).not.toBeNull();
+    await expect(circlesCard).not.toBeNull();
 };
 
-/** Platform admin: both formats in the group formats card, both editable. */
+/** Platform admin: two separate cards, one master each, both editable. */
 export const PlatformLevel: Story = {
     args: { level: 'platform' },
     parameters: { msw: { handlers: handlers() } },
-    play: async ({ canvasElement }) => expectBothRows(canvasElement),
+    play: async ({ canvasElement }) => expectBothCards(canvasElement),
 };
 
-/** Träger admin: same card, same rows, same control. */
+/** Träger admin: same two cards, same controls. */
 export const TraegerLevel: Story = {
     args: { level: 'tenant' },
     parameters: { msw: { handlers: handlers() } },
-    play: async ({ canvasElement }) => expectBothRows(canvasElement),
+    play: async ({ canvasElement }) => expectBothCards(canvasElement),
 };
 
-/** Träger admin: the platform enforced conversation circles off — the row stays visible, read-only. */
+/** Träger admin: the platform enforced the conversation-circle card off — it stays visible, read-only. */
 export const TraegerCirclesForcedOff: Story = {
     args: { level: 'tenant' },
     parameters: {
         msw: {
             handlers: handlers({
-                policies: formatPolicies({ [CIRCLES]: { value: false, mode: 'ENFORCED', inherited: true } }),
+                policies: cardPolicies({ [CIRCLES]: { value: false, mode: 'ENFORCED', inherited: true } }),
             }),
         },
     },
     play: async ({ canvasElement }) => {
-        await expectBothRows(canvasElement);
+        await expectBothCards(canvasElement);
         const circles = row(canvasElement, CIRCLES) as HTMLElement;
         await waitFor(() => expect(circles.querySelector('[data-testid="BlockIcon"]')).not.toBeNull());
     },
 };
 
-/** Beratungsstelle admin: same card, same rows. */
+/** Beratungsstelle admin: same two cards. */
 export const AgencyLevel: Story = {
     args: { level: 'agency' },
     parameters: { msw: { handlers: handlers() } },
-    play: async ({ canvasElement }) => expectBothRows(canvasElement),
+    play: async ({ canvasElement }) => expectBothCards(canvasElement),
 };
 
-/** Beratungsstelle admin: the Träger forced group chats off — both formats disabled, not hidden. */
+/** Beratungsstelle admin: the Träger forced group chats off — both cards disabled, not hidden. */
 export const AgencyGroupChatsForcedOff: Story = {
     args: { level: 'agency' },
     parameters: {
@@ -155,7 +160,7 @@ export const AgencyGroupChatsForcedOff: Story = {
         },
     },
     play: async ({ canvasElement }) => {
-        await expectBothRows(canvasElement);
+        await expectBothCards(canvasElement);
         await expect(
             (row(canvasElement, INTERNAL) as HTMLElement).querySelector('[data-testid="BlockIcon"]'),
         ).not.toBeNull();
