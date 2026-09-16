@@ -2032,5 +2032,19 @@
     "dpia.sections.resultParagraph.title": "Ergebnisabsatz",
     "dpia.sections.resultParagraph.help": "Das Fazit der DSFA in Kapitel 2: Kommen Sie zu einem vertretbaren Restrisiko? Formulieren Sie das Ergebnis in einem Absatz.",
     "dpia.sections.annexIndex.title": "Anlagenverzeichnis",
-    "dpia.sections.annexIndex.help": "Listen Sie die Anlagen auf, die Ihrer DSFA beiliegen — Verträge, TOM-Nachweise, Löschkonzept."
+    "dpia.sections.annexIndex.help": "Listen Sie die Anlagen auf, die Ihrer DSFA beiliegen — Verträge, TOM-Nachweise, Löschkonzept.",
+    "globalSettings.accountInactivity.title": "Inaktive Konten",
+    "globalSettings.accountInactivity.description": "Ratsuchende werden gelöscht. Berater und sonstige Personen werden gesperrt, wenn ihre Frist ohne persönliche Aktivität abgelaufen ist.",
+    "globalSettings.accountInactivity.askerMonths": "Ratsuchende (Monate)",
+    "globalSettings.accountInactivity.consultantMonths": "Berater (Monate)",
+    "globalSettings.accountInactivity.otherMonths": "Sonstige Personen (Monate)",
+    "globalSettings.accountInactivity.newPeopleNotice": "Änderungen gelten nur für neu angelegte Personen. Bestehende Personen behalten ihre bisherige Frist.",
+    "globalSettings.accountInactivity.error.load": "Die Einstellungen für inaktive Konten konnten nicht geladen werden.",
+    "globalSettings.accountInactivity.saveSuccess": "Die Einstellungen für inaktive Konten wurden gespeichert.",
+    "globalSettings.accountInactivity.error.conflict": "Die Einstellungen wurden zwischenzeitlich geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
+    "globalSettings.accountInactivity.error.invalid": "Geben Sie für jede Personengruppe eine gültige Anzahl Monate ein.",
+    "globalSettings.accountInactivity.error.forbidden": "Sie dürfen die plattformweiten Einstellungen für inaktive Konten nicht ändern.",
+    "globalSettings.accountInactivity.error.generic": "Die Einstellungen für inaktive Konten konnten nicht gespeichert werden.",
+    "globalSettings.accountInactivity.validation": "Geben Sie eine ganze Zahl ab 1 ein.",
+    "globalSettings.accountInactivity.otherHelp": "Admins/Support"
 }

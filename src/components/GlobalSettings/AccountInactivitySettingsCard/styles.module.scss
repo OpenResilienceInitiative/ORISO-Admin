@@ -1,0 +1,18 @@
+@use '../../../styles/muiSpacing' as mui;
+
+.card {
+    width: 100%;
+}
+
+.fields {
+    display: grid;
+    gap: mui.$mui-unit * 2;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.scope {
+    margin: mui.$mui-unit 0 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
