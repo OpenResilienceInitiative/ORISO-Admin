@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import BlockIcon from '@mui/icons-material/Block';
 import CheckIcon from '@mui/icons-material/Check';
 import InfoIcon from '@mui/icons-material/Info';
@@ -20,7 +20,7 @@ type PermissionPolicyControlProps = {
     onChange: (policy: PolicyValue<boolean>) => void;
     pending?: boolean;
     disabled?: boolean;
-    supportingText?: string;
+    supportingText?: ReactNode;
 };
 
 const policyKey = ({ value, mode }: PolicyValue<boolean>) => `${value ? 'enabled' : 'disabled'}-${mode.toLowerCase()}`;

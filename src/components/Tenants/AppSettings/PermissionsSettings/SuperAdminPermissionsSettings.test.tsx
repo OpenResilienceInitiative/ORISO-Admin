@@ -1,4 +1,6 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SuperAdminPermissionsSettings } from './SuperAdminPermissionsSettings';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
@@ -30,6 +32,15 @@ vi.mock('./PermissionsSettingsView', () => ({
         </>
     ),
 }));
+
+// SuperAdminPermissionsSettings reads the Träger's own settings through React Query when the
+// platform admin looks at one Träger (ORISO-Admin#989), so the container needs a query client.
+const render = (ui: ReactElement) =>
+    rtlRender(
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+            {ui}
+        </QueryClientProvider>,
+    );
 
 const baseControls = {
     permissionsPageEnabled: true,

@@ -186,6 +186,16 @@
     margin: 20px 0 14px;
 }
 
+/* ORISO-Admin#989: the Träger's real value next to the permission. */
+.traegerValue {
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+}
+
+.traegerValueConflict {
+    font-weight: 600;
+    color: var(--m3-error, #b3261e);
+}
+
 .togglesSectionLabel {
     font-size: 11px;
     font-weight: 600;
