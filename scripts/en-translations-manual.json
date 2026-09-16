@@ -497,7 +497,7 @@
     "settings.images.tooltip.logo": "A logo is a graphic element that presents your company on the application and is visible on the homepage.",
     "settings.imprint.placeholder": "Insert your legal notice here.",
     "settings.masterData.editable.title": "Editing rights for master data and appearance",
-    "settings.masterData.editable.toggle": "Allow editing by tenant admins"
+    "settings.masterData.editable.toggle": "Allow editing by tenant admins",
     "settings.name": "Name",
     "settings.name.help": "The area of ​​the name and slogan is limited to 40 letters.",
     "settings.name.howto": "Give your application a name and a slogan.",
