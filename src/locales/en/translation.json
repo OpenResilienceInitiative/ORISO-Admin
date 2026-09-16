@@ -1420,7 +1420,7 @@
     "profile.privateData.email": "Email address",
     "required.info": "*Mandatory fields",
     "settings.masterData.editable.subtitle": "Decide whether tenant admins may maintain their organization's master data and appearance themselves.",
-    "settings.masterData.editable.title": "Tenant master data",
+    "settings.masterData.editable.title": "Editing rights for master data and appearance",
     "settings.masterData.editable.toggle": "Allow editing by tenant admins",
     "settings.masterData.editable.toggle.description": "Enables editing of name and slogan, custom images, languages and colors. When this option is disabled, these changes remain reserved for super admins.",
     "settings.name": "Name",

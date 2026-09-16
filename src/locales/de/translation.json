@@ -1527,7 +1527,7 @@
     "settings.subhead.smtp": "Email Server",
     "settings.subhead.permissions": "Berechtigungen",
     "settings.subhead.functionAccess": "Funktionszugriff",
-    "settings.masterData.editable.title": "Stammdaten des Trägers",
+    "settings.masterData.editable.title": "Bearbeitungsrechte für Stammdaten und Erscheinungsbild",
     "settings.masterData.editable.subtitle": "Legen Sie fest, ob Träger-Admins die Stammdaten und das Erscheinungsbild ihrer Organisation selbst pflegen dürfen.",
     "settings.masterData.editable.toggle": "Bearbeitung durch Träger-Admins erlauben",
     "settings.masterData.editable.toggle.description": "Aktiviert die Bearbeitung von Name und Slogan, individuellen Bildern, Sprachen und Farben. Ist die Option deaktiviert, bleiben diese Änderungen den Superadmins vorbehalten.",

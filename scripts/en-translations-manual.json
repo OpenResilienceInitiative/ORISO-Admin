@@ -496,7 +496,7 @@
     "settings.images.tooltip.favicon": "A favicon is located in the browser tab. This symbol helps users quickly find your application between different pages and is visible in the browser. The ICO format can also be used for this.",
     "settings.images.tooltip.logo": "A logo is a graphic element that presents your company on the application and is visible on the homepage.",
     "settings.imprint.placeholder": "Insert your legal notice here.",
-    "settings.masterData.editable.title": "Tenant master data",
+    "settings.masterData.editable.title": "Editing rights for master data and appearance",
     "settings.masterData.editable.toggle": "Tenant admins may edit master data",
     "settings.name": "Name",
     "settings.name.help": "The area of ​​the name and slogan is limited to 40 letters.",
