@@ -1,4 +1,5 @@
 import React from 'react';
+import '@ant-design/v5-patch-for-react-19';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -444,6 +445,7 @@ describe('consultant picture create choreography (#1048)', () => {
         );
         expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/consultants/consultant-created-42');
         expect(mocks.navigate).not.toHaveBeenCalledWith('/admin/users/consultants');
+        expect(await screen.findByText('Konto erstellt, Bild konnte nicht gespeichert werden.')).toBeVisible();
     });
 });
 
@@ -1007,4 +1009,48 @@ describe('normal form picture heading (#1048)', () => {
             expect(screen.getByRole('region', { name: title })).toBeInTheDocument();
         },
     );
+});
+
+describe('picture deletion guards with independent list and detail records (#1048)', () => {
+    it.each([
+        ['missing detail fields, deleting list status', {}, { status: 'IN_DELETION' }, true],
+        ['missing detail fields, dated list', {}, { deleteDate: '2026-09-16' }, true],
+        [
+            'active detail, deleting list status',
+            { status: 'ACTIVE', deleteDate: null },
+            { status: 'IN_DELETION' },
+            true,
+        ],
+        ['explicit null detail, dated list', { deleteDate: null }, { deleteDate: '2026-09-16' }, true],
+        ['deleting detail, active list', { status: 'IN_DELETION' }, { status: 'ACTIVE', deleteDate: null }, true],
+        ['dated detail, explicit null list', { deleteDate: '2026-09-16' }, { deleteDate: null }, true],
+        ['absent metadata', {}, {}, true],
+        ['absent detail and metadata', undefined, {}, true],
+        ['explicit null detail, absent list fields', { deleteDate: null }, {}, false],
+        ['legacy null list, absent detail fields', {}, { deleteDate: 'null' }, false],
+        ['active status, absent date', { status: 'ACTIVE' }, {}, false],
+        ['active list, absent detail', undefined, { status: 'ACTIVE', deleteDate: null }, false],
+    ])('%s', async (_label, detail, list, blocked) => {
+        mocks.realPicture = true;
+        mocks.params = { id: '42', typeOfUsers: 'consultants' };
+        mocks.consultantsResult = { data: { data: [{ id: '42', ...list }] }, isLoading: false };
+        mocks.counselorResult = { data: detail === undefined ? undefined : { id: '42', ...detail }, isLoading: false };
+        const user = userEvent.setup();
+        const { unmount, queryClient } = renderForm();
+        const choose = screen.getByRole('button', { name: 'counselor.picture.choose' });
+        expect(choose).toBeDisabled();
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        if (blocked) {
+            expect(choose).toBeDisabled();
+            fireEvent.change(screen.getByLabelText('counselor.picture.choose'), {
+                target: { files: [new File(['x'], 'x.png', { type: 'image/png' })] },
+            });
+            expect(screen.queryByRole('button', { name: 'counselor.picture.upload' })).not.toBeInTheDocument();
+        } else {
+            expect(choose).toBeEnabled();
+        }
+        expect(uploadConsultantPicture).not.toHaveBeenCalled();
+        unmount();
+        queryClient.clear();
+    });
 });

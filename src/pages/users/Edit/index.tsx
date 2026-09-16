@@ -511,9 +511,15 @@ export const UserEditOrAdd = () => {
     const agencyTenantId = resolveAgencyTenantId(selectedTenant, userTenantId);
 
     const requiredRule = { required: true, message: t('form.errors.required') };
-    const consultantRecord = consultantById || singleData;
-    const consultantPendingDeletion =
-        consultantRecord?.status === 'IN_DELETION' || !isActiveDeleteDate(consultantRecord?.deleteDate);
+    // Neither independently cached response may overrule deletion evidence from the other.
+    const consultantRecords = [consultantById, singleData];
+    const consultantPendingDeletion = consultantRecords.some(
+        (record) => record?.status === 'IN_DELETION' || !isActiveDeleteDate(record?.deleteDate),
+    );
+    // Explicit null (including the legacy string) means no deletion date; omission is unknown.
+    const consultantLifecycleKnown = consultantRecords.some(
+        (record) => record && (record.deleteDate !== undefined || (record.status && record.status !== 'null')),
+    );
     const canUpdateConsultantPicture = can(PermissionAction.Update, Resource.Consultant);
 
     const onAgencyCreated = (agency) => {
@@ -880,7 +886,12 @@ export const UserEditOrAdd = () => {
                                         <ConsultantPictureControl
                                             showHeading={false}
                                             consultantId={isEditing ? id : undefined}
-                                            disabled={isReadOnly || pictureCreation.busy || !canUpdateConsultantPicture}
+                                            disabled={
+                                                isReadOnly ||
+                                                pictureCreation.busy ||
+                                                !canUpdateConsultantPicture ||
+                                                (isEditing && !consultantLifecycleKnown)
+                                            }
                                             pendingDeletion={consultantPendingDeletion}
                                             onSelectedFileChange={setSelectedPicture}
                                         />

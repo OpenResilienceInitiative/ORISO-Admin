@@ -22,14 +22,22 @@ export const useConsultantPictureMutations = (consultantId?: string) => {
         // An initial read with no data is reused by invalidateQueries in Query v5. Cancel it
         // explicitly, including any read started during the mutation, before obtaining fresh bytes.
         await cancelReads(id);
-        await queryClient.fetchQuery({
-            queryKey: pictureKey(id),
-            queryFn: ({ signal }) => getConsultantPicture(id, signal),
-            staleTime: 0,
-            retry: false,
-        });
-        await queryClient.invalidateQueries({ queryKey: ['CONSULTANT', id] });
-        await queryClient.invalidateQueries({ queryKey: ['CONSULTANTS'] });
+        await Promise.all([
+            queryClient
+                .fetchQuery({
+                    queryKey: pictureKey(id),
+                    queryFn: ({ signal }) => getConsultantPicture(id, signal),
+                    staleTime: 0,
+                    retry: false,
+                })
+                .catch((error) => {
+                    // The write succeeded. Query owns this read error and the control displays it.
+                    // Do not turn it into a write refusal or suppress failures outside that read.
+                    if (queryClient.getQueryState(pictureKey(id))?.error !== error) throw error;
+                }),
+            queryClient.invalidateQueries({ queryKey: ['CONSULTANT', id] }),
+            queryClient.invalidateQueries({ queryKey: ['CONSULTANTS'] }),
+        ]);
     };
 
     // Mutation variables retain the target across observer/route changes while a request is pending.

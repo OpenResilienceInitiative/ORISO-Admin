@@ -72,33 +72,60 @@ describe('ConsultantPictureControl', () => {
         expect(screen.getByRole('region', { name: 'counselor.picture.title' })).toBeInTheDocument();
     });
 
-    it('reports a failed post-upload read as a read error, never Saved or scanner unavailable', async () => {
-        mocks.realHooks = true;
-        api.get
-            .mockReset()
-            .mockResolvedValueOnce(new Blob(['clean']))
-            .mockRejectedValue(new Error('GET failed'));
-        api.upload.mockReset().mockResolvedValue(new Response(null, { status: 204 }));
-        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-        const user = userEvent.setup();
-        const { unmount } = render(
-            <QueryClientProvider client={client}>
-                <ConsultantPictureControl consultantId="42" disabled={false} pendingDeletion={false} />
-            </QueryClientProvider>,
-        );
-        await screen.findByRole('img');
-        await user.upload(
-            screen.getByLabelText('counselor.picture.choose'),
-            new File(['new'], 'new.png', { type: 'image/png' }),
-        );
-        await user.click(screen.getByRole('button', { name: 'counselor.picture.upload' }));
-        await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('counselor.picture.error.readFailed'));
-        expect(screen.queryByText('counselor.picture.status.saved')).not.toBeInTheDocument();
-        expect(screen.queryByText('counselor.picture.empty')).not.toBeInTheDocument();
-        expect(screen.queryByText('counselor.picture.error.unavailable')).not.toBeInTheDocument();
-        unmount();
-        client.clear();
-    });
+    it.each(['upload', 'remove'] as const)(
+        'reports a failed post-%s read, then recovers without repeating the write',
+        async (action) => {
+            mocks.realHooks = true;
+            api.get
+                .mockReset()
+                .mockResolvedValueOnce(new Blob(['clean']))
+                .mockRejectedValue(new Error('GET failed'));
+            api[action].mockReset().mockResolvedValue(new Response(null, { status: 204 }));
+            const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+            const user = userEvent.setup();
+            const { unmount } = render(
+                <QueryClientProvider client={client}>
+                    <ConsultantPictureControl consultantId="42" disabled={false} pendingDeletion={false} />
+                </QueryClientProvider>,
+            );
+            await screen.findByRole('img');
+            if (action === 'upload') {
+                await user.upload(
+                    screen.getByLabelText('counselor.picture.choose'),
+                    new File(['new'], 'new.png', { type: 'image/png' }),
+                );
+            }
+            await user.click(screen.getByRole('button', { name: `counselor.picture.${action}` }));
+            await waitFor(() =>
+                expect(screen.getByRole('alert')).toHaveTextContent('counselor.picture.error.readFailed'),
+            );
+            expect(screen.queryByText('counselor.picture.status.saved')).not.toBeInTheDocument();
+            expect(screen.queryByText('counselor.picture.empty')).not.toBeInTheDocument();
+            expect(screen.queryByText('counselor.picture.error.unavailable')).not.toBeInTheDocument();
+            expect(screen.queryByRole('img')).not.toBeInTheDocument();
+            expect(screen.getByRole('alert')).not.toHaveAttribute('aria-live', 'polite');
+            expect(screen.queryByText('counselor.picture.status.removed')).not.toBeInTheDocument();
+            const fresh = action === 'upload' ? new Blob(['verified fresh']) : null;
+            api.get.mockResolvedValue(fresh);
+            await act(async () => {
+                await client.invalidateQueries({ queryKey: ['CONSULTANT_PICTURE', '42'] });
+            });
+            await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+            expect(screen.getByRole('status')).toHaveTextContent(
+                `counselor.picture.status.${action === 'upload' ? 'saved' : 'removed'}`,
+            );
+            if (action === 'upload') {
+                expect(screen.getByRole('img')).toBeInTheDocument();
+                expect(createObjectURL).toHaveBeenLastCalledWith(fresh);
+            } else {
+                expect(screen.queryByRole('img')).not.toBeInTheDocument();
+                expect(screen.getByText('counselor.picture.empty')).toBeInTheDocument();
+            }
+            expect(api[action]).toHaveBeenCalledTimes(1);
+            unmount();
+            client.clear();
+        },
+    );
 
     it('shows only the fresh post-PUT image when Saved is announced despite a late initial GET', async () => {
         mocks.realHooks = true;
@@ -244,6 +271,7 @@ describe('ConsultantPictureControl', () => {
         await user.upload(picker, file);
         await user.click(screen.getByRole('button', { name: 'counselor.picture.upload' }));
         await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('saved'));
+        expect(screen.getByRole('status')).not.toHaveAttribute('aria-live');
         await user.click(screen.getByRole('button', { name: 'counselor.picture.remove' }));
         await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('removed'));
         await user.upload(picker, file);
@@ -263,7 +291,9 @@ describe('ConsultantPictureControl', () => {
         };
         render(<ConsultantPictureControl consultantId="42" disabled={false} pendingDeletion={false} />);
         expect(screen.queryByText('counselor.picture.empty')).not.toBeInTheDocument();
-        expect(screen.getByText(key as string)).toBeInTheDocument();
+        const feedback = screen.getByRole(state === 'loading' ? 'status' : 'alert');
+        expect(feedback).toHaveTextContent(key as string);
+        expect(feedback).not.toHaveAttribute('aria-live');
         expect(screen.queryByText('counselor.picture.error.unavailable')).not.toBeInTheDocument();
     });
 
@@ -374,11 +404,13 @@ describe('ConsultantPictureControl', () => {
         await user.click(screen.getByRole('button', { name: 'counselor.picture.upload' }));
 
         await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('counselor.picture.error.rejected'));
-        expect(screen.getByRole('img')).toHaveAttribute('src', 'blob:preview-3');
-        expect(revokeObjectURL).toHaveBeenCalled();
+        expect(createObjectURL).toHaveBeenLastCalledWith(mocks.picture.data);
+        const currentUrl = screen.getByRole('img').getAttribute('src');
+        expect(currentUrl).toBeTruthy();
+        revokeObjectURL.mockClear();
 
         unmount();
-        expect(revokeObjectURL).toHaveBeenCalled();
+        expect(revokeObjectURL).toHaveBeenCalledExactlyOnceWith(currentUrl);
     });
 
     it('does not expose an upload control for a new account but hands its chosen file to the create form', async () => {
@@ -411,6 +443,135 @@ describe('ConsultantPictureControl', () => {
 });
 
 describe('picture reads across mutation boundaries', () => {
+    it.each(['upload', 'remove'] as const)(
+        'keeps a successful %s successful after GET failure, invalidates both records and recovers',
+        async (action) => {
+            const old = new Blob(['old']);
+            const fresh = action === 'upload' ? new Blob(['fresh']) : null;
+            const failure = new Error('refresh unavailable');
+            api.get.mockReset().mockResolvedValueOnce(old).mockRejectedValue(failure);
+            api[action].mockReset().mockResolvedValue(undefined);
+            const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+            client.setQueryData(['CONSULTANT', '42'], { id: '42' });
+            client.setQueryData(['CONSULTANTS'], [{ id: '42' }]);
+            client.setQueryData(['CONSULTANT', '43'], { id: '43' });
+            const wrapper = ({ children }: { children: React.ReactNode }) => (
+                <QueryClientProvider client={client}>{children}</QueryClientProvider>
+            );
+            const { result, unmount } = renderHook(
+                () => ({
+                    picture: actualHooks.useConsultantPicture('42'),
+                    mutations: actualHooks.useConsultantPictureMutations('42'),
+                }),
+                { wrapper },
+            );
+            await waitFor(() => expect(result.current.picture.data).toBe(old));
+            let outcome: unknown;
+            await act(async () => {
+                const operation =
+                    action === 'upload'
+                        ? result.current.mutations.upload.mutateAsync(new File(['new'], 'new.png'))
+                        : result.current.mutations.remove.mutateAsync();
+                outcome = await operation.then(
+                    () => 'success',
+                    (error) => error,
+                );
+            });
+            expect.soft(outcome).toBe('success');
+            expect.soft(client.getMutationCache().getAll().at(-1)?.state.status).toBe('success');
+            expect.soft(client.getQueryState(['CONSULTANT', '42'])?.isInvalidated).toBe(true);
+            expect.soft(client.getQueryState(['CONSULTANTS'])?.isInvalidated).toBe(true);
+            expect(client.getQueryState(['CONSULTANT', '43'])?.isInvalidated).toBe(false);
+            await waitFor(() => expect(result.current.picture.error).toBe(failure));
+            expect(result.current.picture.data).toBe(action === 'remove' ? null : old);
+            expect(api.get).toHaveBeenCalledTimes(2);
+            expect(api[action]).toHaveBeenCalledTimes(1);
+            api.get.mockResolvedValue(fresh);
+            await act(async () => {
+                await result.current.picture.refetch();
+            });
+            await waitFor(() => expect(result.current.picture.isSuccess).toBe(true));
+            expect(result.current.picture.data).toBe(fresh);
+            expect(result.current.picture.error).toBeNull();
+            expect(api[action]).toHaveBeenCalledTimes(1);
+            unmount();
+            client.clear();
+        },
+    );
+
+    it('does not turn a completed write into a refusal when changing owner cancels its freshness GET', async () => {
+        const old = new Blob(['old']);
+        const other = new Blob(['other owner']);
+        let finish!: (value: Blob) => void;
+        api.get
+            .mockReset()
+            .mockResolvedValueOnce(old)
+            .mockImplementationOnce(
+                () =>
+                    new Promise<Blob>((resolve) => {
+                        finish = resolve;
+                    }),
+            )
+            .mockResolvedValue(other);
+        api.upload.mockReset().mockResolvedValue(undefined);
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        );
+        const { result, rerender, unmount } = renderHook(
+            ({ id }) => ({
+                picture: actualHooks.useConsultantPicture(id),
+                mutations: actualHooks.useConsultantPictureMutations(id),
+            }),
+            { wrapper, initialProps: { id: '42' } },
+        );
+        await waitFor(() => expect(result.current.picture.data).toBe(old));
+        let operation!: Promise<unknown>;
+        act(() => {
+            operation = result.current.mutations.upload.mutateAsync(new File(['new'], 'new.png')).then(
+                () => 'success',
+                (error) => error,
+            );
+        });
+        await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
+        const signal = api.get.mock.calls[1][1] as AbortSignal;
+        rerender({ id: '43' });
+        expect(signal.aborted).toBe(true);
+        await act(async () => {
+            finish(new Blob(['late owner 42']));
+            expect(await operation).toBe('success');
+        });
+        await waitFor(() => expect(result.current.picture.data).toBe(other));
+        expect(result.current.picture.error).toBeNull();
+        expect(client.getQueryData(['CONSULTANT_PICTURE', '42'])).toBe(old);
+        unmount();
+        client.clear();
+    });
+
+    it('attempts both record invalidations and does not swallow a failure outside the picture read', async () => {
+        api.get.mockReset().mockResolvedValue(null);
+        api.upload.mockReset().mockResolvedValue(undefined);
+        const client = new QueryClient();
+        client.setQueryData(['CONSULTANTS'], []);
+        const failure = new Error('unexpected invalidation failure');
+        const invalidate = client.invalidateQueries.bind(client);
+        const spy = vi.spyOn(client, 'invalidateQueries').mockImplementation((filters) => {
+            if (filters?.queryKey?.[0] === 'CONSULTANT') return Promise.reject(failure);
+            return invalidate(filters);
+        });
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        );
+        const { result, unmount } = renderHook(() => actualHooks.useConsultantPictureMutations('42'), { wrapper });
+        await act(async () => {
+            await expect(result.current.upload.mutateAsync(new File(['new'], 'new.png'))).rejects.toBe(failure);
+        });
+        expect(spy).toHaveBeenCalledWith({ queryKey: ['CONSULTANTS'] });
+        expect(client.getQueryState(['CONSULTANTS'])?.isInvalidated).toBe(true);
+        unmount();
+        client.clear();
+    });
+
     it('aborts an obsolete owner GET and never exposes its bytes on the new owner', async () => {
         let finish!: (value: Blob) => void;
         const other = new Blob(['43']);
@@ -473,51 +634,58 @@ describe('picture reads across mutation boundaries', () => {
         client.clear();
     });
 
-    it('refreshes the mutation owner even if the mounted owner changes during PUT', async () => {
-        const old = new Blob(['old42']);
-        const fresh = new Blob(['new42']);
-        const other = new Blob(['43']);
-        let saved = false;
-        let finish!: () => void;
-        api.get.mockReset().mockImplementation(async (id: string) => {
-            if (id !== '42') return other;
-            return saved ? fresh : old;
-        });
-        api.upload.mockReset().mockImplementation(
-            () =>
-                new Promise<void>((resolve) => {
-                    finish = resolve;
+    it.each([false, true])(
+        'isolates the mutation owner when the route changes and refresh fails=%s',
+        async (readFails) => {
+            const old = new Blob(['old42']);
+            const fresh = new Blob(['new42']);
+            const other = new Blob(['43']);
+            let saved = false;
+            const failure = new Error('owner 42 refresh failed');
+            let finish!: () => void;
+            api.get.mockReset().mockImplementation(async (id: string) => {
+                if (id !== '42') return other;
+                if (saved && readFails) throw failure;
+                return saved ? fresh : old;
+            });
+            api.upload.mockReset().mockImplementation(
+                () =>
+                    new Promise<void>((resolve) => {
+                        finish = resolve;
+                    }),
+            );
+            const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+            const wrapper = ({ children }: { children: React.ReactNode }) => (
+                <QueryClientProvider client={client}>{children}</QueryClientProvider>
+            );
+            const { result, rerender, unmount } = renderHook(
+                ({ id }) => ({
+                    picture: actualHooks.useConsultantPicture(id),
+                    mutations: actualHooks.useConsultantPictureMutations(id),
                 }),
-        );
-        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-        const wrapper = ({ children }: { children: React.ReactNode }) => (
-            <QueryClientProvider client={client}>{children}</QueryClientProvider>
-        );
-        const { result, rerender, unmount } = renderHook(
-            ({ id }) => ({
-                picture: actualHooks.useConsultantPicture(id),
-                mutations: actualHooks.useConsultantPictureMutations(id),
-            }),
-            { wrapper, initialProps: { id: '42' } },
-        );
-        await waitFor(() => expect(result.current.picture.data).toBe(old));
-        let operation!: Promise<unknown>;
-        act(() => {
-            operation = result.current.mutations.upload.mutateAsync(new File(['new'], 'new.png'));
-        });
-        await waitFor(() => expect(api.upload).toHaveBeenCalledTimes(1));
-        rerender({ id: '43' });
-        await waitFor(() => expect(result.current.picture.data).toBe(other));
-        await act(async () => {
-            saved = true;
-            finish();
-            await operation;
-        });
-        expect(client.getQueryData(['CONSULTANT_PICTURE', '42'])).toBe(fresh);
-        expect(result.current.picture.data).toBe(other);
-        unmount();
-        client.clear();
-    });
+                { wrapper, initialProps: { id: '42' } },
+            );
+            await waitFor(() => expect(result.current.picture.data).toBe(old));
+            let operation!: Promise<unknown>;
+            act(() => {
+                operation = result.current.mutations.upload.mutateAsync(new File(['new'], 'new.png'));
+            });
+            await waitFor(() => expect(api.upload).toHaveBeenCalledTimes(1));
+            rerender({ id: '43' });
+            await waitFor(() => expect(result.current.picture.data).toBe(other));
+            await act(async () => {
+                saved = true;
+                finish();
+                await operation;
+            });
+            expect(client.getQueryData(['CONSULTANT_PICTURE', '42'])).toBe(readFails ? old : fresh);
+            expect(client.getQueryState(['CONSULTANT_PICTURE', '42'])?.error).toBe(readFails ? failure : null);
+            expect(result.current.picture.data).toBe(other);
+            expect(result.current.picture.error).toBeNull();
+            unmount();
+            client.clear();
+        },
+    );
 
     it.each(['upload', 'remove'] as const)(
         'discards a pending initial GET and reads fresh bytes after %s',

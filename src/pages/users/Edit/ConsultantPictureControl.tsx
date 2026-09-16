@@ -60,9 +60,9 @@ const PictureControlForOwner = ({
 
     useEffect(() => {
         // A selected replacement is newer than an in-flight GET. Do not let that GET restore an old preview.
-        if (!selectedFile) replacePreview(picture.data ?? null);
+        if (!selectedFile) replacePreview(picture.isError ? null : picture.data ?? null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [picture.data, selectedFile]);
+    }, [picture.data, picture.isError, selectedFile]);
 
     useEffect(() => {
         activeRef.current = true;
@@ -166,9 +166,8 @@ const PictureControlForOwner = ({
                 : 'counselor.picture.error.readFailed';
     }
 
-    // A failed freshness read is a read failure, even when it rejects a successful PUT's
-    // completion. Keep specific write refusals ahead of read feedback, but never replace
-    // a known read failure with the generic "could not save" fallback.
+    // Keep a failed freshness read visible after a successful write. Specific write
+    // refusals take precedence, but a stale preview must never be announced as fresh.
     const feedbackKey =
         errorKeyValue && errorKeyValue !== 'counselor.picture.error.failed'
             ? errorKeyValue
@@ -223,11 +222,7 @@ const PictureControlForOwner = ({
                 )}
             </Space>
             {pendingDeletion && <p role="status">{t('counselor.picture.deleting')}</p>}
-            {feedbackKey && (
-                <p role={errorKeyValue || loadErrorKey ? 'alert' : 'status'} aria-live="polite">
-                    {t(feedbackKey)}
-                </p>
-            )}
+            {feedbackKey && <p role={errorKeyValue || loadErrorKey ? 'alert' : 'status'}>{t(feedbackKey)}</p>}
         </section>
     );
 };
