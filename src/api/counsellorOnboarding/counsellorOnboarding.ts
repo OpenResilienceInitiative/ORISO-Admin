@@ -50,8 +50,10 @@ export interface CounsellorOnboardingInviteDTO {
      */
     agencyExists?: boolean;
     /**
-     * The tenant's active topics the invitee may choose when `topics` is empty
-     * (a new agency has no coverage yet). Absent/empty = nothing to choose from.
+     * The tenant's active topics. The invitee may ADD any of them to the
+     * preselected coverage (owner decision 2026-09-17: a counsellor must be able
+     * to pick further topics, not only the routed ones). Absent/empty = only the
+     * coverage is selectable.
      */
     availableTopics?: CounsellorTopicOption[];
     /** ISO timestamp after which the link expires; null = no expiry. */
@@ -83,7 +85,7 @@ export interface CounsellorRegistrationRequest {
         /** Internal display name; internal surfaces fall back to the public name. */
         internalDisplayName?: string;
     };
-    /** Chosen topics — validated server-side against the invite's coverage. */
+    /** Chosen topics — validated server-side against coverage ∪ tenant topics. */
     topicIds: number[];
     /**
      * Only for invites whose agency does not exist yet (`agencyExists === false`):
@@ -233,7 +235,13 @@ const STUB_INVITE: CounsellorOnboardingInviteDTO = {
     topics: [
         { id: 12, name: 'Familienberatung' },
         { id: 13, name: 'Schuldnerberatung' },
+    ],
+    availableTopics: [
+        { id: 12, name: 'Familienberatung' },
+        { id: 13, name: 'Schuldnerberatung' },
         { id: 14, name: 'Suchtberatung' },
+        { id: 15, name: 'Schwangerschaftsberatung' },
+        { id: 16, name: 'Migrationsberatung' },
     ],
     expiresAt: null,
 };
@@ -300,10 +308,8 @@ export const createStubCounsellorOnboardingClient = (
             if (!request.account.username || !request.account.password) {
                 throw new Error('ACCOUNT_DATA_MISSING');
             }
-            // Coverage rules like the backend: an existing agency limits the choice
-            // to its coverage; without coverage the tenant's topics are selectable.
-            const selectable = invite.topics.length > 0 ? invite.topics : invite.availableTopics ?? [];
-            const coveredIds = new Set(selectable.map(({ id }) => id));
+            // Like the backend: coverage plus every active tenant topic is selectable.
+            const coveredIds = new Set([...invite.topics, ...(invite.availableTopics ?? [])].map(({ id }) => id));
             if (request.topicIds.length === 0 || request.topicIds.some((id) => !coveredIds.has(id))) {
                 throw new Error('TOPICS_OUTSIDE_COVERAGE');
             }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -40,7 +40,24 @@ const INVITE: CounsellorOnboardingInviteDTO = {
         { id: 12, name: 'Familienberatung' },
         { id: 13, name: 'Schuldnerberatung' },
     ],
+    availableTopics: [
+        { id: 12, name: 'Familienberatung' },
+        { id: 13, name: 'Schuldnerberatung' },
+        { id: 14, name: 'Suchtberatung' },
+    ],
     expiresAt: null,
+};
+
+/** Opens the "+" menu and adds one topic. */
+const addTopic = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+    await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.topics.add' }));
+    await user.click(await screen.findByRole('menuitem', { name }));
+};
+
+/** Removes a selected topic chip via its trailing x. */
+const removeTopic = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+    const chip = screen.getByText(name).closest('[data-testid="input-chip"]')!;
+    await user.click(within(chip).getByRole('button'));
 };
 
 const createClient = (overrides: Partial<CounsellorOnboardingClient> = {}): CounsellorOnboardingClient => ({
@@ -98,10 +115,12 @@ describe('CounsellorOnboarding', () => {
         await user.type(screen.getByLabelText('cards.avatarName.publicName'), 'Lena');
         await user.type(screen.getByLabelText('cards.avatarName.internalName'), 'Lena B.');
 
-        // Topics from the invite coverage; selecting one enables the submit.
-        expect(submit()).toBeDisabled();
-        await user.click(screen.getByRole('checkbox', { name: 'Familienberatung' }));
+        // The coverage arrives preselected as chips; one is removed via its x,
+        // a further tenant topic is added via the "+" menu.
+        expect(screen.getAllByTestId('input-chip')).toHaveLength(2);
         expect(submit()).toBeEnabled();
+        await removeTopic(user, 'Schuldnerberatung');
+        await addTopic(user, 'Suchtberatung');
         await user.click(submit());
 
         await waitFor(() =>
@@ -109,7 +128,7 @@ describe('CounsellorOnboarding', () => {
                 account: { username: 'lena_b', password: 'SecurePass1!' },
                 person: { salutation: undefined, position: 'Leitung', title: undefined },
                 names: { publicName: 'Lena', internalDisplayName: 'Lena B.' },
-                topicIds: [12],
+                topicIds: [12, 14],
             }),
         );
 
@@ -145,7 +164,6 @@ describe('CounsellorOnboarding', () => {
         await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'password');
         expect(screen.getByText('message.error.password.policy')).toBeInTheDocument();
 
-        await user.click(screen.getByRole('checkbox', { name: 'Familienberatung' }));
         expect(submit()).toBeDisabled();
         await user.type(screen.getByLabelText('cards.advisorAccount.password'), '{Enter}');
 
@@ -178,8 +196,10 @@ describe('CounsellorOnboarding', () => {
         expect(screen.getByRole('heading', { name: 'counsellorOnboarding.agency.title' })).toBeInTheDocument();
         expect(screen.getByText('counsellorOnboarding.topics.chooseHint')).toBeInTheDocument();
 
-        // Topics alone do not unlock the submit — the new agency needs a name.
-        await user.click(screen.getByRole('checkbox', { name: 'Suchtberatung' }));
+        // Nothing is preselected without coverage; topics alone do not unlock
+        // the submit — the new agency needs a name.
+        expect(screen.queryByTestId('input-chip')).not.toBeInTheDocument();
+        await addTopic(user, 'Suchtberatung');
         expect(submit()).toBeDisabled();
         await user.type(screen.getByLabelText('counsellorOnboarding.agency.name'), 'Beratungsstelle Nord');
         expect(submit()).toBeEnabled();
@@ -209,7 +229,7 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         expect(await screen.findByRole('alert')).toHaveTextContent('counsellorOnboarding.topics.none');
-        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'counsellorOnboarding.topics.add' })).not.toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'counsellorOnboarding.agency.title' })).not.toBeInTheDocument();
         expect(submit()).toBeDisabled();
     });
@@ -260,7 +280,7 @@ describe('CounsellorOnboarding', () => {
 
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
         await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
-        await user.click(screen.getByRole('checkbox', { name: 'Familienberatung' }));
+        // Coverage is preselected — nothing else to pick.
         await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.submit' }));
 
         expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();

@@ -14,7 +14,7 @@ import {
 import { M3Button } from '../../components/M3Button';
 import { FloatingLabelInput } from '../../components/FloatingLabelInput';
 import { FloatingLabelSelect } from '../../components/FloatingLabelSelect';
-import { FilterChip } from '../../components/FilterChip';
+import { InputChipPicker } from '../../components/InputChipPicker';
 import { TwoFactorSetup, TwoFactorSetupInlineError } from '../../components/TwoFactorSetup/TwoFactorSetup';
 import { toBase32Secret } from '../../utils/totpSecret';
 import { SALUTATION_KEYS } from '../../components/cards/PersonalInfoCard';
@@ -85,7 +85,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         updatePerson,
         updateNames,
         updateAgency,
-        toggleTopic,
+        setTopics,
         submitRegistration,
         submitTwoFactorCode,
     } = useCounsellorOnboardingFlow(inviteToken, resolvedClient);
@@ -173,10 +173,17 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     // A reserved Beratungsstellen-ID (composer AUTO/free id): the agency does not
     // exist yet — the invitee names it and becomes its owner on registration.
     const createsAgency = invite.agencyExists === false;
-    // Coverage first (an existing agency's topics); without coverage the tenant's
-    // active topics are offered so a new agency can pick its departments.
+    // Selectable = the invite's coverage (preselected) plus every active tenant
+    // topic: the invitee drops preselected chips by their x and adds further
+    // platform-defined topics via "+" (owner decision 2026-09-17).
     const hasCoverage = topics.length > 0;
-    const selectableTopics = hasCoverage ? topics : invite.availableTopics ?? [];
+    const selectableTopics = [...topics, ...(invite.availableTopics ?? [])].filter(
+        (topic, index, all) => all.findIndex((other) => other.id === topic.id) === index,
+    );
+    const topicOptions = selectableTopics.map((topic) => ({
+        value: topic.id,
+        label: topicLabel(topic, topicFallback),
+    }));
 
     // Shared consultant credential policy — identical to the normal admin
     // consultant form (utils/consultantCredentialRules): the form must never
@@ -314,14 +321,14 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
 
             <Section
                 titleKey="cards.focusTopics.title"
-                // No hint over an empty list — the alert below carries the explanation.
+                // No hint over an empty row — the alert below carries the explanation.
                 hintKey={
                     // eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down
-                    hasCoverage
-                        ? 'cards.focusTopics.subtitle'
-                        : selectableTopics.length > 0
-                        ? 'counsellorOnboarding.topics.chooseHint'
-                        : undefined
+                    selectableTopics.length === 0
+                        ? undefined
+                        : hasCoverage
+                        ? 'counsellorOnboarding.topics.addHint'
+                        : 'counsellorOnboarding.topics.chooseHint'
                 }
             >
                 {selectableTopics.length === 0 ? (
@@ -331,16 +338,14 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                         {t('counsellorOnboarding.topics.none')}
                     </Typography>
                 ) : (
-                    <div className={styles.chips}>
-                        {selectableTopics.map((topic) => (
-                            <FilterChip
-                                key={topic.id}
-                                label={topicLabel(topic, topicFallback)}
-                                selected={data.topicIds.includes(topic.id)}
-                                onChange={() => toggleTopic(topic.id)}
-                            />
-                        ))}
-                    </div>
+                    <InputChipPicker
+                        options={topicOptions}
+                        value={data.topicIds}
+                        onChange={setTopics}
+                        addLabel={t('counsellorOnboarding.topics.add')}
+                        removeLabel={(label) => t('counsellorOnboarding.topics.remove', { topic: label })}
+                        ariaLabel={t('cards.focusTopics.title')}
+                    />
                 )}
             </Section>
 

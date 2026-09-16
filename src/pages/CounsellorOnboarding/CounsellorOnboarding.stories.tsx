@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { createStubCounsellorOnboardingClient } from '../../api/counsellorOnboarding/counsellorOnboarding';
@@ -43,11 +43,15 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The wired stage: one flat form with realistic invite data, one submit. */
+/**
+ * The wired stage: one flat form with realistic invite data, one submit. The
+ * agency's coverage arrives preselected as input chips (x removes), the "+"
+ * chip opens the menu of the tenant's further topics.
+ */
 export const Wizard: Story = {
     name: 'Flat form',
     args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0 }) },
-    play: async ({ canvas }) => {
+    play: async ({ canvas, userEvent }) => {
         // No cards, no step flow: every group is on screen at once and the
         // single submit stays disabled until the required fields are filled.
         await expect(await canvas.findByRole('heading', { name: 'Zugangsdaten' })).toBeVisible();
@@ -56,6 +60,11 @@ export const Wizard: Story = {
         await expect(canvas.getByRole('heading', { name: 'Themenfelder' })).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Weiter' })).not.toBeInTheDocument();
         await expect(canvas.getByRole('button', { name: 'Konto erstellen' })).toBeDisabled();
+        // Coverage preselected; one chip dropped, a further tenant topic added via "+".
+        await userEvent.click(canvas.getByRole('button', { name: 'Schuldnerberatung entfernen' }));
+        await userEvent.click(canvas.getByRole('button', { name: 'Thema hinzufügen' }));
+        await userEvent.click(await within(document.body).findByRole('menuitem', { name: 'Suchtberatung' }));
+        await expect(canvas.getByText('Suchtberatung')).toBeVisible();
     },
 };
 
@@ -116,11 +125,11 @@ export const NewAgencyChooseTopics: Story = {
     },
     play: async ({ canvas, userEvent }) => {
         await expect(await canvas.findByRole('heading', { name: 'Ihre Beratungsstelle' })).toBeVisible();
-        await expect(canvas.getByRole('checkbox', { name: 'Suchtberatung' })).toBeVisible();
         const submit = canvas.getByRole('button', { name: 'Konto erstellen' });
         await userEvent.type(canvas.getByLabelText('Benutzername'), 'lena_b');
         await userEvent.type(canvas.getByLabelText('Passwort'), 'SecurePass1!');
-        await userEvent.click(canvas.getByRole('checkbox', { name: 'Suchtberatung' }));
+        await userEvent.click(canvas.getByRole('button', { name: 'Thema hinzufügen' }));
+        await userEvent.click(await within(document.body).findByRole('menuitem', { name: 'Suchtberatung' }));
         // Topics alone are not enough — the new agency needs its name.
         await expect(submit).toBeDisabled();
         await userEvent.type(canvas.getByLabelText('Name der Beratungsstelle'), 'Beratungsstelle Nord');
@@ -150,7 +159,7 @@ export const NoSelectableTopics: Story = {
     },
 };
 
-/** Single-topic coverage: the routed department topic arrives preselected. */
+/** Single-topic coverage: the routed department topic arrives preselected, more can be added via "+". */
 export const SingleTopicCoverage: Story = {
     args: {
         client: createStubCounsellorOnboardingClient({

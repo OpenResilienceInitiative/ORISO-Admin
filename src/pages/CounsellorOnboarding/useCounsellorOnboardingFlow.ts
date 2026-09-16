@@ -106,10 +106,11 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                     });
                     return;
                 }
-                // A single covered topic is preselected — it is the routed
-                // department and the only possible choice.
-                if (loaded.topics.length === 1) {
-                    setData((current) => ({ ...current, topicIds: [loaded.topics[0].id] }));
+                // The invite's coverage arrives preselected (owner decision
+                // 2026-09-17): the invitee removes pills or adds further tenant
+                // topics instead of starting from an empty selection.
+                if (loaded.topics.length > 0) {
+                    setData((current) => ({ ...current, topicIds: loaded.topics.map((topic) => topic.id) }));
                 }
                 setState({ phase: 'form' });
             })
@@ -151,6 +152,11 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
 
     const updateAgency = useCallback((patch: Partial<CounsellorWizardData['agency']>) => {
         setData((current) => ({ ...current, agency: { ...current.agency, ...patch } }));
+    }, []);
+
+    /** Replaces the whole selection — the multi-select reports its full value on every change. */
+    const setTopics = useCallback((topicIds: number[]) => {
+        setData((current) => ({ ...current, topicIds }));
     }, []);
 
     const toggleTopic = useCallback((topicId: number) => {
@@ -250,6 +256,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         updatePerson,
         updateNames,
         updateAgency,
+        setTopics,
         toggleTopic,
         submitRegistration,
         submitTwoFactorCode,

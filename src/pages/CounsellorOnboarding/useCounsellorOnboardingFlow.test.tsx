@@ -41,12 +41,14 @@ describe('useCounsellorOnboardingFlow', () => {
         expect(result.current.state.phase).toBe('loading');
         await waitFor(() => expect(result.current.state.phase).toBe('form'));
         expect(result.current.invite?.recipientEmail).toBe('lena@tenant.example');
+        // The whole coverage arrives preselected; the invitee drops one topic.
+        expect(result.current.data.topicIds).toEqual([12, 13]);
 
         act(() => {
             result.current.updateAccount({ username: 'lena_b', password: 'SecurePass1!' });
             result.current.updatePerson({ salutation: 'counsellor_female', position: 'Leitung', title: 'Dipl.' });
             result.current.updateNames({ publicName: 'Lena', internalName: 'Lena B.' });
-            result.current.toggleTopic(12);
+            result.current.toggleTopic(13);
         });
 
         await act(async () => {
@@ -87,7 +89,7 @@ describe('useCounsellorOnboardingFlow', () => {
 
         act(() => {
             result.current.updateAccount({ username: '  lena_b  ', password: 'SecurePass1!' });
-            result.current.toggleTopic(13);
+            result.current.setTopics([13]);
         });
         await act(async () => {
             await result.current.submitRegistration();
