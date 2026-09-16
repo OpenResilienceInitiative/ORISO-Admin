@@ -88,6 +88,68 @@ export const LinkInvalid: Story = {
     args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0, inviteState: 'INVALID' }) },
 };
 
+/**
+ * New Beratungsstelle (composer AUTO / free ID): the agency does not exist yet,
+ * so the invite carries no coverage. The invitee names the agency and picks its
+ * topics from the tenant's active topics — the dev dead end of 2026-09-16
+ * (empty "Themenfelder", submit never enabled) becomes finishable.
+ */
+export const NewAgencyChooseTopics: Story = {
+    name: 'New agency — choose topics',
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: {
+                agencyId: 13,
+                departmentId: null,
+                agencyExists: false,
+                topics: [],
+                availableTopics: [
+                    { id: 21, name: 'Familienberatung' },
+                    { id: 22, name: 'Schuldnerberatung' },
+                    { id: 23, name: 'Suchtberatung' },
+                    { id: 24, name: 'Schwangerschaftsberatung' },
+                    { id: 25, name: 'Migrationsberatung' },
+                ],
+            },
+        }),
+    },
+    play: async ({ canvas, userEvent }) => {
+        await expect(await canvas.findByRole('heading', { name: 'Ihre Beratungsstelle' })).toBeVisible();
+        await expect(canvas.getByRole('checkbox', { name: 'Suchtberatung' })).toBeVisible();
+        const submit = canvas.getByRole('button', { name: 'Konto erstellen' });
+        await userEvent.type(canvas.getByLabelText('Benutzername'), 'lena_b');
+        await userEvent.type(canvas.getByLabelText('Passwort'), 'SecurePass1!');
+        await userEvent.click(canvas.getByRole('checkbox', { name: 'Suchtberatung' }));
+        // Topics alone are not enough — the new agency needs its name.
+        await expect(submit).toBeDisabled();
+        await userEvent.type(canvas.getByLabelText('Name der Beratungsstelle'), 'Beratungsstelle Nord');
+        await expect(submit).toBeEnabled();
+    },
+};
+
+/** Same case on a phone. */
+export const NewAgencyChooseTopicsMobile: Story = {
+    name: 'New agency — choose topics (390px)',
+    args: NewAgencyChooseTopics.args,
+    ...PHONE_390,
+};
+
+/** Existing agency without any topic and no tenant topics: an explanation, not a dead submit. */
+export const NoSelectableTopics: Story = {
+    name: 'No selectable topics',
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: { departmentId: null, agencyExists: true, topics: [], availableTopics: [] },
+        }),
+    },
+    play: async ({ canvas }) => {
+        await expect(await canvas.findByRole('alert')).toHaveTextContent('keine Themenfelder hinterlegt');
+        await expect(canvas.getByRole('button', { name: 'Konto erstellen' })).toBeDisabled();
+    },
+};
+
 /** Single-topic coverage: the routed department topic arrives preselected. */
 export const SingleTopicCoverage: Story = {
     args: {

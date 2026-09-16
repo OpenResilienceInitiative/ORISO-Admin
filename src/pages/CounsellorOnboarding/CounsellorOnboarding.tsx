@@ -84,6 +84,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         updateAccount,
         updatePerson,
         updateNames,
+        updateAgency,
         toggleTopic,
         submitRegistration,
         submitTwoFactorCode,
@@ -169,6 +170,13 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
 
     const { topics } = invite;
     const topicFallback = t('counsellorOnboarding.topics.fallbackLabel');
+    // A reserved Beratungsstellen-ID (composer AUTO/free id): the agency does not
+    // exist yet — the invitee names it and becomes its owner on registration.
+    const createsAgency = invite.agencyExists === false;
+    // Coverage first (an existing agency's topics); without coverage the tenant's
+    // active topics are offered so a new agency can pick its departments.
+    const hasCoverage = topics.length > 0;
+    const selectableTopics = hasCoverage ? topics : invite.availableTopics ?? [];
 
     // Shared consultant credential policy — identical to the normal admin
     // consultant form (utils/consultantCredentialRules): the form must never
@@ -176,7 +184,8 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     const usernameErrKey = usernameErrorKey(data.account.username);
     const passwordErrKey = passwordErrorKey(data.account.password);
     const topicsValid = data.topicIds.length > 0;
-    const canSubmit = usernameErrKey === null && passwordErrKey === null && topicsValid && !busy;
+    const agencyValid = !createsAgency || data.agency.name.trim().length > 0;
+    const canSubmit = usernameErrKey === null && passwordErrKey === null && topicsValid && agencyValid && !busy;
     // Field-specific inline errors appear while the field HAS content but
     // violates the policy; empty required fields are carried by the submit
     // hint instead of shouting at an untouched form.
@@ -290,17 +299,49 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 />
             </Section>
 
-            <Section titleKey="cards.focusTopics.title" hintKey="cards.focusTopics.subtitle">
-                <div className={styles.chips}>
-                    {topics.map((topic) => (
-                        <FilterChip
-                            key={topic.id}
-                            label={topicLabel(topic, topicFallback)}
-                            selected={data.topicIds.includes(topic.id)}
-                            onChange={() => toggleTopic(topic.id)}
-                        />
-                    ))}
-                </div>
+            {createsAgency && (
+                <Section titleKey="counsellorOnboarding.agency.title" hintKey="counsellorOnboarding.agency.subtitle">
+                    <FloatingLabelInput
+                        label={t('counsellorOnboarding.agency.name')}
+                        supportingText={t('counsellorOnboarding.agency.nameHint')}
+                        value={data.agency.name}
+                        maxLength={100}
+                        autoComplete="organization"
+                        onChange={(e) => updateAgency({ name: e.target.value })}
+                    />
+                </Section>
+            )}
+
+            <Section
+                titleKey="cards.focusTopics.title"
+                // No hint over an empty list — the alert below carries the explanation.
+                hintKey={
+                    // eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down
+                    hasCoverage
+                        ? 'cards.focusTopics.subtitle'
+                        : selectableTopics.length > 0
+                        ? 'counsellorOnboarding.topics.chooseHint'
+                        : undefined
+                }
+            >
+                {selectableTopics.length === 0 ? (
+                    // Neither coverage nor tenant topics: say so instead of leaving a
+                    // submit that can never be enabled (the dead end of #1 on dev).
+                    <Typography role="alert" variant="body2" color="text.secondary" data-testid="wizard-topics-none">
+                        {t('counsellorOnboarding.topics.none')}
+                    </Typography>
+                ) : (
+                    <div className={styles.chips}>
+                        {selectableTopics.map((topic) => (
+                            <FilterChip
+                                key={topic.id}
+                                label={topicLabel(topic, topicFallback)}
+                                selected={data.topicIds.includes(topic.id)}
+                                onChange={() => toggleTopic(topic.id)}
+                            />
+                        ))}
+                    </div>
+                )}
             </Section>
 
             <div className={styles.submitRow}>
@@ -311,7 +352,12 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 )}
                 {!canSubmit && !busy && (
                     <Typography color="text.secondary" variant="body2" data-testid="wizard-submit-hint">
-                        {t('counsellorOnboarding.submitHint', { minLength: MIN_PASSWORD_LENGTH })}
+                        {t(
+                            createsAgency ? 'counsellorOnboarding.submitHintAgency' : 'counsellorOnboarding.submitHint',
+                            {
+                                minLength: MIN_PASSWORD_LENGTH,
+                            },
+                        )}
                     </Typography>
                 )}
                 <M3Button type="submit" variant="filled" disabled={!canSubmit} loading={busy}>

@@ -43,6 +43,17 @@ export interface CounsellorOnboardingInviteDTO {
     departmentId: number | null;
     /** Topics the wizard's topic step may offer (at least the routed department topic). */
     topics: CounsellorTopicOption[];
+    /**
+     * `false` when the invite's Beratungsstellen-ID is still a reservation: the
+     * agency does not exist yet and is created on registration with the invitee
+     * as its owner (the composer's "new agency" case). Absent = existing agency.
+     */
+    agencyExists?: boolean;
+    /**
+     * The tenant's active topics the invitee may choose when `topics` is empty
+     * (a new agency has no coverage yet). Absent/empty = nothing to choose from.
+     */
+    availableTopics?: CounsellorTopicOption[];
     /** ISO timestamp after which the link expires; null = no expiry. */
     expiresAt: string | null;
     /**
@@ -74,6 +85,12 @@ export interface CounsellorRegistrationRequest {
     };
     /** Chosen topics — validated server-side against the invite's coverage. */
     topicIds: number[];
+    /**
+     * Only for invites whose agency does not exist yet (`agencyExists === false`):
+     * the new Beratungsstelle is created with this name and the chosen topics
+     * as its departments; the invitee becomes its owner.
+     */
+    agency?: { name: string };
 }
 
 export interface CounsellorRegistrationResultDTO {
@@ -161,7 +178,7 @@ export const createHttpCounsellorOnboardingClient = (): CounsellorOnboardingClie
                     skipAuth: true,
                     responseHandling: PUBLIC_RESPONSE_HANDLING,
                 });
-                return { ...invite, topics: invite.topics ?? [] };
+                return { ...invite, topics: invite.topics ?? [], availableTopics: invite.availableTopics ?? [] };
             }),
 
         registerCounsellor: (inviteToken, request) =>
@@ -283,9 +300,15 @@ export const createStubCounsellorOnboardingClient = (
             if (!request.account.username || !request.account.password) {
                 throw new Error('ACCOUNT_DATA_MISSING');
             }
-            const coveredIds = new Set(invite.topics.map(({ id }) => id));
+            // Coverage rules like the backend: an existing agency limits the choice
+            // to its coverage; without coverage the tenant's topics are selectable.
+            const selectable = invite.topics.length > 0 ? invite.topics : invite.availableTopics ?? [];
+            const coveredIds = new Set(selectable.map(({ id }) => id));
             if (request.topicIds.length === 0 || request.topicIds.some((id) => !coveredIds.has(id))) {
                 throw new Error('TOPICS_OUTSIDE_COVERAGE');
+            }
+            if (invite.agencyExists === false && !request.agency?.name?.trim()) {
+                throw new Error('AGENCY_NAME_MISSING');
             }
             registered = true;
             if (registrationPhase === 'COMPLETED') {

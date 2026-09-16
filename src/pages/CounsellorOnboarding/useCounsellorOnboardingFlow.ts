@@ -46,6 +46,8 @@ export interface CounsellorWizardData {
     person: { salutation?: string; position: string; title: string };
     names: { publicName: string; internalName: string };
     topicIds: number[];
+    /** Only collected when the invite creates a new agency (`invite.agencyExists === false`). */
+    agency: { name: string };
 }
 
 const EMPTY_DATA: CounsellorWizardData = {
@@ -53,6 +55,7 @@ const EMPTY_DATA: CounsellorWizardData = {
     person: { salutation: undefined, position: '', title: '' },
     names: { publicName: '', internalName: '' },
     topicIds: [],
+    agency: { name: '' },
 };
 
 /** Single source: the shared consultant credential policy (also used by the admin form). */
@@ -77,6 +80,8 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
     // stay stable while every keystroke updates `data`.
     const dataRef = useRef(data);
     dataRef.current = data;
+    const inviteRef = useRef(invite);
+    inviteRef.current = invite;
 
     useEffect(() => {
         let cancelled = false;
@@ -144,6 +149,10 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setData((current) => ({ ...current, names: { ...current.names, ...patch } }));
     }, []);
 
+    const updateAgency = useCallback((patch: Partial<CounsellorWizardData['agency']>) => {
+        setData((current) => ({ ...current, agency: { ...current.agency, ...patch } }));
+    }, []);
+
     const toggleTopic = useCallback((topicId: number) => {
         setData((current) => ({
             ...current,
@@ -169,7 +178,8 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setBusy(true);
         setSubmitError(null);
         try {
-            const { account, person, names, topicIds } = dataRef.current;
+            const { account, person, names, topicIds, agency } = dataRef.current;
+            const createsAgency = inviteRef.current?.agencyExists === false;
             const request: CounsellorRegistrationRequest = {
                 account: { username: account.username.trim(), password: account.password },
                 person: {
@@ -182,6 +192,9 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                     internalDisplayName: names.internalName.trim() || undefined,
                 },
                 topicIds,
+                // Present only for a reserved (not yet existing) agency — the
+                // backend rejects the field for an existing one.
+                ...(createsAgency ? { agency: { name: agency.name.trim() } } : {}),
             };
             const result = await client.registerCounsellor(inviteToken, request);
             if (result.phase === 'COMPLETED') {
@@ -236,6 +249,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         updateAccount,
         updatePerson,
         updateNames,
+        updateAgency,
         toggleTopic,
         submitRegistration,
         submitTwoFactorCode,

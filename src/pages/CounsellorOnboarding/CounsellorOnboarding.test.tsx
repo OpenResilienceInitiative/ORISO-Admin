@@ -153,6 +153,67 @@ describe('CounsellorOnboarding', () => {
         expect(screen.getByTestId('wizard-submit-hint')).toBeInTheDocument();
     });
 
+    it('offers the tenant topics and asks for the agency name when the invite creates a new agency', async () => {
+        // Reserved (AUTO) Beratungsstellen-ID: the agency does not exist yet, so
+        // there is no coverage — the invitee names the agency and picks its
+        // topics from the tenant's active topics instead of being stuck.
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                agencyId: 13,
+                departmentId: null,
+                agencyExists: false,
+                topics: [],
+                availableTopics: [
+                    { id: 21, name: 'Familienberatung' },
+                    { id: 22, name: 'Suchtberatung' },
+                ],
+            }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        expect(screen.getByRole('heading', { name: 'counsellorOnboarding.agency.title' })).toBeInTheDocument();
+        expect(screen.getByText('counsellorOnboarding.topics.chooseHint')).toBeInTheDocument();
+
+        // Topics alone do not unlock the submit — the new agency needs a name.
+        await user.click(screen.getByRole('checkbox', { name: 'Suchtberatung' }));
+        expect(submit()).toBeDisabled();
+        await user.type(screen.getByLabelText('counsellorOnboarding.agency.name'), 'Beratungsstelle Nord');
+        expect(submit()).toBeEnabled();
+        await user.click(submit());
+
+        await waitFor(() =>
+            expect(client.registerCounsellor).toHaveBeenCalledWith('raw-token', {
+                account: { username: 'lena_b', password: 'SecurePass1!' },
+                person: { salutation: undefined, position: undefined, title: undefined },
+                names: { publicName: undefined, internalDisplayName: undefined },
+                topicIds: [22],
+                agency: { name: 'Beratungsstelle Nord' },
+            }),
+        );
+    });
+
+    it('explains an invite without any selectable topic instead of a silently dead submit', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                departmentId: null,
+                agencyExists: true,
+                topics: [],
+                availableTopics: [],
+            }),
+        });
+        renderFlow(client);
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('counsellorOnboarding.topics.none');
+        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'counsellorOnboarding.agency.title' })).not.toBeInTheDocument();
+        expect(submit()).toBeDisabled();
+    });
+
     it('resumes a consumed-but-2FA-pending link directly at the 2FA step', async () => {
         const client = createClient({
             getOnboardingInvite: vi.fn().mockResolvedValue({
