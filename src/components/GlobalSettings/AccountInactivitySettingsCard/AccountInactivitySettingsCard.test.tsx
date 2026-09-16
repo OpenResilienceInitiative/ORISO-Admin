@@ -38,7 +38,7 @@ it('loads the three confirmed periods and explains deletion, suspension and new-
     expect(await screen.findByLabelText('Ratsuchende (Monate)')).toHaveValue(24);
     expect(screen.getByLabelText('Berater (Monate)')).toHaveValue(24);
     expect(screen.getByLabelText('Sonstige Personen (Monate)')).toHaveValue(24);
-    expect(screen.getByText('Admins/Support')).toBeVisible();
+    expect(screen.getByText(/einschließlich Admins und Support/)).toBeVisible();
     expect(
         screen.getByText(
             'Änderungen gelten nur für neu angelegte Personen. Bestehende Personen behalten ihre bisherige Frist.',

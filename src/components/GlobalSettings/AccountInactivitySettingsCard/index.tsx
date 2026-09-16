@@ -74,9 +74,6 @@ export const AccountInactivitySettingsCard = ({ data, isLoading, isSaving, error
                                 key={name}
                                 name={name}
                                 label={t(`globalSettings.accountInactivity.${name}`)}
-                                helpText={
-                                    name === 'otherMonths' ? t('globalSettings.accountInactivity.otherHelp') : undefined
-                                }
                                 required
                                 min={1}
                                 inputProps={{ step: 1, max: 2147483647 }}

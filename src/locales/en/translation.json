@@ -2034,7 +2034,7 @@
     "dpia.sections.annexIndex.title": "Annex index",
     "dpia.sections.annexIndex.help": "List the annexes accompanying your DPIA — contracts, evidence of technical measures, deletion policy.",
     "globalSettings.accountInactivity.title": "Inactive accounts",
-    "globalSettings.accountInactivity.description": "Advice seekers are deleted. Counsellors and other people are suspended when their period without personal activity expires.",
+    "globalSettings.accountInactivity.description": "Advice seekers are deleted. Counsellors and other people, including admins and support, are suspended when their period without personal activity expires.",
     "globalSettings.accountInactivity.askerMonths": "Advice seekers (months)",
     "globalSettings.accountInactivity.consultantMonths": "Counsellors (months)",
     "globalSettings.accountInactivity.otherMonths": "Other people (months)",
@@ -2045,6 +2045,5 @@
     "globalSettings.accountInactivity.error.invalid": "Enter a valid number of months for each group.",
     "globalSettings.accountInactivity.error.forbidden": "You are not allowed to change platform inactive account settings.",
     "globalSettings.accountInactivity.error.generic": "Inactive account settings could not be saved.",
-    "globalSettings.accountInactivity.validation": "Enter a whole number of at least 1.",
-    "globalSettings.accountInactivity.otherHelp": "Admins/support"
+    "globalSettings.accountInactivity.validation": "Enter a whole number of at least 1."
 }
