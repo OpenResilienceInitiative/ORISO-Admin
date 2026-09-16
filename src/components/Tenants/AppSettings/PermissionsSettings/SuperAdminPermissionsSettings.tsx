@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
 import { useTenantAdminControlsMutation } from '../../../../hooks/useTenantAdminControlsMutation.hook';
 import { buildTogglePayload } from './permissionsToggleLogic';
-import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import {
     applyVisibleTogglesAsValues,
     buildTenantAdminControlsPayload,
@@ -15,19 +14,7 @@ import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import type { TenantAdminControls } from '../../../../types/TenantAdminControls';
 
-type SuperAdminPermissionsSettingsProps = PermissionsSettingsCommonArgs & {
-    /**
-     * Show what the Träger with `tenantId` has actually switched on next to each permission
-     * (ORISO-Admin#989). Off on the platform's own settings page, which has no Träger context.
-     */
-    showTraegerValues?: boolean;
-};
-
-export const SuperAdminPermissionsSettings = ({
-    tenantId,
-    excludeCardKeys,
-    showTraegerValues = false,
-}: SuperAdminPermissionsSettingsProps) => {
+export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
     const { data: platformControls, isLoading } = useTenantAdminControls(true);
     const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
@@ -61,10 +48,6 @@ export const SuperAdminPermissionsSettings = ({
         setPendingPolicyFields(new Set(pendingPolicyOperations.current.map(({ fieldKey }) => fieldKey)));
     }, []);
 
-    const { data: traegerData } = useSingleTenantData({
-        id: tenantId,
-        enabled: showTraegerValues && Boolean(tenantId),
-    });
     const allowedPermissionToggles = platformControls?.allowedPermissionToggles;
     const enforcedPermissionToggles = platformControls?.enforcedPermissionToggles;
     const restrictedFields = useMemo(() => new Set<string>(), []);
@@ -154,9 +137,6 @@ export const SuperAdminPermissionsSettings = ({
             permissionPolicies={effectivePlatformControls?.permissionPolicies}
             pendingPolicyFields={pendingPolicyFields}
             onPolicyChange={handlePolicyChange}
-            traegerValues={
-                showTraegerValues ? (traegerData?.settings as Record<string, unknown> | undefined) : undefined
-            }
         />
     );
 };

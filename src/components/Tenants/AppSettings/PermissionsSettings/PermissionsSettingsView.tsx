@@ -44,12 +44,6 @@ export type PermissionsSettingsViewProps = {
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     pendingPolicyFields?: ReadonlySet<string>;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
-    /**
-     * The settings of the Träger this page is looked at for (ORISO-Admin#989). When given, every
-     * row also states what that Träger has actually switched on — a permission alone never says
-     * whether the feature is live.
-     */
-    traegerValues?: Record<string, unknown>;
 };
 
 export const PermissionsSettingsView = ({
@@ -64,7 +58,6 @@ export const PermissionsSettingsView = ({
     permissionPolicies,
     pendingPolicyFields,
     onPolicyChange,
-    traegerValues,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
     const [openPolicyMenu, setOpenPolicyMenu] = useState<string | null>(null);
@@ -80,32 +73,6 @@ export const PermissionsSettingsView = ({
     const policyPending = useCallback(
         (fieldKey: string) => pendingPolicyFields?.has(fieldKey) === true,
         [pendingPolicyFields],
-    );
-
-    /**
-     * "Allowed" and "on" are two different statements. A Träger can be allowed to use a feature and
-     * still have it switched off — which is exactly the case a platform admin needs to see before
-     * chasing a counsellor's missing button (ORISO-Admin#989).
-     */
-    const traegerValueHint = useCallback(
-        (fieldKey: string, policy: PolicyValue<boolean>) => {
-            if (!traegerValues) return undefined;
-            const value = traegerValues[fieldKey];
-            if (typeof value !== 'boolean') return undefined;
-            if (policy.value && !value) {
-                return (
-                    <span className={styles.traegerValueConflict}>
-                        {t('tenants.permissions.traegerValue.allowedButOff')}
-                    </span>
-                );
-            }
-            return (
-                <span className={styles.traegerValue}>
-                    {t(value ? 'tenants.permissions.traegerValue.on' : 'tenants.permissions.traegerValue.off')}
-                </span>
-            );
-        },
-        [t, traegerValues],
     );
 
     const changePolicy = useCallback(
@@ -214,10 +181,6 @@ export const PermissionsSettingsView = ({
                                                             )}
                                                             open={openPolicyMenu === masterField[1]}
                                                             pending={policyPending(masterField[1])}
-                                                            supportingText={traegerValueHint(
-                                                                masterField[1],
-                                                                policyFor(masterField[1], getFieldValue(masterField)),
-                                                            )}
                                                             onOpenChange={(open) =>
                                                                 setOpenPolicyMenu(open ? masterField[1] : null)
                                                             }
@@ -258,14 +221,6 @@ export const PermissionsSettingsView = ({
                                                             (disabledByMaster
                                                                 ? 'tenants.permissions.feature.requiresMaster'
                                                                 : null);
-                                                        const togglePolicy = policyFor(
-                                                            toggle.field[1],
-                                                            getFieldValue(toggle.field),
-                                                        );
-                                                        const traegerHint = traegerValueHint(
-                                                            toggle.field[1],
-                                                            togglePolicy,
-                                                        );
                                                         return (
                                                             <div
                                                                 key={toggle.field.join('.')}
@@ -285,17 +240,7 @@ export const PermissionsSettingsView = ({
                                                                         Boolean(unavailableHintKey) || disabledByMaster
                                                                     }
                                                                     supportingText={
-                                                                        disabledHintKey || traegerHint ? (
-                                                                            <>
-                                                                                {disabledHintKey
-                                                                                    ? t(disabledHintKey)
-                                                                                    : null}
-                                                                                {disabledHintKey && traegerHint
-                                                                                    ? ' '
-                                                                                    : null}
-                                                                                {traegerHint}
-                                                                            </>
-                                                                        ) : undefined
+                                                                        disabledHintKey ? t(disabledHintKey) : undefined
                                                                     }
                                                                     onOpenChange={(open) =>
                                                                         setOpenPolicyMenu(open ? toggle.field[1] : null)
