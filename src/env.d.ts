@@ -1,4 +1,5 @@
 interface ImportMetaEnv {
+    readonly VITE_BUILD_COMMIT?: string;
     readonly VITE_PORT: number;
     readonly VITE_CSRF_WHITELIST_HEADER_FOR_LOCAL_DEVELOPMENT: string;
     readonly VITE_API_URL: string;
