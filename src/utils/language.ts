@@ -1,3 +1,6 @@
+import { buildCookieAttributes } from '../api/auth/buildCookieAttributes';
+import { runtimeConfig } from '../config/runtimeConfig';
+
 export const SUPPORTED_LANGUAGES = ['en', 'de'] as const;
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -77,6 +80,22 @@ const setCookieValue = (name: string, value: string): void => {
     )};path=/;SameSite=Lax;Max-Age=${LANGUAGE_COOKIE_MAX_AGE_SECONDS}`;
 };
 
+// The backend `lang` cookie has to reach the API, which is served from a
+// sibling subdomain (e.g. api.oriso-dev.site) — a host-only cookie would never
+// be sent there. Scope it exactly like the auth cookies (shared Domain + Secure
+// via runtimeConfig) so it rides along with the same requests.
+const setBackendLanguageCookie = (value: string): void => {
+    if (typeof document === 'undefined') {
+        return;
+    }
+
+    const attributes = buildCookieAttributes({
+        cookieSecure: runtimeConfig.cookieSecure,
+        cookieDomain: runtimeConfig.cookieDomain,
+    });
+    document.cookie = `${BACKEND_LANGUAGE_COOKIE_KEY}=${encodeURIComponent(value)}${attributes}`;
+};
+
 export const getStoredLanguage = (): SupportedLanguage | null => {
     if (globalThis.window === undefined) {
         return null;
@@ -106,7 +125,7 @@ export const storeLanguage = (language: SupportedLanguage): void => {
 
     setCookieValue(LANGUAGE_COOKIE_KEY, language);
     // Also set the cookie the backend reads, so localized names match the UI.
-    setCookieValue(BACKEND_LANGUAGE_COOKIE_KEY, language);
+    setBackendLanguageCookie(language);
 
     try {
         globalThis.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
