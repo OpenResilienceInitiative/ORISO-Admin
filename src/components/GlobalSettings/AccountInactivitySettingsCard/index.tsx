@@ -4,6 +4,8 @@ import { Form } from 'antd';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AccountInactivitySettings } from '../../../types/AccountInactivitySettings';
+import { FETCH_ERRORS } from '../../../api/fetchData';
+import { FieldGrid } from '../../FieldGrid';
 import { CardEditable } from '../../CardEditable';
 import { MuiNumberFormField } from '../../mui/MuiFormField';
 import { useAccountInactivitySettings } from '../../../hooks/useAccountInactivitySettings.hook';
@@ -42,7 +44,7 @@ export const AccountInactivitySettingsCard = ({ data, isLoading, isSaving, error
             subTitleKey="globalSettings.accountInactivity.description"
             initialValues={data ? { ...data } : undefined}
             isLoading={isLoading || isSaving}
-            allowEdit={Boolean(data) && !isLoading && !isSaving}
+            allowEdit={Boolean(data) && !isLoading && !isSaving && !error}
             editButtonPlacement="footer"
             formProp={form}
             onSave={(values: Partial<AccountInactivitySettings>, options) => {
@@ -68,7 +70,7 @@ export const AccountInactivitySettingsCard = ({ data, isLoading, isSaving, error
                 <>
                     <SyncConfirmedSettings data={data} editing={editing} />
                     {error && <Alert severity="error">{t('globalSettings.accountInactivity.error.load')}</Alert>}
-                    <div className={styles.fields}>
+                    <FieldGrid>
                         {(['askerMonths', 'consultantMonths', 'otherMonths'] as const).map((name) => (
                             <MuiNumberFormField
                                 key={name}
@@ -88,7 +90,7 @@ export const AccountInactivitySettingsCard = ({ data, isLoading, isSaving, error
                                 ]}
                             />
                         ))}
-                    </div>
+                    </FieldGrid>
                     <p className={styles.scope}>{t('globalSettings.accountInactivity.newPeopleNotice')}</p>
                 </>
             )}
@@ -106,7 +108,14 @@ export const AccountInactivitySettingsCardContainer = () => {
             isLoading={settings.isLoading}
             isSaving={settings.isSaving}
             error={settings.error}
-            onSave={(values, options) => settings.save(values, { onError: options?.onError })}
+            onSave={(values, options) =>
+                settings.save(values, {
+                    onError: (failure) => {
+                        if (failure instanceof Error && failure.message === FETCH_ERRORS.CONFLICT) return;
+                        options?.onError?.();
+                    },
+                })
+            }
         />
     );
 };

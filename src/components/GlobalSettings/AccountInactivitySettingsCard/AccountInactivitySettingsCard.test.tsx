@@ -56,9 +56,9 @@ it('saves all three periods with revision zero and reads the confirmed values af
                 askerMonths: 12,
                 consultantMonths: 24,
                 otherMonths: 36,
-                revision: 0,
+                revision: stored.revision,
             });
-            stored = { askerMonths: 12, consultantMonths: 24, otherMonths: 36, revision: 1 };
+            stored = { askerMonths: 12, consultantMonths: 24, otherMonths: 36, revision: stored.revision + 1 };
             return HttpResponse.json(stored);
         }),
     );
@@ -74,6 +74,9 @@ it('saves all three periods with revision zero and reads the confirmed values af
     showSettings();
     await waitFor(() => expect(screen.getByLabelText('Ratsuchende (Monate)')).toHaveValue(12));
     expect(screen.getByLabelText('Sonstige Personen (Monate)')).toHaveValue(36);
+    await userEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(stored.revision).toBe(2));
 });
 
 it.each(['0', '-1', '1.5', '2147483648', ''])(
@@ -108,7 +111,6 @@ it('does not expose platform settings to a tenant administrator', () => {
 });
 
 it.each([
-    [409, 'Die Einstellungen wurden zwischenzeitlich geändert. Laden Sie die Seite neu und versuchen Sie es erneut.'],
     [403, 'Sie dürfen die plattformweiten Einstellungen für inaktive Konten nicht ändern.'],
     [400, 'Geben Sie für jede Personengruppe eine gültige Anzahl Monate ein.'],
     [500, 'Die Einstellungen für inaktive Konten konnten nicht gespeichert werden.'],
@@ -132,4 +134,52 @@ it('shows a load failure without making unconfirmed defaults editable', async ()
         await screen.findByText('Die Einstellungen für inaktive Konten konnten nicht geladen werden.'),
     ).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+});
+
+it('refreshes confirmed settings after conflict and sends their revision on the next save', async () => {
+    let stored = initial;
+    const payloads: unknown[] = [];
+    server.use(
+        http.get('*/controls/account-inactivity', () => HttpResponse.json(stored)),
+        http.put('*/controls/account-inactivity', async ({ request }) => {
+            payloads.push(await request.json());
+            if (payloads.length === 1) {
+                stored = { askerMonths: 30, consultantMonths: 36, otherMonths: 48, revision: 1 };
+                return new HttpResponse(null, { status: 409 });
+            }
+            return HttpResponse.json({ ...stored, askerMonths: 18, revision: 2 });
+        }),
+    );
+    showSettings();
+    await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(await screen.findByText(/Die Einstellungen wurden zwischenzeitlich geändert/)).toBeVisible();
+    await waitFor(() => expect(screen.getByLabelText('Ratsuchende (Monate)')).toHaveValue(30));
+    await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+    await userEvent.clear(screen.getByLabelText('Ratsuchende (Monate)'));
+    await userEvent.type(screen.getByLabelText('Ratsuchende (Monate)'), '18');
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(payloads).toHaveLength(2));
+    expect(payloads[1]).toEqual({ askerMonths: 18, consultantMonths: 36, otherMonths: 48, revision: 1 });
+});
+
+it('blocks further saves when refreshing a conflicting policy fails', async () => {
+    let conflicted = false;
+    server.use(
+        http.get('*/controls/account-inactivity', () =>
+            conflicted ? new HttpResponse(null, { status: 503 }) : HttpResponse.json(initial),
+        ),
+        http.put('*/controls/account-inactivity', () => {
+            conflicted = true;
+            return new HttpResponse(null, { status: 409 });
+        }),
+    );
+    showSettings();
+    await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(
+        await screen.findByText('Die Einstellungen für inaktive Konten konnten nicht geladen werden.'),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
 });

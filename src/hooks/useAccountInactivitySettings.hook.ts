@@ -30,8 +30,11 @@ export const useAccountInactivitySettings = (enabled = true) => {
             queryClient.setQueryData(ACCOUNT_INACTIVITY_SETTINGS_QUERY_KEY, confirmed);
             message.success({ content: t('globalSettings.accountInactivity.saveSuccess'), duration: 3 });
         },
-        onError: (error) => {
+        onError: async (error) => {
             message.error({ content: t(errorKey(error)), duration: 5 });
+            if (error instanceof Error && error.message === FETCH_ERRORS.CONFLICT) {
+                await queryClient.refetchQueries({ queryKey: ACCOUNT_INACTIVITY_SETTINGS_QUERY_KEY, exact: true });
+            }
         },
     });
     return { ...query, save: mutation.mutate, isSaving: mutation.isPending };
