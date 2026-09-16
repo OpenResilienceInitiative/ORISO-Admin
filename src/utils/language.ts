@@ -6,6 +6,11 @@ export const DEFAULT_LANGUAGE: SupportedLanguage = 'en';
 
 export const LANGUAGE_STORAGE_KEY = 'oriso-admin.language';
 export const LANGUAGE_COOKIE_KEY = 'oriso-admin.language';
+// ConsultingTypeService (TranslationService.getCurrentLanguageContext) resolves
+// localized topic/consulting-type names from the `lang` cookie only — it ignores
+// the Accept-Language header and defaults to German. The admin must mirror its
+// language into this cookie or the backend keeps returning German names (#564).
+export const BACKEND_LANGUAGE_COOKIE_KEY = 'lang';
 const LANGUAGE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 export const LANGUAGE_OPTIONS = [
@@ -100,6 +105,8 @@ export const storeLanguage = (language: SupportedLanguage): void => {
     }
 
     setCookieValue(LANGUAGE_COOKIE_KEY, language);
+    // Also set the cookie the backend reads, so localized names match the UI.
+    setCookieValue(BACKEND_LANGUAGE_COOKIE_KEY, language);
 
     try {
         globalThis.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);

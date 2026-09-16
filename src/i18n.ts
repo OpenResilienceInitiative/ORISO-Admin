@@ -7,12 +7,16 @@ import {
     DEFAULT_LANGUAGE,
     getInitialLanguage,
     normalizeLanguage,
+    storeLanguage,
     SUPPORTED_LANGUAGES,
     updateDocumentLanguage,
 } from './utils/language';
 
 const initialLanguage = getInitialLanguage();
 updateDocumentLanguage(initialLanguage);
+// Persist the resolved language up front so the backend `lang` cookie is present
+// on the first load, not only after the user actively switches language (#564).
+storeLanguage(initialLanguage);
 
 i18n.use(initReactI18next).init({
     debug: false, // set to true for debugging
