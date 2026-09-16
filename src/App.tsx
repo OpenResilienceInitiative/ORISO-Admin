@@ -26,6 +26,7 @@ import { canReadCaseHandoverAdmin, canSeeSupervisorLogs } from './constants/case
 import { useAppConfigContext } from './context/useAppConfig';
 import { useAdminTheme } from './hooks/useAdminTheme.hook';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { AgencyDefaultSectionRedirect } from './pages/Agency/Edit/AgencyDefaultSectionRedirect';
 import {
     LazyAgencyList,
     LazyAgencyPageEdit,
@@ -250,7 +251,10 @@ export const App = () => {
                                     </Route>
                                 )}
                                 <Route path={routePathNames.agency} element={<LazyAgencyList />} />
-                                <Route path={`${routePathNames.agency}/:id`} element={<LazyAgencyPageEdit />} />
+                                <Route
+                                    path={`${routePathNames.agency}/:id`}
+                                    element={<AgencyDefaultSectionRedirect />}
+                                />
                                 <Route path={`${routePathNames.agency}/:id/general`} element={<LazyAgencyPageEdit />} />
                                 <Route
                                     path={`${routePathNames.agency}/:id/legal-settings`}
