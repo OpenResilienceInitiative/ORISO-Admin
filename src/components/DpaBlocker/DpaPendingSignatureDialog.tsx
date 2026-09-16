@@ -20,11 +20,10 @@ export interface DpaPendingSignatureDialogProps {
     /** Sends the DPA_FORWARD mail again (or to a different address). */
     forward: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
     /**
-     * "Abmelden" — the ONLY way off this screen (JOB7). There is no dismiss:
-     * an unsigned tenant may not use the platform, so the dialog is a gate,
-     * not a notice.
+     * "Später", the X, Escape or a mask click. The admin area is already
+     * rendered behind the notice (#990), so this only closes it.
      */
-    onLogout: () => void;
+    onDismiss: () => void;
     /** The embedded forward dialog was completed (fresh link and/or mail sent). */
     onForwardCompleted?: (result: DpaForwardResult) => void;
     /**
@@ -38,21 +37,22 @@ export interface DpaPendingSignatureDialogProps {
 type LinkState = { kind: 'loading' } | { kind: 'ready'; link: DpaForwardLink } | { kind: 'error' };
 
 /**
- * Recurring pending-signature GATE (#724, epic #722, hardened by JOB7):
- * shown for as long as the tenant's DPA signature is outstanding after a
- * forward. It is the whole screen — the admin routes are not rendered behind
- * it, the mask and Escape do not dismiss it, and the only exit is logout.
+ * Recurring pending-signature notice (#724, epic #722): shown after each login
+ * while the tenant's DPA signature is outstanding after a forward. The admin
+ * area is rendered behind it (#990, reverting the JOB7 full lock), so the
+ * Träger admin can set up their organisation while they wait — the same
+ * experience the tenant-invite wizard gives. Legal-gated writes stay guarded
+ * by the backend.
  *
- * It offers exactly what a waiting tenant can legitimately do: copy the sign
- * link, send the mail again through the shared forward dialog (#723), or log
- * out. When the signature lands the gate swaps this dialog for
- * {@link DpaUnlockDialog}.
+ * It offers what a waiting tenant needs: copy the sign link, send the mail
+ * again through the shared forward dialog (#723), or continue ("Später").
+ * When the signature lands the gate shows {@link DpaUnlockDialog}.
  */
 export const DpaPendingSignatureDialog = ({
     ensureSignLink,
     initialLink,
     forward,
-    onLogout,
+    onDismiss,
     onForwardCompleted,
     recheckRejected = false,
 }: DpaPendingSignatureDialogProps) => {
@@ -88,7 +88,6 @@ export const DpaPendingSignatureDialog = ({
                 surface="admin"
                 onClose={() => setResendOpen(false)}
                 onForwarded={(result) => {
-                    // Back to the gate, never out of it (JOB7).
                     setResendOpen(false);
                     onForwardCompleted?.(result);
                 }}
@@ -102,13 +101,9 @@ export const DpaPendingSignatureDialog = ({
             descriptionKey="dpaPending.description"
             icon={<HourglassTopRounded fontSize="inherit" />}
             okLabelKey="dpaPending.resend"
-            cancelLabelKey="dpaBlocker.logout"
+            cancelLabelKey="dpaPending.later"
             onConfirm={() => setResendOpen(true)}
-            onClose={onLogout}
-            // A gate, not a notice: no X, no mask click, no Escape (JOB7).
-            closable={false}
-            maskClosable={false}
-            keyboard={false}
+            onClose={onDismiss}
             width={560}
         >
             <div className={styles.body} data-testid="dpa-pending-dialog">
