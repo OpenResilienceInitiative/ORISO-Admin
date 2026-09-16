@@ -60,6 +60,7 @@ export const tenantAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/t
 export const twoFactorAuth = `${userServiceURL}/service/users/2fa`;
 export const twoFactorAuthApp = `${userServiceURL}/service/users/2fa/app`;
 export const twoFactorAuthAppEmail = `${userServiceURL}/service/users/2fa/email`;
+export const accountInactivityActivityEndpoint = `${userServiceURL}/service/users/account-inactivity/activity`;
 export const userDataEndpoint = `${userServiceURL}/service/users/data`;
 export const userAdminDataEndpoint = `${userServiceURL}/service/useradmin/data`;
 export const userPasswordChangeEndpoint = `${userServiceURL}/service/users/password/change`;
