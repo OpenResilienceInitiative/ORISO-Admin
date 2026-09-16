@@ -41,7 +41,7 @@ describe('auth BFF cookie domain', () => {
 describe('auth BFF on a host shared with the counselling app', () => {
     const APP_COOKIES = 'keycloak=app-access; refreshToken=app-refresh';
 
-    const createHandler = () =>
+    const createHandler = (overrides = {}) =>
         createAuthBffHandler({
             cookieDomain: '',
             cookiePath: '/admin',
@@ -49,9 +49,10 @@ describe('auth BFF on a host shared with the counselling app', () => {
             hostnamesWithoutCookieDomain: [],
             loginEndpoint: 'http://keycloak.test/token',
             keycloakClientId: 'app',
+            ...overrides,
         });
 
-    const call = async (method, url, { cookie, body } = {}) => {
+    const call = async (method, url, { cookie, body, config } = {}) => {
         const request = Readable.from(body ? [Buffer.from(JSON.stringify(body))] : []);
         Object.assign(request, { method, url, headers: { host: 'dev.oriso.org', ...(cookie ? { cookie } : {}) } });
         const headers = {};
@@ -66,7 +67,7 @@ describe('auth BFF on a host shared with the counselling app', () => {
                 response.body = String(chunk);
             },
         };
-        await createHandler()(request, response);
+        await createHandler(config)(request, response);
         const setCookie = headers['set-cookie'];
         return {
             status: response.statusCode,
@@ -138,4 +139,44 @@ describe('auth BFF on a host shared with the counselling app', () => {
         expect(status).toBe(200);
         expect(json.access_token).toBe('admin-access');
     });
+
+    it('skips an undecodable Admin cookie and uses the first valid duplicate', async () => {
+        const { status, json } = await call('GET', '/admin/auth/session', {
+            cookie: [
+                `${AUTH_ACCESS_TOKEN_COOKIE}=%E0%A4%A`,
+                `${AUTH_REFRESH_TOKEN_COOKIE}=%E0%A4%A`,
+                `${AUTH_ACCESS_TOKEN_COOKIE}=admin-access`,
+                `${AUTH_REFRESH_TOKEN_COOKIE}=admin-refresh`,
+                `${AUTH_ACCESS_TOKEN_COOKIE}=later-access`,
+                `${AUTH_REFRESH_TOKEN_COOKIE}=later-refresh`,
+            ].join('; '),
+        });
+
+        expect(status).toBe(200);
+        expect(json).toEqual({ access_token: 'admin-access', refresh_token: 'admin-refresh' });
+    });
+
+    // A root cookie path would send the Admin tokens along with every request of the app.
+    it.each(['/', ''])(
+        'keeps the Admin cookies on /admin even when the cookie path is configured as %j',
+        async (path) => {
+            const { setCookies } = await call('POST', '/admin/auth/set-token', {
+                body: {
+                    access_token: 'admin-access',
+                    refresh_token: 'admin-refresh',
+                    expires_in: 60,
+                    refresh_expires_in: 30,
+                },
+                config: { cookiePath: path },
+            });
+
+            expect(cookiesOnPath(setCookies, '/')).toEqual([]);
+            expect(cookiesOnPath(setCookies, '/admin')).toEqual(
+                expect.arrayContaining([
+                    expect.stringMatching(new RegExp(`^${AUTH_ACCESS_TOKEN_COOKIE}=admin-access;`)),
+                    expect.stringMatching(new RegExp(`^${AUTH_REFRESH_TOKEN_COOKIE}=admin-refresh;`)),
+                ]),
+            );
+        },
+    );
 });

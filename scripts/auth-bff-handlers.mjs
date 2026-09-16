@@ -80,12 +80,15 @@ const getRequestAuthBffConfig = (config, request) => {
     return config;
 };
 
+// "/" would hand the Admin tokens to every route of the counselling app on this host.
+const resolveCookiePath = (config) => (config.cookiePath && config.cookiePath !== '/' ? config.cookiePath : '/admin');
+
 const buildAuthCookieAttributes = (config, { httpOnly = true, maxAge } = {}) => {
     const secure = config.cookieSecure ? '; Secure' : '';
     const domain = config.cookieDomain ? `; Domain=${config.cookieDomain}` : '';
     const httpOnlyFlag = httpOnly ? '; HttpOnly' : '';
     const maxAgeFlag = typeof maxAge === 'number' && maxAge > 0 ? `; Max-Age=${Math.floor(maxAge)}` : '';
-    const path = config.cookiePath || '/admin';
+    const path = resolveCookiePath(config);
 
     return `; Path=${path}; SameSite=Strict${secure}${domain}${httpOnlyFlag}${maxAgeFlag}`;
 };
@@ -158,12 +161,8 @@ const buildClearAuthTokenCookies = (config) => {
     ];
 };
 
+// Only ever on the Admin path: on Path=/ these names are the counselling app's live session.
 const buildLegacyAuthCookieClearCookies = (config) => {
-    // On Path=/ these names are the counselling app's live session, never ours to delete.
-    if (!config.cookiePath || config.cookiePath === '/') {
-        return [];
-    }
-
     const clearAttributes = buildAuthCookieAttributes(config, { httpOnly: true });
 
     return LEGACY_AUTH_COOKIES.map((name) => `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT${clearAttributes}`);
