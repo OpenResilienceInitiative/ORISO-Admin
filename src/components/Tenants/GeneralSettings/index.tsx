@@ -134,7 +134,6 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
                                 disabled={!isSuperAdmin}
                                 className={styles.masterDataToggle}
                                 switchLabel={t('settings.masterData.editable.toggle')}
-                                switchVariant="m3"
                             />
                         </CardEditable>
                     </CardDeck.Item>

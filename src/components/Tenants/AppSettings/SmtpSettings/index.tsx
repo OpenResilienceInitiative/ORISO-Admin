@@ -209,7 +209,6 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         disableLabels
                         disabled={!systemEmailsAllowed}
                         switchLabel={t('tenants.appSettings.smtp.systemEmailToggle.title')}
-                        switchVariant="m3"
                     />
 
                     <FormSwitchField
@@ -223,7 +222,6 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         disableLabels
                         disabled={!smtpAllowed}
                         switchLabel={t('tenants.appSettings.smtp.smtpToggle.title')}
-                        switchVariant="m3"
                     />
 
                     <FormInputField
@@ -275,7 +273,6 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         disableLabels
                         disabled={!smtpAllowed}
                         switchLabel={t('tenants.appSettings.smtp.secure')}
-                        switchVariant="m3"
                     />
                 </div>
             </Card>
