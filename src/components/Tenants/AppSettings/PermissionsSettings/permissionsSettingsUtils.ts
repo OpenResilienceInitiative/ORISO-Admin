@@ -23,6 +23,9 @@ export const resolvePermissionPolicy = (
 export const DEFAULT_PERMISSION_SETTINGS = {
     featureAnonymousChatEnabled: true,
     featureGroupChatV2Enabled: true,
+    // ORISO-Admin#988: the two group cards' own masters, separate from featureGroupChatV2Enabled.
+    featureInternalGroupChatEnabled: true,
+    featureSelfHelpGroupsEnabled: true,
     featureCallsEnabled: true,
     featureSupervisionEnabled: true,
     featureSupervisionAnonymousChatsEnabled: true,
@@ -81,6 +84,9 @@ export const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, st
         'featureAudioCallsGroupChatsEnabled',
         'featureVoiceMessagesGroupChatsEnabled',
         'featureThreadsGroupChatsEnabled',
+        // ORISO-Admin#988: both group formats are locked off with the group chat family.
+        'featureInternalGroupChatEnabled',
+        'featureSelfHelpGroupsEnabled',
     ],
     calls: ['featureCallsEnabled'],
     supervision: [
