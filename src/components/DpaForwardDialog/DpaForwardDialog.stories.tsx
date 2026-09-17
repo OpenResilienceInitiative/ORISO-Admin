@@ -87,7 +87,9 @@ export const CanonicalForwardedMail: Story = {
 
         const frame = (await body.findByTitle(/Vorschau der E-Mail|Preview of the e-mail/)) as HTMLIFrameElement;
         await waitFor(() => {
-            const mail = frame.contentDocument?.body?.innerText ?? '';
+            const mailBody = frame.contentDocument?.body;
+            expect(mailBody).not.toBeNull();
+            const mail = mailBody?.textContent ?? '';
             expect(mail).toContain('Musterträger Nord');
             expect(mail).toContain('Unterlagen ansehen und bestätigen');
             expect(mail).toContain('30.09.2026, 23:59 Uhr');
