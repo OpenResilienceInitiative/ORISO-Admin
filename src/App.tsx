@@ -62,6 +62,7 @@ import {
 } from './pages/lazyPages';
 import { LogsTabsLayout } from './pages/Logs/LogsTabsLayout';
 import { useUserData } from './hooks/useUserData.hook';
+import { useAccountInactivityActivity } from './hooks/useAccountInactivityActivity.hook';
 import { DpaBlockerGate } from './components/DpaBlocker/DpaBlockerGate';
 import { hasMandatoryTwoFactorRole, requiresMandatoryTwoFactor } from './utils/adminTwoFactorGate';
 import { MandatoryTwoFactorSetup } from './pages/Profile/MandatoryTwoFactorSetup';
@@ -73,6 +74,7 @@ const AgencyInitialMeetingRedirect = () => {
 };
 
 export const App = () => {
+    useAccountInactivityActivity();
     const {
         data: publicTenantData,
         isLoading: isPublicTenantLoading,

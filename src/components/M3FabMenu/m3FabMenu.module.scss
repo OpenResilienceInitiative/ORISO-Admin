@@ -161,8 +161,14 @@
     // The shared Admin palette still carries historical inverted container
     // names. Keep the Figma roles local to this component so the policy menu
     // can match M3 without changing unrelated sidebar and field surfaces.
-    --m3-fab-menu-primary-container: var(--oriso-app-action, #cc1e1c);
-    --m3-fab-menu-on-primary-container: var(--oriso-app-accent-light, #ffe2de);
+    //
+    // Only `--m3-*` tokens: applyAdminTheme.ts writes nothing else to the root,
+    // so the previous app-layer binding silently fell back to a fixed red on every
+    // Träger theme (#992). `--m3-primary` is the seeded brand colour the action
+    // FAB and the read-only value button already use; `--m3-primary-container`
+    // is the rose that reads on it (see src/app.css for the inverted naming).
+    --m3-fab-menu-primary-container: var(--m3-primary, #a5000a);
+    --m3-fab-menu-on-primary-container: var(--m3-primary-container, #ffe2de);
     --m3-fab-menu-secondary: var(--m3-secondary, #4c555f);
     --m3-fab-menu-on-secondary-container: var(--m3-on-secondary-container, #e7effc);
 
@@ -191,6 +197,18 @@
         box-shadow: none;
     }
 
+    // Tone per pill, not per menu: "deactivate" and "more information" stay
+    // neutral even while the feature is on, "activate" stays primary even while
+    // it is off (#992).
+    .itemNeutral {
+        background: var(--m3-fab-menu-secondary);
+        color: var(--m3-fab-menu-on-secondary-container);
+    }
+
+    .itemNeutral:focus-visible {
+        background: color-mix(in srgb, var(--m3-fab-menu-on-secondary-container) 8%, var(--m3-fab-menu-secondary));
+    }
+
     .fab {
         background: var(--m3-primary, #a5000a);
         color: var(--m3-fab-menu-on-primary-container);
@@ -204,15 +222,11 @@
     }
 }
 
+// The closed FAB is the value display, so it alone keeps the menu-level tone.
 .action.neutral {
-    .item,
     .fab {
         background: var(--m3-fab-menu-secondary);
         color: var(--m3-fab-menu-on-secondary-container);
-    }
-
-    .item:focus-visible {
-        background: color-mix(in srgb, var(--m3-fab-menu-on-secondary-container) 8%, var(--m3-fab-menu-secondary));
     }
 }
 

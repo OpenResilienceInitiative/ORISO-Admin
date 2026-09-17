@@ -1130,7 +1130,7 @@
         "fileName": "keyboard-arrow-down.svg",
         "sourcePath": "src/resources/img/svg/keyboard-arrow-down.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CustomIcons/EditorIcons.tsx"],
+        "usageFiles": ["src/components/CounsellorAvatarField/index.tsx", "src/components/CustomIcons/EditorIcons.tsx"],
         "usage": "app-used"
     },
     {

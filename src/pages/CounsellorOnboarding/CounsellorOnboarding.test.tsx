@@ -87,7 +87,7 @@ describe('CounsellorOnboarding', () => {
         expect(await screen.findByTestId('counsellor-onboarding-form')).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'cards.advisorAccount.title' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'cards.personalInfo.title' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'cards.avatarName.titleNamesOnly' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'cards.avatarName.title' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'cards.focusTopics.title' })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'cards.actions.next' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'cards.actions.back' })).not.toBeInTheDocument();
@@ -110,9 +110,11 @@ describe('CounsellorOnboarding', () => {
         expect(screen.getByLabelText('cards.personalInfo.firstName')).toBeDisabled();
         await user.type(screen.getByLabelText('cards.personalInfo.position'), 'Leitung');
 
-        // Names only: no avatar grid, no picture upload (arrives with #995).
+        // Avatar step is on (#1047); only the own-picture upload is still missing (#1049).
         expect(screen.queryByText('cards.avatarName.ownPicture')).not.toBeInTheDocument();
         await user.type(screen.getByLabelText('cards.avatarName.publicName'), 'Lena');
+        // The initials tile mirrors the public display name as it is typed.
+        await user.click(screen.getByRole('radio', { name: 'counselor.avatar.initials' }));
         await user.type(screen.getByLabelText('cards.avatarName.internalName'), 'Lena B.');
 
         // The coverage arrives preselected as chips; one is removed via its x,
@@ -128,12 +130,46 @@ describe('CounsellorOnboarding', () => {
                 account: { username: 'lena_b', password: 'SecurePass1!' },
                 person: { salutation: undefined, position: 'Leitung', title: undefined },
                 names: { publicName: 'Lena', internalDisplayName: 'Lena B.' },
+                avatar: { kind: 'INITIALS' },
                 topicIds: [12, 14],
             }),
         );
 
         // The mandatory 2FA step follows the registration.
         expect(await screen.findByText('counsellorOnboarding.twoFactor.title')).toBeInTheDocument();
+    });
+
+    it('sends the chosen motif, and no avatar block at all when nothing was picked', async () => {
+        const client = createClient();
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        // t is mocked to the raw key, so every motif tile shares one label — take the first.
+        await user.click(screen.getAllByRole('radio', { name: 'counselor.avatar.motif' })[0]);
+        await user.click(submit());
+
+        await waitFor(() =>
+            expect(client.registerCounsellor).toHaveBeenCalledWith(
+                'raw-token',
+                expect.objectContaining({ avatar: { kind: 'ICON', id: expect.any(String) } }),
+            ),
+        );
+    });
+
+    it('omits the avatar entirely when the invitee picks nothing', async () => {
+        const client = createClient();
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.click(submit());
+
+        await waitFor(() => expect(client.registerCounsellor).toHaveBeenCalled());
+        const [, request] = (client.registerCounsellor as ReturnType<typeof vi.fn>).mock.calls[0];
+        expect(request).not.toHaveProperty('avatar');
     });
 
     it('does not register while required fields are missing and shows the hint instead', async () => {
