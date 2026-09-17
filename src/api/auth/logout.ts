@@ -2,6 +2,7 @@ import { removeAllCookies } from './accessSessionCookie';
 import apiKeycloakLogout from './apiLogoutKeycloak';
 import { removeTokenExpiryFromLocalStorage } from './accessSessionLocalStorage';
 import { invalidateAuthSession } from './invalidateAuthSession';
+import { clearAdminLocalStorage } from './clearAdminWebStorage';
 import routePathNames from '../../appConfig';
 
 let isRequestInProgress = false;
@@ -28,7 +29,7 @@ const logout = (withRedirect = true, redirectUrl?: string): any => {
     }
     isRequestInProgress = true;
     const clearUserData = () => {
-        localStorage.clear();
+        clearAdminLocalStorage();
         sessionStorage.clear();
     };
 

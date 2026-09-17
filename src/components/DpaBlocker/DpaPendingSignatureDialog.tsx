@@ -19,6 +19,8 @@ export interface DpaPendingSignatureDialogProps {
     initialLink?: DpaForwardLink;
     /** Sends the DPA_FORWARD mail again (or to a different address). */
     forward: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
+    /** Tenant whose canonical DPA forward mail is rendered. */
+    tenantId?: number;
     /**
      * "Abmelden" — the ONLY way off this screen (JOB7). There is no dismiss:
      * an unsigned tenant may not use the platform, so the dialog is a gate,
@@ -52,6 +54,7 @@ export const DpaPendingSignatureDialog = ({
     ensureSignLink,
     initialLink,
     forward,
+    tenantId,
     onLogout,
     onForwardCompleted,
     recheckRejected = false,
@@ -83,6 +86,7 @@ export const DpaPendingSignatureDialog = ({
         return (
             <DpaForwardDialog
                 forward={forward}
+                tenantId={tenantId}
                 // Shown after login on an authenticated admin surface, so the
                 // admin-only branded mail preview is reachable here.
                 surface="admin"

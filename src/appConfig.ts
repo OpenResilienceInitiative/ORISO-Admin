@@ -60,6 +60,7 @@ export const tenantAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/t
 export const twoFactorAuth = `${userServiceURL}/service/users/2fa`;
 export const twoFactorAuthApp = `${userServiceURL}/service/users/2fa/app`;
 export const twoFactorAuthAppEmail = `${userServiceURL}/service/users/2fa/email`;
+export const accountInactivityActivityEndpoint = `${userServiceURL}/service/users/account-inactivity/activity`;
 export const userDataEndpoint = `${userServiceURL}/service/users/data`;
 export const userAdminDataEndpoint = `${userServiceURL}/service/useradmin/data`;
 export const userPasswordChangeEndpoint = `${userServiceURL}/service/users/password/change`;
@@ -85,6 +86,7 @@ export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/inviteli
 export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;
 export const inviteEmailTemplatesEndpoint = `${userServiceURL}/service/useradmin/invite-email-templates`;
 export const dpaInviteEmailEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/email`;
+export const dpaInvitePreviewEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/preview`;
 export const XHRheader = { AcceptLanguage: 'de' };
 
 /*

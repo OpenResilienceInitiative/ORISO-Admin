@@ -1,0 +1,38 @@
+@use '../../styles/monochromeGlyph' as glyph;
+
+/*
+ * Counsellor avatar — CI-conform by construction (owner decision 2026-09-17,
+ * revised the same day after comparing both apps).
+ *
+ * Motif and initials are a LIGHT glyph on the SATURATED brand red, matching
+ * what ORISO-Frontend already renders to advice seekers. The app gets there via
+ * `primary-container`, which IT resolves to #cc1e1c/#ffe2de; this repo resolves
+ * that same role to the pale rose #ffe2de (see the role note in `src/app.css`),
+ * so here the `primary`/`on-primary` pair is the one that carries the saturated
+ * red. Tokens either way, so a tenant scheme still moves the avatar — never a
+ * colour hash. The multi-coloured advice-seeker set stays separate: that one is
+ * an anonymity device, this one carries the operator's brand.
+ */
+
+.avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--m3-primary, #a5000a);
+    color: var(--m3-on-primary, #ffffff);
+    font-weight: 600;
+    line-height: 1;
+    user-select: none;
+    flex-shrink: 0;
+
+    @include glyph.recolour-to-current-color;
+
+    /* The 24x24 source art carries its own margin, so 65% is what reads as a
+       motif at every size the app uses. */
+
+    svg {
+        width: 65%;
+        height: 65%;
+    }
+}

@@ -9,7 +9,6 @@ import { Modal } from '../Modal';
 import { M3Button } from '../M3Button';
 import { FieldGrid } from '../FieldGrid';
 import { MuiFormField } from '../mui/MuiFormField';
-import { EmailKitPreview } from '../PlaceholderTemplate/EmailKitPreview';
 import {
     DpaForwardError,
     DpaForwardFailureKind,
@@ -17,8 +16,7 @@ import {
     DpaForwardOutcome,
 } from '../../api/tenantOnboarding/dpaForward';
 import { CopyLinkRow } from './CopyLinkRow';
-import { PlainMailPreview } from './PlainMailPreview';
-import { buildForwardMailPreview } from './forwardMailPreview';
+import { DpaCanonicalMailPreview } from './DpaCanonicalMailPreview';
 import styles from './styles.module.scss';
 
 export interface DpaForwardResult {
@@ -30,12 +28,8 @@ export interface DpaForwardResult {
 }
 
 /**
- * Which surface hosts the dialog. This is not cosmetic: `'admin'` unlocks the
- * backend-rendered branded mail preview, which comes from the ADMIN-ONLY
- * endpoint `POST /service/useradmin/invite-email-templates/preview`.
- *
- * The default is `'public'` — a host that declares nothing gets the plain-text
- * preview, never a logout. See {@link DpaForwardDialogProps.surface}.
+ * Which canonical preview endpoint the host may use: public onboarding uses its
+ * opaque invite token; authenticated admin screens use their tenant ID.
  */
 export type DpaForwardSurface = 'public' | 'admin';
 
@@ -54,19 +48,15 @@ export interface DpaForwardDialogProps {
     /**
      * Declares whether the host is an authenticated admin surface.
      *
-     * On `'admin'` the mail preview is rendered by the backend's own mail
-     * renderer, so the preview and the sent mail cannot drift. On `'public'`
-     * (the default) that request is not issued at all: the endpoint is
-     * admin-only and answers 401 to an anonymous visitor, and `fetchData` turns
-     * a 401 on a credentialled call into refresh → logout → `/admin/login`.
-     * That is #712 — the public onboarding visitor was thrown onto the admin
-     * login page about half a second after opening this dialog, and could never
-     * type a recipient address.
-     *
-     * Defaulting to `'public'` keeps the failure mode safe: forgetting the prop
-     * costs a branded preview, never a session.
+     * Both surfaces receive the exact no-send document from UserService. Public
+     * requests use the anonymous token-scoped endpoint; admin requests use the
+     * authenticated tenant-scoped endpoint.
      */
     surface?: DpaForwardSurface;
+    /** Opaque public-onboarding credential used only for the read-only preview. */
+    inviteToken?: string;
+    /** Tenant selected by an authenticated admin for the read-only preview. */
+    tenantId?: number;
     /** Keep the forwarding dialog and its close guard above the host overlay. */
     zIndex?: number;
     titleKey?: string;
@@ -103,9 +93,8 @@ const failureKey = (error: unknown): string =>
  * The sign link is the primary artefact: copyable for any channel, with the
  * note that it stays valid until the contract is signed no matter where it is
  * shared. The e-mail send is optional and shows the actual DPA_FORWARD mail
- * before anything goes out — through the backend's own mail renderer on an
- * admin surface, and as plain text on the public one (see {@link
- * DpaForwardDialogProps.surface}).
+ * before anything goes out, through the backend's own renderer on both surfaces
+ * (see {@link DpaForwardDialogProps.surface}).
  *
  * **Links are minted on demand, never on open (#712).** Only five links may be
  * outstanding per onboarding (14-day TTL) and every issued one stays valid until
@@ -122,6 +111,8 @@ export const DpaForwardDialog = ({
     onClose,
     onForwarded,
     surface = 'public',
+    inviteToken,
+    tenantId,
     zIndex,
     titleKey = 'dpaForward.dialog.title',
     descriptionKey = 'dpaForward.dialog.description',
@@ -133,7 +124,6 @@ export const DpaForwardDialog = ({
     const [sendErrorKey, setSendErrorKey] = useState<string>(FAILURE_MESSAGE.TECHNICAL);
     const [sentTo, setSentTo] = useState<string | null>(null);
     const [mailFailed, setMailFailed] = useState(false);
-    const [recipientName, setRecipientName] = useState('');
     const [closeGuardOpen, setCloseGuardOpen] = useState(false);
     // The authenticated UserService endpoint has no recipient-name field. Only
     // the public onboarding endpoint may promise a personalised salutation.
@@ -207,13 +197,6 @@ export const DpaForwardDialog = ({
         }
     };
 
-    // The preview shows the REAL mail: the actual link once it exists, and the
-    // salutation the recipient will see — never a raw {{token}}.
-    const preview = buildForwardMailPreview(t, {
-        recipientName: supportsRecipientName ? recipientName : '',
-        signUrl: link?.signUrl ?? null,
-    });
-
     return (
         <>
             <Modal
@@ -242,8 +225,7 @@ export const DpaForwardDialog = ({
                             layout="vertical"
                             requiredMark={false}
                             onFinish={submitEmail}
-                            onValuesChange={(_, values) => {
-                                setRecipientName(values.recipientName ?? '');
+                            onValuesChange={() => {
                                 if (sendState === 'failed') setSendState('idle');
                             }}
                             initialValues={{ recipientName: '', recipientEmail: '' }}
@@ -310,35 +292,13 @@ export const DpaForwardDialog = ({
                             </div>
                         </Form>
 
-                        {/* The branded render is an ADMIN-ONLY backend call. Issuing
-                        it from the public wizard 401s and logs the anonymous
-                        visitor out (#712), so the public surface previews the
-                        wording it composed itself instead. */}
                         <div className={styles.preview}>
-                            {/* The kind is what makes this the FORWARD mail rather than a
-                            generic invite. Without it the backend renderer defaults to
-                            TENANT_INVITE (`InviteEmailPreviewService`: a null kind falls
-                            back to TENANT_INVITE), so the sample call-to-action pointed
-                            at the admin console — `admin.oriso.org/admin/tenant-onboarding/…`
-                            — while a DPA signer is sent to the app host instead. The
-                            house frame around the mail, and with it the footer (brand
-                            name, Impressum · Datenschutz, automated-send note), is
-                            applied by the backend for every kind; it is not something
-                            this dialog composes. */}
-                            {surface === 'admin' ? (
-                                <EmailKitPreview
-                                    kind="DPA_FORWARD"
-                                    subject={preview.subject}
-                                    body={preview.body}
-                                    previewLabel={t('dpaForward.dialog.previewLabel')}
-                                />
-                            ) : (
-                                <PlainMailPreview
-                                    subject={preview.subject}
-                                    body={preview.body}
-                                    previewLabel={t('dpaForward.dialog.previewLabel')}
-                                />
-                            )}
+                            <DpaCanonicalMailPreview
+                                surface={surface}
+                                inviteToken={inviteToken}
+                                tenantId={tenantId}
+                                previewLabel={t('dpaForward.dialog.previewLabel')}
+                            />
                         </div>
                     </div>
 

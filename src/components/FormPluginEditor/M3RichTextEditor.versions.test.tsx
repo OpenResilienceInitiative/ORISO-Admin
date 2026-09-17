@@ -87,6 +87,22 @@ describe('M3RichTextEditor — version dates from publishedAt (#812)', () => {
 });
 
 describe('M3RichTextEditor — version select (#268)', () => {
+    it('shows an unsupported-history status instead of the never-published menu', () => {
+        render(
+            <M3RichTextEditor
+                title="Datenschutz"
+                value="<p>Aktuelle Fassung</p>"
+                versionHistoryState="unsupported"
+                versionHistoryStatusLabel="Versionsverlauf nicht verfügbar"
+                enableAnchors={false}
+            />,
+        );
+
+        expect(screen.getByRole('status')).toHaveTextContent('Versionsverlauf nicht verfügbar');
+        expect(screen.queryByTitle('legal.m3Editor.versionHistory')).not.toBeInTheDocument();
+        expect(screen.queryByText('legal.m3Editor.versionEmpty')).not.toBeInTheDocument();
+    });
+
     it('parses date-only ids as the same local calendar date', () => {
         const parsed = parseVersionDate('2026-07-01');
         expect(parsed).not.toBeNull();

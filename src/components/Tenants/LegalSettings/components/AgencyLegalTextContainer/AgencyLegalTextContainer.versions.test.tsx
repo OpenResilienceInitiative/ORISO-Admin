@@ -12,10 +12,23 @@ vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
 }));
 vi.mock('../../../../../hooks/useDepartmentDpp.hook', () => ({
-    useDepartmentDpp: () => ({ data: undefined, isLoading: false, isError: false, isSuccess: true }),
+    // The payload a never-authored Fachbereich really returns. `undefined` alongside `isSuccess`
+    // is not a shape react-query can produce, and the container now refuses to read a department
+    // out of a success that carried no document at all.
+    useDepartmentDpp: () => ({
+        data: { content: null, publicationStatus: 'DRAFT' },
+        isLoading: false,
+        isError: false,
+        isSuccess: true,
+    }),
 }));
 vi.mock('../../../../../hooks/useDepartmentImprint.hook', () => ({
-    useDepartmentImprint: () => ({ data: undefined, isLoading: false, isError: false, isSuccess: true }),
+    useDepartmentImprint: () => ({
+        data: { content: null, publicationStatus: 'DRAFT' },
+        isLoading: false,
+        isError: false,
+        isSuccess: true,
+    }),
 }));
 vi.mock('../../../../../hooks/usePublishDepartmentDpp.hook', () => ({
     usePublishDepartmentDpp: () => ({ mutate: vi.fn(), isPending: false }),

@@ -39,6 +39,7 @@ import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
 import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
+import { CounsellorAvatarField } from '../../../components/CounsellorAvatarField';
 
 /**
  * antd prefixes every bound control id with the form name, and
@@ -341,6 +342,10 @@ export const UserEditOrAdd = () => {
             salutation: consultantById.salutation || undefined,
             position: consultantById.position || '',
             title: consultantById.title || '',
+            // #1046: both stay undefined for a consultant who never chose, so an
+            // untouched form omits them and the backend keeps whatever it has.
+            avatarKind: consultantById.avatarKind || undefined,
+            avatarId: consultantById.avatarId || undefined,
             ...(canManageAdminRemarks ? { adminRemarks: consultantById.adminRemarks || '' } : {}),
             // The standing supervisor comes from the same record and belongs in the same sync.
             // antd applies `initialValues` once, at mount, and this query is invalidated on every
@@ -581,6 +586,43 @@ export const UserEditOrAdd = () => {
                                         />
 
                                         {/*
+                                          Counsellor avatar (#1046). One antd field holds the
+                                          whole choice: `avatarKind` is the stored kind and
+                                          `avatarId` the motif id, kept in lockstep by
+                                          `normaliseAvatarValue` so a half choice can never be
+                                          submitted. The initials preview follows the PUBLIC
+                                          display name as it is typed — that is the name the
+                                          advice seeker sees next to the avatar.
+                                        */}
+                                        <Form.Item label={t('counselor.avatar')} shouldUpdate>
+                                            {({ getFieldValue, setFieldsValue }) => (
+                                                <CounsellorAvatarField
+                                                    value={{
+                                                        avatarKind: getFieldValue('avatarKind'),
+                                                        avatarId: getFieldValue('avatarId'),
+                                                    }}
+                                                    disabled={isReadOnly}
+                                                    displayName={getFieldValue('displayName')}
+                                                    firstname={getFieldValue('firstname')}
+                                                    lastname={getFieldValue('lastname')}
+                                                    onChange={(avatar) =>
+                                                        setFieldsValue({
+                                                            avatarKind: avatar.avatarKind,
+                                                            avatarId: avatar.avatarId,
+                                                        })
+                                                    }
+                                                />
+                                            )}
+                                        </Form.Item>
+                                        {/* Value carriers only — the picker above is the control. */}
+                                        <Form.Item name="avatarKind" hidden>
+                                            <input type="hidden" />
+                                        </Form.Item>
+                                        <Form.Item name="avatarId" hidden>
+                                            <input type="hidden" />
+                                        </Form.Item>
+
+                                        {/*
                                           Deliberately not clearable. Clearing the select yields
                                           `undefined`, which the API layer omits and the backend
                                           reads as "leave unchanged" — so the clear affordance
@@ -641,8 +683,8 @@ export const UserEditOrAdd = () => {
                                     label={t('counselor.username')}
                                     placeholder={t('placeholder.username')}
                                     disabled={isEditing}
-                                    helpText={t('message.error.username.format')}
-                                    rules={usernameFormRules(t)}
+                                    helpText={isEditing ? undefined : t('message.error.username.format')}
+                                    rules={isEditing ? undefined : usernameFormRules(t)}
                                 />
 
                                 {!isEditing &&

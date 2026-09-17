@@ -62,9 +62,21 @@ describe('getLegalTextVersions', () => {
         );
     });
 
-    it('reports a 404 as an empty history — the endpoint has not shipped on this level yet', async () => {
+    it('reports the unimplemented tenant 404 as unsupported instead of claiming the history is empty', async () => {
         fetchData.mockRejectedValueOnce(new Error('NO_MATCH'));
-        await expect(getLegalTextVersions(scope)).resolves.toEqual([]);
+        await expect(getLegalTextVersions({ level: 'tenant', tenantId: 7, kind: 'DPP' })).resolves.toEqual({
+            state: 'unsupported',
+        });
+    });
+
+    it('keeps an agency or department 404 as an error rather than guessing its availability', async () => {
+        fetchData.mockRejectedValueOnce(new Error('NO_MATCH'));
+        await expect(getLegalTextVersions(scope)).rejects.toBeDefined();
+    });
+
+    it('keeps a successful empty collection distinct from an unsupported endpoint', async () => {
+        fetchData.mockResolvedValueOnce([]);
+        await expect(getLegalTextVersions(scope)).resolves.toEqual({ state: 'available', versions: [] });
     });
 
     it.each([

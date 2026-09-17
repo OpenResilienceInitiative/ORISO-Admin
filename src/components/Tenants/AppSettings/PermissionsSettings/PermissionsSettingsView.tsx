@@ -153,6 +153,7 @@ export const PermissionsSettingsView = ({
                                             <Card
                                                 headerIcon={<CardIcon width={40} height={40} />}
                                                 titleKey={card.titleKey}
+                                                dataTestId={`chat-type-card-${card.key}`}
                                             >
                                                 <p className={styles.cardDescription}>
                                                     <InfoIcon
@@ -200,11 +201,15 @@ export const PermissionsSettingsView = ({
                                                     )}
                                                 </div>
 
-                                                <div className={styles.cardDivider} />
+                                                {card.toggles.length > 0 && (
+                                                    <>
+                                                        <div className={styles.cardDivider} />
 
-                                                <div className={styles.togglesSectionLabel}>
-                                                    {t('tenants.permissions.card.configurableFeatures')}
-                                                </div>
+                                                        <div className={styles.togglesSectionLabel}>
+                                                            {t('tenants.permissions.card.configurableFeatures')}
+                                                        </div>
+                                                    </>
+                                                )}
 
                                                 <div className={styles.togglesList}>
                                                     {card.toggles.map((toggle) => {
