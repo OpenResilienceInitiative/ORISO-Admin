@@ -41,6 +41,8 @@ export interface DpaBlockerProps {
     onSign?: (data: DpaBlockerSignData) => void;
     /** Delegates the signature to an authorised signer without accepting it locally. */
     onForward?: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
+    /** Tenant whose canonical DPA forward mail is rendered. */
+    tenantId?: number;
     /** Hands the created link back before refreshing into the pending gate. */
     onForwarded?: (result: DpaForwardResult) => void;
     /**
@@ -96,6 +98,7 @@ export const DpaBlocker = ({
     signFailed = false,
     onSign,
     onForward,
+    tenantId,
     onForwarded,
     onForwardOpenChange,
     signerDefaults,
@@ -310,6 +313,7 @@ export const DpaBlocker = ({
                 {forwardOpen && onForward && (
                     <DpaForwardDialog
                         forward={onForward}
+                        tenantId={tenantId}
                         surface="admin"
                         zIndex={1400}
                         onClose={() => setForwardOpen(false)}

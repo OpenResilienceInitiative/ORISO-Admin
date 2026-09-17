@@ -4,6 +4,7 @@ import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { PHONE_390 } from '../DpaLegalForm/dpaStoryText';
 import { DpaPendingSignatureDialog } from './DpaPendingSignatureDialog';
 import { DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
+import { dpaMailPreviewStoryHandlers } from '../DpaForwardDialog/dpaMailPreviewStory';
 
 const LINK = {
     signUrl: 'https://app.oriso-dev.site/dpa-sign/3f2c6d1e-8b1a-4b8e-9f47-demoforward',
@@ -28,7 +29,7 @@ const wait = (ms: number) =>
 const meta = {
     title: 'Organisms/DpaBlocker/PendingSignatureDialog',
     component: DpaPendingSignatureDialog,
-    parameters: { layout: 'fullscreen' },
+    parameters: { layout: 'fullscreen', msw: { handlers: dpaMailPreviewStoryHandlers } },
     decorators: [
         (Story) => (
             <ThemeProvider theme={orisoMuiTheme}>
@@ -49,6 +50,7 @@ const meta = {
         },
         onDismiss: () => {},
         onForwardCompleted: () => {},
+        tenantId: 42,
     },
 } satisfies Meta<typeof DpaPendingSignatureDialog>;
 
