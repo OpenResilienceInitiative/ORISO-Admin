@@ -20,6 +20,7 @@ import { LegalTextKind } from '../../../../../types/legalVersion';
 import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '../DepartmentSelect';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
+import type { ConsentUnavailableReason } from '../../utils/consentUnavailable';
 import styles from './styles.module.scss';
 
 type LegalField = 'privacy' | 'imprint';
@@ -240,6 +241,31 @@ export const AgencyLegalTextContainer = ({
     const ownConsentByLanguage = forkSeedsConsent ? departmentConsent : undefined;
     const consentInheritedFrom =
         forkSeedsConsent && agencyWideConsent !== undefined ? t('legal.consent.level.agency') : undefined;
+    /**
+     * Why the consent editor is not on offer (#914) — the card cannot work this out from
+     * `consentByLanguage === undefined` alone, because that one value carries three
+     * different situations and only two of them are worth explaining:
+     *
+     * - no Fachbereich exists at all: the switcher does not render, the selection is stuck
+     *   on the agency-wide entry, and the consent editor is unreachable for good — the case
+     *   the operator disclaimer is written for;
+     * - "Alle Fachbereiche" with Fachbereiche present: consent-free by decision (#862), and
+     *   one click away from being editable;
+     * - a Fachbereich IS selected but the backend carries no `consentText` field: an older
+     *   deployment, not an admin's doing. Nothing to explain and nothing to promise, so the
+     *   slot stays empty exactly as before.
+     */
+    const consentUnavailableReason = useMemo<ConsentUnavailableReason | undefined>(() => {
+        // "No Fachbereich" is a legal claim about a specific Beratungsstelle, so it waits
+        // for that record: an agency still loading also has an empty topic list.
+        if (!agencyData || field !== 'privacy' || consentByLanguage !== undefined) {
+            return undefined;
+        }
+        if (departments.length === 0) {
+            return 'noDepartments';
+        }
+        return isDepartment ? undefined : 'allDepartments';
+    }, [agencyData, field, consentByLanguage, departments.length, isDepartment]);
 
     const languages = useMemo(
         () => getEditableLanguages(tenantAdminData?.settings?.activeLanguages, contentByLanguage),
@@ -331,6 +357,7 @@ export const AgencyLegalTextContainer = ({
             departmentName={selectedDepartment?.name}
             initialContentByLanguage={contentByLanguage}
             consentByLanguage={consentByLanguage}
+            consentUnavailableReason={consentUnavailableReason}
             consentInheritedFrom={consentInheritedFrom}
             ownConsentByLanguage={ownConsentByLanguage}
             languages={languages}

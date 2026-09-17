@@ -6,10 +6,12 @@ import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor'
 import { TemplateSplitButton } from '../../../../PlaceholderTemplate';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { LegalConsentField } from '../LegalConsentField';
+import { ConsentUnavailableNotice } from '../ConsentUnavailableNotice';
 import { PublishSourceWarningModal } from '../PublishSourceWarningModal';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
 import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
+import type { ConsentUnavailableReason } from '../../utils/consentUnavailable';
 import { toEditorVersions } from '../../utils/legalVersionOptions';
 import { useConsentTemplates } from '../../hooks/useConsentTemplates';
 import { useViewedLegalVersion } from '../../hooks/useViewedLegalVersion';
@@ -67,6 +69,17 @@ interface DepartmentDataProtectionCardProps {
      */
     consentByLanguage?: Record<string, string>;
     /**
+     * Why the consent sentence cannot be edited for the CURRENT selection (#914).
+     * Set it and the consent trigger's place holds a muted stand-in that explains
+     * itself when pressed, instead of standing empty; leave it out and the slot
+     * behaves exactly as before — which is what a backend that does not carry
+     * `consentText` yet must keep getting.
+     *
+     * Ignored while the consent editor is offered, and on the imprint, which never
+     * has a consent gate (ADR-021 decision 7).
+     */
+    consentUnavailableReason?: ConsentUnavailableReason;
+    /**
      * Name of the level the consent sentence is inherited FROM (e.g. the Träger), shown as a notice
      * on the languages this level has not overridden. Together with `ownConsentByLanguage` — the
      * overrides that exist at THIS level — the card can answer the question per language, which the
@@ -121,6 +134,7 @@ export const DepartmentDataProtectionCard = ({
     versions = [],
     versionsUnavailable = false,
     consentByLanguage,
+    consentUnavailableReason,
     consentInheritedFrom,
     ownConsentByLanguage,
     readOnly = false,
@@ -131,6 +145,9 @@ export const DepartmentDataProtectionCard = ({
     // The consent sentence belongs to the policy, never to the imprint (ADR-021
     // decision 7 — the imprint is an information duty and never a consent gate).
     const consentEnabled = documentType === 'privacy' && consentByLanguage !== undefined;
+    // The stand-in only ever replaces a consent control that would otherwise be
+    // there: never on the imprint, and never next to the live editor.
+    const consentUnavailable = documentType === 'privacy' && !consentEnabled ? consentUnavailableReason : undefined;
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
     const [consentTemplateId, setConsentTemplateId] = useState<number | string | undefined>(undefined);
     const [consentDialogOpen, setConsentDialogOpen] = useState(false);
@@ -226,6 +243,32 @@ export const DepartmentDataProtectionCard = ({
         setConsentEdits((current) => ({ ...current, [activeLanguage]: template.values.text }));
     };
 
+    /*
+     * The function bar's consent segment: the live chooser, or — where the consent
+     * sentence cannot be edited for the current selection — the stand-in that says
+     * why (#914). Nothing to edit is still something to say, so the segment no
+     * longer collapses to nothing.
+     */
+    let consentControl: React.ReactNode;
+    if (consentUnavailable) {
+        consentControl = <ConsentUnavailableNotice reason={consentUnavailable} language={activeLanguage} />;
+    } else if (consentEnabled) {
+        consentControl = (
+            <TemplateSplitButton
+                activeTemplateId={consentTemplateId}
+                disabled={consentLocked}
+                label={t('legal.consent.editButton')}
+                mainTestId="consent-edit-trigger"
+                mainDataMissingToken={blockedLanguages.length > 0}
+                mainInvalid={blockedLanguages.length > 0}
+                mainDescribedBy={blockedLanguages.length > 0 ? consentBlockedId : undefined}
+                templates={consentTemplates}
+                onMainClick={() => setConsentDialogOpen(true)}
+                onSelectTemplate={applyConsentTemplate}
+            />
+        );
+    }
+
     return (
         <div className={styles.card}>
             <M3RichTextEditor
@@ -260,23 +303,9 @@ export const DepartmentDataProtectionCard = ({
                    so its template chooser belongs in this editor's function bar —
                    agency level only, by the owner's decision of 2026-08-19. It stays
                    visible but inert on read-only and archived surfaces: hiding it
-                   would also hide that this level offers templates at all. */
-                consentSlot={
-                    consentEnabled ? (
-                        <TemplateSplitButton
-                            activeTemplateId={consentTemplateId}
-                            disabled={consentLocked}
-                            label={t('legal.consent.editButton')}
-                            mainTestId="consent-edit-trigger"
-                            mainDataMissingToken={blockedLanguages.length > 0}
-                            mainInvalid={blockedLanguages.length > 0}
-                            mainDescribedBy={blockedLanguages.length > 0 ? consentBlockedId : undefined}
-                            templates={consentTemplates}
-                            onMainClick={() => setConsentDialogOpen(true)}
-                            onSelectTemplate={applyConsentTemplate}
-                        />
-                    ) : undefined
-                }
+                   would also hide that this level offers templates at all. The
+                   control itself is built above, as `consentControl`. */
+                consentSlot={consentControl}
                 topicSlot={
                     consentEnabled || departmentSlot ? (
                         <>
