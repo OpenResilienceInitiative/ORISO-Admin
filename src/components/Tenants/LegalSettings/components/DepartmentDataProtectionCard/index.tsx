@@ -98,6 +98,8 @@ interface DepartmentDataProtectionCardProps {
     onTranslate?: (request: TranslateRequest) => Promise<TranslateResponse>;
     /** Selects the legal document presentation while retaining the shared publication workflow. */
     documentType?: 'privacy' | 'imprint';
+    /** Selects whether the document belongs to the whole agency or one concrete department. */
+    documentScope?: 'agency' | 'department';
     /**
      * Fachbereich switcher for the editor's lower function bar, between language and version
      * (Figma 1261:52149). Absent when the card edits a single fixed department.
@@ -130,6 +132,7 @@ export const DepartmentDataProtectionCard = ({
     saving,
     onTranslate,
     documentType = 'privacy',
+    documentScope = 'department',
     departmentSlot,
     versions = [],
     versionsUnavailable = false,
@@ -142,6 +145,8 @@ export const DepartmentDataProtectionCard = ({
     const { t, i18n } = useTranslation();
     const locale = i18n?.language?.split('-')[0] || 'de';
     const published = publicationStatus === 'PUBLISHED';
+    const documentKeyPrefix = documentScope === 'agency' ? 'tenants.legal.agency' : 'tenants.legal.department';
+    const documentKeySuffix = documentType === 'imprint' ? 'Imprint' : 'DataProtection';
     // The consent sentence belongs to the policy, never to the imprint (ADR-021
     // decision 7 — the imprint is an information duty and never a consent gate).
     const consentEnabled = documentType === 'privacy' && consentByLanguage !== undefined;
@@ -272,11 +277,7 @@ export const DepartmentDataProtectionCard = ({
     return (
         <div className={styles.card}>
             <M3RichTextEditor
-                title={t(
-                    documentType === 'imprint'
-                        ? 'tenants.legal.departmentImprint.title'
-                        : 'tenants.legal.departmentDataProtection.title',
-                )}
+                title={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
                 icon={documentType === 'imprint' ? ImprintIcon : GdprIcon}
                 value={currentContent}
                 readOnly={readOnly}
@@ -348,11 +349,7 @@ export const DepartmentDataProtectionCard = ({
                             </Tag>
                         </div>
                         <p className={styles.description}>
-                            {t(
-                                documentType === 'imprint'
-                                    ? 'tenants.legal.departmentImprint.description'
-                                    : 'tenants.legal.departmentDataProtection.description',
-                            )}
+                            {t(`${documentKeyPrefix}${documentKeySuffix}.description`)}
                         </p>
                     </>
                 }

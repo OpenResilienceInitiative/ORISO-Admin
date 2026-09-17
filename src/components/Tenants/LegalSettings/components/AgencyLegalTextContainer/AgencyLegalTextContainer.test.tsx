@@ -97,6 +97,7 @@ describe('AgencyLegalTextContainer', () => {
 
         expect(screen.getByTestId('legal-editor')).toBeInTheDocument();
         expect(h.card.mock.calls[0][0].initialContentByLanguage).toEqual({ de: '<p>agency wide</p>' });
+        expect(h.card.mock.calls[0][0].documentScope).toBe('agency');
         // No department chosen — the card must not claim a publication status of its own.
         expect(h.card.mock.calls[0][0].publicationStatus).toBeUndefined();
     });
@@ -172,6 +173,7 @@ describe('AgencyLegalTextContainer', () => {
         await selectDepartment('U25 Suizidprävention');
 
         expect(h.card.mock.calls.at(-1)?.[0].initialContentByLanguage).toEqual({ de: '<p>department own</p>' });
+        expect(h.card.mock.calls.at(-1)?.[0].documentScope).toBe('department');
     });
 
     it('seeds a department with no own text from the inherited text', async () => {

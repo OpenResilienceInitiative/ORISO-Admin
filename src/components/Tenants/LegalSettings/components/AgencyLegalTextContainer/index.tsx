@@ -453,6 +453,7 @@ export const AgencyLegalTextContainer = ({
                 isDepartment ? departmentQuery.data?.content ?? '' : agencyEditorGeneration
             }`}
             documentType={field}
+            documentScope={isDepartment ? 'department' : 'agency'}
             departmentName={selectedDepartment?.name}
             initialContentByLanguage={contentByLanguage}
             consentByLanguage={consentByLanguage}
