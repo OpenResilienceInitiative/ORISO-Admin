@@ -12,6 +12,7 @@ import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import styles from './styles.module.scss';
 import { FeatureFlag } from '../../../enums/FeatureFlag';
 import { useFeatureContext } from '../../../context/FeatureContext';
+import { resolveTenantId } from '../../../utils/resolveTenantId';
 
 interface LegalSettingsProps {
     tenantId?: string | number;
@@ -21,7 +22,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
     const { data } = useTenantData();
     const { t } = useTranslation();
     const { isSuperAdmin } = useUserRoles();
-    const finalTenantId = tenantId || `${data.id}`;
+    const finalTenantId = resolveTenantId(tenantId, data.id);
     const { settings } = useAppConfigContext();
     const { isEnabled } = useFeatureContext();
     const { mutate } = useSettingsAdminMutation();
