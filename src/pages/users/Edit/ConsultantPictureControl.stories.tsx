@@ -8,6 +8,7 @@ import i18next from 'i18next';
 import { ConsultantPictureControl, ConsultantPictureControlProps } from './ConsultantPictureControl';
 
 const pictureRoute = '*/service/useradmin/consultants/:consultantId/picture';
+const visibilityRoute = `${pictureRoute}/visibility`;
 // Complete 16x16 RGB PNG, including image data and valid chunk CRCs.
 const png = Uint8Array.from(
     atob(
@@ -22,10 +23,28 @@ const pending = async () => {
     await delay('infinite');
     return new HttpResponse(null, { status: 204 });
 };
-const handlers = (get = loaded, put = () => new HttpResponse(null, { status: 204 })) => [
+// Issue #1049: the publish switch is a sub-resource of the picture, mocked alongside it. The
+// visibility handler keeps its own state so publish-then-withdraw reads back what was written.
+const visibilityHandlers = (initial = true, put = () => new HttpResponse(null, { status: 204 })) => {
+    let internalOnly = initial;
+    return [
+        http.get(visibilityRoute, () => HttpResponse.json({ internalOnly })),
+        http.put(visibilityRoute, async (info) => {
+            const response = await put();
+            if (response.status === 204) internalOnly = (await info.request.json()).internalOnly;
+            return response;
+        }),
+    ];
+};
+const handlers = (
+    get = loaded,
+    put = () => new HttpResponse(null, { status: 204 }),
+    visibility = visibilityHandlers(),
+) => [
     http.get(pictureRoute, get),
     http.put(pictureRoute, put),
     http.delete(pictureRoute, () => new HttpResponse(null, { status: 204 })),
+    ...visibility,
 ];
 
 const PictureStory = (args: ConsultantPictureControlProps) => {
@@ -176,5 +195,87 @@ export const ReadError: Story = {
         await expect(await canvas.findByRole('alert')).toHaveTextContent(label('error.readFailed'));
         await expect(canvas.queryByText(label('empty'))).not.toBeInTheDocument();
         await expect(canvas.queryByText(label('error.unavailable'))).not.toBeInTheDocument();
+    },
+};
+
+const visibilitySwitch = (canvasElement: HTMLElement) =>
+    within(canvasElement).findByRole('switch', { name: i18next.t('counselor.picture.visibility.label') });
+
+export const InternalOnlyByDefault: Story = {
+    parameters: { msw: { handlers: handlers() } },
+    play: async ({ canvasElement }) => {
+        await decodedPreview(canvasElement);
+        const toggle = await visibilitySwitch(canvasElement);
+        await waitFor(() => expect(toggle).toBeEnabled());
+        await expect(toggle).not.toBeChecked();
+        await expect(
+            within(canvasElement).getByText(i18next.t('counselor.picture.visibility.internalHint')),
+        ).toBeVisible();
+    },
+};
+
+export const PublishedToAdviceSeekers: Story = {
+    parameters: { msw: { handlers: handlers(loaded, undefined, visibilityHandlers(false)) } },
+    play: async ({ canvasElement }) => {
+        await decodedPreview(canvasElement);
+        const toggle = await visibilitySwitch(canvasElement);
+        await waitFor(() => expect(toggle).toBeChecked());
+        await expect(
+            within(canvasElement).getByText(i18next.t('counselor.picture.visibility.publicHint')),
+        ).toBeVisible();
+    },
+};
+
+export const PublishThenWithdraw: Story = {
+    parameters: { msw: { handlers: handlers() } },
+    play: async ({ canvasElement }) => {
+        await decodedPreview(canvasElement);
+        const toggle = await visibilitySwitch(canvasElement);
+        await waitFor(() => expect(toggle).toBeEnabled());
+
+        await userEvent.click(toggle);
+        await expect(
+            await within(canvasElement).findByText(i18next.t('counselor.picture.status.published')),
+        ).toBeVisible();
+        await waitFor(() => expect(toggle).toBeChecked());
+
+        await userEvent.click(toggle);
+        await expect(
+            await within(canvasElement).findByText(i18next.t('counselor.picture.status.withdrawn')),
+        ).toBeVisible();
+        // Withdrawal is immediate: the re-read flag, not optimistic local state, drives the switch.
+        await waitFor(() => expect(toggle).not.toBeChecked());
+    },
+};
+
+export const RefusedVisibilityChange: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(
+                loaded,
+                undefined,
+                visibilityHandlers(true, () => new HttpResponse(null, { status: 503 })),
+            ),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        await decodedPreview(canvasElement);
+        const toggle = await visibilitySwitch(canvasElement);
+        await waitFor(() => expect(toggle).toBeEnabled());
+        await userEvent.click(toggle);
+        await expect(
+            await within(canvasElement).findByText(i18next.t('counselor.picture.error.visibilityFailed')),
+        ).toBeVisible();
+        await waitFor(() => expect(toggle).not.toBeChecked());
+    },
+};
+
+export const NoSwitchWithoutAPicture: Story = {
+    parameters: { msw: { handlers: handlers(missing) } },
+    play: async ({ canvasElement }) => {
+        await expect(await within(canvasElement).findByText(label('empty'))).toBeVisible();
+        await expect(
+            within(canvasElement).queryByRole('switch', { name: i18next.t('counselor.picture.visibility.label') }),
+        ).not.toBeInTheDocument();
     },
 };

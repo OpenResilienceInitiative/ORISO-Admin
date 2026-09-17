@@ -117,3 +117,39 @@
     margin-top: 32px;
     gap: 12px;
 }
+
+.pictureField {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.picturePreview {
+    width: 96px;
+    height: 96px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.pictureActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pictureVisibility {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 4px;
+
+    label {
+        cursor: pointer;
+    }
+}
+
+.pictureHint {
+    grid-column: 1 / -1;
+}

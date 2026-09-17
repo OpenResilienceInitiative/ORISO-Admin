@@ -1,9 +1,13 @@
-import { Button, Space } from 'antd';
+import { Button, Space, Switch } from 'antd';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { extractApiErrorReason } from '../../../utils/extractApiErrorMessage';
 import { ConsultantPictureErrorReason } from '../../../api/counselor/consultantPicture';
-import { useConsultantPicture, useConsultantPictureMutations } from '../../../hooks/useConsultantPicture';
+import {
+    useConsultantPicture,
+    useConsultantPictureMutations,
+    useConsultantPictureVisibility,
+} from '../../../hooks/useConsultantPicture';
 import styles from './ConsultantPictureControl.module.scss';
 
 const MAX_BYTES = 5_242_880;
@@ -42,15 +46,20 @@ const PictureControlForOwner = ({
     const restoreFocusRef = useRef(false);
     const activeRef = useRef(true);
     const busyRef = useRef(false);
-    const [pendingAction, setPendingAction] = useState<'upload' | 'remove' | null>(null);
+    const [pendingAction, setPendingAction] = useState<'upload' | 'remove' | 'publish' | null>(null);
     const objectUrlRef = useRef<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [statusKey, setStatusKey] = useState<string | null>(null);
     const [errorKeyValue, setErrorKeyValue] = useState<string | null>(null);
     const picture = useConsultantPicture(consultantId);
-    const { upload, remove } = useConsultantPictureMutations(consultantId);
-    const mutationsDisabled = disabled || pendingDeletion || !!pendingAction || upload.isPending || remove.isPending;
+    const hasStoredPicture = !!consultantId && !picture.isError && !!picture.data;
+    const visibility = useConsultantPictureVisibility(consultantId, hasStoredPicture);
+    const { upload, remove, publish } = useConsultantPictureMutations(consultantId);
+    const mutationsDisabled =
+        disabled || pendingDeletion || !!pendingAction || upload.isPending || remove.isPending || publish.isPending;
+    // Issue #1049: unknown means internal. The switch never claims a picture is public on a guess.
+    const publicToAdviceSeekers = visibility.data === false;
 
     const replacePreview = (blob: Blob | null) => {
         if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
@@ -158,6 +167,28 @@ const PictureControlForOwner = ({
         }
     };
 
+    const changeVisibility = async (nextPublic: boolean) => {
+        if (!consultantId || mutationsDisabled || busyRef.current || !hasStoredPicture) return;
+        busyRef.current = true;
+        setPendingAction('publish');
+        setErrorKeyValue(null);
+        setStatusKey(nextPublic ? 'counselor.picture.status.publishing' : 'counselor.picture.status.withdrawing');
+        try {
+            await publish.mutateAsync(!nextPublic);
+            if (!activeRef.current) return;
+            setStatusKey(nextPublic ? 'counselor.picture.status.published' : 'counselor.picture.status.withdrawn');
+        } catch {
+            if (!activeRef.current) return;
+            setErrorKeyValue('counselor.picture.error.visibilityFailed');
+            setStatusKey(null);
+        } finally {
+            if (activeRef.current) {
+                busyRef.current = false;
+                setPendingAction(null);
+            }
+        }
+    };
+
     let loadErrorKey: string | null = null;
     if (picture.isError) {
         loadErrorKey =
@@ -221,6 +252,26 @@ const PictureControlForOwner = ({
                     </Button>
                 )}
             </Space>
+            {hasStoredPicture && (
+                <div className={styles.visibility}>
+                    <Switch
+                        id="consultant-picture-visibility"
+                        checked={publicToAdviceSeekers}
+                        loading={pendingAction === 'publish'}
+                        disabled={mutationsDisabled || visibility.isPending}
+                        onChange={changeVisibility}
+                        aria-describedby="consultant-picture-visibility-hint"
+                    />
+                    <label htmlFor="consultant-picture-visibility">{t('counselor.picture.visibility.label')}</label>
+                    <p id="consultant-picture-visibility-hint" className={styles.visibilityHint}>
+                        {t(
+                            publicToAdviceSeekers
+                                ? 'counselor.picture.visibility.publicHint'
+                                : 'counselor.picture.visibility.internalHint',
+                        )}
+                    </p>
+                </div>
+            )}
             {pendingDeletion && <p role="status">{t('counselor.picture.deleting')}</p>}
             {feedbackKey && <p role={errorKeyValue || loadErrorKey ? 'alert' : 'status'}>{t(feedbackKey)}</p>}
         </section>

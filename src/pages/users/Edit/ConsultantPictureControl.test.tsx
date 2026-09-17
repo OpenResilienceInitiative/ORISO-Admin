@@ -15,13 +15,24 @@ const mocks = vi.hoisted(() => ({
     },
     upload: { mutateAsync: vi.fn(), isPending: false },
     remove: { mutateAsync: vi.fn(), isPending: false },
+    publish: { mutateAsync: vi.fn(), isPending: false },
+    // Issue #1049: the publish switch. `undefined` = not known yet, which reads as internal.
+    visibility: { data: true as boolean | undefined, isPending: false, isError: false },
 }));
 
-const api = vi.hoisted(() => ({ get: vi.fn(), upload: vi.fn(), remove: vi.fn() }));
+const api = vi.hoisted(() => ({
+    get: vi.fn(),
+    upload: vi.fn(),
+    remove: vi.fn(),
+    getVisibility: vi.fn(),
+    setVisibility: vi.fn(),
+}));
 vi.mock('../../../api/counselor/consultantPicture', () => ({
     getConsultantPicture: api.get,
     uploadConsultantPicture: api.upload,
     removeConsultantPicture: api.remove,
+    getConsultantPictureVisibility: api.getVisibility,
+    setConsultantPictureVisibility: api.setVisibility,
 }));
 
 // Exercise the installed QueryClient, independently of the presentation fixtures above.
@@ -35,7 +46,9 @@ vi.mock('../../../hooks/useConsultantPicture', () => ({
     useConsultantPictureMutations: (id: string) =>
         mocks.realHooks
             ? actualHooks.useConsultantPictureMutations(id)
-            : { upload: mocks.upload, remove: mocks.remove },
+            : { upload: mocks.upload, remove: mocks.remove, publish: mocks.publish },
+    useConsultantPictureVisibility: (id: string, enabled?: boolean) =>
+        mocks.realHooks ? actualHooks.useConsultantPictureVisibility(id, enabled) : mocks.visibility,
 }));
 
 describe('ConsultantPictureControl', () => {
@@ -52,6 +65,8 @@ describe('ConsultantPictureControl', () => {
         };
         mocks.upload.mutateAsync.mockReset();
         mocks.remove.mutateAsync.mockReset();
+        mocks.publish.mutateAsync.mockReset();
+        mocks.visibility = { data: true, isPending: false, isError: false };
         createObjectURL.mockReset();
         revokeObjectURL.mockReset();
         createObjectURL.mockImplementation(() => `blob:preview-${createObjectURL.mock.calls.length}`);
@@ -439,6 +454,75 @@ describe('ConsultantPictureControl', () => {
         expect(screen.getByLabelText('counselor.picture.choose')).toBeDisabled();
         expect(screen.getByRole('button', { name: 'counselor.picture.remove' })).toBeDisabled();
         expect(screen.getByRole('status')).toHaveTextContent('counselor.picture.deleting');
+    });
+    describe('#1049 publish switch', () => {
+        const switchName = 'counselor.picture.visibility.label';
+
+        it('offers no switch until a stored picture exists', () => {
+            mocks.picture = { data: null, isPending: false, isError: false, error: null };
+            const { rerender } = render(
+                <ConsultantPictureControl consultantId="42" disabled={false} pendingDeletion={false} />,
+            );
+            expect(screen.queryByRole('switch', { name: switchName })).not.toBeInTheDocument();
+
+            mocks.picture = {
+                data: new Blob(['clean'], { type: 'image/png' }),
+                isPending: false,
+                isError: false,
+                error: null,
+            };
+            rerender(<ConsultantPictureControl consultantId="42" disabled={false} pendingDeletion={false} />);
+            expect(screen.getByRole('switch', { name: switchName })).toBeInTheDocument();
+        });
+
+        it('shows the picture as internal while the stored decision is unknown', () => {
+            mocks.visibility = { data: undefined, isPending: true, isError: false };
+            render(<ConsultantPictureControl consultantId="42" disabled={false} pendingDeletion={false} />);
+            const toggle = screen.getByRole('switch', { name: switchName });
+            expect(toggle).not.toBeChecked();
+            expect(toggle).toBeDisabled();
+            expect(screen.getByText('counselor.picture.visibility.internalHint')).toBeInTheDocument();
+        });
+
+        it('publishes and withdraws, writing the inverse flag each time', async () => {
+            const user = userEvent.setup();
+            mocks.publish.mutateAsync.mockResolvedValue(undefined);
+            const { rerender } = render(
+                <ConsultantPictureControl consultantId="42" disabled={false} pendingDeletion={false} />,
+            );
+            await user.click(screen.getByRole('switch', { name: switchName }));
+            await waitFor(() => expect(mocks.publish.mutateAsync).toHaveBeenCalledWith(false));
+            expect(await screen.findByText('counselor.picture.status.published')).toBeInTheDocument();
+
+            mocks.visibility = { data: false, isPending: false, isError: false };
+            rerender(<ConsultantPictureControl consultantId="42" disabled={false} pendingDeletion={false} />);
+            expect(screen.getByRole('switch', { name: switchName })).toBeChecked();
+            expect(screen.getByText('counselor.picture.visibility.publicHint')).toBeInTheDocument();
+
+            await user.click(screen.getByRole('switch', { name: switchName }));
+            await waitFor(() => expect(mocks.publish.mutateAsync).toHaveBeenLastCalledWith(true));
+            expect(await screen.findByText('counselor.picture.status.withdrawn')).toBeInTheDocument();
+        });
+
+        it('reports a refused change as an alert and never as a stored state', async () => {
+            const user = userEvent.setup();
+            mocks.publish.mutateAsync.mockRejectedValue(new Error('nope'));
+            render(<ConsultantPictureControl consultantId="42" disabled={false} pendingDeletion={false} />);
+            await user.click(screen.getByRole('switch', { name: switchName }));
+            await waitFor(() =>
+                expect(screen.getByRole('alert')).toHaveTextContent('counselor.picture.error.visibilityFailed'),
+            );
+            expect(screen.queryByText('counselor.picture.status.published')).not.toBeInTheDocument();
+        });
+
+        it('locks the switch for a read-only form and a person pending deletion', () => {
+            const { rerender } = render(
+                <ConsultantPictureControl consultantId="42" disabled pendingDeletion={false} />,
+            );
+            expect(screen.getByRole('switch', { name: switchName })).toBeDisabled();
+            rerender(<ConsultantPictureControl consultantId="42" disabled={false} pendingDeletion />);
+            expect(screen.getByRole('switch', { name: switchName })).toBeDisabled();
+        });
     });
 });
 

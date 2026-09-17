@@ -44,3 +44,37 @@ export const removeConsultantPicture = (consultantId: string): Promise<Response>
         method: FETCH_METHODS.DELETE,
         responseHandling: pictureResponseHandling,
     });
+
+export const consultantPictureVisibilityUrl = (consultantId: string) =>
+    `${consultantPictureUrl(consultantId)}/visibility`;
+
+/**
+ * Issue #1049: the owner's publish decision. `true` keeps the photo internal to colleagues and
+ * admins, `false` also shows it to advice seekers. A photo without a stored decision (or no photo
+ * at all) answers 404, which reads as the safe default: internal only.
+ */
+export const getConsultantPictureVisibility = async (consultantId: string, signal?: AbortSignal): Promise<boolean> => {
+    try {
+        // fetchData already parses the JSON body of a successful GET.
+        const body = await fetchData({
+            url: consultantPictureVisibilityUrl(consultantId),
+            method: FETCH_METHODS.GET,
+            signal,
+            responseHandling: pictureResponseHandling,
+        });
+        return body?.internalOnly !== false;
+    } catch (error) {
+        if (error instanceof Error && error.message === FETCH_ERRORS.NO_MATCH) {
+            return true;
+        }
+        throw error;
+    }
+};
+
+export const setConsultantPictureVisibility = (consultantId: string, internalOnly: boolean): Promise<Response> =>
+    fetchData({
+        url: consultantPictureVisibilityUrl(consultantId),
+        method: FETCH_METHODS.PUT,
+        bodyData: JSON.stringify({ internalOnly }),
+        responseHandling: pictureResponseHandling,
+    });

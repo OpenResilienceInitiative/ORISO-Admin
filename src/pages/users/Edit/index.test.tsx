@@ -52,7 +52,7 @@ const translations: Record<string, string> = {
     firstname: 'Vorname',
     lastname: 'Nachname',
     email: 'E-Mail',
-    'counselor.picture.title': 'Internes Foto',
+    'counselor.picture.title': 'Foto',
     'counselor.username': 'Benutzername',
     'counselor.password': 'Passwort',
     'counselor.passwordConfirmation': 'Passwort wiederholen',
@@ -305,7 +305,7 @@ const chooseOption = async (
 beforeEach(() => {
     mocks.realMutation = false;
     mocks.realPicture = false;
-    translations['counselor.picture.title'] = 'Internes Foto';
+    translations['counselor.picture.title'] = 'Foto';
     mocks.mutate.mockReset();
     mocks.mutateAsync.mockReset().mockResolvedValue({ id: 'created-42' });
     uploadConsultantPicture.mockReset();
@@ -999,16 +999,13 @@ describe('request ownership with the real account mutation (#1048)', () => {
 });
 
 describe('normal form picture heading (#1048)', () => {
-    it.each(['Internes Foto', 'Internal photo'])(
-        'renders one accessible %s heading with the real Card and control',
-        (title) => {
-            mocks.realPicture = true;
-            translations['counselor.picture.title'] = title;
-            renderForm();
-            expect(screen.getAllByRole('heading', { name: title })).toHaveLength(1);
-            expect(screen.getByRole('region', { name: title })).toBeInTheDocument();
-        },
-    );
+    it.each(['Foto', 'Photo'])('renders one accessible %s heading with the real Card and control', (title) => {
+        mocks.realPicture = true;
+        translations['counselor.picture.title'] = title;
+        renderForm();
+        expect(screen.getAllByRole('heading', { name: title })).toHaveLength(1);
+        expect(screen.getByRole('region', { name: title })).toBeInTheDocument();
+    });
 });
 
 describe('picture deletion guards with independent list and detail records (#1048)', () => {

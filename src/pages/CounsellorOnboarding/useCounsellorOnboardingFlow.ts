@@ -40,11 +40,20 @@ export type CounsellorOnboardingState =
 /** Which submit failed retryably; link-death is modelled in the state instead. */
 export type CounsellorOnboardingSubmitError = 'registration' | 'two-factor-code' | 'two-factor' | null;
 
+/**
+ * Issue #1049: the photo is stored AFTER the account exists, so a refused photo must never take
+ * the created account down with it. A failure is reported next to the following step instead, and
+ * the counsellor can add the photo later from their profile.
+ */
+export type CounsellorOnboardingPictureError = 'upload' | 'visibility' | null;
+
 /** Everything the wizard collects across its form steps. */
 export interface CounsellorWizardData {
     account: { username: string; password: string };
     person: { salutation?: string; position: string; title: string };
     names: { publicName: string; internalName: string };
+    /** Issue #1049: the counsellor's own photo, internal unless they publish it. */
+    picture: { file: File | null; publicToAdviceSeekers: boolean };
     topicIds: number[];
 }
 
@@ -52,6 +61,7 @@ const EMPTY_DATA: CounsellorWizardData = {
     account: { username: '', password: '' },
     person: { salutation: undefined, position: '', title: '' },
     names: { publicName: '', internalName: '' },
+    picture: { file: null, publicToAdviceSeekers: false },
     topicIds: [],
 };
 
@@ -63,6 +73,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
     const [invite, setInvite] = useState<CounsellorOnboardingInviteDTO | null>(null);
     const [data, setData] = useState<CounsellorWizardData>(EMPTY_DATA);
     const [submitError, setSubmitError] = useState<CounsellorOnboardingSubmitError>(null);
+    const [pictureError, setPictureError] = useState<CounsellorOnboardingPictureError>(null);
     const [busy, setBusy] = useState(false);
     // Bumping re-runs the resolve effect — the retry for transient load failures.
     const [loadAttempt, setLoadAttempt] = useState(0);
@@ -144,6 +155,10 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setData((current) => ({ ...current, names: { ...current.names, ...patch } }));
     }, []);
 
+    const updatePicture = useCallback((patch: Partial<CounsellorWizardData['picture']>) => {
+        setData((current) => ({ ...current, picture: { ...current.picture, ...patch } }));
+    }, []);
+
     const toggleTopic = useCallback((topicId: number) => {
         setData((current) => ({
             ...current,
@@ -161,6 +176,28 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setSubmitError(retryable);
     };
 
+    const storePicture = useCallback(
+        async (picture: CounsellorWizardData['picture']) => {
+            if (!picture.file) return;
+            try {
+                await client.uploadOnboardingPicture(inviteToken, picture.file);
+            } catch (error) {
+                if (error instanceof InviteLinkError) throw error;
+                setPictureError('upload');
+                return;
+            }
+            if (!picture.publicToAdviceSeekers) return;
+            try {
+                await client.setOnboardingPictureVisibility(inviteToken, false);
+            } catch (error) {
+                if (error instanceof InviteLinkError) throw error;
+                // The photo is stored and safely internal; only publishing it did not take.
+                setPictureError('visibility');
+            }
+        },
+        [client, inviteToken],
+    );
+
     const submitRegistration = useCallback(async () => {
         if (stateRef.current.phase !== 'form' || busyRef.current) {
             return;
@@ -168,6 +205,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         busyRef.current = true;
         setBusy(true);
         setSubmitError(null);
+        setPictureError(null);
         try {
             const { account, person, names, topicIds } = dataRef.current;
             const request: CounsellorRegistrationRequest = {
@@ -184,6 +222,9 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                 topicIds,
             };
             const result = await client.registerCounsellor(inviteToken, request);
+            // The account now exists. Storing the photo is a separate step whose failure is
+            // reported but never rolls the registration back or blocks the 2FA setup.
+            await storePicture(dataRef.current.picture);
             if (result.phase === 'COMPLETED') {
                 // 2FA gate waived by the inviting admin — nothing left to set up.
                 setState({ phase: 'done' });
@@ -199,7 +240,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
             busyRef.current = false;
             setBusy(false);
         }
-    }, [client, inviteToken]);
+    }, [client, inviteToken, storePicture]);
 
     const submitTwoFactorCode = useCallback(
         async (otp: string) => {
@@ -231,11 +272,13 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         invite,
         data,
         submitError,
+        pictureError,
         busy,
         retryLoad,
         updateAccount,
         updatePerson,
         updateNames,
+        updatePicture,
         toggleTopic,
         submitRegistration,
         submitTwoFactorCode,

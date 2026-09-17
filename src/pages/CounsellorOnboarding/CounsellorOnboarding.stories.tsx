@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect } from 'storybook/test';
+import { expect, userEvent, waitFor } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { createStubCounsellorOnboardingClient } from '../../api/counsellorOnboarding/counsellorOnboarding';
@@ -95,5 +95,80 @@ export const SingleTopicCoverage: Story = {
             latencyMs: 0,
             invite: { topics: [{ id: 12, name: 'Familienberatung' }] },
         }),
+    },
+};
+
+// Issue #1049 — the picture step. A 16x16 PNG with valid chunk CRCs, so the preview really decodes.
+const png = Uint8Array.from(
+    atob(
+        'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR4nGNIaFhAEmIY1TCqYfhqAADldYAQcPKLcQAAAABJRU5ErkJggg==',
+    ),
+    (character) => character.charCodeAt(0),
+);
+const photo = () => new File([png], 'portrait.png', { type: 'image/png' });
+
+/** Picture step (#1049): choosing a photo reveals the publish switch, which starts off. */
+export const PictureStepInternalByDefault: Story = {
+    name: 'Picture step — internal by default',
+    args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0 }) },
+    play: async ({ canvas }) => {
+        await expect(await canvas.findByRole('heading', { name: 'Ihr Foto' })).toBeVisible();
+        await expect(canvas.queryByRole('switch', { name: 'Für Ratsuchende sichtbar' })).not.toBeInTheDocument();
+
+        await userEvent.upload(canvas.getByLabelText('Foto auswählen'), photo());
+
+        const preview = (await canvas.findByRole('img', {
+            name: 'Foto der beratenden Person',
+        })) as HTMLImageElement;
+        await waitFor(() => expect(preview.naturalWidth).toBe(16));
+
+        const toggle = await canvas.findByRole('switch', { name: 'Für Ratsuchende sichtbar' });
+        await expect(toggle).not.toBeChecked();
+        await expect(
+            canvas.getByText(
+                'Das Foto sehen derzeit nur berechtigte Kolleg:innen und Admins. Ratsuchende sehen weiterhin das Avatarbild.',
+            ),
+        ).toBeVisible();
+    },
+};
+
+/** The counsellor publishes their photo; the hint changes with the decision. */
+export const PictureStepPublished: Story = {
+    name: 'Picture step — published',
+    args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0 }) },
+    play: async ({ canvas }) => {
+        await userEvent.upload(await canvas.findByLabelText('Foto auswählen'), photo());
+        const toggle = await canvas.findByRole('switch', { name: 'Für Ratsuchende sichtbar' });
+        await userEvent.click(toggle);
+        await waitFor(() => expect(toggle).toBeChecked());
+        await expect(canvas.getByText(/Ratsuchende sehen dieses Foto\./)).toBeVisible();
+    },
+};
+
+/** A refused photo must never cost the invitee the account they just created. */
+export const PictureStepRefusedKeepsTheAccount: Story = {
+    name: 'Picture step — refused photo, account kept',
+    args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0, pictureUploadFails: true }) },
+    play: async ({ canvas }) => {
+        await userEvent.type(await canvas.findByLabelText('Benutzername'), 'lena_b');
+        await userEvent.type(canvas.getByLabelText('Passwort'), 'SecurePass1!');
+        await userEvent.click(canvas.getByRole('checkbox', { name: 'Familienberatung' }));
+        await userEvent.upload(canvas.getByLabelText('Foto auswählen'), photo());
+        await userEvent.click(canvas.getByRole('button', { name: 'Konto erstellen' }));
+
+        // The 2FA step still follows, with the photo failure stated next to it.
+        await expect(await canvas.findByTestId('wizard-picture-notice')).toBeVisible();
+        await expect(canvas.queryByTestId('wizard-registration-error')).not.toBeInTheDocument();
+    },
+};
+
+/** Picture step at 390px — the preview, buttons and switch stay in one column. */
+export const PictureStepMobile: Story = {
+    name: 'Picture step (390px)',
+    args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0 }) },
+    ...PHONE_390,
+    play: async ({ canvas }) => {
+        await userEvent.upload(await canvas.findByLabelText('Foto auswählen'), photo());
+        await expect(await canvas.findByRole('switch', { name: 'Für Ratsuchende sichtbar' })).toBeVisible();
     },
 };
