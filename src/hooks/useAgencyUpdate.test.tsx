@@ -54,4 +54,98 @@ describe('useAgencyUpdate sequential card saves', () => {
         });
         expect(secondUpdate.content.impressum).toEqual({ en: '<p>E2E imprint</p>' });
     });
+
+    it('replaces explicitly supplied legal maps while preserving sibling content and partial updates', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], {
+            ...mocks.agency,
+            description: 'Keep this description',
+            content: {
+                privacy: { de: '<p>Old privacy</p>', en: '<p>Remove privacy</p>' },
+                impressum: { de: '<p>Keep imprint</p>' },
+                privacyConsent: { de: 'Old consent', en: 'Remove consent' },
+                termsAndConditions: { de: '<p>Keep terms</p>' },
+                confirmPrivacy: true,
+            },
+        });
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await result.current.mutateAsync({
+            content: {
+                privacy: { de: '<p>New privacy</p>' },
+                privacyConsent: {},
+            },
+        } as never);
+
+        await waitFor(() => expect(mocks.updateAgencyData).toHaveBeenCalledTimes(1));
+        const update = mocks.updateAgencyData.mock.calls[0][1];
+        expect(update.content).toEqual({
+            privacy: { de: '<p>New privacy</p>' },
+            impressum: { de: '<p>Keep imprint</p>' },
+            privacyConsent: {},
+            termsAndConditions: { de: '<p>Keep terms</p>' },
+            confirmPrivacy: true,
+        });
+        expect(update.description).toBe('Keep this description');
+    });
+
+    it('does not let a failed legal publication leak into a later unrelated card save', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], {
+            ...mocks.agency,
+            description: 'Stored description',
+            content: { privacy: { de: '<p>Published privacy</p>' } },
+        });
+        mocks.updateAgencyData
+            .mockRejectedValueOnce(new Error('publication rejected'))
+            .mockImplementationOnce(async (_stored, update) => update);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await expect(
+            result.current.mutateAsync({ content: { privacy: { de: '<p>Rejected privacy</p>' } } } as never),
+        ).rejects.toThrow('publication rejected');
+        await result.current.mutateAsync({ description: 'Updated description' } as never);
+
+        expect(mocks.updateAgencyData).toHaveBeenCalledTimes(2);
+        const laterUpdate = mocks.updateAgencyData.mock.calls[1][1];
+        expect(laterUpdate.description).toBe('Updated description');
+        expect(laterUpdate.content.privacy).toEqual({ de: '<p>Published privacy</p>' });
+    });
+
+    it('serializes overlapping successful card saves so the later patch includes the first', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        let finishFirst: () => void = () => undefined;
+        mocks.updateAgencyData
+            .mockImplementationOnce(
+                (_stored, update) =>
+                    new Promise((resolve) => {
+                        finishFirst = () => resolve(update);
+                    }),
+            )
+            .mockImplementationOnce(async (_stored, update) => update);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        const firstSave = result.current.mutateAsync({ description: 'First card' } as never);
+        const secondSave = result.current.mutateAsync({
+            content: { impressum: { de: '<p>Second card</p>' } },
+        } as never);
+
+        await waitFor(() => expect(mocks.updateAgencyData).toHaveBeenCalledTimes(1));
+        finishFirst();
+        await Promise.all([firstSave, secondSave]);
+
+        const secondUpdate = mocks.updateAgencyData.mock.calls[1][1];
+        expect(secondUpdate.description).toBe('First card');
+        expect(secondUpdate.content.impressum).toEqual({ de: '<p>Second card</p>' });
+    });
 });

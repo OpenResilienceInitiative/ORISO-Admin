@@ -15,6 +15,7 @@ const renderWithClient = (ui: React.ReactElement<any>) => {
 
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
+    mutateAsync: vi.fn(),
     navigate: vi.fn(),
     searchTenantData: vi.fn(),
     userRoles: {
@@ -33,6 +34,7 @@ const mocks = vi.hoisted(() => ({
         setFields: vi.fn(),
         scrollToField: vi.fn(),
     },
+    agencyLegalProps: undefined as any,
 }));
 
 const translations: Record<string, string> = {
@@ -126,6 +128,12 @@ vi.mock('../../../components/Tenants/AppSettings/PermissionsSettings', () => ({
 vi.mock('../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer', () => ({
     DataProcessingAgreementContainer: () => <div />,
 }));
+vi.mock('../../../components/Tenants/LegalSettings/components/AgencyLegalTextContainer', () => ({
+    AgencyLegalTextContainer: (props: unknown) => {
+        mocks.agencyLegalProps = props;
+        return <div data-testid="agency-legal-text" />;
+    },
+}));
 
 vi.mock('../../../context/FeatureContext', () => ({
     useFeatureContext: () => ({ isEnabled: () => false }),
@@ -173,7 +181,7 @@ vi.mock('../../../hooks/useAgencyPostCodesData', () => ({
 }));
 
 vi.mock('../../../hooks/useAgencyUpdate', () => ({
-    useAgencyUpdate: () => ({ mutate: mocks.mutate }),
+    useAgencyUpdate: () => ({ mutate: mocks.mutate, mutateAsync: mocks.mutateAsync }),
 }));
 
 vi.mock('../../../hooks/useAgencyLegalDataMissing', () => ({
@@ -241,6 +249,7 @@ vi.mock('../../../utils/parseUserAuthInfo', () => ({
 describe('AgencyPageEdit create flow', () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.mutateAsync.mockReset().mockResolvedValue(undefined);
         mocks.navigate.mockReset();
         mocks.searchTenantData.mockReset();
         mocks.searchTenantData.mockResolvedValue({
@@ -260,6 +269,7 @@ describe('AgencyPageEdit create flow', () => {
         mocks.createConsultantProps = undefined;
         mocks.legalForm.setFields.mockReset();
         mocks.legalForm.scrollToField.mockReset();
+        mocks.agencyLegalProps = undefined;
     });
 
     it('renders the tenant assignment field for super-admin agency creation', async () => {
@@ -370,6 +380,36 @@ describe('AgencyPageEdit create flow', () => {
             },
             expect.any(Object),
         );
+    });
+
+    it('gives the agency legal editor an awaited publication callback', async () => {
+        mocks.routeId = '282';
+        mocks.agencyData = { id: 282, name: 'E2E Agency', tenantId: 84, topics: [], content: {} };
+        let finishUpdate: () => void = () => undefined;
+        mocks.mutateAsync.mockImplementation(
+            () =>
+                new Promise<void>((resolve) => {
+                    finishUpdate = resolve;
+                }),
+        );
+        renderWithClient(<AgencyPageEdit section="legal" />);
+
+        await waitFor(() => expect(mocks.agencyLegalProps).toBeDefined());
+        let settled = false;
+        const publication = mocks.agencyLegalProps
+            .onSaveAgencyWide({ content: { privacy: { de: '<p>normalized</p>' } } })
+            .then(() => {
+                settled = true;
+            });
+        await Promise.resolve();
+        expect(settled).toBe(false);
+        expect(mocks.mutateAsync).toHaveBeenCalledWith({
+            content: { privacy: { de: '<p>normalized</p>' } },
+        });
+
+        finishUpdate();
+        await publication;
+        expect(settled).toBe(true);
     });
 
     it('renders a structured service validation error on the responsible field and focuses it', async () => {

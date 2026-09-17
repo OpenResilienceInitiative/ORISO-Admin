@@ -1,5 +1,5 @@
-import { Alert, Button, Skeleton } from 'antd';
-import { useMemo, useState } from 'react';
+import { Alert, Button, notification, Skeleton } from 'antd';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDepartmentDpp } from '../../../../../hooks/useDepartmentDpp.hook';
 import { useDepartmentImprint } from '../../../../../hooks/useDepartmentImprint.hook';
@@ -12,13 +12,16 @@ import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegal
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 import { useUserData } from '../../../../../hooks/useUserData.hook';
 import { useLegalDraft } from '../../hooks/useLegalDraft';
+import { useAgencyLegalDraft } from '../../hooks/useAgencyLegalDraft';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { AgencyData } from '../../../../../types/agency';
 import { isLegalDocumentPayload } from '../../../../../types/dpp';
 import { LegalTextKind } from '../../../../../types/legalVersion';
+import type { AgencyLegalDraft } from '../../../../../api/agency/legalDrafts';
 import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '../DepartmentSelect';
+import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
 import type { ConsentUnavailableReason } from '../../utils/consentUnavailable';
 import styles from './styles.module.scss';
@@ -29,7 +32,7 @@ interface AgencyLegalTextContainerProps {
     agencyData?: AgencyData;
     field: LegalField;
     /** Persists the agency-wide text (the "Alle Fachbereiche" entry). */
-    onSaveAgencyWide: <T>(formData: T, options?: { onError?: () => void }) => void;
+    onSaveAgencyWide: <T>(formData: T) => Promise<unknown>;
     saving?: boolean;
 }
 
@@ -65,6 +68,10 @@ export const AgencyLegalTextContainer = ({
     // right the Träger-level cards ask for, one rung down the ladder.
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const [selected, setSelected] = useState<number | typeof ALL_DEPARTMENTS>(ALL_DEPARTMENTS);
+    const [draftSource, setDraftSource] = useState<'local' | 'server'>();
+    const [draftActionPending, setDraftActionPending] = useState(false);
+    const draftActionPendingRef = useRef(false);
+    const [agencyEditorGeneration, setAgencyEditorGeneration] = useState(0);
 
     const agencyId = Number(agencyData?.id);
     const isDepartment = selected !== ALL_DEPARTMENTS;
@@ -135,23 +142,55 @@ export const AgencyLegalTextContainer = ({
         [tenantData, agencyData, agencyContentKey],
     );
 
-    const { data: userData } = useUserData();
-    /*
-     * The agency record has no draft state, exactly like the Träger record one level up —
-     * so the parked wording lives on the device (`LegalText` + `useLegalDraft` set this
-     * precedent, and its LegalDraftNotice is what tells the admin the draft is local).
-     *
-     * The agency id has to be in the scope. Both levels store the same `privacy` document
-     * for the same user, so without it a Beratungsstelle's parked wording and the Träger's
-     * would share one key and silently overwrite each other.
-     */
+    const { data: userData, isLoading: isUserLoading } = useUserData();
     const agencyDraftScope =
-        userData?.id && agencyData?.id ? `${agencyData.tenantId}:${userData.id}:agency:${agencyData.id}` : undefined;
+        userData?.id != null && agencyData?.id != null
+            ? `${agencyData.tenantId}:${userData.id}:agency:${agencyData.id}`
+            : undefined;
     const {
         draft: agencyDraft,
-        saveDraft: saveAgencyDraft,
+        savedAt: localDraftSavedAt,
         discardDraft: discardAgencyDraft,
     } = useLegalDraft(field, agencyDraftScope);
+    const agencyDraftEnabled =
+        canEditLegalText && !isDepartment && agencyData !== undefined && Number.isFinite(agencyId);
+    const serverDraft = useAgencyLegalDraft(agencyId, VERSION_KIND[field], agencyDraftEnabled);
+    const draftContextIdentity = `${agencyId}:${field}:${userData?.id ?? ''}`;
+    const editorContextKey = `${draftContextIdentity}:${String(selected)}`;
+    const editorIdentityRef = useRef({ key: editorContextKey });
+    if (editorIdentityRef.current.key !== editorContextKey) {
+        editorIdentityRef.current = { key: editorContextKey };
+    }
+    const editorIdentity = editorIdentityRef.current;
+    const setActionPending = (pending: boolean) => {
+        draftActionPendingRef.current = pending;
+        setDraftActionPending(pending);
+    };
+    useEffect(() => {
+        draftActionPendingRef.current = false;
+        setDraftActionPending(false);
+    }, [editorIdentity]);
+    const [serverBaseState, setServerBaseState] = useState<{
+        identity: string;
+        draft: AgencyLegalDraft | null | undefined;
+        revision: string | undefined;
+    }>(() => ({ identity: draftContextIdentity, draft: undefined, revision: undefined }));
+    let serverBase = serverBaseState;
+    if (serverBase.identity !== draftContextIdentity) {
+        serverBase = { identity: draftContextIdentity, draft: undefined, revision: undefined };
+        setServerBaseState(serverBase);
+        setDraftSource(undefined);
+    }
+    // Pin both the complete snapshot and its opaque revision. A background refetch may
+    // discover another writer, but it must not move the edit base and bypass a 409.
+    if (agencyDraftEnabled && serverBase.draft === undefined && !serverDraft.isLoading && !serverDraft.isError) {
+        serverBase = {
+            identity: draftContextIdentity,
+            draft: serverDraft.draft ?? null,
+            revision: serverDraft.draft?.revision,
+        };
+        setServerBaseState(serverBase);
+    }
 
     /**
      * A request that succeeded is not yet evidence that a policy document came back. `fetchData`
@@ -180,10 +219,22 @@ export const AgencyLegalTextContainer = ({
     // department's real, existing text with the inherited one. That is the silent-overwrite class
     // this whole epic exists to remove, so both block the editor instead (see the branch below).
     const hasOwnText = departmentWasRead && Object.keys(departmentContent).length > 0;
-    // A parked draft is the admin's unfinished wording; it wins over the stored agency text
-    // until it is published or discarded. Departments keep their own seeding rules above.
-    const agencyWideSeed = agencyDraft?.content ?? agencyWideContent;
-    const contentByLanguage = hasOwnText ? departmentContent : agencyWideSeed;
+    const hasLocalDraft = !isDepartment && !!agencyDraft;
+    const hasServerDraft = !isDepartment && !!serverBase.draft;
+    const draftCollision = hasLocalDraft && hasServerDraft;
+    const sourceChosen = !draftCollision || draftSource !== undefined;
+    let selectedDraft: { content: Record<string, string>; consentText?: Record<string, string> } | null | undefined =
+        serverBase.draft;
+    if (draftSource !== 'server' && hasLocalDraft && (!hasServerDraft || draftSource === 'local')) {
+        selectedDraft = { content: agencyDraft.content, consentText: agencyDraft.consent };
+    }
+    // Once a draft exists it is a complete snapshot. Do not merge published keys back into it:
+    // an absent language or an explicit empty consent map may be a deliberate removal.
+    const agencyWideSeed = sourceChosen && selectedDraft ? selectedDraft.content : agencyWideContent;
+    let contentByLanguage = agencyWideSeed;
+    if (isDepartment) {
+        contentByLanguage = hasOwnText ? departmentContent : agencyWideContent;
+    }
 
     /**
      * The consent sentence (ADR-021 decision 4) is a FIELD of the data-protection policy, never of
@@ -217,6 +268,8 @@ export const AgencyLegalTextContainer = ({
         }
         return { ...(inherited ?? {}), ...(own ?? {}) };
     }, [tenantData?.content?.privacyConsent, agencyData?.content?.privacyConsent]);
+    const agencyDraftConsent =
+        sourceChosen && selectedDraft ? selectedDraft.consentText ?? agencyWideConsent ?? {} : agencyWideConsent ?? {};
     /**
      * A Fachbereich that has NOT forked yet edits a draft copy of what it currently shows. The body
      * above is already seeded that way (`contentByLanguage`), and the sentence must follow the same
@@ -272,7 +325,22 @@ export const AgencyLegalTextContainer = ({
         [tenantAdminData?.settings?.activeLanguages, contentByLanguage],
     );
 
-    const onSave = (content: Record<string, string>, publish: boolean, consent?: Record<string, string>) => {
+    const saveCurrentAgencyDraft = async (content: Record<string, string>, operationIdentity: { key: string }) => {
+        const saved = await serverDraft.save({
+            content: { ...content },
+            ...(field === 'privacy' ? { consentText: { ...agencyDraftConsent } } : {}),
+            ...(serverBase.revision ? { revision: serverBase.revision } : {}),
+        });
+        if (editorIdentityRef.current !== operationIdentity) return saved;
+        const localDiscarded = discardAgencyDraft();
+        setServerBaseState({ identity: draftContextIdentity, draft: saved, revision: saved.revision });
+        setDraftSource(localDiscarded ? 'server' : undefined);
+        setAgencyEditorGeneration((current) => current + 1);
+        notification.success({ message: t('legal.serverDraft.saved'), duration: 4 });
+        return saved;
+    };
+
+    const onSave = async (content: Record<string, string>, publish: boolean, consent?: Record<string, string>) => {
         if (isDepartment) {
             // Only the policy carries a consent sentence (decision 7), and the publish call omits
             // the property entirely when the card had none to give — a backend that does not know
@@ -284,24 +352,51 @@ export const AgencyLegalTextContainer = ({
             }
             return;
         }
-        // `publish === false` is the editor's "Save draft" action. Writing the agency record
-        // here would publish the live legal text under a label promising the opposite — so the
-        // draft goes to device-local storage and the record is left alone.
-        if (!publish) {
-            saveAgencyDraft(content, consent);
+        if (draftActionPendingRef.current || serverDraft.isError || serverDraft.hasConflict || !sourceChosen) {
             return;
         }
-        // NOTE: unlike the department publishes above, this path cannot invalidate the agency
-        // version history — it goes through the shared agency-card mutation, which has no legal
-        // hook. The look-back catches up on its own `staleTime` (60s).
-        // Agency-wide ("Alle Fachbereiche") never edits consent in this card (#862) — do not
-        // stamp privacyConsent from a leftover third argument.
-        onSaveAgencyWide({
-            content: { [agencyContentKey]: content },
-        });
-        // The parked wording has become the published text; keeping it would re-seed the editor
-        // with a stale copy on the next mount.
-        discardAgencyDraft();
+        const operationIdentity = editorIdentity;
+        setActionPending(true);
+        let saved: AgencyLegalDraft;
+        try {
+            saved = await saveCurrentAgencyDraft(content, operationIdentity);
+        } catch {
+            if (editorIdentityRef.current === operationIdentity) {
+                notification.error({ message: t('legal.serverDraft.saveError'), duration: 8 });
+                setActionPending(false);
+            }
+            return;
+        }
+        if (!publish || editorIdentityRef.current !== operationIdentity) {
+            if (editorIdentityRef.current === operationIdentity) setActionPending(false);
+            return;
+        }
+        try {
+            await onSaveAgencyWide({
+                content: {
+                    [agencyContentKey]: { ...saved.content },
+                    ...(field === 'privacy' ? { privacyConsent: { ...saved.consentText } } : {}),
+                },
+            });
+        } catch {
+            notification.error({ message: t('legal.serverDraft.publishError'), duration: 8 });
+            if (editorIdentityRef.current === operationIdentity) setActionPending(false);
+            return;
+        }
+        try {
+            await serverDraft.discard(saved.revision);
+            if (editorIdentityRef.current === operationIdentity) {
+                setServerBaseState({ identity: draftContextIdentity, draft: null, revision: undefined });
+                setDraftSource(undefined);
+                setAgencyEditorGeneration((current) => current + 1);
+            }
+        } catch {
+            // Publication is already live. A missing or concurrently replaced draft is retained
+            // in the UI and the hook exposes a 409 for explicit conflict resolution.
+            notification.warning({ message: t('legal.serverDraft.cleanupError'), duration: 8 });
+        } finally {
+            if (editorIdentityRef.current === operationIdentity) setActionPending(false);
+        }
     };
 
     const selectedDepartment = departments.find(({ id }) => id === topicId);
@@ -348,11 +443,15 @@ export const AgencyLegalTextContainer = ({
         );
     }
 
-    return (
+    const agencyDraftBlocked =
+        !canEditLegalText || (!isDepartment && (serverDraft.isError || serverDraft.hasConflict || !sourceChosen));
+    const card = (
         <DepartmentDataProtectionCard
             // Remount when the source changes, so the editor resets to it instead of keeping the
             // previous department's text in an uncontrolled TipTap instance.
-            key={`${agencyId}-${field}-${String(selected)}-${departmentQuery.data?.content ?? ''}`}
+            key={`${agencyId}-${field}-${String(selected)}-${
+                isDepartment ? departmentQuery.data?.content ?? '' : agencyEditorGeneration
+            }`}
             documentType={field}
             departmentName={selectedDepartment?.name}
             initialContentByLanguage={contentByLanguage}
@@ -364,12 +463,92 @@ export const AgencyLegalTextContainer = ({
             publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : undefined}
             versions={versions}
             versionsUnavailable={versionsUnavailable}
-            readOnly={!canEditLegalText}
+            readOnly={agencyDraftBlocked}
             onSave={onSave}
-            saving={saving || departmentPublish.isPending}
+            saving={saving || departmentPublish.isPending || draftActionPending}
             onTranslate={translate}
             departmentSlot={<DepartmentSelect departments={departments} value={selected} onChange={setSelected} />}
         />
+    );
+    if (isDepartment || !canEditLegalText) return card;
+    if (!agencyDraftEnabled || serverDraft.isLoading || isUserLoading) {
+        return (
+            <div className={styles.fallbackCard}>
+                <Skeleton active title={false} paragraph={{ rows: 4 }} />
+            </div>
+        );
+    }
+    return (
+        <>
+            <TenantLegalDraftNotice
+                savedAt={serverBase.draft?.savedAt}
+                localSavedAt={localDraftSavedAt}
+                collision={draftCollision}
+                loadServer={() => {
+                    if (draftActionPendingRef.current) return;
+                    setDraftSource('server');
+                    setAgencyEditorGeneration((current) => current + 1);
+                }}
+                keepLocal={() => {
+                    if (draftActionPendingRef.current) return;
+                    setDraftSource('local');
+                    setAgencyEditorGeneration((current) => current + 1);
+                }}
+                unavailable={serverDraft.isError}
+                retry={() => serverDraft.retry()}
+                conflict={serverDraft.hasConflict}
+                conflictRefreshFailed={serverDraft.conflictRefreshFailed}
+                conflictRefreshing={serverDraft.conflictRefreshing}
+                retryConflict={() => serverDraft.retryConflict()}
+                reloadConflict={() => {
+                    if (draftActionPendingRef.current) return;
+                    const remote = serverDraft.conflict;
+                    setServerBaseState({
+                        identity: draftContextIdentity,
+                        draft: remote ?? null,
+                        revision: remote?.revision,
+                    });
+                    setDraftSource('server');
+                    setAgencyEditorGeneration((current) => current + 1);
+                    serverDraft.clearConflict();
+                }}
+                keepEditing={() => {
+                    if (draftActionPendingRef.current) return;
+                    setServerBaseState((current) => ({
+                        ...current,
+                        revision: serverDraft.conflict?.revision,
+                    }));
+                    serverDraft.clearConflict();
+                }}
+                onDiscard={async () => {
+                    if (draftActionPendingRef.current) return;
+                    const operationIdentity = editorIdentity;
+                    setActionPending(true);
+                    try {
+                        if (serverBase.draft && serverBase.revision) await serverDraft.discard(serverBase.revision);
+                        if (editorIdentityRef.current !== operationIdentity) return;
+                        const localDiscarded = discardAgencyDraft();
+                        if (editorIdentityRef.current === operationIdentity) {
+                            setServerBaseState({
+                                identity: draftContextIdentity,
+                                draft: null,
+                                revision: undefined,
+                            });
+                            setDraftSource(localDiscarded ? undefined : 'local');
+                            setAgencyEditorGeneration((current) => current + 1);
+                        }
+                    } catch {
+                        if (editorIdentityRef.current === operationIdentity) {
+                            notification.error({ message: t('legal.serverDraft.discardError'), duration: 8 });
+                        }
+                    } finally {
+                        if (editorIdentityRef.current === operationIdentity) setActionPending(false);
+                    }
+                }}
+                pending={draftActionPending}
+            />
+            {card}
+        </>
     );
 };
 
