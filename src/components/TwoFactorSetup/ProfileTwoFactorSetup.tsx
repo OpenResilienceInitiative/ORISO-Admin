@@ -12,6 +12,7 @@ import { ReactComponent as UrlIcon } from '../../resources/img/svg/url.svg';
 import { ReactComponent as CheckIcon } from '../../resources/img/svg/checkmark.svg';
 import { ReactComponent as PenIcon } from '../../resources/img/svg/pen.svg';
 import { useUserData } from '../../hooks/useUserData.hook';
+import logout from '../../api/auth/logout';
 import { TwoFactorType } from '../../enums/TwoFactorType';
 import {
     useUserTwoFactorAuth,
@@ -84,6 +85,17 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
                     <TwoFactorAuthTypeButtons twoFactorType={twoFactorType} setTwoFactorType={setTwoFactorType} />
                 ),
                 buttonSet: [
+                    // Mandatory setup (#990): the popup has no X, so logging
+                    // out is the only other way off it.
+                    ...(required
+                        ? [
+                              {
+                                  label: t('logout'),
+                                  function: OVERLAY_FUNCTIONS.LOGOUT,
+                                  type: BUTTON_TYPES.SECONDARY,
+                              },
+                          ]
+                        : []),
                     {
                         disabled: twoFactorType === TwoFactorType.None,
                         label: t('twoFactorAuth.overlayButton.next'),
@@ -91,9 +103,12 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
                         type: BUTTON_TYPES.PRIMARY,
                     },
                 ],
+                handleOverlay: (buttonFunction: string) => {
+                    if (buttonFunction === OVERLAY_FUNCTIONS.LOGOUT) logout(true);
+                },
             },
         ],
-        [twoFactorType],
+        [twoFactorType, required],
     );
 
     const [overlayItems, setOverlayItems] = useState<OverlayItem[]>([...twoFactorAuthStepsOverlayStart]);
@@ -469,7 +484,8 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
                     <Overlay
                         className="twoFactorAuth__overlay"
                         items={overlayItems}
-                        handleOverlayClose={handleOverlayClose}
+                        // Mandatory setup is a hard popup: no X until a factor is active (#990).
+                        handleOverlayClose={required ? undefined : handleOverlayClose}
                     />
                 </OverlayWrapper>
             ) : null}
