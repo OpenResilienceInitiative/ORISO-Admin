@@ -29,6 +29,8 @@ const meta = {
     args: {
         options: TOPICS,
         value: [12, 13],
+        // Satisfies the required prop for typing; the controlled render owns the real handler.
+        onChange: () => {},
         addLabel: 'Thema hinzufügen',
         removeLabel: (label: string) => `${label} entfernen`,
         ariaLabel: 'Themenfelder',
