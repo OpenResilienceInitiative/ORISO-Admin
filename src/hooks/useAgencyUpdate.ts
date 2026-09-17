@@ -10,7 +10,11 @@ export const useAgencyUpdate = (id: string) => {
     const queryClient = useQueryClient();
     const { data: agencyData } = useAgencyData({ id, enabled: id !== 'add' });
     return useMutation({
-        mutationFn: (data: Partial<AgencyData>) => {
+        // Every update sends a merged agency snapshot. Queue updates for this agency so an
+        // overlapping card save starts from the last confirmed snapshot rather than racing an
+        // older full payload over it.
+        scope: { id: `agency-update-${id}` },
+        mutationFn: async (data: Partial<AgencyData>) => {
             if (id === 'add') {
                 return addAgencyData(data);
             }
@@ -19,11 +23,30 @@ export const useAgencyUpdate = (id: string) => {
                 return objValue instanceof Array ? srcValue : undefined;
             }) as AgencyData;
 
-            // Make the just-submitted card patch immediately available to the next
-            // mutation. The backend read invalidation below remains the source of
-            // truth, but no rapid sequential card save can rebuild from stale data.
+            // These language maps are complete legal-document snapshots. Deep-merging them would
+            // resurrect a removed language (and turn an explicit empty consent map back into the
+            // previously published wording). Replace only maps that the narrow patch supplied;
+            // sibling content fields keep the regular partial-card merge semantics above.
+            if (data.content) {
+                const mergedContent = mergedAgencyData.content ?? {};
+                if (data.content.privacy !== undefined) {
+                    mergedContent.privacy = { ...data.content.privacy };
+                }
+                if (data.content.impressum !== undefined) {
+                    mergedContent.impressum = { ...data.content.impressum };
+                }
+                if (data.content.privacyConsent !== undefined) {
+                    mergedContent.privacyConsent = { ...data.content.privacyConsent };
+                }
+                mergedAgencyData.content = mergedContent;
+            }
+
+            const response = await updateAgencyData(latestAgencyData, mergedAgencyData);
+
+            // Cache only a confirmed write. A rejected legal publication must not enter the base
+            // of a later unrelated card update and get published by that second request.
             queryClient.setQueryData(['AGENCY', id], mergedAgencyData);
-            return updateAgencyData(latestAgencyData, mergedAgencyData);
+            return response;
         },
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['AGENCY', id] });

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,8 +7,26 @@ const h = vi.hoisted(() => ({
     card: vi.fn(),
     publishDpp: vi.fn(),
     tenant: vi.fn(),
+    saveAgencyDraft: vi.fn(),
+    discardAgencyDraft: vi.fn(),
 }));
 
+vi.mock('../../hooks/useAgencyLegalDraft', () => ({
+    useAgencyLegalDraft: () => ({
+        draft: null,
+        isLoading: false,
+        isError: false,
+        retry: vi.fn(),
+        save: h.saveAgencyDraft,
+        discard: h.discardAgencyDraft,
+        hasConflict: false,
+        conflict: undefined,
+        conflictRefreshFailed: false,
+        conflictRefreshing: false,
+        retryConflict: vi.fn(),
+        clearConflict: vi.fn(),
+    }),
+}));
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
 }));
@@ -92,6 +110,8 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         h.card.mockReset();
         h.publishDpp.mockReset();
         h.tenant.mockReset().mockReturnValue({ data: undefined });
+        h.saveAgencyDraft.mockReset();
+        h.discardAgencyDraft.mockReset().mockResolvedValue(undefined);
     });
 
     it('is offered empty to a Fachbereich whose read carried no sentence (#929)', async () => {
@@ -177,17 +197,36 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         expect(cardProps().consentInheritedFrom).toBeUndefined();
     });
 
-    it('never stamps privacyConsent when saving Alle Fachbereiche (#862)', () => {
+    it('publishes the consent stored with the authoritative server draft and ignores a stray card value', async () => {
         storedDepartment();
         h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Träger-Satz' } } } });
-        const onSaveAgencyWide = vi.fn();
+        h.saveAgencyDraft.mockResolvedValue({
+            kind: 'DPP',
+            content: { de: '<p>normalisiert</p>' },
+            consentText: { de: 'Gespeicherter Satz' },
+            revision: '41:0',
+            savedAt: '2026-09-17T12:00:00Z',
+        });
+        const onSaveAgencyWide = vi.fn().mockResolvedValue(undefined);
 
         renderContainer({ onSaveAgencyWide });
-        cardProps().onSave({ de: '<p>neu</p>' }, true, { de: 'Neuer Satz {{legal_links}}' });
-
-        expect(onSaveAgencyWide).toHaveBeenCalledWith({
-            content: { privacy: { de: '<p>neu</p>' } },
+        await act(async () => {
+            await cardProps().onSave({ de: '<p>neu</p>' }, true, { de: 'Nicht editierbar {{legal_links}}' });
         });
+
+        expect(h.saveAgencyDraft).toHaveBeenCalledWith({
+            content: { de: '<p>neu</p>' },
+            consentText: { de: 'Träger-Satz' },
+        });
+        expect(onSaveAgencyWide).toHaveBeenCalledWith({
+            content: {
+                privacy: { de: '<p>normalisiert</p>' },
+                privacyConsent: { de: 'Gespeicherter Satz' },
+            },
+        });
+        expect(onSaveAgencyWide.mock.calls[0][0]).not.toEqual(
+            expect.objectContaining({ privacyConsent: { de: 'Nicht editierbar {{legal_links}}' } }),
+        );
     });
 
     it('publishes a Fachbereich sentence as consentText', async () => {
