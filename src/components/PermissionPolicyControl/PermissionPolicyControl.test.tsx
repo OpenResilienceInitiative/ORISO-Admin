@@ -76,6 +76,37 @@ describe('PermissionPolicyControl', () => {
     });
 
     it.each([
+        { level: 'platform' as const, value: true },
+        { level: 'platform' as const, value: false },
+        { level: 'tenant' as const, value: true },
+        { level: 'tenant' as const, value: false },
+        { level: 'agency' as const, value: true },
+        { level: 'agency' as const, value: false },
+    ])('tones the menu by action, not by the current value (#992): $level, value=$value', ({ level, value }) => {
+        render(
+            <PermissionPolicyControl
+                featureKey="featureSupervisionEnabled"
+                label="Supervision"
+                level={level}
+                policy={{ value, mode: 'SUGGESTED' }}
+                open
+                onOpenChange={vi.fn()}
+                onChange={vi.fn()}
+            />,
+        );
+
+        const activate = screen.getAllByRole('button', { name: /policy\.activation/ });
+        const deactivate = screen.getAllByRole('button', { name: /policy\.deactivation/ });
+        expect(activate.length).toBe(level === 'agency' ? 1 : 2);
+        expect(deactivate.length).toBe(level === 'agency' ? 1 : 2);
+        activate.forEach((button) => expect(button.className).not.toContain('itemNeutral'));
+        deactivate.forEach((button) => expect(button.className).toContain('itemNeutral'));
+        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.moreInformation' }).className).toContain(
+            'itemNeutral',
+        );
+    });
+
+    it.each([
         {
             language: 'de',
             status: 'Empfehlung',
