@@ -37,7 +37,9 @@ vi.mock('../../../../api/fetchData', async (importOriginal) => {
 // eslint-disable-next-line import/first
 import { TenantGlobalSettings } from './index';
 
-const GROUP = 'featureGroupChatV2Enabled';
+// ORISO-Admin#988: the conversation-circle card is its own master, not the legacy
+// featureGroupChatV2Enabled family switch (that one lives under Other functions).
+const GROUP = 'featureSelfHelpGroupsEnabled';
 const GROUP_VIDEO = 'featureVideoCallsGroupChatsEnabled';
 
 const renderPage = () =>

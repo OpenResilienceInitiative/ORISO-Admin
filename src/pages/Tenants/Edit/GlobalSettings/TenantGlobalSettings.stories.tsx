@@ -12,7 +12,9 @@ import { TenantGlobalSettings } from './index';
  * feature values and policies. The page shows what the Träger actually has switched on.
  */
 
-const GROUP = 'featureGroupChatV2Enabled';
+// ORISO-Admin#988: the conversation-circle card is its own master, not the legacy
+// featureGroupChatV2Enabled family switch (that one lives under Other functions).
+const GROUP = 'featureSelfHelpGroupsEnabled';
 
 // Every authenticated call must be mocked: an unmocked one 401s and force-logs-out the story.
 const TENANT_BY_ID = '*/service/tenantadmin/:id';
