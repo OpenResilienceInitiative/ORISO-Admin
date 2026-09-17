@@ -1,0 +1,93 @@
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Arrow, viewport, arrow — one column so the controls sit on the viewport's
+   top and bottom edge and the whole block stays within 320px. */
+
+.scroller {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+}
+
+/*
+ * Five rows tall, then it scrolls (owner, 2026-09-17). The height is set from
+ * the component so the row arithmetic lives next to the row step the arrows
+ * travel; `overflow-y: auto` keeps wheel, touch and keyboard paging native.
+ * `overscroll-behavior` stops a flick at the end from scrolling the page
+ * behind the form.
+ */
+
+.viewport {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+
+    /* Room for the selected tile's 2px halo at the viewport edges. */
+    padding: 2px;
+}
+
+.arrow {
+    display: flex;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--m3-on-surface-variant, #44474a);
+    cursor: pointer;
+    transition: background-color 120ms ease, opacity 120ms ease;
+}
+
+.arrow:hover:not(:disabled) {
+    background: var(--m3-hover-layer, rgb(0 0 0 / 6%));
+}
+
+.arrow:focus-visible {
+    outline: 2px solid var(--m3-on-surface, #1b1b1c);
+    outline-offset: 2px;
+}
+
+/* End of travel: still in the layout so nothing jumps, but visibly inert. */
+.arrow:disabled {
+    cursor: default;
+    opacity: 0.3;
+}
+
+.arrow svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+/* The icon set ships only `keyboard-arrow-down`; the up control is the same
+   glyph turned over, so both arrows are the same shape. */
+
+.arrowUp svg {
+    transform: rotate(180deg);
+}
+
+/* Initials tile: the same tinted circle as a motif tile, text instead of glyph. */
+.initials {
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: 0.02em;
+}
+
+.hint {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #44474a);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}

@@ -15,6 +15,7 @@ import { M3Button } from '../../components/M3Button';
 import { FloatingLabelInput } from '../../components/FloatingLabelInput';
 import { FloatingLabelSelect } from '../../components/FloatingLabelSelect';
 import { InputChipPicker } from '../../components/InputChipPicker';
+import { CounsellorAvatarField } from '../../components/CounsellorAvatarField';
 import { TwoFactorSetup, TwoFactorSetupInlineError } from '../../components/TwoFactorSetup/TwoFactorSetup';
 import { toBase32Secret } from '../../utils/totpSecret';
 import { SALUTATION_KEYS } from '../../components/cards/PersonalInfoCard';
@@ -84,6 +85,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         updateAccount,
         updatePerson,
         updateNames,
+        updateAvatar,
         updateAgency,
         setTopics,
         submitRegistration,
@@ -290,8 +292,19 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 />
             </Section>
 
-            {/* Names only (#997): the avatar grid and picture upload return with #995. */}
-            <Section titleKey="cards.avatarName.titleNamesOnly" hintKey="cards.avatarName.subtitle">
+            {/*
+              #1047: the avatar step is ON. Still one plain single-column section —
+              the picker sits above the two names, exactly where the Figma card puts
+              it. The own-picture upload is the only part still missing (#1049).
+            */}
+            <Section titleKey="cards.avatarName.title" hintKey="cards.avatarName.subtitle">
+                <CounsellorAvatarField
+                    value={data.avatar}
+                    onChange={updateAvatar}
+                    displayName={data.names.publicName}
+                    firstname={invite.firstName}
+                    lastname={invite.lastName}
+                />
                 <FloatingLabelInput
                     label={t('cards.avatarName.publicName')}
                     supportingText={t('cards.avatarName.publicNameHint')}

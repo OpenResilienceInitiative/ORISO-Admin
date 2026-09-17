@@ -19,6 +19,7 @@
  */
 
 import { publicAccountInvitesEndpoint } from '../../appConfig';
+import type { CounsellorAvatarKind } from '../../utils/counsellorAvatar';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 import { InviteLinkError, InviteLinkErrorReason } from '../tenantOnboarding/tenantOnboarding';
 import { TwoFactorCodeInvalidError } from '../tenantOnboarding/TwoFactorCodeInvalidError';
@@ -85,6 +86,13 @@ export interface CounsellorRegistrationRequest {
         /** Internal display name; internal surfaces fall back to the public name. */
         internalDisplayName?: string;
     };
+    /**
+     * The chosen counsellor avatar (#1046/#1047). Omitted when the invitee made
+     * no choice — the backend then stores none and rendering falls back to the
+     * initials. `id` is the motif id and is only present for `kind: 'ICON'`.
+     * `PICTURE` is the reserved kind of #1048/#1049; the wizard cannot pick it yet.
+     */
+    avatar?: { kind: CounsellorAvatarKind; id?: string };
     /** Chosen topics — validated server-side against coverage ∪ tenant topics. */
     topicIds: number[];
     /**
@@ -315,6 +323,10 @@ export const createStubCounsellorOnboardingClient = (
             }
             if (invite.agencyExists === false && !request.agency?.name?.trim()) {
                 throw new Error('AGENCY_NAME_MISSING');
+            }
+            if (request.avatar?.kind === 'ICON' && !request.avatar.id) {
+                // Like the backend: a motif choice without a motif is not a choice.
+                throw new Error('AVATAR_MOTIF_MISSING');
             }
             registered = true;
             if (registrationPhase === 'COMPLETED') {
