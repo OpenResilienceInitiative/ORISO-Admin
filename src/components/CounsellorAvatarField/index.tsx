@@ -22,8 +22,6 @@ export interface CounsellorAvatarFieldProps extends CounsellorNameParts {
     value: CounsellorAvatarValue;
     onChange: (value: CounsellorAvatarValue) => void;
     disabled?: boolean;
-    /** Tiles per row. 5 at phone width, more on wide admin columns. */
-    columns?: number;
     className?: string;
 }
 
@@ -55,7 +53,6 @@ export const CounsellorAvatarField = ({
     lastname,
     username,
     disabled,
-    columns = 5,
     className,
 }: CounsellorAvatarFieldProps) => {
     const { t } = useTranslation();
@@ -84,7 +81,6 @@ export const CounsellorAvatarField = ({
             <AvatarPickerGrid
                 avatars={avatars}
                 value={toTileId(value)}
-                columns={columns}
                 className={classNames({ [styles.disabled]: disabled })}
                 onChange={
                     disabled

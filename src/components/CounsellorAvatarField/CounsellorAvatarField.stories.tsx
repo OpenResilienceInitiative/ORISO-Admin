@@ -74,9 +74,9 @@ export const NoNameYet: Story = {
     },
 };
 
-/** At 320px the grid stays usable — the acceptance criterion of #1046. */
+/** At 320px the grid stays usable — the acceptance criterion of #1046. The
+ *  packed grid finds its own column count, so the story fixes none. */
 export const Narrow320: Story = {
-    args: { columns: 4 },
     globals: { viewport: { value: 'mobile1', isRotated: false } },
     parameters: { chromatic: { viewports: [320] } },
     render: (args) => (

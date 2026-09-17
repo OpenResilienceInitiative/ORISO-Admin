@@ -1,16 +1,25 @@
 @use '../../styles/monochromeGlyph' as glyph;
 
 /* Avatar picker grid: circular brand-tinted tiles, single-select ring. */
+
+/* One tile; also the grid's track size, so the circles pack tightly. */
+$tile-size: 52px;
+
 .grid {
     display: grid;
-    gap: 6px;
+
+    /* Pack, don't stretch: as many 52px tiles per row as fit, left-aligned.
+       8px in BOTH axes clears the 3px selected halo on every side. */
+    grid-template-columns: repeat(auto-fill, $tile-size);
+    gap: 8px;
+    justify-content: start;
     justify-items: center;
 }
 
 .avatar {
     display: inline-flex;
-    width: 52px;
-    height: 52px;
+    width: $tile-size;
+    height: $tile-size;
     align-items: center;
     justify-content: center;
     padding: 0;
