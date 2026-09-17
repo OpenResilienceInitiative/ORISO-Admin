@@ -2,6 +2,7 @@ import { LabeledValue } from 'antd/lib/select';
 import { CounselorData } from '../../types/counselor';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { counselorEndpoint } from '../../appConfig';
+import { normaliseAvatarValue } from '../../utils/counsellorAvatar';
 import { putAgenciesForCounselor } from '../agency/putAgenciesForCounselor';
 
 const parseTopicIds = (formData: CounselorData): number[] => {
@@ -39,6 +40,8 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         position,
         title,
         adminRemarks,
+        avatarKind,
+        avatarId,
     } = formData;
 
     const topicIds = parseTopicIds(formData);
@@ -67,6 +70,9 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         ...(position !== undefined && { position }),
         ...(title !== undefined && { title }),
         ...(adminRemarks !== undefined && { adminRemarks }),
+        // Same contract as the fields above: an untouched avatar normalises to {}
+        // and stays omitted, so the stored choice is left alone.
+        ...normaliseAvatarValue({ avatarKind, avatarId }),
         ...(absent && absenceMessage ? { absenceMessage } : {}),
     };
 

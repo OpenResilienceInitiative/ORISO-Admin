@@ -1,0 +1,24 @@
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Initials tile: the same tinted circle as a motif tile, text instead of glyph. */
+.initials {
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: 0.02em;
+}
+
+.hint {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #44474a);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}

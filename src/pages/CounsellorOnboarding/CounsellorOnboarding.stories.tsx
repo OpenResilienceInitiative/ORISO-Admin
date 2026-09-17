@@ -56,7 +56,7 @@ export const Wizard: Story = {
         // single submit stays disabled until the required fields are filled.
         await expect(await canvas.findByRole('heading', { name: 'Zugangsdaten' })).toBeVisible();
         await expect(canvas.getByRole('heading', { name: 'Angaben zu Ihrer Person' })).toBeVisible();
-        await expect(canvas.getByRole('heading', { name: 'Anzeigenamen' })).toBeVisible();
+        await expect(canvas.getByRole('heading', { name: 'Avatar & Name' })).toBeVisible();
         await expect(canvas.getByRole('heading', { name: 'Themenfelder' })).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Weiter' })).not.toBeInTheDocument();
         await expect(canvas.getByRole('button', { name: 'Konto erstellen' })).toBeDisabled();
@@ -66,6 +66,36 @@ export const Wizard: Story = {
         await userEvent.click(await within(document.body).findByRole('menuitem', { name: 'Suchtberatung' }));
         await expect(canvas.getByText('Suchtberatung')).toBeVisible();
     },
+};
+
+/**
+ * The avatar step (#1047) inside the flat form: the picker sits above the two
+ * names, the initials tile follows the public display name as it is typed, and
+ * the choice travels with the registration.
+ */
+export const AvatarStep: Story = {
+    name: 'Avatar step',
+    args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0 }) },
+    play: async ({ canvas, userEvent }) => {
+        await canvas.findByRole('heading', { name: 'Avatar & Name' });
+        // Nothing preselected — the invitee chooses, nothing is chosen for them.
+        await expect(canvas.queryByRole('radio', { checked: true })).not.toBeInTheDocument();
+        await userEvent.type(canvas.getByLabelText('Anzeigename für Ratsuchende'), 'Lena B.');
+        await userEvent.click(canvas.getByRole('radio', { name: 'Initialen LB' }));
+        await expect(canvas.getByRole('radio', { name: 'Initialen LB' })).toBeChecked();
+        // A motif replaces the initials choice.
+        await userEvent.click(canvas.getByRole('radio', { name: 'Symbol fox' }));
+        await expect(canvas.getByRole('radio', { name: 'Symbol fox' })).toBeChecked();
+        await expect(canvas.getByRole('radio', { name: 'Initialen LB' })).not.toBeChecked();
+    },
+};
+
+/** The avatar grid at 320px — the acceptance criterion of #1046. */
+export const AvatarStepNarrow: Story = {
+    name: 'Avatar step (320px)',
+    args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0 }) },
+    globals: { viewport: { value: 'mobile1', isRotated: false } },
+    parameters: { chromatic: { viewports: [320] } },
 };
 
 /** Mobile (390px): the same single column, nothing collapses into steps. */

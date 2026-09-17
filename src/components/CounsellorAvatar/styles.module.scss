@@ -1,0 +1,43 @@
+/*
+ * Counsellor avatar — CI-conform by construction (owner decision 2026-09-17).
+ *
+ * Both the motif and the initials sit on the tenant's primary-container pair.
+ * `--m3-primary-container` is the SURFACE and `--m3-on-primary-container` the
+ * readable foreground (see the role note in `src/app.css`; this palette reads
+ * some `on-*` names inverted, but this pair is the normal way round and is
+ * re-derived per tenant in `utils/theme/orisoScheme.ts`). Never a colour hash:
+ * the counsellor avatar carries the operator's brand, unlike the multi-coloured
+ * advice-seeker set, which is an anonymity device.
+ */
+
+.avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--m3-primary-container, #ffe2de);
+    color: var(--m3-on-primary-container, #141c25);
+    font-weight: 600;
+    line-height: 1;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+/* Monochrome motifs ship with fill=black — recolour every shape to the
+   on-primary-container foreground (same broadened selector as AvatarPickerGrid). */
+
+.avatar :global(svg) {
+    width: 60%;
+    height: 60%;
+    fill: currentColor;
+}
+
+.avatar :global(svg path),
+.avatar :global(svg circle),
+.avatar :global(svg rect),
+.avatar :global(svg ellipse),
+.avatar :global(svg polygon),
+.avatar :global(svg polyline),
+.avatar :global(svg g) {
+    fill: currentColor;
+}

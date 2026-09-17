@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { type CounsellorAvatarValue, normaliseAvatarValue } from '../../utils/counsellorAvatar';
 import {
     CounsellorOnboardingClient,
     CounsellorOnboardingInviteDTO,
@@ -45,6 +46,8 @@ export interface CounsellorWizardData {
     account: { username: string; password: string };
     person: { salutation?: string; position: string; title: string };
     names: { publicName: string; internalName: string };
+    /** #1046/#1047: the avatar step is on. Empty = no choice made yet. */
+    avatar: CounsellorAvatarValue;
     topicIds: number[];
     /** Only collected when the invite creates a new agency (`invite.agencyExists === false`). */
     agency: { name: string };
@@ -54,6 +57,7 @@ const EMPTY_DATA: CounsellorWizardData = {
     account: { username: '', password: '' },
     person: { salutation: undefined, position: '', title: '' },
     names: { publicName: '', internalName: '' },
+    avatar: {},
     topicIds: [],
     agency: { name: '' },
 };
@@ -150,6 +154,10 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setData((current) => ({ ...current, names: { ...current.names, ...patch } }));
     }, []);
 
+    const updateAvatar = useCallback((avatar: CounsellorAvatarValue) => {
+        setData((current) => ({ ...current, avatar }));
+    }, []);
+
     const updateAgency = useCallback((patch: Partial<CounsellorWizardData['agency']>) => {
         setData((current) => ({ ...current, agency: { ...current.agency, ...patch } }));
     }, []);
@@ -184,7 +192,9 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setBusy(true);
         setSubmitError(null);
         try {
-            const { account, person, names, topicIds, agency } = dataRef.current;
+            const { account, person, names, avatar, topicIds, agency } = dataRef.current;
+            // Normalises a half choice away; `{}` (no choice) sends no avatar block at all.
+            const { avatarKind, avatarId } = normaliseAvatarValue(avatar);
             const createsAgency = inviteRef.current?.agencyExists === false;
             const request: CounsellorRegistrationRequest = {
                 account: { username: account.username.trim(), password: account.password },
@@ -197,6 +207,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                     publicName: names.publicName.trim() || undefined,
                     internalDisplayName: names.internalName.trim() || undefined,
                 },
+                ...(avatarKind ? { avatar: { kind: avatarKind, ...(avatarId ? { id: avatarId } : {}) } } : {}),
                 topicIds,
                 // Present only for a reserved (not yet existing) agency — the
                 // backend rejects the field for an existing one.
@@ -255,6 +266,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         updateAccount,
         updatePerson,
         updateNames,
+        updateAvatar,
         updateAgency,
         setTopics,
         toggleTopic,

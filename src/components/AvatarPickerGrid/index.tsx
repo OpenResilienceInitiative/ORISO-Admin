@@ -4,7 +4,7 @@ import styles from './styles.module.scss';
 
 export interface AvatarOption {
     id: string;
-    /** The avatar glyph/icon. */
+    /** The avatar glyph/icon, or a short text (the INITIALS tile). */
     node: ReactNode;
     label?: string;
 }
