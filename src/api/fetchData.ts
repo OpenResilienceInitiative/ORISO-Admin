@@ -80,13 +80,15 @@ export class FetchErrorWithOptions extends Error {
     }
 }
 
-interface FetchDataProps {
+export interface FetchDataProps {
     url: string;
     method: string;
     headersData?: object;
     bodyData?: BodyInit;
     skipAuth?: boolean;
     responseHandling?: string[];
+    /** Opt-in binary success body. JSON remains the default for every existing request. */
+    responseType?: 'blob';
     timeout?: number;
     signal?: AbortSignal;
     // Internal flag: set on the single automatic retry after a token refresh so a
@@ -116,10 +118,10 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
 
         const controller = new AbortController();
         const timeoutMs = props.timeout ?? 30_000;
-        setTimeout(() => controller.abort(), timeoutMs);
-        if (props.signal) {
-            props.signal.addEventListener('abort', () => controller.abort());
-        }
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        const abort = () => controller.abort();
+        if (props.signal?.aborted) abort();
+        else props.signal?.addEventListener('abort', abort, { once: true });
 
         // Remove Authorization from headersData if it exists to avoid duplication
         const { Authorization: removedAuth, ...otherHeadersData } = (props.headersData as any) || {};
@@ -144,16 +146,20 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
         });
 
         fetch(req)
-            .then((response) => {
+            .then(async (response) => {
                 if (response.status === 204) {
                     resolve(response);
                 } else if (response.status >= 200 && response.status < 300) {
-                    const data =
+                    let data: Promise<Blob | unknown> | Response = response;
+                    if (props.responseType === 'blob') {
+                        data = response.blob();
+                    } else if (
                         props.method === FETCH_METHODS.GET ||
                         (props.responseHandling && props.responseHandling.includes(FETCH_SUCCESS.CONTENT))
-                            ? response.json()
-                            : response;
-                    resolve(data);
+                    ) {
+                        data = response.json();
+                    }
+                    resolve(await data);
                 } else if (props.responseHandling) {
                     if (
                         response.status === 400 &&
@@ -241,6 +247,10 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                 } else {
                     reject(error);
                 }
+            })
+            .finally(() => {
+                clearTimeout(timeoutId);
+                props.signal?.removeEventListener('abort', abort);
             });
     });
 

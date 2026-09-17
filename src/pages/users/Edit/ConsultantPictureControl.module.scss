@@ -1,0 +1,12 @@
+.control {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.preview {
+    width: 128px;
+    height: 128px;
+    object-fit: cover;
+    border-radius: 50%;
+}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UserEditOrAdd } from './index';
 
@@ -41,14 +42,6 @@ vi.mock('react-router-dom', async () => {
         ...actual,
         useNavigate: () => mocks.navigate,
         useParams: () => ({ id: 'add', typeOfUsers: 'consultants' }),
-    };
-});
-
-vi.mock('@tanstack/react-query', async () => {
-    const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query');
-    return {
-        ...actual,
-        useQueryClient: () => ({ invalidateQueries: vi.fn() }),
     };
 });
 
@@ -112,7 +105,12 @@ describe('consultant form validation (#717)', () => {
 
     it('keeps entered values and focuses username after the real Save action rejects its format', async () => {
         const user = userEvent.setup();
-        render(<UserEditOrAdd />);
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <QueryClientProvider client={queryClient}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
 
         await waitFor(() => expect(screen.getByLabelText('tenantAdmins.form.tenantAssignment')).toHaveValue('84'));
         await user.type(screen.getByLabelText('First name'), 'Lisa');
