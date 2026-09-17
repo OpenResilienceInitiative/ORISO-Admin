@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => ({
     userId: 'user-1' as string | undefined,
     userLoading: false,
     versions: [] as unknown[],
-    historyState: 'available' as 'available' | 'unsupported',
+    historyState: 'available' as 'available' | 'unsupported' | 'unavailable',
 }));
 
 // The version history is an independent react-query call; this suite has no client.
@@ -94,6 +94,8 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
             data-testid="m3-editor"
             data-value={value}
             data-readonly={readOnly ? 'true' : 'false'}
+            data-history-state={String(rest.versionHistoryState)}
+            data-history-status-label={String(rest.versionHistoryStatusLabel)}
             // Everything the tenant editor passes beyond the props modelled above.
             // Read by the "consent chooser stays off this level" test below.
             data-extra-props={Object.keys(rest).sort().join(',')}
@@ -166,8 +168,25 @@ describe('LegalText (M3 editor)', () => {
         );
 
         const editor = screen.getByTestId('m3-editor');
-        expect(editor.dataset.extraProps).toContain('versionHistoryState');
-        expect(editor.dataset.extraProps).toContain('versionHistoryStatusLabel');
+        expect(editor).toHaveAttribute('data-history-state', 'unsupported');
+        expect(editor).toHaveAttribute('data-history-status-label', 'legal.versions.unsupported');
+    });
+
+    it('passes a failed history request with its unavailable label', () => {
+        mocks.historyState = 'unavailable';
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                subTitle="imprint.subTitle"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        const editor = screen.getByTestId('m3-editor');
+        expect(editor).toHaveAttribute('data-history-state', 'unavailable');
+        expect(editor).toHaveAttribute('data-history-status-label', 'legal.versions.unavailable.title');
     });
     it('publishes the complete language map — untouched and unknown languages survive an edit', async () => {
         const user = userEvent.setup();

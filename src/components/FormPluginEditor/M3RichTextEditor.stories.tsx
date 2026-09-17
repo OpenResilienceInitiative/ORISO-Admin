@@ -75,13 +75,6 @@ export const GDPR: Story = {
 // never published. Editing and the separate draft/publish actions stay usable.
 export const TenantHistoryUnavailable: Story = {
     ...Imprint,
-    decorators: [
-        (Story) => (
-            <div style={{ width: 'min(800px, calc(100vw - 32px))' }}>
-                <Story />
-            </div>
-        ),
-    ],
     args: {
         ...Imprint.args,
         versionHistoryState: 'unsupported',

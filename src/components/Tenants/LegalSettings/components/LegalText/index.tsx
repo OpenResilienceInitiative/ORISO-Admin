@@ -28,6 +28,12 @@ const hintSessionKey = (type: 'privacy' | 'imprint') => `oriso-admin.legal.${typ
 
 const scopedKey = (key: string, scope: string) => `${key}.${scope}`;
 
+const VERSION_HISTORY_STATUS_KEYS = {
+    loading: 'legal.versions.loading',
+    unsupported: 'legal.versions.unsupported',
+    unavailable: 'legal.versions.unavailable.title',
+} as const;
+
 const isHintDismissed = (type: 'privacy' | 'imprint', scope: string) => {
     try {
         return (
@@ -329,9 +335,7 @@ export const LegalText = ({
                 versions={editorVersions}
                 versionHistoryState={historyState}
                 versionHistoryStatusLabel={
-                    historyState === 'available'
-                        ? undefined
-                        : t(historyState === 'loading' ? 'legal.versions.loading' : 'legal.versions.unsupported')
+                    historyState === 'available' ? undefined : t(VERSION_HISTORY_STATUS_KEYS[historyState])
                 }
                 // Restore = copy into the active language's draft; the published
                 // chain stays append-only.
