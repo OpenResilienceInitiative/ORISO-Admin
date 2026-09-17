@@ -74,6 +74,20 @@ const renderCard = (props: Partial<Parameters<typeof DepartmentDataProtectionCar
  * is deliberately left alone (see LegalText.test.tsx).
  */
 describe('DepartmentDataProtectionCard consent template chooser', () => {
+    it('uses one consent split button: its main segment opens the editor dialog', async () => {
+        const user = userEvent.setup();
+        renderCard();
+
+        const consentSlot = await screen.findByTestId('consent-slot');
+        const topicSlot = screen.getByTestId('topic-slot');
+        const consentTrigger = screen.getByTestId('consent-edit-trigger');
+        expect(consentSlot).toContainElement(consentTrigger);
+        expect(topicSlot).not.toContainElement(consentTrigger);
+        await user.click(screen.getByRole('button', { name: 'legal.consent.editButton' }));
+
+        expect(screen.getByText('placeholderTemplate.dialog.legalTitle')).toBeInTheDocument();
+    });
+
     it('puts a consent template split button into the editor function bar', async () => {
         renderCard();
 
@@ -123,13 +137,12 @@ describe('DepartmentDataProtectionCard consent template chooser', () => {
 
         await user.click(chooser());
         await user.click(await screen.findByText('legal.consent.template.platform.name'));
-        expect(screen.getByRole('button', { name: 'legal.consent.template.platform.name' })).toBeInTheDocument();
+        expect(screen.getByTestId('consent-edit-trigger')).toHaveTextContent('legal.consent.editButton');
 
         await user.click(screen.getByRole('button', { name: /languages:/i }));
         await user.click(await screen.findByRole('menuitem', { name: 'en' }));
 
-        expect(screen.queryByRole('button', { name: 'legal.consent.template.platform.name' })).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Vorlage wählen' })).toBeInTheDocument();
+        expect(screen.getByTestId('consent-edit-trigger')).toHaveTextContent('legal.consent.editButton');
     });
 
     it('clears the selected template when the department changes', async () => {
@@ -138,7 +151,7 @@ describe('DepartmentDataProtectionCard consent template chooser', () => {
 
         await user.click(chooser());
         await user.click(await screen.findByText('legal.consent.template.platform.name'));
-        expect(screen.getByRole('button', { name: 'legal.consent.template.platform.name' })).toBeInTheDocument();
+        expect(screen.getByTestId('consent-edit-trigger')).toHaveTextContent('legal.consent.editButton');
 
         rerender(
             <DepartmentDataProtectionCard
@@ -150,8 +163,7 @@ describe('DepartmentDataProtectionCard consent template chooser', () => {
             />,
         );
 
-        expect(screen.queryByRole('button', { name: 'legal.consent.template.platform.name' })).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Vorlage wählen' })).toBeInTheDocument();
+        expect(screen.getByTestId('consent-edit-trigger')).toHaveTextContent('legal.consent.editButton');
     });
 
     it('stays visible but inert while an archived version is on screen', async () => {

@@ -12,6 +12,7 @@ import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 import { UserRole } from '../../enums/UserRole';
 import { useAppConfigContext } from '../../context/useAppConfig';
+import { isAgencyScopedAdmin } from '../../constants/agencyAdminLanding';
 
 export interface LoginSurfaceProps {
     /** Platform logo from Theme settings → Appearance (#594.14). */
@@ -58,6 +59,7 @@ export const Login = () => {
 
     const [redirectUrl, setRedirectUrl] = useState('');
     const isTenantAdmin = hasRole(UserRole.TenantAdmin);
+    const isAgencyAdminOnly = isAgencyScopedAdmin(hasRole);
     const isAdminUser = hasRole([
         UserRole.TenantAdmin,
         UserRole.SingleTenantAdmin,
@@ -92,6 +94,11 @@ export const Login = () => {
 
         if (isTenantAdmin) {
             setRedirectUrl(routePathNames.consultants);
+        } else if (isAgencyAdminOnly) {
+            // A Beratungsstellen-Admin has nothing to do on the Träger settings screen (every tab
+            // is permission-gated away). Land on the Beratungsstellen route instead; with exactly
+            // one assigned agency that route forwards into the agency's settings (ORISO-Admin#917).
+            setRedirectUrl(routePathNames.agency);
         } else if (tenantData) {
             const redirectPath =
                 (settings.mainTenantSubdomainForSingleDomainMultitenancy && isTenantAdmin) ||
@@ -109,6 +116,7 @@ export const Login = () => {
         isTechnicalAccount,
         isAdminUser,
         isTenantAdmin,
+        isAgencyAdminOnly,
         settings.mainTenantSubdomainForSingleDomainMultitenancy,
     ]);
 

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Refresh from '@mui/icons-material/Refresh';
+import { Input } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import routePathNames from '../../appConfig';
@@ -11,19 +12,18 @@ import {
     createHttpCounsellorOnboardingClient,
 } from '../../api/counsellorOnboarding/counsellorOnboarding';
 import { M3Button } from '../../components/M3Button';
+import { FloatingLabelInput } from '../../components/FloatingLabelInput';
+import { FloatingLabelSelect } from '../../components/FloatingLabelSelect';
+import { FilterChip } from '../../components/FilterChip';
 import { TwoFactorSetup, TwoFactorSetupInlineError } from '../../components/TwoFactorSetup/TwoFactorSetup';
 import { toBase32Secret } from '../../utils/totpSecret';
-import { AdvisorAccountCard } from '../../components/cards/AdvisorAccountCard';
-import { PersonalInfoCard } from '../../components/cards/PersonalInfoCard';
-import { AvatarNameCard } from '../../components/cards/AvatarNameCard';
-import { FocusTopicsCard } from '../../components/cards/FocusTopicsCard';
+import { SALUTATION_KEYS } from '../../components/cards/PersonalInfoCard';
 import { SuccessCard } from '../../components/cards/SuccessCard';
-import { CardGrid } from '../../components/CardGrid';
-import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import { passwordErrorKey, usernameErrorKey } from '../../utils/consultantCredentialRules';
 import { LinkErrorState } from '../TenantOnboarding/LinkErrorState';
 import { MIN_PASSWORD_LENGTH, useCounsellorOnboardingFlow } from './useCounsellorOnboardingFlow';
 import styles from './styles.module.scss';
+import { ReactComponent as CounsellorGlyph } from '../../resources/img/svg/navbar/users_active.svg';
 
 interface CounsellorOnboardingProps {
     inviteToken: string;
@@ -35,27 +35,44 @@ interface CounsellorOnboardingProps {
     client?: CounsellorOnboardingClient;
 }
 
-/** Mobile step order: one card per step (#997); desktop composes them side by side. */
-const MOBILE_STEPS = ['account', 'person', 'name', 'topics'] as const;
-type MobileStep = (typeof MOBILE_STEPS)[number];
-
 const topicLabel = (topic: CounsellorTopicOption, fallbackPrefix: string) =>
     topic.name?.trim() ? topic.name : `${fallbackPrefix} ${topic.id}`;
 
+/** Plain section heading + optional helper line, left-aligned, no icon. */
+const Section = ({
+    titleKey,
+    hintKey,
+    children,
+}: {
+    titleKey: string;
+    hintKey?: string;
+    children: React.ReactNode;
+}) => {
+    const { t } = useTranslation();
+    return (
+        <section className={styles.section} aria-labelledby={`${titleKey}-heading`}>
+            <h2 id={`${titleKey}-heading`} className={styles.sectionTitle}>
+                {t(titleKey)}
+            </h2>
+            {hintKey && <p className={styles.sectionHint}>{t(hintKey)}</p>}
+            <div className={styles.fieldStack}>{children}</div>
+        </section>
+    );
+};
+
 /**
- * Public counsellor onboarding wizard (#997): a counsellor invite link opens
- * this step-by-step flow assembled from the Counsellor Setup Wizard cards
- * (Storybook, unwired since PR #413). Desktop shows the form cards side by
- * side in a CardGrid (fewer clicks — one submit); below the desktop
- * breakpoint the classic one-card-per-step flow runs. Registration creates
- * the consultant through the SAME backend path as the normal admin form, then
- * the mandatory 2FA setup finishes the flow (resume contract identical to the
- * tenant-admin onboarding).
+ * Public counsellor onboarding (#997): a counsellor invite link opens this
+ * form instead of the generic app acceptance page. Since the owner review it
+ * is ONE plain single-column form on every viewport — no cards, no
+ * step-by-step flow: the field groups are separated by plain section
+ * headings and there is exactly one submit at the end. Registration creates
+ * the consultant through the SAME backend path as the normal admin form,
+ * then the mandatory 2FA setup finishes the flow (resume contract identical
+ * to the tenant-admin onboarding).
  */
 export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardingProps) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const isDesktop = useIsDesktopLayout();
     const resolvedClient = useMemo(() => client ?? createHttpCounsellorOnboardingClient(), [client]);
     const {
         state,
@@ -71,20 +88,6 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         submitRegistration,
         submitTwoFactorCode,
     } = useCounsellorOnboardingFlow(inviteToken, resolvedClient);
-    const [mobileStep, setMobileStep] = useState<MobileStep>('account');
-    // A step transition unmounts the button that carried the focus. Move the
-    // focus onto the freshly rendered step region (tabIndex -1) so keyboard
-    // and screen-reader users keep a meaningful position and announcement —
-    // in BOTH directions (accessibility review on #997).
-    const stepRegionRef = useRef<HTMLDivElement>(null);
-    const stepRenderedOnceRef = useRef(false);
-    useEffect(() => {
-        if (!stepRenderedOnceRef.current) {
-            stepRenderedOnceRef.current = true;
-            return;
-        }
-        stepRegionRef.current?.focus();
-    }, [mobileStep]);
 
     if (state.phase === 'loading') {
         return (
@@ -166,14 +169,9 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
 
     const { topics } = invite;
     const topicFallback = t('counsellorOnboarding.topics.fallbackLabel');
-    const labelsById = new Map(topics.map((topic) => [topic.id, topicLabel(topic, topicFallback)]));
-    const idsByLabel = new Map(topics.map((topic) => [topicLabel(topic, topicFallback), topic.id]));
-    const selectedLabels = data.topicIds
-        .map((id) => labelsById.get(id))
-        .filter((label): label is string => label !== undefined);
 
     // Shared consultant credential policy — identical to the normal admin
-    // consultant form (utils/consultantCredentialRules): the wizard must never
+    // consultant form (utils/consultantCredentialRules): the form must never
     // accept a credential that form would reject.
     const usernameErrKey = usernameErrorKey(data.account.username);
     const passwordErrKey = passwordErrorKey(data.account.password);
@@ -185,153 +183,141 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     const usernameInlineError = data.account.username.length > 0 && usernameErrKey ? t(usernameErrKey) : undefined;
     const passwordInlineError = data.account.password.length > 0 && passwordErrKey ? t(passwordErrKey) : undefined;
 
-    const accountCard = (mobile: boolean) => (
-        <AdvisorAccountCard
-            value={{ email: invite.recipientEmail, ...data.account }}
-            emailReadOnly
-            usernameError={usernameInlineError}
-            passwordError={passwordInlineError}
-            onChange={(patch) => updateAccount(patch)}
-            onNext={mobile ? () => setMobileStep('person') : undefined}
-        />
-    );
-    const personCard = (mobile: boolean) => (
-        <PersonalInfoCard
-            value={{
-                firstName: invite.firstName ?? '',
-                lastName: invite.lastName ?? '',
-                remarks: '',
-                ...data.person,
-                position: data.person.position,
-                title: data.person.title,
-                salutation: data.person.salutation,
-            }}
-            namesReadOnly
-            hideRemarks
-            onChange={(patch) =>
-                updatePerson({
-                    salutation: patch.salutation ?? data.person.salutation,
-                    position: patch.position ?? data.person.position,
-                    title: patch.title ?? data.person.title,
-                })
-            }
-            onBack={mobile ? () => setMobileStep('account') : undefined}
-            onNext={mobile ? () => setMobileStep('name') : undefined}
-        />
-    );
-    const nameCard = (mobile: boolean) => (
-        <AvatarNameCard
-            avatars={[]}
-            // Reduced variant (#997): names only — the avatar grid and picture
-            // upload return with #995 and slot back into this card.
-            showAvatarSection={false}
-            showPictureSection={false}
-            value={{ ...data.names, ownPictureInternalOnly: false }}
-            onChange={(patch) =>
-                updateNames({
-                    publicName: patch.publicName ?? data.names.publicName,
-                    internalName: patch.internalName ?? data.names.internalName,
-                })
-            }
-            onBack={mobile ? () => setMobileStep('person') : undefined}
-            onNext={mobile ? () => setMobileStep('topics') : undefined}
-        />
-    );
-    const topicsCard = (mobile: boolean) => (
-        <FocusTopicsCard
-            topics={[...idsByLabel.keys()]}
-            selected={selectedLabels}
-            onToggle={(label) => {
-                const id = idsByLabel.get(label);
-                if (id !== undefined) {
-                    toggleTopic(id);
+    return (
+        <form
+            className={styles.wizard}
+            data-testid="counsellor-onboarding-form"
+            noValidate
+            onSubmit={(event) => {
+                event.preventDefault();
+                if (canSubmit) {
+                    submitRegistration();
                 }
             }}
-            onBack={mobile ? () => setMobileStep('name') : undefined}
-            onNext={
-                mobile
-                    ? () => {
-                          // Same validation gate as the desktop submit — an
-                          // invalid form keeps the hint on screen instead of
-                          // bouncing off the backend.
-                          if (canSubmit) {
-                              submitRegistration();
-                          }
-                      }
-                    : undefined
-            }
-        />
-    );
+        >
+            <header className={styles.pageHeader}>
+                {/* Tonal badge with the counsellor glyph (the "Konten" mark of the admin
+                    navigation) — tells the invitee at a glance which kind of account this
+                    page creates, before the heading is read. */}
+                <span className={styles.roleBadge} aria-hidden="true">
+                    <CounsellorGlyph width={32} height={32} />
+                </span>
+                <Typography variant="h4" component="h1" className={styles.pageTitle} sx={{ fontWeight: 700, mb: 1 }}>
+                    {t('counsellorOnboarding.title')}
+                </Typography>
+                <Typography color="text.secondary" className={styles.pageIntro} sx={{ mb: 1 }}>
+                    {t('counsellorOnboarding.intro')}
+                </Typography>
+            </header>
 
-    const submitHint = !canSubmit && !busy && (
-        <Typography color="text.secondary" variant="body2" data-testid="wizard-submit-hint">
-            {t('counsellorOnboarding.submitHint', { minLength: MIN_PASSWORD_LENGTH })}
-        </Typography>
-    );
+            <Section titleKey="cards.advisorAccount.title" hintKey="cards.advisorAccount.subtitle">
+                <FloatingLabelInput
+                    label={t('cards.advisorAccount.email')}
+                    readOnly
+                    disabled
+                    value={invite.recipientEmail}
+                    autoComplete="email"
+                />
+                <FloatingLabelInput
+                    label={t('cards.advisorAccount.username')}
+                    error={usernameInlineError !== undefined}
+                    supportingText={usernameInlineError ?? t('cards.advisorAccount.usernameHint')}
+                    value={data.account.username}
+                    autoComplete="username"
+                    onChange={(e) => updateAccount({ username: e.target.value })}
+                />
+                <FloatingLabelInput
+                    label={t('cards.advisorAccount.password')}
+                    component={Input.Password}
+                    error={passwordInlineError !== undefined}
+                    supportingText={passwordInlineError ?? t('cards.advisorAccount.passwordHint')}
+                    value={data.account.password}
+                    autoComplete="new-password"
+                    onChange={(e) => updateAccount({ password: e.target.value })}
+                />
+            </Section>
 
-    const registrationError = submitError === 'registration' && (
-        <Typography role="alert" color="error" data-testid="wizard-registration-error">
-            {t('counsellorOnboarding.registrationError')}
-        </Typography>
-    );
+            <Section titleKey="cards.personalInfo.title" hintKey="cards.personalInfo.subtitle">
+                {/* Names come from the invite, read-only — corrections go through the admin. */}
+                <FloatingLabelInput
+                    label={t('cards.personalInfo.firstName')}
+                    value={invite.firstName ?? ''}
+                    readOnly
+                    disabled
+                />
+                <FloatingLabelInput
+                    label={t('cards.personalInfo.lastName')}
+                    value={invite.lastName ?? ''}
+                    readOnly
+                    disabled
+                />
+                <FloatingLabelSelect
+                    label={t('cards.personalInfo.salutation')}
+                    options={SALUTATION_KEYS.map((key) => ({
+                        value: key,
+                        label: t(`counselor.salutation.option.${key}`),
+                    }))}
+                    value={data.person.salutation}
+                    onChange={(salutation) => updatePerson({ ...data.person, salutation })}
+                    showSearch
+                />
+                <FloatingLabelInput
+                    label={t('cards.personalInfo.position')}
+                    value={data.person.position}
+                    onChange={(e) => updatePerson({ ...data.person, position: e.target.value })}
+                />
+                <FloatingLabelInput
+                    label={t('cards.personalInfo.jobTitle')}
+                    allowClear
+                    value={data.person.title}
+                    onChange={(e) => updatePerson({ ...data.person, title: e.target.value })}
+                />
+            </Section>
 
-    return (
-        <div className={styles.wizard} data-testid="counsellor-onboarding-form">
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
-                {t('counsellorOnboarding.title')}
-            </Typography>
-            <Typography color="text.secondary" sx={{ mb: 3 }}>
-                {isDesktop
-                    ? t('counsellorOnboarding.intro')
-                    : t('counsellorOnboarding.stepIndicator', {
-                          current: MOBILE_STEPS.indexOf(mobileStep) + 1,
-                          total: MOBILE_STEPS.length,
-                      })}
-            </Typography>
-            {isDesktop ? (
-                <>
-                    <CardGrid minCardWidth={360} maxColumns={2} className={styles.grid}>
-                        {accountCard(false)}
-                        {personCard(false)}
-                        {nameCard(false)}
-                        {topicsCard(false)}
-                    </CardGrid>
-                    <div className={styles.submitRow}>
-                        {registrationError}
-                        {submitHint}
-                        <M3Button
-                            variant="filled"
-                            disabled={!canSubmit}
-                            loading={busy}
-                            onClick={() => submitRegistration()}
-                        >
-                            {t('counsellorOnboarding.submit')}
-                        </M3Button>
-                    </div>
-                </>
-            ) : (
-                <div
-                    ref={stepRegionRef}
-                    tabIndex={-1}
-                    role="group"
-                    aria-label={t('counsellorOnboarding.stepIndicator', {
-                        current: MOBILE_STEPS.indexOf(mobileStep) + 1,
-                        total: MOBILE_STEPS.length,
-                    })}
-                    className={styles.mobileStep}
-                >
-                    {mobileStep === 'account' && accountCard(true)}
-                    {mobileStep === 'person' && personCard(true)}
-                    {mobileStep === 'name' && nameCard(true)}
-                    {mobileStep === 'topics' && (
-                        <>
-                            {topicsCard(true)}
-                            {registrationError}
-                            {submitHint}
-                        </>
-                    )}
+            {/* Names only (#997): the avatar grid and picture upload return with #995. */}
+            <Section titleKey="cards.avatarName.titleNamesOnly" hintKey="cards.avatarName.subtitle">
+                <FloatingLabelInput
+                    label={t('cards.avatarName.publicName')}
+                    supportingText={t('cards.avatarName.publicNameHint')}
+                    value={data.names.publicName}
+                    onChange={(e) => updateNames({ ...data.names, publicName: e.target.value })}
+                />
+                <FloatingLabelInput
+                    label={t('cards.avatarName.internalName')}
+                    supportingText={t('cards.avatarName.internalNameHint')}
+                    value={data.names.internalName}
+                    onChange={(e) => updateNames({ ...data.names, internalName: e.target.value })}
+                />
+            </Section>
+
+            <Section titleKey="cards.focusTopics.title" hintKey="cards.focusTopics.subtitle">
+                <div className={styles.chips}>
+                    {topics.map((topic) => (
+                        <FilterChip
+                            key={topic.id}
+                            label={topicLabel(topic, topicFallback)}
+                            selected={data.topicIds.includes(topic.id)}
+                            onChange={() => toggleTopic(topic.id)}
+                        />
+                    ))}
                 </div>
-            )}
-        </div>
+            </Section>
+
+            <div className={styles.submitRow}>
+                {submitError === 'registration' && (
+                    <Typography role="alert" color="error" data-testid="wizard-registration-error">
+                        {t('counsellorOnboarding.registrationError')}
+                    </Typography>
+                )}
+                {!canSubmit && !busy && (
+                    <Typography color="text.secondary" variant="body2" data-testid="wizard-submit-hint">
+                        {t('counsellorOnboarding.submitHint', { minLength: MIN_PASSWORD_LENGTH })}
+                    </Typography>
+                )}
+                <M3Button type="submit" variant="filled" disabled={!canSubmit} loading={busy}>
+                    {t('counsellorOnboarding.submit')}
+                </M3Button>
+            </div>
+        </form>
     );
 };

@@ -13,7 +13,7 @@ import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalCon
 import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../../../hooks/useDpaGate.hook';
 import { createDpaSignInvite, resolveDpaSignLink } from '../../../../../api/tenant/createDpaSignInvite';
-import { sendDpaInviteEmail } from '../../../../../api/tenant/sendDpaInviteEmail';
+import { isDpaInviteEmailDeliveryFailure, sendDpaInviteEmail } from '../../../../../api/tenant/sendDpaInviteEmail';
 import { useDpaSignatures } from '../../../../../hooks/useDpaSignatures.hook';
 import { useLegalDraft } from '../../hooks/useLegalDraft';
 import { DpaForwardDialog } from '../../../../DpaForwardDialog/DpaForwardDialog';
@@ -148,7 +148,10 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 expiresAt: link.expiresAt ?? '',
             });
             return { link, mailFailed: false };
-        } catch {
+        } catch (error) {
+            if (!isDpaInviteEmailDeliveryFailure(error)) {
+                throw error;
+            }
             // Same shape as the public 502: the link exists, the mail did not go.
             return { link, mailFailed: true };
         }

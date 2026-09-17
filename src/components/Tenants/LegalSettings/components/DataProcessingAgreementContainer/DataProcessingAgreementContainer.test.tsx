@@ -49,6 +49,7 @@ vi.mock('../../../../../api/tenant/createDpaSignInvite', () => ({
 }));
 vi.mock('../../../../../api/tenant/sendDpaInviteEmail', () => ({
     sendDpaInviteEmail: sendInviteEmailApi,
+    isDpaInviteEmailDeliveryFailure: (error: unknown) => error instanceof Response && error.status === 502,
 }));
 
 // Stub the heavy shared dialog (#723) — its own behaviour is covered by

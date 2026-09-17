@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { createStubCounsellorOnboardingClient } from '../../api/counsellorOnboarding/counsellorOnboarding';
@@ -10,14 +12,15 @@ const PHONE_390 = {
 };
 
 /**
- * Public counsellor onboarding wizard (#997): a counsellor invite link opens
- * this flow instead of the generic app acceptance page. Desktop composes the
- * four form cards side by side (CardGrid, one submit); below the desktop
- * breakpoint the classic one-card-per-step flow runs. Registration creates
- * the consultant through the SAME backend path as the normal admin form and
- * ends with the mandatory 2FA setup (code 123456 verifies, 000000 shows the
- * invalid-code state). Every story injects the typed stub client — in
- * production the page defaults to the real public UserService client.
+ * Public counsellor onboarding (#997): a counsellor invite link opens this
+ * form instead of the generic app acceptance page. Since the owner review it
+ * is ONE plain single-column form on every viewport — no cards, no icons, no
+ * step flow: plain section headings separate the field groups and there is
+ * exactly one submit at the end. Registration creates the consultant through
+ * the SAME backend path as the normal admin form and ends with the mandatory
+ * 2FA setup (code 123456 verifies, 000000 shows the invalid-code state).
+ * Every story injects the typed stub client — in production the page
+ * defaults to the real public UserService client.
  */
 const meta = {
     title: 'Pages/CounsellorOnboarding/Flow',
@@ -25,9 +28,10 @@ const meta = {
     parameters: { layout: 'padded' },
     decorators: [
         // The preview decorator already provides a MemoryRouter (navigate in the done state).
+        // The width mirrors the `longForm` reading column of the public page layout.
         (Story) => (
             <ThemeProvider theme={orisoMuiTheme}>
-                <div style={{ width: 'min(1100px, 96vw)', padding: '16px 0' }}>
+                <div style={{ width: 'min(560px, 96vw)', padding: '16px 0' }}>
                     <Story />
                 </div>
             </ThemeProvider>
@@ -39,13 +43,25 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Desktop worksheet: all four form cards side by side, one submit. */
+/** The wired stage: one flat form with realistic invite data, one submit. */
 export const Wizard: Story = {
+    name: 'Flat form',
     args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0 }) },
+    play: async ({ canvas }) => {
+        // No cards, no step flow: every group is on screen at once and the
+        // single submit stays disabled until the required fields are filled.
+        await expect(await canvas.findByRole('heading', { name: 'Zugangsdaten' })).toBeVisible();
+        await expect(canvas.getByRole('heading', { name: 'Angaben zu Ihrer Person' })).toBeVisible();
+        await expect(canvas.getByRole('heading', { name: 'Anzeigenamen' })).toBeVisible();
+        await expect(canvas.getByRole('heading', { name: 'Themenfelder' })).toBeVisible();
+        await expect(canvas.queryByRole('button', { name: 'Weiter' })).not.toBeInTheDocument();
+        await expect(canvas.getByRole('button', { name: 'Konto erstellen' })).toBeDisabled();
+    },
 };
 
-/** Mobile (390px, #997 acceptance): one card per step with Back/Next footers. */
+/** Mobile (390px): the same single column, nothing collapses into steps. */
 export const WizardMobile: Story = {
+    name: 'Flat form (390px)',
     args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0 }) },
     ...PHONE_390,
 };

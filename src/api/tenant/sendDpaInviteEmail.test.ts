@@ -15,7 +15,7 @@ vi.mock('../fetchData', () => ({
 }));
 
 import { FETCH_ERRORS, FETCH_METHODS } from '../fetchData';
-import { sendDpaInviteEmail } from './sendDpaInviteEmail';
+import { isDpaInviteEmailDeliveryFailure, sendDpaInviteEmail } from './sendDpaInviteEmail';
 
 describe('sendDpaInviteEmail', () => {
     it('posts the recipient and opaque signing invitation through the authenticated UserService endpoint', async () => {
@@ -36,5 +36,11 @@ describe('sendDpaInviteEmail', () => {
             skipAuth: false,
             responseHandling: [FETCH_ERRORS.BAD_REQUEST, FETCH_ERRORS.CATCH_ALL_SILENT],
         });
+    });
+
+    it('classifies only the documented 502 response as a recoverable mail delivery failure', () => {
+        expect(isDpaInviteEmailDeliveryFailure(new Response(null, { status: 502 }))).toBe(true);
+        expect(isDpaInviteEmailDeliveryFailure(new Response(null, { status: 403 }))).toBe(false);
+        expect(isDpaInviteEmailDeliveryFailure(new Error('network failed'))).toBe(false);
     });
 });

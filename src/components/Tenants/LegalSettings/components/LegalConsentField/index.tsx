@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +36,10 @@ export interface LegalConsentFieldProps {
      * taken away; only its location moves.
      */
     hideTemplateChooser?: boolean;
+    /** Lets a surrounding split button own the visible dialog trigger. */
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    hideTrigger?: boolean;
 }
 
 /**
@@ -53,12 +57,27 @@ export const LegalConsentField = ({
     readOnly,
     inheritedFrom,
     hideTemplateChooser,
+    open: openProp,
+    onOpenChange,
+    hideTrigger,
 }: LegalConsentFieldProps) => {
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [draft, setDraft] = useState(value);
     const [activeTemplateId, setActiveTemplateId] = useState<number | string | undefined>(undefined);
     const templates = useConsentTemplates(language);
+    const dialogOpen = openProp ?? open;
+    const setDialogOpen = (next: boolean) => {
+        if (openProp === undefined) setOpen(next);
+        onOpenChange?.(next);
+    };
+
+    useEffect(() => {
+        if (dialogOpen) {
+            setDraft(value);
+            setActiveTemplateId(undefined);
+        }
+    }, [dialogOpen, value]);
 
     const missingMandatoryToken = !isBlankConsentText(value) && !hasMandatoryConsentToken(value);
     const draftMissingMandatoryToken = !isBlankConsentText(draft) && !hasMandatoryConsentToken(draft);
@@ -66,11 +85,11 @@ export const LegalConsentField = ({
     const openDialog = () => {
         setDraft(value);
         setActiveTemplateId(undefined);
-        setOpen(true);
+        setDialogOpen(true);
     };
 
     const closeDialog = () => {
-        setOpen(false);
+        setDialogOpen(false);
         setDraft(value);
         setActiveTemplateId(undefined);
     };
@@ -79,7 +98,7 @@ export const LegalConsentField = ({
         if (!readOnly) {
             onChange(draft);
         }
-        setOpen(false);
+        setDialogOpen(false);
         setActiveTemplateId(undefined);
     };
 
@@ -99,16 +118,18 @@ export const LegalConsentField = ({
 
     return (
         <>
-            <button
-                type="button"
-                className={classNames(styles.trigger, missingMandatoryToken && styles.triggerDanger)}
-                data-testid="consent-edit-trigger"
-                data-missing-token={missingMandatoryToken || undefined}
-                onClick={openDialog}
-            >
-                {readOnly ? t('legal.consent.viewButton') : t('legal.consent.editButton')}
-            </button>
-            {open && (
+            {!hideTrigger && (
+                <button
+                    type="button"
+                    className={classNames(styles.trigger, missingMandatoryToken && styles.triggerDanger)}
+                    data-testid="consent-edit-trigger"
+                    data-missing-token={missingMandatoryToken || undefined}
+                    onClick={openDialog}
+                >
+                    {readOnly ? t('legal.consent.viewButton') : t('legal.consent.editButton')}
+                </button>
+            )}
+            {dialogOpen && (
                 <PlaceholderTemplateDialog
                     icon={<LegalConsentHeadIcon data-testid="legal-consent-head-icon" />}
                     titleKey="placeholderTemplate.dialog.legalTitle"

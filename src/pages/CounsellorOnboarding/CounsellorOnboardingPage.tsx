@@ -16,10 +16,10 @@ export const CounsellorOnboardingPage = () => {
     const { token } = useParams<{ token: string }>();
 
     return (
-        // `wizard`: the widest public column — the desktop composition places
-        // the four wizard cards side by side (CardGrid), which the narrow
-        // longForm reading column cannot host.
-        <PasswordResetPageLayout variant="wizard">
+        // `longForm`: the plain single-column form takes the same reading
+        // column as the tenant-admin onboarding — one column, top-aligned so
+        // the first field stays the first thing in view.
+        <PasswordResetPageLayout variant="longForm">
             <CounsellorOnboarding inviteToken={token?.trim() ?? ''} />
         </PasswordResetPageLayout>
     );

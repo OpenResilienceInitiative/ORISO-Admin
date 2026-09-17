@@ -7,6 +7,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 're
 import ProtectedPageLayoutWrapper from './components/Layout/ProtectedPageLayoutWrapper';
 import { PageLoader } from './components/Layout/PageLoader';
 import routePathNames from './appConfig';
+import { isAgencyScopedAdmin } from './constants/agencyAdminLanding';
 import { Initialization } from './components/Layout/Initialization';
 import { useTenantData } from './hooks/useTenantData.hook';
 import { FeatureProvider } from './context/FeatureContext';
@@ -19,6 +20,7 @@ import { ReleaseToggle } from './enums/ReleaseToggle';
 import { useReleasesToggle } from './hooks/useReleasesToggle.hook';
 import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
+import { resolveVisibleLinksTabs } from './constants/linksAccess';
 import { UserRole } from './enums/UserRole';
 import { canReadCaseHandoverAdmin, canSeeSupervisorLogs } from './constants/caseHandoverAccess';
 import { useAppConfigContext } from './context/useAppConfig';
@@ -117,6 +119,12 @@ export const App = () => {
                 return;
             }
 
+            if (isAgencyScopedAdmin(hasRole) && can(PermissionAction.Read, Resource.Agency)) {
+                // Beratungsstellen-Admin: own agency first (ORISO-Admin#917).
+                navigate(routePathNames.agency);
+                return;
+            }
+
             let redirectPath = routePathNames.userProfile;
             if (can(PermissionAction.Read, Resource.TenantAdminUser)) {
                 redirectPath = routePathNames.tenantAdmins;
@@ -133,6 +141,8 @@ export const App = () => {
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
+    // Platform admin: all Links tabs; tenant admin: counsellor invites only; agency admins: none.
+    const visibleLinksTabs = resolveVisibleLinksTabs({ isSuperAdmin, hasRole });
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
     const requiresTwoFactorSetup = requiresMandatoryTwoFactor({
         roles,
@@ -373,12 +383,21 @@ export const App = () => {
                                 <Route path="/admin/users/tenant-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
                                 <Route path="/admin/users/platform-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
                                 <Route path="/admin/users/:typeOfUsers/:id" element={<LazyUserEditOrAdd />} />
-                                <Route path="/admin/links" element={<LazyLinksPage />}>
-                                    <Route index element={<LazyLinksIndexRedirect />} />
-                                    <Route path="tenants" element={<LazyTenantInvitesTab />} />
-                                    <Route path="counsellor" element={<LazyCounsellorInvitesTab />} />
-                                    <Route path="external-inbounds" element={<LazyExternalInboundsTab />} />
-                                </Route>
+                                {visibleLinksTabs.length > 0 && (
+                                    <Route path="/admin/links" element={<LazyLinksPage />}>
+                                        <Route index element={<LazyLinksIndexRedirect />} />
+                                        {visibleLinksTabs.includes('tenants') && (
+                                            <Route path="tenants" element={<LazyTenantInvitesTab />} />
+                                        )}
+                                        {visibleLinksTabs.includes('counsellor') && (
+                                            <Route path="counsellor" element={<LazyCounsellorInvitesTab />} />
+                                        )}
+                                        {visibleLinksTabs.includes('external-inbounds') && (
+                                            <Route path="external-inbounds" element={<LazyExternalInboundsTab />} />
+                                        )}
+                                        <Route path="*" element={<LazyLinksIndexRedirect />} />
+                                    </Route>
+                                )}
                             </Routes>
                         </Suspense>
                     </ErrorBoundary>
