@@ -179,8 +179,7 @@ export const App = () => {
     if (requiresTwoFactorSetup) {
         return (
             <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
-                {/* Defense in depth: both gates now target the same tenant- and
-                    agency-scoped admins, and if both apply the DPA lock must win. */}
+                {/* The DPA gate applies to tenant-scoped admins; agency admins are exempt. If both gates apply to a tenant admin, the DPA lock wins. */}
                 <DpaBlockerGate>
                     <ProtectedPageLayoutWrapper restricted>
                         <MandatoryTwoFactorSetup />
