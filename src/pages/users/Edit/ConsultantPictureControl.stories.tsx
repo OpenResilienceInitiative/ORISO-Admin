@@ -31,7 +31,10 @@ const visibilityHandlers = (initial = true, put = () => new HttpResponse(null, {
         http.get(visibilityRoute, () => HttpResponse.json({ internalOnly })),
         http.put(visibilityRoute, async (info) => {
             const response = await put();
-            if (response.status === 204) internalOnly = (await info.request.json()).internalOnly;
+            if (response.status === 204) {
+                const body = (await info.request.json()) as { internalOnly?: boolean };
+                internalOnly = body.internalOnly !== false;
+            }
             return response;
         }),
     ];
@@ -198,8 +201,11 @@ export const ReadError: Story = {
     },
 };
 
+// i18next.t() is typed TFunctionResult, which is not a testing-library Matcher under the
+// Storybook build's tsconfig. Narrow once, here, exactly as `label` above does for its own keys.
+const text = (key: string): string => String(i18next.t(key));
 const visibilitySwitch = (canvasElement: HTMLElement) =>
-    within(canvasElement).findByRole('switch', { name: i18next.t('counselor.picture.visibility.label') });
+    within(canvasElement).findByRole('switch', { name: text('counselor.picture.visibility.label') });
 
 export const InternalOnlyByDefault: Story = {
     parameters: { msw: { handlers: handlers() } },
@@ -208,9 +214,7 @@ export const InternalOnlyByDefault: Story = {
         const toggle = await visibilitySwitch(canvasElement);
         await waitFor(() => expect(toggle).toBeEnabled());
         await expect(toggle).not.toBeChecked();
-        await expect(
-            within(canvasElement).getByText(i18next.t('counselor.picture.visibility.internalHint')),
-        ).toBeVisible();
+        await expect(within(canvasElement).getByText(text('counselor.picture.visibility.internalHint'))).toBeVisible();
     },
 };
 
@@ -220,9 +224,7 @@ export const PublishedToAdviceSeekers: Story = {
         await decodedPreview(canvasElement);
         const toggle = await visibilitySwitch(canvasElement);
         await waitFor(() => expect(toggle).toBeChecked());
-        await expect(
-            within(canvasElement).getByText(i18next.t('counselor.picture.visibility.publicHint')),
-        ).toBeVisible();
+        await expect(within(canvasElement).getByText(text('counselor.picture.visibility.publicHint'))).toBeVisible();
     },
 };
 
@@ -234,15 +236,11 @@ export const PublishThenWithdraw: Story = {
         await waitFor(() => expect(toggle).toBeEnabled());
 
         await userEvent.click(toggle);
-        await expect(
-            await within(canvasElement).findByText(i18next.t('counselor.picture.status.published')),
-        ).toBeVisible();
+        await expect(await within(canvasElement).findByText(text('counselor.picture.status.published'))).toBeVisible();
         await waitFor(() => expect(toggle).toBeChecked());
 
         await userEvent.click(toggle);
-        await expect(
-            await within(canvasElement).findByText(i18next.t('counselor.picture.status.withdrawn')),
-        ).toBeVisible();
+        await expect(await within(canvasElement).findByText(text('counselor.picture.status.withdrawn'))).toBeVisible();
         // Withdrawal is immediate: the re-read flag, not optimistic local state, drives the switch.
         await waitFor(() => expect(toggle).not.toBeChecked());
     },
@@ -264,7 +262,7 @@ export const RefusedVisibilityChange: Story = {
         await waitFor(() => expect(toggle).toBeEnabled());
         await userEvent.click(toggle);
         await expect(
-            await within(canvasElement).findByText(i18next.t('counselor.picture.error.visibilityFailed')),
+            await within(canvasElement).findByText(text('counselor.picture.error.visibilityFailed')),
         ).toBeVisible();
         await waitFor(() => expect(toggle).not.toBeChecked());
     },
@@ -275,7 +273,7 @@ export const NoSwitchWithoutAPicture: Story = {
     play: async ({ canvasElement }) => {
         await expect(await within(canvasElement).findByText(label('empty'))).toBeVisible();
         await expect(
-            within(canvasElement).queryByRole('switch', { name: i18next.t('counselor.picture.visibility.label') }),
+            within(canvasElement).queryByRole('switch', { name: text('counselor.picture.visibility.label') }),
         ).not.toBeInTheDocument();
     },
 };

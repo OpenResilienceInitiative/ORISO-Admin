@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { createStubCounsellorOnboardingClient } from '../../api/counsellorOnboarding/counsellorOnboarding';
@@ -182,7 +182,7 @@ const photo = () => new File([png], 'portrait.png', { type: 'image/png' });
 export const PictureStepInternalByDefault: Story = {
     name: 'Picture step — internal by default',
     args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0 }) },
-    play: async ({ canvas }) => {
+    play: async ({ canvas, userEvent }) => {
         await expect(await canvas.findByRole('heading', { name: 'Ihr Foto' })).toBeVisible();
         await expect(canvas.queryByRole('switch', { name: 'Für Ratsuchende sichtbar' })).not.toBeInTheDocument();
 
@@ -207,7 +207,7 @@ export const PictureStepInternalByDefault: Story = {
 export const PictureStepPublished: Story = {
     name: 'Picture step — published',
     args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0 }) },
-    play: async ({ canvas }) => {
+    play: async ({ canvas, userEvent }) => {
         await userEvent.upload(await canvas.findByLabelText('Foto auswählen'), photo());
         const toggle = await canvas.findByRole('switch', { name: 'Für Ratsuchende sichtbar' });
         await userEvent.click(toggle);
@@ -220,7 +220,7 @@ export const PictureStepPublished: Story = {
 export const PictureStepRefusedKeepsTheAccount: Story = {
     name: 'Picture step — refused photo, account kept',
     args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0, pictureUploadFails: true }) },
-    play: async ({ canvas }) => {
+    play: async ({ canvas, userEvent }) => {
         // The invite coverage arrives preselected, so credentials are all that is still required.
         await userEvent.type(await canvas.findByLabelText('Benutzername'), 'lena_b');
         await userEvent.type(canvas.getByLabelText('Passwort'), 'SecurePass1!');
@@ -238,7 +238,7 @@ export const PictureStepMobile: Story = {
     name: 'Picture step (390px)',
     args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0 }) },
     ...PHONE_390,
-    play: async ({ canvas }) => {
+    play: async ({ canvas, userEvent }) => {
         await userEvent.upload(await canvas.findByLabelText('Foto auswählen'), photo());
         await expect(await canvas.findByRole('switch', { name: 'Für Ratsuchende sichtbar' })).toBeVisible();
     },

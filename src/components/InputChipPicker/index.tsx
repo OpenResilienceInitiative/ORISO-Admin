@@ -66,21 +66,26 @@ export const InputChipPicker = ({
     }));
 
     return (
-        <div className={classNames(styles.row, className)} role="list" aria-label={ariaLabel}>
-            {selected.map((option) => (
-                <span key={option.value} role="listitem" className={styles.chip} data-testid="input-chip">
-                    <span className={styles.label}>{option.label}</span>
-                    <button
-                        type="button"
-                        className={styles.remove}
-                        aria-label={removeLabel(option.label)}
-                        disabled={disabled}
-                        onClick={() => onChange(value.filter((id) => id !== option.value))}
-                    >
-                        <CloseIcon />
-                    </button>
-                </span>
-            ))}
+        <div className={classNames(styles.row, className)}>
+            {/* The "+" chip is a menu button, not a list item, so it must sit OUTSIDE the list:
+                a role="list" may only contain listitems (axe aria-required-children). The list
+                wrapper is display:contents so the chips and the button still flow as one row. */}
+            <div className={styles.chipList} role="list" aria-label={ariaLabel}>
+                {selected.map((option) => (
+                    <span key={option.value} role="listitem" className={styles.chip} data-testid="input-chip">
+                        <span className={styles.label}>{option.label}</span>
+                        <button
+                            type="button"
+                            className={styles.remove}
+                            aria-label={removeLabel(option.label)}
+                            disabled={disabled}
+                            onClick={() => onChange(value.filter((id) => id !== option.value))}
+                        >
+                            <CloseIcon />
+                        </button>
+                    </span>
+                ))}
+            </div>
             {remaining.length > 0 && (
                 <Dropdown
                     trigger={['click']}
