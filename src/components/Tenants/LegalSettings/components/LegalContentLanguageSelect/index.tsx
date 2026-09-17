@@ -5,7 +5,7 @@ import { isMachineTranslated } from '../../utils/translationMeta';
 import { isEmptyHtml } from '../../utils/legalContentLanguages';
 
 interface LegalContentLanguageSelectProps {
-    /** The languages offered for editing/viewing. Hidden when there is only one. */
+    /** The languages offered for editing/viewing. A single one leaves the control inert, never hidden. */
     languages: string[];
     /** The currently shown language. */
     value: string;
@@ -34,10 +34,6 @@ export const LegalContentLanguageSelect = ({
 }: LegalContentLanguageSelectProps) => {
     const { t } = useTranslation();
 
-    if (languages.length <= 1) {
-        return null;
-    }
-
     const labelFor = (language: string): string => {
         const base = t(`language.${language}`, language);
         // "no content yet" outranks the original/translated status: a language without
@@ -61,6 +57,9 @@ export const LegalContentLanguageSelect = ({
             icon={<Language />}
             label={value.toUpperCase()}
             title={`${t('languages')}: ${labelFor(value)}`}
+            // Disable, never hide: with one active language the switcher stays
+            // visible and inert so the level still shows which language it holds.
+            disabled={languages.length <= 1}
             menu={{
                 selectable: true,
                 selectedKeys: [value],
