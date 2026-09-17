@@ -1051,7 +1051,7 @@ export const M3RichTextEditor = ({
                     {consentSlot}
                     {topicSlot}
                     {historyUnavailable && versionHistoryStatusLabel && (
-                        <span className={styles.versionMenuHeader} role="status">
+                        <span className={`${styles.versionMenuHeader} ${styles.versionHistoryStatus}`} role="status">
                             {versionHistoryStatusLabel}
                         </span>
                     )}
