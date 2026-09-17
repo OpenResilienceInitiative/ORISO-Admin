@@ -82,6 +82,41 @@ describe('useCounsellorOnboardingFlow', () => {
         expect(result.current.data.topicIds).toEqual([12]);
     });
 
+    it('resets collected data when the token switches to another invite', async () => {
+        const newAgencyInvite: CounsellorOnboardingInviteDTO = {
+            ...INVITE,
+            agencyId: 13,
+            departmentId: null,
+            agencyExists: false,
+            topics: [],
+            availableTopics: [{ id: 21, name: 'Suchtberatung' }],
+        };
+        const client = createClient({
+            getOnboardingInvite: vi
+                .fn()
+                .mockImplementation((token: string) =>
+                    Promise.resolve(token === 'raw-token' ? INVITE : newAgencyInvite),
+                ),
+        });
+        const { result, rerender } = renderHook(({ token }) => useCounsellorOnboardingFlow(token, client), {
+            initialProps: { token: 'raw-token' },
+        });
+        await waitFor(() => expect(result.current.state.phase).toBe('form'));
+        expect(result.current.data.topicIds).toEqual([12, 13]);
+        act(() => {
+            result.current.updateAgency({ name: 'Alte Stelle' });
+            result.current.updateAccount({ username: 'lena_b', password: 'SecurePass1!' });
+        });
+
+        rerender({ token: 'other-token' });
+        await waitFor(() => expect(result.current.invite?.agencyId).toBe(13));
+
+        // No stale coverage ids and no stale agency name survive the switch.
+        expect(result.current.data.topicIds).toEqual([]);
+        expect(result.current.data.agency.name).toBe('');
+        expect(result.current.data.account.username).toBe('');
+    });
+
     it('omits empty optional fields from the registration payload', async () => {
         const client = createClient();
         const { result } = renderHook(() => useCounsellorOnboardingFlow('raw-token', client));

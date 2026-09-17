@@ -106,12 +106,12 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                     });
                     return;
                 }
+                // Every resolve starts from a clean sheet: a token switch must not
+                // carry a previous invite's topics or agency name into this one.
                 // The invite's coverage arrives preselected (owner decision
-                // 2026-09-17): the invitee removes pills or adds further tenant
+                // 2026-09-17): the invitee removes chips or adds further tenant
                 // topics instead of starting from an empty selection.
-                if (loaded.topics.length > 0) {
-                    setData((current) => ({ ...current, topicIds: loaded.topics.map((topic) => topic.id) }));
-                }
+                setData({ ...EMPTY_DATA, topicIds: loaded.topics.map((topic) => topic.id) });
                 setState({ phase: 'form' });
             })
             .catch((error: unknown) => {
