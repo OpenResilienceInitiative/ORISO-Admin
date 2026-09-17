@@ -13,17 +13,12 @@ vi.mock('react-i18next', () => ({
     }),
 }));
 
-/**
- * The branded preview renderer is the ADMIN-ONLY endpoint
- * `POST /service/useradmin/invite-email-templates/preview`. It is mocked here so
- * the tests can assert *whether it is called at all* — on the public onboarding
- * wizard it must never be, because its 401 takes the anonymous visitor through
- * fetchData's logout handler and onto /admin/login (#712).
- */
-const mocks = vi.hoisted(() => ({ previewInviteEmailTemplateContent: vi.fn() }));
+/** Canonical UserService DPA preview endpoints; the generic template preview is not used here. */
+const mocks = vi.hoisted(() => ({ getAdminDpaMailPreview: vi.fn(), getPublicDpaMailPreview: vi.fn() }));
 
-vi.mock('../../api/accountInvites/accountInvites', () => ({
-    previewInviteEmailTemplateContent: mocks.previewInviteEmailTemplateContent,
+vi.mock('../../api/tenantOnboarding/dpaMailPreview', () => ({
+    getAdminDpaMailPreview: mocks.getAdminDpaMailPreview,
+    getPublicDpaMailPreview: mocks.getPublicDpaMailPreview,
 }));
 
 /** Longer than EmailKitPreview's 300ms debounce, so "not called" means it. */
@@ -42,6 +37,8 @@ const ok = (link: DpaForwardLink = LINK, mailFailed = false): DpaForwardOutcome 
 
 const renderDialog = (overrides: Partial<Parameters<typeof DpaForwardDialog>[0]> = {}) => {
     const props = {
+        inviteToken: 'public-preview-token',
+        tenantId: 42,
         forward: vi.fn().mockResolvedValue(ok()),
         onClose: vi.fn(),
         onForwarded: vi.fn(),
@@ -58,17 +55,11 @@ const requestLink = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 beforeEach(() => {
-    mocks.previewInviteEmailTemplateContent.mockReset();
-    mocks.previewInviteEmailTemplateContent.mockResolvedValue({
-        templateId: null,
-        templateName: null,
-        kind: 'DPA_FORWARD',
-        language: 'de',
-        subject: 'rendered subject',
-        html: '<!doctype html><html><body>rendered mail</body></html>',
-        plainText: 'rendered mail',
-        sampleAcceptUrl: 'https://example.org/SAMPLE-PREVIEW-TOKEN',
-    });
+    mocks.getAdminDpaMailPreview.mockReset();
+    mocks.getPublicDpaMailPreview.mockReset();
+    const preview = { subject: 'rendered subject', html: '<!doctype html><html><body>rendered mail</body></html>' };
+    mocks.getAdminDpaMailPreview.mockResolvedValue(preview);
+    mocks.getPublicDpaMailPreview.mockResolvedValue(preview);
 });
 
 describe('DpaForwardDialog link minting', () => {
@@ -378,69 +369,37 @@ describe('DpaForwardDialog link minting', () => {
     });
 });
 
-/**
- * #712, the blocker. The branded mail render comes from an admin-only endpoint.
- * On the public onboarding wizard that endpoint answers 401 unconditionally, and
- * fetchData turns a 401 on a non-`skipAuth` call into refresh → logout →
- * /admin/login. The dialog therefore threw the anonymous visitor off the page
- * about half a second after it opened, before a recipient could be typed.
- *
- * The invariant asserted here is stronger than "a 401 must not log anyone out":
- * a public surface must not issue the admin call in the first place.
- */
-describe('DpaForwardDialog preview surface', () => {
-    it('issues no admin-only preview request on the public surface', async () => {
+/** The dialog renders the server document for both surfaces. */
+describe('DpaForwardDialog canonical preview surface', () => {
+    it('loads the public canonical document with the opaque invite token', async () => {
         renderDialog();
 
-        await screen.findByTestId('dpa-forward-plain-preview');
-        await settle();
-        expect(mocks.previewInviteEmailTemplateContent).not.toHaveBeenCalled();
+        await screen.findByTestId('dpa-forward-canonical-preview');
+        await waitFor(() => expect(mocks.getPublicDpaMailPreview).toHaveBeenCalledWith('public-preview-token'));
+        expect(mocks.getAdminDpaMailPreview).not.toHaveBeenCalled();
     });
 
-    it('defaults to the public surface, so a host that declares nothing cannot log anyone out', async () => {
+    it('uses the public surface by default', async () => {
         renderDialog({ surface: undefined });
 
-        await screen.findByTestId('dpa-forward-plain-preview');
-        await settle();
-        expect(mocks.previewInviteEmailTemplateContent).not.toHaveBeenCalled();
+        await waitFor(() => expect(mocks.getPublicDpaMailPreview).toHaveBeenCalled());
+        expect(mocks.getAdminDpaMailPreview).not.toHaveBeenCalled();
     });
 
-    /**
-     * `t` is mocked to the bare key here, so the *resolved* wording (the sign
-     * link in the body, the neutral salutation, the "no raw {{token}}" rule) is
-     * asserted against the REAL shipped copy in `forwardMailPreview.test.ts`.
-     * What this test owns is that the plain preview renders the composition the
-     * dialog produced, and keeps tracking it as the admin types.
-     */
-    it('shows the composed mail as text on the public surface', async () => {
-        const user = userEvent.setup();
+    it('shows the returned canonical document, never locally composed text', async () => {
         renderDialog();
 
-        const preview = await screen.findByTestId('dpa-forward-plain-preview');
-        expect(preview).toHaveTextContent('dpaForward.mail.subject');
-        expect(preview).toHaveTextContent('dpaForward.mail.body');
-        expect(preview).toHaveTextContent('dpaForward.mail.salutationNeutral');
-        expect(preview.textContent).not.toMatch(/\{\{|\}\}/);
-
-        // A typed name re-composes the salutation — the preview is live, not a
-        // snapshot taken when the dialog opened.
-        await user.type(screen.getByLabelText('dpaForward.dialog.recipientName'), 'Dr. Ruth Recht');
-        await waitFor(() =>
-            expect(screen.getByTestId('dpa-forward-plain-preview')).toHaveTextContent('dpaForward.mail.salutation'),
-        );
-        expect(screen.getByTestId('dpa-forward-plain-preview')).not.toHaveTextContent(
-            'dpaForward.mail.salutationNeutral',
-        );
-    });
-
-    it('keeps the backend-rendered branded preview on an authenticated admin surface', async () => {
-        renderDialog({ surface: 'admin' });
-
-        await waitFor(() => expect(mocks.previewInviteEmailTemplateContent).toHaveBeenCalled(), { timeout: 3000 });
-        expect(screen.queryByTestId('dpa-forward-plain-preview')).not.toBeInTheDocument();
         await waitFor(() =>
             expect(document.querySelector('iframe[title="dpaForward.dialog.previewLabel"]')).toBeInTheDocument(),
         );
+        expect(screen.queryByTestId('dpa-forward-plain-preview')).not.toBeInTheDocument();
+    });
+
+    it('loads the tenant-scoped authenticated canonical document on an admin surface', async () => {
+        renderDialog({ surface: 'admin' });
+
+        await waitFor(() => expect(mocks.getAdminDpaMailPreview).toHaveBeenCalledWith(42));
+        expect(mocks.getPublicDpaMailPreview).not.toHaveBeenCalled();
     });
 
     it('does not collect a recipient name that the authenticated send endpoint cannot deliver', async () => {
@@ -453,27 +412,6 @@ describe('DpaForwardDialog preview surface', () => {
 
         await screen.findByTestId('dpa-forward-sent');
         expect(forward).toHaveBeenCalledWith({ recipientEmail: 'legal@example.org' });
-    });
-
-    /**
-     * JOB11. The mail frame — header, call-to-action and the house FOOTER (brand
-     * name, Impressum · Datenschutz, "Diese E-Mail wurde automatisch versendet …")
-     * — is applied by the backend renderer, the same one the send path runs; this
-     * dialog only composes the salutation and the body that go inside it. What the
-     * dialog owes the renderer is the identity of the mail, and it was not sending
-     * it: with no `kind`, `InviteEmailPreviewService` falls back to TENANT_INVITE
-     * and renders the sample call-to-action against the ADMIN console, while a DPA
-     * signer belongs on the app host. Nothing else in the render branches on kind,
-     * so this is the whole of the fix — and the reason the preview may not be
-     * hand-framed in Admin instead.
-     */
-    it('tells the backend renderer which mail this is, so the forward mail is framed as itself', async () => {
-        // Only the admin surface may talk to the backend renderer at all
-        // (#712), so the kind contract is asserted there.
-        renderDialog({ surface: 'admin' });
-
-        await waitFor(() => expect(mocks.previewInviteEmailTemplateContent).toHaveBeenCalled(), { timeout: 3000 });
-        expect(mocks.previewInviteEmailTemplateContent.mock.calls[0][0]).toMatchObject({ kind: 'DPA_FORWARD' });
     });
 });
 

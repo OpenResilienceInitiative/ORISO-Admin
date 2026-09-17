@@ -19,6 +19,8 @@ export interface DpaPendingSignatureDialogProps {
     initialLink?: DpaForwardLink;
     /** Sends the DPA_FORWARD mail again (or to a different address). */
     forward: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
+    /** Tenant whose canonical DPA forward mail is rendered. */
+    tenantId?: number;
     /**
      * "Später", the X, Escape or a mask click. The admin area is already
      * rendered behind the notice (#990), so this only closes it.
@@ -52,6 +54,7 @@ export const DpaPendingSignatureDialog = ({
     ensureSignLink,
     initialLink,
     forward,
+    tenantId,
     onDismiss,
     onForwardCompleted,
     recheckRejected = false,
@@ -83,6 +86,7 @@ export const DpaPendingSignatureDialog = ({
         return (
             <DpaForwardDialog
                 forward={forward}
+                tenantId={tenantId}
                 // Shown after login on an authenticated admin surface, so the
                 // admin-only branded mail preview is reachable here.
                 surface="admin"

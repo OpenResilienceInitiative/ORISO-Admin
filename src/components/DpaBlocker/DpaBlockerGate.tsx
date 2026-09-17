@@ -229,6 +229,7 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
                         ensureSignLink={mintLink}
                         initialLink={forwardedLink ?? undefined}
                         forward={forward}
+                        tenantId={tenantId}
                         onDismiss={() => setPendingDismissed(true)}
                         onForwardCompleted={() => setPendingDismissed(true)}
                         recheckRejected={recheckRejected}
@@ -271,6 +272,7 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
             signFailed={signMutation.isError}
             onSign={onSign}
             onForward={blockerSignable ? forward : undefined}
+            tenantId={tenantId}
             onForwardOpenChange={setBlockerForwardOpen}
             signerDefaults={{ signerName, signerEmail: userData?.email ?? '' }}
             onForwarded={(result) => {

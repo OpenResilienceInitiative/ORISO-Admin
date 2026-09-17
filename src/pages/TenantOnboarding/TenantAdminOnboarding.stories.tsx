@@ -10,6 +10,7 @@ import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 import { AccountStep } from './AccountStep';
 import { TwoFactorStep } from './TwoFactorStep';
 import { DoneStep } from './DoneStep';
+import { dpaMailPreviewStoryHandlers } from '../../components/DpaForwardDialog/dpaMailPreviewStory';
 
 /**
  * Public tenant-admin onboarding flow (TEN-INV U8, #571): the invite link
@@ -24,7 +25,7 @@ import { DoneStep } from './DoneStep';
 const meta = {
     title: 'Pages/TenantOnboarding/Flow',
     component: TenantAdminOnboarding,
-    parameters: { layout: 'centered' },
+    parameters: { layout: 'centered', msw: { handlers: dpaMailPreviewStoryHandlers } },
     decorators: [
         // The preview decorator already provides a MemoryRouter (Link in the done state).
         (Story) => (

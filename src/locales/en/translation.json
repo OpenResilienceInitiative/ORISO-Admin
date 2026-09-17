@@ -137,6 +137,8 @@
     "dpaForward.dialog.errorTooManyLinks": "This registration already has too many outstanding signing links. Please wait until one of them has been used or has expired, then try again.",
     "dpaForward.dialog.mailFailedLinkReady": "The e-mail could not be sent. The signing link above was created anyway and is valid — simply share it directly.",
     "dpaForward.dialog.previewLabel": "Preview of the e-mail",
+    "dpaForward.dialog.previewLoading": "Loading the e-mail preview …",
+    "dpaForward.dialog.previewSampleNote": "The signing link and expiry date in this preview are examples.",
     "dpaForward.dialog.previewPlainNote": "Text preview of the e-mail. It is sent in the platform's layout.",
     "dpaForward.dialog.confirm": "Complete forwarding",
     "dpaForward.dialog.resend": "Send again",
