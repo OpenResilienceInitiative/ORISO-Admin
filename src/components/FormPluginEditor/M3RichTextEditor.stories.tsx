@@ -71,6 +71,39 @@ export const GDPR: Story = {
     },
 };
 
+// A missing tenant history endpoint must not imply that the current text was
+// never published. Editing and the separate draft/publish actions stay usable.
+export const TenantHistoryUnavailable: Story = {
+    ...Imprint,
+    args: {
+        ...Imprint.args,
+        versionHistoryState: 'unsupported',
+        versionHistoryStatusLabel: 'Versionsverlauf für diesen Träger ist noch nicht verfügbar.',
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getByRole('status')).toHaveTextContent(
+            'Versionsverlauf für diesen Träger ist noch nicht verfügbar.',
+        );
+    },
+};
+
+export const TenantHistoryUnavailableEnglish: Story = {
+    ...TenantHistoryUnavailable,
+    args: {
+        ...TenantHistoryUnavailable.args,
+        title: 'Imprint',
+        value: '<p>The currently published imprint remains editable.</p>',
+        versionHistoryStatusLabel: 'Version history is not available for this tenant yet.',
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getByRole('status')).toHaveTextContent(
+            'Version history is not available for this tenant yet.',
+        );
+    },
+};
+
 const anchoredContent =
     '<h2>Geltungsbereich</h2><p>Dieser Vertrag regelt die Auftragsverarbeitung. ' +
     'Siehe auch den Abschnitt <a href="#pflichten-des-auftragnehmers">Pflichten</a>.</p>' +
