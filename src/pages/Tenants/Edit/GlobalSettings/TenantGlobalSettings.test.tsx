@@ -37,9 +37,7 @@ vi.mock('../../../../api/fetchData', async (importOriginal) => {
 // eslint-disable-next-line import/first
 import { TenantGlobalSettings } from './index';
 
-// ORISO-Admin#988: the conversation-circle card is its own master, not the legacy
-// featureGroupChatV2Enabled family switch (that one lives under Other functions).
-const GROUP = 'featureSelfHelpGroupsEnabled';
+const CONVERSATION_CIRCLE = 'featureSelfHelpGroupsEnabled';
 const GROUP_VIDEO = 'featureVideoCallsGroupChatsEnabled';
 
 const renderPage = () =>
@@ -88,43 +86,55 @@ beforeEach(() => {
 });
 
 describe('Platform admin on /admin/tenants/<id>/global-settings (ORISO-Admin#989)', () => {
-    it('shows group chats as off for a Träger that has them off', async () => {
-        serve({ traegerSettings: { [GROUP]: false }, policies: { [GROUP]: policy(false) } });
+    it('shows conversation circles as off for a Träger that has them off', async () => {
+        serve({
+            traegerSettings: { [CONVERSATION_CIRCLE]: false },
+            policies: { [CONVERSATION_CIRCLE]: policy(false) },
+        });
         renderPage();
 
-        const control = await findRow(GROUP);
+        const control = await findRow(CONVERSATION_CIRCLE);
         expect(within(control).getByTestId('BlockIcon')).toBeInTheDocument();
         expect(requestsTo('/service/tenantadmin/controls')).toHaveLength(0);
     });
 
-    it('shows group chats as on after the Träger switched them on', async () => {
-        serve({ traegerSettings: { [GROUP]: true }, policies: { [GROUP]: policy(true) } });
+    it('shows conversation circles as on after the Träger switched them on', async () => {
+        serve({
+            traegerSettings: { [CONVERSATION_CIRCLE]: true },
+            policies: { [CONVERSATION_CIRCLE]: policy(true) },
+        });
         renderPage();
 
-        const control = await findRow(GROUP);
+        const control = await findRow(CONVERSATION_CIRCLE);
         expect(within(control).getByTestId('CheckIcon')).toBeInTheDocument();
     });
 
     it("saves to the Träger's own policies, never to the platform-wide controls", async () => {
-        serve({ traegerSettings: { [GROUP]: true }, policies: { [GROUP]: policy(true) } });
+        serve({
+            traegerSettings: { [CONVERSATION_CIRCLE]: true },
+            policies: { [CONVERSATION_CIRCLE]: policy(true) },
+        });
         renderPage();
         const user = userEvent.setup();
 
-        const control = await findRow(GROUP);
+        const control = await findRow(CONVERSATION_CIRCLE);
         await user.click(within(control).getByRole('button', { name: /Open policy choices/i }));
         await user.click(within(control).getByRole('button', { name: /Deactivation \(adjustable\)/i }));
 
         await waitFor(() => expect(requestsTo('/service/tenantadmin/7/permission-policies')).toHaveLength(2));
         const put = requestsTo('/service/tenantadmin/7/permission-policies').at(-1) as Request;
         expect(put.method).toBe('PUT');
-        expect(JSON.parse(put.bodyData ?? '{}')).toMatchObject({ tenantId: 7, policies: { [GROUP]: policy(false) } });
+        expect(JSON.parse(put.bodyData ?? '{}')).toMatchObject({
+            tenantId: 7,
+            policies: { [CONVERSATION_CIRCLE]: policy(false) },
+        });
         expect(requestsTo('/service/tenantadmin/controls')).toHaveLength(0);
     });
 
     it('takes an unset Träger field from the platform preset instead of a blanket "on"', async () => {
-        // The Träger never stored a group chat value; the platform preset has group chats off. The
-        // card master must follow the preset, so its sub-features are disabled — not the old all-on.
-        serve({ traegerSettings: {}, policies: { [GROUP]: policy(false) } });
+        // The Träger never stored a conversation-circle value; the platform preset has conversation
+        // circles off. The card master must follow the preset, so its sub-features are disabled.
+        serve({ traegerSettings: {}, policies: { [CONVERSATION_CIRCLE]: policy(false) } });
         renderPage();
 
         const control = await findRow(GROUP_VIDEO);

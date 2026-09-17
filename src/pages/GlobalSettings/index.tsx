@@ -26,6 +26,7 @@ import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
 import { ChatRecoverySettingsCard } from '../../components/GlobalSettings/ChatRecoverySettingsCard';
 import { useChatRecoverySettings } from '../../hooks/useChatRecoverySettings.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
+import { AccountInactivitySettingsCardContainer } from '../../components/GlobalSettings/AccountInactivitySettingsCard';
 
 export const GlobalLoginSettingsPage = () => {
     const { t } = useTranslation();
@@ -84,6 +85,13 @@ export const GlobalLoginSettingsPage = () => {
                     <section className={styles.translationCardSlot}>
                         <TranslationApiKeysCardContainer />
                     </section>
+                    {isSuperAdmin && (
+                        <section className={styles.globalConfigCardSlot}>
+                            <ThemeProvider theme={orisoMuiTheme}>
+                                <AccountInactivitySettingsCardContainer />
+                            </ThemeProvider>
+                        </section>
+                    )}
                     {isSuperAdmin && (
                         <section className={styles.globalConfigCardSlot}>
                             <ThemeProvider theme={orisoMuiTheme}>

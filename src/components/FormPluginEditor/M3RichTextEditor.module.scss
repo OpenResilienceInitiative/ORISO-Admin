@@ -1145,6 +1145,12 @@ $m3-state-active: rgb(39 50 112 / 12%);
         flex-shrink: 0;
     }
 
+    > .versionHistoryStatus {
+        min-width: 0;
+        flex-shrink: 1;
+        white-space: normal;
+    }
+
     @media (max-width: 599px) {
         gap: 8px;
 

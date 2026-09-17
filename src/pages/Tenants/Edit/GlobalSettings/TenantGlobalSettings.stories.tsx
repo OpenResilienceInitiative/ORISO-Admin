@@ -12,9 +12,7 @@ import { TenantGlobalSettings } from './index';
  * feature values and policies. The page shows what the Träger actually has switched on.
  */
 
-// ORISO-Admin#988: the conversation-circle card is its own master, not the legacy
-// featureGroupChatV2Enabled family switch (that one lives under Other functions).
-const GROUP = 'featureSelfHelpGroupsEnabled';
+const CONVERSATION_CIRCLE = 'featureSelfHelpGroupsEnabled';
 
 // Every authenticated call must be mocked: an unmocked one 401s and force-logs-out the story.
 const TENANT_BY_ID = '*/service/tenantadmin/:id';
@@ -58,26 +56,34 @@ type Story = StoryObj<typeof meta>;
 
 const row = (root: HTMLElement, field: string) => root.querySelector(`[data-feature-policy="${field}"]`) as HTMLElement;
 
-/** The Träger has group chats switched off: the page says off, not "enabled". */
-export const TraegerGroupChatsOff: Story = {
-    parameters: {
-        msw: { handlers: handlers({ [GROUP]: false }, { [GROUP]: { value: false, mode: 'SUGGESTED' } }) },
-    },
-    play: async ({ canvasElement }) => {
-        await waitFor(() => expect(row(canvasElement, GROUP)).not.toBeNull(), { timeout: 5000 });
-        await expect(row(canvasElement, GROUP).querySelector('[data-testid="BlockIcon"]')).not.toBeNull();
-    },
-};
-
-/** The platform enforced group chats off for this Träger: the row is read-only for the Träger admin. */
-export const PlatformEnforcedGroupChatsOff: Story = {
+/** The Träger has conversation circles switched off: the page says off, not "enabled". */
+export const TraegerConversationCirclesOff: Story = {
     parameters: {
         msw: {
-            handlers: handlers({ [GROUP]: false }, { [GROUP]: { value: false, mode: 'ENFORCED', inherited: true } }),
+            handlers: handlers(
+                { [CONVERSATION_CIRCLE]: false },
+                { [CONVERSATION_CIRCLE]: { value: false, mode: 'SUGGESTED' } },
+            ),
         },
     },
     play: async ({ canvasElement }) => {
-        await waitFor(() => expect(row(canvasElement, GROUP)).not.toBeNull(), { timeout: 5000 });
-        await expect(row(canvasElement, GROUP).querySelector('[data-testid="LockIcon"]')).not.toBeNull();
+        await waitFor(() => expect(row(canvasElement, CONVERSATION_CIRCLE)).not.toBeNull(), { timeout: 5000 });
+        await expect(row(canvasElement, CONVERSATION_CIRCLE).querySelector('[data-testid="BlockIcon"]')).not.toBeNull();
+    },
+};
+
+/** The platform enforced conversation circles off for this Träger: the row is read-only for the Träger admin. */
+export const PlatformEnforcedConversationCirclesOff: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(
+                { [CONVERSATION_CIRCLE]: false },
+                { [CONVERSATION_CIRCLE]: { value: false, mode: 'ENFORCED', inherited: true } },
+            ),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        await waitFor(() => expect(row(canvasElement, CONVERSATION_CIRCLE)).not.toBeNull(), { timeout: 5000 });
+        await expect(row(canvasElement, CONVERSATION_CIRCLE).querySelector('[data-testid="LockIcon"]')).not.toBeNull();
     },
 };
