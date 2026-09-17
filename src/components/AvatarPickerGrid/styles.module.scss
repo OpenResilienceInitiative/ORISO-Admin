@@ -65,11 +65,12 @@ $tile-size: 52px;
     outline-offset: 2px;
 }
 
-/* The ring has to stay readable ON the saturated red: a dark border plus a
-   surface-coloured halo separates the selected tile from its neighbours
-   without relying on colour alone. */
+/* The ring has to stay readable ON the saturated red without going black
+   (owner, 2026-09-17): the SECONDARY slate reads as a deliberate selection
+   colour, and the light surface halo lifts it off both the red tile and its
+   neighbours. Two rings, so it never relies on colour alone. */
 
 .selected {
-    border-color: var(--m3-on-surface, #1b1b1c);
-    box-shadow: 0 0 0 3px var(--m3-surface, #fcf9f9);
+    border-color: var(--m3-secondary, #4c555f);
+    box-shadow: 0 0 0 2px var(--m3-surface, #fcf9f9);
 }

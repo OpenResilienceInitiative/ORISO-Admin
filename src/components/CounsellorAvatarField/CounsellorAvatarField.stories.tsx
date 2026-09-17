@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect } from 'storybook/test';
+import { expect, waitFor } from 'storybook/test';
 import { CounsellorAvatarField, type CounsellorAvatarFieldProps } from './index';
 import type { CounsellorAvatarValue } from '../../utils/counsellorAvatar';
 
@@ -71,6 +71,47 @@ export const NoNameYet: Story = {
     args: { displayName: '' },
     play: async ({ canvas }) => {
         await expect(canvas.getByRole('radio', { name: 'Initialen' })).toBeInTheDocument();
+    },
+};
+
+/**
+ * The viewport is five rows tall and scrolls. The down arrow travels one row
+ * per click; at the top the up arrow is inert, so the control says whether
+ * there is more to see.
+ */
+export const ScrollsOneRowPerClick: Story = {
+    play: async ({ canvas, userEvent }) => {
+        const up = canvas.getByRole('button', { name: 'Eine Zeile nach oben' });
+        const down = canvas.getByRole('button', { name: 'Eine Zeile nach unten' });
+        // Nothing is selected, so the list opens at the top.
+        await expect(up).toBeDisabled();
+        await expect(down).toBeEnabled();
+
+        const viewport = canvas.getByRole('radiogroup').parentElement as HTMLElement;
+        await expect(viewport.scrollTop).toBe(0);
+        // Five rows of 52px plus four 8px gaps, and the list is taller than that.
+        await expect(viewport.clientHeight).toBeLessThanOrEqual(296);
+        await expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight);
+
+        await userEvent.click(down);
+        // One row = tile + gap = 60px. Smooth scrolling settles asynchronously.
+        await waitFor(async () => {
+            await expect(viewport.scrollTop).toBe(60);
+        });
+        await expect(up).toBeEnabled();
+    },
+};
+
+/** A stored motif far down the list is scrolled into view on mount. */
+export const ScrollsSelectionIntoView: Story = {
+    args: { value: { avatarKind: 'ICON', avatarId: 'zebra' } },
+    play: async ({ canvas }) => {
+        const viewport = canvas.getByRole('radiogroup').parentElement as HTMLElement;
+        // `zebra` is the last motif — the counsellor must not have to hunt for it.
+        await expect(viewport.scrollTop).toBeGreaterThan(0);
+        await expect(canvas.getByRole('radio', { name: 'Symbol zebra' })).toBeChecked();
+        // At the very bottom the down arrow is the inert one.
+        await expect(canvas.getByRole('button', { name: 'Eine Zeile nach unten' })).toBeDisabled();
     },
 };
 

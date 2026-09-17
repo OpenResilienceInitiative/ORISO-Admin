@@ -851,6 +851,8 @@
     "counselor.avatar.initials": "Initialen {{initials}}",
     "counselor.avatar.initials.empty": "Initialen",
     "counselor.avatar.motif": "Symbol {{motif}}",
+    "counselor.avatar.scrollUp": "Eine Zeile nach oben",
+    "counselor.avatar.scrollDown": "Eine Zeile nach unten",
     "counselor.internalDisplayName": "Anzeigename (intern)",
     "counselor.internalDisplayName.placeholder": "Internen Anzeigenamen eingeben",
     "counselor.internalDisplayName.hint": "Wenn leer, wird intern der Anzeigename für Ratsuchende verwendet.",

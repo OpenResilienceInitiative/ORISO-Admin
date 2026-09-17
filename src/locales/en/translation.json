@@ -1111,6 +1111,8 @@
     "counselor.avatar.initials": "Initials {{initials}}",
     "counselor.avatar.initials.empty": "Initials",
     "counselor.avatar.motif": "Motif {{motif}}",
+    "counselor.avatar.scrollUp": "Scroll up one row",
+    "counselor.avatar.scrollDown": "Scroll down one row",
     "counselor.internalDisplayName": "Display name (internal)",
     "counselor.internalDisplayName.placeholder": "Enter internal display name",
     "counselor.internalDisplayName.hint": "If empty, the advice-seeker display name is used internally.",

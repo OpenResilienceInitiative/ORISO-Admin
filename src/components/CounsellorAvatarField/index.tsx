@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import { AvatarPickerGrid, type AvatarOption } from '../AvatarPickerGrid';
+import { ReactComponent as ArrowIcon } from '../../resources/img/svg/keyboard-arrow-down.svg';
 import { ANIMAL_AVATARS } from '../../resources/img/svg/avatars';
 import {
     type CounsellorAvatarValue,
@@ -17,6 +18,18 @@ import styles from './styles.module.scss';
  * initials option; every other id is a motif id.
  */
 export const INITIALS_TILE_ID = '__initials__';
+
+/** Tile diameter and grid gap, mirrored from AvatarPickerGrid's stylesheet. */
+const TILE_SIZE = 52;
+const GRID_GAP = 8;
+/** One arrow click travels exactly one row, so the motion is legible. */
+const ROW_STEP = TILE_SIZE + GRID_GAP;
+/**
+ * The picker shows five rows and scrolls (owner, 2026-09-17): all 61 motifs at
+ * once pushed the rest of the form off the screen.
+ */
+export const VISIBLE_ROWS = 5;
+export const VIEWPORT_HEIGHT = VISIBLE_ROWS * TILE_SIZE + (VISIBLE_ROWS - 1) * GRID_GAP;
 
 export interface CounsellorAvatarFieldProps extends CounsellorNameParts {
     value: CounsellorAvatarValue;
@@ -57,6 +70,55 @@ export const CounsellorAvatarField = ({
 }: CounsellorAvatarFieldProps) => {
     const { t } = useTranslation();
     const initials = counsellorInitials({ displayName, firstname, lastname, username });
+    const viewportRef = useRef<HTMLDivElement>(null);
+    const [scroll, setScroll] = useState({ atTop: true, atBottom: true });
+
+    /**
+     * Both arrows are disabled at their end of travel, so the control says
+     * whether there is more to see instead of silently doing nothing. A 1px
+     * tolerance absorbs sub-pixel scroll positions.
+     */
+    const syncScrollState = useCallback(() => {
+        const el = viewportRef.current;
+        if (!el) {
+            return;
+        }
+        const max = el.scrollHeight - el.clientHeight;
+        setScroll({ atTop: el.scrollTop <= 1, atBottom: el.scrollTop >= max - 1 });
+    }, []);
+
+    // The stored choice may sit far down the list: show it on mount rather than
+    // making the counsellor hunt for their own avatar. Layout effect so the jump
+    // happens before paint, and `scrollTop` rather than scrollIntoView(), which
+    // would also scroll the page around the picker.
+    useLayoutEffect(() => {
+        const el = viewportRef.current;
+        const selected = el?.querySelector<HTMLElement>('[aria-checked="true"]');
+        if (el && selected) {
+            const target = selected.offsetTop - (el.clientHeight - selected.offsetHeight) / 2;
+            el.scrollTop = Math.max(0, target);
+        }
+        syncScrollState();
+        // Mount only: later changes are the user's own clicks, and yanking the
+        // viewport under them after every pick would be hostile.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // The row count changes with the container width, so the end-of-travel
+    // state has to be recomputed on resize, not only on scroll.
+    useEffect(() => {
+        const el = viewportRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') {
+            return undefined;
+        }
+        const observer = new ResizeObserver(syncScrollState);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [syncScrollState]);
+
+    const scrollByRow = (direction: 1 | -1) => {
+        viewportRef.current?.scrollBy({ top: direction * ROW_STEP, behavior: 'smooth' });
+    };
 
     const avatars: AvatarOption[] = useMemo(
         () => [
@@ -78,23 +140,56 @@ export const CounsellorAvatarField = ({
 
     return (
         <div className={classNames(styles.field, className)}>
-            <AvatarPickerGrid
-                avatars={avatars}
-                value={toTileId(value)}
-                className={classNames({ [styles.disabled]: disabled })}
-                onChange={
-                    disabled
-                        ? undefined
-                        : (id) =>
-                              onChange(
-                                  normaliseAvatarValue(
-                                      id === INITIALS_TILE_ID
-                                          ? { avatarKind: 'INITIALS' }
-                                          : { avatarKind: 'ICON', avatarId: id },
-                                  ),
-                              )
-                }
-            />
+            <div className={styles.scroller}>
+                <button
+                    type="button"
+                    className={classNames(styles.arrow, styles.arrowUp)}
+                    onClick={() => scrollByRow(-1)}
+                    disabled={disabled || scroll.atTop}
+                    aria-label={t('counselor.avatar.scrollUp')}
+                    // The list itself is the radiogroup; these only move the
+                    // viewport, so they must not appear as extra options to AT.
+                    tabIndex={-1}
+                >
+                    <ArrowIcon aria-hidden="true" />
+                </button>
+                {/* Native overflow: wheel, trackpad, touch and keyboard paging
+                    keep working; the arrows are an affordance, not the only way. */}
+                <div
+                    ref={viewportRef}
+                    className={styles.viewport}
+                    style={{ maxHeight: VIEWPORT_HEIGHT }}
+                    onScroll={syncScrollState}
+                >
+                    <AvatarPickerGrid
+                        avatars={avatars}
+                        value={toTileId(value)}
+                        className={classNames({ [styles.disabled]: disabled })}
+                        onChange={
+                            disabled
+                                ? undefined
+                                : (id) =>
+                                      onChange(
+                                          normaliseAvatarValue(
+                                              id === INITIALS_TILE_ID
+                                                  ? { avatarKind: 'INITIALS' }
+                                                  : { avatarKind: 'ICON', avatarId: id },
+                                          ),
+                                      )
+                        }
+                    />
+                </div>
+                <button
+                    type="button"
+                    className={styles.arrow}
+                    onClick={() => scrollByRow(1)}
+                    disabled={disabled || scroll.atBottom}
+                    aria-label={t('counselor.avatar.scrollDown')}
+                    tabIndex={-1}
+                >
+                    <ArrowIcon aria-hidden="true" />
+                </button>
+            </div>
             <p className={styles.hint}>{t('counselor.avatar.hint')}</p>
         </div>
     );

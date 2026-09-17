@@ -31,8 +31,23 @@ const meta = {
         // The width mirrors the `longForm` reading column of the public page layout.
         (Story) => (
             <ThemeProvider theme={orisoMuiTheme}>
-                <div style={{ width: 'min(560px, 96vw)', padding: '16px 0' }}>
-                    <Story />
+                {/*
+                  The real page paints ONE tone across the whole public surface —
+                  `--m3-surface-container-high`, set by PublicPageLayoutWrapper
+                  (styles/components/publicLayout.less, #594.12). The story has to
+                  carry it too: the floating labels fill their notch with that same
+                  token, so on Storybook's default grey they showed as a lighter
+                  rectangle behind the label that does NOT exist in the app.
+                */}
+                <div
+                    style={{
+                        background: 'var(--m3-surface-container-high, #eae7e8)',
+                        padding: '16px',
+                    }}
+                >
+                    <div style={{ width: 'min(560px, 96vw)', padding: '16px 0' }}>
+                        <Story />
+                    </div>
                 </div>
             </ThemeProvider>
         ),
