@@ -21,10 +21,14 @@ const mocks = vi.hoisted(() => ({
     activeLanguages: ['de', 'en'] as string[],
     userId: 'user-1' as string | undefined,
     userLoading: false,
+    versions: [] as unknown[],
+    historyState: 'available' as 'available' | 'unsupported',
 }));
 
 // The version history is an independent react-query call; this suite has no client.
-vi.mock('../../../../../hooks/useLegalTextVersions.hook', () => ({ useLegalTextVersions: () => ({ data: [] }) }));
+vi.mock('../../../../../hooks/useLegalTextVersions.hook', () => ({
+    useLegalTextVersions: () => ({ data: mocks.versions, historyState: mocks.historyState }),
+}));
 vi.mock('../../../../../hooks/useTenantAppearanceFormData', () => ({
     useTenantAppearanceFormData: () => ({
         data: {
@@ -142,11 +146,29 @@ beforeEach(() => {
     mocks.canEdit = true;
     mocks.userId = 'user-1';
     mocks.userLoading = false;
+    mocks.versions = [];
+    mocks.historyState = 'available';
     window.localStorage.clear();
     window.sessionStorage.clear();
 });
 
 describe('LegalText (M3 editor)', () => {
+    it('passes an unsupported tenant history state instead of an empty version list', () => {
+        mocks.historyState = 'unsupported';
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                subTitle="imprint.subTitle"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        const editor = screen.getByTestId('m3-editor');
+        expect(editor.dataset.extraProps).toContain('versionHistoryState');
+        expect(editor.dataset.extraProps).toContain('versionHistoryStatusLabel');
+    });
     it('publishes the complete language map — untouched and unknown languages survive an edit', async () => {
         const user = userEvent.setup();
         mocks.updateTenant.mockClear();

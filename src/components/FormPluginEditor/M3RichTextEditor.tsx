@@ -91,6 +91,10 @@ export type M3RichTextEditorProps = {
      * the draft (append-only history — the old version is never mutated).
      */
     versions?: EditorVersion[];
+    /** Whether this owner exposes the version-history collection. */
+    versionHistoryState?: 'loading' | 'available' | 'unsupported' | 'unavailable';
+    /** Honest status shown when history is loading, unsupported or unavailable. */
+    versionHistoryStatusLabel?: string;
     /** Called with a version's content when the admin restores it as a new draft (copy). */
     onRestoreVersion?: (content: string) => void;
     /**
@@ -652,6 +656,8 @@ export const M3RichTextEditor = ({
     icon: IconComponent = Fingerprint,
     value = '',
     versions = [],
+    versionHistoryState = 'available',
+    versionHistoryStatusLabel,
     onRestoreVersion,
     onViewVersionChange,
     onChange,
@@ -871,7 +877,8 @@ export const M3RichTextEditor = ({
                 }}
             />
         ) : null);
-    const showVersionControl = !readOnly || versions.length > 0;
+    const historyUnavailable = versionHistoryState !== 'available';
+    const showVersionControl = !historyUnavailable && (!readOnly || versions.length > 0);
 
     const card = (
         <div
@@ -1038,11 +1045,16 @@ export const M3RichTextEditor = ({
                 language, consent template (slot), topic/department (slot),
                 version history. Every one of them can be the only occupant, so
                 each has to hold the bar open on its own. */}
-            {(languageControl || consentSlot || topicSlot || showVersionControl) && (
+            {(languageControl || consentSlot || topicSlot || showVersionControl || historyUnavailable) && (
                 <div className={styles.functionBar} data-testid="m3-editor-function-bar">
                     {languageControl}
                     {consentSlot}
                     {topicSlot}
+                    {historyUnavailable && versionHistoryStatusLabel && (
+                        <span className={styles.versionMenuHeader} role="status">
+                            {versionHistoryStatusLabel}
+                        </span>
+                    )}
                     {showVersionControl && (
                         <SplitDropdown
                             icon={<VersionHistoryIcon />}
