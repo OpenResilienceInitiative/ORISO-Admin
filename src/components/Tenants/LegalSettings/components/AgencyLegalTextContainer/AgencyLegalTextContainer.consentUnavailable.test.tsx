@@ -112,13 +112,15 @@ describe('AgencyLegalTextContainer — why consent is unavailable', () => {
         expect(cardProps().consentUnavailableReason).toBeUndefined();
     });
 
-    // An older backend that does not carry `consentText` is not an admin's doing and there
-    // is nothing to advise about it — the slot stays as empty as it was before #914.
-    it('stays silent when a Fachbereich is selected but the backend has no consent field', async () => {
+    // A Fachbereich without a `consentText` yet is the seed case of #929: the chooser has to
+    // be reachable exactly there, so the consent map is EMPTY rather than absent — and an
+    // explanation would be wrong, because the admin can act. (#914 and #929 merged
+    // independently; this is the reconciled contract.)
+    it('offers the seed chooser instead of an explanation when a Fachbereich has no consent sentence yet', async () => {
         renderContainer();
         await selectDepartment('U25 Suizidprävention');
 
-        expect(cardProps().consentByLanguage).toBeUndefined();
+        expect(cardProps().consentByLanguage).toEqual({});
         expect(cardProps().consentUnavailableReason).toBeUndefined();
     });
 
