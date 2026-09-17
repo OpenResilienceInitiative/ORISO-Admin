@@ -515,6 +515,14 @@ describe('ConsultantPictureControl', () => {
             expect(screen.queryByText('counselor.picture.status.published')).not.toBeInTheDocument();
         });
 
+        it('restores focus to the switch after a completed visibility change', async () => {
+            const user = userEvent.setup();
+            mocks.publish.mutateAsync.mockResolvedValue(undefined);
+            render(<ConsultantPictureControl consultantId="42" disabled={false} pendingDeletion={false} />);
+            await user.click(screen.getByRole('switch', { name: switchName }));
+            await waitFor(() => expect(screen.getByRole('switch', { name: switchName })).toHaveFocus());
+        });
+
         it('locks the switch for a read-only form and a person pending deletion', () => {
             const { rerender } = render(
                 <ConsultantPictureControl consultantId="42" disabled pendingDeletion={false} />,

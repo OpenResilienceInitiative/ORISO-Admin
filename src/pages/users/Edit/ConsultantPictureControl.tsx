@@ -43,7 +43,8 @@ const PictureControlForOwner = ({
     const { t } = useTranslation();
     const inputRef = useRef<HTMLInputElement>(null);
     const chooseButtonRef = useRef<HTMLButtonElement>(null);
-    const restoreFocusRef = useRef(false);
+    const switchRef = useRef<HTMLButtonElement>(null);
+    const restoreFocusRef = useRef<'choose' | 'switch' | null>(null);
     const activeRef = useRef(true);
     const busyRef = useRef(false);
     const [pendingAction, setPendingAction] = useState<'upload' | 'remove' | 'publish' | null>(null);
@@ -83,8 +84,10 @@ const PictureControlForOwner = ({
 
     useEffect(() => {
         if (!pendingAction && restoreFocusRef.current && !mutationsDisabled) {
-            restoreFocusRef.current = false;
-            chooseButtonRef.current?.focus();
+            const target = restoreFocusRef.current;
+            restoreFocusRef.current = null;
+            if (target === 'switch') switchRef.current?.focus();
+            else chooseButtonRef.current?.focus();
         }
     }, [pendingAction, mutationsDisabled]);
 
@@ -116,7 +119,7 @@ const PictureControlForOwner = ({
     const uploadSelectedFile = async () => {
         if (!selectedFile || !consultantId || mutationsDisabled || busyRef.current) return;
         busyRef.current = true;
-        restoreFocusRef.current = true;
+        restoreFocusRef.current = 'choose';
         setPendingAction('upload');
         setErrorKeyValue(null);
         setStatusKey('counselor.picture.status.uploading');
@@ -145,7 +148,7 @@ const PictureControlForOwner = ({
     const removePicture = async () => {
         if (!consultantId || mutationsDisabled || busyRef.current) return;
         busyRef.current = true;
-        restoreFocusRef.current = true;
+        restoreFocusRef.current = 'choose';
         setPendingAction('remove');
         setErrorKeyValue(null);
         setStatusKey('counselor.picture.status.removing');
@@ -170,6 +173,7 @@ const PictureControlForOwner = ({
     const changeVisibility = async (nextPublic: boolean) => {
         if (!consultantId || mutationsDisabled || busyRef.current || !hasStoredPicture) return;
         busyRef.current = true;
+        restoreFocusRef.current = 'switch';
         setPendingAction('publish');
         setErrorKeyValue(null);
         setStatusKey(nextPublic ? 'counselor.picture.status.publishing' : 'counselor.picture.status.withdrawing');
@@ -255,6 +259,7 @@ const PictureControlForOwner = ({
             {hasStoredPicture && (
                 <div className={styles.visibility}>
                     <Switch
+                        ref={switchRef}
                         id="consultant-picture-visibility"
                         checked={publicToAdviceSeekers}
                         loading={pendingAction === 'publish'}

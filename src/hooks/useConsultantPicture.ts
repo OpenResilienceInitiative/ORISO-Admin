@@ -85,15 +85,30 @@ export const useConsultantPictureMutations = (consultantId?: string) => {
     return {
         publish: {
             isPending: publish.isPending,
-            mutateAsync: (internalOnly: boolean) => publish.mutateAsync({ id: consultantId as string, internalOnly }),
+            mutateAsync: (internalOnly: boolean) => {
+                if (!consultantId || consultantId === 'add') {
+                    return Promise.reject(new Error('CONSULTANT_ID_REQUIRED'));
+                }
+                return publish.mutateAsync({ id: consultantId, internalOnly });
+            },
         },
         upload: {
             isPending: upload.isPending,
-            mutateAsync: (picture: File) => upload.mutateAsync({ id: consultantId as string, picture }),
+            mutateAsync: (picture: File) => {
+                if (!consultantId || consultantId === 'add') {
+                    return Promise.reject(new Error('CONSULTANT_ID_REQUIRED'));
+                }
+                return upload.mutateAsync({ id: consultantId, picture });
+            },
         },
         remove: {
             isPending: remove.isPending,
-            mutateAsync: () => remove.mutateAsync(consultantId as string),
+            mutateAsync: () => {
+                if (!consultantId || consultantId === 'add') {
+                    return Promise.reject(new Error('CONSULTANT_ID_REQUIRED'));
+                }
+                return remove.mutateAsync(consultantId);
+            },
         },
     };
 };

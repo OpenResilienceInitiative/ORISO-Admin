@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchData } from '../fetchData';
-import { getConsultantPicture, removeConsultantPicture, uploadConsultantPicture } from './consultantPicture';
+import {
+    getConsultantPicture,
+    getConsultantPictureVisibility,
+    removeConsultantPicture,
+    setConsultantPictureVisibility,
+    uploadConsultantPicture,
+} from './consultantPicture';
 
 vi.mock('../fetchData', () => ({
     FETCH_ERRORS: {
@@ -62,5 +68,29 @@ describe('consultantPicture API', () => {
         vi.mocked(fetchData).mockResolvedValue(new Blob());
         await getConsultantPicture('42', controller.signal);
         expect(vi.mocked(fetchData).mock.calls[0][0].signal).toBe(controller.signal);
+    });
+
+    it('treats a missing visibility record as internal-only', async () => {
+        vi.mocked(fetchData).mockRejectedValue(new Error('NO_MATCH'));
+        await expect(getConsultantPictureVisibility('42')).resolves.toBe(true);
+    });
+
+    it('preserves internalOnly from a successful visibility response', async () => {
+        vi.mocked(fetchData).mockResolvedValue({ internalOnly: false });
+        await expect(getConsultantPictureVisibility('42')).resolves.toBe(false);
+        vi.mocked(fetchData).mockResolvedValue({ internalOnly: true });
+        await expect(getConsultantPictureVisibility('42')).resolves.toBe(true);
+    });
+
+    it('writes the selected boolean to the visibility endpoint', async () => {
+        vi.mocked(fetchData).mockResolvedValue({ status: 204 });
+        await setConsultantPictureVisibility('consultant-42', false);
+        expect(vi.mocked(fetchData)).toHaveBeenCalledWith(
+            expect.objectContaining({
+                url: expect.stringMatching(/\/service\/useradmin\/consultants\/consultant-42\/picture\/visibility$/),
+                method: 'PUT',
+                bodyData: JSON.stringify({ internalOnly: false }),
+            }),
+        );
     });
 });

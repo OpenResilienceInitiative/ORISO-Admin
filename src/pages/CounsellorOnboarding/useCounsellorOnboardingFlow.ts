@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { type CounsellorAvatarValue, normaliseAvatarValue } from '../../utils/counsellorAvatar';
 import {
     CounsellorOnboardingClient,
     CounsellorOnboardingInviteDTO,
@@ -52,6 +53,8 @@ export interface CounsellorWizardData {
     account: { username: string; password: string };
     person: { salutation?: string; position: string; title: string };
     names: { publicName: string; internalName: string };
+    /** #1046/#1047: the avatar step is on. Empty = no choice made yet. */
+    avatar: CounsellorAvatarValue;
     /** Issue #1049: the counsellor's own photo, internal unless they publish it. */
     picture: { file: File | null; publicToAdviceSeekers: boolean };
     topicIds: number[];
@@ -63,6 +66,7 @@ const EMPTY_DATA: CounsellorWizardData = {
     account: { username: '', password: '' },
     person: { salutation: undefined, position: '', title: '' },
     names: { publicName: '', internalName: '' },
+    avatar: {},
     picture: { file: null, publicToAdviceSeekers: false },
     topicIds: [],
     agency: { name: '' },
@@ -165,6 +169,10 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setData((current) => ({ ...current, picture: { ...current.picture, ...patch } }));
     }, []);
 
+    const updateAvatar = useCallback((avatar: CounsellorAvatarValue) => {
+        setData((current) => ({ ...current, avatar }));
+    }, []);
+
     const updateAgency = useCallback((patch: Partial<CounsellorWizardData['agency']>) => {
         setData((current) => ({ ...current, agency: { ...current.agency, ...patch } }));
     }, []);
@@ -222,7 +230,9 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setSubmitError(null);
         setPictureError(null);
         try {
-            const { account, person, names, topicIds, agency } = dataRef.current;
+            const { account, person, names, avatar, topicIds, agency } = dataRef.current;
+            // Normalises a half choice away; `{}` (no choice) sends no avatar block at all.
+            const { avatarKind, avatarId } = normaliseAvatarValue(avatar);
             const createsAgency = inviteRef.current?.agencyExists === false;
             const request: CounsellorRegistrationRequest = {
                 account: { username: account.username.trim(), password: account.password },
@@ -235,24 +245,24 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                     publicName: names.publicName.trim() || undefined,
                     internalDisplayName: names.internalName.trim() || undefined,
                 },
+                ...(avatarKind ? { avatar: { kind: avatarKind, ...(avatarId ? { id: avatarId } : {}) } } : {}),
                 topicIds,
                 // Present only for a reserved (not yet existing) agency — the
                 // backend rejects the field for an existing one.
                 ...(createsAgency ? { agency: { name: agency.name.trim() } } : {}),
             };
             const result = await client.registerCounsellor(inviteToken, request);
-            // The account now exists. Storing the photo is a separate step whose failure is
-            // reported but never rolls the registration back or blocks the 2FA setup.
-            await storePicture(dataRef.current.picture);
-            if (result.phase === 'COMPLETED') {
-                // 2FA gate waived by the inviting admin — nothing left to set up.
-                setState({ phase: 'done' });
+            // Picture routes use the raw invite token. A COMPLETED registration has already
+            // consumed that token, so uploading here would replace success with CONSUMED.
+            if (result.phase === 'PENDING_2FA_ACTIVATION') {
+                await storePicture(dataRef.current.picture);
+                setState({
+                    phase: 'two-factor',
+                    result: { twoFactor: result.twoFactor, resumed: false },
+                });
                 return;
             }
-            setState({
-                phase: 'two-factor',
-                result: { twoFactor: result.twoFactor, resumed: false },
-            });
+            setState({ phase: 'done' });
         } catch (error) {
             failFlow(error, 'registration');
         } finally {
@@ -298,6 +308,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         updatePerson,
         updateNames,
         updatePicture,
+        updateAvatar,
         updateAgency,
         setTopics,
         toggleTopic,

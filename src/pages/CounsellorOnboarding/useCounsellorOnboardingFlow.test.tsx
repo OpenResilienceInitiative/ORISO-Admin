@@ -30,6 +30,8 @@ const createClient = (overrides: Partial<CounsellorOnboardingClient> = {}): Coun
         twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
     }),
     activateTwoFactor: vi.fn().mockResolvedValue(undefined),
+    uploadOnboardingPicture: vi.fn().mockResolvedValue(undefined),
+    setOnboardingPictureVisibility: vi.fn().mockResolvedValue(undefined),
     ...overrides,
 });
 
@@ -156,6 +158,34 @@ describe('useCounsellorOnboardingFlow', () => {
         });
 
         expect(result.current.state.phase).toBe('done');
+        expect(client.uploadOnboardingPicture).not.toHaveBeenCalled();
+        expect(client.setOnboardingPictureVisibility).not.toHaveBeenCalled();
+    });
+
+    it('does not use a consumed invite token to store a photo after COMPLETED registration', async () => {
+        const client = createClient({
+            registerCounsellor: vi
+                .fn()
+                .mockResolvedValue({ consultantId: 'consultant-1', phase: 'COMPLETED', twoFactor: null }),
+        });
+        const { result } = renderHook(() => useCounsellorOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('form'));
+
+        act(() => {
+            result.current.updateAccount({ username: 'lena_b', password: 'SecurePass1!' });
+            result.current.toggleTopic(12);
+            result.current.updatePicture({
+                file: new File(['photo'], 'me.png', { type: 'image/png' }),
+                publicToAdviceSeekers: true,
+            });
+        });
+        await act(async () => {
+            await result.current.submitRegistration();
+        });
+
+        expect(result.current.state.phase).toBe('done');
+        expect(client.uploadOnboardingPicture).not.toHaveBeenCalled();
+        expect(client.setOnboardingPictureVisibility).not.toHaveBeenCalled();
     });
 
     it('resumes a consumed-but-2FA-pending link directly at the 2FA step', async () => {

@@ -114,14 +114,20 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
         const csrfToken = generateCsrfToken();
 
         const localDevelopmentHeader =
-            isLocalDevelopment && CSRF_WHITELIST_HEADER ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
+            isLocalDevelopment && CSRF_WHITELIST_HEADER && CSRF_WHITELIST_HEADER.toLowerCase() !== 'x-csrf-token'
+                ? { [CSRF_WHITELIST_HEADER]: csrfToken }
+                : null;
 
         const controller = new AbortController();
         const timeoutMs = props.timeout ?? 30_000;
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         const abort = () => controller.abort();
-        if (props.signal?.aborted) abort();
-        else props.signal?.addEventListener('abort', abort, { once: true });
+        if (props.signal?.aborted) {
+            clearTimeout(timeoutId);
+            reject(new Error(FETCH_ERRORS.ABORT));
+            return;
+        }
+        props.signal?.addEventListener('abort', abort, { once: true });
 
         // Remove Authorization from headersData if it exists to avoid duplication
         const { Authorization: removedAuth, ...otherHeadersData } = (props.headersData as any) || {};

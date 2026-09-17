@@ -65,6 +65,11 @@ const translations: Record<string, string> = {
     'counselor.salutation.option.counsellor_gender_neutral': 'Berater*in',
     'counselor.salutation.option.not_specified': 'Keine Angabe',
     'counselor.position': 'Funktion',
+    'counselor.avatar': 'Avatar',
+    'counselor.avatar.hint': 'Initialen oder Symbol.',
+    'counselor.avatar.initials': 'Initialen',
+    'counselor.avatar.initials.empty': 'Initialen',
+    'counselor.avatar.motif': 'Symbol',
     'counselor.personalTitle': 'Titel',
     'counselor.adminRemarks': 'Interne Anmerkungen',
     'counselor.assignedSupervisor': 'Fester Supervisor',
@@ -519,6 +524,57 @@ describe('salutation control (#994)', () => {
         await fillMandatoryFields();
 
         expect(await submit(user)).toMatchObject({ salutation: 'not_specified' });
+    });
+});
+
+describe('counsellor avatar (#1046)', () => {
+    it('submits the chosen motif as the ICON kind plus its id', async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+
+        // t is mocked to a single label per key, so every motif tile shares one
+        // accessible name here — the first is a real, arbitrary motif.
+        await user.click(screen.getAllByRole('radio', { name: 'Symbol' })[0]);
+
+        const submitted = await submit(user);
+        expect(submitted.avatarKind).toBe('ICON');
+        expect(submitted.avatarId).toEqual(expect.any(String));
+        expect(submitted.avatarId).not.toBe('');
+    });
+
+    it('submits INITIALS without a motif id', async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+
+        await user.click(screen.getByRole('radio', { name: 'Initialen' }));
+
+        expect(await submit(user)).toMatchObject({ avatarKind: 'INITIALS', avatarId: '' });
+    });
+
+    it('shows the stored choice again when the consultant is reopened', async () => {
+        mocks.params = { id: 'consultant-1', typeOfUsers: 'consultants' };
+        mocks.counselorResult = {
+            data: { id: 'consultant-1', avatarKind: 'ICON', avatarId: 'fox' },
+            isLoading: false,
+        };
+        renderForm();
+
+        const selected = await screen.findByRole('radio', { name: 'Symbol', checked: true });
+        expect(selected).toBeInTheDocument();
+    });
+
+    it('leaves a consultant who never chose without a selection, and writes nothing', async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+
+        expect(screen.queryByRole('radio', { checked: true })).not.toBeInTheDocument();
+
+        // The field is registered, so the key exists — it must carry no choice.
+        const submitted = await submit(user);
+        expect(submitted.avatarKind).toBeUndefined();
     });
 });
 

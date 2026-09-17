@@ -82,6 +82,7 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
                 signal: controller.signal,
             }),
         ).rejects.toThrow('ABORT');
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('refreshes the token and retries once on 401, then succeeds without logging out', async () => {
@@ -451,7 +452,7 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
                 expect(req.headers.get('content-type')).toBe('image/png');
                 expect(req.headers.get('x-extra')).toBe('kept');
                 expect(req.headers.get('authorization')).toBe('Bearer access-token');
-                expect(req.headers.get('x-csrf-token')).toBe('csrf-token, csrf-token');
+                expect(req.headers.get('x-csrf-token')).toBe('csrf-token');
                 expect(req.credentials).toBe('include');
                 expect(new URL(req.url).search).toBe('');
             }),
