@@ -268,6 +268,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                     {forwardDialogOpen && (
                         <DpaForwardDialog
                             forward={forward}
+                            tenantId={id}
                             // Legal Settings lives behind ProtectedRoute, so the
                             // admin-only branded mail preview is reachable here.
                             surface="admin"

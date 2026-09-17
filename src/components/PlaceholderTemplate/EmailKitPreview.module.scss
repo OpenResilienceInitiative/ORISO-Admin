@@ -33,6 +33,23 @@
     line-height: 1.4;
 }
 
+.note {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #49454f);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.loading {
+    display: grid;
+    min-height: 120px;
+    place-items: center;
+    border: 1px solid var(--m3-outline-variant, #cac4d0);
+    background: var(--m3-surface-container-low, #f7f2fa);
+    border-radius: 12px;
+    color: var(--m3-on-surface-variant, #49454f);
+}
+
 /* The mail itself, rendered by the ported e-mail kit inside the frame.
    Background/border colours come inline from the kit's token set. */
 

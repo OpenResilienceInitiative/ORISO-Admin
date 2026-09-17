@@ -132,6 +132,8 @@
     "dpaForward.dialog.errorTooManyLinks": "Für diese Registrierung sind bereits zu viele offene Signaturlinks vorhanden. Bitte warten Sie, bis einer davon verwendet wurde oder abgelaufen ist, und versuchen Sie es dann erneut.",
     "dpaForward.dialog.mailFailedLinkReady": "Die E-Mail konnte nicht versendet werden. Der Signaturlink oben wurde trotzdem erstellt und ist gültig — teilen Sie ihn einfach direkt.",
     "dpaForward.dialog.previewLabel": "Vorschau der E-Mail",
+    "dpaForward.dialog.previewLoading": "E-Mail-Vorschau wird geladen …",
+    "dpaForward.dialog.previewSampleNote": "Signaturlink und Ablaufdatum in dieser Vorschau sind Beispiele.",
     "dpaForward.dialog.previewPlainNote": "Textvorschau der E-Mail. Versendet wird sie im Layout der Plattform.",
     "dpaForward.dialog.confirm": "Weiterleitung abschließen",
     "dpaForward.dialog.resend": "Erneut senden",

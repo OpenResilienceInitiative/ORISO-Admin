@@ -199,6 +199,7 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
                 ensureSignLink={mintLink}
                 initialLink={forwardedLink ?? undefined}
                 forward={forward}
+                tenantId={tenantId}
                 onLogout={() => logout(true)}
                 recheckRejected={recheckRejected}
             />
@@ -234,6 +235,7 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
             signFailed={signMutation.isError}
             onSign={onSign}
             onForward={blockedSignable ? forward : undefined}
+            tenantId={tenantId}
             onForwarded={(result) => {
                 setForwardedLink(result.link);
                 statusQuery.refetch();

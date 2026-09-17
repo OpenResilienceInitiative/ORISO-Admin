@@ -86,6 +86,7 @@ export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/inviteli
 export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;
 export const inviteEmailTemplatesEndpoint = `${userServiceURL}/service/useradmin/invite-email-templates`;
 export const dpaInviteEmailEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/email`;
+export const dpaInvitePreviewEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/preview`;
 export const XHRheader = { AcceptLanguage: 'de' };
 
 /*
