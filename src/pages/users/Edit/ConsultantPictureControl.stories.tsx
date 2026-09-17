@@ -277,3 +277,20 @@ export const NoSwitchWithoutAPicture: Story = {
         ).not.toBeInTheDocument();
     },
 };
+
+export const ReplacingAPublishedPictureWarnsItGoesInternal: Story = {
+    parameters: { msw: { handlers: handlers(loaded, undefined, visibilityHandlers(false)) } },
+    play: async ({ canvasElement }) => {
+        await decodedPreview(canvasElement);
+        const toggle = await visibilitySwitch(canvasElement);
+        await waitFor(() => expect(toggle).toBeChecked());
+        await userEvent.upload(
+            within(canvasElement).getByLabelText(label('choose')),
+            new File([png], 'replacement.png', { type: 'image/png' }),
+        );
+        // The server starts a replacement internal again; the hint says so before the save.
+        await expect(
+            await within(canvasElement).findByText(new RegExp(text('counselor.picture.visibility.resetHint'))),
+        ).toBeVisible();
+    },
+};

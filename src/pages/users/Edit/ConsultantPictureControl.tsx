@@ -269,6 +269,9 @@ const PictureControlForOwner = ({
                                 ? 'counselor.picture.visibility.publicHint'
                                 : 'counselor.picture.visibility.internalHint',
                         )}
+                        {/* A replacement is a new photo, and the server starts it internal again.
+                            Say so before the save, not after the switch silently flips back. */}
+                        {publicToAdviceSeekers && selectedFile && <> {t('counselor.picture.visibility.resetHint')}</>}
                     </p>
                 </div>
             )}
