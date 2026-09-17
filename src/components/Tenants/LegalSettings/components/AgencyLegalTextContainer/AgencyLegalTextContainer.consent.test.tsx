@@ -94,15 +94,58 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         h.tenant.mockReset().mockReturnValue({ data: undefined });
     });
 
-    it('is not offered while no level of the ladder carries the field', async () => {
+    it('is offered empty to a Fachbereich whose read carried no sentence (#929)', async () => {
         storedDepartment();
 
         renderContainer();
         await selectDepartment('U25 Suizidprävention');
 
-        // `undefined`, not `{}` — that is what tells the card to hide the editor entirely instead
-        // of offering an input the backend cannot store.
+        // `{}`, not `undefined` — a successful read that omits the field is the empty
+        // first-authoring state, and that is precisely where the template chooser has to be
+        // reachable. `undefined` would hide the editor and strand the department there.
+        expect(cardProps().consentByLanguage).toEqual({});
+    });
+
+    it('is not offered while the department policy has not been read successfully', async () => {
+        h.useDepartmentDpp.mockReturnValue({ data: undefined, isLoading: false, isError: false, isSuccess: false });
+
+        renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+
         expect(cardProps().consentByLanguage).toBeUndefined();
+    });
+
+    /**
+     * `fetchData` resolves a 204 with the raw `Response` and a JSON `null` body with `null`, and
+     * neither marks the query as failed. Believing `isSuccess` alone there would open the editor
+     * on the INHERITED agency text and let a publish store it as the department's own — the same
+     * silent overwrite a failed read is already blocked for.
+     */
+    it.each([
+        ['a JSON null body', null],
+        ['a 204 with the raw Response', new Response(null, { status: 204 })],
+        ['an array', []],
+        ['an object that is not a policy document', { foo: 'bar' }],
+        ['a publicationStatus the contract does not define', { content: null, publicationStatus: 'WAT' }],
+        ['content that is not the stored JSON string', { content: {}, publicationStatus: 'DRAFT' }],
+        [
+            'consentText that is not the stored JSON string',
+            { content: null, consentText: {}, publicationStatus: 'DRAFT' },
+        ],
+    ])('blocks the editor when a successful read returns %s', async (_label, data) => {
+        h.useDepartmentDpp.mockReturnValue({
+            data,
+            isLoading: false,
+            isError: false,
+            isSuccess: true,
+            refetch: vi.fn(),
+        });
+
+        renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+
+        expect(screen.queryByTestId('legal-editor')).not.toBeInTheDocument();
+        expect(screen.getByText('agency.legal.department.loadError.title')).toBeInTheDocument();
     });
 
     it('is never offered on the imprint', async () => {
@@ -161,14 +204,52 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         });
     });
 
-    it('omits consentText entirely when the card had no consent field to give', async () => {
+    /**
+     * A department whose read carried no sentence now owns the consent field, so the card hands
+     * back an empty map when the admin publishes without touching it. That map IS sent, and it is
+     * not a clear: `ConsentTextService#resolveForUpdate` treats "no entries at all" exactly like an
+     * omitted property and keeps whatever is stored. A clear is `{"de": ""}` — a language key with
+     * empty content — which is why the two must stay distinguishable on the wire.
+     */
+    it('sends an untouched empty consent map, which the backend reads as "keep what is stored"', async () => {
+        storedDepartment();
+
+        renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+        cardProps().onSave({ de: '<p>neu</p>' }, true, {});
+
+        expect(h.publishDpp).toHaveBeenCalledWith({
+            content: { de: '<p>neu</p>' },
+            publish: true,
+            consentText: {},
+        });
+    });
+
+    it('keeps a cleared sentence distinguishable from an untouched empty one', async () => {
+        storedDepartment({ consentText: '{"de":"alt {{legal_links}}"}' });
+
+        renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+        cardProps().onSave({ de: '<p>neu</p>' }, true, { de: '' });
+
+        // A language key with empty content is the ONLY way a client can delete the sentence.
+        expect(h.publishDpp).toHaveBeenCalledWith({
+            content: { de: '<p>neu</p>' },
+            publish: true,
+            consentText: { de: '' },
+        });
+    });
+
+    it('omits consentText entirely when the card hands none over', async () => {
         storedDepartment();
 
         renderContainer();
         await selectDepartment('U25 Suizidprävention');
         cardProps().onSave({ de: '<p>neu</p>' }, false);
 
-        // A backend without the field must never receive a property it does not know.
+        // The card passes the third argument only while it owns the consent field. Without it the
+        // property is left off the request rather than sent empty, so nothing is claimed about a
+        // sentence this surface never edited.
         expect(h.publishDpp).toHaveBeenCalledWith({ content: { de: '<p>neu</p>' }, publish: false });
     });
 });
@@ -237,13 +318,16 @@ describe('AgencyLegalTextContainer — the fork copies policy AND sentence', () 
         expect(cardProps().consentInheritedFrom).toBeUndefined();
     });
 
-    it('still hides the consent editor entirely when the backend has no such field', async () => {
+    it('seeds from the agency sentence when the read omits consentText altogether (#929)', async () => {
         notYetForked({ consentText: undefined });
         h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Traeger-Satz' } } } });
 
         renderContainer();
         await selectDepartment('U25 Suizidprävention');
 
-        expect(cardProps().consentByLanguage).toBeUndefined();
+        // Same fork rule as above: an omitted field is "nothing authored here yet", which is
+        // exactly the state the fork copies the level above into.
+        expect(cardProps().consentByLanguage).toEqual({ de: 'Traeger-Satz' });
+        expect(cardProps().consentInheritedFrom).toBe('legal.consent.level.agency');
     });
 });

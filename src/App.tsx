@@ -26,6 +26,7 @@ import { canReadCaseHandoverAdmin, canSeeSupervisorLogs } from './constants/case
 import { useAppConfigContext } from './context/useAppConfig';
 import { useAdminTheme } from './hooks/useAdminTheme.hook';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { AgencyDefaultSectionRedirect } from './pages/Agency/Edit/AgencyDefaultSectionRedirect';
 import {
     LazyAgencyList,
     LazyAgencyPageEdit,
@@ -176,13 +177,14 @@ export const App = () => {
     if (requiresTwoFactorSetup) {
         return (
             <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
-                {/* Defense in depth: both gates now target the same tenant- and
-                    agency-scoped admins, and if both apply the DPA lock must win. */}
-                <DpaBlockerGate>
-                    <ProtectedPageLayoutWrapper restricted>
-                        <MandatoryTwoFactorSetup />
-                    </ProtectedPageLayoutWrapper>
-                </DpaBlockerGate>
+                {/* The second factor comes first (#990): an admin created via
+                    "Träger anlegen" secures the account before anything else,
+                    as the tenant-invite wizard does. This screen offers nothing
+                    but the 2FA setup and logout; the DPA gate follows once the
+                    factor is active (it wraps the protected tree below). */}
+                <ProtectedPageLayoutWrapper restricted>
+                    <MandatoryTwoFactorSetup />
+                </ProtectedPageLayoutWrapper>
             </FeatureProvider>
         );
     }
@@ -250,7 +252,10 @@ export const App = () => {
                                     </Route>
                                 )}
                                 <Route path={routePathNames.agency} element={<LazyAgencyList />} />
-                                <Route path={`${routePathNames.agency}/:id`} element={<LazyAgencyPageEdit />} />
+                                <Route
+                                    path={`${routePathNames.agency}/:id`}
+                                    element={<AgencyDefaultSectionRedirect />}
+                                />
                                 <Route path={`${routePathNames.agency}/:id/general`} element={<LazyAgencyPageEdit />} />
                                 <Route
                                     path={`${routePathNames.agency}/:id/legal-settings`}

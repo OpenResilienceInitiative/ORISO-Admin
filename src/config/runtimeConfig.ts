@@ -157,3 +157,10 @@ export const keycloakAuthPath = (path: string) => {
 
     return `${realmBaseUrl}/${runtimeConfig.keycloakRealm}${path}`;
 };
+
+// Bundle identity deliberately bypasses env.js and every runtime config global.
+// Local builds without an injected full commit remain explicitly unidentified.
+export const getBuildCommit = (): string | undefined => {
+    const commit = import.meta.env.VITE_BUILD_COMMIT;
+    return commit && /^[0-9a-f]{40}$/.test(commit) ? commit : undefined;
+};

@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TwoFactorSetup } from './TwoFactorSetup';
 import { TwoFactorType } from '../../enums/TwoFactorType';
@@ -10,6 +10,11 @@ const mocks = vi.hoisted(() => ({
     updateOrSetTwoFactorAuth: vi.fn(),
     deleteTwoFactorAuth: vi.fn(),
     setEmailForActivationCode: vi.fn(),
+    logout: vi.fn(),
+}));
+
+vi.mock('../../api/auth/logout', () => ({
+    default: mocks.logout,
 }));
 
 const userData = {
@@ -45,19 +50,31 @@ describe('TwoFactorSetup (profile context)', () => {
         document.body.innerHTML = '<div id="overlay"></div><div id="root"></div>';
     });
 
-    it('closes the setup overlay from the close icon during mandatory 2FA setup', async () => {
-        const user = userEvent.setup({ delay: null });
+    it('offers no close icon during mandatory 2FA setup — the popup is hard (#990)', async () => {
         render(<TwoFactorSetup context="profile" required />);
 
         expect(await screen.findByText('twoFactorAuth.activate.step1.title')).toBeInTheDocument();
+        expect(document.querySelector('.overlay__closeIcon')).toBeNull();
+    });
 
-        const closeIcon = document.querySelector('.overlay__closeIcon');
-        expect(closeIcon).not.toBeNull();
-        await user.click(closeIcon as Element);
+    it('offers logout as the only other way off the mandatory popup (#990)', async () => {
+        const user = userEvent.setup({ delay: null });
+        render(<TwoFactorSetup context="profile" required />);
 
-        await waitFor(() => {
-            expect(screen.queryByText('twoFactorAuth.activate.step1.title')).not.toBeInTheDocument();
-        });
+        await user.click(await screen.findByRole('button', { name: 'logout' }));
+
+        expect(mocks.logout).toHaveBeenCalledWith(true);
+    });
+
+    it('keeps the close icon when 2FA is set up voluntarily from the profile', async () => {
+        const user = userEvent.setup({ delay: null });
+        render(<TwoFactorSetup context="profile" />);
+
+        await user.click(screen.getByRole('switch'));
+
+        expect(await screen.findByText('twoFactorAuth.activate.step1.title')).toBeInTheDocument();
+        expect(document.querySelector('.overlay__closeIcon')).not.toBeNull();
+        expect(screen.queryByRole('button', { name: 'logout' })).not.toBeInTheDocument();
     });
 
     it('shows the app-connect step with the raw stored secret converted to base32, never the raw value', async () => {

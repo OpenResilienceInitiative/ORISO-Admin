@@ -55,6 +55,8 @@ export interface CounsellorWizardData {
     /** Issue #1049: the counsellor's own photo, internal unless they publish it. */
     picture: { file: File | null; publicToAdviceSeekers: boolean };
     topicIds: number[];
+    /** Only collected when the invite creates a new agency (`invite.agencyExists === false`). */
+    agency: { name: string };
 }
 
 const EMPTY_DATA: CounsellorWizardData = {
@@ -63,6 +65,7 @@ const EMPTY_DATA: CounsellorWizardData = {
     names: { publicName: '', internalName: '' },
     picture: { file: null, publicToAdviceSeekers: false },
     topicIds: [],
+    agency: { name: '' },
 };
 
 /** Single source: the shared consultant credential policy (also used by the admin form). */
@@ -88,6 +91,8 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
     // stay stable while every keystroke updates `data`.
     const dataRef = useRef(data);
     dataRef.current = data;
+    const inviteRef = useRef(invite);
+    inviteRef.current = invite;
 
     useEffect(() => {
         let cancelled = false;
@@ -112,11 +117,12 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                     });
                     return;
                 }
-                // A single covered topic is preselected — it is the routed
-                // department and the only possible choice.
-                if (loaded.topics.length === 1) {
-                    setData((current) => ({ ...current, topicIds: [loaded.topics[0].id] }));
-                }
+                // Every resolve starts from a clean sheet: a token switch must not
+                // carry a previous invite's topics or agency name into this one.
+                // The invite's coverage arrives preselected (owner decision
+                // 2026-09-17): the invitee removes chips or adds further tenant
+                // topics instead of starting from an empty selection.
+                setData({ ...EMPTY_DATA, topicIds: loaded.topics.map((topic) => topic.id) });
                 setState({ phase: 'form' });
             })
             .catch((error: unknown) => {
@@ -157,6 +163,15 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
 
     const updatePicture = useCallback((patch: Partial<CounsellorWizardData['picture']>) => {
         setData((current) => ({ ...current, picture: { ...current.picture, ...patch } }));
+    }, []);
+
+    const updateAgency = useCallback((patch: Partial<CounsellorWizardData['agency']>) => {
+        setData((current) => ({ ...current, agency: { ...current.agency, ...patch } }));
+    }, []);
+
+    /** Replaces the whole selection — the multi-select reports its full value on every change. */
+    const setTopics = useCallback((topicIds: number[]) => {
+        setData((current) => ({ ...current, topicIds }));
     }, []);
 
     const toggleTopic = useCallback((topicId: number) => {
@@ -207,7 +222,8 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setSubmitError(null);
         setPictureError(null);
         try {
-            const { account, person, names, topicIds } = dataRef.current;
+            const { account, person, names, topicIds, agency } = dataRef.current;
+            const createsAgency = inviteRef.current?.agencyExists === false;
             const request: CounsellorRegistrationRequest = {
                 account: { username: account.username.trim(), password: account.password },
                 person: {
@@ -220,6 +236,9 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                     internalDisplayName: names.internalName.trim() || undefined,
                 },
                 topicIds,
+                // Present only for a reserved (not yet existing) agency — the
+                // backend rejects the field for an existing one.
+                ...(createsAgency ? { agency: { name: agency.name.trim() } } : {}),
             };
             const result = await client.registerCounsellor(inviteToken, request);
             // The account now exists. Storing the photo is a separate step whose failure is
@@ -279,6 +298,8 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         updatePerson,
         updateNames,
         updatePicture,
+        updateAgency,
+        setTopics,
         toggleTopic,
         submitRegistration,
         submitTwoFactorCode,

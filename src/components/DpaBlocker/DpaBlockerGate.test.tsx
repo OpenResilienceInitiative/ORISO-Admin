@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
     createDpaSignInvite: vi.fn(),
     sendDpaInviteEmail: vi.fn(),
     logout: vi.fn(),
+    getUserData: vi.fn(),
     roleState: {
         roles: ['tenant-admin'],
         isSuperAdmin: false,
@@ -49,6 +50,10 @@ vi.mock('../../api/tenant/createDpaSignInvite', () => ({
 vi.mock('../../api/tenant/sendDpaInviteEmail', () => ({
     sendDpaInviteEmail: mocks.sendDpaInviteEmail,
     isDpaInviteEmailDeliveryFailure: (error: unknown) => error instanceof Response && error.status === 502,
+}));
+
+vi.mock('../../api/user/getUserData', () => ({
+    getUserData: mocks.getUserData,
 }));
 
 vi.mock('../../api/auth/logout', () => ({
@@ -117,6 +122,8 @@ describe('DpaBlockerGate', () => {
         mocks.sendDpaInviteEmail.mockReset();
         mocks.sendDpaInviteEmail.mockResolvedValue(undefined);
         mocks.logout.mockReset();
+        mocks.getUserData.mockReset();
+        mocks.getUserData.mockResolvedValue({});
         mocks.roleState.roles = ['tenant-admin'];
         mocks.roleState.isSuperAdmin = false;
         mocks.roleState.tenantId = 21;
@@ -306,6 +313,39 @@ describe('DpaBlockerGate', () => {
         });
     });
 
+    it('prefills the signer with the name and e-mail captured when the admin was created (#990)', async () => {
+        mocks.getUserData.mockResolvedValue({
+            firstName: 'Toni',
+            lastName: 'Tenantadmin',
+            email: 'toni@traeger.example',
+        });
+        const queryClient = makeClient();
+        // The app shell has loaded the profile before the gate renders.
+        await queryClient.prefetchQuery({ queryKey: ['user-data'], queryFn: mocks.getUserData });
+        mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
+
+        renderGate('/admin/tenants', queryClient);
+
+        expect(await screen.findByLabelText('tenantOnboarding.dpa.signerName')).toHaveValue('Toni Tenantadmin');
+        expect(screen.getByLabelText('tenantOnboarding.dpa.signerEmail')).toHaveValue('toni@traeger.example');
+        expect(screen.getByLabelText('tenantOnboarding.dpa.signerPosition')).toHaveValue('');
+    });
+
+    it('also prefills from the legacy lowercase name fields (#990)', async () => {
+        mocks.getUserData.mockResolvedValue({
+            firstname: 'Toni',
+            lastname: 'Tenantadmin',
+            email: 'toni@traeger.example',
+        });
+        const queryClient = makeClient();
+        await queryClient.prefetchQuery({ queryKey: ['user-data'], queryFn: mocks.getUserData });
+        mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
+
+        renderGate('/admin/tenants', queryClient);
+
+        expect(await screen.findByLabelText('tenantOnboarding.dpa.signerName')).toHaveValue('Toni Tenantadmin');
+    });
+
     it('refuses to submit without the explicit acceptance', async () => {
         mocks.getDpaStatus.mockResolvedValue(statusInfo('UNSIGNED'));
         const user = userEvent.setup();
@@ -369,12 +409,12 @@ describe('DpaBlockerGate', () => {
         expect(document.body.style.overflow).not.toBe('hidden');
     });
 
-    describe('forwarded-pending, hardened into a real gate (JOB7-JOB9)', () => {
+    describe('forwarded-pending lets the Träger admin keep working (#724, #990)', () => {
         // The waiting state is the additive `forwardPending` flag on the status
         // DTO — the enum stays MISSING|UNSIGNED|OUTDATED|VALID|INCONSISTENT.
         const forwarded = (status: TenantDpaStatus) => ({ ...statusInfo(status), forwardPending: true });
 
-        it('reuses the link created by the blocker when the pending gate takes over', async () => {
+        it('opens the admin area once the forward is completed, without repeating it as a notice (#990)', async () => {
             mocks.getDpaStatus.mockResolvedValueOnce(statusInfo('UNSIGNED')).mockResolvedValue(forwarded('UNSIGNED'));
             const user = userEvent.setup();
 
@@ -384,59 +424,68 @@ describe('DpaBlockerGate', () => {
             await user.click(await screen.findByRole('button', { name: 'dpaForward.dialog.linkCreate' }));
             await user.click(await screen.findByRole('button', { name: 'dpaForward.dialog.confirm' }));
 
-            expect(await screen.findByTestId('dpa-pending-dialog')).toBeInTheDocument();
-            expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(
-                'https://app.example.org/dpa-sign/minted-token',
-            );
+            expect(await screen.findByTestId('admin-page')).toBeInTheDocument();
+            expect(screen.queryByTestId('dpa-blocker')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('dpa-pending-dialog')).not.toBeInTheDocument();
             expect(mocks.createDpaSignInvite).toHaveBeenCalledTimes(1);
         });
 
-        it('shows the waiting dialog INSTEAD of the admin app — nothing renders behind it (JOB7)', async () => {
+        it('keeps the forward confirmation on screen when the status flips to forwarded mid-dialog (#990)', async () => {
+            mocks.getDpaStatus.mockResolvedValueOnce(statusInfo('UNSIGNED')).mockResolvedValue(forwarded('UNSIGNED'));
+            const user = userEvent.setup();
+
+            renderGate();
+
+            await user.click(await screen.findByRole('button', { name: 'dpaBlocker.forward' }));
+            await user.type(await screen.findByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+            await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+            await screen.findByTestId('dpa-forward-sent');
+
+            // What the 30 s poll or a tab switch does: the next read reports the forward.
+            const callsBefore = mocks.getDpaStatus.mock.calls.length;
+            window.dispatchEvent(new Event('visibilitychange'));
+            await waitFor(() => expect(mocks.getDpaStatus.mock.calls.length).toBeGreaterThan(callsBefore));
+
+            expect(screen.getByTestId('dpa-forward-sent')).toBeInTheDocument();
+            expect(screen.queryByTestId('dpa-pending-dialog')).not.toBeInTheDocument();
+
+            await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.confirm' }));
+
+            expect(await screen.findByTestId('admin-page')).toBeInTheDocument();
+            expect(screen.queryByTestId('dpa-pending-dialog')).not.toBeInTheDocument();
+        });
+
+        it('shows the waiting notice OVER the admin app instead of locking it (#990)', async () => {
             mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
 
             renderGate();
 
             expect(await screen.findByTestId('dpa-pending-dialog')).toBeInTheDocument();
-            expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+            expect(screen.getByTestId('admin-page')).toBeInTheDocument();
             expect(screen.queryByTestId('dpa-blocker')).not.toBeInTheDocument();
         });
 
-        it.each(ADMIN_ROUTES)('waiting dialog wins over the route %s (JOB7)', async (route) => {
+        it.each(ADMIN_ROUTES)('renders the route %s behind the waiting notice (#990)', async (route) => {
             mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
 
             renderGate(route);
 
             expect(await screen.findByTestId('dpa-pending-dialog')).toBeInTheDocument();
-            expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+            expect(screen.getByTestId('admin-page')).toBeInTheDocument();
         });
 
-        it('offers logout instead of a dismiss — there is no "Später" way past it (JOB7)', async () => {
+        it('"Später" closes the notice and leaves the admin area usable (#990)', async () => {
             mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
             const user = userEvent.setup();
 
             renderGate();
 
             await screen.findByTestId('dpa-pending-dialog');
-            expect(screen.queryByRole('button', { name: 'dpaPending.later' })).not.toBeInTheDocument();
+            await user.click(screen.getByRole('button', { name: 'dpaPending.later' }));
 
-            await user.click(screen.getByRole('button', { name: 'dpaBlocker.logout' }));
-
-            expect(mocks.logout).toHaveBeenCalledWith(true);
-            expect(screen.getByTestId('dpa-pending-dialog')).toBeInTheDocument();
-            expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
-        });
-
-        it('cannot be escaped with the Escape key (JOB7)', async () => {
-            mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
-            const user = userEvent.setup();
-
-            renderGate();
-
-            await screen.findByTestId('dpa-pending-dialog');
-            await user.keyboard('{Escape}');
-
-            expect(screen.getByTestId('dpa-pending-dialog')).toBeInTheDocument();
-            expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+            await waitFor(() => expect(screen.queryByTestId('dpa-pending-dialog')).not.toBeInTheDocument());
+            expect(screen.getByTestId('admin-page')).toBeInTheDocument();
+            expect(mocks.logout).not.toHaveBeenCalled();
         });
 
         it('mints a shareable link on open and offers it copyable', async () => {
@@ -480,7 +529,7 @@ describe('DpaBlockerGate', () => {
             expect(mocks.sendDpaInviteEmail).toHaveBeenCalledWith(
                 expect.objectContaining({ tenantId: 21, recipientEmail: 'legal@example.org' }),
             );
-            expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+            expect(screen.getByTestId('admin-page')).toBeInTheDocument();
         });
 
         it('a failed delivery keeps the link and reports it as mail-not-sent, not as a total failure', async () => {
@@ -554,7 +603,7 @@ describe('DpaBlockerGate', () => {
         /** What react-query listens to for refetch-on-focus. */
         const returnToTab = () => window.dispatchEvent(new Event('visibilitychange'));
 
-        it('replaces the waiting dialog with the unlock prompt — it does not silently open the app (JOB8)', async () => {
+        it('replaces the waiting notice with the signed notice over the app (JOB8, #990)', async () => {
             const backend = serveStatus();
 
             renderGate();
@@ -565,7 +614,7 @@ describe('DpaBlockerGate', () => {
 
             expect(await screen.findByTestId('dpa-unlock-dialog')).toBeInTheDocument();
             expect(screen.queryByTestId('dpa-pending-dialog')).not.toBeInTheDocument();
-            expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+            expect(screen.getByTestId('admin-page')).toBeInTheDocument();
         });
 
         it('re-verifies the signature against the backend on click and only then reveals the app (JOB9)', async () => {
@@ -581,11 +630,12 @@ describe('DpaBlockerGate', () => {
             const callsBefore = mocks.getDpaStatus.mock.calls.length;
             await user.click(screen.getByRole('button', { name: 'dpaUnlock.action' }));
 
-            expect(await screen.findByTestId('admin-page')).toBeInTheDocument();
+            await waitFor(() => expect(screen.queryByTestId('dpa-unlock-dialog')).not.toBeInTheDocument());
+            expect(screen.getByTestId('admin-page')).toBeInTheDocument();
             expect(mocks.getDpaStatus.mock.calls.length).toBeGreaterThan(callsBefore);
         });
 
-        it('keeps the tenant gated and says why when the re-check finds no signature (JOB9)', async () => {
+        it('brings the waiting notice back and says why when the re-check finds no signature (JOB9)', async () => {
             const backend = serveStatus();
             const user = userEvent.setup();
 
@@ -600,7 +650,7 @@ describe('DpaBlockerGate', () => {
             await user.click(screen.getByRole('button', { name: 'dpaUnlock.action' }));
 
             expect(await screen.findByTestId('dpa-pending-recheck-rejected')).toBeInTheDocument();
-            expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+            expect(screen.getByTestId('admin-page')).toBeInTheDocument();
             expect(screen.queryByTestId('dpa-unlock-dialog')).not.toBeInTheDocument();
         });
 
@@ -621,9 +671,8 @@ describe('DpaBlockerGate', () => {
             expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
         });
 
-        it('offers logout from the unlock prompt too', async () => {
+        it('offers no logout on the signed notice — the app is already open behind it (#990)', async () => {
             const backend = serveStatus();
-            const user = userEvent.setup();
 
             renderGate();
             await screen.findByTestId('dpa-pending-dialog');
@@ -631,9 +680,7 @@ describe('DpaBlockerGate', () => {
             returnToTab();
             await screen.findByTestId('dpa-unlock-dialog');
 
-            await user.click(screen.getByRole('button', { name: 'dpaBlocker.logout' }));
-
-            expect(mocks.logout).toHaveBeenCalledWith(true);
+            expect(screen.queryByRole('button', { name: 'dpaBlocker.logout' })).not.toBeInTheDocument();
         });
     });
 

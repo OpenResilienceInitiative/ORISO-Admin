@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -40,7 +40,24 @@ const INVITE: CounsellorOnboardingInviteDTO = {
         { id: 12, name: 'Familienberatung' },
         { id: 13, name: 'Schuldnerberatung' },
     ],
+    availableTopics: [
+        { id: 12, name: 'Familienberatung' },
+        { id: 13, name: 'Schuldnerberatung' },
+        { id: 14, name: 'Suchtberatung' },
+    ],
     expiresAt: null,
+};
+
+/** Opens the "+" menu and adds one topic. */
+const addTopic = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+    await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.topics.add' }));
+    await user.click(await screen.findByRole('menuitem', { name }));
+};
+
+/** Removes a selected topic chip via its trailing x. */
+const removeTopic = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+    const chip = screen.getByText(name).closest('[data-testid="input-chip"]')!;
+    await user.click(within(chip).getByRole('button'));
 };
 
 const createClient = (overrides: Partial<CounsellorOnboardingClient> = {}): CounsellorOnboardingClient => ({
@@ -102,10 +119,12 @@ describe('CounsellorOnboarding', () => {
         await user.type(screen.getByLabelText('cards.avatarName.publicName'), 'Lena');
         await user.type(screen.getByLabelText('cards.avatarName.internalName'), 'Lena B.');
 
-        // Topics from the invite coverage; selecting one enables the submit.
-        expect(submit()).toBeDisabled();
-        await user.click(screen.getByRole('checkbox', { name: 'Familienberatung' }));
+        // The coverage arrives preselected as chips; one is removed via its x,
+        // a further tenant topic is added via the "+" menu.
+        expect(screen.getAllByTestId('input-chip')).toHaveLength(2);
         expect(submit()).toBeEnabled();
+        await removeTopic(user, 'Schuldnerberatung');
+        await addTopic(user, 'Suchtberatung');
         await user.click(submit());
 
         await waitFor(() =>
@@ -113,7 +132,7 @@ describe('CounsellorOnboarding', () => {
                 account: { username: 'lena_b', password: 'SecurePass1!' },
                 person: { salutation: undefined, position: 'Leitung', title: undefined },
                 names: { publicName: 'Lena', internalDisplayName: 'Lena B.' },
-                topicIds: [12],
+                topicIds: [12, 14],
             }),
         );
 
@@ -149,12 +168,74 @@ describe('CounsellorOnboarding', () => {
         await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'password');
         expect(screen.getByText('message.error.password.policy')).toBeInTheDocument();
 
-        await user.click(screen.getByRole('checkbox', { name: 'Familienberatung' }));
         expect(submit()).toBeDisabled();
         await user.type(screen.getByLabelText('cards.advisorAccount.password'), '{Enter}');
 
         expect(client.registerCounsellor).not.toHaveBeenCalled();
         expect(screen.getByTestId('wizard-submit-hint')).toBeInTheDocument();
+    });
+
+    it('offers the tenant topics and asks for the agency name when the invite creates a new agency', async () => {
+        // Reserved (AUTO) Beratungsstellen-ID: the agency does not exist yet, so
+        // there is no coverage — the invitee names the agency and picks its
+        // topics from the tenant's active topics instead of being stuck.
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                agencyId: 13,
+                departmentId: null,
+                agencyExists: false,
+                topics: [],
+                availableTopics: [
+                    { id: 21, name: 'Familienberatung' },
+                    { id: 22, name: 'Suchtberatung' },
+                ],
+            }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        expect(screen.getByRole('heading', { name: 'counsellorOnboarding.agency.title' })).toBeInTheDocument();
+        expect(screen.getByText('counsellorOnboarding.topics.chooseHint')).toBeInTheDocument();
+
+        // Nothing is preselected without coverage; topics alone do not unlock
+        // the submit — the new agency needs a name.
+        expect(screen.queryByTestId('input-chip')).not.toBeInTheDocument();
+        await addTopic(user, 'Suchtberatung');
+        expect(submit()).toBeDisabled();
+        await user.type(screen.getByLabelText('counsellorOnboarding.agency.name'), 'Beratungsstelle Nord');
+        expect(submit()).toBeEnabled();
+        await user.click(submit());
+
+        await waitFor(() =>
+            expect(client.registerCounsellor).toHaveBeenCalledWith('raw-token', {
+                account: { username: 'lena_b', password: 'SecurePass1!' },
+                person: { salutation: undefined, position: undefined, title: undefined },
+                names: { publicName: undefined, internalDisplayName: undefined },
+                topicIds: [22],
+                agency: { name: 'Beratungsstelle Nord' },
+            }),
+        );
+    });
+
+    it('explains an invite without any selectable topic instead of a silently dead submit', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                departmentId: null,
+                agencyExists: true,
+                topics: [],
+                availableTopics: [],
+            }),
+        });
+        renderFlow(client);
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('counsellorOnboarding.topics.none');
+        expect(screen.queryByRole('button', { name: 'counsellorOnboarding.topics.add' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'counsellorOnboarding.agency.title' })).not.toBeInTheDocument();
+        expect(submit()).toBeDisabled();
     });
 
     it('resumes a consumed-but-2FA-pending link directly at the 2FA step', async () => {
@@ -203,7 +284,7 @@ describe('CounsellorOnboarding', () => {
 
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
         await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
-        await user.click(screen.getByRole('checkbox', { name: 'Familienberatung' }));
+        // Coverage is preselected — nothing else to pick.
         await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.submit' }));
 
         expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
@@ -213,10 +294,11 @@ describe('CounsellorOnboarding', () => {
     });
 
     describe('#1049 picture step', () => {
+        // The invite coverage arrives preselected, so credentials are all that is still required.
         const fillRequired = async (user: ReturnType<typeof userEvent.setup>) => {
             await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
             await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
-            await user.click(screen.getByRole('checkbox', { name: 'Familienberatung' }));
+            await waitFor(() => expect(submit()).toBeEnabled());
         };
 
         it('offers the picture step, with the publish switch hidden until a photo is chosen', async () => {

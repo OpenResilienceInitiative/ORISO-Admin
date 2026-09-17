@@ -1,0 +1,48 @@
+/* The stand-in keeps the split button's geometry and only changes how the pill
+   reads: a dashed outline marks it as a placeholder rather than a live control,
+   and the label steps back one notch.
+ *
+ * It does NOT use the house 38% disabled treatment. That control really is
+ * disabled and therefore exempt from the contrast rule; this one is pressable —
+ * it opens the explanation — so its label has to stay readable (≈5:1 on the card
+ * surface at 78%). `opacity` is avoided for the same reason: it would fade the
+ * focus ring along with the text. */
+
+.unavailable button {
+    border-color: var(--m3-outline-variant, #c4c7c8);
+    border-style: dashed;
+    color: color-mix(in srgb, var(--m3-on-surface-variant, #444748) 78%, transparent);
+}
+
+.body {
+    display: grid;
+    gap: 8px;
+}
+
+.disclaimerCaption {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+/* The disclaimer is the legal statement itself, so it is set apart from the
+   dialog's own prose the way the consent editor sets apart the platform
+   addendum — same marker, same container. */
+
+.disclaimer {
+    margin: 0;
+    padding: 12px 14px;
+    border-left: 3px solid var(--m3-error, #ba1a1a);
+    border-radius: 4px;
+    background: var(--m3-surface-container, #f3edf7);
+    color: var(--m3-on-surface, #1d1b20);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.explanation {
+    margin: 0;
+    color: var(--m3-on-surface, #1d1b20);
+    font-size: 14px;
+    line-height: 1.55;
+}
