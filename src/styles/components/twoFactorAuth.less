@@ -212,18 +212,12 @@
         word-break: break-all;
     }
 
-    // Stacked on phones, side by side from @fromSmall; the gap is the only
-    // spacing between the two choices (#990 — the old sibling margin pushed
-    // the second choice sideways on mobile).
     &__selectType {
         margin-top: @grid-base-three;
         width: 100%;
-        display: flex;
-        flex-direction: column;
-        gap: @grid-base;
 
         .bp-min(@fromSmall, set) {
-            flex-direction: row;
+            display: flex;
         }
         .bp-min(@fromSmall);
     }
@@ -235,8 +229,7 @@
         border-radius: @overlay-radio-radius;
         padding: 0 10px;
         width: 100%;
-        box-sizing: border-box;
-        margin: 0;
+        margin: 0 @grid-base 0 0;
 
         .radioButton {
             min-height: auto;
@@ -255,6 +248,10 @@
                 margin: 0 @grid-base 0 0;
             }
             .bp-min(@fromSmall);
+        }
+
+        & + .twoFactorAuth__radioWrapper {
+            margin: 0 0 0 @grid-base;
         }
     }
 

@@ -16,14 +16,14 @@ const wait = (ms: number) =>
     });
 
 /**
- * Pending-signature notice (#724, epic #722, reopened by #990): shown after each
- * login while the DPA signature is outstanding after a forward. It mints a shareable
+ * Pending-signature GATE (#724, epic #722, hardened by JOB7): shown for as long
+ * as the DPA signature is outstanding after a forward. It mints a shareable
  * sign link on open (there is no "read the active link" endpoint; every issued
  * link stays valid until a signature lands) and offers a re-send through the
  * shared forward dialog (#723).
  *
- * The admin area renders behind it, so "Später" (or X / Escape) just closes it
- * and the Träger admin keeps setting up their organisation.
+ * It is a gate, not a notice: the admin routes are not rendered behind it, the
+ * mask and Escape do not dismiss it, and the only exit is "Abmelden".
  */
 const meta = {
     title: 'Organisms/DpaBlocker/PendingSignatureDialog',
@@ -47,7 +47,7 @@ const meta = {
             await wait(400);
             return { link: LINK, mailFailed: false };
         },
-        onDismiss: () => {},
+        onLogout: () => {},
         onForwardCompleted: () => {},
     },
 } satisfies Meta<typeof DpaPendingSignatureDialog>;
