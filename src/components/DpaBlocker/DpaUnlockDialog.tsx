@@ -14,17 +14,17 @@ export interface DpaUnlockDialogProps {
      * state (JOB8/JOB9).
      */
     onUnlock: () => void;
-    /** Optional second exit; the admin area already renders behind the dialog (#990). */
-    onLogout?: () => void;
+    /** The other exit stays available for as long as the gate is up. */
+    onLogout: () => void;
     /** The re-check is in flight. */
     checking?: boolean;
 }
 
 /**
- * Success dialog shown when the forwarded signature lands while the tenant
- * admin is logged in and waiting (JOB8). It closes on an explicit click, and
- * that click verifies the signature against the backend first (JOB9). Until it
- * answers VALID the tenant stays in the forwarded-pending state.
+ * Success gate shown when the forwarded signature lands while the tenant admin
+ * is logged in and waiting (JOB8). Deliberately NOT an automatic unlock: the
+ * app opens on an explicit click, and that click verifies the signature against
+ * the backend first (JOB9). Until it answers VALID the tenant stays gated.
  *
  * Read-only by construction — the gate only ever GETs the DPA status. Nothing
  * here creates or confirms a signature record (ADR-022).
@@ -43,11 +43,9 @@ export const DpaUnlockDialog = ({ onUnlock, onLogout, checking = false }: DpaUnl
             width={560}
             footer={
                 <div className={styles.actions}>
-                    {onLogout && (
-                        <M3Button variant="text" icon={<Logout fontSize="small" />} onClick={onLogout}>
-                            {t('dpaBlocker.logout')}
-                        </M3Button>
-                    )}
+                    <M3Button variant="text" icon={<Logout fontSize="small" />} onClick={onLogout}>
+                        {t('dpaBlocker.logout')}
+                    </M3Button>
                     <M3Button
                         variant="filled"
                         icon={<LockOpenRounded fontSize="small" />}
