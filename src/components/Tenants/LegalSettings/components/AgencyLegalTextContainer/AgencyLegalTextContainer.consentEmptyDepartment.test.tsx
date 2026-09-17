@@ -202,7 +202,9 @@ describe('AgencyLegalTextContainer → DepartmentDataProtectionCard — the firs
         renderContainer();
 
         expect(chooser()).not.toBeInTheDocument();
-        expect(screen.getByTestId('consent-slot')).toBeEmptyDOMElement();
+        // Since #914 the slot is not empty here: it explains that the agency-wide text is
+        // consent-free by decision and that a Fachbereich is one click away.
+        expect(screen.getByTestId('consent-unavailable-trigger')).toBeInTheDocument();
     });
 
     it('stays fail-closed on a failed read: no editor at all, so no consent field either', async () => {
