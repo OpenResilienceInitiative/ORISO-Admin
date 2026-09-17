@@ -20,8 +20,8 @@ const Controlled = ({ value: initial, ...props }: CounsellorAvatarFieldProps) =>
 /**
  * Avatar section of the consultant form and of the counsellor onboarding
  * wizard (#1046/#1047): ONE radiogroup holding the initials tile plus the
- * platform's 61 monochrome counsellor motifs, all on the tenant's
- * primary-container pair. The own-picture tile arrives with #1048/#1049.
+ * platform's 61 monochrome counsellor motifs, all light on the tenant's
+ * saturated brand red. The own-picture tile arrives with #1048/#1049.
  */
 const meta = {
     title: 'Molecules/CounsellorAvatarField',

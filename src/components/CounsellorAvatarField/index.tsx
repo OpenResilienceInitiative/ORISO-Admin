@@ -40,7 +40,7 @@ const toTileId = ({ avatarKind, avatarId }: CounsellorAvatarValue): string | und
 /**
  * Avatar section of the consultant form and of the counsellor onboarding
  * wizard (#1046/#1047): the initials tile plus the platform's monochrome
- * counsellor motifs, all tinted to the tenant's primary-container pair.
+ * counsellor motifs, all a light glyph on the tenant's saturated brand red.
  *
  * The third kind — an own uploaded picture — is deliberately absent: its
  * upload, scanning and deletion cascade are #1048/#1049. The stored shape

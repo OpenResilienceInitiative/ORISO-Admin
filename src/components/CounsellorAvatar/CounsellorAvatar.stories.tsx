@@ -4,10 +4,10 @@ import { expect } from 'storybook/test';
 import { CounsellorAvatar } from './index';
 
 /**
- * The counsellor's public face (#1046/#1047). Motif and initials BOTH sit on
- * the tenant's primary-container pair, so the avatar carries the operator's
- * brand — never a colour hash. Consultants without a choice, and the
- * not-yet-built PICTURE kind, fall back to the initials.
+ * The counsellor's public face (#1046/#1047). Motif and initials are BOTH a
+ * light glyph on the tenant's saturated brand red — the same result the app
+ * shows advice seekers — never a colour hash. Consultants without a choice, and
+ * the not-yet-built PICTURE kind, fall back to the initials.
  */
 const meta = {
     title: 'Components/CounsellorAvatar',
@@ -29,7 +29,7 @@ export const Motif: Story = {
     },
 };
 
-/** Initials — always the primary-container pair, never a hashed colour. */
+/** Initials — always light on the brand red, never a hashed colour. */
 export const Initials: Story = {
     args: { avatarKind: 'INITIALS', label: 'Lena Beispiel' },
     play: async ({ canvas }) => {

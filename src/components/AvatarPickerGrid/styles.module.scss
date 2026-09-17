@@ -1,7 +1,9 @@
-/* Avatar picker grid: circular primary-container-tinted tiles, single-select ring. */
+@use '../../styles/monochromeGlyph' as glyph;
+
+/* Avatar picker grid: circular brand-tinted tiles, single-select ring. */
 .grid {
     display: grid;
-    gap: 12px;
+    gap: 6px;
     justify-items: center;
 }
 
@@ -14,12 +16,35 @@
     padding: 0;
     border: 2px solid transparent;
     border-radius: 50%;
-    background: var(--m3-primary-container, #ffe2de);
-    color: var(--m3-on-primary-container, #141c25);
-    font-size: 20px;
+
+    /*
+     * Owner decision 2026-09-17 (revised after seeing both apps side by side):
+     * the counsellor avatar is a LIGHT glyph on SATURATED brand red — the
+     * result the app already produces — and the admin picker must match it.
+     *
+     * The app reaches that result through `primary-container` because
+     * ORISO-Frontend resolves that role to #cc1e1c with #ffe2de on top. THIS
+     * repo resolves the same role to the pale rose #ffe2de with near-black on
+     * top (see the role note in src/app.css), so reusing it here would show
+     * the counsellor a pale tile and then a red one in the app. The
+     * primary/on-primary pair is the role that carries the saturated brand red
+     * in THIS repo, so it is the one that reproduces the app's result. Still
+     * tokens, never literals: a tenant scheme keeps moving both.
+     */
+    background: var(--m3-primary, #a5000a);
+    color: var(--m3-on-primary, #ffffff);
+    font-size: 26px;
     font-weight: 600;
+    letter-spacing: 0.01em;
     cursor: pointer;
     transition: border-color 140ms ease, transform 140ms ease;
+
+    @include glyph.recolour-to-current-color;
+
+    svg {
+        width: 34px;
+        height: 34px;
+    }
 }
 
 .avatar:hover {
@@ -27,33 +52,15 @@
 }
 
 .avatar:focus-visible {
-    outline: 2px solid var(--m3-primary, #a5000a);
+    outline: 2px solid var(--m3-on-surface, #1b1b1c);
     outline-offset: 2px;
 }
 
-/* Monochrome avatar glyphs (fill=black) recolour to the on-primary-container
-   foreground. Broadened past <path> so glyphs that fill circles/rects/groups
-   also flip. Owner decision 2026-09-17: the counsellor avatar — motif AND
-   initials — sits on the tenant's primary-container pair, not on primary and
-   never on a colour hash. */
-
-.avatar :global(svg) {
-    width: 30px;
-    height: 30px;
-    fill: currentColor;
-}
-
-.avatar :global(svg path),
-.avatar :global(svg circle),
-.avatar :global(svg rect),
-.avatar :global(svg ellipse),
-.avatar :global(svg polygon),
-.avatar :global(svg polyline),
-.avatar :global(svg g) {
-    fill: currentColor;
-}
+/* The ring has to stay readable ON the saturated red: a dark border plus a
+   surface-coloured halo separates the selected tile from its neighbours
+   without relying on colour alone. */
 
 .selected {
     border-color: var(--m3-on-surface, #1b1b1c);
-    box-shadow: 0 0 0 2px var(--m3-surface, #fcf9f9);
+    box-shadow: 0 0 0 3px var(--m3-surface, #fcf9f9);
 }

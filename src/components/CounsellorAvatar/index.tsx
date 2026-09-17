@@ -50,7 +50,9 @@ export const CounsellorAvatar = ({
             data-avatar-kind={Icon ? 'ICON' : 'INITIALS'}
             data-avatar-id={Icon ? avatarId : undefined}
             className={classNames(styles.avatar, className)}
-            style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }}
+            // 0.5 keeps two capitals inside the circle while reading as large as
+            // the motifs do at 65% (owner: the glyphs were too small).
+            style={{ width: size, height: size, fontSize: Math.round(size * 0.5) }}
             role={label ? 'img' : undefined}
             aria-label={label}
             aria-hidden={label ? undefined : true}

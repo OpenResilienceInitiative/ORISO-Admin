@@ -10,11 +10,13 @@
  *                #1048/#1049; the upload path is NOT built here, and this repo
  *                renders the initials fallback until it is.
  *
- * Owner decision 2026-09-17 (binding): initials and motifs BOTH render on the
- * tenant's primary-container pair — surface `--m3-primary-container`,
- * foreground `--m3-on-primary-container` — never on a colour hash. The pair is
- * re-derived per tenant in `utils/theme/orisoScheme.ts`, so the avatar follows
- * the operator's brand automatically.
+ * Owner decision 2026-09-17 (binding): initials and motifs BOTH render as a
+ * LIGHT glyph on the SATURATED brand red — the same result ORISO-Frontend
+ * already shows advice seekers — never on a colour hash. In THIS repo the role
+ * that carries that red is `--m3-primary` / `--m3-on-primary`; the app reaches
+ * the identical look through `primary-container`, which it resolves to #cc1e1c
+ * while this repo resolves it to the pale rose #ffe2de. Tokens either way, so a
+ * tenant scheme still moves the avatar (`utils/theme/orisoScheme.ts`).
  */
 
 export const COUNSELLOR_AVATAR_KINDS = ['ICON', 'INITIALS', 'PICTURE'] as const;
