@@ -85,8 +85,9 @@ export const CanonicalForwardedMail: Story = {
         const body = within(canvasElement.ownerDocument.body);
         expect(body.queryByLabelText(/Name der Person|Name of the person/)).not.toBeInTheDocument();
 
-        const frame = (await body.findByTitle(/Vorschau der E-Mail|Preview of the e-mail/)) as HTMLIFrameElement;
+        await body.findByTitle(/Vorschau der E-Mail|Preview of the e-mail/);
         await waitFor(() => {
+            const frame = body.getByTitle(/Vorschau der E-Mail|Preview of the e-mail/) as HTMLIFrameElement;
             const mailBody = frame.contentDocument?.body;
             expect(mailBody).not.toBeNull();
             const mail = mailBody?.textContent ?? '';

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dpaInvitePreviewEndpoint, publicAccountInvitesEndpoint } from '../../appConfig';
-import { FETCH_ERRORS, FETCH_METHODS } from '../fetchData';
+import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../fetchData';
 import { getAdminDpaMailPreview, getPublicDpaMailPreview } from './dpaMailPreview';
 
 const mocks = vi.hoisted(() => ({ fetchData: vi.fn() }));
@@ -42,6 +42,7 @@ describe('canonical DPA forward mail previews', () => {
                 method: FETCH_METHODS.POST,
                 skipAuth: false,
                 bodyData: JSON.stringify({ tenantId: 42 }),
+                responseHandling: expect.arrayContaining([FETCH_SUCCESS.CONTENT]),
             }),
         );
     });

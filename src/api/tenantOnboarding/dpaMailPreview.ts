@@ -1,5 +1,5 @@
 import { dpaInvitePreviewEndpoint, publicAccountInvitesEndpoint } from '../../appConfig';
-import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
+import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 
 /** The complete mail document produced by UserService's canonical DPA dispatch path. */
 export interface DpaMailPreview {
@@ -30,6 +30,6 @@ export const getAdminDpaMailPreview = (tenantId: number): Promise<DpaMailPreview
         url: dpaInvitePreviewEndpoint,
         method: FETCH_METHODS.POST,
         skipAuth: false,
-        responseHandling: SILENT_PREVIEW_ERRORS,
+        responseHandling: [...SILENT_PREVIEW_ERRORS, FETCH_SUCCESS.CONTENT],
         bodyData: JSON.stringify({ tenantId }),
     });
