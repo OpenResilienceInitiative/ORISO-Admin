@@ -123,9 +123,19 @@ export const CreateConsultantModal = ({
     return (
         <>
             {disabledTooltipKey ? (
+                // The reason is stated twice on purpose. A tooltip on a disabled button needs
+                // a hover the pointer may never deliver -- there is none on touch, and clicking
+                // a disabled button produces nothing at all, which is what the admin actually
+                // tries. The text below the button is the one that cannot be missed; the
+                // tooltip stays for the pointer users who do hover.
                 <Tooltip title={t(disabledTooltipKey)}>
                     {/* span wrapper so the tooltip also works on the disabled button */}
-                    <span style={{ display: 'block' }}>{button}</span>
+                    <span style={{ display: 'block' }}>
+                        {button}
+                        <span className={styles.disabledReason} role="note">
+                            {t(disabledTooltipKey)}
+                        </span>
+                    </span>
                 </Tooltip>
             ) : (
                 button

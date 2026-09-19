@@ -5,3 +5,14 @@
     justify-content: flex-end;
     gap: 8px;
 }
+
+/* Sits under the disabled trigger and states why it is off. Deliberately not a
+   muted grey: this is the sentence that unblocks the admin, so it has to clear the
+   4.5:1 contrast floor rather than fade into the card like a caption. */
+.disabledReason {
+    display: block;
+    margin-top: 4px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--mui-palette-text-primary, #1a1a1a);
+}
