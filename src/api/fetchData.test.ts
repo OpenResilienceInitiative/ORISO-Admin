@@ -66,6 +66,25 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         vi.unstubAllGlobals();
     });
 
+    it('consumes a signal already aborted before the request starts', async () => {
+        const controller = new AbortController();
+        controller.abort();
+        const fetchMock = vi.fn(async (request: Request) => {
+            if (request.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+            return new Response('old bytes');
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        await expect(
+            fetchData({
+                url: 'https://api.test/picture',
+                method: 'GET',
+                responseType: 'blob',
+                signal: controller.signal,
+            }),
+        ).rejects.toThrow('ABORT');
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('refreshes the token and retries once on 401, then succeeds without logging out', async () => {
         const fetchMock = vi
             .fn()
@@ -163,6 +182,33 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
 
         expect(result).toEqual({ id: 'media-id' });
         expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns an authenticated binary GET as a Blob only when explicitly requested', async () => {
+        const picture = new Blob(['consultant-picture'], { type: 'image/png' });
+        const binaryResponse = {
+            status: 200,
+            headers: { get: () => null },
+            json: vi.fn().mockResolvedValue({ not: 'the image' }),
+            blob: vi.fn().mockResolvedValue(picture),
+        };
+        const fetchMock = vi.fn().mockResolvedValue(binaryResponse);
+        vi.stubGlobal('fetch', fetchMock);
+
+        const result = await fetchData({
+            url: 'https://api.test/service/useradmin/consultants/42/picture',
+            method: FETCH_METHODS.GET,
+            responseType: 'blob',
+            responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+        } as any);
+
+        expect(result).toBe(picture);
+        expect(binaryResponse.blob).toHaveBeenCalledOnce();
+        expect(binaryResponse.json).not.toHaveBeenCalled();
+        const request = fetchMock.mock.calls[0][0] as Request;
+        expect(request.headers.get('authorization')).toBe('Bearer access-token');
+        expect(request.headers.get('x-csrf-token')).toContain('csrf-token');
+        expect(request.credentials).toBe('include');
     });
 
     it('rejects on 403 so callers can leave loading states', async () => {
@@ -372,5 +418,75 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
 
         await vi.advanceTimersByTimeAsync(5_000);
         await assertion;
+    });
+    it.each(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])('preserves default %s success shape', async (method) => {
+        const raw = new Response(JSON.stringify({ _embedded: { id: '42' } }), { status: 200 });
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(raw));
+        const result = await fetchData({ url: 'https://api.test/record', method });
+        if (method === 'GET') expect(result).toEqual({ _embedded: { id: '42' } });
+        else expect(result).toBe(raw);
+    });
+    it('raw File PUT retry preserves bytes headers credentials and no URL token', async () => {
+        const body = new File(['private bytes'], 'p.png', { type: 'image/png' });
+        const requests: Request[] = [];
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockImplementation((req: Request) => {
+                requests.push(req);
+                return Promise.resolve(new Response(null, { status: requests.length === 1 ? 401 : 204 }));
+            }),
+        );
+        tryRefreshAccessToken.mockResolvedValue(true);
+        const result = await fetchData({
+            url: 'https://api.test/picture',
+            method: 'PUT',
+            bodyData: body,
+            headersData: { 'Content-Type': 'image/png', 'X-Extra': 'kept' },
+            responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+        });
+        expect(result.status).toBe(204);
+        expect(requests).toHaveLength(2);
+        await Promise.all(
+            requests.map(async (req) => {
+                expect(await req.text()).toBe('private bytes');
+                expect(req.headers.get('content-type')).toBe('image/png');
+                expect(req.headers.get('x-extra')).toBe('kept');
+                expect(req.headers.get('authorization')).toBe('Bearer access-token');
+                expect(req.headers.get('x-csrf-token')).toBe('csrf-token');
+                expect(req.credentials).toBe('include');
+                expect(new URL(req.url).search).toBe('');
+            }),
+        );
+    });
+    it('blob GET survives one refresh retry', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi
+                .fn()
+                .mockResolvedValueOnce(new Response(null, { status: 401 }))
+                .mockResolvedValueOnce(new Response('bytes', { headers: { 'Content-Type': 'image/png' } })),
+        );
+        tryRefreshAccessToken.mockResolvedValue(true);
+        const result = await fetchData({
+            url: 'https://api.test/picture',
+            method: 'GET',
+            responseType: 'blob',
+            responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+        });
+        expect(await result.text()).toBe('bytes');
+        expect(logout).not.toHaveBeenCalled();
+    });
+    it('picture 403 rejects locally without redirect', async () => {
+        vi.stubGlobal('window', { location: { href: '/current' } });
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 403 })));
+        await expect(
+            fetchData({
+                url: 'https://api.test/picture',
+                method: 'GET',
+                responseType: 'blob',
+                responseHandling: [FETCH_ERRORS.FORBIDDEN_SILENT, FETCH_ERRORS.CATCH_ALL_SILENT],
+            }),
+        ).rejects.toThrow('NOT_ALLOWED');
+        expect(window.location.href).toBe('/current');
     });
 });

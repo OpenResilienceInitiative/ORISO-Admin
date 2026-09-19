@@ -1,6 +1,7 @@
 import React from 'react';
+import '@ant-design/v5-patch-for-react-19';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UserEditOrAdd } from './index';
@@ -19,8 +20,13 @@ import { UserRole } from '../../../enums/UserRole';
  */
 
 const mocks = vi.hoisted(() => ({
+    realMutation: false,
+    realPicture: false,
+    realAvatar: false,
     mutate: vi.fn(),
+    mutateAsync: vi.fn(),
     navigate: vi.fn(),
+    accountSuccess: vi.fn() as (result: { id: string }, variables: object) => void,
     getSingleTenantData: vi.fn(),
     searchTenantData: vi.fn(),
     /** Drives the real `hasRole` logic below, so the role gate is genuinely exercised. */
@@ -47,6 +53,7 @@ const translations: Record<string, string> = {
     firstname: 'Vorname',
     lastname: 'Nachname',
     email: 'E-Mail',
+    'counselor.picture.title': 'Foto',
     'counselor.username': 'Benutzername',
     'counselor.password': 'Passwort',
     'counselor.passwordConfirmation': 'Passwort wiederholen',
@@ -77,6 +84,7 @@ const translations: Record<string, string> = {
     save: 'Speichern',
     edit: 'Bearbeiten',
     'btn.cancel': 'Abbrechen',
+    'message.counselor.picture.partialCreate': 'Konto erstellt, Bild konnte nicht gespeichert werden.',
 };
 
 const t = (key: string) => translations[key] ?? key;
@@ -107,8 +115,10 @@ vi.mock('../../../components/Page', () => {
     return { Page };
 });
 
+const actualCard = await vi.importActual<typeof import('../../../components/Card')>('../../../components/Card');
 vi.mock('../../../components/Card', () => ({
     Card: function Card({ children, titleKey }: { children: React.ReactNode; titleKey: string }) {
+        if (mocks.realPicture) return <actualCard.Card titleKey={titleKey}>{children}</actualCard.Card>;
         return (
             <section>
                 <h2>{t(titleKey)}</h2>
@@ -145,8 +155,66 @@ vi.mock('../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({ permissions: {}, can: () => true }),
 }));
 
+const actualMutation = await vi.importActual<typeof import('../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin')>(
+    '../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin',
+);
+vi.mock('../../../api/counselor/addCounselorData', () => ({
+    addCounselorData: (payload: unknown) => mocks.mutateAsync(payload),
+}));
+vi.mock('../../../api/counselor/editCounselorData', () => ({
+    editCounselorData: (id: string, payload: unknown) => mocks.mutate(id, payload),
+}));
 vi.mock('../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin', () => ({
-    useAddOrUpdateConsultantOrAdmin: () => ({ mutate: mocks.mutate }),
+    useAddOrUpdateConsultantOrAdmin: (
+        options: Parameters<typeof actualMutation.useAddOrUpdateConsultantOrAdmin>[0],
+    ) => {
+        if (mocks.realMutation) return actualMutation.useAddOrUpdateConsultantOrAdmin(options);
+        // The installed MutationObserver updates callbacks when route props change.
+        mocks.accountSuccess = options.onSuccess;
+        return {
+            mutate: mocks.mutate,
+            mutateAsync: async (payload: unknown) => {
+                const result = await mocks.mutateAsync(payload);
+                mocks.accountSuccess(result, payload as object);
+                return result;
+            },
+        };
+    },
+}));
+
+const uploadConsultantPicture = vi.hoisted(() => vi.fn());
+vi.mock('../../../api/counselor/consultantPicture', () => ({
+    uploadConsultantPicture,
+    getConsultantPicture: vi.fn().mockResolvedValue(null),
+}));
+const actualAvatar = await vi.importActual<typeof import('../../../components/CounsellorAvatarField')>(
+    '../../../components/CounsellorAvatarField',
+);
+vi.mock('../../../components/CounsellorAvatarField', () => ({
+    CounsellorAvatarField: (props: React.ComponentProps<typeof actualAvatar.CounsellorAvatarField>) => {
+        if (mocks.realAvatar) return <actualAvatar.CounsellorAvatarField {...props} />;
+        return <div data-testid="avatar-stub" />;
+    },
+}));
+
+const actualPicture = await vi.importActual<typeof import('./ConsultantPictureControl')>('./ConsultantPictureControl');
+
+vi.mock('./ConsultantPictureControl', () => ({
+    ConsultantPictureControl: (props: React.ComponentProps<typeof actualPicture.ConsultantPictureControl>) => {
+        if (mocks.realPicture) return <actualPicture.ConsultantPictureControl {...props} />;
+        const { onSelectedFileChange, pendingDeletion, disabled } = props;
+        return (
+            <div>
+                <button
+                    type="button"
+                    disabled={pendingDeletion || disabled}
+                    onClick={() => onSelectedFileChange?.(new File(['x'], 'x.png', { type: 'image/png' }))}
+                >
+                    Bild wählen
+                </button>
+            </div>
+        );
+    },
 }));
 
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
@@ -202,11 +270,12 @@ beforeAll(() => {
 
 const renderForm = () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    return render(
+    const view = render(
         <QueryClientProvider client={queryClient}>
             <UserEditOrAdd />
         </QueryClientProvider>,
     );
+    return { ...view, queryClient };
 };
 
 /**
@@ -231,10 +300,14 @@ const fillMandatoryFields = async () => {
     await waitFor(() => expect(mocks.getSingleTenantData).toHaveBeenCalledWith(TENANT.id));
 };
 
+const setupUser = () => userEvent.setup({ delay: null });
+
 const submit = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(screen.getByRole('button', { name: 'Speichern' }));
-    await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
-    return mocks.mutate.mock.calls[0][0];
+    const mutation =
+        mocks.params.id === 'add' && mocks.params.typeOfUsers === 'consultants' ? mocks.mutateAsync : mocks.mutate;
+    await waitFor(() => expect(mutation).toHaveBeenCalledTimes(1));
+    return mutation.mock.calls[0][0];
 };
 
 /** Picks `optionLabel` in the MUI Autocomplete labelled `fieldLabel`. */
@@ -248,7 +321,13 @@ const chooseOption = async (
 };
 
 beforeEach(() => {
+    mocks.realMutation = false;
+    mocks.realPicture = false;
+    mocks.realAvatar = false;
+    translations['counselor.picture.title'] = 'Foto';
     mocks.mutate.mockReset();
+    mocks.mutateAsync.mockReset().mockResolvedValue({ id: 'created-42' });
+    uploadConsultantPicture.mockReset();
     mocks.navigate.mockReset();
     mocks.searchTenantData.mockReset();
     mocks.searchTenantData.mockResolvedValue({ data: [TENANT] });
@@ -263,13 +342,139 @@ beforeEach(() => {
     mocks.params = { id: 'add', typeOfUsers: 'consultants' };
 });
 
+describe('consultant picture create choreography (#1048)', () => {
+    beforeEach(() => {
+        mocks.realMutation = true;
+    });
+    it('locks picture selection and Save even when account creation started without a photo', async () => {
+        mocks.mutateAsync.mockImplementation(() => new Promise(() => {}));
+        const user = setupUser();
+        renderForm();
+        await fillMandatoryFields();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        expect(screen.getByRole('button', { name: 'Bild wählen' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+    });
+
+    it('guards Save and picture selection across account POST and picture PUT', async () => {
+        let finishCreate!: (value: { id: string }) => void;
+        let finishUpload!: () => void;
+        mocks.mutateAsync.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    finishCreate = resolve;
+                }),
+        );
+        uploadConsultantPicture.mockImplementation(
+            () =>
+                new Promise<void>((resolve) => {
+                    finishUpload = resolve;
+                }),
+        );
+        const user = setupUser();
+        renderForm();
+        await user.click(screen.getByRole('button', { name: 'Bild wählen' }));
+        await fillMandatoryFields();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+        expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Bild wählen' })).toBeDisabled();
+        expect(screen.getByLabelText('Vorname')).toBeDisabled();
+        await act(async () => {
+            finishCreate({ id: 'created-42' });
+        });
+        await waitFor(() => expect(uploadConsultantPicture).toHaveBeenCalledTimes(1));
+        // A second validated form submit must also be guarded, independently of the disabled button.
+        fireEvent.submit(document.querySelector('form')!);
+        await act(async () => {});
+        expect(mocks.mutateAsync).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+        expect(mocks.navigate).not.toHaveBeenCalled();
+        await act(async () => {
+            finishUpload();
+        });
+        await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/consultants'));
+    }, 60_000);
+
+    it('suppresses the mutation success navigation after the route changes during POST', async () => {
+        let finish!: (value: { id: string }) => void;
+        mocks.mutateAsync.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    finish = resolve;
+                }),
+        );
+        const user = setupUser();
+        const { rerender } = renderForm();
+        await user.click(screen.getByRole('button', { name: 'Bild wählen' }));
+        await fillMandatoryFields();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+        mocks.params = { id: 'another-consultant', typeOfUsers: 'consultants' };
+        rerender(
+            <QueryClientProvider client={new QueryClient()}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+        await act(async () => {
+            finish({ id: 'created-42' });
+        });
+        expect(mocks.navigate).not.toHaveBeenCalled();
+        expect(uploadConsultantPicture).not.toHaveBeenCalled();
+    });
+
+    it('forgets an unsubmitted picture when navigation leaves and returns to a new account', async () => {
+        const user = setupUser();
+        const { rerender } = renderForm();
+        await user.click(screen.getByRole('button', { name: 'Bild wählen' }));
+        mocks.params = { id: 'someone-else', typeOfUsers: 'consultants' };
+        rerender(
+            <QueryClientProvider client={new QueryClient()}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+        mocks.params = { id: 'add', typeOfUsers: 'consultants' };
+        rerender(
+            <QueryClientProvider client={new QueryClient()}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+        await fillMandatoryFields();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/consultants'));
+        expect(uploadConsultantPicture).not.toHaveBeenCalled();
+    });
+
+    it('creates once, then routes to the returned edit record when its picture upload fails', async () => {
+        const user = setupUser();
+        mocks.mutateAsync.mockResolvedValue({ id: 'consultant-created-42' });
+        uploadConsultantPicture.mockRejectedValue(
+            new Response(JSON.stringify({ reason: 'PICTURE_REJECTED' }), { status: 422 }),
+        );
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bild wählen' }));
+        await fillMandatoryFields();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        await waitFor(() =>
+            expect(uploadConsultantPicture).toHaveBeenCalledWith('consultant-created-42', expect.any(File)),
+        );
+        expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/consultants/consultant-created-42');
+        expect(mocks.navigate).not.toHaveBeenCalledWith('/admin/users/consultants');
+        expect(await screen.findByText('Konto erstellt, Bild konnte nicht gespeichert werden.')).toBeVisible();
+    });
+});
+
 describe('admin remarks are gated on the tenant-level admin role (#994)', () => {
     it.each([
         ['a tenant admin', UserRole.TenantAdmin],
         ['a single-tenant admin', UserRole.SingleTenantAdmin],
     ])('renders the remarks field for %s and submits what was typed into it', async (_label, role) => {
         mocks.roles = [role];
-        const user = userEvent.setup();
+        const user = setupUser();
         renderForm();
 
         const remarks = screen.getByLabelText('Interne Anmerkungen');
@@ -288,7 +493,7 @@ describe('admin remarks are gated on the tenant-level admin role (#994)', () => 
         // not prove it: a regression can hide the control and still serialize
         // `adminRemarks`, so the payload is asserted as well.
         mocks.roles = [role];
-        const user = userEvent.setup();
+        const user = setupUser();
         renderForm();
 
         expect(screen.queryByLabelText('Interne Anmerkungen')).not.toBeInTheDocument();
@@ -301,7 +506,7 @@ describe('admin remarks are gated on the tenant-level admin role (#994)', () => 
 
 describe('salutation control (#994)', () => {
     it('submits the stable key behind the chosen label, not the label itself', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         renderForm();
 
         await chooseOption(user, 'Anrede', 'Beratende Person');
@@ -314,7 +519,7 @@ describe('salutation control (#994)', () => {
         // Clearing the control yields `undefined`, which the API layer omits and
         // the backend reads as "leave unchanged" — the clear button would
         // silently fail to persist. `not_specified` is the explicit way to say it.
-        const user = userEvent.setup();
+        const user = setupUser();
         renderForm();
 
         await chooseOption(user, 'Anrede', 'Keine Angabe');
@@ -337,8 +542,11 @@ describe('salutation control (#994)', () => {
 });
 
 describe('counsellor avatar (#1046)', () => {
+    beforeEach(() => {
+        mocks.realAvatar = true;
+    });
     it('submits the chosen motif as the ICON kind plus its id', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         renderForm();
         await fillMandatoryFields();
 
@@ -353,7 +561,7 @@ describe('counsellor avatar (#1046)', () => {
     });
 
     it('submits INITIALS without a motif id', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         renderForm();
         await fillMandatoryFields();
 
@@ -375,7 +583,7 @@ describe('counsellor avatar (#1046)', () => {
     });
 
     it('leaves a consultant who never chose without a selection, and writes nothing', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         renderForm();
         await fillMandatoryFields();
 
@@ -389,7 +597,7 @@ describe('counsellor avatar (#1046)', () => {
 
 describe('public and internal display names (#996)', () => {
     it('submits both names independently', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         renderForm();
 
         setField('Öffentlicher Anzeigename', 'Ada L.');
@@ -423,7 +631,7 @@ describe('assignment fields', () => {
             isLoading: false,
         };
         mocks.topicsResult = { data: [{ id: 11, name: 'Sucht' }], isLoading: false };
-        const user = userEvent.setup();
+        const user = setupUser();
         renderForm();
 
         expect(screen.getAllByLabelText('Trägerzuordnung *')).toHaveLength(1);
@@ -547,7 +755,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * standing supervisor the admin never touched, on any unrelated edit.
      */
     it('never writes the field when the stored assignment could not be read', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         editExistingConsultant(undefined);
         renderForm();
 
@@ -555,7 +763,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
     });
 
     it('clears the assignment when the admin empties the field', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID });
         renderForm();
 
@@ -581,7 +789,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * backend, so an unrelated edit could drop a supervisor nobody touched.
      */
     it('leaves the stored assignment alone when the admin does not touch the field', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID });
         renderForm();
 
@@ -595,7 +803,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * would look configured and supervise nothing.
      */
     it("offers only eligible supervisors from the edited consultant's own tenant", async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         editExistingConsultant({ id: CONSULTANT_ID, tenantId: TENANT.id, assignedSupervisorId: undefined });
         renderForm();
 
@@ -623,7 +831,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * there is nobody to pick while the API was down — and could not tell the difference.
      */
     it('says the list could not be loaded, and locks the field, when the candidate query fails', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         mocks.supervisorCandidatesResult = { data: undefined, isLoading: false, isError: true };
         renderForm();
@@ -635,7 +843,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
     });
 
     it('locks the field and says so when the stored assignment could not be read', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         editExistingConsultant(undefined);
         renderForm();
 
@@ -650,7 +858,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * cannot select — so the short list must not be presented as if it were complete.
      */
     it('warns when there are more consultants than the candidate query reads', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         mocks.supervisorCandidatesResult = {
             ...mocks.supervisorCandidatesResult,
@@ -669,7 +877,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * while the backend already holds something else.
      */
     it('picks up the stored assignment when the detail record arrives after mount', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         const { rerender } = renderForm();
 
@@ -700,7 +908,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * they save a value they did not choose.
      */
     it("keeps the admin's pick when a detail refetch brings a different value", async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         const { rerender } = renderForm();
 
@@ -727,7 +935,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * and pick it straight back, storing an assignment that supervises nothing.
      */
     it('shows a stale stored supervisor but does not let it be picked again', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: 'supervisor-disabled' });
         renderForm();
 
@@ -743,7 +951,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * what the field says — a truncation note would send them looking in the wrong place.
      */
     it('explains the locked field rather than the capped search when both apply', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         editExistingConsultant(undefined);
         mocks.supervisorCandidatesResult = {
             ...mocks.supervisorCandidatesResult,
@@ -758,7 +966,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
     });
 
     it('writes the new supervisor when the admin picks one', async () => {
-        const user = userEvent.setup();
+        const user = setupUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         renderForm();
 
@@ -796,7 +1004,7 @@ describe('existing consultant username validation', () => {
         mocks.counselorResult = { data: { ...existing, topics: [topic] }, isLoading: false };
         mocks.agenciesResult = { data: { data: [originalAgency, addedAgency] }, isLoading: false };
         mocks.topicsResult = { data: [topic], isLoading: false };
-        const user = userEvent.setup();
+        const user = setupUser();
         renderForm();
         await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
         expect(screen.getByLabelText('Benutzername')).toBeDisabled();
@@ -812,5 +1020,107 @@ describe('existing consultant username validation', () => {
             isSupervisor: false,
         });
         expect(screen.getByLabelText('Benutzername')).toBeDisabled();
+    }, 60_000);
+});
+
+describe('request ownership with the real account mutation (#1048)', () => {
+    it.each([true, false])('runs another account save callback with old POST pending=%s', async (pending) => {
+        mocks.realMutation = true;
+        let finish!: (value: { id: string }) => void;
+        mocks.mutateAsync.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    finish = resolve;
+                }),
+        );
+        mocks.mutate.mockResolvedValue({ id: 'another-consultant' });
+        const user = setupUser();
+        const { rerender, unmount, queryClient } = renderForm();
+        await fillMandatoryFields();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+        if (!pending) {
+            await act(async () => {
+                finish({ id: 'old-created' });
+            });
+            expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith('/admin/users/consultants');
+            mocks.navigate.mockClear();
+        }
+        mocks.params = { id: 'another-consultant', typeOfUsers: 'consultants' };
+        rerender(
+            <QueryClientProvider client={queryClient}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+        expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+        await user.click(screen.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(mocks.mutate.mock.calls[0][0]).toBe('another-consultant');
+        await act(async () => {});
+        const navigationAfterEdit = mocks.navigate.mock.calls.slice();
+        await act(async () => {
+            finish({ id: 'old-created' });
+        });
+        expect(navigationAfterEdit).toEqual([['/admin/users/consultants']]);
+        // The obsolete POST must not add navigation or upload after the independent save.
+        expect(mocks.navigate.mock.calls).toEqual(navigationAfterEdit);
+        expect(uploadConsultantPicture).not.toHaveBeenCalled();
+        expect(mocks.mutateAsync).toHaveBeenCalledTimes(1);
+        unmount();
+        queryClient.clear();
+    });
+});
+
+describe('normal form picture heading (#1048)', () => {
+    it.each(['Foto', 'Photo'])('renders one accessible %s heading with the real Card and control', (title) => {
+        mocks.realPicture = true;
+        translations['counselor.picture.title'] = title;
+        renderForm();
+        expect(screen.getAllByRole('heading', { name: title })).toHaveLength(1);
+        expect(screen.getByRole('region', { name: title })).toBeInTheDocument();
+    });
+});
+
+describe('picture deletion guards with independent list and detail records (#1048)', () => {
+    it.each([
+        ['missing detail fields, deleting list status', {}, { status: 'IN_DELETION' }, true],
+        ['missing detail fields, dated list', {}, { deleteDate: '2026-09-16' }, true],
+        [
+            'active detail, deleting list status',
+            { status: 'ACTIVE', deleteDate: null },
+            { status: 'IN_DELETION' },
+            true,
+        ],
+        ['explicit null detail, dated list', { deleteDate: null }, { deleteDate: '2026-09-16' }, true],
+        ['deleting detail, active list', { status: 'IN_DELETION' }, { status: 'ACTIVE', deleteDate: null }, true],
+        ['dated detail, explicit null list', { deleteDate: '2026-09-16' }, { deleteDate: null }, true],
+        ['absent metadata', {}, {}, true],
+        ['absent detail and metadata', undefined, {}, true],
+        ['explicit null detail, absent list fields', { deleteDate: null }, {}, false],
+        ['legacy null list, absent detail fields', {}, { deleteDate: 'null' }, false],
+        ['active status, absent date', { status: 'ACTIVE' }, {}, false],
+        ['active list, absent detail', undefined, { status: 'ACTIVE', deleteDate: null }, false],
+    ])('%s', async (_label, detail, list, blocked) => {
+        mocks.realPicture = true;
+        mocks.params = { id: '42', typeOfUsers: 'consultants' };
+        mocks.consultantsResult = { data: { data: [{ id: '42', ...list }] }, isLoading: false };
+        mocks.counselorResult = { data: detail === undefined ? undefined : { id: '42', ...detail }, isLoading: false };
+        const user = setupUser();
+        const { unmount, queryClient } = renderForm();
+        const choose = screen.getByRole('button', { name: 'counselor.picture.choose' });
+        expect(choose).toBeDisabled();
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        if (blocked) {
+            expect(choose).toBeDisabled();
+            fireEvent.change(screen.getByLabelText('counselor.picture.choose'), {
+                target: { files: [new File(['x'], 'x.png', { type: 'image/png' })] },
+            });
+            expect(screen.queryByRole('button', { name: 'counselor.picture.upload' })).not.toBeInTheDocument();
+        } else {
+            expect(choose).toBeEnabled();
+        }
+        expect(uploadConsultantPicture).not.toHaveBeenCalled();
+        unmount();
+        queryClient.clear();
     });
 });

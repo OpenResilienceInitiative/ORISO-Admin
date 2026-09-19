@@ -41,6 +41,13 @@ export type CounsellorOnboardingState =
 /** Which submit failed retryably; link-death is modelled in the state instead. */
 export type CounsellorOnboardingSubmitError = 'registration' | 'two-factor-code' | 'two-factor' | null;
 
+/**
+ * Issue #1049: the photo is stored AFTER the account exists, so a refused photo must never take
+ * the created account down with it. A failure is reported next to the following step instead, and
+ * the counsellor can add the photo later from their profile.
+ */
+export type CounsellorOnboardingPictureError = 'upload' | 'visibility' | null;
+
 /** Everything the wizard collects across its form steps. */
 export interface CounsellorWizardData {
     account: { username: string; password: string };
@@ -48,6 +55,8 @@ export interface CounsellorWizardData {
     names: { publicName: string; internalName: string };
     /** #1046/#1047: the avatar step is on. Empty = no choice made yet. */
     avatar: CounsellorAvatarValue;
+    /** Issue #1049: the counsellor's own photo, internal unless they publish it. */
+    picture: { file: File | null; publicToAdviceSeekers: boolean };
     topicIds: number[];
     /** Only collected when the invite creates a new agency (`invite.agencyExists === false`). */
     agency: { name: string };
@@ -58,6 +67,7 @@ const EMPTY_DATA: CounsellorWizardData = {
     person: { salutation: undefined, position: '', title: '' },
     names: { publicName: '', internalName: '' },
     avatar: {},
+    picture: { file: null, publicToAdviceSeekers: false },
     topicIds: [],
     agency: { name: '' },
 };
@@ -70,6 +80,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
     const [invite, setInvite] = useState<CounsellorOnboardingInviteDTO | null>(null);
     const [data, setData] = useState<CounsellorWizardData>(EMPTY_DATA);
     const [submitError, setSubmitError] = useState<CounsellorOnboardingSubmitError>(null);
+    const [pictureError, setPictureError] = useState<CounsellorOnboardingPictureError>(null);
     const [busy, setBusy] = useState(false);
     // Bumping re-runs the resolve effect — the retry for transient load failures.
     const [loadAttempt, setLoadAttempt] = useState(0);
@@ -154,6 +165,10 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setData((current) => ({ ...current, names: { ...current.names, ...patch } }));
     }, []);
 
+    const updatePicture = useCallback((patch: Partial<CounsellorWizardData['picture']>) => {
+        setData((current) => ({ ...current, picture: { ...current.picture, ...patch } }));
+    }, []);
+
     const updateAvatar = useCallback((avatar: CounsellorAvatarValue) => {
         setData((current) => ({ ...current, avatar }));
     }, []);
@@ -184,6 +199,28 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setSubmitError(retryable);
     };
 
+    const storePicture = useCallback(
+        async (picture: CounsellorWizardData['picture']) => {
+            if (!picture.file) return;
+            try {
+                await client.uploadOnboardingPicture(inviteToken, picture.file);
+            } catch (error) {
+                if (error instanceof InviteLinkError) throw error;
+                setPictureError('upload');
+                return;
+            }
+            if (!picture.publicToAdviceSeekers) return;
+            try {
+                await client.setOnboardingPictureVisibility(inviteToken, false);
+            } catch (error) {
+                if (error instanceof InviteLinkError) throw error;
+                // The photo is stored and safely internal; only publishing it did not take.
+                setPictureError('visibility');
+            }
+        },
+        [client, inviteToken],
+    );
+
     const submitRegistration = useCallback(async () => {
         if (stateRef.current.phase !== 'form' || busyRef.current) {
             return;
@@ -191,6 +228,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         busyRef.current = true;
         setBusy(true);
         setSubmitError(null);
+        setPictureError(null);
         try {
             const { account, person, names, avatar, topicIds, agency } = dataRef.current;
             // Normalises a half choice away; `{}` (no choice) sends no avatar block at all.
@@ -214,22 +252,24 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                 ...(createsAgency ? { agency: { name: agency.name.trim() } } : {}),
             };
             const result = await client.registerCounsellor(inviteToken, request);
-            if (result.phase === 'COMPLETED') {
-                // 2FA gate waived by the inviting admin — nothing left to set up.
-                setState({ phase: 'done' });
+            // Picture routes use the raw invite token. A COMPLETED registration has already
+            // consumed that token, so uploading here would replace success with CONSUMED.
+            if (result.phase === 'PENDING_2FA_ACTIVATION') {
+                await storePicture(dataRef.current.picture);
+                setState({
+                    phase: 'two-factor',
+                    result: { twoFactor: result.twoFactor, resumed: false },
+                });
                 return;
             }
-            setState({
-                phase: 'two-factor',
-                result: { twoFactor: result.twoFactor, resumed: false },
-            });
+            setState({ phase: 'done' });
         } catch (error) {
             failFlow(error, 'registration');
         } finally {
             busyRef.current = false;
             setBusy(false);
         }
-    }, [client, inviteToken]);
+    }, [client, inviteToken, storePicture]);
 
     const submitTwoFactorCode = useCallback(
         async (otp: string) => {
@@ -261,11 +301,13 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         invite,
         data,
         submitError,
+        pictureError,
         busy,
         retryLoad,
         updateAccount,
         updatePerson,
         updateNames,
+        updatePicture,
         updateAvatar,
         updateAgency,
         setTopics,

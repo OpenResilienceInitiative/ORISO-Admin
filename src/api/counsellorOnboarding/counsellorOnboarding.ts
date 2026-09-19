@@ -127,6 +127,14 @@ export interface CounsellorOnboardingClient {
     ): Promise<CounsellorRegistrationResultDTO>;
     /** Confirms the TOTP setup with a first one-time password. */
     activateTwoFactor(inviteToken: string, otp: string): Promise<void>;
+    /**
+     * Issue #1049 picture step: stores the counsellor's own photo after registration, while the
+     * link is still resumable at the 2FA step. The raw invite token is the credential — the
+     * invitee has no session yet. The photo is scanned fail-closed server-side.
+     */
+    uploadOnboardingPicture(inviteToken: string, picture: File): Promise<void>;
+    /** Issue #1049: publishes the just-stored photo to advice seekers, or keeps it internal. */
+    setOnboardingPictureVisibility(inviteToken: string, internalOnly: boolean): Promise<void>;
 }
 
 /** Status → link-error mapping of the public onboarding endpoints. */
@@ -220,6 +228,29 @@ export const createHttpCounsellorOnboardingClient = (): CounsellorOnboardingClie
                 throw await toOnboardingError(error);
             }
         },
+
+        uploadOnboardingPicture: (inviteToken, picture) =>
+            run(async () => {
+                await fetchData({
+                    url: onboardingUrl(inviteToken, '/picture'),
+                    method: FETCH_METHODS.PUT,
+                    skipAuth: true,
+                    responseHandling: PUBLIC_RESPONSE_HANDLING,
+                    headersData: { 'Content-Type': picture.type },
+                    bodyData: picture,
+                });
+            }),
+
+        setOnboardingPictureVisibility: (inviteToken, internalOnly) =>
+            run(async () => {
+                await fetchData({
+                    url: onboardingUrl(inviteToken, '/picture/visibility'),
+                    method: FETCH_METHODS.PUT,
+                    skipAuth: true,
+                    responseHandling: PUBLIC_RESPONSE_HANDLING,
+                    bodyData: JSON.stringify({ internalOnly }),
+                });
+            }),
     };
 };
 
@@ -231,6 +262,8 @@ export interface StubCounsellorOnboardingOptions {
     invite?: Partial<CounsellorOnboardingInviteDTO>;
     /** `COMPLETED` simulates a waived 2FA gate (the wizard skips the 2FA step). */
     registrationPhase?: 'PENDING_2FA_ACTIVATION' | 'COMPLETED';
+    /** Simulates a refused photo — the account must still be created and usable. */
+    pictureUploadFails?: boolean;
 }
 
 const STUB_INVITE: CounsellorOnboardingInviteDTO = {
@@ -273,10 +306,16 @@ const wait = (ms: number) =>
 export const createStubCounsellorOnboardingClient = (
     options: StubCounsellorOnboardingOptions = {},
 ): CounsellorOnboardingClient => {
-    const { inviteState = 'VALID', latencyMs = 400, registrationPhase = 'PENDING_2FA_ACTIVATION' } = options;
+    const {
+        inviteState = 'VALID',
+        latencyMs = 400,
+        registrationPhase = 'PENDING_2FA_ACTIVATION',
+        pictureUploadFails = false,
+    } = options;
     const invite: CounsellorOnboardingInviteDTO = { ...STUB_INVITE, ...options.invite };
     let registered = inviteState === 'PENDING_2FA_ACTIVATION';
     let twoFactorActivated = inviteState === 'CONSUMED';
+    let storedPicture = false;
 
     const STUB_TWO_FACTOR = {
         secret: 'ORISOSTUBTOTPSECRET234567ABCDEFG',
@@ -347,6 +386,26 @@ export const createStubCounsellorOnboardingClient = (
                 throw new TwoFactorCodeInvalidError();
             }
             twoFactorActivated = true;
+        },
+
+        uploadOnboardingPicture: async (inviteToken) => {
+            await wait(latencyMs);
+            assertLinkAlive(inviteToken);
+            if (!registered) {
+                throw new Error('REGISTRATION_MISSING');
+            }
+            if (pictureUploadFails) {
+                throw new Error('PICTURE_SCAN_UNAVAILABLE');
+            }
+            storedPicture = true;
+        },
+
+        setOnboardingPictureVisibility: async (inviteToken) => {
+            await wait(latencyMs);
+            assertLinkAlive(inviteToken);
+            if (!storedPicture) {
+                throw new Error('PICTURE_MISSING');
+            }
         },
     };
 };
