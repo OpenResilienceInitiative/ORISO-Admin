@@ -1,3 +1,5 @@
+@use '../../styles/muiSpacing' as *;
+
 /* Right-aligned action row; the shared Modal supplies the surrounding padding. */
 .footerActions {
     display: flex;
@@ -9,10 +11,51 @@
 /* Sits under the disabled trigger and states why it is off. Deliberately not a
    muted grey: this is the sentence that unblocks the admin, so it has to clear the
    4.5:1 contrast floor rather than fade into the card like a caption. */
+
 .disabledReason {
     display: block;
     margin-top: 4px;
+    color: var(--mui-palette-text-primary, #1a1a1a);
     font-size: 14px;
     line-height: 1.4;
+}
+
+/* The optional-details block. Built on the 8px MUI grid the surrounding surfaces
+   already use, as a flex column rather than stacked margins, so the gap between
+   fields is one declaration instead of one per child. */
+
+.moreFields {
+    border: 1px solid var(--mui-palette-divider, #c4c4c4);
+    border-radius: $mui-unit;
+    margin-top: 2 * $mui-unit;
+    background: var(--mui-palette-background-paper, #ffffff);
+}
+
+/* A summary is a button in everything but name: it takes focus and toggles on
+   Enter and Space. It therefore needs a visible focus ring and a hit area that is
+   not a 14px line of text. */
+
+.moreFieldsSummary {
+    display: flex;
+    align-items: center;
+    padding: 1.5 * $mui-unit 2 * $mui-unit;
+
+    /* Not the muted caption colour: this is the control that reveals half the form,
+       so it stays at body contrast rather than the ~3:1 a grey heading would give. */
     color: var(--mui-palette-text-primary, #1a1a1a);
+    cursor: pointer;
+    font-weight: 600;
+    gap: $mui-unit;
+
+    &:focus-visible {
+        outline: 2px solid var(--mui-palette-primary-main, #1a4f9c);
+        outline-offset: 2px;
+    }
+}
+
+.moreFieldsBody {
+    display: flex;
+    flex-direction: column;
+    padding: 0 2 * $mui-unit 2 * $mui-unit;
+    gap: 2 * $mui-unit;
 }

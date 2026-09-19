@@ -7,6 +7,10 @@ import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { UnsavedChangesModal } from '../CardEditable/components/UnsavedChanges';
 import { FormInputField } from '../FormInputField';
 import { FormInputPasswordField } from '../FormInputPasswordField';
+import { FormSwitchField } from '../FormSwitchField';
+import { FormTextAreaField } from '../FormTextAreaField';
+import { MuiSelectField } from '../mui/MuiSelectField';
+import { SALUTATION_KEYS } from '../cards/PersonalInfoCard';
 import { Modal, DialogButton } from '../Modal';
 import { TypeOfUser } from '../../enums/TypeOfUser';
 import { useAddOrUpdateConsultantOrAdmin } from '../../hooks/useAddOrUpdateConsultantOrAgencyAdmin';
@@ -38,7 +42,12 @@ export const buildQuickCreateConsultantData = (
     topicIds: Array<string | number> = [],
 ) => ({
     ...values,
-    formalLanguage: true,
+    // Tone used to be hardcoded here, so a counsellor created from the agency screen
+    // always got the formal address regardless of what the tenant uses. It is a field
+    // now; this stays as the default for an untouched form.
+    formalLanguage: values.formalLanguage ?? true,
+    absent: values.absent ?? false,
+    isGroupchatConsultant: values.isGroupchatConsultant ?? false,
     tenantId: `${tenantId}`,
     agencyIds: normalizeNumericIds([agencyId]),
     topicIds: normalizeNumericIds(topicIds),
@@ -234,6 +243,39 @@ export const CreateConsultantModal = ({
                                 }),
                             ]}
                         />
+
+                        {/* Everything the full counsellor form offers and this one used to
+                            drop. They were not optional in effect -- they were decided for
+                            the admin, silently and differently depending on which screen
+                            was used. Collapsed so the quick path stays quick; submitted
+                            either way, because an untouched field still has a value. */}
+                        <details className={styles.moreFields}>
+                            <summary className={styles.moreFieldsSummary}>
+                                {t('agency.form.registrationSettings.createConsultant.moreFields')}
+                            </summary>
+                            <div className={styles.moreFieldsBody}>
+                                <MuiSelectField
+                                    name="salutation"
+                                    label="counselor.salutation"
+                                    placeholder="plsSelect"
+                                    options={SALUTATION_KEYS.map((key) => ({
+                                        value: key,
+                                        label: t(`counselor.salutation.option.${key}`),
+                                    }))}
+                                />
+                                <FormInputField name="title" labelKey="counselor.title" />
+                                <FormInputField name="position" labelKey="counselor.position" />
+                                <FormInputField name="displayName" labelKey="counselor.displayName" />
+                                <FormInputField name="internalDisplayName" labelKey="counselor.internalDisplayName" />
+                                <FormSwitchField name="formalLanguage" labelKey="counselor.formalLanguage.title" />
+                                <FormSwitchField
+                                    name="isGroupchatConsultant"
+                                    labelKey="counselor.isGroupChatConsultant"
+                                />
+                                <FormSwitchField name="absent" labelKey="counselor.absent" />
+                                <FormTextAreaField name="absenceMessage" labelKey="counselor.absenceMessage" />
+                            </div>
+                        </details>
                     </Form>
                 </Modal>
             )}
