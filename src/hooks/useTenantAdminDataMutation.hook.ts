@@ -27,7 +27,8 @@ export const useTenantAdminDataMutation = ({
 }: TenantAdminDataOptions) => {
     const { t } = useTranslation();
     const queryClient = useQueryClient();
-    const shouldPrefetchTenantAdminData = prefetchTenantAdminData && !!id && id !== 'add' && !seedTenantAdminData;
+    const shouldPrefetchTenantAdminData =
+        prefetchTenantAdminData && id !== null && id !== undefined && id !== '' && id !== 'add' && !seedTenantAdminData;
     const { data: tenantAdminData } = useSingleTenantData({
         id,
         enabled: shouldPrefetchTenantAdminData,
