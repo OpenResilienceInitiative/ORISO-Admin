@@ -1,11 +1,15 @@
 @use '../../styles/muiSpacing' as *;
+@use '../../styles/scrollbars' as scrollbars;
 
-/* Right-aligned action row; the shared Modal supplies the surrounding padding. */
+/* Right-aligned action row; the shared Modal supplies the surrounding padding.
+   Three actions now (cancel / save and create another / create), so it wraps
+   onto a second line rather than overflowing a narrow sheet. */
+
 .footerActions {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: 8px;
+    gap: $mui-unit;
 }
 
 /* Sits under the disabled trigger and states why it is off. Deliberately not a
@@ -20,42 +24,67 @@
     line-height: 1.4;
 }
 
-/* The optional-details block. Built on the 8px MUI grid the surrounding surfaces
-   already use, as a flex column rather than stacked margins, so the gap between
-   fields is one declaration instead of one per child. */
+/* The dialog now carries the whole counsellor form, so it needs a working
+   height as well as a working width: a viewport-bounded body that scrolls,
+   rather than a sheet taller than the screen with its actions off the bottom. */
 
-.moreFields {
-    border: 1px solid var(--mui-palette-divider, #c4c4c4);
-    border-radius: $mui-unit;
-    margin-top: 2 * $mui-unit;
-    background: var(--mui-palette-background-paper, #ffffff);
-}
+.dialog {
+    max-width: calc(100vw - 4 * #{$mui-unit});
 
-/* A summary is a button in everything but name: it takes focus and toggles on
-   Enter and Space. It therefore needs a visible focus ring and a hit area that is
-   not a 14px line of text. */
+    :global(.ant-modal-body) {
+        max-height: calc(100vh - 34 * #{$mui-unit});
+        overflow-y: auto;
 
-.moreFieldsSummary {
-    display: flex;
-    align-items: center;
-    padding: 1.5 * $mui-unit 2 * $mui-unit;
+        /* Long form behind a mask: its scroll must not chain to the page. */
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
 
-    /* Not the muted caption colour: this is the control that reveals half the form,
-       so it stays at body contrast rather than the ~3:1 a grey heading would give. */
-    color: var(--mui-palette-text-primary, #1a1a1a);
-    cursor: pointer;
-    font-weight: 600;
-    gap: $mui-unit;
-
-    &:focus-visible {
-        outline: 2px solid var(--mui-palette-primary-main, #1a4f9c);
-        outline-offset: 2px;
+        @include scrollbars.quiet;
     }
 }
 
-.moreFieldsBody {
-    display: flex;
-    flex-direction: column;
-    padding: 0 2 * $mui-unit 2 * $mui-unit;
-    gap: 2 * $mui-unit;
+/* Two columns, as the owner asked ("das popup halt in zwei columns designed").
+   Multi-column rather than a grid: the fields are one continuous list of very
+   different heights (the avatar picker is a scrolling tile grid, the rest are
+   single lines), so letting the browser balance the flow keeps both columns
+   the same length without pinning anything to a row. Reading order and tab
+   order stay identical — column one top to bottom, then column two. */
+
+.columns {
+    column-gap: 4 * $mui-unit;
+    columns: 2;
+
+    /* A field split across the column break would show its label in one column
+       and its input in the other. */
+
+    > * {
+        break-inside: avoid;
+    }
+}
+
+/* One column below the two-column breakpoint. A 440px column of MUI fields is
+   already the narrowest that reads well, so the switch happens before the
+   columns get there rather than at a phone width. */
+
+@media (max-width: 899px) {
+    .columns {
+        columns: 1;
+    }
+}
+
+/* The Enter-key submit target. Not `display: none` and not `hidden`: a form
+   only implicitly submits through a submit button that is being rendered, so
+   the button has to exist in the layout while staying invisible and out of the
+   tab order. */
+
+.enterSubmit {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    border: 0;
+    margin: -1px;
+    clip-path: inset(50%);
+    overflow: hidden;
+    padding: 0;
+    white-space: nowrap;
 }

@@ -1,16 +1,13 @@
 import { Button, Form, message, Tooltip } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
-import { useState } from 'react';
+import { ThemeProvider } from '@mui/material/styles';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { UnsavedChangesModal } from '../CardEditable/components/UnsavedChanges';
-import { FormInputField } from '../FormInputField';
-import { FormInputPasswordField } from '../FormInputPasswordField';
-import { FormSwitchField } from '../FormSwitchField';
-import { FormTextAreaField } from '../FormTextAreaField';
-import { MuiSelectField } from '../mui/MuiSelectField';
-import { SALUTATION_KEYS } from '../cards/PersonalInfoCard';
+import { ConsultantPersonalFields, ConsultantSettingsFields, type ConsultantFieldName } from '../ConsultantFields';
+import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { Modal, DialogButton } from '../Modal';
 import { TypeOfUser } from '../../enums/TypeOfUser';
 import { useAddOrUpdateConsultantOrAdmin } from '../../hooks/useAddOrUpdateConsultantOrAgencyAdmin';
@@ -31,6 +28,29 @@ interface CreateConsultantModalProps {
     onSuccess: (consultant: CounselorData) => void;
 }
 
+/**
+ * What this surface does NOT offer, and why. Stated rather than simply left
+ * out, so the difference from the page form (src/pages/users/Edit) is a
+ * decision someone made and can revisit — the reason the field set lives in
+ * one shared module in the first place.
+ */
+const PERSONAL_EXCLUSIONS: readonly ConsultantFieldName[] = [
+    // Tenant-level-admin only on the page form (AuthenticatedUser#hasTenantLevelAdminRole).
+    // This dialog opens from the agency screen, which any agency admin reaches.
+    'adminRemarks',
+];
+
+const SETTINGS_EXCLUSIONS: readonly ConsultantFieldName[] = [
+    // ADR-008: a standing supervisor is attached to an existing counsellor, and
+    // `addCounselorData` carries no such field — a switch here would do nothing.
+    'isSupervisor',
+    // Same reason: the create request drops `absenceMessage` (only
+    // `editCounselorData` sends it). `absent` itself IS carried, so the flag
+    // stays and the note is set on the next edit.
+    'absenceMessage',
+];
+
+/** Tenant, agency and topics are injected from the agency being edited, not asked for. */
 const normalizeNumericIds = (values: Array<string | number | undefined>): number[] => [
     ...new Set(values.map(Number).filter((value) => Number.isFinite(value) && value > 0)),
 ];
@@ -53,6 +73,19 @@ export const buildQuickCreateConsultantData = (
     topicIds: normalizeNumericIds(topicIds),
 });
 
+/**
+ * The switches are rendered, so antd registers them and `onFinish` carries
+ * them whether or not the admin touched one. These are the values an untouched
+ * form submits — the same defaults `buildQuickCreateConsultantData` falls back
+ * to, written down once so the switch on screen and the value on the wire can
+ * never drift apart.
+ */
+const INITIAL_VALUES = {
+    formalLanguage: true,
+    isGroupchatConsultant: false,
+    absent: false,
+};
+
 export const CreateConsultantModal = ({
     tenantId,
     agencyId,
@@ -65,6 +98,12 @@ export const CreateConsultantModal = ({
     const [form] = Form.useForm();
     const [open, setOpen] = useState(false);
     const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
+    /**
+     * Which button submitted. A ref, not state: it is read inside the mutation
+     * callback that the very same click started, and a state update would not
+     * have landed by then.
+     */
+    const keepOpenAfterSave = useRef(false);
 
     const closeModal = () => {
         setOpen(false);
@@ -86,10 +125,32 @@ export const CreateConsultantModal = ({
         typeOfUser: TypeOfUser.Consultants,
         onSuccess: (consultant) => {
             message.success({ content: t('message.counselor.add'), duration: 3 });
+            const createAnother = keepOpenAfterSave.current;
+            keepOpenAfterSave.current = false;
+
+            if (createAnother) {
+                /*
+                 * The Jira pattern the owner asked for: the counsellor is saved
+                 * and reported to the agency form (which appends them to its
+                 * selection list), the dialog stays open and the form goes back
+                 * to its defaults for the next person. `resetFields` restores
+                 * `initialValues` AND clears the touched flag, so closing
+                 * straight after no longer raises a false unsaved-changes
+                 * warning about someone who is already stored.
+                 */
+                form.resetFields();
+                onSuccess(consultant as CounselorData);
+                return;
+            }
+
             closeModal();
             onSuccess(consultant as CounselorData);
         },
         onError: async (error: Error | Response) => {
+            // Nothing is reset here on purpose: a failed save must not cost the
+            // admin everything they typed.
+            keepOpenAfterSave.current = false;
+
             if (error instanceof Response) {
                 const reason = error.headers.get(FETCH_ERRORS.X_REASON);
                 if (
@@ -112,6 +173,21 @@ export const CreateConsultantModal = ({
 
     const onFinish = (values: Record<string, unknown>) => {
         mutate(buildQuickCreateConsultantData(values, tenantId, agencyId, topicIds) as unknown as CounselorData);
+    };
+
+    const submit = (createAnother: boolean) => {
+        keepOpenAfterSave.current = createAnother;
+        form.submit();
+    };
+
+    /*
+     * Nothing was saved, so the intent expires with the attempt. Leaving the
+     * flag set would hand it to whatever submits next — Enter inside a field,
+     * which has always meant plain create — and the dialog would then stay
+     * open on a save the admin expected to finish.
+     */
+    const onFinishFailed = () => {
+        keepOpenAfterSave.current = false;
     };
 
     const disabledTooltipKey =
@@ -152,131 +228,54 @@ export const CreateConsultantModal = ({
             {open && (
                 <Modal
                     titleKey="agency.form.registrationSettings.createConsultant.title"
+                    descriptionKey="agency.form.registrationSettings.createConsultant.description"
+                    descriptionFullWidth
                     icon={<PersonAddOutlinedIcon />}
+                    // The full field set in two columns needs a working surface, not a
+                    // confirm-dialog column.
+                    width={920}
+                    className={styles.dialog}
                     footer={
                         <div className={styles.footerActions}>
                             <DialogButton onClick={requestClose} disabled={isPending}>
                                 {t('btn.cancel')}
                             </DialogButton>
-                            <DialogButton primary loading={isPending} onClick={() => form.submit()}>
+                            <DialogButton loading={isPending} onClick={() => submit(true)}>
+                                {t('agency.form.registrationSettings.createConsultant.confirmAndNext')}
+                            </DialogButton>
+                            <DialogButton primary loading={isPending} onClick={() => submit(false)}>
                                 {t('agency.form.registrationSettings.createConsultant.confirm')}
                             </DialogButton>
                         </div>
                     }
                     onClose={requestClose}
                 >
-                    {/* disabled={false} keeps the outer (read-only) form context from disabling these fields */}
-                    {/* onFinish also fires on Enter inside a field, not only via the OK button */}
-                    <Form form={form} layout="vertical" size="large" disabled={false} onFinish={onFinish}>
-                        <FormInputField
-                            name="firstname"
-                            labelKey="firstname"
-                            placeholderKey="placeholder.firstname"
-                            required
-                            autoFocus
-                        />
-                        <FormInputField
-                            name="lastname"
-                            labelKey="lastname"
-                            placeholderKey="placeholder.lastname"
-                            required
-                        />
-                        <FormInputField
-                            name="email"
-                            labelKey="email"
-                            placeholderKey="placeholder.email"
-                            rules={[
-                                {
-                                    required: true,
-                                    type: 'email',
-                                    message: t('message.error.email.incorrect'),
-                                },
-                            ]}
-                        />
-                        <FormInputField
-                            name="username"
-                            labelKey="counselor.username"
-                            placeholderKey="placeholder.username"
-                            rules={[
-                                {
-                                    required: true,
-                                    message: t('message.error.username.required'),
-                                },
-                                {
-                                    pattern: /^[a-z0-9_-]+$/,
-                                    message: t('message.error.username.format'),
-                                },
-                            ]}
-                        />
-                        <FormInputPasswordField
-                            name="password"
-                            labelKey="counselor.password"
-                            placeholderKey="placeholder.password"
-                            required
-                            rules={[
-                                {
-                                    min: 8,
-                                    message: t('message.error.password.minLength'),
-                                },
-                                {
-                                    pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-                                    message: t('message.error.password.policy'),
-                                },
-                            ]}
-                        />
-                        <FormInputPasswordField
-                            name="passwordConfirmation"
-                            labelKey="counselor.passwordConfirmation"
-                            placeholderKey="placeholder.password"
-                            required
-                            dependencies={['password']}
-                            rules={[
-                                ({ getFieldValue }) => ({
-                                    validator(_, value) {
-                                        if (!value || getFieldValue('password') === value) {
-                                            return Promise.resolve();
-                                        }
-                                        return Promise.reject(
-                                            new Error(t('profile.passwordChange.error.passwordsNotMatch')),
-                                        );
-                                    },
-                                }),
-                            ]}
-                        />
-
-                        {/* Everything the full counsellor form offers and this one used to
-                            drop. They were not optional in effect -- they were decided for
-                            the admin, silently and differently depending on which screen
-                            was used. Collapsed so the quick path stays quick; submitted
-                            either way, because an untouched field still has a value. */}
-                        <details className={styles.moreFields}>
-                            <summary className={styles.moreFieldsSummary}>
-                                {t('agency.form.registrationSettings.createConsultant.moreFields')}
-                            </summary>
-                            <div className={styles.moreFieldsBody}>
-                                <MuiSelectField
-                                    name="salutation"
-                                    label="counselor.salutation"
-                                    placeholder="plsSelect"
-                                    options={SALUTATION_KEYS.map((key) => ({
-                                        value: key,
-                                        label: t(`counselor.salutation.option.${key}`),
-                                    }))}
-                                />
-                                <FormInputField name="title" labelKey="counselor.personalTitle" />
-                                <FormInputField name="position" labelKey="counselor.position" />
-                                <FormInputField name="displayName" labelKey="counselor.displayName" />
-                                <FormInputField name="internalDisplayName" labelKey="counselor.internalDisplayName" />
-                                <FormSwitchField name="formalLanguage" labelKey="counselor.formalLanguage.title" />
-                                <FormSwitchField
-                                    name="isGroupchatConsultant"
-                                    labelKey="counselor.isGroupChatConsultant"
-                                />
-                                <FormSwitchField name="absent" labelKey="counselor.absent" />
-                                <FormTextAreaField name="absenceMessage" labelKey="counselor.absenceMessage" />
+                    <ThemeProvider theme={orisoMuiTheme}>
+                        {/* disabled={false} keeps the outer (read-only) form context from disabling these fields */}
+                        <Form
+                            form={form}
+                            layout="vertical"
+                            disabled={false}
+                            initialValues={INITIAL_VALUES}
+                            onFinish={onFinish}
+                            onFinishFailed={onFinishFailed}
+                        >
+                            <div className={styles.columns}>
+                                <ConsultantPersonalFields exclude={PERSONAL_EXCLUSIONS} autoFocusFirstField />
+                                <ConsultantSettingsFields exclude={SETTINGS_EXCLUSIONS} />
                             </div>
-                        </details>
-                    </Form>
+                            {/*
+                              The footer actions live outside the <form> and submit it
+                              programmatically, which leaves the form with no submit
+                              button — and a form without one does not implicitly submit
+                              on Enter. This restores that: Enter inside a field means
+                              the plain create, the same as the primary action.
+                            */}
+                            <button type="submit" className={styles.enterSubmit} tabIndex={-1} aria-hidden>
+                                {t('agency.form.registrationSettings.createConsultant.confirm')}
+                            </button>
+                        </Form>
+                    </ThemeProvider>
                 </Modal>
             )}
             {showUnsavedWarning && (
