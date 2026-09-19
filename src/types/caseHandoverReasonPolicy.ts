@@ -1,12 +1,18 @@
 import type { SupportedLanguageCode } from '../constants/supportedLanguages';
-import type { CaseHandoverConsentPolicy } from './permissionPolicy';
+import type { CaseHandoverConsentPolicy, CaseHandoverConsentValue, PermissionPolicyMode } from './permissionPolicy';
 
 export interface CaseHandoverReasonPolicy {
     code: string;
     label: string;
     clientConsentRequired: boolean;
-    /** Canonical reason-specific consent policy; boolean remains transition-read compatible. */
-    clientConsent?: CaseHandoverConsentPolicy;
+    /**
+     * Canonical reason-specific consent policy. Written as the typed policy object; the
+     * UserService answers the bare value and carries the mode in `clientConsentMode`, so both
+     * shapes reach this card — always read it through `resolvedClientConsentPolicy`.
+     */
+    clientConsent?: CaseHandoverConsentPolicy | CaseHandoverConsentValue;
+    /** Mode belonging to a bare `clientConsent` value, as the UserService returns it. */
+    clientConsentMode?: PermissionPolicyMode | null;
     accessAllowed: boolean;
     enabled: boolean;
     displayOrder: number;
