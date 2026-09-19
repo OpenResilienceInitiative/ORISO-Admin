@@ -16,7 +16,7 @@ import { useAddOrUpdateTenantAdmin } from '../../../../hooks/useAddOrUpdateTenan
 import routePathNames from '../../../../appConfig';
 import styles from './styles.module.scss';
 import { TenantAdminData } from '../../../../types/TenantAdminData';
-import { X_REASON } from '../../../../api/fetchData';
+import { createTenantSaveErrorHandler } from '../../../../utils/tenantSaveErrorHandler';
 import { extractApiErrorMessage } from '../../../../utils/extractApiErrorMessage';
 import { M3Button } from '../../../../components/M3Button';
 import { orisoMuiTheme } from '../../../../theme/orisoMuiTheme';
@@ -65,6 +65,8 @@ export const GeneralTenantSettings = () => {
         };
     };
 
+    const shouldShowSubdomainField = !settings.multitenancyWithSingleDomainEnabled;
+
     const { mutate: update } = useAddOrUpdateTenant({
         id: isEditing ? id : null,
         onSuccess: (rData, submittedFormData) => {
@@ -109,20 +111,13 @@ export const GeneralTenantSettings = () => {
             }
             navigate(routePathNames.tenants);
         },
-        onError: (error: Response | Error) => {
-            if (error instanceof Response && error.headers?.get('X-Reason') === X_REASON.SUBDOMAIN_NOT_UNIQUE) {
-                form.setFields([
-                    {
-                        name: 'subdomain',
-                        errors: [t('tenants.message.subdomainInUse')],
-                    },
-                ]);
-            } else {
-                notification.error({ message: t('message.error.default') });
-            }
-        },
+        onError: createTenantSaveErrorHandler({
+            t,
+            setFieldError: (name, error) => form.setFields([{ name, errors: [error] }]),
+            notifyError: (message) => notification.error({ message }),
+            canShowSubdomainError: shouldShowSubdomainField,
+        }),
     });
-    const shouldShowSubdomainField = !settings.multitenancyWithSingleDomainEnabled;
 
     const handleSave = (formData: Record<string, any>) => {
         // `topic` is frontend-only — strip it before it reaches the mutation.

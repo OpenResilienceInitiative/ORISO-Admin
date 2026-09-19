@@ -51,8 +51,18 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         lastname,
         formalLanguage,
         email,
+        // Required by the endpoint (`@NotNull`, and the stored column is a primitive
+        // boolean), so unlike the flags below it cannot be omitted when the form did not
+        // offer a switch. The shared field set therefore carries it hidden on those
+        // surfaces (see `ConsultantSettingsFields`), which is what keeps this `!!` honest:
+        // it defaults a CREATE form's untouched flag, it does not invent an answer for an
+        // edit. #1015.
         absent: !!absent,
-        isGroupchatConsultant: !!isGroupchatConsultant,
+        // A flag the form did not submit means "leave it alone", never `false` — the rule
+        // `src/hooks/topicRequestBody.ts` carries a scar for, and the one `updateAgencyData`
+        // already follows. `false` here REMOVES the group-chat role in Keycloak, so an edit
+        // screen that never rendered the switch must not send it at all.
+        ...(isGroupchatConsultant !== undefined && { isGroupchatConsultant: !!isGroupchatConsultant }),
         isSupervisor: !!isSupervisor,
         topicIds,
         publicSlug,

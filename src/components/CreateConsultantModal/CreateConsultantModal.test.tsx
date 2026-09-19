@@ -1,0 +1,426 @@
+import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { CreateConsultantModal } from './index';
+import { UserRole } from '../../enums/UserRole';
+
+// t() is identity so labels/messages are predictable and no i18n init is needed.
+// react-i18next's hook returns an array [t, i18n, ready] that also exposes { t }.
+vi.mock('react-i18next', () => {
+    const t = (key?: string) => key ?? '';
+    return { useTranslation: () => Object.assign([t, {}, true], { t }) };
+});
+
+const mocks = vi.hoisted(() => ({
+    addCounselorData: vi.fn(),
+    /** Drives the real `hasRole` logic below, so the remarks gate is genuinely exercised. */
+    roles: [] as string[],
+}));
+
+vi.mock('../../api/counselor/addCounselorData', () => ({ addCounselorData: mocks.addCounselorData }));
+
+vi.mock('../../hooks/useUserRoles.hook', () => ({
+    useUserRoles: () => ({
+        roles: mocks.roles,
+        hasRole: (role: string | string[]) =>
+            (Array.isArray(role) ? role : [role]).some((candidate) => mocks.roles.includes(candidate)),
+        isSuperAdmin: false,
+        isTechnicalAccount: false,
+        isTenantScopedAdmin: mocks.roles.includes(UserRole.TenantAdmin),
+        tenantId: 42,
+        tokenUnreadable: false,
+    }),
+}));
+
+const CREATED = { id: '77', firstname: 'Ada', lastname: 'Lovelace', email: 'ada@example.org' };
+
+const renderModal = (overrides: Record<string, unknown> = {}) => {
+    const onSuccess = vi.fn();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+        <QueryClientProvider client={queryClient}>
+            <CreateConsultantModal tenantId={42} agencyId={282} topicIds={[7]} onSuccess={onSuccess} {...overrides} />
+        </QueryClientProvider>,
+    );
+    return { onSuccess };
+};
+
+const openDialog = async (user: ReturnType<typeof userEvent.setup>) => {
+    // The trigger carries a plus icon, so its accessible name is "plus …".
+    await user.click(screen.getByRole('button', { name: /createConsultant\.button$/ }));
+    return screen.findByText('agency.form.registrationSettings.createConsultant.title');
+};
+
+/** Typing 60 characters re-renders the avatar grid 60 times; set the values instead. */
+const fillRequired = (values: Record<string, string> = {}) => {
+    const filled = {
+        firstname: 'Ada',
+        lastname: 'Lovelace',
+        email: 'ada@example.org',
+        'counselor.username': 'ada',
+        'counselor.password': 'Str0ng!pass',
+        'counselor.passwordConfirmation': 'Str0ng!pass',
+        ...values,
+    };
+    Object.entries(filled).forEach(([label, value]) => {
+        fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    });
+};
+
+/** Lets every queued microtask and timer-0 callback run before asserting. */
+const flush = () =>
+    new Promise<void>((resolve) => {
+        setTimeout(resolve, 50);
+    });
+
+/** MUI outlined fields print their label twice (label + fieldset legend). */
+const isRendered = (label: string) => screen.queryAllByText(label).length > 0;
+
+beforeEach(() => {
+    mocks.addCounselorData.mockReset();
+    mocks.addCounselorData.mockResolvedValue(CREATED);
+    mocks.roles = [UserRole.TenantAdmin];
+});
+
+/*
+ * Owner, 2026-09-19: "nein lass bitte an allen stellen alle daten anlegen dann
+ * ist das popup halt in zwei columns designed fertig. auch wäre hier ein save
+ * and create new button super […] ein bisschen wie jira […] also auch icon etc
+ * muss jetzt da gewählt werden!"
+ *
+ * Two things follow. The dialog offers the SAME set as the page form — no
+ * collapsed "more fields" drawer hiding half a person behind a disclosure
+ * triangle — and creating one counsellor can hand the admin an empty form for
+ * the next one instead of throwing them back to the agency screen.
+ */
+describe('the quick-create dialog field set', () => {
+    it('offers every field up front, with nothing folded away', async () => {
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        // The disclosure drawer is gone: half the fields behind a triangle is
+        // how the quick path silently decided things for the admin.
+        expect(document.querySelector('details')).toBeNull();
+
+        const expected = [
+            'firstname',
+            'lastname',
+            'counselor.displayName',
+            'counselor.internalDisplayName',
+            'counselor.avatar',
+            'counselor.salutation',
+            'counselor.position',
+            'counselor.personalTitle',
+            'counselor.adminRemarks',
+            'email',
+            'counselor.username',
+            'counselor.password',
+            'counselor.passwordConfirmation',
+            'counselor.formalLanguage.title',
+            'counselor.isGroupChatConsultant',
+            'counselor.absent',
+        ];
+
+        expect(expected.filter((label) => !isRendered(label))).toEqual([]);
+    });
+
+    it('lets the admin pick the avatar right here', async () => {
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        // "auch icon etc muss jetzt da gewählt werden" — the picker itself, not
+        // a note that it can be set later on the user screen.
+        expect(screen.getByRole('radiogroup')).toBeInTheDocument();
+        expect(screen.getAllByRole('radio').length).toBeGreaterThan(1);
+    });
+
+    it('leaves out only what it declares, and leaves it out for a reason', async () => {
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        // Needs a stored record (ADR-008) — `addCounselorData` carries no such field.
+        expect(isRendered('counselor.isSupervisor')).toBe(false);
+
+        // The absence note is NOT among them: see the absence describe below.
+    });
+
+    /*
+     * The dialog offered an absence switch whose "on" position could not be saved. UserService
+     * refuses a blank note for an absent counsellor on the create path too
+     * (`CreateConsultantSaga` → `validateAbsence` → 400
+     * MISSING_ABSENCE_MESSAGE_FOR_ABSENT_USER), so ticking it guaranteed a failed create and a
+     * generic toast. A switch that cannot be saved is worse than one that is not offered.
+     */
+    it('asks for the absence note here, and sends it with the create request', async () => {
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        await user.click(screen.getByRole('switch', { name: 'counselor.absent' }));
+        await waitFor(() => expect(screen.getByRole('switch', { name: 'counselor.absent' })).toBeChecked());
+        expect(isRendered('counselor.absenceMessage')).toBe(true);
+
+        fillRequired();
+        fireEvent.change(screen.getByLabelText('counselor.absenceMessage'), {
+            target: { value: 'Bin bis zum 30.09. nicht erreichbar.' },
+        });
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirm' }),
+        );
+
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalledTimes(1));
+        expect(mocks.addCounselorData.mock.calls[0][0]).toMatchObject({
+            absent: true,
+            absenceMessage: 'Bin bis zum 30.09. nicht erreichbar.',
+        });
+    });
+
+    it('does not let an absent counsellor be created without a note', async () => {
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        fillRequired();
+        await user.click(screen.getByRole('switch', { name: 'counselor.absent' }));
+        await waitFor(() => expect(isRendered('counselor.absenceMessage')).toBe(true));
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirm' }),
+        );
+
+        await flush();
+        expect(mocks.addCounselorData).not.toHaveBeenCalled();
+        expect(isRendered('form.errors.required')).toBe(true);
+    });
+});
+
+/*
+ * Owner: every field is available everywhere. The remarks were the last field the dialog
+ * withheld, and withholding it is exactly the path divergence this package exists to remove:
+ * the same admin, creating the same counsellor, got a different record depending on which
+ * screen they used. So it is offered here under the SAME gate the page form applies —
+ * `AuthenticatedUser#hasTenantLevelAdminRole` — and not hidden from everyone to avoid
+ * thinking about the gate.
+ */
+describe("admin remarks follow the page form's role gate (#1015)", () => {
+    it.each([
+        ['a tenant admin', UserRole.TenantAdmin],
+        ['a single-tenant admin', UserRole.SingleTenantAdmin],
+    ])('offers the remarks field to %s, and sends what was typed into it', async (_label, role) => {
+        mocks.roles = [role];
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        fillRequired();
+        fireEvent.change(screen.getByLabelText('counselor.adminRemarks'), {
+            target: { value: 'Springt fuer die Kollegin ein.' },
+        });
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirm' }),
+        );
+
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalledTimes(1));
+        expect(mocks.addCounselorData.mock.calls[0][0]).toMatchObject({
+            adminRemarks: 'Springt fuer die Kollegin ein.',
+        });
+    });
+
+    it.each([
+        ['a restricted agency admin', UserRole.RestrictedAgencyAdmin],
+        ['a plain agency admin', UserRole.AgencyAdmin],
+    ])('omits it for %s, whose request carries no remarks', async (_label, role) => {
+        // The backend refuses to read or write remarks for these roles, so the field must be
+        // absent rather than merely disabled — and the payload is asserted too, because a
+        // regression can hide the control while still serializing the key.
+        mocks.roles = [role];
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        expect(isRendered('counselor.adminRemarks')).toBe(false);
+
+        fillRequired();
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirm' }),
+        );
+
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalledTimes(1));
+        expect(mocks.addCounselorData.mock.calls[0][0]).not.toHaveProperty('adminRemarks');
+    });
+});
+
+describe('save and create another', () => {
+    it('keeps the dialog open with an empty form, and reports the consultant', async () => {
+        const user = userEvent.setup();
+        const { onSuccess } = renderModal();
+        await openDialog(user);
+        fillRequired();
+
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirmAndNext' }),
+        );
+
+        // Persisted, and handed to the agency form so the new counsellor shows
+        // up in its selection list straight away.
+        await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({ id: '77' })));
+        // Still open, ready for the next person (the Jira pattern the owner asked for).
+        expect(screen.getByText('agency.form.registrationSettings.createConsultant.title')).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByLabelText('firstname')).toHaveValue(''));
+        expect(screen.getByLabelText('email')).toHaveValue('');
+    });
+
+    it('does not carry the previous person into the next request', async () => {
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+        fillRequired();
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirmAndNext' }),
+        );
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(screen.getByLabelText('firstname')).toHaveValue(''));
+
+        fillRequired({ firstname: 'Grace', lastname: 'Hopper', 'counselor.username': 'grace' });
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirmAndNext' }),
+        );
+
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalledTimes(2));
+        expect(mocks.addCounselorData.mock.calls[1][0]).toMatchObject({ firstname: 'Grace', username: 'grace' });
+    });
+
+    it('still closes the dialog on the plain create button', async () => {
+        const user = userEvent.setup();
+        const { onSuccess } = renderModal();
+        await openDialog(user);
+        fillRequired();
+
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirm' }),
+        );
+
+        await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+        await waitFor(() =>
+            expect(
+                screen.queryByText('agency.form.registrationSettings.createConsultant.title'),
+            ).not.toBeInTheDocument(),
+        );
+    });
+
+    it('does not let a rejected attempt change what the next submit does', async () => {
+        const user = userEvent.setup();
+        const { onSuccess } = renderModal();
+        await openDialog(user);
+
+        // Asked for "and another" on an empty form: validation rejects it, so
+        // nothing was saved and the intent expires with the attempt.
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirmAndNext' }),
+        );
+        await waitFor(() => expect(mocks.addCounselorData).not.toHaveBeenCalled());
+
+        fillRequired();
+        // Enter inside a field has always meant plain create.
+        await user.type(screen.getByLabelText('firstname'), '{Enter}');
+
+        await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+        await waitFor(() =>
+            expect(
+                screen.queryByText('agency.form.registrationSettings.createConsultant.title'),
+            ).not.toBeInTheDocument(),
+        );
+    });
+
+    /*
+     * "Save and create another" exists so an admin can enter one counsellor
+     * after the next in a rhythm. Rapid repeated submission is therefore the
+     * INTENDED usage, not an edge case — and a duplicate here is a duplicate
+     * Keycloak account, a duplicate Matrix identity and a second set of agency
+     * relations, all cleaned up by hand.
+     *
+     * Note the deliberate absence of `await` between the two submissions: the
+     * missing await IS the defect. `isPending` only becomes true once React has
+     * re-rendered, which has not happened when the second click lands.
+     */
+    it('creates one consultant when two submissions are dispatched before the first settles', async () => {
+        let settle: (value: unknown) => void = () => {};
+        mocks.addCounselorData.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    settle = resolve;
+                }),
+        );
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+        fillRequired();
+
+        const createAndNext = screen.getByRole('button', {
+            name: 'agency.form.registrationSettings.createConsultant.confirmAndNext',
+        });
+        fireEvent.click(createAndNext);
+        fireEvent.click(createAndNext);
+
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalled());
+        await flush();
+        expect(mocks.addCounselorData).toHaveBeenCalledTimes(1);
+
+        settle(CREATED);
+        // The accepted submission asked for "and another", so IT decides: the
+        // dialog stays open with an empty form. The press that was turned away
+        // gets no say, and no second consultant is created when it settles.
+        await waitFor(() => expect(screen.getByLabelText('firstname')).toHaveValue(''));
+        expect(screen.getByText('agency.form.registrationSettings.createConsultant.title')).toBeInTheDocument();
+        expect(mocks.addCounselorData).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores Enter while a save is already in flight', async () => {
+        let settle: (value: unknown) => void = () => {};
+        mocks.addCounselorData.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    settle = resolve;
+                }),
+        );
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+        fillRequired();
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'agency.form.registrationSettings.createConsultant.confirmAndNext',
+            }),
+        );
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalled());
+        // The footer is outside the form, so the hidden submit control is the
+        // other way in — and it must be shut for as long as the request runs.
+        fireEvent.submit(document.querySelector('form') as HTMLFormElement);
+        await flush();
+
+        expect(mocks.addCounselorData).toHaveBeenCalledTimes(1);
+        settle(CREATED);
+        await waitFor(() => expect(screen.getByLabelText('firstname')).toHaveValue(''));
+    });
+
+    it('leaves the form untouched when the save fails, so nothing is retyped', async () => {
+        const user = userEvent.setup();
+        mocks.addCounselorData.mockRejectedValue(new Error('boom'));
+        renderModal();
+        await openDialog(user);
+        fillRequired();
+
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirmAndNext' }),
+        );
+
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalled());
+        expect(screen.getByLabelText('firstname')).toHaveValue('Ada');
+        expect(screen.getByText('agency.form.registrationSettings.createConsultant.title')).toBeInTheDocument();
+    });
+});

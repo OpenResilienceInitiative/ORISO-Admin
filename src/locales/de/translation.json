@@ -686,6 +686,8 @@
     "agency.form.registrationSettings.createConsultant.button": "Neue:n Berater:in anlegen",
     "agency.form.registrationSettings.createConsultant.title": "Neue:n Berater:in anlegen",
     "agency.form.registrationSettings.createConsultant.confirm": "Anlegen",
+    "agency.form.registrationSettings.createConsultant.confirmAndNext": "Anlegen & weitere:n anlegen",
+    "agency.form.registrationSettings.createConsultant.description": "Alle Angaben zur Person. „Anlegen & weitere:n anlegen“ speichert die Person, fügt sie dieser Beratungsstelle hinzu und öffnet ein leeres Formular für die nächste.",
     "agency.form.registrationSettings.createConsultant.tenantFirst": "Bitte wählen Sie zuerst die Trägerzuordnung aus, um eine:n neue:n Berater:in anzulegen.",
     "agency.form.registrationSettings.createConsultant.saveAgencyFirst": "Speichern Sie diese Beratungsstelle zuerst offline und öffnen Sie sie anschließend erneut, um eine:n Berater:in anzulegen und zuzuweisen.",
     "agency.form.registrationSettings.onlineWarning": "Damit die Beratungsstelle in der Registrierung sichtbar gestellt werden kann, weisen Sie dieser eine:n Berater:in zu. Diese Funktion finden Sie unter dem Menüpunkt \"Nutzer\".",
