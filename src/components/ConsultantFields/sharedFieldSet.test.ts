@@ -1,6 +1,6 @@
-import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 /*
@@ -13,14 +13,21 @@ import { describe, expect, it } from 'vitest';
  * hardcoded on one, the avatar was never asked for on one), and how a review
  * of either file could look complete while the other silently disagreed.
  *
- * The field set now lives in src/components/ConsultantFields. This test reads
- * the two call sites as text and fails if either of them starts re-declaring a
- * field the shared module owns. A failure here is NOT fixed by editing the
- * list: add the field to ConsultantFields and render it from there, or — if
- * the surface genuinely must not have it — pass it in `exclude`.
+ * The field set now lives in src/components/ConsultantFields, and this file is
+ * the evidence that it is genuinely SHARED rather than merely moved. It
+ * therefore has to detect a re-declaration however it is WRITTEN. Its first
+ * version matched the text `name="field"`, which `name='field'` and
+ * `name={'field'}` slip straight past — an assertion that cannot fail for the
+ * case it exists to catch. It now reads the JSX itself.
+ *
+ * A failure here is NOT fixed by editing the list: add the field to
+ * ConsultantFields and render it from there, or — if the surface genuinely
+ * must not have it — pass it in `exclude`.
  */
 
-const readSource = (relativePath: string) => readFileSync(resolve(__dirname, '..', '..', relativePath), 'utf8');
+const SRC = resolve(__dirname, '..', '..');
+
+const readSource = (relativePath: string) => readFileSync(join(SRC, relativePath), 'utf8');
 
 /** The antd field names the shared module registers. */
 const SHARED_FIELD_NAMES = [
@@ -47,13 +54,68 @@ const SHARED_FIELD_NAMES = [
 
 const CALL_SITES = ['pages/users/Edit/index.tsx', 'components/CreateConsultantModal/index.tsx'];
 
+/**
+ * Every literal `name` a JSX element in this source binds a field to. Parsing
+ * rather than matching text: quoting style and `{'…'}` braces are the author's
+ * choice, and a guard that only understands one of them guards nothing.
+ */
+export const boundFieldNames = (source: string, fileName = 'source.tsx'): string[] => {
+    const parsed = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const names: string[] = [];
+
+    const visit = (node: ts.Node) => {
+        if (ts.isJsxAttribute(node) && node.name.getText(parsed) === 'name') {
+            const { initializer } = node;
+            let literal: ts.Node | undefined;
+
+            if (initializer && ts.isStringLiteral(initializer)) {
+                literal = initializer;
+            } else if (initializer && ts.isJsxExpression(initializer) && initializer.expression) {
+                literal = initializer.expression;
+            }
+
+            if (literal && ts.isStringLiteralLike(literal)) {
+                names.push(literal.text);
+            }
+        }
+        ts.forEachChild(node, visit);
+    };
+
+    visit(parsed);
+
+    return names;
+};
+
+const reDeclaredIn = (source: string) =>
+    [...new Set(boundFieldNames(source))].filter((name) => SHARED_FIELD_NAMES.includes(name));
+
+describe('the duplicate detector itself', () => {
+    /*
+     * Fixtures, not real files: the guard has to go red for each of these, or
+     * a call site could drift back into its own copy of the field set simply
+     * by using a different quote.
+     */
+    it('catches a shared field declared with double quotes', () => {
+        expect(reDeclaredIn('const A = () => <MuiFormField name="firstname" />;')).toEqual(['firstname']);
+    });
+
+    it('catches a shared field declared with single quotes', () => {
+        expect(reDeclaredIn("const A = () => <MuiFormField name='firstname' />;")).toEqual(['firstname']);
+    });
+
+    it('catches a shared field declared as a JSX expression', () => {
+        expect(reDeclaredIn("const A = () => <MuiSelectField name={'salutation'} />;")).toEqual(['salutation']);
+        expect(reDeclaredIn('const A = () => <MuiSelectField name={`salutation`} />;')).toEqual(['salutation']);
+    });
+
+    it('leaves a field the shared set does not own alone', () => {
+        expect(reDeclaredIn("const A = () => <MuiSelectField name='tenantId' />;")).toEqual([]);
+    });
+});
+
 describe('the consultant field set has exactly one declaration', () => {
     it.each(CALL_SITES)('%s renders the shared set instead of re-stating it', (callSite) => {
-        const source = readSource(callSite);
-
-        const reDeclared = SHARED_FIELD_NAMES.filter((field) => source.includes(`name="${field}"`));
-
-        expect(reDeclared).toEqual([]);
+        expect(reDeclaredIn(readSource(callSite))).toEqual([]);
     });
 
     it.each(CALL_SITES)('%s imports the shared field set', (callSite) => {
@@ -67,16 +129,18 @@ describe('the consultant field set has exactly one declaration', () => {
         // used to hold a copy each, kept in step by a comment. A key added to
         // one list and not another reads back as an unknown salutation on the
         // surface that never learned about it.
-        const declarations = execSync('grep -rl "\'counsellor_gender_neutral\'," src --include=*.ts --include=*.tsx', {
-            cwd: resolve(__dirname, '..', '..', '..'),
-            encoding: 'utf8',
-        })
-            .trim()
-            .split('\n')
-            // A test may state the keys it expects; only PRODUCTION copies count.
-            .filter((file) => !file.includes('.test.'));
+        const sources = (dir: string): string[] =>
+            readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+                const path = join(dir, entry.name);
+                if (entry.isDirectory()) return entry.name === 'node_modules' ? [] : sources(path);
+                return /\.tsx?$/.test(entry.name) && !entry.name.includes('.test.') ? [path] : [];
+            });
 
-        expect(declarations).toEqual(['src/utils/salutationKeys.ts']);
+        const declarations = sources(SRC)
+            .filter((path) => readFileSync(path, 'utf8').includes("'counsellor_gender_neutral',"))
+            .map((path) => relative(SRC, path).split('\\').join('/'));
+
+        expect(declarations).toEqual(['utils/salutationKeys.ts']);
     });
 
     it('keeps the credential policy in its single source, on both surfaces', () => {

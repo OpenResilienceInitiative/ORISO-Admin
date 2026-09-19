@@ -51,6 +51,12 @@ const fillRequired = (values: Record<string, string> = {}) => {
     });
 };
 
+/** Lets every queued microtask and timer-0 callback run before asserting. */
+const flush = () =>
+    new Promise<void>((resolve) => {
+        setTimeout(resolve, 50);
+    });
+
 /** MUI outlined fields print their label twice (label + fieldset legend). */
 const isRendered = (label: string) => screen.queryAllByText(label).length > 0;
 
@@ -211,6 +217,78 @@ describe('save and create another', () => {
                 screen.queryByText('agency.form.registrationSettings.createConsultant.title'),
             ).not.toBeInTheDocument(),
         );
+    });
+
+    /*
+     * "Save and create another" exists so an admin can enter one counsellor
+     * after the next in a rhythm. Rapid repeated submission is therefore the
+     * INTENDED usage, not an edge case — and a duplicate here is a duplicate
+     * Keycloak account, a duplicate Matrix identity and a second set of agency
+     * relations, all cleaned up by hand.
+     *
+     * Note the deliberate absence of `await` between the two submissions: the
+     * missing await IS the defect. `isPending` only becomes true once React has
+     * re-rendered, which has not happened when the second click lands.
+     */
+    it('creates one consultant when two submissions are dispatched before the first settles', async () => {
+        let settle: (value: unknown) => void = () => {};
+        mocks.addCounselorData.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    settle = resolve;
+                }),
+        );
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+        fillRequired();
+
+        const createAndNext = screen.getByRole('button', {
+            name: 'agency.form.registrationSettings.createConsultant.confirmAndNext',
+        });
+        fireEvent.click(createAndNext);
+        fireEvent.click(createAndNext);
+
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalled());
+        await flush();
+        expect(mocks.addCounselorData).toHaveBeenCalledTimes(1);
+
+        settle(CREATED);
+        // The accepted submission asked for "and another", so IT decides: the
+        // dialog stays open with an empty form. The press that was turned away
+        // gets no say, and no second consultant is created when it settles.
+        await waitFor(() => expect(screen.getByLabelText('firstname')).toHaveValue(''));
+        expect(screen.getByText('agency.form.registrationSettings.createConsultant.title')).toBeInTheDocument();
+        expect(mocks.addCounselorData).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores Enter while a save is already in flight', async () => {
+        let settle: (value: unknown) => void = () => {};
+        mocks.addCounselorData.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    settle = resolve;
+                }),
+        );
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+        fillRequired();
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'agency.form.registrationSettings.createConsultant.confirmAndNext',
+            }),
+        );
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalled());
+        // The footer is outside the form, so the hidden submit control is the
+        // other way in — and it must be shut for as long as the request runs.
+        fireEvent.submit(document.querySelector('form') as HTMLFormElement);
+        await flush();
+
+        expect(mocks.addCounselorData).toHaveBeenCalledTimes(1);
+        settle(CREATED);
+        await waitFor(() => expect(screen.getByLabelText('firstname')).toHaveValue(''));
     });
 
     it('leaves the form untouched when the save fails, so nothing is retyped', async () => {

@@ -99,10 +99,22 @@ export const CreateConsultantModal = ({
     const [open, setOpen] = useState(false);
     const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
     /**
-     * Which button submitted. A ref, not state: it is read inside the mutation
-     * callback that the very same click started, and a state update would not
-     * have landed by then.
+     * A create request is in flight. A REF, not `isPending`: state becomes true
+     * only after React has re-rendered, and the second click of a double click
+     * arrives before that. Since this dialog exists to be submitted over and
+     * over ("save and create another"), rapid repeated submission is the
+     * intended rhythm, not an edge case — and a duplicate here costs a second
+     * Keycloak account, a second Matrix identity and a second set of agency
+     * relations, all removed by hand.
      */
+    const isSaving = useRef(false);
+    /**
+     * What the button the admin pressed asked for. Read ONCE, at the moment a
+     * submission is accepted, and cleared there — so a press that was turned
+     * away, or a bare Enter, cannot decide the fate of a save already running.
+     */
+    const requestedKeepOpen = useRef(false);
+    /** The intent of the submission actually in flight. */
     const keepOpenAfterSave = useRef(false);
 
     const closeModal = () => {
@@ -124,6 +136,7 @@ export const CreateConsultantModal = ({
     const { mutate, isPending } = useAddOrUpdateConsultantOrAdmin({
         typeOfUser: TypeOfUser.Consultants,
         onSuccess: (consultant) => {
+            isSaving.current = false;
             message.success({ content: t('message.counselor.add'), duration: 3 });
             const createAnother = keepOpenAfterSave.current;
             keepOpenAfterSave.current = false;
@@ -148,7 +161,9 @@ export const CreateConsultantModal = ({
         },
         onError: async (error: Error | Response) => {
             // Nothing is reset here on purpose: a failed save must not cost the
-            // admin everything they typed.
+            // admin everything they typed. The lock is released, though — the
+            // attempt is over and the admin has to be able to try again.
+            isSaving.current = false;
             keepOpenAfterSave.current = false;
 
             if (error instanceof Response) {
@@ -171,12 +186,28 @@ export const CreateConsultantModal = ({
 
     const hasTenant = tenantId !== undefined && tenantId !== null && `${tenantId}` !== '' && `${tenantId}` !== '0';
 
+    /*
+     * The one gate every submission passes through: the footer buttons and the
+     * form's own Enter handling both land here, after validation. Taking the
+     * lock synchronously, before `mutate`, is what makes two submissions
+     * dispatched in the same tick produce ONE consultant — by the time a state
+     * flag could have disabled anything, both are already past.
+     */
     const onFinish = (values: Record<string, unknown>) => {
+        if (isSaving.current) {
+            return;
+        }
+        isSaving.current = true;
+        keepOpenAfterSave.current = requestedKeepOpen.current;
+        requestedKeepOpen.current = false;
         mutate(buildQuickCreateConsultantData(values, tenantId, agencyId, topicIds) as unknown as CounselorData);
     };
 
     const submit = (createAnother: boolean) => {
-        keepOpenAfterSave.current = createAnother;
+        if (isSaving.current) {
+            return;
+        }
+        requestedKeepOpen.current = createAnother;
         form.submit();
     };
 
@@ -185,9 +216,14 @@ export const CreateConsultantModal = ({
      * flag set would hand it to whatever submits next — Enter inside a field,
      * which has always meant plain create — and the dialog would then stay
      * open on a save the admin expected to finish.
+     *
+     * The lock is NOT released here. It is only ever taken in `onFinish`, so
+     * this either runs before any save (nothing to release) or for a second,
+     * rejected attempt while the first is still running — where releasing it
+     * would reopen the very hole this closes.
      */
     const onFinishFailed = () => {
-        keepOpenAfterSave.current = false;
+        requestedKeepOpen.current = false;
     };
 
     const disabledTooltipKey =
@@ -271,7 +307,13 @@ export const CreateConsultantModal = ({
                               on Enter. This restores that: Enter inside a field means
                               the plain create, the same as the primary action.
                             */}
-                            <button type="submit" className={styles.enterSubmit} tabIndex={-1} aria-hidden>
+                            <button
+                                type="submit"
+                                className={styles.enterSubmit}
+                                tabIndex={-1}
+                                aria-hidden
+                                disabled={isPending}
+                            >
                                 {t('agency.form.registrationSettings.createConsultant.confirm')}
                             </button>
                         </Form>
