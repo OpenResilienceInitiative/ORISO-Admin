@@ -89,6 +89,37 @@ export const boundFieldNames = (source: string, fileName = 'source.tsx'): string
 const reDeclaredIn = (source: string) =>
     [...new Set(boundFieldNames(source))].filter((name) => SHARED_FIELD_NAMES.includes(name));
 
+/**
+ * Every string literal VALUE in a source, for the salutation guard below.
+ *
+ * Parsed for the same reason the field names are: its first version matched the text
+ * `'counsellor_gender_neutral',`, which a copy written with double quotes — or one whose last
+ * entry has no trailing comma — walks straight past. A guard that reports the single source of
+ * truth while a second copy sits next to it is worse than no guard, because it stops anyone
+ * looking. Quoting and punctuation are the author's choice; the literal is the fact.
+ */
+export const stringLiteralValues = (source: string, fileName = 'source.ts'): string[] => {
+    const parsed = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const values: string[] = [];
+
+    const visit = (node: ts.Node) => {
+        if (ts.isStringLiteralLike(node)) {
+            values.push(node.text);
+        }
+        ts.forEachChild(node, visit);
+    };
+
+    visit(parsed);
+
+    return values;
+};
+
+/** The key a second copy of the salutation list would have to contain to be one. */
+const SALUTATION_MARKER = 'counsellor_gender_neutral';
+
+const declaresSalutations = (source: string, fileName: string) =>
+    stringLiteralValues(source, fileName).includes(SALUTATION_MARKER);
+
 describe('the duplicate detector itself', () => {
     /*
      * Fixtures, not real files: the guard has to go red for each of these, or
@@ -110,6 +141,25 @@ describe('the duplicate detector itself', () => {
 
     it('leaves a field the shared set does not own alone', () => {
         expect(reDeclaredIn("const A = () => <MuiSelectField name='tenantId' />;")).toEqual([]);
+    });
+
+    /*
+     * The same fixtures for the salutation guard. Each of these IS a second copy of the list;
+     * the text-matching version it replaces saw only the first.
+     */
+    it.each([
+        ['single quotes with a trailing comma', "const A = ['counsellor_gender_neutral',];"],
+        ['double quotes', 'const A = ["counsellor_gender_neutral"];'],
+        ['no trailing comma on the last entry', "const A = ['counsellor_male', 'counsellor_gender_neutral'];"],
+        ['a template literal', 'const A = [`counsellor_gender_neutral`];'],
+    ])('catches a second salutation list written with %s', (_label, source) => {
+        expect(declaresSalutations(source, 'copy.ts')).toBe(true);
+    });
+
+    it('leaves a source that merely builds the i18n key alone', () => {
+        // `counselor.salutation.option.counsellor_gender_neutral` is a translation lookup, not
+        // a declaration of the option list.
+        expect(declaresSalutations("const A = t('counselor.salutation.option.x');", 'lookup.ts')).toBe(false);
     });
 });
 
@@ -137,7 +187,7 @@ describe('the consultant field set has exactly one declaration', () => {
             });
 
         const declarations = sources(SRC)
-            .filter((path) => readFileSync(path, 'utf8').includes("'counsellor_gender_neutral',"))
+            .filter((path) => declaresSalutations(readFileSync(path, 'utf8'), path))
             .map((path) => relative(SRC, path).split('\\').join('/'));
 
         expect(declarations).toEqual(['utils/salutationKeys.ts']);

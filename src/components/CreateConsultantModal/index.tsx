@@ -48,10 +48,12 @@ const SETTINGS_EXCLUSIONS: readonly ConsultantFieldName[] = [
     // ADR-008: a standing supervisor is attached to an existing counsellor, and
     // `addCounselorData` carries no such field — a switch here would do nothing.
     'isSupervisor',
-    // Same reason: the create request drops `absenceMessage` (only
-    // `editCounselorData` sends it). `absent` itself IS carried, so the flag
-    // stays and the note is set on the next edit.
-    'absenceMessage',
+    // `absenceMessage` used to be listed here, on the grounds that the create
+    // request dropped it. That left an absence switch whose "on" position could
+    // not be saved at all: UserService refuses a blank note for an absent
+    // counsellor on the create path too (`CreateConsultantSaga` →
+    // `validateAbsence`). The request carries the note now, so the switch means
+    // what it says.
 ];
 
 /** Tenant, agency and topics are injected from the agency being edited, not asked for. */

@@ -287,6 +287,7 @@ export const ConsultantPersonalFields = ({
 
 export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettingsFieldsProps) => {
     const { t } = useTranslation();
+    const requiredRule = { required: true, message: t('form.errors.required') };
     const form = Form.useFormInstance();
     const has = (name: ConsultantFieldName) => !omits(exclude, name);
     /*
@@ -334,7 +335,19 @@ export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettin
             )}
             {children}
             {has('absenceMessage') && isAbsent && (
-                <MuiMultilineFormField label={t('counselor.absenceMessage')} name="absenceMessage" />
+                /*
+                 * Required while the counsellor is absent, because the backend insists on it:
+                 * `UserAccountInputValidator#validateAbsence` refuses a blank note for an
+                 * absent counsellor on the create AND the update path (400
+                 * MISSING_ABSENCE_MESSAGE_FOR_ABSENT_USER). Without this the admin spends a
+                 * round trip to be told "something went wrong" about a field nothing named.
+                 */
+                <MuiMultilineFormField
+                    label={t('counselor.absenceMessage')}
+                    name="absenceMessage"
+                    required
+                    rules={[requiredRule]}
+                />
             )}
         </>
     );

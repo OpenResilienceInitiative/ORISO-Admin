@@ -184,6 +184,20 @@ describe('the shared consultant field set', () => {
         });
     });
 
+    it('refuses to submit an absent counsellor without a note', async () => {
+        // UserService refuses a blank note for an absent counsellor on BOTH paths
+        // (`UserAccountInputValidator#validateAbsence` → 400
+        // MISSING_ABSENCE_MESSAGE_FOR_ABSENT_USER). Saying so on the field beats spending a
+        // round trip to be told "something went wrong" about a field nothing named.
+        const user = userEvent.setup();
+        render(<Harness initialValues={{ absent: true, absenceMessage: '' }} />);
+
+        await user.click(screen.getByRole('button', { name: 'go' }));
+
+        await waitFor(() => expect(isRendered('form.errors.required')).toBe(true));
+        expect(submitted).not.toHaveBeenCalled();
+    });
+
     it('renders the host-owned fields in the settings slot', () => {
         render(
             <Harness>

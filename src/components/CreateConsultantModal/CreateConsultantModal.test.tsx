@@ -146,12 +146,55 @@ describe('the quick-create dialog field set', () => {
         // Needs a stored record (ADR-008) — `addCounselorData` carries no such field.
         expect(isRendered('counselor.isSupervisor')).toBe(false);
 
-        // The absence note is excluded, not merely hidden behind the switch:
-        // turning absence ON must still not produce a field the create request
-        // would drop on the floor.
+        // The absence note is NOT among them: see the absence describe below.
+    });
+
+    /*
+     * The dialog offered an absence switch whose "on" position could not be saved. UserService
+     * refuses a blank note for an absent counsellor on the create path too
+     * (`CreateConsultantSaga` → `validateAbsence` → 400
+     * MISSING_ABSENCE_MESSAGE_FOR_ABSENT_USER), so ticking it guaranteed a failed create and a
+     * generic toast. A switch that cannot be saved is worse than one that is not offered.
+     */
+    it('asks for the absence note here, and sends it with the create request', async () => {
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
         await user.click(screen.getByRole('switch', { name: 'counselor.absent' }));
         await waitFor(() => expect(screen.getByRole('switch', { name: 'counselor.absent' })).toBeChecked());
-        expect(isRendered('counselor.absenceMessage')).toBe(false);
+        expect(isRendered('counselor.absenceMessage')).toBe(true);
+
+        fillRequired();
+        fireEvent.change(screen.getByLabelText('counselor.absenceMessage'), {
+            target: { value: 'Bin bis zum 30.09. nicht erreichbar.' },
+        });
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirm' }),
+        );
+
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalledTimes(1));
+        expect(mocks.addCounselorData.mock.calls[0][0]).toMatchObject({
+            absent: true,
+            absenceMessage: 'Bin bis zum 30.09. nicht erreichbar.',
+        });
+    });
+
+    it('does not let an absent counsellor be created without a note', async () => {
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        fillRequired();
+        await user.click(screen.getByRole('switch', { name: 'counselor.absent' }));
+        await waitFor(() => expect(isRendered('counselor.absenceMessage')).toBe(true));
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirm' }),
+        );
+
+        await flush();
+        expect(mocks.addCounselorData).not.toHaveBeenCalled();
+        expect(isRendered('form.errors.required')).toBe(true);
     });
 });
 
