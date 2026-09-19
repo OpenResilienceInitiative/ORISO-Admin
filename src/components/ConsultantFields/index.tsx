@@ -297,10 +297,9 @@ export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettin
     const watchedAbsent = useWatch('absent', form);
     /*
      * `useWatch` only reports a value once it has subscribed, which is one
-     * render late, and it never learns about a key that no `Form.Item`
-     * registered. Both cases are exactly the one this field cares about — an
-     * absent record on a surface without the toggle — so read the store as the
-     * fallback. `false` from the watch still wins, or unticking the switch
+     * render late — including on the surfaces where the value comes from the
+     * hidden carrier below rather than from a switch — so read the store as
+     * the fallback. `false` from the watch still wins, or unticking the switch
      * could not hide the note again.
      */
     const isAbsent = watchedAbsent ?? form?.getFieldValue('absent');
@@ -317,6 +316,22 @@ export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettin
                 )}
                 {has('absent') && <MuiSwitchField label={t('counselor.absent')} name="absent" />}
             </div>
+            {!has('absent') && (
+                /*
+                 * Value carrier for a surface that hides the toggle (#1015). antd resolves
+                 * only REGISTERED fields in `onFinish`, so without this the flag reaches the
+                 * request as `undefined` — and an unstated flag is not `false`: the page form
+                 * hides the toggle while editing counsellors who ARE absent, so coercing it
+                 * turned an unrelated e-mail correction into "back at work, note deleted".
+                 * Omitting it instead is not open here: `absent` is required on the update
+                 * endpoint (`@NotNull`, primitive column), so the stored value has to travel.
+                 * Registered and hidden, it round-trips untouched; on a create form it stays
+                 * undefined and the API layer's `!!` default applies as before.
+                 */
+                <Form.Item name="absent" hidden>
+                    <input type="hidden" />
+                </Form.Item>
+            )}
             {children}
             {has('absenceMessage') && isAbsent && (
                 <MuiMultilineFormField label={t('counselor.absenceMessage')} name="absenceMessage" />

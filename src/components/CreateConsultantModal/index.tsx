@@ -2,7 +2,7 @@ import { Button, Form, message, Tooltip } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
 import { ThemeProvider } from '@mui/material/styles';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { UnsavedChangesModal } from '../CardEditable/components/UnsavedChanges';
@@ -11,6 +11,8 @@ import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { Modal, DialogButton } from '../Modal';
 import { TypeOfUser } from '../../enums/TypeOfUser';
 import { useAddOrUpdateConsultantOrAdmin } from '../../hooks/useAddOrUpdateConsultantOrAgencyAdmin';
+import { useUserRoles } from '../../hooks/useUserRoles.hook';
+import { ADMIN_REMARKS_ROLES } from '../../utils/adminRemarksRoles';
 import { CounselorData } from '../../types/counselor';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
 import styles from './styles.module.scss';
@@ -33,12 +35,14 @@ interface CreateConsultantModalProps {
  * out, so the difference from the page form (src/pages/users/Edit) is a
  * decision someone made and can revisit — the reason the field set lives in
  * one shared module in the first place.
+ *
+ * The remarks used to be listed here unconditionally, "because this dialog
+ * opens from the agency screen". That is a role question, and the dialog can
+ * ask it: hiding the field from everyone answered it with the most restrictive
+ * case for all of them, and brought back the very divergence between the two
+ * surfaces that this module exists to remove. It is gated below instead.
  */
-const PERSONAL_EXCLUSIONS: readonly ConsultantFieldName[] = [
-    // Tenant-level-admin only on the page form (AuthenticatedUser#hasTenantLevelAdminRole).
-    // This dialog opens from the agency screen, which any agency admin reaches.
-    'adminRemarks',
-];
+const PERSONAL_EXCLUSIONS: readonly ConsultantFieldName[] = [];
 
 const SETTINGS_EXCLUSIONS: readonly ConsultantFieldName[] = [
     // ADR-008: a standing supervisor is attached to an existing counsellor, and
@@ -96,6 +100,13 @@ export const CreateConsultantModal = ({
 }: CreateConsultantModalProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
+    // Same gate as the page form, from the same list (AuthenticatedUser#hasTenantLevelAdminRole).
+    const { hasRole } = useUserRoles();
+    const canManageAdminRemarks = hasRole(ADMIN_REMARKS_ROLES);
+    const personalExclusions = useMemo<readonly ConsultantFieldName[]>(
+        () => (canManageAdminRemarks ? PERSONAL_EXCLUSIONS : [...PERSONAL_EXCLUSIONS, 'adminRemarks']),
+        [canManageAdminRemarks],
+    );
     const [open, setOpen] = useState(false);
     const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
     /**
@@ -297,7 +308,7 @@ export const CreateConsultantModal = ({
                             onFinishFailed={onFinishFailed}
                         >
                             <div className={styles.columns}>
-                                <ConsultantPersonalFields exclude={PERSONAL_EXCLUSIONS} autoFocusFirstField />
+                                <ConsultantPersonalFields exclude={personalExclusions} autoFocusFirstField />
                                 <ConsultantSettingsFields exclude={SETTINGS_EXCLUSIONS} />
                             </div>
                             {/*

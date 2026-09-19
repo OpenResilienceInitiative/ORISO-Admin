@@ -162,6 +162,28 @@ describe('the shared consultant field set', () => {
         expect(isRendered('counselor.absenceMessage')).toBe(true);
     });
 
+    it('round-trips the absence flag on a surface that hides its switch', async () => {
+        // The note is on screen, so the flag it hangs off has to reach the payload too.
+        // antd carries REGISTERED fields only, and an unstated flag is not `false`: the API
+        // layer's `!!` would write `false` over a counsellor who is away, un-absenting them
+        // and discarding the note on an edit that was about something else entirely (#1015).
+        const user = userEvent.setup();
+        render(
+            <Harness
+                settingsExclude={['absent']}
+                initialValues={{ absent: true, absenceMessage: 'Bin bis zum 30.09. nicht erreichbar.' }}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'go' }));
+
+        await waitFor(() => expect(submitted).toHaveBeenCalled());
+        expect(submitted.mock.calls[0][0]).toMatchObject({
+            absent: true,
+            absenceMessage: 'Bin bis zum 30.09. nicht erreichbar.',
+        });
+    });
+
     it('renders the host-owned fields in the settings slot', () => {
         render(
             <Harness>

@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CreateConsultantModal } from './index';
+import { UserRole } from '../../enums/UserRole';
 
 // t() is identity so labels/messages are predictable and no i18n init is needed.
 // react-i18next's hook returns an array [t, i18n, ready] that also exposes { t }.
@@ -12,9 +13,26 @@ vi.mock('react-i18next', () => {
     return { useTranslation: () => Object.assign([t, {}, true], { t }) };
 });
 
-const mocks = vi.hoisted(() => ({ addCounselorData: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+    addCounselorData: vi.fn(),
+    /** Drives the real `hasRole` logic below, so the remarks gate is genuinely exercised. */
+    roles: [] as string[],
+}));
 
 vi.mock('../../api/counselor/addCounselorData', () => ({ addCounselorData: mocks.addCounselorData }));
+
+vi.mock('../../hooks/useUserRoles.hook', () => ({
+    useUserRoles: () => ({
+        roles: mocks.roles,
+        hasRole: (role: string | string[]) =>
+            (Array.isArray(role) ? role : [role]).some((candidate) => mocks.roles.includes(candidate)),
+        isSuperAdmin: false,
+        isTechnicalAccount: false,
+        isTenantScopedAdmin: mocks.roles.includes(UserRole.TenantAdmin),
+        tenantId: 42,
+        tokenUnreadable: false,
+    }),
+}));
 
 const CREATED = { id: '77', firstname: 'Ada', lastname: 'Lovelace', email: 'ada@example.org' };
 
@@ -63,6 +81,7 @@ const isRendered = (label: string) => screen.queryAllByText(label).length > 0;
 beforeEach(() => {
     mocks.addCounselorData.mockReset();
     mocks.addCounselorData.mockResolvedValue(CREATED);
+    mocks.roles = [UserRole.TenantAdmin];
 });
 
 /*
@@ -95,6 +114,7 @@ describe('the quick-create dialog field set', () => {
             'counselor.salutation',
             'counselor.position',
             'counselor.personalTitle',
+            'counselor.adminRemarks',
             'email',
             'counselor.username',
             'counselor.password',
@@ -123,9 +143,7 @@ describe('the quick-create dialog field set', () => {
         renderModal();
         await openDialog(user);
 
-        // Role-gated on the page form; not offered on a surface with no role gate.
-        expect(isRendered('counselor.adminRemarks')).toBe(false);
-        // Needs a stored record (ADR-008) — `addCounselorData` carries neither.
+        // Needs a stored record (ADR-008) — `addCounselorData` carries no such field.
         expect(isRendered('counselor.isSupervisor')).toBe(false);
 
         // The absence note is excluded, not merely hidden behind the switch:
@@ -134,6 +152,62 @@ describe('the quick-create dialog field set', () => {
         await user.click(screen.getByRole('switch', { name: 'counselor.absent' }));
         await waitFor(() => expect(screen.getByRole('switch', { name: 'counselor.absent' })).toBeChecked());
         expect(isRendered('counselor.absenceMessage')).toBe(false);
+    });
+});
+
+/*
+ * Owner: every field is available everywhere. The remarks were the last field the dialog
+ * withheld, and withholding it is exactly the path divergence this package exists to remove:
+ * the same admin, creating the same counsellor, got a different record depending on which
+ * screen they used. So it is offered here under the SAME gate the page form applies —
+ * `AuthenticatedUser#hasTenantLevelAdminRole` — and not hidden from everyone to avoid
+ * thinking about the gate.
+ */
+describe("admin remarks follow the page form's role gate (#1015)", () => {
+    it.each([
+        ['a tenant admin', UserRole.TenantAdmin],
+        ['a single-tenant admin', UserRole.SingleTenantAdmin],
+    ])('offers the remarks field to %s, and sends what was typed into it', async (_label, role) => {
+        mocks.roles = [role];
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        fillRequired();
+        fireEvent.change(screen.getByLabelText('counselor.adminRemarks'), {
+            target: { value: 'Springt fuer die Kollegin ein.' },
+        });
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirm' }),
+        );
+
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalledTimes(1));
+        expect(mocks.addCounselorData.mock.calls[0][0]).toMatchObject({
+            adminRemarks: 'Springt fuer die Kollegin ein.',
+        });
+    });
+
+    it.each([
+        ['a restricted agency admin', UserRole.RestrictedAgencyAdmin],
+        ['a plain agency admin', UserRole.AgencyAdmin],
+    ])('omits it for %s, whose request carries no remarks', async (_label, role) => {
+        // The backend refuses to read or write remarks for these roles, so the field must be
+        // absent rather than merely disabled — and the payload is asserted too, because a
+        // regression can hide the control while still serializing the key.
+        mocks.roles = [role];
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        expect(isRendered('counselor.adminRemarks')).toBe(false);
+
+        fillRequired();
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirm' }),
+        );
+
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalledTimes(1));
+        expect(mocks.addCounselorData.mock.calls[0][0]).not.toHaveProperty('adminRemarks');
     });
 });
 

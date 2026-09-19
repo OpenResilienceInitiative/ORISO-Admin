@@ -26,7 +26,7 @@ import { convertToOptions } from '../../../utils/convertToOptions';
 import { decodeUsername } from '../../../utils/encryptionHelpers';
 import styles from './styles.module.scss';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
-import { UserRole } from '../../../enums/UserRole';
+import { ADMIN_REMARKS_ROLES } from '../../../utils/adminRemarksRoles';
 import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { searchTenantData } from '../../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
@@ -103,10 +103,9 @@ export const UserEditOrAdd = () => {
     const { can } = useUserPermissions();
     const { t } = useTranslation();
     const { isSuperAdmin, hasRole } = useUserRoles();
-    // Mirrors the backend gate (AuthenticatedUser#hasTenantLevelAdminRole): remarks are
-    // tenant-level-admin only. For any other role the field is omitted entirely — the
-    // caller could neither read nor write it.
-    const canManageAdminRemarks = hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin]);
+    // The gate itself lives in one place, because the quick-create dialog asks the same
+    // question — see `ADMIN_REMARKS_ROLES`.
+    const canManageAdminRemarks = hasRole(ADMIN_REMARKS_ROLES);
 
     const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
     const isEditing = id !== 'add';

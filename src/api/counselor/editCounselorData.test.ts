@@ -105,4 +105,48 @@ describe('editCounselorData', () => {
         expect(body).not.toHaveProperty('displayName');
         expect(body).not.toHaveProperty('internalDisplayName');
     });
+    /**
+     * #1015. The page form hides the absence toggle but shows the stored note, and antd hands
+     * `onFinish` only the fields it REGISTERED — so `absent` used to arrive here as `undefined`
+     * and `!!undefined` wrote `false` over a counsellor who was away, dropping the note with it.
+     * The flag is required by the update endpoint (`@NotNull`, and the column is a primitive
+     * boolean), so it cannot simply be omitted: the shared field set carries it hidden instead,
+     * and this is the payload that has to come out of it.
+     */
+    it('keeps an absent counsellor absent and sends the note along with the flag', async () => {
+        await editCounselorData('consultant-1', {
+            ...baseFormData,
+            absent: true,
+            absenceMessage: 'Bin bis zum 30.09. nicht erreichbar.',
+        });
+
+        const body = JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string);
+        expect(body.absent).toBe(true);
+        expect(body.absenceMessage).toBe('Bin bis zum 30.09. nicht erreichbar.');
+    });
+
+    /**
+     * The same "a field the form did not submit is not false" rule as
+     * `src/hooks/topicRequestBody.ts`. Here it can be honoured by omission: the flag is optional
+     * on the endpoint and the service acts on it only when it is non-null, so an omitted flag
+     * leaves the group-chat role alone — while `false` REMOVES it from Keycloak.
+     */
+    it('omits the group-chat flag when the form did not render its switch', async () => {
+        await editCounselorData('consultant-1', { ...baseFormData });
+
+        expect(JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string)).not.toHaveProperty(
+            'isGroupchatConsultant',
+        );
+    });
+
+    it('still sends the group-chat flag, true or false, when the switch was rendered', async () => {
+        await editCounselorData('consultant-1', { ...baseFormData, isGroupchatConsultant: true });
+        expect(JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string).isGroupchatConsultant).toBe(true);
+
+        vi.mocked(fetchData).mockClear();
+
+        // Explicitly false is a real instruction — it withdraws the role — and must survive.
+        await editCounselorData('consultant-1', { ...baseFormData, isGroupchatConsultant: false });
+        expect(JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string).isGroupchatConsultant).toBe(false);
+    });
 });
