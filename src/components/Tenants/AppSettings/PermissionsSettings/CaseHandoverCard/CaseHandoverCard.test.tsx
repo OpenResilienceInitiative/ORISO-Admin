@@ -5,6 +5,26 @@ import { CaseHandoverCard } from './index';
 
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
+    defaultPolicies: [
+        {
+            code: 'COUNSELLOR_ASKED_FOR_ADVICE',
+            label: 'Counsellor asked for advice',
+            clientConsentRequired: true,
+            accessAllowed: true,
+            enabled: true,
+            displayOrder: 10,
+            policyAuthority: '',
+        },
+        {
+            code: 'COUNSELLOR_IS_ILL',
+            label: 'Counsellor is ill',
+            clientConsentRequired: false,
+            accessAllowed: true,
+            enabled: true,
+            displayOrder: 40,
+            policyAuthority: 'platform-admin-default-case-handover-policy',
+        },
+    ],
     policies: [
         {
             code: 'COUNSELLOR_ASKED_FOR_ADVICE',
@@ -67,6 +87,7 @@ vi.mock('../../../../../hooks/useUserRoles.hook', () => ({
 describe('CaseHandoverCard', () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.policies = mocks.defaultPolicies;
         mocks.dataState.isError = false;
         mocks.mutationState.isPending = false;
     });
@@ -125,6 +146,34 @@ describe('CaseHandoverCard', () => {
                 expect.anything(),
             );
         });
+    });
+
+    // Exactly what GET /service/users/case-handover/reason-policies answers: `clientConsent` as
+    // the bare enum string, the mode beside it. The card used to read only the policy-object
+    // shape, so a saved Opt-Out came back looking unset — UserService #1131.
+    it('shows the stored consent policy after a reload of the UserService wire shape', async () => {
+        mocks.policies = [
+            {
+                code: 'COUNSELLOR_ASKED_FOR_ADVICE',
+                label: 'Counsellor asked for advice',
+                clientConsent: 'OPT_OUT',
+                clientConsentMode: 'ENFORCED',
+                clientConsentRequired: false,
+                accessAllowed: true,
+                enabled: true,
+                displayOrder: 10,
+                policyAuthority: 'tenant-admin-case-handover-policy',
+                maxAccessDurationMinutes: 90,
+            },
+        ];
+        render(<CaseHandoverCard />);
+
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.caseHandover.consentClient: tenants.permissions.policy.openMenu – tenants.permissions.consent.optOutEnforced/,
+            }),
+        ).toBeTruthy();
+        expect(screen.getByDisplayValue('1 h 30 min')).toBeTruthy();
     });
 
     it('persists an edited notification template on blur (PUT payload carries the language map)', async () => {

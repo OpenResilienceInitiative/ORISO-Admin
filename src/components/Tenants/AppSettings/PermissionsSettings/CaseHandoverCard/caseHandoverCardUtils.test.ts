@@ -14,6 +14,7 @@ import {
     resolvedClientConsentPolicy,
 } from './caseHandoverCardUtils';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+import type { CaseHandoverConsentPolicy } from '../../../../../types/permissionPolicy';
 
 const policy = (overrides: Partial<CaseHandoverReasonPolicy>): CaseHandoverReasonPolicy => ({
     code: 'COUNSELLOR_IS_ILL',
@@ -74,6 +75,50 @@ describe('caseHandoverCardUtils', () => {
                 clientConsentRequired: false,
             }),
         );
+    });
+
+    // The UserService answers `clientConsent` as the bare enum string plus a separate
+    // `clientConsentMode` (CaseHandoverService.CaseHandoverReason) — never as the policy
+    // object the card writes. Reading only the object is what made a saved Opt-Out look
+    // unsaved after a reload (UserService #1131).
+    it('reads back the wire shape the UserService actually sends', () => {
+        expect(
+            resolvedClientConsentPolicy(
+                policy({
+                    clientConsent: 'OPT_OUT' as unknown as CaseHandoverConsentPolicy,
+                    clientConsentMode: 'ENFORCED',
+                    clientConsentRequired: false,
+                }),
+            ),
+        ).toEqual({ value: 'OPT_OUT', mode: 'ENFORCED' });
+
+        expect(
+            resolvedClientConsentPolicy(
+                policy({
+                    clientConsent: 'OPT_IN' as unknown as CaseHandoverConsentPolicy,
+                    clientConsentRequired: true,
+                }),
+            ),
+        ).toEqual({ value: 'OPT_IN', mode: 'SUGGESTED' });
+    });
+
+    it('ignores an unusable consent value instead of rendering an empty control', () => {
+        expect(
+            resolvedClientConsentPolicy(
+                policy({
+                    clientConsent: 'MAYBE' as unknown as CaseHandoverConsentPolicy,
+                    clientConsentRequired: true,
+                }),
+            ),
+        ).toEqual({ value: 'OPT_IN', mode: 'SUGGESTED' });
+    });
+
+    it('sends a self-consistent payload so the stale mode cannot overwrite the new one', () => {
+        const result = applyClientConsentPolicy([policy({ code: 'B', clientConsentMode: 'SUGGESTED' })], 'B', {
+            value: 'OPT_OUT',
+            mode: 'ENFORCED',
+        });
+        expect(result[0].clientConsentMode).toBe('ENFORCED');
     });
 
     it('appends the legal-violation placeholder tab unless the backend seeds it', () => {
