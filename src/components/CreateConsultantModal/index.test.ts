@@ -46,6 +46,7 @@ describe('quick-create payload parity with the full counsellor form', () => {
                 position: 'Head of counselling',
                 displayName: 'Ada L.',
                 internalDisplayName: 'Ada (Team Nord)',
+                isGroupchatConsultant: true,
                 absent: true,
                 absenceMessage: 'Back on Monday',
             },
@@ -61,6 +62,7 @@ describe('quick-create payload parity with the full counsellor form', () => {
             position: 'Head of counselling',
             displayName: 'Ada L.',
             internalDisplayName: 'Ada (Team Nord)',
+            isGroupchatConsultant: true,
             absent: true,
             absenceMessage: 'Back on Monday',
         });

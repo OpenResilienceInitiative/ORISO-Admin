@@ -22,6 +22,25 @@ describe('buildTopicRequestBody', () => {
         expect(buildTopicRequestBody({ ...stored, status: 'INACTIVE' }, { status: true }).status).toBe('ACTIVE');
     });
 
+    it('strips the per-language translate metadata the form carries', () => {
+        // The form field holds the editing helper alongside the values; sending it
+        // would put a key in the topic payload the API never asked for.
+        const body = buildTopicRequestBody(stored, {
+            name: { de: 'Suchtberatung', translate: { en: 'Addiction counselling' } },
+            description: { de: 'neu', translate: { en: 'new' } },
+        });
+
+        // The builder sets translate: undefined rather than deleting the key, so the
+        // object still has it -- what matters is the body that reaches the API, and
+        // JSON.stringify is where undefined values disappear. Asserting on the object
+        // would pass a deletion and fail the equivalent, correct implementation.
+        const sent = JSON.parse(JSON.stringify(body));
+
+        expect(sent.name).not.toHaveProperty('translate');
+        expect(sent.description).not.toHaveProperty('translate');
+        expect(sent.name.de).toBe('Suchtberatung');
+    });
+
     it('keeps merging the submitted values over the stored ones', () => {
         const body = buildTopicRequestBody(stored, { name: { de: 'Suchtberatung' } });
 

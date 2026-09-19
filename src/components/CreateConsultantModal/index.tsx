@@ -263,7 +263,7 @@ export const CreateConsultantModal = ({
                                         label: t(`counselor.salutation.option.${key}`),
                                     }))}
                                 />
-                                <FormInputField name="title" labelKey="counselor.title" />
+                                <FormInputField name="title" labelKey="counselor.personalTitle" />
                                 <FormInputField name="position" labelKey="counselor.position" />
                                 <FormInputField name="displayName" labelKey="counselor.displayName" />
                                 <FormInputField name="internalDisplayName" labelKey="counselor.internalDisplayName" />
