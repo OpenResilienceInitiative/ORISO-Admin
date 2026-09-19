@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Form } from 'antd';
 import { useWatch } from 'antd/lib/form/Form';
 import { useTranslation } from 'react-i18next';
@@ -287,7 +287,12 @@ export const ConsultantPersonalFields = ({
 
 export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettingsFieldsProps) => {
     const { t } = useTranslation();
-    const requiredRule = { required: true, message: t('form.errors.required') };
+    /*
+     * Memoised because antd compares `rules` by identity: a fresh array on
+     * every render re-runs validation on a field the user has not touched,
+     * and this component re-renders on every keystroke in the form.
+     */
+    const absenceMessageRules = useMemo(() => [{ required: true, message: t('form.errors.required') }], [t]);
     const form = Form.useFormInstance();
     const has = (name: ConsultantFieldName) => !omits(exclude, name);
     /*
@@ -346,7 +351,7 @@ export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettin
                     label={t('counselor.absenceMessage')}
                     name="absenceMessage"
                     required
-                    rules={[requiredRule]}
+                    rules={absenceMessageRules}
                 />
             )}
         </>
