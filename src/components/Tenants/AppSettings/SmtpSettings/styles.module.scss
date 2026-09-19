@@ -64,9 +64,9 @@
     line-height: 20px;
 }
 
-/* Unlike the platform card, every field here carries help text; the outlined label of the
-   next field sits ~8px above its box, so the rows need room or a two-line hint runs into it. */
 .fieldGrid {
+    /* Unlike the platform card, every field here carries help text; the outlined label of the
+       next field sits ~8px above its box, so the rows need room or a two-line hint runs into it. */
     display: grid;
     gap: 16px 0;
     grid-template-columns: 1fr;
