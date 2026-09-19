@@ -1,0 +1,8 @@
+/* ==========================================================================
+   Evidenz-Codestellen: echte, gegen den Endpunkt verifizierte Fundstellen.
+   Jeder Eintrag: { slug, token, path, from, to, label }.
+   Quelle der Zeilenzahlen: Repo-Clones auf dem Understand-Server, geprüft 16.08.2026.
+   WICHTIG: Nur Dateien eintragen, die der Endpunkt auch ausliefert (Datei muss
+   im Knowledge-Graph des jeweiligen Dashboards liegen), und nur Behauptungen,
+   für die die Stelle die Aussage wirklich trägt. Sonst Eintrag weglassen.
+   ========================================================================== */
