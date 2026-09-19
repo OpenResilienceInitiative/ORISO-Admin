@@ -292,7 +292,12 @@ export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettin
      * every render re-runs validation on a field the user has not touched,
      * and this component re-renders on every keystroke in the form.
      */
-    const absenceMessageRules = useMemo(() => [{ required: true, message: t('form.errors.required') }], [t]);
+    const absenceMessageRules = useMemo(
+        // `whitespace` because the server checks with `isBlank`, which counts a run of
+        // spaces as blank. `required` alone accepts them: a non-empty string is truthy.
+        () => [{ required: true, whitespace: true, message: t('form.errors.required') }],
+        [t],
+    );
     const form = Form.useFormInstance();
     const has = (name: ConsultantFieldName) => !omits(exclude, name);
     /*

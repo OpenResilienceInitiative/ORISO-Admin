@@ -198,6 +198,20 @@ describe('the shared consultant field set', () => {
         expect(submitted).not.toHaveBeenCalled();
     });
 
+    it('refuses a note that is only whitespace', async () => {
+        // The server checks with `isBlank`, which counts a run of spaces as blank, so a
+        // note of spaces is rejected there. antd's `required` alone accepts it: a non-empty
+        // string is truthy. Without `whitespace`, the field would let it through and the
+        // admin would meet the generic error this rule exists to prevent.
+        const user = userEvent.setup();
+        render(<Harness initialValues={{ absent: true, absenceMessage: '   ' }} />);
+
+        await user.click(screen.getByRole('button', { name: 'go' }));
+
+        await waitFor(() => expect(isRendered('form.errors.required')).toBe(true));
+        expect(submitted).not.toHaveBeenCalled();
+    });
+
     it('renders the host-owned fields in the settings slot', () => {
         render(
             <Harness>
