@@ -41,19 +41,10 @@ export interface DpaBlockerProps {
     onSign?: (data: DpaBlockerSignData) => void;
     /** Delegates the signature to an authorised signer without accepting it locally. */
     onForward?: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
+    /** Tenant whose canonical DPA forward mail is rendered. */
+    tenantId?: number;
     /** Hands the created link back before refreshing into the pending gate. */
     onForwarded?: (result: DpaForwardResult) => void;
-    /**
-     * Known facts about the signed-in admin (#990): name and e-mail were
-     * already typed when the platform admin created them via "Träger anlegen",
-     * so the sign form starts with them instead of asking again.
-     */
-    signerDefaults?: Partial<Pick<DpaBlockerSignData, 'signerName' | 'signerEmail' | 'signerOrganisation'>>;
-    /**
-     * The forward dialog opened or closed. The gate uses it to keep this
-     * blocker mounted while the dialog shows its confirmation (#990).
-     */
-    onForwardOpenChange?: (open: boolean) => void;
     onRetry: () => void;
     retryPending?: boolean;
     onLogout: () => void;
@@ -96,9 +87,8 @@ export const DpaBlocker = ({
     signFailed = false,
     onSign,
     onForward,
+    tenantId,
     onForwarded,
-    onForwardOpenChange,
-    signerDefaults,
     onRetry,
     retryPending = false,
     onLogout,
@@ -107,11 +97,7 @@ export const DpaBlocker = ({
     const [form] = Form.useForm<DpaBlockerFormValues>();
     const [dpaAccepted, setDpaAccepted] = useState(false);
     const [acceptTouched, setAcceptTouched] = useState(false);
-    const [forwardOpen, setForwardOpenState] = useState(false);
-    const setForwardOpen = (open: boolean) => {
-        setForwardOpenState(open);
-        onForwardOpenChange?.(open);
-    };
+    const [forwardOpen, setForwardOpen] = useState(false);
     // Why the last submit did not go through — surfaced AT the button (#594.6).
     const [submitBlocker, setSubmitBlocker] = useState<'fields' | 'consent' | null>(null);
 
@@ -225,10 +211,10 @@ export const DpaBlocker = ({
                                 onFinishFailed={onFinishFailed}
                                 onValuesChange={() => setSubmitBlocker(null)}
                                 initialValues={{
-                                    signerName: signerDefaults?.signerName ?? '',
+                                    signerName: '',
                                     signerPosition: '',
-                                    signerEmail: signerDefaults?.signerEmail ?? '',
-                                    signerOrganisation: signerDefaults?.signerOrganisation ?? '',
+                                    signerEmail: '',
+                                    signerOrganisation: '',
                                 }}
                             >
                                 <DpaFormSection
@@ -310,6 +296,7 @@ export const DpaBlocker = ({
                 {forwardOpen && onForward && (
                     <DpaForwardDialog
                         forward={onForward}
+                        tenantId={tenantId}
                         surface="admin"
                         zIndex={1400}
                         onClose={() => setForwardOpen(false)}

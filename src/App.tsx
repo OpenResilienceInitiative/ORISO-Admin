@@ -179,14 +179,12 @@ export const App = () => {
     if (requiresTwoFactorSetup) {
         return (
             <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
-                {/* The second factor comes first (#990): an admin created via
-                    "Träger anlegen" secures the account before anything else,
-                    as the tenant-invite wizard does. This screen offers nothing
-                    but the 2FA setup and logout; the DPA gate follows once the
-                    factor is active (it wraps the protected tree below). */}
-                <ProtectedPageLayoutWrapper restricted>
-                    <MandatoryTwoFactorSetup />
-                </ProtectedPageLayoutWrapper>
+                {/* The DPA gate applies to tenant-scoped admins; agency admins are exempt. If both gates apply to a tenant admin, the DPA lock wins. */}
+                <DpaBlockerGate>
+                    <ProtectedPageLayoutWrapper restricted>
+                        <MandatoryTwoFactorSetup />
+                    </ProtectedPageLayoutWrapper>
+                </DpaBlockerGate>
             </FeatureProvider>
         );
     }

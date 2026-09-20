@@ -18,7 +18,7 @@ import { InputChipPicker } from '../../components/InputChipPicker';
 import { CounsellorAvatarField } from '../../components/CounsellorAvatarField';
 import { TwoFactorSetup, TwoFactorSetupInlineError } from '../../components/TwoFactorSetup/TwoFactorSetup';
 import { toBase32Secret } from '../../utils/totpSecret';
-import { SALUTATION_KEYS } from '../../components/cards/PersonalInfoCard';
+import { SALUTATION_KEYS } from '../../utils/salutationKeys';
 import { SuccessCard } from '../../components/cards/SuccessCard';
 import { passwordErrorKey, usernameErrorKey } from '../../utils/consultantCredentialRules';
 import { LinkErrorState } from '../TenantOnboarding/LinkErrorState';

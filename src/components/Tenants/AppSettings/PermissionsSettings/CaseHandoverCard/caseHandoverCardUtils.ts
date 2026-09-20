@@ -1,5 +1,9 @@
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
-import type { CaseHandoverConsentPolicy } from '../../../../../types/permissionPolicy';
+import type {
+    CaseHandoverConsentPolicy,
+    CaseHandoverConsentValue,
+    PermissionPolicyMode,
+} from '../../../../../types/permissionPolicy';
 import { SUPPORTED_LANGUAGE_CODES, type SupportedLanguageCode } from '../../../../../constants/supportedLanguages';
 
 export type NotificationLanguage = SupportedLanguageCode;
@@ -67,11 +71,40 @@ export const applyClientConsent = (
     clientConsentRequired: boolean,
 ) => policies.map((policy) => (policy.code === code ? { ...policy, clientConsentRequired } : policy));
 
-export const resolvedClientConsentPolicy = (policy: CaseHandoverReasonPolicy | null): CaseHandoverConsentPolicy =>
-    policy?.clientConsent ?? {
+const CONSENT_VALUES: readonly CaseHandoverConsentValue[] = ['OPT_IN', 'OPT_OUT', 'NONE'];
+
+const isConsentValue = (candidate: unknown): candidate is CaseHandoverConsentValue =>
+    CONSENT_VALUES.includes(candidate as CaseHandoverConsentValue);
+
+const asMode = (candidate: unknown): PermissionPolicyMode => (candidate === 'ENFORCED' ? 'ENFORCED' : 'SUGGESTED');
+
+/**
+ * The card writes `clientConsent` as the typed policy object, but the UserService answers the bare
+ * enum string with the mode alongside it in `clientConsentMode`
+ * (`CaseHandoverService.CaseHandoverReason`). Reading only the object shape made every saved value
+ * look discarded after a reload — UserService #1131. Both shapes resolve here; anything
+ * unrecognised falls back to the legacy boolean rather than rendering an empty control.
+ */
+export const resolvedClientConsentPolicy = (policy: CaseHandoverReasonPolicy | null): CaseHandoverConsentPolicy => {
+    const consent = policy?.clientConsent;
+
+    if (isConsentValue(consent)) {
+        return { value: consent, mode: asMode(policy?.clientConsentMode) };
+    }
+
+    if (consent && typeof consent === 'object' && isConsentValue(consent.value)) {
+        return {
+            value: consent.value,
+            mode: asMode(consent.mode),
+            ...(consent.inherited !== undefined && { inherited: consent.inherited }),
+        };
+    }
+
+    return {
         value: policy?.clientConsentRequired ? 'OPT_IN' : 'NONE',
-        mode: 'SUGGESTED',
+        mode: asMode(policy?.clientConsentMode),
     };
+};
 
 export const applyClientConsentPolicy = (
     policies: CaseHandoverReasonPolicy[],
@@ -83,6 +116,9 @@ export const applyClientConsentPolicy = (
             ? {
                   ...policy,
                   clientConsent,
+                  // The previous GET left a `clientConsentMode` on this object; sent unchanged it
+                  // would contradict the mode just chosen. Keep the payload self-consistent.
+                  clientConsentMode: clientConsent.mode,
                   // Transition response for services that still read only the
                   // legacy boolean. OPT_OUT deliberately is not OPT_IN.
                   clientConsentRequired: clientConsent.value === 'OPT_IN',

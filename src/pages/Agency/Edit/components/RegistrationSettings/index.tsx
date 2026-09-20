@@ -17,6 +17,7 @@ import { CreateConsultantModal } from '../../../../../components/CreateConsultan
 import { parseUserAuthInfo } from '../../../../../utils/parseUserAuthInfo';
 import { resolveAgencyTenantId } from '../../../../../api/agency/addAgencyData';
 import { normalizeTopicIds } from '../../../../../api/agency/normalizeTopicIds';
+import { isConsultantSectionVisible } from './consultantSection';
 
 interface RegistrationSettingsProps {
     asFields?: boolean;
@@ -32,7 +33,16 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
     const selectedTopicIds = Form.useWatch('topicIds') ?? form.getFieldValue('topicIds');
     const selectedConsultants = Form.useWatch('consultantIds') || [];
     const hasSelectedConsultants = selectedConsultants.length > 0;
-    const showConsultantAssignment = !asFields || editing;
+
+    const hasPersistedAgency = id !== 'add' && Number.isFinite(Number(id)) && Number(id) > 0;
+    // Visible on a saved agency even outside edit mode: an agency that already has
+    // counsellors used to show nothing about them until the card was switched to edit.
+    const showConsultantAssignment = isConsultantSectionVisible({
+        asFields,
+        editing,
+        hasPersistedAgency,
+        hasTenant: true,
+    });
     const { data: hasConsultants, isLoading } = useAgencyHasConsultants({ id });
     const { data: consultants, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
         typeOfUser: TypeOfUser.Consultants,
@@ -48,7 +58,6 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
     const needsConsultantAssignment = id === 'add' ? !hasSelectedConsultants : !hasConsultants;
     // Superadmins pick the tenant in the form; tenant admins carry it in their token.
     const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
-    const hasPersistedAgency = id !== 'add' && Number.isFinite(Number(id)) && Number(id) > 0;
 
     const onConsultantCreated = (consultant) => {
         const current = form.getFieldValue('consultantIds') || [];
