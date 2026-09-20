@@ -88,11 +88,8 @@ const CONSULTANT_ONLY_PROFILE_FIELDS: ConsultantFieldName[] = [
 ];
 
 /**
- * Temporarily hidden on THIS screen, unchanged from before the field set was
- * shared: absence is driven from the counsellor's own profile, and group chats
- * wait on the GroupChatV2 flag. The quick-create dialog offers both, because
- * `addCounselorData` carries them — which is exactly the kind of difference
- * that has to be written down rather than discovered.
+ * Temporarily hidden on THIS screen: absence is driven from the counsellor's own profile, and
+ * group chats wait on the GroupChatV2 flag. The quick-create dialog offers both.
  */
 const PAGE_SETTINGS_EXCLUSIONS: ConsultantFieldName[] = ['absent', 'isGroupchatConsultant'];
 
@@ -445,12 +442,8 @@ export const UserEditOrAdd = () => {
         focusFirstInvalidField(errorFields, FORM_NAME);
     }, []);
     const onCancel = useCallback(() => navigate(`/admin/users/${typeOfUsers}`), []);
-    /*
-     * This screen and the agency screen's quick-create dialog render ONE field
-     * set (src/components/ConsultantFields). What this surface does not offer
-     * is stated here rather than left out, so the two never drift apart by
-     * accident again.
-     */
+    // This screen and the quick-create dialog render ONE field set. What this surface does not
+    // offer is stated here rather than left out.
     const personalFieldExclusions = useMemo<ConsultantFieldName[]>(() => {
         const excluded = new Set<ConsultantFieldName>();
 

@@ -31,16 +31,8 @@ interface CreateConsultantModalProps {
 }
 
 /**
- * What this surface does NOT offer, and why. Stated rather than simply left
- * out, so the difference from the page form (src/pages/users/Edit) is a
- * decision someone made and can revisit — the reason the field set lives in
- * one shared module in the first place.
- *
- * The remarks used to be listed here unconditionally, "because this dialog
- * opens from the agency screen". That is a role question, and the dialog can
- * ask it: hiding the field from everyone answered it with the most restrictive
- * case for all of them, and brought back the very divergence between the two
- * surfaces that this module exists to remove. It is gated below instead.
+ * What this surface does not offer, stated rather than left out, so the difference from the page
+ * form is a decision that can be revisited. The remarks are gated by role below, not hidden.
  */
 const PERSONAL_EXCLUSIONS: readonly ConsultantFieldName[] = [];
 
@@ -48,12 +40,8 @@ const SETTINGS_EXCLUSIONS: readonly ConsultantFieldName[] = [
     // ADR-008: a standing supervisor is attached to an existing counsellor, and
     // `addCounselorData` carries no such field — a switch here would do nothing.
     'isSupervisor',
-    // `absenceMessage` used to be listed here, on the grounds that the create
-    // request dropped it. That left an absence switch whose "on" position could
-    // not be saved at all: UserService refuses a blank note for an absent
-    // counsellor on the create path too (`CreateConsultantSaga` →
-    // `validateAbsence`). The request carries the note now, so the switch means
-    // what it says.
+    // `absenceMessage` travels on the create path too: UserService refuses a blank note for an
+    // absent counsellor there as well, so the switch would otherwise be unsaveable.
 ];
 
 /** Tenant, agency and topics are injected from the agency being edited, not asked for. */
@@ -80,11 +68,8 @@ export const buildQuickCreateConsultantData = (
 });
 
 /**
- * The switches are rendered, so antd registers them and `onFinish` carries
- * them whether or not the admin touched one. These are the values an untouched
- * form submits — the same defaults `buildQuickCreateConsultantData` falls back
- * to, written down once so the switch on screen and the value on the wire can
- * never drift apart.
+ * The values an untouched form submits — the same defaults `buildQuickCreateConsultantData`
+ * falls back to, written once so switch and wire cannot drift apart.
  */
 const INITIAL_VALUES = {
     formalLanguage: true,
@@ -112,19 +97,14 @@ export const CreateConsultantModal = ({
     const [open, setOpen] = useState(false);
     const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
     /**
-     * A create request is in flight. A REF, not `isPending`: state becomes true
-     * only after React has re-rendered, and the second click of a double click
-     * arrives before that. Since this dialog exists to be submitted over and
-     * over ("save and create another"), rapid repeated submission is the
-     * intended rhythm, not an edge case — and a duplicate here costs a second
-     * Keycloak account, a second Matrix identity and a second set of agency
-     * relations, all removed by hand.
+     * A create request is in flight. A REF, not `isPending`: state becomes true only after a
+     * re-render, and the second click of a double click arrives before that. A duplicate costs
+     * a second Keycloak account and a second Matrix identity.
      */
     const isSaving = useRef(false);
     /**
-     * What the button the admin pressed asked for. Read ONCE, at the moment a
-     * submission is accepted, and cleared there — so a press that was turned
-     * away, or a bare Enter, cannot decide the fate of a save already running.
+     * What the button the admin pressed asked for. Read once, when a submission is accepted,
+     * so a rejected press cannot decide the fate of a save already running.
      */
     const requestedKeepOpen = useRef(false);
     /** The intent of the submission actually in flight. */
@@ -156,13 +136,9 @@ export const CreateConsultantModal = ({
 
             if (createAnother) {
                 /*
-                 * The Jira pattern the owner asked for: the counsellor is saved
-                 * and reported to the agency form (which appends them to its
-                 * selection list), the dialog stays open and the form goes back
-                 * to its defaults for the next person. `resetFields` restores
-                 * `initialValues` AND clears the touched flag, so closing
-                 * straight after no longer raises a false unsaved-changes
-                 * warning about someone who is already stored.
+                 * Save and keep going: the counsellor is reported to the agency form and the
+                 * form returns to its defaults. `resetFields` also clears the touched flag, so
+                 * closing afterwards raises no false unsaved-changes warning.
                  */
                 form.resetFields();
                 onSuccess(consultant as CounselorData);
@@ -199,13 +175,8 @@ export const CreateConsultantModal = ({
 
     const hasTenant = tenantId !== undefined && tenantId !== null && `${tenantId}` !== '' && `${tenantId}` !== '0';
 
-    /*
-     * The one gate every submission passes through: the footer buttons and the
-     * form's own Enter handling both land here, after validation. Taking the
-     * lock synchronously, before `mutate`, is what makes two submissions
-     * dispatched in the same tick produce ONE consultant — by the time a state
-     * flag could have disabled anything, both are already past.
-     */
+    // The one gate every submission passes: footer buttons and Enter both land here. The lock is
+    // taken synchronously, before `mutate`, so two submissions in one tick produce ONE consultant.
     const onFinish = (values: Record<string, unknown>) => {
         if (isSaving.current) {
             return;
@@ -225,15 +196,9 @@ export const CreateConsultantModal = ({
     };
 
     /*
-     * Nothing was saved, so the intent expires with the attempt. Leaving the
-     * flag set would hand it to whatever submits next — Enter inside a field,
-     * which has always meant plain create — and the dialog would then stay
-     * open on a save the admin expected to finish.
-     *
-     * The lock is NOT released here. It is only ever taken in `onFinish`, so
-     * this either runs before any save (nothing to release) or for a second,
-     * rejected attempt while the first is still running — where releasing it
-     * would reopen the very hole this closes.
+     * Nothing was saved, so the intent expires with the attempt; leaving it set would hand it to
+     * whatever submits next. The lock is NOT released here — it is only taken in `onFinish`, so
+     * releasing would reopen the hole this closes.
      */
     const onFinishFailed = () => {
         requestedKeepOpen.current = false;
@@ -257,11 +222,9 @@ export const CreateConsultantModal = ({
     return (
         <>
             {disabledTooltipKey ? (
-                // The reason is stated twice on purpose. A tooltip on a disabled button needs
-                // a hover the pointer may never deliver -- there is none on touch, and clicking
-                // a disabled button produces nothing at all, which is what the admin actually
-                // tries. The text below the button is the one that cannot be missed; the
-                // tooltip stays for the pointer users who do hover.
+                // Stated twice on purpose: a tooltip needs a hover that touch never delivers,
+                // and a disabled button produces nothing when clicked. The text below is the
+                // one that cannot be missed.
                 <Tooltip title={t(disabledTooltipKey)}>
                     {/* span wrapper so the tooltip also works on the disabled button */}
                     <span style={{ display: 'block' }}>

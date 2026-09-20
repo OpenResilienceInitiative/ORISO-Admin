@@ -47,12 +47,9 @@ export const useAddOrUpdateTenant = ({ id, ...options }: UseAddOrUpdateTenantOpt
             return fetchData({
                 url: `${tenantAdminEndpoint}${id ? `/${id}` : ''}`,
                 method: id ? FETCH_METHODS.PUT : FETCH_METHODS.POST,
-                // Both refusals this form can explain travel in a header, so both branches
-                // have to hand the caller the RAW response: 409 for a taken subdomain and,
-                // since TenantService started validating the format, 400 + X-Reason
-                // SUBDOMAIN_INVALID. Without the 400 branch that rejection falls through to
-                // fetchData's final `else` as a plain Error, the reason header is gone with
-                // it, and the admin is told "something went wrong" about a named field.
+                // Both refusals travel in a header, so both branches must hand the caller the
+                // RAW response: 409 for a taken subdomain, 400 + X-Reason SUBDOMAIN_INVALID for
+                // a malformed one. Without the 400 branch the reason header is lost.
                 responseHandling: [
                     FETCH_SUCCESS.CONTENT,
                     FETCH_ERRORS.CONFLICT_WITH_RESPONSE,

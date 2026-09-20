@@ -11,19 +11,11 @@ import { SALUTATION_KEYS } from '../../utils/salutationKeys';
 import styles from './styles.module.scss';
 
 /**
- * THE consultant field set. Two surfaces render it — the full page form
- * (`src/pages/users/Edit`) and the quick-create dialog on the agency screen
- * (`src/components/CreateConsultantModal`) — and before this module existed the
- * dialog re-stated a subset of the page's fields. That is how the same person,
- * created from two screens, became two different records: the tone was decided
- * for the admin on one screen and chosen on the other, and the avatar was never
- * asked for at all.
+ * THE consultant field set, rendered by the page form (`src/pages/users/Edit`) and the
+ * quick-create dialog (`src/components/CreateConsultantModal`).
  *
- * The rule here: a surface that offers FEWER fields says which ones, through
- * `exclude`. A field that is missing without being named is a bug, not a
- * layout decision. Layout stays with the caller (the page uses cards in a
- * two-column grid, the dialog flows the same fields into two columns), because
- * the thing worth sharing is what a consultant IS, not where the boxes sit.
+ * A surface that offers FEWER fields names them through `exclude`; a field missing without
+ * being named is a bug. Layout stays with the caller.
  */
 
 /** Identity and credentials — the left column on both surfaces. */
@@ -58,18 +50,16 @@ export type ConsultantFieldName =
 
 interface ConsultantFieldsBaseProps {
     /**
-     * Fields this surface deliberately does not offer. Required to be explicit:
-     * every exclusion needs a reason at the call site, so "the dialog is missing
-     * a field" can never again be something nobody decided.
+     * Fields this surface deliberately does not offer. Explicit on purpose, so an exclusion is
+     * always a decision someone made.
      */
     exclude?: readonly ConsultantFieldName[];
 }
 
 export interface ConsultantPersonalFieldsProps extends ConsultantFieldsBaseProps {
     /**
-     * Read-only surfaces. antd's `Form disabled` already reaches every bound
-     * control through ConfigProvider; the avatar picker is not a bound control
-     * (it writes through `setFieldsValue`), so it needs telling.
+     * Read-only surfaces. antd's `Form disabled` reaches every bound control; the avatar picker
+     * writes through `setFieldsValue` and needs telling.
      */
     disabled?: boolean;
     /** The username is immutable once the account exists (Keycloak identity). */
@@ -80,10 +70,8 @@ export interface ConsultantPersonalFieldsProps extends ConsultantFieldsBaseProps
 
 export interface ConsultantSettingsFieldsProps extends ConsultantFieldsBaseProps {
     /**
-     * Host-owned controls that need data this component cannot fetch (the
-     * standing-supervisor picker, whose options come from a consultant search).
-     * Rendered between the switch group and the absence note, where the page
-     * form has always had them.
+     * Host-owned controls needing data this component cannot fetch (the supervisor picker).
+     * Rendered between the switch group and the absence note.
      */
     children?: ReactNode;
 }
@@ -287,11 +275,8 @@ export const ConsultantPersonalFields = ({
 
 export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettingsFieldsProps) => {
     const { t } = useTranslation();
-    /*
-     * Memoised because antd compares `rules` by identity: a fresh array on
-     * every render re-runs validation on a field the user has not touched,
-     * and this component re-renders on every keystroke in the form.
-     */
+    // Memoised: antd compares `rules` by identity, and a fresh array re-validates an untouched
+    // field on every keystroke.
     const absenceMessageRules = useMemo(
         // `whitespace` because the server checks with `isBlank`, which counts a run of
         // spaces as blank. `required` alone accepts them: a non-empty string is truthy.
@@ -300,19 +285,11 @@ export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettin
     );
     const form = Form.useFormInstance();
     const has = (name: ConsultantFieldName) => !omits(exclude, name);
-    /*
-     * Watch the VALUE, not the switch. A surface may exclude the `absent`
-     * toggle and still edit a consultant who is absent — the page form does
-     * exactly that — and the stored note must stay reachable there.
-     */
+    // Watch the VALUE, not the switch: a surface may exclude the toggle and still edit a
+    // counsellor who is absent.
     const watchedAbsent = useWatch('absent', form);
-    /*
-     * `useWatch` only reports a value once it has subscribed, which is one
-     * render late — including on the surfaces where the value comes from the
-     * hidden carrier below rather than from a switch — so read the store as
-     * the fallback. `false` from the watch still wins, or unticking the switch
-     * could not hide the note again.
-     */
+    // `useWatch` reports a value one render late, so read the store as the fallback. A `false`
+    // from the watch still wins, or unticking could not hide the note again.
     const isAbsent = watchedAbsent ?? form?.getFieldValue('absent');
 
     return (
@@ -329,15 +306,10 @@ export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettin
             </div>
             {!has('absent') && (
                 /*
-                 * Value carrier for a surface that hides the toggle (#1015). antd resolves
-                 * only REGISTERED fields in `onFinish`, so without this the flag reaches the
-                 * request as `undefined` — and an unstated flag is not `false`: the page form
-                 * hides the toggle while editing counsellors who ARE absent, so coercing it
-                 * turned an unrelated e-mail correction into "back at work, note deleted".
-                 * Omitting it instead is not open here: `absent` is required on the update
-                 * endpoint (`@NotNull`, primitive column), so the stored value has to travel.
-                 * Registered and hidden, it round-trips untouched; on a create form it stays
-                 * undefined and the API layer's `!!` default applies as before.
+                 * Value carrier where the toggle is hidden. antd resolves only REGISTERED
+                 * fields, and `absent` is required on the update endpoint (`@NotNull`,
+                 * primitive column), so the stored value has to travel. Registered and hidden
+                 * it round-trips untouched.
                  */
                 <Form.Item name="absent" hidden>
                     <input type="hidden" />
@@ -345,13 +317,9 @@ export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettin
             )}
             {children}
             {has('absenceMessage') && isAbsent && (
-                /*
-                 * Required while the counsellor is absent, because the backend insists on it:
-                 * `UserAccountInputValidator#validateAbsence` refuses a blank note for an
-                 * absent counsellor on the create AND the update path (400
-                 * MISSING_ABSENCE_MESSAGE_FOR_ABSENT_USER). Without this the admin spends a
-                 * round trip to be told "something went wrong" about a field nothing named.
-                 */
+                // Required while absent: `UserAccountInputValidator#validateAbsence` refuses a
+                // blank note on both the create and the update path (400
+                // MISSING_ABSENCE_MESSAGE_FOR_ABSENT_USER).
                 <MuiMultilineFormField
                     label={t('counselor.absenceMessage')}
                     name="absenceMessage"

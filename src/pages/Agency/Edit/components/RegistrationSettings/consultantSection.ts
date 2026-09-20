@@ -1,10 +1,6 @@
 /**
- * Who may see the consultant assignment block, and why the create button is off.
- *
- * The rule used to be `!asFields || editing`, which hid the whole block on a saved
- * agency until the admin put the card into edit mode. So an agency that already had
- * counsellors showed nothing about them, and the "save the agency first" hint the
- * code carries was unreachable on the one screen that needs it.
+ * Who may see the consultant assignment block, and why the create button is off. Visible on a
+ * saved agency without entering edit mode, so the "save the agency first" hint is reachable.
  */
 export interface ConsultantSectionInput {
     /** The section renders as form fields inside an editable card (the edit page). */
@@ -24,9 +20,8 @@ export const isConsultantSectionVisible = ({
 }: ConsultantSectionInput): boolean => !asFields || Boolean(editing) || hasPersistedAgency;
 
 /**
- * The i18n key explaining why creating a counsellor is not possible yet, or null when
- * it is. Order matters: an unsaved agency is the blocker the admin can act on first,
- * and naming the tenant instead would send them to the wrong field.
+ * The i18n key explaining why creating a counsellor is not possible yet, or null when it is.
+ * Order matters: an unsaved agency is the blocker the admin can act on first.
  */
 export const consultantCreationBlockedReason = ({
     hasPersistedAgency,
