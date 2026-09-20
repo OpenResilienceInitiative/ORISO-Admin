@@ -102,11 +102,6 @@ export const CreateConsultantModal = ({
      * a second Keycloak account and a second Matrix identity.
      */
     const isSaving = useRef(false);
-    /**
-     * What the button the admin pressed asked for. Read once, when a submission is accepted,
-     * so a rejected press cannot decide the fate of a save already running.
-     */
-    const requestedKeepOpen = useRef(false);
     /** The intent of the submission actually in flight. */
     const keepOpenAfterSave = useRef(false);
 
@@ -177,31 +172,29 @@ export const CreateConsultantModal = ({
 
     // The one gate every submission passes: footer buttons and Enter both land here. The lock is
     // taken synchronously, before `mutate`, so two submissions in one tick produce ONE consultant.
-    const onFinish = (values: Record<string, unknown>) => {
+    const startSaving = (values: Record<string, unknown>, createAnother: boolean) => {
         if (isSaving.current) {
             return;
         }
         isSaving.current = true;
-        keepOpenAfterSave.current = requestedKeepOpen.current;
-        requestedKeepOpen.current = false;
+        keepOpenAfterSave.current = createAnother;
         mutate(buildQuickCreateConsultantData(values, tenantId, agencyId, topicIds) as unknown as CounselorData);
     };
 
+    /*
+     * Validated here rather than through `form.submit()`, so the button's intent travels with the
+     * attempt as an argument. Held in a ref it is shared, and a rejection arriving late clears what
+     * a newer attempt asked for. antd shows the field errors from the rejection itself; the lock is
+     * not released, because it is only taken once an attempt is accepted.
+     */
     const submit = (createAnother: boolean) => {
         if (isSaving.current) {
             return;
         }
-        requestedKeepOpen.current = createAnother;
-        form.submit();
-    };
-
-    /*
-     * Nothing was saved, so the intent expires with the attempt; leaving it set would hand it to
-     * whatever submits next. The lock is NOT released here — it is only taken in `onFinish`, so
-     * releasing would reopen the hole this closes.
-     */
-    const onFinishFailed = () => {
-        requestedKeepOpen.current = false;
+        form.validateFields().then(
+            (values) => startSaving(values as Record<string, unknown>, createAnother),
+            () => undefined,
+        );
     };
 
     const disabledTooltipKey =
@@ -269,8 +262,7 @@ export const CreateConsultantModal = ({
                             layout="vertical"
                             disabled={false}
                             initialValues={INITIAL_VALUES}
-                            onFinish={onFinish}
-                            onFinishFailed={onFinishFailed}
+                            onFinish={(values) => startSaving(values, false)}
                         >
                             <div className={styles.columns}>
                                 <ConsultantPersonalFields exclude={personalExclusions} autoFocusFirstField />

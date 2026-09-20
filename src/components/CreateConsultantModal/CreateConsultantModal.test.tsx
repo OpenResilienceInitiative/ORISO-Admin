@@ -312,6 +312,28 @@ describe('save and create another', () => {
         );
     });
 
+    it('lets a rejected plain create be followed by a working "and another"', async () => {
+        // The other direction of the test below. Covers the sequence, not the race it came from:
+        // the interleaving that motivated moving the intent out of a shared ref needs a rejection
+        // to land while a newer attempt validates, which nothing here can arrange.
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirm' }),
+        );
+        await waitFor(() => expect(mocks.addCounselorData).not.toHaveBeenCalled());
+
+        fillRequired();
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirmAndNext' }),
+        );
+
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalledTimes(1));
+        expect(screen.getByText('agency.form.registrationSettings.createConsultant.title')).toBeInTheDocument();
+    });
+
     it('does not let a rejected attempt change what the next submit does', async () => {
         const user = userEvent.setup();
         const { onSuccess } = renderModal();
