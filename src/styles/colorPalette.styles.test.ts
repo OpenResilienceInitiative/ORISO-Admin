@@ -2,33 +2,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import less from 'less';
 import { describe, expect, it } from 'vitest';
+import { contrastRatio } from '../utils/contrastRatio';
 
-/*
- * Owner report (2026-09-19): "generell ist da ein kontrast wirrwarr".
- *
- * The app carries TWO Less palettes, both pulled into the same scope by
- * src/styles/App.less:
- *
- *     @import 'variables/index.less';   // -> variables/_colors.less
- *     @import 'components/index.less';  // the styles that CONSUME the names
- *     @import './Settings.less';        // the legacy palette
- *
- * Less resolves a variable to its LAST definition in the scope, regardless of
- * where it is used. So every component style, although imported on line 6,
- * silently gets the values Settings.less assigns on line 8. Where the two
- * palettes happen to agree that is invisible. Where they disagree, the file
- * that reads best in review is not the file that renders.
- *
- * `@light-grey` was the case that disagreed: a near-white SURFACE (#f5f3f6) in
- * variables/_colors.less, a mid-grey FOREGROUND (#787378) in Settings.less.
- * The name describes the shade, not the job, which is why nothing about
- * `background: @light-grey` in loginForm.less looked wrong.
- *
- * These tests compile App.less with the options vite uses (see vite.config.ts:
- * css.preprocessorOptions.less) and assert on the rendered result, not on the
- * source text — the whole point is that the source text is not what renders.
- */
-
+// Both Less palettes land in one scope via App.less, and Less takes the LAST
+// definition: a name defined in Settings.less wins over variables/_colors.less
+// wherever it is used. These tests assert on the COMPILED css, not the source.
 const stylesDir = resolve(__dirname);
 const read = (file: string) => readFileSync(resolve(stylesDir, file), 'utf8');
 
@@ -40,32 +18,6 @@ const renderApp = async () => {
     });
 
     return output.css;
-};
-
-const channel = (value: number) => {
-    const c = value / 255;
-
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-};
-
-const toRgb = (hex: string): [number, number, number] => {
-    const h = hex.replace('#', '');
-    const full = h.length === 3 ? [...h].map((c) => c + c).join('') : h;
-
-    return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16)) as [number, number, number];
-};
-
-const luminance = (hex: string) => {
-    const [r, g, b] = toRgb(hex);
-
-    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
-};
-
-export const contrastRatio = (foreground: string, background: string) => {
-    const a = luminance(foreground);
-    const b = luminance(background);
-
-    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 };
 
 const declarationFor = (css: string, selector: string, property: string) => {

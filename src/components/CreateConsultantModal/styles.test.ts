@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { contrastRatio } from '../../utils/contrastRatio';
 
 /*
  * Owner, 2026-09-19: "dann ist das popup halt in zwei columns designed fertig".
@@ -16,27 +17,6 @@ import { describe, expect, it } from 'vitest';
 const stylesheet = readFileSync(resolve(__dirname, './styles.module.scss'), 'utf8');
 
 const ruleBody = (selector: string) => stylesheet.match(new RegExp(`\\${selector}\\s*{([^}]*)`))?.[1] ?? '';
-
-const channel = (value: number) => {
-    const c = value / 255;
-
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-};
-
-const luminance = (hex: string) => {
-    const h = hex.replace('#', '');
-    const full = h.length === 3 ? [...h].map((c) => c + c).join('') : h;
-    const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
-
-    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
-};
-
-const contrastRatio = (foreground: string, background: string) => {
-    const a = luminance(foreground);
-    const b = luminance(background);
-
-    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-};
 
 describe('the quick-create dialog layout', () => {
     it('lays the field set out in two columns', () => {
