@@ -771,17 +771,9 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
     });
 });
 
-/**
- * #1015. The page form does not offer the absence TOGGLE (absence is driven from the
- * counsellor's own profile), but it does show the stored absence note — and antd resolves
- * only REGISTERED fields in `onFinish`. An unregistered `absent` therefore arrives as
- * `undefined`, which the API layer coerced to `false`: opening an absent counsellor to fix
- * a typo in their e-mail silently un-absented them and discarded the note, with no error
- * and no warning. Advice seekers were routed to them again.
- *
- * Same trap as `src/hooks/topicRequestBody.ts`, where it cost a live topic deactivation.
- */
-describe('absence survives an unrelated edit (#1015)', () => {
+// antd resolves only REGISTERED fields in `onFinish`. This form shows the absence note but
+// not the toggle, so `absent` has to be registered and hidden or it arrives as `undefined`.
+describe('absence survives an unrelated edit', () => {
     const ABSENCE_NOTE = 'Bin bis zum 30.09. nicht erreichbar.';
     const absentConsultant = {
         id: 'consultant-absent',

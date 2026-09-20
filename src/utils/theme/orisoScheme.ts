@@ -1,5 +1,6 @@
 import { getAccentDark, getAccentLight, getSignal, TenantSeeds } from '../themeSeeds';
 import { brandSeedCannotYieldPalette } from './seedUsability';
+import { contrastRatio } from '../contrastRatio';
 
 export type OrisoSchemeName = 'light' | 'inverted';
 
@@ -47,25 +48,6 @@ const mix = (a: string, b: string, amount: number) => {
         start.g + (end.g - start.g) * amount,
         start.b + (end.b - start.b) * amount,
     );
-};
-
-const srgbChannelToLinear = (channel: number) => {
-    const c = channel / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-};
-
-// WCAG relative luminance (not the raw-sRGB shortcut): channels are gamma-decoded
-// before weighting, or saturated colors like #00cc00 come out lighter than they
-// actually render and readableOn() below picks a foreground that fails contrast.
-const relativeLuminance = (hex: string) => {
-    const { r, g, b } = hexToRgb(hex);
-    return 0.2126 * srgbChannelToLinear(r) + 0.7152 * srgbChannelToLinear(g) + 0.0722 * srgbChannelToLinear(b);
-};
-
-const contrastRatio = (hexA: string, hexB: string) => {
-    const a = relativeLuminance(hexA);
-    const b = relativeLuminance(hexB);
-    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 };
 
 const DEFAULT_ACCENT_DARK = '#a5000a';
