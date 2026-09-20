@@ -37,6 +37,7 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
         formalLanguage,
         email,
         absent,
+        absenceMessage,
         username,
         password,
         twoFactorAuth,
@@ -81,6 +82,10 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
         // Only send remarks when the form rendered the field (tenant-level admins);
         // the backend ignores it for other callers anyway.
         ...(adminRemarks !== undefined && { adminRemarks }),
+        // Only when there IS a note: the endpoint refuses a blank one for an absent
+        // counsellor (`UserAccountInputValidator#validateAbsence`, plus `@Size(min = 1)` on
+        // the DTO), and it means nothing for a counsellor who is present.
+        ...(absent && absenceMessage ? { absenceMessage } : {}),
         ...(topicIds && { topicIds }),
         ...(agencyIds && { agencyIds }),
     };
