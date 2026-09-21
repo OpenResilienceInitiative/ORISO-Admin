@@ -52,6 +52,8 @@ const translations: Record<string, string> = {
     'agency.edit.general.address.city': 'Stadt',
     'agency.edit.settings.title': 'Einstellungen zum Beratungsangebot',
     'agency.edit.general.more_settings.tenant.title': 'Trägerzuordnung',
+    'agency.edit.form.validationFailed':
+        'Die Beratungsstelle wurde nicht gespeichert. Bitte füllen Sie die markierten Pflichtfelder aus:',
     'agency.form.registrationSettings.title': 'Sichtbarkeit in der Registrierung',
     'agency.form.registrationSettings.onlineWarning': 'Beratungsstelle sichtbar machen',
     'agency.form.registrationSettings.onlineDescription': 'Sichtbar stellen',
@@ -334,6 +336,31 @@ describe('AgencyPageEdit create flow', () => {
             await screen.findByText('Bitte füllen Sie das markierte Feld aus.', undefined, { timeout: 5000 }),
         ).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('names the missing required field in a notification when the save is blocked', async () => {
+        const notificationSpy = vi.spyOn(notification, 'error').mockImplementation(() => undefined as never);
+        renderWithClient(<AgencyPageEdit />);
+
+        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neue Beratungsstelle' } });
+        fireEvent.change(screen.getByLabelText('PLZ'), { target: { value: '86161' } });
+        fireEvent.change(screen.getByLabelText('Stadt'), { target: { value: 'Augsburg' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        // Without this the only feedback is the inline marker on a field that sits
+        // below the fold — from the top of the form, Save looked like a no-op.
+        await waitFor(
+            () =>
+                expect(notificationSpy).toHaveBeenCalledWith({
+                    message:
+                        'Die Beratungsstelle wurde nicht gespeichert. Bitte füllen Sie die markierten Pflichtfelder aus:',
+                    description: 'Trägerzuordnung',
+                    duration: 8,
+                }),
+            { timeout: 5000 },
+        );
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        notificationSpy.mockRestore();
     });
 
     it('blocks the direct add route for a tenant admin whose DPA is unsigned', () => {

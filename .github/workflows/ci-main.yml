@@ -12,9 +12,15 @@ env:
     REGISTRY: ghcr.io
     ORG: openresilienceinitiative
 
+concurrency:
+    # Never cancel on a protected branch: that run publishes.
+    group: ci-main-${{ github.ref }}
+    cancel-in-progress: false
+
 jobs:
     build:
         runs-on: ubuntu-latest
+        timeout-minutes: 45
 
         permissions:
             contents: read

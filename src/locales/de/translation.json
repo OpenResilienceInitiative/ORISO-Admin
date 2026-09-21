@@ -744,6 +744,7 @@
     "agency.edit.general.more_settings.save": "Speichern",
     "agency.edit.general.more_settings.cancel": "Abbrechen",
     "agency.edit.general.more_settings.tenant.title": "Trägerzuordnung",
+    "agency.edit.form.validationFailed": "Die Beratungsstelle wurde nicht gespeichert. Bitte füllen Sie die markierten Pflichtfelder aus:",
     "agency.edit.general.address": "Adresse",
     "agency.edit.general.address.postcode": "PLZ",
     "agency.edit.general.address.city": "Stadt",
