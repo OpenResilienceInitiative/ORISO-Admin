@@ -54,6 +54,14 @@ describe('mayBeVisibleInRegistration', () => {
         expect(mayBeVisibleInRegistration({ hasAssignedConsultants: false, hasSelectedConsultants: true })).toBe(true);
     });
 
+    it('does not refuse while the lookup has not answered', () => {
+        // A failed or pending HAS_CONSULTANTS request leaves the flag undefined. Reading that
+        // as "no counsellors" would block every save on this card for a staffed agency.
+        expect(mayBeVisibleInRegistration({ hasAssignedConsultants: undefined, hasSelectedConsultants: false })).toBe(
+            true,
+        );
+    });
+
     it('refuses when there is no counsellor at all', () => {
         expect(mayBeVisibleInRegistration({ hasAssignedConsultants: false, hasSelectedConsultants: false })).toBe(
             false,

@@ -764,6 +764,23 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
+    it('still saves the card when the counsellor lookup did not answer', async () => {
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT];
+        // The HAS_CONSULTANTS request failed, so react-query leaves the flag undefined. The
+        // agency is online and staffed; a postcode-only edit must not be rejected for it.
+        mocks.hasConsultants = undefined;
+        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: false, topics: [TOPIC], tenantId: 7 };
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(await screen.findByRole('switch', { name: 'Sichtbar stellen' })).toBeChecked();
+        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(screen.queryByText(NEEDS_CONSULTANT)).not.toBeInTheDocument();
+    });
+
     it('does not offer a counsellor from another tenant', async () => {
         const user = setupUser();
         mocks.routeId = '282';

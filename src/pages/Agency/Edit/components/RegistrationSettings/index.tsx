@@ -68,7 +68,10 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
     // One rule for both screens. A selection counts because saving assigns it, which is what
     // the hint on this card promises; the backend count covers counsellors attached earlier.
     const mayGoOnline = mayBeVisibleInRegistration({
-        hasAssignedConsultants: Boolean(hasConsultants),
+        // On an unsaved agency there is definitively nobody attached yet and the lookup is
+        // disabled, so say so; on a persisted one pass the lookup through, `undefined` and
+        // all, so a pending or failed request does not read as a reported zero.
+        hasAssignedConsultants: hasPersistedAgency ? hasConsultants : false,
         hasSelectedConsultants,
     });
     const needsConsultantAssignment = !mayGoOnline;

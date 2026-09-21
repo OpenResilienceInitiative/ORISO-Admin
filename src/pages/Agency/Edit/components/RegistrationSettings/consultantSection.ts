@@ -41,13 +41,21 @@ export const consultantCreationBlockedReason = ({
  * selection counts because saving assigns it (`updateAgencyData`), as does a server-side one.
  */
 export interface RegistrationVisibilityInput {
-    /** The backend reports at least one counsellor attached to this agency. */
-    hasAssignedConsultants: boolean;
+    /**
+     * Whether the backend reports counsellors attached to this agency. `undefined` when the
+     * lookup has not answered — still loading, or failed. Not the same as a reported zero.
+     */
+    hasAssignedConsultants: boolean | undefined;
     /** At least one counsellor is picked in the form and will be assigned on save. */
     hasSelectedConsultants: boolean;
 }
 
+/**
+ * Refuse only when the backend actually reported no counsellor and none is picked. Reading an
+ * unanswered lookup as zero would block every save on this card, postcode edits included, on
+ * an agency that is online and staffed.
+ */
 export const mayBeVisibleInRegistration = ({
     hasAssignedConsultants,
     hasSelectedConsultants,
-}: RegistrationVisibilityInput): boolean => hasAssignedConsultants || hasSelectedConsultants;
+}: RegistrationVisibilityInput): boolean => hasSelectedConsultants || hasAssignedConsultants !== false;
