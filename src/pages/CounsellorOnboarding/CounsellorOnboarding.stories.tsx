@@ -352,15 +352,23 @@ export const AgencyAdminAlsoCounsellorOff: Story = {
             invite: { ...AGENCY_ADMIN, alsoCounsellor: false },
         }),
     },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await alsoCounsellorSwitch(canvasElement)).toHaveAttribute('aria-checked', 'false');
+        await expect(canvas.queryByRole('heading', { name: /^(Themenfelder|Focus topics)$/ })).toBeNull();
+        await expect(canvas.queryByRole('button', { name: /Thema hinzufügen|Add topic/ })).toBeNull();
+    },
+};
+
+/** The invitee changes the proposal: switching "Berät auch" on brings the topic step back. */
+export const AgencyAdminSwitchesAlsoCounsellorOn: Story = {
+    args: AgencyAdminAlsoCounsellorOff.args,
     play: async ({ canvasElement, userEvent }) => {
         const canvas = within(canvasElement);
         const toggle = await alsoCounsellorSwitch(canvasElement);
-        await expect(toggle).toHaveAttribute('aria-checked', 'false');
-        await expect(canvas.queryByTestId('wizard-agency-topics')).toBeNull();
-        await expect(canvas.queryByRole('button', { name: /Thema hinzufügen|Add topic/ })).toBeNull();
-        // The invitee may change the proposal: on brings the topic step back.
         await userEvent.click(toggle);
         await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
+        await expect(canvas.getByRole('heading', { name: /^(Themenfelder|Focus topics)$/ })).toBeInTheDocument();
     },
 };
 
@@ -368,4 +376,5 @@ export const AgencyAdminAlsoCounsellorOff: Story = {
 export const AgencyAdminAlsoCounsellorOffMobile: Story = {
     args: AgencyAdminAlsoCounsellorOff.args,
     ...PHONE_390,
+    play: AgencyAdminAlsoCounsellorOff.play,
 };
