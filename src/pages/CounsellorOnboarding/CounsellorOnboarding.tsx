@@ -15,6 +15,7 @@ import { M3Button } from '../../components/M3Button';
 import { FloatingLabelInput } from '../../components/FloatingLabelInput';
 import { FloatingLabelSelect } from '../../components/FloatingLabelSelect';
 import { InputChipPicker } from '../../components/InputChipPicker';
+import { FilterChip } from '../../components/FilterChip';
 import { CounsellorAvatarField } from '../../components/CounsellorAvatarField';
 import { TwoFactorSetup, TwoFactorSetupInlineError } from '../../components/TwoFactorSetup/TwoFactorSetup';
 import { toBase32Secret } from '../../utils/totpSecret';
@@ -88,6 +89,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         updateAvatar,
         updateAgency,
         setTopics,
+        toggleTopic,
         submitRegistration,
         submitTwoFactorCode,
     } = useCounsellorOnboardingFlow(inviteToken, resolvedClient);
@@ -186,6 +188,26 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         value: topic.id,
         label: topicLabel(topic, topicFallback),
     }));
+    // ORISO-Admin#1026, slice 6: without CREATE there is no "+" — the invitee
+    // chooses among the agency's own topics (SELECT_EXISTING) or keeps the
+    // assigned one (NONE; without an assigned one: exactly one agency topic).
+    const topicPermission = invite.topicPermission ?? 'CREATE';
+    const agencyTopicsOnly = topicPermission !== 'CREATE';
+    const singleAgencyTopic = agencyTopicsOnly && topics.length === 1;
+    const pickExactlyOne = topicPermission === 'NONE' && !singleAgencyTopic;
+    let topicHintKey: string | undefined;
+    if (selectableTopics.length === 0) {
+        // No hint over an empty row — the alert below carries the explanation.
+        topicHintKey = undefined;
+    } else if (singleAgencyTopic) {
+        topicHintKey = 'counsellorOnboarding.topics.fixedHint';
+    } else if (pickExactlyOne) {
+        topicHintKey = 'counsellorOnboarding.topics.pickOneHint';
+    } else if (agencyTopicsOnly) {
+        topicHintKey = 'counsellorOnboarding.topics.selectExistingHint';
+    } else {
+        topicHintKey = hasCoverage ? 'counsellorOnboarding.topics.addHint' : 'counsellorOnboarding.topics.chooseHint';
+    }
 
     // Shared consultant credential policy — identical to the normal admin
     // consultant form (utils/consultantCredentialRules): the form must never
@@ -332,24 +354,40 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 </Section>
             )}
 
-            <Section
-                titleKey="cards.focusTopics.title"
-                // No hint over an empty row — the alert below carries the explanation.
-                hintKey={
-                    // eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down
-                    selectableTopics.length === 0
-                        ? undefined
-                        : hasCoverage
-                        ? 'counsellorOnboarding.topics.addHint'
-                        : 'counsellorOnboarding.topics.chooseHint'
-                }
-            >
+            <Section titleKey="cards.focusTopics.title" hintKey={topicHintKey}>
+                {/* eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down */}
                 {selectableTopics.length === 0 ? (
                     // Neither coverage nor tenant topics: say so instead of leaving a
                     // submit that can never be enabled (the dead end of #1 on dev).
                     <Typography role="alert" variant="body2" color="text.secondary" data-testid="wizard-topics-none">
                         {t('counsellorOnboarding.topics.none')}
                     </Typography>
+                ) : agencyTopicsOnly ? (
+                    <div
+                        className={styles.topicChipRow}
+                        role="group"
+                        aria-label={t('cards.focusTopics.title')}
+                        data-testid="wizard-agency-topics"
+                    >
+                        {topics.map((topic) => {
+                            const selected = data.topicIds.includes(topic.id);
+                            return (
+                                <FilterChip
+                                    key={topic.id}
+                                    label={topicLabel(topic, topicFallback)}
+                                    selected={selected}
+                                    disabled={singleAgencyTopic || busy}
+                                    onChange={(next) => {
+                                        if (pickExactlyOne) {
+                                            setTopics(next ? [topic.id] : []);
+                                        } else {
+                                            toggleTopic(topic.id);
+                                        }
+                                    }}
+                                />
+                            );
+                        })}
+                    </div>
                 ) : (
                     <InputChipPicker
                         options={topicOptions}

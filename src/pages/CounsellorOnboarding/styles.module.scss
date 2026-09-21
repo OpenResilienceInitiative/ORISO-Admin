@@ -117,3 +117,10 @@
     margin-top: 32px;
     gap: 12px;
 }
+
+/* ORISO-Admin#1026: the agency's own topics as filter chips (no "+"). */
+.topicChipRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
