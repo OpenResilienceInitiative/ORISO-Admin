@@ -112,6 +112,7 @@
    label under the one-word label "Themen" (Frank's decision), so the field
    is narrow by content and never clips; title + description sit in the
    tooltip and in the open select. */
+
 .topicTooltip {
     display: block;
     width: fit-content;
@@ -128,12 +129,20 @@
     width: 200px;
 }
 
+/* Inline so the menu's leading checkmark (FloatingLabelSelect) sits beside the
+   title of the selected option, not on a line of its own. */
+
 .topicOption {
-    display: flex;
+    display: inline-flex;
+    max-width: min(320px, calc(100% - 26px));
     flex-direction: column;
     gap: 2px;
-    max-width: 320px;
+    vertical-align: top;
     white-space: normal;
+}
+
+:global(.ant-select-item-option-selected) .topicOptionDescription {
+    color: inherit;
 }
 
 .topicOptionTitle {
