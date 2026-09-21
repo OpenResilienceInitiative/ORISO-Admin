@@ -31,7 +31,6 @@ import { ReactComponent as RowExpandHoverIcon } from '../../../resources/img/svg
 import { ReactComponent as RowExpandSelectedIcon } from '../../../resources/img/svg/table-actions/row_expand_filled.svg';
 import { getAgencyColumnSortOrder, getNextAgencyTableState } from './agencySort';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
-import { useUserData } from '../../../hooks/useUserData.hook';
 import { isAgencyScopedAdmin, resolveAgencyAdminLanding } from '../../../constants/agencyAdminLanding';
 
 export const AgencyList = () => {
@@ -48,14 +47,12 @@ export const AgencyList = () => {
     const { can } = useUserPermissions();
     const { isSuperAdmin, isTenantScopedAdmin, tenantId, hasRole } = useUserRoles();
     // ORISO-Admin#917: a Beratungsstellen-Admin with exactly one assigned agency is forwarded
-    // straight into that agency's settings; with several they stay on this (server-side filtered)
-    // list. The assignment comes from `GET /service/users/data` (ORISO-UserService#1101).
+    // straight into that agency's settings; with several they stay on this list. The assignment
+    // is the one this very list is built from — AgencyService filters it to the agencies the
+    // caller administers. `GET /service/users/data` must NOT be used here: its `agencies` array
+    // is the CONSULTANT assignment, so an account that counsels in one centre and administers
+    // two others was forwarded into a centre it does not administer.
     const isAgencyAdminOnly = isAgencyScopedAdmin(hasRole);
-    const {
-        data: userData,
-        isLoading: isUserDataLoading,
-        isError: isUserDataError,
-    } = useUserData({ enabled: isAgencyAdminOnly });
     const {
         data: dpaGate,
         isLoading: isDpaGateLoading,
@@ -71,7 +68,9 @@ export const AgencyList = () => {
 
     const navigate = useNavigate();
 
-    const ownAgencyPath = isAgencyAdminOnly && !isUserDataError ? resolveAgencyAdminLanding(userData?.agencies) : null;
+    // A search narrows the same list, so only the unfiltered result says how many agencies the
+    // admin actually has — otherwise typing a name would forward out of the list mid-search.
+    const ownAgencyPath = isAgencyAdminOnly && !isError && !tableState.search ? resolveAgencyAdminLanding(data) : null;
 
     const onClose = useCallback(() => {
         setAgencyToDelete(null);
@@ -336,7 +335,7 @@ export const AgencyList = () => {
         pageSizeOptions: ['10', '20', '30'],
     };
 
-    if (isAgencyAdminOnly && !isUserDataError && isUserDataLoading) {
+    if (isAgencyAdminOnly && !isError && isLoading) {
         // Do not flash the list before we know whether to forward into the single agency.
         return null;
     }
