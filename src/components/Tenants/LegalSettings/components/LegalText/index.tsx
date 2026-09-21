@@ -66,6 +66,11 @@ const persistHintClosedForSession = (type: 'privacy' | 'imprint', scope: string)
 
 interface LegalTextProps {
     tenantId: string | number;
+    /**
+     * Owner of the server-side draft. Defaults to `tenantId`; differs only for the platform, whose
+     * draft TenantService keeps under tenant 0 while the published text lives on the main tenant.
+     */
+    draftTenantId?: string | number;
     fieldName: string[];
     titleKey: string;
     /**
@@ -92,6 +97,7 @@ interface LegalTextProps {
  */
 export const LegalText = ({
     tenantId,
+    draftTenantId,
     fieldName,
     titleKey,
     legalType,
@@ -183,7 +189,7 @@ export const LegalText = ({
         legalType ? dismissalScope : undefined,
     );
     const serverDraft = useTenantLegalDraft(
-        tenantId,
+        draftTenantId ?? tenantId,
         legalType === 'imprint' ? 'IMPRINT' : 'PRIVACY',
         canEditLegalText && !!legalType,
     );

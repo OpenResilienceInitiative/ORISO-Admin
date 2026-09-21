@@ -16,9 +16,11 @@ import { resolveTenantId } from '../../../utils/resolveTenantId';
 
 interface LegalSettingsProps {
     tenantId?: string | number;
+    /** Owner of the server-side drafts, when it differs from the published text's tenant. */
+    draftTenantId?: string | number;
 }
 
-export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
+export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) => {
     const { data } = useTenantData();
     const { t } = useTranslation();
     const { isSuperAdmin } = useUserRoles();
@@ -30,6 +32,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
     const LegalTextElement = (
         <LegalText
             tenantId={finalTenantId}
+            draftTenantId={draftTenantId}
             fieldName={['content', 'privacy']}
             icon={GdprIcon}
             titleKey="privacy.title"
@@ -93,6 +96,7 @@ export const LegalSettings = ({ tenantId }: LegalSettingsProps) => {
             <CardDeck.Item className={styles.documentEditorItem}>
                 <LegalText
                     tenantId={finalTenantId}
+                    draftTenantId={draftTenantId}
                     fieldName={['content', 'impressum']}
                     titleKey="imprint.title"
                     legalType="imprint"
