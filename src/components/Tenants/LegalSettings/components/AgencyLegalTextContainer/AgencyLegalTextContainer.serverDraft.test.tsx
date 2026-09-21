@@ -384,48 +384,35 @@ describe('AgencyLegalTextContainer server drafts', () => {
         });
     });
 
-    it('keeps a late agency save across an A-to-department-to-A switch, without touching local work', async () => {
-        let finishOldSave: (draft: any) => void = () => undefined;
+    it('locks the Fachbereich switcher while an agency save or publish is in flight', async () => {
+        // Switching mid-save left a publish unfinished without a word, or locked the next editor in
+        // a draft collision. The switcher now waits for the action to finish.
+        let finishSave: (draft: any) => void = () => undefined;
         h.serverSave.mockImplementation(
             () =>
                 new Promise((resolve) => {
-                    finishOldSave = resolve;
+                    finishSave = resolve;
                 }),
         );
-        h.departmentDpp = {
-            data: { content: '{}', publicationStatus: 'DRAFT', consentText: '{}' },
-            isLoading: false,
-            isError: false,
-            isSuccess: true,
-        };
         renderContainer({ agencyData: { ...agencyData, topics: [{ id: 3, name: 'Debt advice' }] } });
-        const oldSave = cardProps().onSave({ de: '<p>old A edit</p>' }, false);
-        await waitFor(() => expect(cardProps().saving).toBe(true));
+        const switcher = () => screen.getByRole('button', { name: /agency.legal.department.choose/i });
+        expect(switcher()).toBeEnabled();
 
-        await userEvent.click(screen.getByRole('button', { name: /agency.legal.department.choose/i }));
-        await userEvent.click(await screen.findByText('Debt advice'));
-        await userEvent.click(screen.getByRole('button', { name: /agency.legal.department.choose/i }));
-        await userEvent.click(await screen.findByText('agency.legal.department.all'));
-        await waitFor(() => expect(cardProps().saving).toBe(false));
+        const pendingSave = cardProps().onSave({ de: '<p>A</p>' }, true);
+        await waitFor(() => expect(switcher()).toBeDisabled());
 
-        const mountsBefore = h.cardMounts;
-        finishOldSave({
+        finishSave({
             kind: 'DPP',
-            content: { de: '<p>late old A</p>' },
+            content: { de: '<p>A</p>' },
             consentText: {},
             revision: 'draft-id:8',
-            savedAt: '2026-09-17T15:00:00',
+            savedAt: '2026-09-22T09:00:00',
         });
-        await act(async () => oldSave);
-
-        // The save succeeded on the server, so the next save builds on its revision (no 409 against a
-        // stale base) — but the editor of the new session is not remounted, so its typing survives.
-        await waitFor(() => expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>late old A</p>' }));
-        expect(h.cardMounts).toBe(mountsBefore);
-        expect(h.localDiscard).not.toHaveBeenCalled();
+        await act(async () => pendingSave);
+        await waitFor(() => expect(switcher()).toBeEnabled());
     });
 
-    it('does not clear local work when a late discard finishes in another context', async () => {
+    it('locks the Fachbereich switcher while a discard is in flight', async () => {
         let finishDiscard: () => void = () => undefined;
         h.server.draft = {
             kind: 'DPP',
@@ -440,21 +427,14 @@ describe('AgencyLegalTextContainer server drafts', () => {
                     finishDiscard = resolve;
                 }),
         );
-        h.departmentDpp = {
-            data: { content: '{}', publicationStatus: 'DRAFT', consentText: '{}' },
-            isLoading: false,
-            isError: false,
-            isSuccess: true,
-        };
         renderContainer({ agencyData: { ...agencyData, topics: [{ id: 3, name: 'Debt advice' }] } });
-        const oldDiscard = noticeProps().onDiscard();
+        const switcher = () => screen.getByRole('button', { name: /agency.legal.department.choose/i });
 
-        await userEvent.click(screen.getByRole('button', { name: /agency.legal.department.choose/i }));
-        await userEvent.click(await screen.findByText('Debt advice'));
+        const pendingDiscard = noticeProps().onDiscard();
+        await waitFor(() => expect(switcher()).toBeDisabled());
         finishDiscard();
-        await act(async () => oldDiscard);
-
-        expect(h.localDiscard).not.toHaveBeenCalled();
+        await act(async () => pendingDiscard);
+        await waitFor(() => expect(switcher()).toBeEnabled());
     });
 
     it('blocks notice actions while a draft operation is pending', async () => {

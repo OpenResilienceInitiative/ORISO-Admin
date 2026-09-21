@@ -482,7 +482,16 @@ export const AgencyLegalTextContainer = ({
             onSave={onSave}
             saving={saving || departmentPublish.isPending || draftActionPending}
             onTranslate={translate}
-            departmentSlot={<DepartmentSelect departments={departments} value={selected} onChange={setSelected} />}
+            departmentSlot={
+                <DepartmentSelect
+                    departments={departments}
+                    value={selected}
+                    onChange={setSelected}
+                    // Switching mid-save left a publish unfinished without a word, or locked the
+                    // next editor in a draft collision; the switch waits for the action instead.
+                    disabled={draftActionPending || departmentPublish.isPending}
+                />
+            }
         />
     );
     if (isDepartment || !canEditLegalText) return card;
