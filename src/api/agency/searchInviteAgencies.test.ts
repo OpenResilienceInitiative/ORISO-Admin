@@ -48,4 +48,11 @@ describe('searchInviteAgencies (#1026 slice 2)', () => {
             { id: 12, name: 'Agency 12', tenantId: 40, tenantName: 'Springfield', topics: ['Sucht'] },
         ]);
     });
+
+    it('keeps agencies whose deleteDate is the literal string "null" (as AgencyService serializes it)', async () => {
+        fetchData.mockResolvedValue({ total: 1, _embedded: [hit(12, { tenantId: 40, deleteDate: 'null' })] });
+        await expect(searchInviteAgencies('Sucht')).resolves.toEqual([
+            { id: 12, name: 'Agency 12', tenantId: 40, tenantName: undefined, topics: [] },
+        ]);
+    });
 });
