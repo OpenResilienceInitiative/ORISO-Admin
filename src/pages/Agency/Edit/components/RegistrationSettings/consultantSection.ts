@@ -35,3 +35,19 @@ export const consultantCreationBlockedReason = ({
     }
     return null;
 };
+
+/**
+ * Whether the agency may be made visible in registration. One rule for both screens: a form
+ * selection counts because saving assigns it (`updateAgencyData`), as does a server-side one.
+ */
+export interface RegistrationVisibilityInput {
+    /** The backend reports at least one counsellor attached to this agency. */
+    hasAssignedConsultants: boolean;
+    /** At least one counsellor is picked in the form and will be assigned on save. */
+    hasSelectedConsultants: boolean;
+}
+
+export const mayBeVisibleInRegistration = ({
+    hasAssignedConsultants,
+    hasSelectedConsultants,
+}: RegistrationVisibilityInput): boolean => hasAssignedConsultants || hasSelectedConsultants;

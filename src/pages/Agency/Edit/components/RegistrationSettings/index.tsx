@@ -17,7 +17,7 @@ import { CreateConsultantModal } from '../../../../../components/CreateConsultan
 import { parseUserAuthInfo } from '../../../../../utils/parseUserAuthInfo';
 import { resolveAgencyTenantId } from '../../../../../api/agency/addAgencyData';
 import { normalizeTopicIds } from '../../../../../api/agency/normalizeTopicIds';
-import { isConsultantSectionVisible } from './consultantSection';
+import { isConsultantSectionVisible, mayBeVisibleInRegistration } from './consultantSection';
 
 interface RegistrationSettingsProps {
     asFields?: boolean;
@@ -55,7 +55,13 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
 
         return convertToOptions(activeConsultants, ['firstname', 'lastname', 'email'], 'id');
     }, [consultants?.data]);
-    const needsConsultantAssignment = id === 'add' ? !hasSelectedConsultants : !hasConsultants;
+    // One rule for both screens. A selection counts because saving assigns it, which is what
+    // the hint on this card promises; the backend count covers counsellors attached earlier.
+    const mayGoOnline = mayBeVisibleInRegistration({
+        hasAssignedConsultants: Boolean(hasConsultants),
+        hasSelectedConsultants,
+    });
+    const needsConsultantAssignment = !mayGoOnline;
     // Superadmins pick the tenant in the form; tenant admins carry it in their token.
     const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
 
@@ -117,10 +123,18 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
                     </div>
                 </>
             )}
+            {/* Not disabled: the switch reacts and names the missing counsellor on submit. */}
             <MuiSwitchField
                 label={t('agency.form.registrationSettings.onlineDescription')}
                 name="online"
-                disabled={needsConsultantAssignment}
+                rules={[
+                    {
+                        validator: (_rule, value) =>
+                            value && needsConsultantAssignment
+                                ? Promise.reject(new Error(t('agency.form.registrationSettings.onlineNeedsConsultant')))
+                                : Promise.resolve(),
+                    },
+                ]}
             />
             <Divider />
 

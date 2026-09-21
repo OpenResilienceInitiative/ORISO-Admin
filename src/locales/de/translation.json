@@ -2090,5 +2090,6 @@
     "globalSettings.accountInactivity.error.invalid": "Geben Sie für jede Personengruppe eine gültige Anzahl Monate ein.",
     "globalSettings.accountInactivity.error.forbidden": "Sie dürfen die plattformweiten Einstellungen für inaktive Konten nicht ändern.",
     "globalSettings.accountInactivity.error.generic": "Die Einstellungen für inaktive Konten konnten nicht gespeichert werden.",
-    "globalSettings.accountInactivity.validation": "Geben Sie eine ganze Zahl ab 1 ein."
+    "globalSettings.accountInactivity.validation": "Geben Sie eine ganze Zahl ab 1 ein.",
+    "agency.form.registrationSettings.onlineNeedsConsultant": "Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar stellen. Die Auswahl wird beim Speichern zugewiesen."
 }
