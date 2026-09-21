@@ -127,7 +127,11 @@ export const NamedRecipient: Story = {
         const name = await body.findByLabelText(/Name der Person|Name of the person/);
         await userEvent.type(name, 'Dr. Ruth Recht');
         await expect(name).toHaveValue('Dr. Ruth Recht');
-        await expect(await body.findByTestId('dpa-forward-canonical-preview')).toBeVisible();
+        // The AntD modal opens with a zoom that starts at opacity 0; under CI
+        // load it can still be running here, so wait for it instead of
+        // asserting visibility once.
+        const preview = await body.findByTestId('dpa-forward-canonical-preview');
+        await waitFor(() => expect(preview).toBeVisible());
     },
 };
 
