@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -50,6 +50,7 @@ import {
     MinimizeContentIcon,
     PublishedIcon,
     EditIcon,
+    SendTemplateIcon,
     VersionHistoryIcon,
 } from '../CustomIcons/EditorIcons';
 import { createImageDropPasteHandlers, useEditorImageUpload } from './useEditorImageUpload';
@@ -184,6 +185,18 @@ export type M3RichTextEditorProps = {
      * to three split button fields).
      */
     topicSlot?: React.ReactNode;
+    /**
+     * Offers the saved draft to the level below as a template (platform → Träger).
+     * Rendered as its own footer action directly before Publish, in the same shape,
+     * because it is an action on the document — not a view control like the version
+     * menu. Publishing a template never makes anything public.
+     */
+    onPublishTemplate?: () => void;
+    /**
+     * When set, the template action stays visible but disabled, and this sentence
+     * says why (disable, don't hide — the admin should learn what is missing).
+     */
+    publishTemplateDisabledReason?: string;
     /** Rendered between the toolbar and the editor (e.g. per-field translate button). */
     aboveEditorSlot?: React.ReactNode;
     /**
@@ -675,6 +688,8 @@ export const M3RichTextEditor = ({
     languageSlot,
     consentSlot,
     topicSlot,
+    onPublishTemplate,
+    publishTemplateDisabledReason,
     helpSlot,
     snackbarSlot,
     aboveEditorSlot,
@@ -686,6 +701,7 @@ export const M3RichTextEditor = ({
     onPublish,
     onSaveDraft,
 }: M3RichTextEditorProps) => {
+    const publishTemplateReasonId = useId();
     const { t, i18n } = useTranslation();
     const [maximized, setMaximized] = useState(false);
     // Whether the "link to section" chapter menu in the bubble is open (arrow flips up).
@@ -1145,12 +1161,33 @@ export const M3RichTextEditor = ({
                 </div>
             )}
 
-            {editorEditable && (onPublish || onSaveDraft || actionsLeading) && (
+            {editorEditable && (onPublish || onSaveDraft || actionsLeading || onPublishTemplate) && (
                 <>
                     <hr className={styles.divider} />
 
                     <div className={styles.actions}>
                         {actionsLeading && <div className={styles.actionsLeading}>{actionsLeading}</div>}
+                        {onPublishTemplate && (
+                            <span className={styles.actionWithReason} title={publishTemplateDisabledReason}>
+                                <button
+                                    type="button"
+                                    className={`${styles.textBtn} ${styles.publishTemplate}`}
+                                    disabled={publishing || imageUpload.uploading || !!publishTemplateDisabledReason}
+                                    aria-describedby={
+                                        publishTemplateDisabledReason ? publishTemplateReasonId : undefined
+                                    }
+                                    onClick={onPublishTemplate}
+                                >
+                                    <SendTemplateIcon />
+                                    <span>{t('legal.m3Editor.publishTemplate')}</span>
+                                </button>
+                                {publishTemplateDisabledReason && (
+                                    <span id={publishTemplateReasonId} className={styles.visuallyHidden}>
+                                        {publishTemplateDisabledReason}
+                                    </span>
+                                )}
+                            </span>
+                        )}
                         {onPublish && (
                             <button
                                 type="button"

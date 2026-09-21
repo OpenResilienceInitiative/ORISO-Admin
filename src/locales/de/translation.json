@@ -2114,5 +2114,22 @@
     "globalSettings.accountInactivity.error.invalid": "Geben Sie für jede Personengruppe eine gültige Anzahl Monate ein.",
     "globalSettings.accountInactivity.error.forbidden": "Sie dürfen die plattformweiten Einstellungen für inaktive Konten nicht ändern.",
     "globalSettings.accountInactivity.error.generic": "Die Einstellungen für inaktive Konten konnten nicht gespeichert werden.",
-    "globalSettings.accountInactivity.validation": "Geben Sie eine ganze Zahl ab 1 ein."
+    "globalSettings.accountInactivity.validation": "Geben Sie eine ganze Zahl ab 1 ein.",
+    "legal.m3Editor.publishTemplate": "Vorlage veröffentlichen",
+    "legal.template.send.title": "Vorlage an Träger senden",
+    "legal.template.send.description": "Die Träger erhalten die gespeicherte Fassung vom {{savedAt}} als Vorschlag und übernehmen sie selbst. Veröffentlicht wird dabei nichts.",
+    "legal.template.send.audience.label": "Empfänger",
+    "legal.template.send.audience.all": "Alle Träger",
+    "legal.template.send.audience.selected": "Ausgewählte Träger",
+    "legal.template.send.search": "Träger suchen",
+    "legal.template.send.confirm": "Senden",
+    "legal.template.send.noneSelected": "Wählen Sie mindestens einen Träger aus.",
+    "legal.template.send.loadError": "Die Träger konnten nicht geladen werden.",
+    "legal.template.send.sent_one": "Vorlage an {{count}} Träger gesendet.",
+    "legal.template.send.sent_other": "Vorlage an {{count}} Träger gesendet.",
+    "legal.template.send.conflict": "Der Entwurf wurde inzwischen geändert. Laden Sie die Seite neu und senden Sie die aktuelle Fassung.",
+    "legal.template.send.missing": "Es gibt keinen gespeicherten Plattform-Entwurf mehr. Speichern Sie den Entwurf erneut.",
+    "legal.template.send.error": "Die Vorlage konnte nicht gesendet werden.",
+    "legal.template.disabled.noDraft": "Speichern Sie zuerst einen Entwurf. Versendet wird immer die gespeicherte Fassung.",
+    "legal.template.disabled.unsaved": "Es gibt ungespeicherte Änderungen. Speichern Sie den Entwurf, damit genau diese Fassung versendet wird."
 }

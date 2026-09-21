@@ -13,6 +13,8 @@ import { LegalConsentField } from '../LegalConsentField';
 import { LegalDraftNotice } from '../LegalDraftNotice';
 import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
 import { useTenantLegalDraft } from '../../hooks/useTenantLegalDraft';
+import { SendLegalTemplateDialog } from '../SendLegalTemplateDialog';
+import { isSameDraftContent } from '../../utils/draftComparison';
 import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
 import { toEditorVersions } from '../../utils/legalVersionOptions';
 import { useViewedLegalVersion } from '../../hooks/useViewedLegalVersion';
@@ -117,6 +119,7 @@ export const LegalText = ({
     const dismissalScope = userData?.id ? `${tenantId}:${userData.id}` : undefined;
     const [activeLanguage, setActiveLanguage] = useState('de');
     const [edits, setEdits] = useState<Record<string, string>>({});
+    const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
     const [pendingFormData, setPendingFormData] = useState<Record<string, unknown>>();
     const [pendingDraftRevision, setPendingDraftRevision] = useState<string>();
     const [modalVisible, setModalVisible] = useState(false);
@@ -465,6 +468,29 @@ export const LegalText = ({
         );
     }
 
+    // Platform → Träger templates (ORISO-TenantService#262). Only the platform's own draft can
+    // be offered, and only as the SAVED revision: the dialog names that version, so sending what
+    // is merely typed would put a different text in front of every Träger than the one named.
+    const isPlatformDraft = String(draftTenantId ?? tenantId) === '0';
+    const savedServerDraft = serverBase.draft ?? null;
+    const hasUnsavedTemplateChanges =
+        !!savedServerDraft &&
+        !isSameDraftContent(
+            { content: contentByLanguage, consent: consentByLanguage },
+            { content: savedServerDraft.content, consent: savedServerDraft.privacyConsent },
+            { compareConsent: consentEnabled },
+        );
+    let templateDisabledReason: string | undefined;
+    if (!savedServerDraft) templateDisabledReason = t('legal.template.disabled.noDraft');
+    else if (hasUnsavedTemplateChanges) templateDisabledReason = t('legal.template.disabled.unsaved');
+    const canPublishTemplate =
+        canEditLegalText &&
+        !!legalType &&
+        isPlatformDraft &&
+        !serverDraft.isError &&
+        !serverDraft.hasConflict &&
+        sourceChosen;
+
     return (
         <div className={styles.card}>
             {canEditLegalText && legalType ? (
@@ -574,6 +600,8 @@ export const LegalText = ({
                         ? onSaveDraft
                         : undefined
                 }
+                onPublishTemplate={canPublishTemplate ? () => setTemplateDialogOpen(true) : undefined}
+                publishTemplateDisabledReason={canPublishTemplate ? templateDisabledReason : undefined}
                 actionsLeading={
                     consentEnabled ? (
                         <LegalConsentField
@@ -589,6 +617,14 @@ export const LegalText = ({
                     modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
                 }
             />
+            {templateDialogOpen && savedServerDraft && legalType && (
+                <SendLegalTemplateDialog
+                    kind={legalType === 'imprint' ? 'IMPRINT' : 'PRIVACY'}
+                    draftRevision={savedServerDraft.revision}
+                    draftSavedAt={savedServerDraft.updatedAt}
+                    onClose={() => setTemplateDialogOpen(false)}
+                />
+            )}
             {/* A history that failed to load is not an empty history. Saying "no
                 version published yet" for a 403 or a 500 would be a false answer to
                 the exact question the look-back exists for. Editing stays possible. */}

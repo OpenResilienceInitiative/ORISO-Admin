@@ -1513,4 +1513,25 @@ $m3-state-active: rgb(39 50 112 / 12%);
     &.draft {
         color: $m3-primary;
     }
+
+    // Offering a template publishes nothing, so it shares the neutral colour of
+    // "Save draft". Red stays reserved for the one action that goes live.
+    &.publishTemplate {
+        color: $m3-primary;
+    }
+}
+
+// Wraps the template action so a disabled button can still carry its reason as a
+// hover title — a disabled <button> itself receives no pointer events.
+.actionWithReason {
+    display: inline-flex;
+}
+
+.visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
 }
