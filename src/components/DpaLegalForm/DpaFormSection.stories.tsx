@@ -6,6 +6,7 @@ import { Form } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { DpaFormSection } from './DpaFormSection';
+import type { DpaUnavailableReason } from '../../api/tenantOnboarding/tenantOnboarding';
 import { LONG_DPA_HTML, PHONE_390 } from './dpaStoryText';
 
 const InteractiveSection = ({ initiallyTouched = false }: { initiallyTouched?: boolean }) => {
@@ -86,6 +87,76 @@ export const ConsentMissing: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findByTestId('dpa-consent-error')).toBeVisible();
+    },
+};
+
+/**
+ * The empty-agreement states. `dpaHtml=""` withholds reader, signer fields and
+ * consent act; `unavailableReason` decides WHICH explanation is shown. The
+ * three variants exist because their remedies are different: tell the
+ * operator their server is misconfigured, wait for the operator to publish,
+ * or the legacy catch-all against a backend that does not send the field.
+ */
+const UnavailableSection = ({ reason }: { reason?: DpaUnavailableReason }) => {
+    const [form] = Form.useForm();
+
+    return (
+        <ThemeProvider theme={orisoMuiTheme}>
+            <Form form={form} layout="vertical" requiredMark={false}>
+                <DpaFormSection
+                    dpaHtml=""
+                    unavailableReason={reason}
+                    textLabel="Vertragsunterlagen"
+                    accepted={false}
+                    acceptTouched={false}
+                    onAcceptedChange={() => {}}
+                />
+            </Form>
+        </ThemeProvider>
+    );
+};
+
+/** The backend's own read of the published text failed — a platform defect. */
+export const UnavailableUpstreamError: Story = {
+    render: () => (
+        <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
+            <UnavailableSection reason="UPSTREAM_ERROR" />
+        </div>
+    ),
+    play: async ({ canvas }) => {
+        const alert = await canvas.findByTestId('dpa-content-unavailable');
+        // Naming the cause is the whole point: no "please reload" here.
+        await expect(alert).toHaveTextContent(/Plattform-Konfiguration/);
+        await expect(alert).toHaveTextContent(/Neuladen der Seite hilft hier nicht/);
+        await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument();
+    },
+};
+
+/** Nothing published yet — the operator owes a contract text, not a fix. */
+export const UnavailableNotPublished: Story = {
+    render: () => (
+        <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
+            <UnavailableSection reason="NOT_PUBLISHED" />
+        </div>
+    ),
+    play: async ({ canvas }) => {
+        const alert = await canvas.findByTestId('dpa-content-unavailable');
+        await expect(alert).toHaveTextContent(/noch keine Vertragsunterlagen veröffentlicht/);
+        await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument();
+    },
+};
+
+/** No reason from the backend (older deployment): the generic wording stands. */
+export const UnavailableWithoutReason: Story = {
+    render: () => (
+        <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
+            <UnavailableSection />
+        </div>
+    ),
+    play: async ({ canvas }) => {
+        const alert = await canvas.findByTestId('dpa-content-unavailable');
+        await expect(alert).toHaveTextContent(/Bitte laden Sie die Seite neu/);
+        await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument();
     },
 };
 

@@ -57,6 +57,8 @@
     "tenantOnboarding.dpa.title": "Contract documents",
     "tenantOnboarding.dpa.description": "Please review the contract documents and confirm them on behalf of your organisation.",
     "tenantOnboarding.dpa.unavailable": "The contract documents could not be loaded. They cannot be confirmed while the contract text cannot be shown. Please reload the page or contact the platform operator.",
+    "tenantOnboarding.dpa.unavailableUpstream": "The contract documents could not be loaded from the server. This is a platform configuration issue, not something you can fix here — please contact the platform operator. Reloading the page will not help.",
+    "tenantOnboarding.dpa.unavailableNotPublished": "The platform operator has not published any contract documents yet. Until a contract text is available, no confirmation is possible. Please contact the platform operator.",
     "tenantOnboarding.dpa.unavailableBlocked": "Registration cannot continue while the contract text is unavailable.",
     "tenantOnboarding.dpa.signerSectionTitle": "Authorised representative's details",
     "tenantOnboarding.dpa.signerName": "Full name",

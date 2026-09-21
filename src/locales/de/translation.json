@@ -52,6 +52,8 @@
     "tenantOnboarding.dpa.title": "Vertragsunterlagen",
     "tenantOnboarding.dpa.description": "Bitte prüfen Sie die Vertragsunterlagen und bestätigen Sie sie für Ihre Organisation.",
     "tenantOnboarding.dpa.unavailable": "Die Vertragsunterlagen konnten nicht geladen werden. Solange der Vertragstext nicht angezeigt werden kann, ist keine Bestätigung möglich. Bitte laden Sie die Seite neu oder wenden Sie sich an den Plattformbetreiber.",
+    "tenantOnboarding.dpa.unavailableUpstream": "Die Vertragsunterlagen konnten nicht vom Server geladen werden. Das liegt an der Plattform-Konfiguration, nicht an Ihren Angaben — bitte informieren Sie den Plattformbetreiber. Ein Neuladen der Seite hilft hier nicht.",
+    "tenantOnboarding.dpa.unavailableNotPublished": "Der Plattformbetreiber hat noch keine Vertragsunterlagen veröffentlicht. Solange kein Vertragstext vorliegt, ist keine Bestätigung möglich. Bitte wenden Sie sich an den Plattformbetreiber.",
     "tenantOnboarding.dpa.unavailableBlocked": "Ohne den Vertragstext kann die Registrierung nicht fortgesetzt werden.",
     "tenantOnboarding.dpa.signerSectionTitle": "Daten der vertretungsberechtigten Person",
     "tenantOnboarding.dpa.signerName": "Vollständiger Name",

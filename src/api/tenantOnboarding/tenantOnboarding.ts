@@ -50,6 +50,20 @@ export class InviteLinkError extends Error {
 
 export { TwoFactorCodeInvalidError };
 
+/**
+ * Why `dpaContent` came back empty. The resolve endpoint cannot show the
+ * contract text for two entirely different reasons, and they need entirely
+ * different remedies:
+ *  - `NOT_PUBLISHED` — the platform operator has published nothing yet. The
+ *    invitee waits for the operator; there is nothing wrong with the server.
+ *  - `UPSTREAM_ERROR` — the backend's own read of the published text failed
+ *    (platform misconfiguration). Reloading cannot fix it, and on staging the
+ *    old "please reload the page" wording hid exactly this for hours.
+ * Always `null` when `dpaContent` is present. Older backends omit the field
+ * entirely — `undefined` is treated like `null` and keeps the generic message.
+ */
+export type DpaUnavailableReason = 'NOT_PUBLISHED' | 'UPSTREAM_ERROR';
+
 /** Resolved state of a tenant-admin invite link, keyed by the raw invite token. */
 export interface TenantAdminOnboardingInviteDTO {
     recipientEmail: string;
@@ -72,6 +86,13 @@ export interface TenantAdminOnboardingInviteDTO {
      * the wording is never authored in this flow.
      */
     dpaContent: string | null;
+    /**
+     * Why {@link dpaContent} is empty, so the step can say what actually
+     * happened instead of asking for a pointless reload. `null`/absent
+     * whenever the content is present — or when the backend is older than the
+     * field (then the generic message stands).
+     */
+    dpaUnavailableReason?: DpaUnavailableReason | null;
     /**
      * Onboarding phase per the UserService resume contract (#569 hardening):
      * `PENDING_2FA_ACTIVATION` = the invite was already accepted/registered

@@ -303,6 +303,12 @@ export const OrganisationDpaStep = ({
                         <>
                             <DpaFormSection
                                 dpaHtml={dpaHtml}
+                                // The backend distinguishes "operator published
+                                // nothing" from "our own read of it failed"
+                                // (#dpaUnavailableReason). Passing it through is
+                                // the whole point: the two states look identical
+                                // on this page but need opposite remedies.
+                                unavailableReason={invite.dpaUnavailableReason}
                                 textLabel={t('tenantOnboarding.dpa.title')}
                                 // Owner annotation 2026-08-18 (I2): the reader's own icon +
                                 // title + info line goes in this view — mirrors DpaBlocker,
