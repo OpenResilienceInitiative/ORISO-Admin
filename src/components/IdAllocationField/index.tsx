@@ -176,8 +176,8 @@ export const IdAllocationField = ({
                 if (queryRef.current !== forQuery) return;
                 const next = asPage(found);
                 setResults((previous) => {
-                    const known = new Set(previous.map((unit) => unit.id));
-                    return [...previous, ...next.units.filter((unit) => !known.has(unit.id))];
+                    const known = new Set(previous.map((option) => option.id));
+                    return [...previous, ...next.units.filter((option) => !known.has(option.id))];
                 });
                 setPage(nextPage);
                 setHasMore(next.hasMore);

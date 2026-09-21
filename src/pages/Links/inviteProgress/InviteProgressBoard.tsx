@@ -170,6 +170,69 @@ export interface InviteProgressBoardProps {
     topicPermissionSavingIds?: number[];
 }
 
+/** The open select lists each level with its full title and description. */
+function renderTopicOption(
+    title: (option: TopicPermission) => string,
+    description: (option: TopicPermission) => string,
+) {
+    return function TopicOption(option: { value?: unknown }) {
+        return (
+            <span className={styles.topicOption}>
+                <span className={styles.topicOptionTitle}>{title(option.value as TopicPermission)}</span>
+                <span className={styles.topicOptionDescription}>{description(option.value as TopicPermission)}</span>
+            </span>
+        );
+    };
+}
+
+/**
+ * Per-row topic permission (#1026 slice 6). Frank's decision: the cell shows
+ * only the short label ("Keine weiteren", "Auswählen", "Anlegen") under the
+ * one-word label "Themen"; the full title and description are in the tooltip
+ * and in the open select. The accessible name keeps the person's name.
+ */
+const TopicPermissionCell = ({
+    value,
+    displayName,
+    disabled,
+    onChange,
+}: {
+    value: TopicPermission;
+    displayName: string;
+    disabled: boolean;
+    onChange: (next: TopicPermission) => void;
+}) => {
+    const { t } = useTranslation();
+    const title = (option: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[option].title);
+    const description = (option: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[option].description);
+    return (
+        <M3Tooltip className={styles.topicTooltip} portal text={`${title(value)} – ${description(value)}`}>
+            <span className={styles.topicSelectAnchor}>
+                <FloatingLabelSelect<TopicPermission>
+                    aria-label={t('links.inviteProgress.topicsFor', 'Themen für {{name}}', { name: displayName })}
+                    className={styles.topicSelect}
+                    disabled={disabled}
+                    label={t('links.inviteProgress.topicsShortLabel', 'Themen')}
+                    labelRender={({ value: shown }) =>
+                        t(...TOPIC_PERMISSION_SHORT_LABEL_KEYS[shown as TopicPermission])
+                    }
+                    optionRender={renderTopicOption(title, description)}
+                    options={TOPIC_PERMISSIONS.map((option) => ({
+                        value: option,
+                        label: title(option),
+                        title: title(option),
+                    }))}
+                    popupMatchSelectWidth={false}
+                    value={value}
+                    onChange={(next) => {
+                        if (next !== value) onChange(next);
+                    }}
+                />
+            </span>
+        </M3Tooltip>
+    );
+};
+
 /**
  * The "Onboarding" tracking board (Links page): summary tiles that filter,
  * status chips, the phase-progress table (one row per invitee) and client-side
@@ -286,9 +349,6 @@ export const InviteProgressBoard = ({
     // #1026 slice 6: the per-person topic permission sits in the recipient cell —
     // a column of its own pushed the actions out of a 1440px table.
     const showTopicPermission = onTopicPermissionChange != null && targetRole !== 'TENANT_ADMIN';
-    const topicTitle = (value: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[value].title);
-    const topicDescription = (value: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[value].description);
-    const topicShort = (value: TopicPermission) => t(...TOPIC_PERMISSION_SHORT_LABEL_KEYS[value]);
 
     const columns = useMemo(
         () => [
@@ -480,63 +540,15 @@ export const InviteProgressBoard = ({
                                             </span>
                                         )}
                                     </span>
-                                    {showTopicPermission &&
-                                        hasEditableTopicPermission(invite) &&
-                                        (() => {
+                                    {showTopicPermission && hasEditableTopicPermission(invite) && (
+                                        <TopicPermissionCell
+                                            disabled={topicPermissionSavingIds.includes(invite.id)}
+                                            displayName={displayName}
                                             // Invites created before #1026 carry no value: they behave as CREATE.
-                                            const current = invite.topicPermission ?? 'CREATE';
-                                            return (
-                                                // #1026 (Frank): the cell shows the short label only; the full
-                                                // title and description are in the tooltip and the open select.
-                                                <M3Tooltip
-                                                    className={styles.topicTooltip}
-                                                    portal
-                                                    text={`${topicTitle(current)} – ${topicDescription(current)}`}
-                                                >
-                                                    <span className={styles.topicSelectAnchor}>
-                                                        <FloatingLabelSelect<TopicPermission>
-                                                            aria-label={t(
-                                                                'links.inviteProgress.topicsFor',
-                                                                'Themen für {{name}}',
-                                                                { name: displayName },
-                                                            )}
-                                                            className={styles.topicSelect}
-                                                            disabled={topicPermissionSavingIds.includes(invite.id)}
-                                                            // The visible label stays one word — the row already
-                                                            // names the person; the accessible name above does too.
-                                                            label={t('links.inviteProgress.topicsShortLabel', 'Themen')}
-                                                            labelRender={({ value }) =>
-                                                                topicShort(value as TopicPermission)
-                                                            }
-                                                            optionRender={(option) => (
-                                                                <span className={styles.topicOption}>
-                                                                    <span className={styles.topicOptionTitle}>
-                                                                        {topicTitle(option.value as TopicPermission)}
-                                                                    </span>
-                                                                    <span className={styles.topicOptionDescription}>
-                                                                        {topicDescription(
-                                                                            option.value as TopicPermission,
-                                                                        )}
-                                                                    </span>
-                                                                </span>
-                                                            )}
-                                                            options={TOPIC_PERMISSIONS.map((option) => ({
-                                                                value: option,
-                                                                label: topicTitle(option),
-                                                                title: topicTitle(option),
-                                                            }))}
-                                                            popupMatchSelectWidth={false}
-                                                            value={current}
-                                                            onChange={(next) => {
-                                                                if (next !== current) {
-                                                                    onTopicPermissionChange?.(invite, next);
-                                                                }
-                                                            }}
-                                                        />
-                                                    </span>
-                                                </M3Tooltip>
-                                            );
-                                        })()}
+                                            value={invite.topicPermission ?? 'CREATE'}
+                                            onChange={(next) => onTopicPermissionChange?.(invite, next)}
+                                        />
+                                    )}
                                 </div>
                             </DataTableCell>
                             <DataTableCell className={styles.progressCell}>
