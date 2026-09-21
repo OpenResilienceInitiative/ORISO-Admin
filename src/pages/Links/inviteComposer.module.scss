@@ -130,3 +130,50 @@
     width: 18px;
     height: 18px;
 }
+
+/*
+ * #1026 placeholders. The wrapper span is the tooltip trigger: a disabled
+ * control swallows hover and focus, so the explanation hangs off its parent.
+ */
+
+.placeholderSlot {
+    display: inline-flex;
+    flex: 0 0 auto;
+    border-radius: 4px;
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: 2px;
+    }
+}
+
+.roleField {
+    width: 176px;
+}
+
+/* "Themen selbst": label + M3Switch in the row's 56px outlined band. */
+.toggleField {
+    display: inline-flex;
+    height: 56px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 0 4px 0 16px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 28px;
+    color: var(--m3-on-surface-variant, #444748);
+    gap: 4px;
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: 2px;
+    }
+}
+
+.toggleLabel {
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    line-height: 20px;
+    white-space: nowrap;
+}

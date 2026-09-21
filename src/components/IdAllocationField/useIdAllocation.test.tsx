@@ -268,4 +268,64 @@ describe('useIdAllocation', () => {
         expect(result.current.validation).toBe('auto');
         expect(result.current.canSubmit).toBe(true);
     });
+
+    describe('existing units (#1026)', () => {
+        const unit = { id: 7, name: 'Caritas Südbaden' };
+
+        it('can start on an existing unit (prefill / viewer lock) without any availability check', () => {
+            const client = createClient();
+            const { result } = renderHook(() => useIdAllocation({ client, initialUnit: unit }));
+
+            expect(result.current.mode).toBe('existing');
+            expect(result.current.value).toBe(7);
+            expect(result.current.unit).toEqual(unit);
+            expect(result.current.validation).toBe('existing');
+            expect(result.current.canSubmit).toBe(true);
+            expect(client.checkIdAvailability).not.toHaveBeenCalled();
+        });
+
+        it('selectExisting cancels a pending check and is submittable even for an assigned id', async () => {
+            const client = createClient();
+            const { result } = renderHook(() => useIdAllocation({ client }));
+
+            act(() => result.current.setManualValue(5));
+            act(() => result.current.selectExisting({ id: 5, name: 'Diakonie Ortenau' }));
+            await advance(400);
+
+            expect(client.checkIdAvailability).not.toHaveBeenCalled();
+            expect(result.current.validation).toBe('existing');
+            expect(result.current.canSubmit).toBe(true);
+        });
+
+        it('stepping from an existing unit hard-overwrites it with the next FREE number', async () => {
+            const client = createClient();
+            const { result } = renderHook(() => useIdAllocation({ client, initialUnit: unit }));
+
+            act(() => result.current.step(1));
+            await flushPromises();
+
+            expect(result.current.mode).toBe('manual');
+            expect(result.current.value).toBe(21);
+            expect(result.current.unit).toBeUndefined();
+            expect(result.current.validation).toBe('available');
+        });
+
+        it('peekNextFree previews the Auto candidate without changing state, and degrades to null', async () => {
+            const client = createClient();
+            const { result } = renderHook(() => useIdAllocation({ client }));
+
+            let preview: number | null = null;
+            await act(async () => {
+                preview = await result.current.peekNextFree();
+            });
+            expect(preview).toBe(21);
+            expect(result.current.mode).toBe('auto');
+
+            (client.nextFreeId as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('down'));
+            await act(async () => {
+                preview = await result.current.peekNextFree();
+            });
+            expect(preview).toBeNull();
+        });
+    });
 });

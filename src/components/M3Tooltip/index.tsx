@@ -1,4 +1,14 @@
-import { cloneElement, isValidElement, useEffect, useId, useState, type ReactElement } from 'react';
+import {
+    cloneElement,
+    isValidElement,
+    useEffect,
+    useId,
+    useRef,
+    useState,
+    type CSSProperties,
+    type ReactElement,
+} from 'react';
+import { createPortal } from 'react-dom';
 import classNames from 'classnames';
 import styles from './styles.module.scss';
 
@@ -19,6 +29,12 @@ export interface M3TooltipProps {
     children: ReactElement;
     /** Side the bubble grows to. `top` is the default M3 plain-tooltip anchor. */
     placement?: 'top' | 'bottom';
+    /**
+     * Render the bubble into `document.body` at a fixed position instead of
+     * inside the wrapper — for triggers inside a clipping container such as a
+     * horizontally scrolling toolbar row (#1026 invite bar).
+     */
+    portal?: boolean;
     className?: string;
 }
 
@@ -31,9 +47,11 @@ export interface M3TooltipProps {
  * its own palette and portal behaviour, and the surface it would sit on here is
  * a data table whose colours are M3 CSS variables only.
  */
-export const M3Tooltip = ({ text, children, placement = 'top', className }: M3TooltipProps) => {
+export const M3Tooltip = ({ text, children, placement = 'top', portal = false, className }: M3TooltipProps) => {
     const id = useId();
+    const wrapperRef = useRef<HTMLSpanElement>(null);
     const [open, setOpen] = useState(false);
+    const [anchor, setAnchor] = useState<CSSProperties | undefined>();
     const [dismissed, setDismissed] = useState(false);
 
     // WCAG 2.2 SC 1.4.13: Escape must close the bubble WITHOUT moving focus or
@@ -59,10 +77,34 @@ export const M3Tooltip = ({ text, children, placement = 'top', className }: M3To
     const show = () => {
         setDismissed(false);
         setOpen(true);
+        if (portal && wrapperRef.current) {
+            const rect = wrapperRef.current.getBoundingClientRect();
+            setAnchor(
+                placement === 'bottom'
+                    ? { position: 'fixed', left: rect.left + rect.width / 2, top: rect.bottom + 4 }
+                    : {
+                          position: 'fixed',
+                          left: rect.left + rect.width / 2,
+                          bottom: window.innerHeight - rect.top + 4,
+                      },
+            );
+        }
     };
+
+    const bubble = (
+        <span
+            className={classNames(styles.bubble, portal ? styles.portal : styles[placement])}
+            id={id}
+            role="tooltip"
+            style={portal ? anchor : undefined}
+        >
+            {text}
+        </span>
+    );
 
     return (
         <span
+            ref={wrapperRef}
             className={classNames(styles.wrapper, className)}
             onBlur={() => setOpen(false)}
             onFocus={show}
@@ -72,11 +114,7 @@ export const M3Tooltip = ({ text, children, placement = 'top', className }: M3To
             {cloneElement(children as ReactElement<{ 'aria-describedby'?: string }>, {
                 'aria-describedby': visible ? id : undefined,
             })}
-            {visible && (
-                <span className={classNames(styles.bubble, styles[placement])} id={id} role="tooltip">
-                    {text}
-                </span>
-            )}
+            {visible && (portal ? createPortal(bubble, document.body) : bubble)}
         </span>
     );
 };

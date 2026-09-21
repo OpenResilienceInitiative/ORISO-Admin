@@ -1,4 +1,14 @@
-import { ChangeEvent, KeyboardEvent, ReactNode, useEffect, useId, useState } from 'react';
+import {
+    ChangeEvent,
+    FocusEvent,
+    InputHTMLAttributes,
+    KeyboardEvent,
+    ReactNode,
+    Ref,
+    useEffect,
+    useId,
+    useState,
+} from 'react';
 import AccessTimeFilledIcon from '@mui/icons-material/AccessTimeFilled';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +56,24 @@ interface M3NumberFieldProps {
     supportingText?: ReactNode;
     /** Trailing slot inside the main segment (e.g. an Auto toggle chip). */
     trailing?: ReactNode;
+    /**
+     * Free-text mode (#1026 hybrid ID field): the input shows `displayText`
+     * and reports every keystroke raw — letters included — instead of
+     * filtering to digits. The chevrons keep stepping through `onStep`.
+     */
+    onTextChange?: (raw: string) => void;
+    /**
+     * Extra attributes for the inner input (combobox ARIA, focus/click
+     * handlers). `onKeyDown` runs first; calling `preventDefault()` in it
+     * suppresses the ArrowUp/ArrowDown stepping (e.g. while a menu is open).
+     */
+    inputProps?: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'disabled' | 'readOnly'>;
+    inputRef?: Ref<HTMLInputElement>;
+    /**
+     * Size the main segment to its content instead of the input's default
+     * 20-character width (#1026: "the Träger field is too wide").
+     */
+    fitContent?: boolean;
 }
 
 /** Integers only (optional leading minus); everything else is ignored while typing. */
@@ -92,6 +120,10 @@ export const M3NumberField = ({
     error = false,
     supportingText,
     trailing,
+    onTextChange,
+    inputProps,
+    inputRef,
+    fitContent = false,
 }: M3NumberFieldProps) => {
     const { t } = useTranslation();
     const inputId = useId();
@@ -139,6 +171,11 @@ export const M3NumberField = ({
     const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
         const raw = event.target.value;
 
+        if (onTextChange) {
+            onTextChange(raw);
+            return;
+        }
+
         if (displayMode) {
             // The user typed into (or cleared) the display text: only the digits
             // count — "Auto3" → 3 — and the parent decides what mode that means.
@@ -165,8 +202,9 @@ export const M3NumberField = ({
         onChange?.(Number(raw));
     };
 
-    const handleInputBlur = () => {
-        if (displayMode || parsedDraft === undefined) {
+    const handleInputBlur = (event: FocusEvent<HTMLInputElement>) => {
+        inputProps?.onBlur?.(event);
+        if (onTextChange || displayMode || parsedDraft === undefined) {
             return;
         }
 
@@ -178,6 +216,10 @@ export const M3NumberField = ({
     };
 
     const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        inputProps?.onKeyDown?.(event);
+        if (event.defaultPrevented) {
+            return;
+        }
         if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
             return;
         }
@@ -203,12 +245,23 @@ export const M3NumberField = ({
                     <span className={styles.textStack}>
                         {hasValue && <span className={styles.miniLabel}>{label}</span>}
                         <input
+                            {...inputProps}
                             id={inputId}
-                            className={styles.input}
+                            ref={inputRef}
+                            className={classNames(styles.input, { [styles.inputFit]: fitContent })}
                             type="text"
-                            inputMode="numeric"
+                            inputMode={onTextChange ? 'text' : 'numeric'}
+                            size={
+                                fitContent
+                                    ? Math.max(
+                                          4,
+                                          ((displayMode ? displayText : draft) || inputProps?.placeholder || label)
+                                              .length + 1,
+                                      )
+                                    : undefined
+                            }
                             value={displayMode ? displayText : draft}
-                            placeholder={label}
+                            placeholder={inputProps?.placeholder ?? label}
                             aria-label={ariaLabel ?? label}
                             aria-invalid={error || undefined}
                             aria-describedby={supportingText != null ? supportingTextId : undefined}

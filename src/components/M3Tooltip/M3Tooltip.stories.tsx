@@ -33,3 +33,18 @@ export const OnAFilterChip: StoryObj = {
 
 /** Empty text is a no-op: the trigger renders untouched, no bubble, no aria. */
 export const WithoutText: Story = { args: { text: '' } };
+
+/**
+ * `portal`: the bubble escapes a clipping container — here a horizontally
+ * scrolling toolbar row like the invite bar (#1026), which would cut off an
+ * in-place bubble.
+ */
+export const InClippingRow: StoryObj = {
+    render: () => (
+        <div style={{ overflowX: 'auto', overflowY: 'hidden', padding: 8, width: 320 }}>
+            <M3Tooltip placement="bottom" portal text="Kommt mit #1026">
+                <span tabIndex={0}>Rolle</span>
+            </M3Tooltip>
+        </div>
+    ),
+};

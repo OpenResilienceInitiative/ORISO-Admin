@@ -25,6 +25,7 @@ import {
     type SmtpSendFailureDetail,
 } from '../../utils/extractApiErrorMessage';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
+import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 import { InviteComposer, InviteComposerValues, InviteSendMode, InviteSubmitOutcome } from './InviteComposer';
@@ -72,6 +73,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [searchQuery, setSearchQuery] = useState('');
 
     const currentTenantId = parseUserAuthInfo().tenantId || undefined;
+    const { isSuperAdmin } = useUserRoles();
 
     // Client-side taken-id knowledge (existing tenants + still-active
     // DRAFT/EMAIL_SENT TENANT_ADMIN invites). The composer's ID field itself now
@@ -697,7 +699,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     return (
         <div ref={composerRef}>
             <InviteComposer
+                // #1026: the Träger tab is platform-admin only; on the counsellor
+                // tab a tenant admin is pinned to their own Träger. "Rolle" shows
+                // the tab's role (disabled placeholder until the backend takes it).
+                defaultRole={targetRole === 'TENANT_ADMIN' ? 'TENANT_ADMIN' : 'COUNSELLOR'}
                 includeAgencyField={includeAgencyField}
+                ownTenant={currentTenantId != null ? { id: currentTenantId } : undefined}
+                viewerScope={isTenantInvite || isSuperAdmin ? 'platform' : 'tenant'}
                 initialTenantId={isTenantInvite ? undefined : currentTenantId}
                 persistKey={targetRole}
                 requireNames={targetRole === 'COUNSELLOR'}

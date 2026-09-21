@@ -1,7 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { IdAllocationClient, IdAllocationState } from '../../api/idAllocation/idAllocation';
 
-export type IdFieldMode = 'auto' | 'manual';
+/**
+ * `auto` = create a NEW unit with the next free id (the "＋ Neu anlegen" entry) ·
+ * `manual` = create a NEW unit with a pinned id · `existing` = invite into a
+ * unit that already exists (#1026, picked from the type-ahead or locked).
+ */
+export type IdFieldMode = 'auto' | 'manual' | 'existing';
+
+/** An existing Träger / Beratungsstelle as the type-ahead lists it (#1026). */
+export interface IdUnitOption {
+    id: number;
+    /** Display name; absent when the unit is only known by its number (e.g. a typed Nr. or the viewer's own id). */
+    name?: string;
+    /** Agencies only: topics the unit counsels on — searched and shown as a secondary line. */
+    topics?: string[];
+}
 
 /**
  * Field-level validation state (ORISO-Admin#570):
@@ -10,18 +24,30 @@ export type IdFieldMode = 'auto' | 'manual';
  * `available` / `reserved` / `assigned` = authoritative backend answer ·
  * `error` = the allocation service could not be reached.
  */
-export type IdValidationState = 'auto' | 'empty' | 'checking' | 'available' | 'reserved' | 'assigned' | 'error';
+export type IdValidationState =
+    | 'auto'
+    | 'empty'
+    | 'checking'
+    | 'available'
+    | 'reserved'
+    | 'assigned'
+    | 'error'
+    | 'existing';
 
 export interface UseIdAllocationOptions {
     client: IdAllocationClient;
     /** Typing pause before the availability check fires. */
     debounceMs?: number;
+    /** Start on an existing unit (prefill / locked viewer scope, #1026) instead of Auto. */
+    initialUnit?: IdUnitOption;
 }
 
 export interface UseIdAllocationResult {
     mode: IdFieldMode;
-    /** Manually pinned id; `undefined` in Auto mode and while manual-empty. */
+    /** Manually pinned id or the existing unit's id; `undefined` in Auto mode and while manual-empty. */
     value?: number;
+    /** The picked existing unit while `mode === 'existing'`. */
+    unit?: IdUnitOption;
     validation: IdValidationState;
     /** Auto is always submittable; manual only with a confirmed-free id. */
     canSubmit: boolean;
@@ -31,8 +57,12 @@ export interface UseIdAllocationResult {
     setManualValue: (value: number | undefined) => void;
     /** Arrow click/key: from Auto adopt the smallest free id, else next free id in that direction. */
     step: (direction: 1 | -1) => void;
-    /** The visible Auto toggle: back to no deliberate number choice. */
+    /** "＋ Neu anlegen" (formerly the Auto toggle): back to no deliberate number choice. */
     resetToAuto: () => void;
+    /** Type-ahead pick of an existing unit (#1026): always submittable, no availability check. */
+    selectExisting: (unit: IdUnitOption) => void;
+    /** Read-only preview of the id Auto would assign right now (for the "Neu anlegen" entry). */
+    peekNextFree: () => Promise<number | null>;
 }
 
 const DEFAULT_DEBOUNCE_MS = 300;
@@ -50,10 +80,12 @@ const validationForState = (state: IdAllocationState): IdValidationState => {
 export const useIdAllocation = ({
     client,
     debounceMs = DEFAULT_DEBOUNCE_MS,
+    initialUnit,
 }: UseIdAllocationOptions): UseIdAllocationResult => {
-    const [mode, setMode] = useState<IdFieldMode>('auto');
-    const [value, setValue] = useState<number | undefined>();
-    const [validation, setValidation] = useState<IdValidationState>('auto');
+    const [mode, setMode] = useState<IdFieldMode>(initialUnit ? 'existing' : 'auto');
+    const [value, setValue] = useState<number | undefined>(initialUnit?.id);
+    const [unit, setUnit] = useState<IdUnitOption | undefined>(initialUnit);
+    const [validation, setValidation] = useState<IdValidationState>(initialUnit ? 'existing' : 'auto');
     const [stepUpDisabled, setStepUpDisabled] = useState(false);
     const [stepDownDisabled, setStepDownDisabled] = useState(false);
 
@@ -84,6 +116,7 @@ export const useIdAllocation = ({
         (nextValue: number | undefined) => {
             cancelPendingCheck();
             setMode('manual');
+            setUnit(undefined);
             setValue(nextValue);
             setStepUpDisabled(false);
             setStepDownDisabled(false);
@@ -136,7 +169,9 @@ export const useIdAllocation = ({
                         else setStepDownDisabled(true);
                         return;
                     }
+                    // The split button hard-overwrites: an existing pick becomes a new free id.
                     setMode('manual');
+                    setUnit(undefined);
                     setValue(id);
                     // The next-free answer is authoritative: the id is free right now.
                     setValidation('available');
@@ -159,20 +194,44 @@ export const useIdAllocation = ({
         stepInFlight.current = false;
         setMode('auto');
         setValue(undefined);
+        setUnit(undefined);
         setValidation('auto');
         setStepUpDisabled(false);
         setStepDownDisabled(false);
     }, []);
 
+    const selectExisting = useCallback((next: IdUnitOption) => {
+        cancelPendingCheck();
+        stepInFlight.current = false;
+        setMode('existing');
+        setUnit(next);
+        setValue(next.id);
+        setValidation('existing');
+        setStepUpDisabled(false);
+        setStepDownDisabled(false);
+    }, []);
+
+    const peekNextFree = useCallback(
+        () =>
+            Promise.resolve()
+                .then(() => client.nextFreeId({ direction: 'up' }))
+                .then((answer) => answer?.id ?? null)
+                .catch(() => null),
+        [client],
+    );
+
     return {
         mode,
         value,
+        unit,
         validation,
-        canSubmit: mode === 'auto' || validation === 'available',
+        canSubmit: mode === 'auto' || validation === 'available' || validation === 'existing',
         stepUpDisabled,
         stepDownDisabled,
         setManualValue,
         step,
         resetToAuto,
+        selectExisting,
+        peekNextFree,
     };
 };
