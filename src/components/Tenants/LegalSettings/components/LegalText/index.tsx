@@ -18,6 +18,7 @@ import { useTenantLegalDraft } from '../../hooks/useTenantLegalDraft';
 import { useLegalTemplateHistory } from '../../hooks/useLegalTemplateHistory';
 import { SendLegalTemplateDialog, TemplateRecipientLevel } from '../SendLegalTemplateDialog';
 import { isSameDraftContent } from '../../utils/draftComparison';
+import { parseUtcTimestamp } from '../../utils/utcTimestamp';
 import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
 import { toEditorVersions } from '../../utils/legalVersionOptions';
 import { useViewedLegalVersion } from '../../hooks/useViewedLegalVersion';
@@ -576,7 +577,7 @@ export const LegalText = ({
     const documentKey = legalType ?? 'privacy';
     const liveLevelKey = isPlatformDraft ? 'platform' : 'traeger';
     const formatSentAt = (iso: string) => {
-        const date = new Date(iso);
+        const date = parseUtcTimestamp(iso);
         return Number.isNaN(date.getTime())
             ? iso
             : new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(date);
