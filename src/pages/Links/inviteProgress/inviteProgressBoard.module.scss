@@ -140,8 +140,8 @@
 
     &[aria-disabled='true'] {
         background: transparent;
-        color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 38%, transparent);
         border-color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 12%, transparent);
+        color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 38%, transparent);
         cursor: not-allowed;
     }
 }
@@ -166,8 +166,11 @@
 
 .topicMenu {
     :global(.ant-dropdown-menu) {
+        /* margin-right is a transparent gutter: when the popup is shifted back
+           into a phone's viewport, the sheet keeps 16px off the screen edge. */
         width: min(340px, calc(100vw - 32px));
         padding: 8px 0;
+        margin-right: 16px;
         border-radius: 12px;
         background: var(--m3-surface-container, #f0eded);
     }

@@ -247,6 +247,9 @@ const TopicPermissionChip = ({
             onOpenChange={(next) => setOpen(disabled ? false : next)}
             trigger={['click']}
             placement="bottomLeft"
+            // On a phone the chip sits mid-row: shift the menu back into the
+            // viewport instead of letting its right edge run off-screen.
+            align={{ overflow: { adjustX: 1, adjustY: 1, shiftX: true } }}
             overlayClassName={styles.topicMenu}
             menu={{
                 items,
