@@ -1,9 +1,11 @@
 # Branded e-mail Storybook fixtures
 
 `src/components/EmailPreview/fixtures/*.html` are **verbatim backend output**, not markup written
-in this repository. ORISO-UserService#914 makes the backend the single owner of the mail layout
-(`BrandedEmailLayoutRenderer` + `src/main/resources/email/layout/*`); the Admin renders the result
-and nothing else. Hand-editing a fixture would recreate exactly the drift that issue removes.
+in this repository. ORISO-UserService#914 makes the backend the single owner of the mail layout;
+since `feat/invite-mail-oriso-frame` that layout is the ORISO e-mail frame (`InviteFrameMailRenderer`
+
+-   template `src/main/resources/emails/<tone>/einladung-freitext.*`, synced from the ORISO-Frontend
+    e-mail kit). The Admin renders the result and nothing else. Hand-editing a fixture would recreate exactly the drift that issue removes.
 
 Each fixture has a `.html` (the `html` field of a preview response) and a `.txt` (the `plainText`
 alternative sent alongside it). `MANIFEST.txt` lists what each one is.
@@ -74,21 +76,23 @@ like the rest.
 The preview endpoint was not deployed anywhere when these fixtures were first created, so they were
 produced by driving the **same** `InviteEmailPreviewService` the controller calls, with only its
 outer boundaries stubbed (template repository, TenantService branding lookup, SMTP settings).
-`BrandedEmailFixtureGenerator.java` in this directory is that generator, kept here as the record of
-how the files were produced.
+`InviteFrameFixtureGenerator.java` in this directory is that generator, kept here as the record of
+how the files were produced. It builds the renderer through the UserService test helper
+`InviteFrameMailRendererFixture`, so it needs a UserService checkout that has the ORISO frame
+(`feat/invite-mail-oriso-frame` or later).
 
 ```bash
-US=<path to an ORISO-UserService checkout containing the #914 layout>
-cp scripts/email-fixtures/BrandedEmailFixtureGenerator.java \
-   "$US/src/test/java/de/caritas/cob/userservice/api/service/email/layout/"
+US=<path to an ORISO-UserService checkout with InviteFrameMailRenderer>
+PKG=src/test/java/de/caritas/cob/userservice/api/service/accountinvite/mail
+cp scripts/email-fixtures/InviteFrameFixtureGenerator.java "$US/$PKG/"
 
 cd "$US"
-JAVA_HOME=/opt/homebrew/opt/openjdk@21 ./mvnw -o test-compile surefire:test \
-  -Dtest=BrandedEmailFixtureGenerator -Dsurefire.failIfNoSpecifiedTests=false \
+JAVA_HOME=$(/usr/libexec/java_home -v 21) ./mvnw -B -o test \
+  -Dtest=InviteFrameFixtureGenerator -Dsurefire.failIfNoSpecifiedTests=false \
   -Doriso.email.fixtures.out=<path to ORISO-Admin>/src/components/EmailPreview/fixtures
 
 # leave the UserService checkout as you found it
-rm src/test/java/de/caritas/cob/userservice/api/service/email/layout/BrandedEmailFixtureGenerator.java
+rm "$PKG/InviteFrameFixtureGenerator.java"
 ```
 
 The generator writes `MANIFEST.txt` alongside the fixtures. It is deliberately **not** part of the
@@ -96,7 +100,8 @@ UserService test suite: it asserts nothing, it only writes files.
 
 It has no palette of its own, and must not grow one. Since the colour fix on ORISO-UserService#914
 the mail accent resolves as `theming.primaryColor` → `EmailColors.PLATFORM_ACCENT_DARK` (`#a5000a`)
-and the neutrals are literals in `email/layout/*.html` taken from this repo's `src/app.css`; the
+and the neutrals are literals in the e-mail kit's templates; a tenant colour below 4.5:1 against
+white falls back to the ORISO primary for the button (`OrisoEmailBrand#readablePrimary`); the
 SMTP setting `globalSmtpEmailThemeColor` is deliberately not read. The checked-in fixtures were last
 regenerated against that backend state — a fixture still showing the old navy `#0f3b8f` accent or a
 grey `#111827`/`#374151` ramp is stale and must be regenerated, never recoloured here.
