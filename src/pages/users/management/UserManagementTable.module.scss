@@ -184,7 +184,10 @@
         // Flex items refuse to shrink below their content width by default, which pushed long
         // units past the column edge and clipped them mid-word.
         min-width: 0;
+        // Fill the column so every centre renders as an equally wide unit across rows.
+        width: 100%;
         max-width: 100%;
+        box-sizing: border-box;
         padding: 4px 10px;
         border: 1px solid var(--admin-table-chip-border, #c4c7c8);
         background: var(--admin-table-chip-surface, #e4e2e2);
