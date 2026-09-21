@@ -8,6 +8,7 @@ import { MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
 import { TypeOfUser } from '../../../../../enums/TypeOfUser';
 import { useAgencyHasConsultants } from '../../../../../hooks/useAgencyHasConsultants';
+import { useAgencyData } from '../../../../../hooks/useAgencyData';
 import { useConsultantsOrAdminsData } from '../../../../../hooks/useConsultantsOrAdminsData';
 import { PostCodeRanges } from './PostCodeRanges';
 import styles from './styles.module.scss';
@@ -44,6 +45,8 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         hasTenant: true,
     });
     const { data: hasConsultants, isLoading } = useAgencyHasConsultants({ id });
+    // Already in the query cache — the page reads the same key, so this adds no request.
+    const { data: agency } = useAgencyData({ id });
     const { data: consultants, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
         typeOfUser: TypeOfUser.Consultants,
         search: '*',
@@ -68,11 +71,10 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
     // One rule for both screens. A selection counts because saving assigns it, which is what
     // the hint on this card promises; the backend count covers counsellors attached earlier.
     const mayGoOnline = mayBeVisibleInRegistration({
-        // On an unsaved agency there is definitively nobody attached yet and the lookup is
-        // disabled, so say so; on a persisted one pass the lookup through, `undefined` and
-        // all, so a pending or failed request does not read as a reported zero.
-        hasAssignedConsultants: hasPersistedAgency ? hasConsultants : false,
+        hasAssignedConsultants: hasConsultants,
         hasSelectedConsultants,
+        // The stored state, not the form value the admin may have just toggled.
+        isAlreadyVisible: Boolean(agency?.id) && !agency?.offline,
     });
     const needsConsultantAssignment = !mayGoOnline;
 

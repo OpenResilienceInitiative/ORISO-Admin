@@ -764,6 +764,22 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
+    it('refuses to activate an offline agency while the lookup has not answered', async () => {
+        const user = setupUser();
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT];
+        mocks.hasConsultants = undefined;
+        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: true, topics: [TOPIC], tenantId: 7 };
+        renderWithClient(<AgencyPageEdit />);
+
+        await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+
+        expect(await screen.findByText(NEEDS_CONSULTANT)).toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
     it('still saves the card when the counsellor lookup did not answer', async () => {
         mocks.routeId = '282';
         mocks.tenantTopics = [TOPIC];

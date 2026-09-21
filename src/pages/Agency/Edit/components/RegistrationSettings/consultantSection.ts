@@ -37,8 +37,11 @@ export const consultantCreationBlockedReason = ({
 };
 
 /**
- * Whether the agency may be made visible in registration. One rule for both screens: a form
- * selection counts because saving assigns it (`updateAgencyData`), as does a server-side one.
+ * Whether the agency may be made visible in registration. One rule for both screens.
+ *
+ * The rule guards switching visibility ON, not keeping it on. An agency that is already
+ * visible keeps its unrelated edits — a postcode correction — unblocked whatever the
+ * counsellor lookup says, and an unanswered lookup never authorises a new activation.
  */
 export interface RegistrationVisibilityInput {
     /**
@@ -48,14 +51,13 @@ export interface RegistrationVisibilityInput {
     hasAssignedConsultants: boolean | undefined;
     /** At least one counsellor is picked in the form and will be assigned on save. */
     hasSelectedConsultants: boolean;
+    /** The agency is visible in registration as stored, so this save is not an activation. */
+    isAlreadyVisible: boolean;
 }
 
-/**
- * Refuse only when the backend actually reported no counsellor and none is picked. Reading an
- * unanswered lookup as zero would block every save on this card, postcode edits included, on
- * an agency that is online and staffed.
- */
 export const mayBeVisibleInRegistration = ({
     hasAssignedConsultants,
     hasSelectedConsultants,
-}: RegistrationVisibilityInput): boolean => hasSelectedConsultants || hasAssignedConsultants !== false;
+    isAlreadyVisible,
+}: RegistrationVisibilityInput): boolean =>
+    isAlreadyVisible || hasSelectedConsultants || hasAssignedConsultants === true;
