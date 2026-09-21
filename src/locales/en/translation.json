@@ -866,7 +866,7 @@
     "logs.table.sessionId": "Session ID",
     "logs.table.supervisor": "Supervisor",
     "message.agency.add": "The advice center was successfully created.",
-    "message.agency.consultantAssignmentFailed": "The advice center was created, but not all consultants could be assigned.",
+    "message.agency.consultantAssignmentFailed": "The advice center was saved, but not all consultants could be assigned.",
     "message.agency.updated": "The agency has been successfully updated.",
     "message.agency.delete": "Advice center has been deleted.",
     "message.counselor.delete.error.hasSessions": "Advisor still has active consultations and could not be deleted.",

@@ -757,6 +757,31 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
+    it('warns when the card saved but the counsellor could not be assigned', async () => {
+        const user = setupUser();
+        const warn = vi.spyOn(notification, 'warning').mockImplementation(() => undefined as never);
+        const success = vi.spyOn(notification, 'success').mockImplementation(() => undefined as never);
+        // The card save path reports success on its own; without forwarding the flag the
+        // admin would be told the agency saved while the counsellor stayed unassigned.
+        mocks.mutate.mockImplementation((_data, options) =>
+            options?.onSuccess?.({ id: 282, consultantAssignmentFailed: true }),
+        );
+        renderAgencyWithoutAssignedConsultants();
+
+        await screen.findByRole('switch', { name: 'Sichtbar stellen' });
+        await assignConsultant(user);
+        await user.click(screen.getByRole('switch', { name: 'Sichtbar stellen' }));
+        saveRegistrationCard();
+
+        await waitFor(() => expect(warn).toHaveBeenCalledTimes(1));
+        expect(warn.mock.calls[0][0]).toEqual(
+            expect.objectContaining({ message: 'message.agency.consultantAssignmentFailed' }),
+        );
+        expect(success).toHaveBeenCalledTimes(1);
+        warn.mockRestore();
+        success.mockRestore();
+    });
+
     it('goes live once a counsellor is picked, although the backend reports none yet', async () => {
         const user = setupUser();
         renderAgencyWithoutAssignedConsultants();
