@@ -213,4 +213,52 @@ describe('useAgencyLegalDraft', () => {
 
         expect(result.current.draft).toEqual(newA);
     });
+
+    it('keeps the saved draft when a read was still in flight', async () => {
+        // A background read started before the write answers after it. Without
+        // cancelling it first, the pre-save revision lands back in the cache and the
+        // next save conflicts although this one succeeded.
+        let releaseRead: (value: AgencyLegalDraft) => void = () => undefined;
+        const pendingRead = new Promise<AgencyLegalDraft>((resolve) => {
+            releaseRead = resolve;
+        });
+        const saved = { ...dppDraft('dpp-id:2'), content: { de: '<p>Gespeichert</p>' } };
+        vi.mocked(getAgencyLegalDraft).mockReturnValueOnce(pendingRead);
+        vi.mocked(putAgencyLegalDraft).mockResolvedValueOnce(saved);
+
+        const { result } = renderHook(() => useAgencyLegalDraft(7, 'DPP', true), { wrapper: createWrapper() });
+
+        await act(async () => {
+            await result.current.save({ content: { de: '<p>Gespeichert</p>' }, revision: 'dpp-id:1' });
+        });
+
+        await act(async () => {
+            releaseRead({ ...dppDraft('dpp-id:1'), content: { de: '<p>Veraltet</p>' } });
+            await pendingRead;
+        });
+
+        await waitFor(() => expect(result.current.draft).toEqual(saved));
+    });
+
+    it('keeps a discarded draft gone when a read was still in flight', async () => {
+        let releaseRead: (value: AgencyLegalDraft) => void = () => undefined;
+        const pendingRead = new Promise<AgencyLegalDraft>((resolve) => {
+            releaseRead = resolve;
+        });
+        vi.mocked(getAgencyLegalDraft).mockReturnValueOnce(pendingRead);
+        vi.mocked(deleteAgencyLegalDraft).mockResolvedValueOnce(undefined);
+
+        const { result } = renderHook(() => useAgencyLegalDraft(7, 'DPP', true), { wrapper: createWrapper() });
+
+        await act(async () => {
+            await result.current.discard('dpp-id:1');
+        });
+
+        await act(async () => {
+            releaseRead(dppDraft('dpp-id:1'));
+            await pendingRead;
+        });
+
+        await waitFor(() => expect(result.current.draft).toBeNull());
+    });
 });
