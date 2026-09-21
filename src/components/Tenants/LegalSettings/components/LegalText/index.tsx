@@ -547,11 +547,18 @@ export const LegalText = ({
         sourceChosen;
     const canPublishLive = canEditLegalText && !serverDraft.isError && !serverDraft.hasConflict && sourceChosen;
     const showTemplateAction = canPublishTemplate && publishIntent !== 'live' && templateIsNew;
+    const templateBlockedReason =
+        blockedLanguages.length > 0
+            ? t('legal.template.disabled.consentToken', { token: `{{${MANDATORY_CONSENT_TOKEN}}}` })
+            : undefined;
     const showLiveAction = canPublishLive && publishIntent !== 'template' && differsFromPublished;
 
     // Offering a template sends the SAVED revision, so unsaved work is saved first —
     // the same way "Veröffentlichen" saves before it publishes.
     const onPublishTemplate = async () => {
+        // Same gate as publishing: a consent sentence without {{legal_links}} would reach
+        // every recipient as a text none of them can publish.
+        if (blockedLanguages.length > 0) return;
         if (hasUnsavedChanges || !savedServerDraft) {
             setDraftActionPending(true);
             try {
@@ -604,7 +611,10 @@ export const LegalText = ({
                       key: 'live',
                       title: liveSectionTitle,
                       versions: editorVersions,
-                      emptyLabel: t('legal.m3Editor.versionEmpty'),
+                      emptyLabel:
+                          historyState === 'available'
+                              ? t('legal.m3Editor.versionEmpty')
+                              : t(VERSION_HISTORY_STATUS_KEYS[historyState]),
                       createLabel: t(`legal.versionMenu.newLive.${liveLevelKey}.${documentKey}`),
                       onCreate: () => setPublishIntent('live'),
                   },
@@ -772,6 +782,7 @@ export const LegalText = ({
                         : undefined
                 }
                 onPublishTemplate={showTemplateAction ? onPublishTemplate : undefined}
+                publishTemplateDisabledReason={showTemplateAction ? templateBlockedReason : undefined}
                 actionsLeading={
                     consentEnabled ? (
                         <LegalConsentField

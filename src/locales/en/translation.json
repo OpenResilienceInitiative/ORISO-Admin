@@ -2147,6 +2147,7 @@
     "legal.template.send.error": "The template could not be sent.",
     "legal.template.disabled.noDraft": "Save a draft first. It is always the saved version that is sent.",
     "legal.template.disabled.unsaved": "There are unsaved changes. Save the draft so that exactly this version is sent.",
+    "legal.template.disabled.consentToken": "The consent sentence needs the {{token}} placeholder before the template can be sent.",
     "legal.template.send.traeger.title.imprint": "Send imprint template to Träger",
     "legal.template.send.traeger.title.privacy": "Send privacy template to Träger",
     "legal.template.send.traeger.description": "The Träger receive the version saved on {{savedAt}} as a proposal and adopt it themselves. Nothing is published.",

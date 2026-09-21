@@ -1016,7 +1016,12 @@ export const M3RichTextEditor = ({
         ...versionSections.flatMap(sectionRows),
     ];
     const historyUnavailable = versionHistoryState !== 'available';
-    const showVersionControl = !historyUnavailable && (!readOnly || versions.length > 0);
+    // A sectioned menu carries more than the published history (e.g. sent templates and the
+    // "create" rows), so it stays even when that history is loading or missing — the host
+    // then states the history's status inside its section.
+    const showVersionControl = versionSections
+        ? !readOnly || versions.length > 0
+        : !historyUnavailable && (!readOnly || versions.length > 0);
     // Only offer a save when there is something new to keep (hosts that do not
     // report `dirty` keep the action as before).
     const showSaveDraft = !!onSaveDraft && dirty !== false;
@@ -1193,7 +1198,7 @@ export const M3RichTextEditor = ({
                     {languageControl}
                     {consentSlot}
                     {topicSlot}
-                    {historyUnavailable && versionHistoryStatusLabel && (
+                    {historyUnavailable && !versionSections && versionHistoryStatusLabel && (
                         <span className={`${styles.versionMenuHeader} ${styles.versionHistoryStatus}`} role="status">
                             {versionHistoryStatusLabel}
                         </span>
@@ -1269,7 +1274,11 @@ export const M3RichTextEditor = ({
                 </div>
             )}
 
-            {editorEditable && (onPublish || showSaveDraft || actionsLeading || onPublishTemplate) && (
+            {/* The deck card keeps its footer row even while no action is due — a
+                card that shrinks whenever there is nothing to publish or save looks
+                broken (owner feedback 2026-09-21); the read-only footer does the same.
+                Fluid hosts grow with their content and keep the row only with actions. */}
+            {editorEditable && (!fluid || onPublish || showSaveDraft || actionsLeading || onPublishTemplate) && (
                 <>
                     <hr className={styles.divider} />
 

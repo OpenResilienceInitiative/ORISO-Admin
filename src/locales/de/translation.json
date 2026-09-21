@@ -2147,6 +2147,7 @@
     "legal.template.send.error": "Die Vorlage konnte nicht gesendet werden.",
     "legal.template.disabled.noDraft": "Speichern Sie zuerst einen Entwurf. Versendet wird immer die gespeicherte Fassung.",
     "legal.template.disabled.unsaved": "Es gibt ungespeicherte Änderungen. Speichern Sie den Entwurf, damit genau diese Fassung versendet wird.",
+    "legal.template.disabled.consentToken": "Der Einwilligungssatz braucht den Platzhalter {{token}}, bevor die Vorlage gesendet werden kann.",
     "legal.template.send.traeger.title.imprint": "Impressum-Vorlage an Träger senden",
     "legal.template.send.traeger.title.privacy": "Datenschutz-Vorlage an Träger senden",
     "legal.template.send.traeger.description": "Die Träger erhalten die gespeicherte Fassung vom {{savedAt}} als Vorschlag und übernehmen sie selbst. Veröffentlicht wird dabei nichts.",

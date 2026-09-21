@@ -345,6 +345,83 @@ export const NothingNewOnlyTemplateOffered: Story = {
     },
 };
 
+/**
+ * Nothing to do: the live text is unchanged and was already sent as the latest template.
+ * No action is offered, but the footer row keeps its height — the card must not shrink.
+ */
+export const NothingToDoKeepsFooter: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                ...baseHandlers,
+                templateHistory([{ ...sentTemplates[0], content: mainTenant.content.impressum }]),
+                draftSave,
+                http.get('*/service/tenantadmin/:id', () => HttpResponse.json(mainTenant)),
+                http.get(DRAFT_ENDPOINT, () => new HttpResponse(null, { status: 404 })),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByRole('button', { name: /Versionsverlauf|Version history/ }, LOAD);
+        await waitFor(() => expect(canvasElement.querySelector('[class*="_actions_"]')).not.toBeNull(), LOAD);
+        const footer = canvasElement.querySelector('[class*="_actions_"]') as HTMLElement;
+        await expect(within(footer).queryAllByRole('button')).toHaveLength(0);
+        await expect(footer.getBoundingClientRect().height).toBeGreaterThanOrEqual(68);
+    },
+};
+
+/** Live history missing (older TenantService): the sectioned menu stays and says so in its section. */
+export const LiveHistoryUnsupportedKeepsMenu: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/tenantadmin/:id/legal-versions', () => new HttpResponse(null, { status: 404 })),
+                ...withSavedDraft(),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const page = within(canvasElement.ownerDocument.body);
+        await enabledTemplateButton(canvas);
+        await userEvent.click(canvas.getByRole('button', { name: /Versionsverlauf|Version history/ }));
+        const menu = await page.findByRole('menu');
+        await expect(within(menu).getByText(/Neue Vorlage erstellen|Create new template/)).toBeInTheDocument();
+        await expect(
+            within(menu).getByText(/Neues Impressum \(Plattform\) erstellen|Create new imprint \(platform\)/),
+        ).toBeInTheDocument();
+    },
+};
+
+/** A privacy template whose consent sentence lacks {{legal_links}} cannot be sent — same gate as publishing. */
+export const ConsentWithoutTokenBlocksTemplate: Story = {
+    args: { fieldName: ['content', 'privacy'], titleKey: 'privacy.title', legalType: 'privacy' },
+    parameters: {
+        msw: {
+            handlers: [
+                ...baseHandlers,
+                templateHistory([]),
+                http.get('*/service/tenantadmin/:id', () => HttpResponse.json(mainTenant)),
+                http.get('*/service/tenantadmin/0/legal-drafts/PRIVACY', () =>
+                    HttpResponse.json({
+                        ...savedPlatformDraft,
+                        kind: 'PRIVACY',
+                        privacyConsent: { de: 'Ich willige ein.' },
+                    }),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const button = await canvas.findByRole('button', TEMPLATE_ACTION, LOAD);
+        await waitFor(() => expect(canvas.getByRole('button', TEMPLATE_ACTION)).toBeDisabled(), LOAD);
+        await expect(canvas.getByRole('button', TEMPLATE_ACTION)).toHaveAccessibleDescription(/\{\{legal_links\}\}/);
+        await expect(button).toBeTruthy();
+    },
+};
+
 /** Typing shows "Entwurf speichern"; sending a template saves first and sends that saved revision. */
 export const TypingShowsSaveAndSendingSavesFirst: Story = {
     parameters: { msw: { handlers: withSavedDraft() } },
