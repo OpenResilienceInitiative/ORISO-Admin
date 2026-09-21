@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
     canEdit: true,
     can: vi.fn((): boolean => mocks.canEdit),
     imprint: undefined as unknown,
+    storedConsent: undefined as Record<string, string> | undefined,
     activeLanguages: ['de', 'en'] as string[],
     userId: 'user-1' as string | undefined,
     userLoading: false,
@@ -53,6 +54,9 @@ vi.mock('../../../../../hooks/useTenantAppearanceFormData', () => ({
         data: {
             content: {
                 imprint: mocks.imprint,
+                // Absence is meaningful (ADR-021 decision 4): a backend that cannot store the
+                // consent wording omits the key, and the editor then offers no consent input.
+                ...(mocks.storedConsent === undefined ? {} : { privacyConsent: mocks.storedConsent }),
             },
             settings: { activeLanguages: mocks.activeLanguages },
         },
@@ -142,6 +146,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         helpSlot,
         snackbarSlot,
         aboveEditorSlot,
+        actionsLeading,
         belowSlot,
         ...rest
     }: {
@@ -153,6 +158,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         helpSlot?: React.ReactNode;
         snackbarSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
+        actionsLeading?: React.ReactNode;
         belowSlot?: React.ReactNode;
         [prop: string]: unknown;
     }) => (
@@ -169,6 +175,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
             {helpSlot}
             {snackbarSlot}
             {aboveEditorSlot}
+            {actionsLeading}
             {!readOnly && onChange && (
                 <button type="button" onClick={() => onChange('<p>edited</p>')}>
                     edit
@@ -210,6 +217,7 @@ beforeAll(() => {
 
 beforeEach(() => {
     mocks.imprint = DEFAULT_IMPRINT;
+    mocks.storedConsent = undefined;
     mocks.activeLanguages = ['de', 'en'];
     mocks.canEdit = true;
     mocks.userId = 'user-1';
@@ -803,6 +811,63 @@ describe('LegalText — tenant server draft', () => {
         expect(window.localStorage.getItem(localKey)).toBeNull();
     });
 
+    it('hides the collision notice once a source is chosen', async () => {
+        const user = userEvent.setup();
+        window.localStorage.setItem(
+            'oriso-admin.legal.draft.imprint.1:user-1',
+            JSON.stringify({ content: { de: '<p>local</p>' }, savedAt: '2026-09-16T10:00:00Z' }),
+        );
+        mocks.serverDrafts.IMPRINT = {
+            kind: 'IMPRINT',
+            content: { de: '<p>server</p>' },
+            revision: 'server:2',
+            updatedAt: '2026-09-17T10:00:00Z',
+        };
+
+        renderImprint();
+        expect(screen.getByTestId('tenant-draft-source-choice')).toBeInTheDocument();
+
+        // The choice answers the question. Leaving the banner up invites a second
+        // click, and both handlers clear the edits typed in between.
+        await user.click(screen.getByRole('button', { name: 'legal.serverDraft.collision.server' }));
+
+        expect(screen.queryByTestId('tenant-draft-source-choice')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'legal.serverDraft.discard' })).toBeInTheDocument();
+    });
+
+    it('offers no consent input when the deployed backend does not store the wording', () => {
+        // ADR-021 decision 4: an absent `content.privacyConsent` means the backend
+        // cannot keep it, so an input here would be authored and dropped on publish.
+        mocks.storedConsent = undefined;
+
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'privacy']}
+                titleKey="privacy.title"
+                legalType="privacy"
+                placeHolderKey="settings.privacy.placeholder"
+            />,
+        );
+
+        expect(screen.queryByTestId('consent-edit-trigger')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('consent-fixed-addendum')).not.toBeInTheDocument();
+
+        // Same card, a backend that does store it: the input is there.
+        mocks.storedConsent = { de: 'published {{legal_links}}' };
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'privacy']}
+                titleKey="privacy.title"
+                legalType="privacy"
+                placeHolderKey="settings.privacy.placeholder"
+            />,
+        );
+
+        expect(screen.getAllByTestId('consent-edit-trigger').length).toBeGreaterThan(0);
+    });
+
     it('disables save and publish after a GET failure and offers retry', async () => {
         const user = userEvent.setup();
         mocks.serverDraftError = true;
@@ -842,6 +907,8 @@ describe('LegalText — tenant server draft', () => {
 
     it('reloads the exact remote snapshot after a local draft conflicts with a newer server draft', async () => {
         const user = userEvent.setup();
+        // This tenant's backend stores the consent wording, so the consent map travels.
+        mocks.storedConsent = { de: 'published {{legal_links}}' };
         window.localStorage.setItem(
             'oriso-admin.legal.draft.privacy.1:user-1',
             JSON.stringify({
