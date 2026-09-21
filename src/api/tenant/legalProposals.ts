@@ -86,3 +86,28 @@ export const distributeAgencyLegalProposal = (request: DistributeAgencyLegalProp
             FETCH_SUCCESS.CONTENT,
         ],
     }) as Promise<AgencyLegalProposalDistribution>;
+
+/** One template version the platform has sent: the snapshot every recipient received. */
+export interface TenantLegalTemplateVersion {
+    distributionId: string;
+    /** The platform draft revision (`id:version`) that was sent. */
+    sourceRevision: string;
+    createdAt: string;
+    recipientCount: number;
+    content: Record<string, string>;
+    privacyConsent?: Record<string, string>;
+}
+
+/**
+ * The platform's sent template versions of one document, newest first — what the
+ * "Vorlagen" section of the version menu lists. `NO_MATCH` stays distinguishable so
+ * a TenantService without this collection reads as "not available yet", not as
+ * "nothing sent".
+ */
+export const getTenantLegalTemplateHistory = (kind: TenantLegalDraftKind) =>
+    fetchData({
+        url: `${tenantAdminEndpoint}/legal-proposal-distributions?kind=${kind}`,
+        method: FETCH_METHODS.GET,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.NO_MATCH, FETCH_ERRORS.CATCH_ALL_SILENT],
+    }) as Promise<TenantLegalTemplateVersion[]>;

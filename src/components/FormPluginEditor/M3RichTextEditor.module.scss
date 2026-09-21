@@ -708,6 +708,27 @@ $m3-state-active: rgb(39 50 112 / 12%);
     font-weight: 600;
 }
 
+.versionMenuEmpty {
+    display: block;
+    padding: 0 4px;
+    color: rgb(68 71 72 / 80%);
+    font-size: 13px;
+}
+
+// "+ Neue Vorlage erstellen": the section's own way forward, in the action colour.
+.versionMenuCreate {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    color: $m3-primary;
+    font-weight: 500;
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
 .versionMenuItem {
     display: flex;
     gap: 10px;
@@ -1473,6 +1494,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
 // Figma 1285-80496, "Footer Legal Editor": the publish/edit row is 68px tall.
 .actions {
     display: flex;
+    min-width: 0;
     min-height: var(--admin-card-footer-height, 68px);
     gap: 8px;
     align-items: center;
@@ -1507,6 +1529,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
 .textBtn {
     display: inline-flex;
+    // Long labels ("Datenschutzerklärung (Plattform) veröffentlichen") give way
+    // before the row overflows; the full text stays in the title.
+    min-width: 0;
+    flex-shrink: 1;
     gap: 8px;
     align-items: center;
     height: 40px;
@@ -1518,6 +1544,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
     font-weight: 500;
     letter-spacing: 0.1px;
     cursor: pointer;
+
+    > svg {
+        flex-shrink: 0;
+    }
 
     &:hover {
         background: $m3-state-hover;
@@ -1547,6 +1577,14 @@ $m3-state-active: rgb(39 50 112 / 12%);
 // hover title — a disabled <button> itself receives no pointer events.
 .actionWithReason {
     display: inline-flex;
+    min-width: 0;
+}
+
+.actionLabel {
+    overflow: hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .visuallyHidden {

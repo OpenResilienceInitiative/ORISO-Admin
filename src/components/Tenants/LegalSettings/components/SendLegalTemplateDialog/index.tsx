@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { notification } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -80,6 +80,7 @@ export const SendLegalTemplateDialog = ({
     onClose,
 }: SendLegalTemplateDialogProps) => {
     const { t, i18n } = useTranslation();
+    const queryClient = useQueryClient();
     const [audience, setAudience] = useState<TenantLegalProposalAudience>('ALL');
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [sending, setSending] = useState(false);
@@ -128,6 +129,8 @@ export const SendLegalTemplateDialog = ({
                 count = result?.recipientAgencyIds?.length ?? 0;
             }
             notification.success({ message: t(`legal.template.send.${level}.sent`, { count }), duration: 5 });
+            // The sent version belongs in the version menu's template section at once.
+            queryClient.invalidateQueries({ queryKey: ['legal-template-history'] });
             onClose();
         } catch (error) {
             const code = errorCode(error);

@@ -162,7 +162,9 @@ export const PersistedServerDraft: Story = {
         });
         storyCanvas.style.width = originalWidth;
 
-        await expect(canvas.getByRole('button', { name: 'Entwurf speichern' })).toBeVisible();
+        // The loaded draft IS the saved one: nothing to save, but it differs from the
+        // live text, so publishing is offered.
+        await expect(canvas.queryByRole('button', { name: 'Entwurf speichern' })).not.toBeInTheDocument();
         await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
         await expect(canvas.queryByRole('button', { name: /teilen|share/i })).not.toBeInTheDocument();
     },
@@ -186,6 +188,10 @@ export const ConflictRefresh: Story = {
     parameters: { msw: { handlers: conflictHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        // "Entwurf speichern" appears once there is something to save.
+        await canvas.findByRole('button', { name: 'Veröffentlichen' }, { timeout: 8000 });
+        await userEvent.click(canvasElement.querySelector('.ProseMirror') as HTMLElement);
+        await userEvent.keyboard(' Geändert.');
         await userEvent.click(await canvas.findByRole('button', { name: 'Entwurf speichern' }));
         await expect(await canvas.findByText('Der Entwurf wurde zwischenzeitlich geändert')).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Gespeicherte Fassung laden' })).not.toBeInTheDocument();

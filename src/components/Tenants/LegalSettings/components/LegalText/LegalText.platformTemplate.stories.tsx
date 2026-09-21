@@ -9,6 +9,7 @@ import type { TenantLegalDraft } from '../../../../../api/tenant/legalDrafts';
 import type {
     DistributeAgencyLegalProposal,
     DistributeTenantLegalProposal,
+    TenantLegalTemplateVersion,
 } from '../../../../../api/tenant/legalProposals';
 import { LegalText } from './index';
 
@@ -74,9 +75,40 @@ const baseHandlers = [
 
 /** Records every distribution request so a play function can assert what was sent. */
 const sent: DistributeTenantLegalProposal[] = [];
+/** Records every draft save, to prove "Vorlage veröffentlichen" saves before it sends. */
+const savedDrafts: unknown[] = [];
+
+/** Two template versions already sent — what the "Impressum (Vorlagen)" section lists. */
+const sentTemplates: TenantLegalTemplateVersion[] = [
+    {
+        distributionId: 'd-2',
+        sourceRevision: '9:1',
+        createdAt: '2026-09-18T14:05:00+02:00',
+        recipientCount: 3,
+        content: { de: '<h2>Muster-Impressum</h2><p>Zweite Fassung.</p>' },
+    },
+    {
+        distributionId: 'd-1',
+        sourceRevision: '9:0',
+        createdAt: '2026-09-02T10:30:00+02:00',
+        recipientCount: 1,
+        content: { de: '<h2>Muster-Impressum</h2><p>Erste Fassung.</p>' },
+    },
+];
+
+const templateHistory = (versions: TenantLegalTemplateVersion[] = sentTemplates) =>
+    http.get(DISTRIBUTE_ENDPOINT, () => HttpResponse.json(versions));
+
+const draftSave = http.put(DRAFT_ENDPOINT, async ({ request }) => {
+    const body = (await request.json()) as Pick<TenantLegalDraft, 'content'>;
+    savedDrafts.push(body);
+    return HttpResponse.json({ ...savedPlatformDraft, content: body.content, revision: '9:3' });
+});
 
 const withSavedDraft = (distribute: 'created' | 'conflict' = 'created') => [
     ...baseHandlers,
+    templateHistory(),
+    draftSave,
     http.get('*/service/tenantadmin/:id', ({ params }) =>
         String(params.id) === String(MAIN_TENANT_ID)
             ? HttpResponse.json(mainTenant)
@@ -101,6 +133,7 @@ const meta = {
             // A platform administrator: tenant-admin role on tenant 0.
             setStoryAuth([UserRole.TenantAdmin], PLATFORM_DRAFT_OWNER);
             sent.length = 0;
+            savedDrafts.length = 0;
             return withAdminProviders(() => (
                 <div style={{ minHeight: 820, padding: 16 }}>
                     <Story />
@@ -129,8 +162,6 @@ const LOAD = { timeout: 8000 };
 
 const TEMPLATE_ACTION = { name: /Vorlage veröffentlichen|Publish as template/ };
 
-const templateButton = (canvas: ReturnType<typeof within>) => canvas.findByRole('button', TEMPLATE_ACTION, LOAD);
-
 /**
  * Waits for the CURRENT, enabled template action and returns it. The card re-keys its
  * editor once the admin's user id has loaded, which replaces the footer buttons — a
@@ -141,21 +172,111 @@ const enabledTemplateButton = async (canvas: ReturnType<typeof within>) => {
     return canvas.getByRole('button', TEMPLATE_ACTION);
 };
 
-/** A saved platform draft: the template action sits directly before Publish and is enabled. */
+const PUBLISH_PLATFORM = { name: /Impressum \(Plattform\) veröffentlichen|Publish imprint \(platform\)/ };
+const SAVE_DRAFT = { name: /Entwurf speichern|Save draft/ };
+
+const footerLabels = (button: HTMLElement) =>
+    within(button.closest('[class*="actions"]') as HTMLElement)
+        .getAllByRole('button')
+        .map((b) => b.textContent?.trim());
+
+/**
+ * A saved draft nobody has decided about yet: new against the live text AND against the
+ * last sent template, so both publish actions are offered. Nothing to save — the draft
+ * is saved — so "Entwurf speichern" is not shown.
+ */
 export const SavedDraftReadyToSend: Story = {
     parameters: { msw: { handlers: withSavedDraft() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const button = await enabledTemplateButton(canvas);
-        // Order in the footer: template, publish, save draft.
-        const labels = within(button.closest('[class*="actions"]') as HTMLElement)
-            .getAllByRole('button')
-            .map((b) => b.textContent?.trim());
-        await expect(labels.slice(-3)).toEqual([
+        await expect(footerLabels(button)).toEqual([
             expect.stringMatching(/Vorlage veröffentlichen|Publish as template/),
-            expect.stringMatching(/Veröffentlichen|Publish/),
-            expect.stringMatching(/Entwurf speichern|Save draft/),
+            expect.stringMatching(/Impressum \(Plattform\) veröffentlichen|Publish imprint \(platform\)/),
         ]);
+        await expect(canvas.queryByRole('button', SAVE_DRAFT)).toBeNull();
+    },
+};
+
+/** The version menu: templates and platform versions in their own sections, each with its "create" row. */
+export const VersionMenuSections: Story = {
+    parameters: { msw: { handlers: withSavedDraft() } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const page = within(canvasElement.ownerDocument.body);
+        await enabledTemplateButton(canvas);
+        await userEvent.click(canvas.getByRole('button', { name: /Versionsverlauf|Version history/ }));
+        const menu = await page.findByRole('menu');
+        const texts = within(menu)
+            .getAllByRole('menuitem')
+            .map((item) => item.textContent?.trim());
+        await expect(texts).toEqual([
+            expect.stringMatching(/Aktuelle Fassung \(Entwurf\)|Current version \(draft\)/),
+            expect.stringMatching(/Impressum \(Vorlagen\)|Imprint \(templates\)/),
+            expect.stringMatching(/^(Vorlage 2|Template 2)/),
+            expect.stringMatching(/^(Vorlage 1|Template 1)/),
+            expect.stringMatching(/Neue Vorlage erstellen|Create new template/),
+            expect.stringMatching(/Impressum \(Plattform\)|Imprint \(platform\)/),
+            expect.stringMatching(/Noch nicht|not.*published|Noch kein/i),
+            expect.stringMatching(/Neues Impressum \(Plattform\) erstellen|Create new imprint \(platform\)/),
+        ]);
+        await expect(within(menu).getByText(/Gesendet .* an 3 Träger|Sent .* to 3 providers/)).toBeInTheDocument();
+    },
+};
+
+/** "Neue Vorlage erstellen": the draft is now a template, and the footer offers only that. */
+export const NewTemplateOffersOnlyTemplateAction: Story = {
+    parameters: { msw: { handlers: withSavedDraft() } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const page = within(canvasElement.ownerDocument.body);
+        await enabledTemplateButton(canvas);
+        await userEvent.click(canvas.getByRole('button', { name: /Versionsverlauf|Version history/ }));
+        await userEvent.click(await page.findByText(/Neue Vorlage erstellen|Create new template/));
+        await waitFor(() => expect(canvas.queryByRole('button', PUBLISH_PLATFORM)).toBeNull());
+        await expect(canvas.getByRole('button', TEMPLATE_ACTION)).toBeEnabled();
+        await expect(canvas.getByRole('button', { name: /Versionsverlauf|Version history/ })).toHaveTextContent(
+            /Entwurf: Impressum \(Vorlagen\)|Draft: Imprint \(templates\)/,
+        );
+    },
+};
+
+/** "Neues Impressum (Plattform) erstellen": only the live publish action remains. */
+export const NewPlatformTextOffersOnlyPublish: Story = {
+    parameters: { msw: { handlers: withSavedDraft() } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const page = within(canvasElement.ownerDocument.body);
+        await enabledTemplateButton(canvas);
+        await userEvent.click(canvas.getByRole('button', { name: /Versionsverlauf|Version history/ }));
+        await userEvent.click(
+            await page.findByText(/Neues Impressum \(Plattform\) erstellen|Create new imprint \(platform\)/),
+        );
+        await waitFor(() => expect(canvas.queryByRole('button', TEMPLATE_ACTION)).toBeNull());
+        await expect(canvas.getByRole('button', PUBLISH_PLATFORM)).toBeEnabled();
+    },
+};
+
+/** A narrow card: long action labels are cut with an ellipsis, the full text stays in the title. */
+export const NarrowFooterTruncatesLabels: Story = {
+    parameters: { msw: { handlers: withSavedDraft() } },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 420 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await enabledTemplateButton(canvas);
+        const publish = canvas.getByRole('button', PUBLISH_PLATFORM);
+        await expect(publish).toHaveAttribute(
+            'title',
+            expect.stringMatching(/Impressum \(Plattform\) veröffentlichen|Publish imprint \(platform\)/),
+        );
+        const label = publish.querySelector('[class*="actionLabel"]') as HTMLElement;
+        await expect(getComputedStyle(label).textOverflow).toBe('ellipsis');
     },
 };
 
@@ -200,12 +321,17 @@ export const SendToSelectedTraeger: Story = {
     },
 };
 
-/** No saved draft yet: the action is shown, disabled, and says what is missing. */
-export const NoSavedDraftYet: Story = {
+/**
+ * No draft and nothing typed: the live text is unchanged, so there is nothing to publish
+ * or save. Nothing was sent yet either, so the current text can still go out as a template.
+ */
+export const NothingNewOnlyTemplateOffered: Story = {
     parameters: {
         msw: {
             handlers: [
                 ...baseHandlers,
+                templateHistory([]),
+                draftSave,
                 http.get('*/service/tenantadmin/:id', () => HttpResponse.json(mainTenant)),
                 http.get(DRAFT_ENDPOINT, () => new HttpResponse(null, { status: 404 })),
             ],
@@ -213,26 +339,30 @@ export const NoSavedDraftYet: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const button = await templateButton(canvas);
-        await expect(button).toBeDisabled();
-        await expect(button).toHaveAccessibleDescription(/Speichern Sie zuerst einen Entwurf|Save a draft first/);
+        await enabledTemplateButton(canvas);
+        await expect(canvas.queryByRole('button', PUBLISH_PLATFORM)).toBeNull();
+        await expect(canvas.queryByRole('button', SAVE_DRAFT)).toBeNull();
     },
 };
 
-/** Typing after saving disables sending until the draft is saved again. */
-export const UnsavedChangesBlockSending: Story = {
+/** Typing shows "Entwurf speichern"; sending a template saves first and sends that saved revision. */
+export const TypingShowsSaveAndSendingSavesFirst: Story = {
     parameters: { msw: { handlers: withSavedDraft() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        // Enabled first: the saved draft is loaded and matches the editor.
+        const page = within(canvasElement.ownerDocument.body);
         await enabledTemplateButton(canvas);
+        await expect(canvas.queryByRole('button', SAVE_DRAFT)).toBeNull();
         const editor = canvasElement.querySelector('.ProseMirror') as HTMLElement;
         await userEvent.click(editor);
         await userEvent.keyboard(' Noch nicht gespeichert.');
-        await waitFor(() => expect(canvas.getByRole('button', TEMPLATE_ACTION)).toBeDisabled(), LOAD);
-        await expect(canvas.getByRole('button', TEMPLATE_ACTION)).toHaveAccessibleDescription(
-            /ungespeicherte Änderungen|unsaved changes/,
-        );
+        await expect(await canvas.findByRole('button', SAVE_DRAFT, LOAD)).toBeEnabled();
+        await userEvent.click(await enabledTemplateButton(canvas));
+        await waitFor(() => expect(savedDrafts).toHaveLength(1), LOAD);
+        const dialog = await page.findByRole('dialog', {}, LOAD);
+        await userEvent.click(within(dialog).getByRole('button', { name: /^(Senden|Send)$/ }));
+        await waitFor(() => expect(sent).toHaveLength(1));
+        await expect(sent[0]).toMatchObject({ sourceRevision: '9:3' });
     },
 };
 
