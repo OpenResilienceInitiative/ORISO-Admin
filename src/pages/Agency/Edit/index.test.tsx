@@ -56,6 +56,8 @@ const translations: Record<string, string> = {
     'agency.form.registrationSettings.onlineWarning': 'Beratungsstelle sichtbar machen',
     'agency.form.registrationSettings.onlineDescription': 'Sichtbar stellen',
     'agency.form.registrationSettings.consultants.label': 'Berater:innen hinzufügen',
+    'agency.form.registrationSettings.onlineNeedsConsultant':
+        'Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen.',
     'agency.form.registrationSettings.noTopicConfirm.title': 'Kein Thema ausgewählt',
     'agency.form.registrationSettings.noTopicConfirm.text':
         'Sie haben kein Thema ausgewählt. Möchten Sie die Beratung trotzdem aktivieren?',
@@ -693,5 +695,82 @@ describe('AgencyPageEdit no-topic activation confirm', () => {
         await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ online: true }));
+    });
+});
+
+describe('AgencyPageEdit registration visibility needs a counsellor', () => {
+    const NEEDS_CONSULTANT =
+        'Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen.';
+
+    const saveRegistrationCard = () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+    };
+
+    const renderAgencyWithoutAssignedConsultants = () => {
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT];
+        mocks.hasConsultants = false;
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            offline: true,
+            topics: [TOPIC],
+            tenantId: 7,
+        };
+        renderWithClient(<AgencyPageEdit />);
+    };
+
+    beforeEach(() => {
+        mocks.mutate.mockReset();
+        mocks.navigate.mockReset();
+        mocks.searchTenantData.mockReset();
+        mocks.searchTenantData.mockResolvedValue({ data: [{ id: 7, name: 'Caritas Augsburg' }] });
+        mocks.userRoles = {
+            hasRole: () => true,
+            isSuperAdmin: true,
+            isTechnicalAccount: false,
+            isTenantScopedAdmin: false,
+            roles: [],
+            tenantId: 0,
+        };
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.agencyData = undefined;
+        mocks.createConsultantProps = undefined;
+        mocks.tenantTopics = [];
+        mocks.consultants = [];
+        mocks.hasConsultants = false;
+        mocks.cardSaveOnError.mockReset();
+    });
+
+    it('lets the switch move and names the missing counsellor on save', async () => {
+        const user = setupUser();
+        renderAgencyWithoutAssignedConsultants();
+
+        // The switch used to be disabled here, which stated no reason at all.
+        const toggle = await screen.findByRole('switch', { name: 'Sichtbar stellen' });
+        expect(toggle).not.toBeDisabled();
+        await user.click(toggle);
+        saveRegistrationCard();
+
+        expect(await screen.findByText(NEEDS_CONSULTANT)).toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('goes live once a counsellor is picked, although the backend reports none yet', async () => {
+        const user = setupUser();
+        renderAgencyWithoutAssignedConsultants();
+
+        await screen.findByRole('switch', { name: 'Sichtbar stellen' });
+        await assignConsultant(user);
+        await user.click(screen.getByRole('switch', { name: 'Sichtbar stellen' }));
+        saveRegistrationCard();
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(screen.queryByText(NEEDS_CONSULTANT)).not.toBeInTheDocument();
+        const saved = mocks.mutate.mock.calls[0][0] as { online?: boolean; consultantIds?: unknown[] };
+        expect(saved.online).toBe(true);
+        // The selection must reach the save, otherwise updateAgencyData has nothing to assign.
+        expect(saved.consultantIds).toHaveLength(1);
     });
 });
