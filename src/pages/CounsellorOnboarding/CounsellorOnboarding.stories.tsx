@@ -213,3 +213,110 @@ export const SingleTopicCoverage: Story = {
         }),
     },
 };
+
+/*
+ * ORISO-Admin#1026, slice 6 — the topic permission of the invited person.
+ * CREATE = the "+" adds further topics of the Träger (today's behaviour);
+ * SELECT_EXISTING = only the agency's topics, as toggles, at least one;
+ * NONE = the assigned department is fixed (without one: exactly one agency topic).
+ */
+
+/** Permission CREATE: the "+" is there, as before. */
+export const TopicPermissionCreate: Story = {
+    name: 'Topic permission: CREATE ("+")',
+    args: {
+        client: createStubCounsellorOnboardingClient({ latencyMs: 0, invite: { topicPermission: 'CREATE' } }),
+    },
+    play: async ({ canvas }) => {
+        await expect(await canvas.findByRole('button', { name: 'Thema hinzufügen' })).toBeInTheDocument();
+    },
+};
+
+/** Permission SELECT_EXISTING: the agency's topics as toggles, no "+". */
+export const TopicPermissionSelectExisting: Story = {
+    name: 'Topic permission: SELECT_EXISTING',
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: {
+                topicPermission: 'SELECT_EXISTING',
+                topics: [
+                    { id: 12, name: 'Familienberatung' },
+                    { id: 13, name: 'Schuldnerberatung' },
+                    { id: 14, name: 'Suchtberatung' },
+                ],
+                availableTopics: [],
+            },
+        }),
+    },
+    play: async ({ canvas, userEvent }) => {
+        const group = await canvas.findByTestId('wizard-agency-topics');
+        await expect(canvas.queryByRole('button', { name: 'Thema hinzufügen' })).not.toBeInTheDocument();
+        await expect(within(group).getByRole('checkbox', { name: 'Familienberatung' })).toBeChecked();
+        await userEvent.click(within(group).getByRole('checkbox', { name: 'Suchtberatung' }));
+        await expect(within(group).getByRole('checkbox', { name: 'Suchtberatung' })).toBeChecked();
+    },
+};
+
+/** Permission NONE with an assigned department: shown, selected and fixed. */
+export const TopicPermissionNoneFixed: Story = {
+    name: 'Topic permission: NONE (fixed)',
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: { topicPermission: 'NONE', topics: [{ id: 12, name: 'Familienberatung' }], availableTopics: [] },
+        }),
+    },
+    play: async ({ canvas }) => {
+        const chip = await canvas.findByRole('checkbox', { name: 'Familienberatung' });
+        await expect(chip).toBeChecked();
+        await expect(chip).toBeDisabled();
+        await expect(canvas.queryByRole('button', { name: 'Thema hinzufügen' })).not.toBeInTheDocument();
+    },
+};
+
+/** Permission NONE without an assigned department: exactly one agency topic. */
+export const TopicPermissionNonePickOne: Story = {
+    name: 'Topic permission: NONE (pick one)',
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: { topicPermission: 'NONE', departmentId: null, availableTopics: [] },
+        }),
+    },
+    play: async ({ canvas, userEvent }) => {
+        const group = await canvas.findByTestId('wizard-agency-topics');
+        await userEvent.click(within(group).getByRole('checkbox', { name: 'Familienberatung' }));
+        await userEvent.click(within(group).getByRole('checkbox', { name: 'Schuldnerberatung' }));
+        await expect(within(group).getByRole('checkbox', { name: 'Familienberatung' })).not.toBeChecked();
+        await expect(within(group).getByRole('checkbox', { name: 'Schuldnerberatung' })).toBeChecked();
+    },
+};
+
+/** A single agency topic without the "+": preselected and fixed. */
+export const TopicPermissionSingleAgencyTopic: Story = {
+    name: 'Topic permission: single agency topic',
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: {
+                topicPermission: 'SELECT_EXISTING',
+                departmentId: null,
+                topics: [{ id: 13, name: 'Schuldnerberatung' }],
+                availableTopics: [],
+            },
+        }),
+    },
+    play: async ({ canvas }) => {
+        const chip = await canvas.findByRole('checkbox', { name: 'Schuldnerberatung' });
+        await expect(chip).toBeChecked();
+        await expect(chip).toBeDisabled();
+    },
+};
+
+/** SELECT_EXISTING on a phone (390px). */
+export const TopicPermissionSelectExistingMobile: Story = {
+    ...PHONE_390,
+    name: 'Topic permission: SELECT_EXISTING (390px)',
+    args: TopicPermissionSelectExisting.args,
+};

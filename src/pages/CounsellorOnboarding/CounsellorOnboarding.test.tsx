@@ -252,6 +252,122 @@ describe('CounsellorOnboarding', () => {
         );
     });
 
+    describe('topic permission (ORISO-Admin#1026)', () => {
+        const fillAccount = async (user: ReturnType<typeof userEvent.setup>) => {
+            await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
+            await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        };
+        const topicChip = (name: string) => screen.getByRole('checkbox', { name });
+        const registeredTopics = (client: CounsellorOnboardingClient) =>
+            vi.mocked(client.registerCounsellor).mock.calls[0][1].topicIds;
+
+        it('CREATE keeps the "+" to add further topics of the Träger', async () => {
+            renderFlow(
+                createClient({
+                    getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, topicPermission: 'CREATE' }),
+                }),
+            );
+
+            expect(await screen.findByRole('button', { name: 'counsellorOnboarding.topics.add' })).toBeInTheDocument();
+        });
+
+        it('SELECT_EXISTING offers only the agency topics as toggles — no "+"', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...INVITE,
+                    topicPermission: 'SELECT_EXISTING',
+                    availableTopics: [],
+                }),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+            await fillAccount(user);
+
+            expect(screen.queryByRole('button', { name: 'counsellorOnboarding.topics.add' })).not.toBeInTheDocument();
+            expect(screen.getByText('counsellorOnboarding.topics.selectExistingHint')).toBeInTheDocument();
+            // The assigned department arrives selected; a further agency topic is added by toggling.
+            expect(topicChip('Familienberatung')).toBeChecked();
+            expect(topicChip('Schuldnerberatung')).not.toBeChecked();
+            await user.click(topicChip('Schuldnerberatung'));
+
+            // At least one topic: deselecting everything disables the submit.
+            await user.click(topicChip('Familienberatung'));
+            await user.click(topicChip('Schuldnerberatung'));
+            expect(submit()).toBeDisabled();
+
+            await user.click(topicChip('Schuldnerberatung'));
+            await user.click(submit());
+            await waitFor(() => expect(registeredTopics(client)).toEqual([13]));
+        });
+
+        it('NONE with an assigned department shows it fixed', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...INVITE,
+                    topicPermission: 'NONE',
+                    topics: [{ id: 12, name: 'Familienberatung' }],
+                    availableTopics: [],
+                }),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+            await fillAccount(user);
+
+            expect(screen.queryByRole('button', { name: 'counsellorOnboarding.topics.add' })).not.toBeInTheDocument();
+            expect(screen.getByText('counsellorOnboarding.topics.fixedHint')).toBeInTheDocument();
+            expect(topicChip('Familienberatung')).toBeChecked();
+            expect(topicChip('Familienberatung')).toBeDisabled();
+
+            await user.click(submit());
+            await waitFor(() => expect(registeredTopics(client)).toEqual([12]));
+        });
+
+        it('NONE without an assigned department lets the person pick exactly one agency topic', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...INVITE,
+                    departmentId: null,
+                    topicPermission: 'NONE',
+                    availableTopics: [],
+                }),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+            await fillAccount(user);
+
+            expect(screen.getByText('counsellorOnboarding.topics.pickOneHint')).toBeInTheDocument();
+            expect(topicChip('Familienberatung')).not.toBeChecked();
+            expect(submit()).toBeDisabled();
+
+            await user.click(topicChip('Familienberatung'));
+            await user.click(topicChip('Schuldnerberatung'));
+            expect(topicChip('Familienberatung')).not.toBeChecked();
+            expect(topicChip('Schuldnerberatung')).toBeChecked();
+
+            await user.click(submit());
+            await waitFor(() => expect(registeredTopics(client)).toEqual([13]));
+        });
+
+        it('a single agency topic is preselected and fixed without the "+"', async () => {
+            renderFlow(
+                createClient({
+                    getOnboardingInvite: vi.fn().mockResolvedValue({
+                        ...INVITE,
+                        departmentId: null,
+                        topicPermission: 'SELECT_EXISTING',
+                        topics: [{ id: 13, name: 'Schuldnerberatung' }],
+                        availableTopics: [],
+                    }),
+                }),
+            );
+
+            const chip = await screen.findByRole('checkbox', { name: 'Schuldnerberatung' });
+            expect(chip).toBeChecked();
+            expect(chip).toBeDisabled();
+            expect(screen.queryByRole('button', { name: 'counsellorOnboarding.topics.add' })).not.toBeInTheDocument();
+        });
+    });
+
     it('explains an invite without any selectable topic instead of a silently dead submit', async () => {
         const client = createClient({
             getOnboardingInvite: vi.fn().mockResolvedValue({
