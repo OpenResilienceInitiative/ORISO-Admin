@@ -141,6 +141,8 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     it("renders the template chooser at the row's medium height, like the send button", async () => {
         await renderTenantTab();
 
+        // #1026: a chosen template rests as a "✓ Standard" pill; expanding it shows the split button.
+        await userEvent.setup().click(await screen.findByTitle('Standard'));
         const templatePill = (await screen.findByRole('button', { name: /Standard/ })).closest(
             `.${splitButtonStyles.splitButton}`,
         ) as HTMLElement;
@@ -161,7 +163,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         const wrapper = sendButton.closest(`.${splitButtonStyles.splitButton}`) as HTMLElement;
         // Template auto-selected and Träger-ID auto-suggested — the empty e-mail
         // alone must keep the action gated and in the outlined (non-primary) look.
-        expect(await screen.findByRole('button', { name: /Standard/ })).toBeInTheDocument();
+        expect(await screen.findByTitle('Standard')).toBeInTheDocument();
         expect(sendButton).toBeDisabled();
         // `primary` is an alias of the sheet's `filled` variant since #741.
         expect(wrapper).not.toHaveClass(splitButtonStyles.filled);
@@ -181,7 +183,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         const user = userEvent.setup();
 
         const sendButton = await findSendButton('Anlegen & einladen');
-        expect(await screen.findByRole('button', { name: /Standard/ })).toBeInTheDocument();
+        expect(await screen.findByTitle('Standard')).toBeInTheDocument();
         expect(sendButton).toBeDisabled();
         expect(screen.getByTestId('composer-send-icon')).toHaveAttribute('data-glyph', 'mail');
 
@@ -369,8 +371,9 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         renderTenantTab();
         const user = userEvent.setup();
 
-        const templatePill = await screen.findByRole('button', { name: /Standard/ });
-        await user.click(templatePill);
+        // #1026: expand the collapsed "✓ Standard" pill, then the main segment opens the dialog.
+        await user.click(await screen.findByTitle('Standard'));
+        await user.click(await screen.findByRole('button', { name: /Standard/ }));
 
         expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('list');
     });
@@ -393,8 +396,8 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
         await user.click(await screen.findByRole('menuitem', { name: /^Zweite Vorlage$/ }));
 
-        // Selection is lifted to the tab and re-labels the pill…
-        expect(await screen.findByRole('button', { name: /Zweite Vorlage/ })).toBeInTheDocument();
+        // Selection is lifted to the tab and the field folds into a "✓ Zweite Vorlage" pill (#1026)…
+        expect(await screen.findByTitle('Zweite Vorlage')).toBeInTheDocument();
 
         // …and the send call uses exactly that template.
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
@@ -558,8 +561,8 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         renderTenantTab();
         const user = userEvent.setup();
 
-        await screen.findByRole('button', { name: /Standard/ });
-        await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByTitle('Standard'));
+        await user.click(await screen.findByRole('button', { name: 'Vorlagenmenü öffnen' }));
         await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Standard“/ }));
 
         // The dialog opens straight in create mode with template 7 as the source.

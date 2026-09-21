@@ -351,4 +351,132 @@ describe('InviteCsvImportModal', () => {
         expect(screen.queryByText('a@example.org')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
     });
+
+    describe('#1026 columns (Ziel, Rolle, Vorlage, Themen & Fachbereiche)', () => {
+        const TEMPLATES = [
+            {
+                id: 11,
+                kind: 'COUNSELLOR_INVITE' as const,
+                name: 'Standard',
+                language: 'de',
+                subject: 'S',
+                body: 'B',
+                active: true,
+                createDate: '2026-07-01T00:00:00Z',
+                updateDate: null,
+            },
+        ];
+        const row = (line: number, email: string, extra: Record<string, unknown> = {}) => ({
+            line,
+            email,
+            firstName: 'A',
+            lastName: 'B',
+            missingName: false,
+            ...extra,
+        });
+        const renderAgency = (rows: ReturnType<typeof row>[], props: Record<string, unknown> = {}) =>
+            renderModal(parseResultOf({ rows: rows as never }), {
+                idKind: 'agency',
+                tabRole: 'COUNSELLOR',
+                templates: TEMPLATES,
+                forbiddenFallback: 'x',
+                ...props,
+            });
+
+        it('sends an existing agency, the row template and the topic permission; empty cells use the defaults', async () => {
+            const user = userEvent.setup();
+            renderAgency([
+                row(2, 'anna@x.de', { id: 42, target: 'EXISTING', template: 'standard', topicPermission: 'CREATE' }),
+                row(3, 'bernd@x.de'),
+            ]);
+
+            await user.click(screen.getByRole('button', { name: '2 Empfänger anlegen' }));
+            await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(2));
+            expect(createInvite.mock.calls[0][0]).toMatchObject({
+                recipientEmail: 'anna@x.de',
+                id: 42,
+                target: 'EXISTING',
+                role: 'COUNSELLOR',
+                templateId: 11,
+                topicPermission: 'CREATE',
+            });
+            expect(createInvite.mock.calls[1][0]).toMatchObject({
+                target: 'NEW',
+                role: 'COUNSELLOR',
+                templateId: undefined,
+                topicPermission: 'NONE',
+            });
+        });
+
+        it('shows the new columns with readable values', () => {
+            renderAgency([row(2, 'anna@x.de', { id: 42, target: 'EXISTING', topicPermission: 'SELECT_EXISTING' })]);
+            const cells = rowCells('anna@x.de');
+            expect(cells.getByText('Bestehend')).toBeInTheDocument();
+            expect(cells.getByText('Berater:in')).toBeInTheDocument();
+            expect(cells.getByText('wie in der Leiste')).toBeInTheDocument();
+            expect(cells.getByText('Darf weitere Fachbereiche auswählen')).toBeInTheDocument();
+        });
+
+        it.each([
+            [
+                { template: 'Gibtsnicht' },
+                'Die Vorlage „Gibtsnicht“ gibt es hier nicht. Aktive Vorlagen: Standard (Zeile 2).',
+            ],
+            [
+                { role: 'AGENCY_ADMIN' },
+                'Die Rolle „BST-Admin“ kann hier erst eingeladen werden, wenn das Rollen-Backend (#1026 Schritt 3) da ist (Zeile 2).',
+            ],
+        ])('holds back a row with a context problem and says why in German (%o)', (extra, reason) => {
+            renderAgency([row(2, 'anna@x.de', extra), row(3, 'bernd@x.de')]);
+            expect(rowCells('anna@x.de').getByText('Abgelehnt')).toBeInTheDocument();
+            expect(rowCells('anna@x.de').getByText(reason)).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeInTheDocument();
+        });
+
+        it('refuses a role the viewer may not hand out', () => {
+            renderAgency([row(2, 'anna@x.de', { role: 'TENANT_ADMIN' })], { viewerScope: 'agency' });
+            expect(
+                rowCells('anna@x.de').getByText('Die Rolle „Träger-Admin“ dürfen Sie nicht vergeben (Zeile 2).'),
+            ).toBeInTheDocument();
+        });
+
+        it('rejects a topic permission for a non-counsellor role', () => {
+            renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { topicPermission: 'NONE' })] as never }));
+            expect(
+                rowCells('anna@x.de').getByText(
+                    '„Themen & Fachbereiche“ gilt nur für Berater:innen — bitte leer lassen (Zeile 2).',
+                ),
+            ).toBeInTheDocument();
+        });
+
+        it('holds back "bestehend" on the Träger tab until slice 4', () => {
+            renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { id: 9, target: 'EXISTING' })] as never }));
+            expect(
+                rowCells('anna@x.de').getByText(/bestehenden Träger einladen geht erst mit #1026 Schritt 4/),
+            ).toBeInTheDocument();
+        });
+
+        it('spells out parse-level rejections next to the chip', () => {
+            renderModal(
+                parseResultOf({
+                    rejected: [
+                        {
+                            line: 4,
+                            cells: ['c@x.de'],
+                            reason: 'invalidTopicPermission',
+                            email: 'c@x.de',
+                            firstName: '',
+                            lastName: '',
+                        },
+                    ],
+                }),
+                { idKind: 'agency' },
+            );
+            expect(
+                screen.getByText(
+                    'Unbekannter Wert bei „Themen & Fachbereiche“ — erlaubt sind NONE, SELECT_EXISTING, CREATE, true oder false (Zeile 4)',
+                ),
+            ).toBeInTheDocument();
+        });
+    });
 });

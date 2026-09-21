@@ -151,29 +151,30 @@
     width: 176px;
 }
 
-/* "Themen selbst": label + M3Switch in the row's 56px outlined band. */
-.toggleField {
-    display: inline-flex;
-    height: 56px;
-    box-sizing: border-box;
-    flex: 0 0 auto;
-    align-items: center;
-    padding: 0 4px 0 16px;
-    border: 1px solid var(--m3-outline-variant, #c4c7c8);
-    border-radius: 28px;
-    color: var(--m3-on-surface-variant, #444748);
-    gap: 4px;
-
-    &:focus-visible {
-        outline: 2px solid var(--m3-primary, #a5000a);
-        outline-offset: 2px;
-    }
+/* "Themen & Fachbereiche": wide enough for the longest option title. */
+.topicsField {
+    width: 280px;
 }
 
-.toggleLabel {
-    font-size: 14px;
+/* Option with a one-line explanation below its title (#1026 topic permission). */
+.optionWithHint {
+    /* Inline, so the select's selected-check (a ::before on the option) stays beside the title. */
+    display: inline-flex;
+    flex-direction: column;
+    vertical-align: top;
+    white-space: normal;
+}
+
+.optionTitle {
     font-weight: 500;
-    letter-spacing: 0.1px;
-    line-height: 20px;
-    white-space: nowrap;
+}
+
+.optionHint {
+    /* Inherits the option colour (white on the selected pill), a step quieter. */
+    color: inherit;
+    font-weight: 400;
+    opacity: 0.8;
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
 }

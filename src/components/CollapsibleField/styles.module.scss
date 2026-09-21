@@ -51,11 +51,22 @@
     }
 }
 
+.pill:disabled {
+    cursor: not-allowed;
+    opacity: 0.38;
+
+    &:after {
+        display: none;
+    }
+}
+
 .check {
     flex-shrink: 0;
 }
 
 .label {
+    /* A value pill ("✓ Carrier invite text only for …") truncates; the full value is the tooltip. */
+    max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
 }

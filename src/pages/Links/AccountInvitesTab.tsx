@@ -17,7 +17,9 @@ import {
 } from '../../api/accountInvites/accountInvites';
 import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
+import type { AllocationMode } from '../../api/idAllocation/idAllocation';
 import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
+import { searchInviteAgencies } from '../../api/agency/searchInviteAgencies';
 import { Modal } from '../../components/Modal';
 import {
     extractApiErrorMessageOrNull,
@@ -44,6 +46,12 @@ interface AccountInvitesTabProps {
  * DRAFT can be sent, EMAIL_SENT can be resent, and both can be revoked.
  * Terminal states (ACCEPTED/EXPIRED/REVOKED/SUPERSEDED) are not selectable.
  */
+/** Agency allocation mode of one CSV row: an existing agency, a pinned new number, or the next free one. */
+const csvAgencyAllocationMode = (row: InviteCsvCreateRow): AllocationMode => {
+    if (row.target === 'EXISTING') return 'EXISTING';
+    return row.id != null ? 'MANUAL' : 'AUTO';
+};
+
 const isBulkSelectable = (invite: AccountInviteDTO) =>
     invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
 
@@ -318,6 +326,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [smtpFailureMessageFor],
     );
 
+    const searchAgenciesForPicker = useCallback(
+        async (query: string, { tenantId }: { tenantId?: number }) =>
+            (await searchInviteAgencies(query, tenantId)).map(({ id, name, topics }) => ({ id, name, topics })),
+        [],
+    );
+
     const onCreate = useCallback(
         async (values: InviteComposerValues): Promise<InviteSubmitOutcome> => {
             setSubmitting(true);
@@ -333,7 +347,14 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 // exist yet, so there is no topic to route to and provisioning
                 // assigns routing when the agency is created on accept.
                 let departmentId: number | undefined;
-                if (targetRole === 'COUNSELLOR' && values.agencyId != null) {
+                // #1026 slice 2: an EXISTING agency is checked by the backend itself
+                // (UserService#1212) — it adopts the agency's only topic, and refuses
+                // what the caller may not invite into. No client-side guessing then.
+                if (
+                    targetRole === 'COUNSELLOR' &&
+                    values.agencyId != null &&
+                    values.agencyIdAllocationMode !== 'EXISTING'
+                ) {
                     let agencyResponse = null;
                     try {
                         agencyResponse = await getAgencyDataById(String(values.agencyId));
@@ -468,7 +489,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 lastName: row.lastName,
                 recipientEmail: row.recipientEmail,
                 targetRole,
-                templateId: csvImport.sendMode === 'direct' ? selectedTemplateId ?? activeTemplates[0]?.id : undefined,
+                // #1026: a row may name its own template ("Vorlage"); empty = the bar's.
+                templateId:
+                    csvImport.sendMode === 'direct'
+                        ? row.templateId ?? selectedTemplateId ?? activeTemplates[0]?.id
+                        : undefined,
+                // Not sent yet: `row.role` (always this tab's role until backend slice 3)
+                // and `row.topicPermission` (backend slice 6) — parsed and validated only.
                 // The file's id column addresses the id space of this tab. On the Träger
                 // tab it IS the tenant id (batch-assigned in the preview). Every other tab
                 // invites into the admin's own tenant, and its id column addresses the
@@ -481,7 +508,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     : {
                           tenantId: currentTenantId,
                           agencyId: row.id,
-                          agencyIdAllocationMode: row.id != null ? 'MANUAL' : 'AUTO',
+                          // #1026 slice 2 (UserService#1212): "bestehend" invites into the
+                          // agency with that id — checked, not reserved.
+                          agencyIdAllocationMode: csvAgencyAllocationMode(row),
                       }),
             });
         },
@@ -703,6 +732,10 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 // tab a tenant admin is pinned to their own Träger. "Rolle" shows
                 // the tab's role (disabled placeholder until the backend takes it).
                 defaultRole={targetRole === 'TENANT_ADMIN' ? 'TENANT_ADMIN' : 'COUNSELLOR'}
+                // #1026 slice 2: the Beratungsstelle type-ahead finds existing agencies
+                // (AgencyService#307). The Träger type-ahead stays unwired until slice 4
+                // (inviting into an existing Träger).
+                searchAgencies={includeAgencyField ? searchAgenciesForPicker : undefined}
                 includeAgencyField={includeAgencyField}
                 ownTenant={currentTenantId != null ? { id: currentTenantId } : undefined}
                 viewerScope={isTenantInvite || isSuperAdmin ? 'platform' : 'tenant'}
@@ -769,6 +802,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     createInvite={createCsvInvite}
                     forbiddenFallback={forbiddenFallbackFor(targetRole)}
                     idKind={isTenantInvite ? 'tenant' : 'agency'}
+                    tabRole={targetRole === 'TENANT_ADMIN' ? 'TENANT_ADMIN' : 'COUNSELLOR'}
+                    templates={activeTemplates}
+                    viewerScope={isTenantInvite || isSuperAdmin ? 'platform' : 'tenant'}
                     parseResult={csvImport.result}
                     takenTenantIds={isTenantInvite ? takenTenantIds : undefined}
                     onClose={() => setCsvImport(null)}

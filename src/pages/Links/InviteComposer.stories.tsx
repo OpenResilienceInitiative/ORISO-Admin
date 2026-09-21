@@ -239,6 +239,9 @@ const PILL = {
     lastName: either('Name bearbeiten', 'Edit Name'),
     tenant: either('Träger bearbeiten', 'Edit Tenant'),
     agency: either('Beratungsstelle bearbeiten', 'Edit Agency'),
+    role: either('Rolle bearbeiten', 'Edit Role'),
+    topics: either('Themen & Fachbereiche bearbeiten', 'Edit Topics & departments'),
+    template: either('Vorlage bearbeiten', 'Edit Template'),
 };
 const FIELD = {
     email: /^(E-Mail|E-mail)$/,
@@ -246,7 +249,7 @@ const FIELD = {
     tenant: /^(Träger|Tenant)$/,
     agency: /^(Beratungsstelle|Agency)$/,
     role: /^(Rolle|Role)$/,
-    topics: /^(Themen selbst|Own topics)$/,
+    topics: /^(Themen & Fachbereiche|Topics & departments)$/,
 };
 const SEND = {
     invite: either('Einladen', 'Invite'),
@@ -272,7 +275,91 @@ export const Empty: Story = {
         const canvas = within(canvasElement);
         await expect(await canvas.findByRole('button', { name: SEND.createAndInvite })).toBeDisabled();
         await expect(canvas.getByRole('combobox', { name: FIELD.tenant })).toBeEnabled();
-        await expect(canvas.getByRole('switch', { name: FIELD.topics })).toBeEnabled();
+        // Preselected values are chosen values: Rolle, Themen & Fachbereiche and Vorlage rest as pills.
+        await expect(canvas.getByRole('button', { name: PILL.role })).toHaveTextContent(/Berater:in|Counsellor/);
+        await expect(canvas.getByRole('button', { name: PILL.topics })).toHaveTextContent(
+            /Keine weiteren Fachbereiche|No further departments/,
+        );
+        await expect(canvas.getByRole('button', { name: PILL.template })).toHaveTextContent(/Berater:innen-Willkommen/);
+    },
+};
+
+/**
+ * Frank's P0 from the Pre-Dev review, as a test: fill E-Mail, Vorname and Name,
+ * leave the field, open „Rolle" and pick another role — every value survives,
+ * and the bar is the SAME DOM (no remount). The row also gives back horizontal
+ * scroll it no longer needs, so the filled pills stay in view on the left
+ * instead of sliding out and looking deleted.
+ */
+export const RoleSelectKeepsValues: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const bar = canvasElement.querySelector('[class*="composer"]');
+        await userEvent.type(await canvas.findByRole('textbox', { name: FIELD.email }), PREFILLED.recipientEmail);
+        await userEvent.type(canvas.getByRole('textbox', { name: FIELD.firstName }), PREFILLED.firstName);
+        await userEvent.type(canvas.getByRole('textbox', { name: /^Name$/ }), PREFILLED.lastName);
+        await userEvent.tab();
+
+        await userEvent.click(canvas.getByRole('button', { name: PILL.role }));
+        await userEvent.click(await body.findByTitle(/BST-Admin|Agency admin/));
+
+        const pill = await canvas.findByRole('button', { name: PILL.role });
+        await expect(pill).toHaveTextContent(/BST-Admin|Agency admin/);
+        await expect(canvasElement.querySelector('[class*="composer"]')).toBe(bar);
+        const values = [...canvasElement.querySelectorAll<HTMLInputElement>('input[name]')].map((input) => input.value);
+        await expect(values).toEqual([PREFILLED.recipientEmail, PREFILLED.firstName, PREFILLED.lastName]);
+        await expect(canvas.getByRole('button', { name: PILL.email })).toHaveAccessibleName(
+            new RegExp(PREFILLED.recipientEmail.replace('.', '\\.')),
+        );
+    },
+};
+
+/**
+ * The scroll half of the P0: on a narrow screen the row is scrolled to the
+ * right while Name is being typed. Leaving the field collapses E-Mail, Vorname
+ * and Name — the row must give back the scroll so their pills stay visible.
+ */
+export const RowScrollSettlesAfterCollapse: Story = {
+    decorators: [
+        (Story) => (
+            <div style={{ width: 900 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.type(await canvas.findByRole('textbox', { name: FIELD.email }), PREFILLED.recipientEmail);
+        await userEvent.type(canvas.getByRole('textbox', { name: FIELD.firstName }), PREFILLED.firstName);
+        await userEvent.type(canvas.getByRole('textbox', { name: /^Name$/ }), PREFILLED.lastName);
+        const scroller = canvasElement.querySelector<HTMLElement>('[class*="scroller"]') as HTMLElement;
+        // Frank's state: the row sits scrolled to the right while the focus is still in Name.
+        scroller.scrollLeft = 400;
+        await expect(scroller.scrollLeft).toBeGreaterThan(0);
+        await userEvent.click(canvas.getByRole('combobox', { name: FIELD.tenant }));
+        await userEvent.keyboard('{Escape}');
+
+        const emailPill = await canvas.findByRole('button', { name: PILL.email });
+        await waitFor(() =>
+            expect(emailPill.getBoundingClientRect().left).toBeGreaterThanOrEqual(
+                scroller.getBoundingClientRect().left - 1,
+            ),
+        );
+    },
+};
+
+/**
+ * „Themen & Fachbereiche" open: three options, each with its one-line
+ * explanation. The default for a new invite is „Keine weiteren Fachbereiche".
+ */
+export const TopicSelectOpen: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('button', { name: PILL.topics }));
+        await body.findByText(/Wählt selbst aus den vorhandenen Fachbereichen/);
+        await body.findByText(/Darf neue Themen anlegen/);
     },
 };
 
@@ -318,6 +405,7 @@ export const AllValid: Story = {
     args: { initialValues: PREFILLED },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        // All eight fields, Rolle, Themen & Fachbereiche and Vorlage included, are pills.
         await Promise.all(Object.values(PILL).map((pill) => canvas.findByRole('button', { name: pill })));
         await expect(canvas.getByRole('button', { name: SEND.invite })).toBeEnabled();
     },
@@ -445,33 +533,36 @@ export const AgencyAdminLocked: Story = {
         await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toHaveValue(
             'Caritas Suchtberatung Freiburg · 101',
         );
-        await expect(canvas.getByText(/^(Berater:in|Counsellor)$/)).toBeInTheDocument();
+        // Only one role on offer: the Rolle pill is fixed on „Berater:in".
+        await expect(canvas.getByRole('button', { name: PILL.role })).toHaveTextContent(/Berater:in|Counsellor/);
+        await expect(canvas.getByRole('button', { name: PILL.role })).toBeDisabled();
         await expect(canvas.getByRole('button', { name: SEND.invite })).toBeInTheDocument();
     },
 };
 
-/** Role switch: „Träger-Admin" hides the Beratungsstelle (and „Themen selbst"); „BST-Admin" hides only the toggle. */
+/** Role switch: „Träger-Admin" hides the Beratungsstelle (and „Themen & Fachbereiche"); „BST-Admin" hides only the topics. */
 export const RoleHidesFields: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
-        await userEvent.click(await canvas.findByRole('combobox', { name: FIELD.role }));
+        await userEvent.click(await canvas.findByRole('button', { name: PILL.role }));
         await userEvent.click(await body.findByTitle(/BST-Admin|Agency admin/));
-        await waitFor(() => expect(canvas.queryByRole('switch', { name: FIELD.topics })).not.toBeInTheDocument());
+        await waitFor(() => expect(canvas.queryByRole('button', { name: PILL.topics })).not.toBeInTheDocument());
         await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toBeInTheDocument();
 
-        await userEvent.click(canvas.getByRole('combobox', { name: FIELD.role }));
+        await userEvent.click(canvas.getByRole('button', { name: PILL.role }));
         await userEvent.click(await body.findByTitle(/Träger-Admin|Tenant admin/));
         await waitFor(() => expect(canvas.queryByRole('combobox', { name: FIELD.agency })).not.toBeInTheDocument());
     },
 };
 
-/** In the app (not a story prop): Rolle and „Themen selbst" are disabled placeholders with a tooltip. */
+/** In the app (not a story prop): Rolle and „Themen & Fachbereiche" are disabled pills with a tooltip. */
 export const PlaceholdersAsInApp: Story = {
     args: { placeholdersEnabled: false },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('switch', { name: FIELD.topics })).toBeDisabled();
+        await expect(await canvas.findByRole('button', { name: PILL.topics })).toBeDisabled();
+        await expect(canvas.getByRole('button', { name: PILL.role })).toBeDisabled();
     },
 };
 
@@ -543,7 +634,7 @@ export const SubmitsComposedValues: Story = {
                     tenantTarget: 'existing',
                     agencyId: 101,
                     agencyTarget: 'existing',
-                    topicsSelfManaged: true,
+                    topicPermission: 'NONE',
                     sendMode: 'direct',
                 }),
             ),
@@ -594,8 +685,9 @@ export const TenantTabTemplateDialogOpen: Story = {
     parameters: { msw: { handlers: defaultHandlers } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const templatePill = await canvas.findByRole('button', { name: /Träger-Willkommen/ });
-        await userEvent.click(templatePill);
+        // The chosen template rests as a pill; expanding it shows the split button, whose main segment opens the dialog.
+        await userEvent.click(await canvas.findByRole('button', { name: PILL.template }));
+        await userEvent.click(await canvas.findByRole('button', { name: /Träger-Willkommen/ }));
     },
 };
 

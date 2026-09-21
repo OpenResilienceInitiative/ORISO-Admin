@@ -7,7 +7,22 @@ import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { extractApiErrorMessageOrNull } from '../../utils/extractApiErrorMessage';
 import { ListingTable } from '../../components/ListingTable';
 import { Modal, DialogButton } from '../../components/Modal';
-import { assignBatchTenantIds, type InviteCsvRejectionReason, type ParseInviteCsvResult } from './csv/parseInviteCsv';
+import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
+import {
+    assignBatchTenantIds,
+    type InviteCsvRejectionReason,
+    type InviteCsvTarget,
+    type ParseInviteCsvResult,
+} from './csv/parseInviteCsv';
+import {
+    DEFAULT_TOPIC_PERMISSION,
+    ROLE_LABEL_KEYS,
+    rolesForViewer,
+    TOPIC_PERMISSION_LABEL_KEYS,
+    type InviteRole,
+    type InviteViewerScope,
+    type TopicPermission,
+} from './inviteModel';
 import styles from './inviteCsvImport.module.scss';
 
 /**
@@ -18,8 +33,16 @@ export interface InviteCsvCreateRow {
     recipientEmail: string;
     firstName?: string;
     lastName?: string;
-    /** Resolved 4th-column id: the file's value, or the batch-assigned one on the Träger tab. */
+    /** Resolved ID column: the file's value, or the batch-assigned one on the Träger tab. */
     id?: number;
+    /** #1026 "Ziel": EXISTING = invite into the unit with that id (agency space: UserService#1212). */
+    target: InviteCsvTarget;
+    /** #1026 "Rolle" — always the tab's role today (other roles are held back until backend slice 3). */
+    role: InviteRole;
+    /** #1026 "Vorlage" resolved to a template of this tab; `undefined` = the one chosen in the bar. */
+    templateId?: number;
+    /** #1026 "Themen & Fachbereiche" (counsellors only) — sent once backend slice 6 lands. */
+    topicPermission?: TopicPermission;
 }
 
 /**
@@ -39,6 +62,11 @@ interface ImportRow {
     lastName: string;
     /** Explicit id from the file; frozen to the assigned id once created. */
     explicitId?: number;
+    target?: InviteCsvTarget;
+    role?: InviteRole;
+    /** "Vorlage" as written in the file. */
+    template?: string;
+    topicPermission?: TopicPermission;
     rejectedReason?: InviteCsvRejectionReason;
     state: RowState;
     /** `failed` flavour: the backend rejected the id with 409. */
@@ -63,6 +91,12 @@ export interface InviteCsvImportModalProps {
     idKind: InviteCsvIdKind;
     /** `tenant` kind: ids the auto-population must skip (existing tenants + active invites). */
     takenTenantIds?: Set<number>;
+    /** #1026: the role this tab invites — the default for an empty "Rolle" cell. */
+    tabRole?: InviteRole;
+    /** #1026: who imports — limits the roles a row may hand out. */
+    viewerScope?: InviteViewerScope;
+    /** #1026: active templates of this tab, for the "Vorlage" column (by name or number). */
+    templates?: InviteEmailTemplateDTO[];
     /** Creates ONE invite; rejections (e.g. a 409 `Response`) mark the row as failed. */
     createInvite: (row: InviteCsvCreateRow) => Promise<void>;
     /**
@@ -91,6 +125,9 @@ export const InviteCsvImportModal = ({
     parseResult,
     idKind,
     takenTenantIds,
+    tabRole = idKind === 'tenant' ? 'TENANT_ADMIN' : 'COUNSELLOR',
+    viewerScope = 'platform',
+    templates = [],
     createInvite,
     forbiddenFallback,
     onClose,
@@ -105,13 +142,17 @@ export const InviteCsvImportModal = ({
                 firstName: row.firstName,
                 lastName: row.lastName,
                 explicitId: row.id,
+                target: row.target,
+                role: row.role,
+                template: row.template,
+                topicPermission: row.topicPermission,
                 state: 'pending',
             })),
             ...parseResult.rejected.map<ImportRow>((row) => ({
                 line: row.line,
-                email: (row.cells[0] ?? '').trim(),
-                firstName: (row.cells[1] ?? '').trim(),
-                lastName: (row.cells[2] ?? '').trim(),
+                email: row.email ?? (row.cells[0] ?? '').trim(),
+                firstName: row.firstName ?? (row.cells[1] ?? '').trim(),
+                lastName: row.lastName ?? (row.cells[2] ?? '').trim(),
                 rejectedReason: row.reason,
                 state: 'pending',
             })),
@@ -119,7 +160,88 @@ export const InviteCsvImportModal = ({
     );
     const [running, setRunning] = useState(false);
 
-    const importableRows = useMemo(() => rows.filter((row) => !row.rejectedReason), [rows]);
+    const isTenantId = idKind === 'tenant';
+    const idLabel = isTenantId
+        ? t('links.accountInvites.tenantId', 'Träger-ID')
+        : t('links.accountInvites.agencyId', 'Beratungsstellen-ID');
+    const roleLabel = (role: InviteRole) => t(...ROLE_LABEL_KEYS[role]);
+    const allowedRoles = rolesForViewer(viewerScope);
+
+    const findTemplate = (raw: string) => {
+        const wanted = raw.trim().toLowerCase();
+        return templates.find(
+            (template) => template.name.trim().toLowerCase() === wanted || String(template.id) === wanted,
+        );
+    };
+
+    /*
+     * #1026 checks that need the tab's context (its role, its templates, what
+     * the backend already accepts). A row with an issue stays visible with the
+     * reason in plain German and is left out of the batch.
+     */
+    const rowIssue = (row: ImportRow): string | undefined => {
+        const role = row.role ?? tabRole;
+        const line = { line: row.line };
+        if (!allowedRoles.includes(role)) {
+            return t(
+                'links.csvImport.issue.roleNotAllowed',
+                'Die Rolle „{{role}}“ dürfen Sie nicht vergeben (Zeile {{line}}).',
+                {
+                    role: roleLabel(role),
+                    ...line,
+                },
+            );
+        }
+        if (role !== tabRole) {
+            return t(
+                'links.csvImport.issue.rolePending',
+                'Die Rolle „{{role}}“ kann hier erst eingeladen werden, wenn das Rollen-Backend (#1026 Schritt 3) da ist (Zeile {{line}}).',
+                { role: roleLabel(role), ...line },
+            );
+        }
+        if (row.topicPermission != null && role !== 'COUNSELLOR') {
+            return t(
+                'links.csvImport.issue.topicsOnlyCounsellor',
+                '„Themen & Fachbereiche“ gilt nur für Berater:innen — bitte leer lassen (Zeile {{line}}).',
+                line,
+            );
+        }
+        if (row.target === 'EXISTING' && isTenantId) {
+            return t(
+                'links.csvImport.issue.existingTenantPending',
+                'In einen bestehenden Träger einladen geht erst mit #1026 Schritt 4 — bitte „neu“ eintragen (Zeile {{line}}).',
+                line,
+            );
+        }
+        if (row.template != null && findTemplate(row.template) == null) {
+            return t(
+                'links.csvImport.issue.unknownTemplate',
+                'Die Vorlage „{{template}}“ gibt es hier nicht. Aktive Vorlagen: {{names}} (Zeile {{line}}).',
+                {
+                    template: row.template,
+                    names: templates.map((template) => template.name).join(', ') || '—',
+                    ...line,
+                },
+            );
+        }
+        return undefined;
+    };
+
+    const issueByLine = new Map(
+        rows
+            .filter((row) => !row.rejectedReason)
+            .flatMap((row) => {
+                const issue = rowIssue(row);
+                return issue ? [[row.line, issue] as const] : [];
+            }),
+    );
+
+    const importableRows = useMemo(
+        () => rows.filter((row) => !row.rejectedReason && !issueByLine.has(row.line)),
+        // issueByLine is derived from rows + the tab's stable context.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [rows, tabRole, viewerScope, templates, idKind],
+    );
 
     // Effective id per line. Träger tab: the explicit file value, else the next free
     // id of the batch sequence — deleting a row re-packs the autos, created rows are
@@ -161,12 +283,18 @@ export const InviteCsvImportModal = ({
             const id = assigned.get(row.line);
             patchRow(row.line, { state: 'creating', conflict: false, emailTaken: false, forbidden: false });
             try {
+                const role = row.role ?? tabRole;
                 // eslint-disable-next-line no-await-in-loop
                 await createInvite({
                     recipientEmail: row.email,
                     firstName: row.firstName.trim() || undefined,
                     lastName: row.lastName.trim() || undefined,
                     id,
+                    target: row.target ?? 'NEW',
+                    role,
+                    templateId: row.template != null ? findTemplate(row.template)?.id : undefined,
+                    topicPermission:
+                        role === 'COUNSELLOR' ? row.topicPermission ?? DEFAULT_TOPIC_PERMISSION : undefined,
                 });
                 created += 1;
                 patchRow(row.line, { state: 'created', explicitId: id });
@@ -226,11 +354,6 @@ export const InviteCsvImportModal = ({
         }
     };
 
-    const isTenantId = idKind === 'tenant';
-    const idLabel = isTenantId
-        ? t('links.accountInvites.tenantId', 'Träger-ID')
-        : t('links.accountInvites.agencyId', 'Beratungsstellen-ID');
-
     // Four mutually exclusive failure flavours — an if-chain instead of nested
     // ternaries, and `forbidden` first: a role rejection is not a fixable data
     // problem, so it must not be mislabelled as an id or address collision.
@@ -247,21 +370,55 @@ export const InviteCsvImportModal = ({
         return t('links.csvImport.status.failed', 'Fehlgeschlagen');
     };
 
+    const rejectionText = (row: ImportRow): string | undefined => {
+        const line = { line: row.line };
+        switch (row.rejectedReason) {
+            case 'invalidEmail':
+                return t('links.csvImport.reason.invalidEmail', 'Ungültige E-Mail-Adresse (Zeile {{line}})', line);
+            case 'invalidId':
+                return t('links.csvImport.reason.invalidId', 'Ungültige {{idLabel}} (Zeile {{line}})', {
+                    idLabel,
+                    ...line,
+                });
+            case 'invalidMode':
+                return t(
+                    'links.csvImport.reason.invalidMode',
+                    'Unbekanntes Ziel — erlaubt sind „neu“ oder „bestehend“ (Zeile {{line}})',
+                    line,
+                );
+            case 'existingWithoutId':
+                return t(
+                    'links.csvImport.reason.existingWithoutId',
+                    '„bestehend“ braucht eine {{idLabel}} (Zeile {{line}})',
+                    { idLabel, ...line },
+                );
+            case 'invalidRole':
+                return t(
+                    'links.csvImport.reason.invalidRole',
+                    'Unbekannte Rolle — erlaubt sind Berater:in, BST-Admin oder Träger-Admin (Zeile {{line}})',
+                    line,
+                );
+            case 'invalidTopicPermission':
+                return t(
+                    'links.csvImport.reason.invalidTopicPermission',
+                    'Unbekannter Wert bei „Themen & Fachbereiche“ — erlaubt sind NONE, SELECT_EXISTING, CREATE, true oder false (Zeile {{line}})',
+                    line,
+                );
+            default:
+                return issueByLine.get(row.line);
+        }
+    };
+
     const statusTag = (row: ImportRow) => {
-        if (row.rejectedReason) {
-            const reason =
-                row.rejectedReason === 'invalidEmail'
-                    ? t('links.csvImport.reason.invalidEmail', 'Ungültige E-Mail-Adresse (Zeile {{line}})', {
-                          line: row.line,
-                      })
-                    : t('links.csvImport.reason.invalidId', 'Ungültige {{idLabel}} (Zeile {{line}})', {
-                          idLabel,
-                          line: row.line,
-                      });
+        const reason = rejectionText(row);
+        if (reason) {
+            // The reason is spelled out under the chip, not only in a tooltip:
+            // the admin has to fix the FILE and needs to read what is wrong.
             return (
-                <Tooltip title={reason}>
+                <span className={styles.rejection}>
                     <Tag color="red">{t('links.csvImport.status.rejected', 'Abgelehnt')}</Tag>
-                </Tooltip>
+                    <span className={styles.rejectionReason}>{reason}</span>
+                </span>
             );
         }
         switch (row.state) {
@@ -341,6 +498,49 @@ export const InviteCsvImportModal = ({
             },
         },
         {
+            title: t('links.csvImport.col.target', 'Ziel'),
+            key: 'target',
+            render: (_: unknown, row: ImportRow) => {
+                if (row.rejectedReason) return '—';
+                return row.target === 'EXISTING'
+                    ? t('links.csvImport.target.existing', 'Bestehend')
+                    : t('links.csvImport.target.new', 'Neu');
+            },
+        },
+        {
+            title: t('links.composer.role', 'Rolle'),
+            key: 'role',
+            render: (_: unknown, row: ImportRow) => (row.rejectedReason ? '—' : roleLabel(row.role ?? tabRole)),
+        },
+        {
+            title: t('links.composer.template', 'Vorlage'),
+            key: 'template',
+            render: (_: unknown, row: ImportRow) => {
+                if (row.rejectedReason) return '—';
+                if (row.template == null) {
+                    return (
+                        <span className={styles.autoId}>
+                            {t('links.csvImport.templateFromBar', 'wie in der Leiste')}
+                        </span>
+                    );
+                }
+                return findTemplate(row.template)?.name ?? row.template;
+            },
+        },
+        {
+            title: t('links.composer.topics', 'Themen & Fachbereiche'),
+            key: 'topicPermission',
+            render: (_: unknown, row: ImportRow) => {
+                if (row.rejectedReason || (row.role ?? tabRole) !== 'COUNSELLOR') return '—';
+                const value = row.topicPermission ?? DEFAULT_TOPIC_PERMISSION;
+                return (
+                    <Tooltip title={t(...TOPIC_PERMISSION_LABEL_KEYS[value].description)}>
+                        <span>{t(...TOPIC_PERMISSION_LABEL_KEYS[value].title)}</span>
+                    </Tooltip>
+                );
+            },
+        },
+        {
             title: '',
             key: 'remove',
             render: (_: unknown, row: ImportRow) =>
@@ -361,7 +561,7 @@ export const InviteCsvImportModal = ({
         <Modal
             titleKey="links.csvImport.title"
             icon={<UploadFileOutlinedIcon />}
-            width={880}
+            width={1180}
             footer={
                 <div className={styles.footer}>
                     <DialogButton disabled={running} onClick={onClose}>
@@ -382,12 +582,12 @@ export const InviteCsvImportModal = ({
             <p className={styles.columnsHint}>
                 {isTenantId
                     ? t(
-                          'links.csvImport.columnsHint',
-                          'Spaltenreihenfolge: E-Mail, Vorname, Name, Träger-ID (optional) — leere Träger-IDs werden automatisch vergeben.',
+                          'links.csvImport.columnsHintV2',
+                          'Spalten: E-Mail, Vorname, Name, Träger-ID, Ziel (neu), Rolle, Vorlage — nur E-Mail ist Pflicht. Leere Träger-IDs werden automatisch vergeben; eine leere Vorlage nimmt die aus der Leiste.',
                       )
                     : t(
-                          'links.csvImport.columnsHintAgency',
-                          'Spaltenreihenfolge: E-Mail, Vorname, Name, Beratungsstellen-ID (optional) — eine angegebene ID muss noch frei sein, leere Felder werden beim Anlegen automatisch vergeben.',
+                          'links.csvImport.columnsHintAgencyV2',
+                          'Spalten: E-Mail, Vorname, Name, Beratungsstellen-ID, Ziel (neu/bestehend), Rolle, Vorlage, Themen & Fachbereiche (NONE/SELECT_EXISTING/CREATE oder true/false) — nur E-Mail ist Pflicht. „bestehend“ lädt in die Beratungsstelle mit dieser Nummer ein; bei „neu“ muss eine angegebene Nummer frei sein, leere werden beim Anlegen vergeben.',
                       )}
             </p>
             <ListingTable<ImportRow>

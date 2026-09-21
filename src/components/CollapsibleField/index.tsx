@@ -4,15 +4,24 @@ import { useTranslation } from 'react-i18next';
 import styles from './styles.module.scss';
 
 export interface CollapsibleFieldProps {
-    /** Field label shown in the collapsed pill ("✓ E-Mail"). */
+    /** Field label shown in the collapsed pill ("✓ E-Mail") and used in its accessible name. */
     label: string;
+    /**
+     * Text in the collapsed pill instead of `label` — select-type fields show
+     * their chosen VALUE ("✓ Berater:in"), since the label alone would hide it.
+     */
+    pillText?: string;
+    /** The pill cannot expand (a disabled placeholder field). */
+    disabled?: boolean;
+    /** Marks the slot so a parent can tell which field received focus (`data-field-key`). */
+    fieldKey?: string;
     /** Collapsed = the pill replaces the field. The caller decides (valid + blurred). */
     collapsed: boolean;
     /** Pill click: the caller flips `collapsed` back to false. */
     onExpand: () => void;
     /** The current value, read out with the pill and shown as its tooltip — the pill hides it visually. */
     valueSummary?: string;
-    /** The full field. Its first `input` gets focus, caret at the end, after expanding. */
+    /** The full field. Its first `input` (else first button) gets focus after expanding; caret at the end. */
     children: ReactNode;
     className?: string;
 }
@@ -23,6 +32,38 @@ const prefersReducedMotion = () =>
     typeof window !== 'undefined' &&
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Nearest ancestor that scrolls horizontally (the invite row's scroller). */
+const horizontalScroller = (element: HTMLElement): HTMLElement | null => {
+    let node = element.parentElement;
+    while (node) {
+        const { overflowX } = window.getComputedStyle(node);
+        if (overflowX === 'auto' || overflowX === 'scroll') return node;
+        node = node.parentElement;
+    }
+    return null;
+};
+
+/**
+ * After a width change, give back horizontal scroll the row no longer needs
+ * (#1026, Frank's "values cleared" report): a row scrolled to the right keeps
+ * its `scrollLeft` while fields to the left shrink into pills, so the filled
+ * pills slide out of view on the left and look deleted. Scroll back as far as
+ * the focused control stays fully visible.
+ */
+const settleRowScroll = (slot: HTMLElement) => {
+    const scroller = horizontalScroller(slot);
+    if (!scroller || scroller.scrollLeft === 0) return;
+    const active = document.activeElement as HTMLElement | null;
+    const scrollerRect = scroller.getBoundingClientRect();
+    let target = 0;
+    if (active && scroller.contains(active)) {
+        // Keep the focused control's right edge inside the visible band.
+        const activeRight = active.getBoundingClientRect().right - scrollerRect.left + scroller.scrollLeft;
+        target = Math.max(0, activeRight - scroller.clientWidth + 8);
+    }
+    if (target < scroller.scrollLeft) scroller.scrollLeft = target;
+};
 
 const CheckGlyph = () => (
     <svg className={styles.check} width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
@@ -42,6 +83,9 @@ export const CollapsibleField = ({
     collapsed,
     onExpand,
     valueSummary,
+    pillText,
+    disabled = false,
+    fieldKey,
     children,
     className,
 }: CollapsibleFieldProps) => {
@@ -78,10 +122,15 @@ export const CollapsibleField = ({
                 } catch {
                     // Input types without a selection API keep the browser's caret.
                 }
+            } else {
+                slot.querySelector<HTMLElement>('button:not([disabled])')?.focus();
             }
         }
 
-        if (from === undefined || from === to || to === 0 || prefersReducedMotion()) return undefined;
+        if (from === undefined || from === to || to === 0 || prefersReducedMotion()) {
+            settleRowScroll(slot);
+            return undefined;
+        }
 
         slot.style.width = `${from}px`;
         slot.style.overflow = 'hidden';
@@ -89,17 +138,26 @@ export const CollapsibleField = ({
         slot.getBoundingClientRect();
         slot.style.transition = WIDTH_TRANSITION;
         slot.style.width = `${to}px`;
-        slot.addEventListener('transitionend', clearInline, { once: true });
-        const fallback = window.setTimeout(clearInline, 320);
+        const finish = () => {
+            clearInline();
+            settleRowScroll(slot);
+        };
+        slot.addEventListener('transitionend', finish, { once: true });
+        const fallback = window.setTimeout(finish, 320);
         return () => {
             window.clearTimeout(fallback);
-            slot.removeEventListener('transitionend', clearInline);
+            slot.removeEventListener('transitionend', finish);
             clearInline();
         };
     }, [collapsed]);
 
     return (
-        <div ref={slotRef} className={classNames(styles.slot, className)} data-collapsed={collapsed || undefined}>
+        <div
+            ref={slotRef}
+            className={classNames(styles.slot, className)}
+            data-collapsed={collapsed || undefined}
+            data-field-key={fieldKey}
+        >
             {collapsed && (
                 <button
                     aria-label={
@@ -111,12 +169,13 @@ export const CollapsibleField = ({
                             : t('collapsibleField.edit', '{{label}} bearbeiten', { label })
                     }
                     className={styles.pill}
+                    disabled={disabled}
                     title={valueSummary}
                     type="button"
                     onClick={onExpand}
                 >
                     <CheckGlyph />
-                    <span className={styles.label}>{label}</span>
+                    <span className={styles.label}>{pillText ?? label}</span>
                 </button>
             )}
             {/* The field stays MOUNTED while collapsed (only hidden): its element,

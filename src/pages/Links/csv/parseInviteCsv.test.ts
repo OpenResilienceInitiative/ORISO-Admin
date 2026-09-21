@@ -71,7 +71,7 @@ describe('parseInviteCsv', () => {
         const result = parseInviteCsv('not-an-email,Peter,Maier\nmaria@example.org,Maria,Huber');
 
         expect(result.headerSkipped).toBe(false);
-        expect(result.rejected).toEqual([
+        expect(result.rejected).toMatchObject([
             { line: 1, cells: ['not-an-email', 'Peter', 'Maier'], reason: 'invalidEmail' },
         ]);
         expect(result.rows).toHaveLength(1);
@@ -106,7 +106,7 @@ describe('parseInviteCsv', () => {
         const result = parseInviteCsv('maria@example.org,Maria,Huber\nnot-an-email,Peter,Maier\n@broken,Ida,Klein');
 
         expect(result.rows).toHaveLength(1);
-        expect(result.rejected).toEqual([
+        expect(result.rejected).toMatchObject([
             { line: 2, cells: ['not-an-email', 'Peter', 'Maier'], reason: 'invalidEmail' },
             { line: 3, cells: ['@broken', 'Ida', 'Klein'], reason: 'invalidEmail' },
         ]);
@@ -126,8 +126,71 @@ describe('parseInviteCsv', () => {
     });
 
     it('returns empty results for an empty file', () => {
-        expect(parseInviteCsv('')).toEqual({ rows: [], rejected: [], delimiter: ',', headerSkipped: false });
+        expect(parseInviteCsv('')).toMatchObject({ rows: [], rejected: [], delimiter: ',', headerSkipped: false });
         expect(parseInviteCsv('\uFEFF\n\n').rows).toEqual([]);
+    });
+});
+
+describe('parseInviteCsv — #1026 columns (Ziel, Rolle, Vorlage, Themen & Fachbereiche)', () => {
+    const HEADER = 'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche';
+
+    it('reads all eight columns of the example file', () => {
+        const result = parseInviteCsv(
+            `${HEADER}\r\nanna@x.de;Anna;Beispiel;42;bestehend;Berater:in;Standard;SELECT_EXISTING\r\nbernd@x.de;Bernd;Muster;;neu;BST-Admin;;\r\n`,
+        );
+        expect(result.rejected).toEqual([]);
+        expect(result.rows[0]).toMatchObject({
+            id: 42,
+            target: 'EXISTING',
+            role: 'COUNSELLOR',
+            template: 'Standard',
+            topicPermission: 'SELECT_EXISTING',
+        });
+        expect(result.rows[1]).toMatchObject({ target: 'NEW', role: 'AGENCY_ADMIN' });
+        expect(result.rows[1].template).toBeUndefined();
+        expect(result.rows[1].topicPermission).toBeUndefined();
+    });
+
+    it.each([
+        ['true', 'CREATE'],
+        ['FALSE', 'NONE'],
+        ['ja', 'CREATE'],
+        ['nein', 'NONE'],
+        ['none', 'NONE'],
+        ['Select_Existing', 'SELECT_EXISTING'],
+        ['CREATE', 'CREATE'],
+    ])('accepts topic permission %s as %s', (raw, expected) => {
+        const result = parseInviteCsv(`a@x.de;A;B;;;;;${raw}`);
+        expect(result.rows[0].topicPermission).toBe(expected);
+    });
+
+    it.each([
+        ['a@x.de;A;B;;vielleicht', 'invalidMode'],
+        ['a@x.de;A;B;;bestehend', 'existingWithoutId'],
+        ['a@x.de;A;B;;;Chef', 'invalidRole'],
+        ['a@x.de;A;B;;;;;manchmal', 'invalidTopicPermission'],
+    ])('rejects %s with %s', (line, reason) => {
+        const result = parseInviteCsv(line);
+        expect(result.rows).toEqual([]);
+        expect(result.rejected[0]).toMatchObject({ line: 1, reason, email: 'a@x.de', firstName: 'A', lastName: 'B' });
+    });
+
+    it('matches columns by header, in any order and with columns left out', () => {
+        const result = parseInviteCsv('E-Mail;Rolle;Themen;Vorname\r\nc@x.de;Träger-Admin;false;Carla\r\n');
+        expect(result.columns).toEqual(['email', 'firstName', 'role', 'topicPermission']);
+        expect(result.rows[0]).toMatchObject({
+            firstName: 'Carla',
+            lastName: '',
+            role: 'TENANT_ADMIN',
+            topicPermission: 'NONE',
+        });
+        expect(result.rows[0].id).toBeUndefined();
+    });
+
+    it('keeps reading an old four-column file with a custom ID header by position', () => {
+        const result = parseInviteCsv('E-Mail;Vorname;Name;Träger-Nummer\r\nd@x.de;D;E;7\r\n');
+        expect(result.rows[0]).toMatchObject({ id: 7 });
+        expect(result.rows[0].target).toBeUndefined();
     });
 });
 

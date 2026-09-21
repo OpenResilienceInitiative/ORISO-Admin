@@ -28,7 +28,13 @@ export { agencyIdNextFreeEndpoint, idAllocationValidationEndpoint, tenantIdNextF
 /** FREE = assignable · RESERVED = held by an open invite · ASSIGNED = consumed by a real entity. */
 export type IdAllocationState = 'FREE' | 'RESERVED' | 'ASSIGNED';
 
-export type AllocationMode = 'AUTO' | 'MANUAL';
+/**
+ * `AUTO` / `MANUAL` reserve a NEW id; `EXISTING` (#1026 slice 2, UserService#1212)
+ * names a unit that already exists — nothing is reserved, the backend checks it.
+ * Only the agency space accepts `EXISTING` so far; the tenant space answers 400
+ * until slice 4.
+ */
+export type AllocationMode = 'AUTO' | 'MANUAL' | 'EXISTING';
 
 export type NextFreeIdDirection = 'up' | 'down';
 

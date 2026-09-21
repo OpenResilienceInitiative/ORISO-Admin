@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
-import { userEvent, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import type { IdAllocationClient } from '../../api/idAllocation/idAllocation';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
-import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
+import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
+import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import { InviteComposer, type InviteSendMode } from './InviteComposer';
 import { InviteCsvImportModal } from './InviteCsvImportModal';
 
@@ -174,4 +175,66 @@ export const PreviewModalAgencyIds: Story = {
             onCreated={() => {}}
         />
     ),
+};
+
+/**
+ * #1026 — the CSV is the main invite path, so every new field has a column:
+ * Ziel (neu/bestehend), Rolle, Vorlage and Themen & Fachbereiche (enum or
+ * plain true/false). The preview shows them per row; rows the backend cannot
+ * take yet, or that name an unknown template, stay visible with the reason in
+ * plain German and are left out of the batch.
+ */
+const COUNSELLOR_TEMPLATES: InviteEmailTemplateDTO[] = [
+    {
+        id: 11,
+        kind: 'COUNSELLOR_INVITE',
+        name: 'Berater:innen-Willkommen',
+        language: 'de',
+        subject: 'Ihr Zugang',
+        body: 'Hallo {{firstName}}: {{inviteLink}}',
+        active: true,
+        createDate: '2026-07-01T10:00:00Z',
+        updateDate: null,
+    },
+];
+
+const ALL_COLUMNS_CSV = [
+    'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche',
+    'anna.beispiel@traeger.de;Anna;Beispiel;42;bestehend;Berater:in;;NONE',
+    'bernd.muster@traeger.de;Bernd;Muster;;neu;Berater:in;Berater:innen-Willkommen;SELECT_EXISTING',
+    'carla.test@traeger.de;Carla;Test;42;bestehend;Berater:in;;true',
+    'dora.admin@traeger.de;Dora;Admin;42;bestehend;BST-Admin;;',
+    'emil.vorlage@traeger.de;Emil;Vorlage;;neu;Berater:in;Sommerfest;false',
+    'fritz.fehler@traeger.de;Fritz;Fehler;;bestehend;Berater:in;;',
+    'gabi.wert@traeger.de;Gabi;Wert;;neu;Berater:in;;vielleicht',
+].join('\r\n');
+
+export const PreviewModalAllColumns: Story = {
+    render: () => (
+        <InviteCsvImportModal
+            forbiddenFallback="Ihre Rolle ist nicht berechtigt, Berater*innen einzuladen."
+            idKind="agency"
+            tabRole="COUNSELLOR"
+            templates={COUNSELLOR_TEMPLATES}
+            viewerScope="tenant"
+            createInvite={async () => {
+                await new Promise((resolve) => {
+                    setTimeout(resolve, 400);
+                });
+            }}
+            parseResult={parseInviteCsv(ALL_COLUMNS_CSV)}
+            onClose={() => {}}
+            onCreated={() => {}}
+        />
+    ),
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await body.findByText('anna.beispiel@traeger.de');
+        await expect(body.getAllByText('Bestehend').length).toBeGreaterThan(0);
+        await expect(body.getByText('Darf weitere Themen anlegen')).toBeInTheDocument();
+        await expect(body.getByText(/Die Vorlage „Sommerfest“ gibt es hier nicht/)).toBeInTheDocument();
+        await expect(body.getByText(/„bestehend“ braucht eine/)).toBeInTheDocument();
+        // Three good rows go into the batch; four are held back with their reason.
+        await expect(body.getByRole('button', { name: /3 Empfänger anlegen|3 recipients/ })).toBeInTheDocument();
+    },
 };

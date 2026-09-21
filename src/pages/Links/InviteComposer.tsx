@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FocusEvent, type ReactNode } from 'react';
 import { DeleteOutlined, DownloadOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
 import { message, Upload, type MenuProps } from 'antd';
+import type { DefaultOptionType } from 'antd/es/select';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import SelectAllIcon from '@mui/icons-material/SelectAll';
@@ -21,7 +22,6 @@ import {
     type IdUnitSearch,
     type UseIdAllocationResult,
 } from '../../components/IdAllocationField';
-import { M3Switch } from '../../components/M3Switch';
 import { M3Tooltip } from '../../components/M3Tooltip';
 import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
@@ -31,6 +31,16 @@ import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
 import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
 import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as FileSaveIcon } from '../../resources/img/svg/oriso/file_save_24px.svg';
+import {
+    DEFAULT_TOPIC_PERMISSION,
+    ROLE_LABEL_KEYS,
+    rolesForViewer,
+    TOPIC_PERMISSION_LABEL_KEYS,
+    TOPIC_PERMISSIONS,
+    type InviteRole,
+    type InviteViewerScope,
+    type TopicPermission,
+} from './inviteModel';
 import styles from './inviteComposer.module.scss';
 
 /**
@@ -47,24 +57,11 @@ export type InviteSendMode = 'direct' | 'createOnly';
  */
 export type InviteSubmitOutcome = boolean | 'emailTaken';
 
-/** Role the invited person gets (#1026 "Rolle" field). */
-export type InviteRole = 'COUNSELLOR' | 'AGENCY_ADMIN' | 'TENANT_ADMIN';
-
-/**
- * Who is filling the bar (#1026 visibility rule): the platform admin edits
- * everything, a tenant admin is locked to their own Träger, an agency admin to
- * their own Träger AND Beratungsstelle and may only invite counsellors.
- */
-export type InviteViewerScope = 'platform' | 'tenant' | 'agency';
+export type { InviteRole, InviteViewerScope, TopicPermission } from './inviteModel';
 
 /** Whether an ID field points at a unit that already exists or one the invite creates. */
 export type InviteUnitTarget = 'new' | 'existing';
-
-export const INVITE_ROLES: InviteRole[] = ['COUNSELLOR', 'AGENCY_ADMIN', 'TENANT_ADMIN'];
-
-/** Roles a viewer may hand out ("a higher unit invites a lower one"). */
-export const rolesForViewer = (viewerScope: InviteViewerScope): InviteRole[] =>
-    viewerScope === 'agency' ? ['COUNSELLOR'] : INVITE_ROLES;
+export { INVITE_ROLES, rolesForViewer } from './inviteModel';
 
 export interface InviteComposerValues {
     recipientEmail: string;
@@ -85,8 +82,11 @@ export interface InviteComposerValues {
     sendMode: InviteSendMode;
     /** #1026: role of the invited person (placeholder until the backend takes it). */
     role?: InviteRole;
-    /** #1026: counsellors only — may add topics themselves (placeholder until the backend takes it). */
-    topicsSelfManaged?: boolean;
+    /**
+     * #1026: counsellors only — "Themen & Fachbereiche" (backend field
+     * `topicPermission`, sent once backend slice 6 lands).
+     */
+    topicPermission?: TopicPermission;
     /** #1026: whether the Träger / Beratungsstelle already exists or is created by this invite. */
     tenantTarget?: InviteUnitTarget;
     agencyTarget?: InviteUnitTarget;
@@ -197,23 +197,42 @@ export interface InviteComposerProps {
     tenantAllowCreate?: boolean;
     /** Prefill (stories, later: resend/edit). Valid prefilled fields start collapsed. */
     initialValues?: Partial<
-        Pick<InviteComposerValues, 'recipientEmail' | 'firstName' | 'lastName' | 'role' | 'topicsSelfManaged'>
+        Pick<InviteComposerValues, 'recipientEmail' | 'firstName' | 'lastName' | 'role' | 'topicPermission'>
     > & { tenant?: IdUnitOption; agency?: IdUnitOption };
     className?: string;
 }
 
-type CollapsibleKey = 'email' | 'firstName' | 'lastName' | 'tenant' | 'agency';
+type CollapsibleKey = 'email' | 'firstName' | 'lastName' | 'role' | 'tenant' | 'agency' | 'topics' | 'template';
+
+/**
+ * Select-type fields (#1026): they have no typing phase, so they collapse as
+ * soon as a value is chosen and whenever focus moves on to another field.
+ */
+const SELECT_KEYS: CollapsibleKey[] = ['role', 'topics', 'template'];
+
+/** Select option with a one-line explanation under its title (`description` rides along in the option data). */
+const renderOptionWithHint = (option: { label?: ReactNode; data: DefaultOptionType }): ReactNode => {
+    const description = typeof option.data.description === 'string' ? option.data.description : undefined;
+    return description ? (
+        <span className={styles.optionWithHint}>
+            <span className={styles.optionTitle}>{option.label}</span>
+            <span className={styles.optionHint}>{description}</span>
+        </span>
+    ) : (
+        option.label
+    );
+};
 
 const isNewUnit = (allocation: UseIdAllocationResult) => allocation.mode !== 'existing';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * AUTO/MANUAL reserve a NEW id; an existing unit carries no allocation mode —
- * the id alone names it (#1026, the existing-unit backend is built in parallel).
+ * AUTO/MANUAL reserve a NEW id; an existing unit is sent as `EXISTING` with its
+ * id (#1026 slice 2, UserService#1212 — agency space; tenant space from slice 4).
  */
-const allocationModeOf = (allocation: UseIdAllocationResult): AllocationMode | undefined => {
-    if (allocation.mode === 'existing') return undefined;
+const allocationModeOf = (allocation: UseIdAllocationResult): AllocationMode => {
+    if (allocation.mode === 'existing') return 'EXISTING';
     return allocation.mode === 'auto' ? 'AUTO' : 'MANUAL';
 };
 
@@ -311,7 +330,11 @@ export const InviteComposer = ({
         const wanted = initialValues?.role ?? defaultRole ?? roleOptions[0];
         return roleOptions.includes(wanted) ? wanted : roleOptions[0];
     });
-    const [topicsSelfManaged, setTopicsSelfManaged] = useState(initialValues?.topicsSelfManaged ?? true);
+    // Which select-type field's menu is open (opened directly from its pill).
+    const [openSelect, setOpenSelect] = useState<CollapsibleKey | null>(null);
+    const [topicPermission, setTopicPermission] = useState<TopicPermission>(
+        initialValues?.topicPermission ?? DEFAULT_TOPIC_PERMISSION,
+    );
 
     // Träger tab (#570): the Träger-ID is allocated, not guessed — visible Auto
     // default, deliberate manual mode with authoritative availability states.
@@ -387,6 +410,9 @@ export const InviteComposer = ({
         lastName: lastName.trim().length > 0,
         tenant: tenantAllowCreate ? tenantAllocation.canSubmit : tenantAllocation.mode === 'existing',
         agency: agencyAllocation.canSubmit,
+        role: true,
+        topics: true,
+        template: selectedTemplate != null,
     };
     const [collapsedKeys, setCollapsedKeys] = useState<Set<CollapsibleKey>>(() => {
         const initial = new Set<CollapsibleKey>();
@@ -396,6 +422,8 @@ export const InviteComposer = ({
         if (initialValues?.lastName?.trim()) initial.add('lastName');
         if (initialValues?.tenant && !tenantLocked) initial.add('tenant');
         if (initialValues?.agency && !agencyLocked) initial.add('agency');
+        // A preselected role / topic option / template is a chosen value: pill from the start.
+        SELECT_KEYS.forEach((key) => initial.add(key));
         return initial;
     });
     const isCollapsed = (key: CollapsibleKey) => collapsedKeys.has(key) && fieldValid[key];
@@ -425,10 +453,19 @@ export const InviteComposer = ({
             ? t('idAllocationField.new', 'Neu')
             : t('links.composer.newWithNumber', 'Neu, Nr. {{id}}', { id: allocation.value });
     };
-    const roleLabels: Record<InviteRole, string> = {
-        COUNSELLOR: t('links.composer.role.counsellor', 'Berater:in'),
-        AGENCY_ADMIN: t('links.composer.role.agencyAdmin', 'BST-Admin'),
-        TENANT_ADMIN: t('links.composer.role.tenantAdmin', 'Träger-Admin'),
+    const roleLabel = (value: InviteRole) => t(...ROLE_LABEL_KEYS[value]);
+    const topicTitle = (value: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[value].title);
+    const topicDescription = (value: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[value].description);
+    const collapse = (key: CollapsibleKey) => setCollapsedKeys((keys) => new Set(keys).add(key));
+
+    // Select-type fields fold back into their pill as soon as focus moves on to
+    // another control of the bar. Their dropdowns render in a portal outside
+    // the row, so choosing an option never counts as "moving on".
+    const handleRowFocus = (event: FocusEvent<HTMLDivElement>) => {
+        const focusedKey = (event.target as HTMLElement).closest<HTMLElement>('[data-field-key]')?.dataset.fieldKey;
+        SELECT_KEYS.forEach((key) => {
+            if (key !== focusedKey && !collapsedKeys.has(key)) collapse(key);
+        });
     };
     const placeholderTooltip = placeholdersEnabled ? '' : t('links.composer.comingWith1026', 'Kommt mit #1026');
 
@@ -512,7 +549,7 @@ export const InviteComposer = ({
             templateId: sendMode === 'direct' ? templateId : undefined,
             sendMode,
             role,
-            topicsSelfManaged: showTopicsToggle ? topicsSelfManaged : undefined,
+            topicPermission: showTopicsToggle ? topicPermission : undefined,
             tenantTarget: isNewUnit(tenantAllocation) && tenantAllowCreate ? 'new' : 'existing',
             agencyTarget: showAgencyField ? agencyTarget : undefined,
         });
@@ -530,7 +567,7 @@ export const InviteComposer = ({
             setEmailTakenAddress(null);
             setFirstName('');
             setLastName('');
-            setCollapsedKeys(new Set());
+            setCollapsedKeys(new Set(SELECT_KEYS));
             // The next invite starts with no deliberate number choice again —
             // except where the field is pinned (lock / existing-only Träger).
             if (fixedTenant && !(tenantAllowCreate && !tenantLocked)) tenantAllocation.selectExisting(fixedTenant);
@@ -568,6 +605,7 @@ export const InviteComposer = ({
     const csvIdLabel = requireTenantId
         ? t('links.accountInvites.tenantId', 'Träger-ID')
         : t('links.accountInvites.agencyId', 'Beratungsstellen-ID');
+    const csvTargetLabel = t('links.csvImport.col.target', 'Ziel');
 
     const moreMenuItems: NonNullable<MenuProps['items']> = [];
     if (onCsvParsed) {
@@ -589,6 +627,10 @@ export const InviteComposer = ({
                                         t('links.accountInvites.firstName', 'Vorname'),
                                         t('links.composer.lastName', 'Name'),
                                         `${csvIdLabel} ${t('links.csvImport.optional', '(optional)')}`,
+                                        csvTargetLabel,
+                                        t('links.composer.role', 'Rolle'),
+                                        t('links.composer.template', 'Vorlage'),
+                                        t('links.composer.topics', 'Themen & Fachbereiche'),
                                     ].join(', '),
                                 })}
                             </span>
@@ -629,8 +671,18 @@ export const InviteComposer = ({
                         firstName: t('links.accountInvites.firstName', 'Vorname'),
                         lastName: t('links.composer.lastName', 'Name'),
                         id: csvIdLabel,
+                        target: csvTargetLabel,
+                        role: t('links.composer.role', 'Rolle'),
+                        template: t('links.composer.template', 'Vorlage'),
+                        topicPermission: t('links.composer.topics', 'Themen & Fachbereiche'),
                     },
                     t('links.csvImport.templateFileName', 'oriso-einladungen-vorlage.csv'),
+                    // The example file speaks German column values on purpose: the
+                    // parser accepts them in any UI language.
+                    {
+                        role: ROLE_LABEL_KEYS[defaultRole ?? (requireTenantId ? 'TENANT_ADMIN' : 'COUNSELLOR')][1],
+                        idKind: requireTenantId ? 'tenant' : 'agency',
+                    },
                 );
             }
         },
@@ -710,10 +762,80 @@ export const InviteComposer = ({
     const lastNameLabel = t('links.composer.lastName', 'Name');
     const tenantLabel = t('links.composer.tenant', 'Träger');
     const agencyLabel = t('links.composer.agency', 'Beratungsstelle');
-    const topicsToggleLabel = t('links.composer.topicsSelfManaged', 'Themen selbst');
+    const topicsLabel = t('links.composer.topics', 'Themen & Fachbereiche');
+
+    /*
+     * Select-type field of the bar (Rolle, Themen & Fachbereiche): the M3
+     * floating-label select, folded into a value pill ("✓ Berater:in") once
+     * chosen. Expanding the pill opens the menu right away — the one thing a
+     * select is expanded for. A disabled placeholder keeps its pill and explains
+     * itself in a tooltip.
+     */
+    function renderSelectField<V extends string>({
+        key,
+        label,
+        value,
+        valueLabel,
+        options,
+        disabled,
+        className: fieldClassName,
+        onChange,
+    }: {
+        key: CollapsibleKey;
+        label: string;
+        value: V;
+        valueLabel: string;
+        options: Array<{ value: V; label: string; description?: string }>;
+        disabled: boolean;
+        className?: string;
+        onChange: (next: V) => void;
+    }) {
+        const field = (
+            <CollapsibleField
+                collapsed={isCollapsed(key)}
+                disabled={disabled}
+                fieldKey={key}
+                label={label}
+                pillText={valueLabel}
+                valueSummary={valueLabel}
+                onExpand={() => {
+                    expand(key);
+                    setOpenSelect(key);
+                }}
+            >
+                <FloatingLabelSelect<V>
+                    className={fieldClassName}
+                    disabled={disabled}
+                    label={label}
+                    open={openSelect === key}
+                    optionRender={renderOptionWithHint}
+                    options={options}
+                    popupMatchSelectWidth={false}
+                    value={value}
+                    onChange={(next) => {
+                        onChange(next);
+                        setOpenSelect(null);
+                        collapse(key);
+                    }}
+                    onOpenChange={(nextOpen) => setOpenSelect(nextOpen ? key : null)}
+                />
+            </CollapsibleField>
+        );
+        return disabled ? (
+            <M3Tooltip key={key} portal placement="bottom" text={placeholderTooltip}>
+                <span className={styles.placeholderSlot} tabIndex={placeholdersEnabled ? undefined : 0}>
+                    {field}
+                </span>
+            </M3Tooltip>
+        ) : (
+            <span key={key} className={styles.placeholderSlot}>
+                {field}
+            </span>
+        );
+    }
 
     return (
-        <div className={classNames(styles.composer, className)}>
+        <div className={classNames(styles.composer, className)} onFocus={handleRowFocus}>
             <GlobalSearchBar
                 leading={moreButton}
                 searchPlaceholder={searchPlaceholder}
@@ -725,7 +847,7 @@ export const InviteComposer = ({
                 onSearchChange={onSearchQueryChange}
             >
                 {/* #1026 field order: E-Mail · Vorname · Name · Rolle · Träger ·
-                    Beratungsstelle · Themen selbst · Vorlage · Senden. */}
+                    Beratungsstelle · Themen & Fachbereiche · Vorlage · Senden. */}
                 <CollapsibleField
                     collapsed={isCollapsed('email')}
                     label={emailLabel}
@@ -788,21 +910,19 @@ export const InviteComposer = ({
                         onChange={(event) => setLastName(event.target.value)}
                     />
                 </CollapsibleField>
-                {/* Placeholder until the backend takes a role (#1026): disabled with
-                    an explanation in the app, live in the stories. */}
-                <M3Tooltip portal placement="bottom" text={placeholderTooltip}>
-                    <span className={styles.placeholderSlot} tabIndex={placeholdersEnabled ? undefined : 0}>
-                        <FloatingLabelSelect<InviteRole>
-                            className={styles.roleField}
-                            disabled={!placeholdersEnabled || roleOptions.length < 2}
-                            label={t('links.composer.role', 'Rolle')}
-                            options={roleOptions.map((option) => ({ value: option, label: roleLabels[option] }))}
-                            popupMatchSelectWidth={false}
-                            value={role}
-                            onChange={(next) => setRole(next)}
-                        />
-                    </span>
-                </M3Tooltip>
+                {/* Placeholder until the backend takes a role (#1026, slice 3): disabled
+                    with an explanation in the app, live in the stories. Collapses like
+                    every other field; the pill shows the chosen role. */}
+                {renderSelectField<InviteRole>({
+                    key: 'role',
+                    label: t('links.composer.role', 'Rolle'),
+                    value: role,
+                    valueLabel: roleLabel(role),
+                    options: roleOptions.map((option) => ({ value: option, label: roleLabel(option) })),
+                    disabled: !placeholdersEnabled || roleOptions.length < 2,
+                    className: styles.roleField,
+                    onChange: setRole,
+                })}
                 <CollapsibleField
                     collapsed={!tenantLocked && isCollapsed('tenant')}
                     label={tenantLabel}
@@ -834,38 +954,51 @@ export const InviteComposer = ({
                         />
                     </CollapsibleField>
                 )}
-                {showTopicsToggle && (
-                    <M3Tooltip portal placement="bottom" text={placeholderTooltip}>
-                        <span className={styles.toggleField} tabIndex={placeholdersEnabled ? undefined : 0}>
-                            <span aria-hidden className={styles.toggleLabel}>
-                                {topicsToggleLabel}
-                            </span>
-                            <M3Switch
-                                checked={topicsSelfManaged}
-                                disabled={!placeholdersEnabled}
-                                label={topicsToggleLabel}
-                                onChange={setTopicsSelfManaged}
-                            />
-                        </span>
-                    </M3Tooltip>
-                )}
+                {showTopicsToggle &&
+                    renderSelectField<TopicPermission>({
+                        key: 'topics',
+                        label: topicsLabel,
+                        value: topicPermission,
+                        valueLabel: topicTitle(topicPermission),
+                        options: TOPIC_PERMISSIONS.map((option) => ({
+                            value: option,
+                            label: topicTitle(option),
+                            description: topicDescription(option),
+                        })),
+                        disabled: !placeholdersEnabled,
+                        className: styles.topicsField,
+                        onChange: setTopicPermission,
+                    })}
                 {/* #746: the module's template split button — main segment opens the
                     manage/pick dialog (as before), the chevron menu now switches the
                     active template in place, check-marked like in the editor. */}
-                <TemplateSplitButton
-                    activeTemplateId={selectedTemplate?.id}
-                    templates={activeTemplates}
-                    onCreateFromTemplate={
-                        onCreateFromTemplate && ((id) => onCreateFromTemplate(typeof id === 'number' ? id : Number(id)))
-                    }
-                    onMainClick={() => onManageTemplates('list')}
-                    onSelectTemplate={(id) => onSelectTemplate?.(typeof id === 'number' ? id : Number(id))}
-                    // The composer row is built from default-size (56px) SplitButtons — the
-                    // send button right next to it is one. The chooser's own default is the
-                    // legal editors' 40px pill, which left it a size short of every other
-                    // control in this row.
-                    size="medium"
-                />
+                <CollapsibleField
+                    collapsed={isCollapsed('template')}
+                    fieldKey="template"
+                    label={t('links.composer.template', 'Vorlage')}
+                    pillText={selectedTemplate?.name}
+                    valueSummary={selectedTemplate?.name}
+                    onExpand={() => expand('template')}
+                >
+                    <TemplateSplitButton
+                        activeTemplateId={selectedTemplate?.id}
+                        templates={activeTemplates}
+                        onCreateFromTemplate={
+                            onCreateFromTemplate &&
+                            ((id) => onCreateFromTemplate(typeof id === 'number' ? id : Number(id)))
+                        }
+                        onMainClick={() => onManageTemplates('list')}
+                        onSelectTemplate={(id) => {
+                            onSelectTemplate?.(typeof id === 'number' ? id : Number(id));
+                            collapse('template');
+                        }}
+                        // The composer row is built from default-size (56px) SplitButtons — the
+                        // send button right next to it is one. The chooser's own default is the
+                        // legal editors' 40px pill, which left it a size short of every other
+                        // control in this row.
+                        size="medium"
+                    />
+                </CollapsibleField>
                 {/* Filled primary is reserved for the selected item / main CTA; every
                 other resting state is tonal M3 secondary (owner call). The icon
                 stays in both states — a send button without its glyph was the
