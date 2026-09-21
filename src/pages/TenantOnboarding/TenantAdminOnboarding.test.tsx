@@ -468,3 +468,79 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         expect(screen.queryByTestId('dpa-forwarded-sent-to')).not.toBeInTheDocument();
     });
 });
+
+/*
+ * #1026 slice 4/5: a Träger-admin invite into a Träger that already exists
+ * (or a second admin of a new Träger its first admin has meanwhile created).
+ * The resolve answers `joinsExistingTenant: true` with the `tenantId`; the
+ * wizard asks only for the password — no organisation step, no Träger
+ * creation, no DPA — and registers with `account.password` alone.
+ */
+describe('TenantAdminOnboarding — joining an existing Träger (#1026)', () => {
+    const JOIN_INVITE = {
+        recipientEmail: 'second.admin@tenant.example',
+        firstName: 'Paula',
+        lastName: 'Zweite',
+        tenantId: 40,
+        joinsExistingTenant: true,
+        expiresAt: null,
+        dpaContent: null,
+    } as unknown as TenantAdminOnboardingInviteDTO;
+
+    it('asks only for the password and registers with account.password alone', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue(JOIN_INVITE),
+            registerTenantAdmin: vi.fn().mockResolvedValue({
+                tenantId: 40,
+                twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+            }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        // Straight to the account: no organisation, no Träger, no DPA/AVV.
+        expect(await screen.findByLabelText('tenantOnboarding.account.password')).toBeInTheDocument();
+        expect(screen.getByText('tenantOnboarding.join.title')).toBeInTheDocument();
+        expect(screen.getByText('tenantOnboarding.account.joinDescription')).toBeInTheDocument();
+        expect(screen.queryByLabelText('tenantOnboarding.organisation.name')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('tenantOnboarding.dpa.signerPosition')).not.toBeInTheDocument();
+        // Nothing to go back to.
+        expect(screen.queryByRole('button', { name: 'tenantOnboarding.back' })).not.toBeInTheDocument();
+
+        await user.type(screen.getByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
+
+        await waitFor(() => expect(client.registerTenantAdmin).toHaveBeenCalledTimes(1));
+        expect(client.registerTenantAdmin).toHaveBeenCalledWith('raw-token', {
+            account: { password: 'SecurePass1!' },
+        });
+
+        await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+
+        expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
+        expect(screen.getByTestId('onboarding-done-tenant-id')).toHaveTextContent('40');
+        expect(screen.getByTestId('onboarding-done-description')).toHaveTextContent(
+            'tenantOnboarding.done.joinDescription',
+        );
+        // The Träger exists already: no "waits for activation" promise.
+        expect(screen.queryByText('tenantOnboarding.done.next.activation')).not.toBeInTheDocument();
+    });
+
+    it('resumes a joined registration at the 2FA step with the joined tenant id', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...JOIN_INVITE,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+            }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+        expect(await screen.findByTestId('onboarding-done-tenant-id')).toHaveTextContent('40');
+    });
+});

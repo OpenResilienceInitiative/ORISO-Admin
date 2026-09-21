@@ -189,6 +189,59 @@ export const OrganisationDpaForwardedOnHoldMobile: Story = {
 };
 
 /** A consumed link: distinct terminal state, no form, nothing resubmittable. */
+/*
+ * #1026: a Träger-admin invite into a Träger that already exists (or a second
+ * admin of a new Träger created meanwhile). No organisation step, no Träger
+ * creation, no DPA/AVV step — only the password, then 2FA.
+ */
+const JOIN_EXISTING = {
+    joinsExistingTenant: true,
+    tenantId: 40,
+    reservedTenantId: undefined,
+    tenantIdReservationToken: undefined,
+    dpaContent: null,
+    recipientEmail: 'paula.zweite@example.org',
+    firstName: 'Paula',
+    lastName: 'Zweite',
+};
+
+/** Join an existing Träger: step 1 of 2 is the password, nothing else. */
+export const JoinExistingTraeger: Story = {
+    args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0, invite: JOIN_EXISTING }) },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText(/Träger beitreten|Join a tenant/)).toBeInTheDocument();
+        await expect(canvas.getByText(/Schritt 1 von 2|Step 1 of 2/)).toBeInTheDocument();
+        await expect(canvas.getByText('paula.zweite@example.org')).toBeInTheDocument();
+        await expect(canvas.queryByTestId('organisation-master-data-title')).toBeNull();
+        await expect(canvas.queryByRole('button', { name: /Zurück|Back/ })).toBeNull();
+    },
+};
+
+/** The same on a phone (390 px). */
+export const JoinExistingTraegerMobile: Story = {
+    args: JoinExistingTraeger.args,
+    ...PHONE_390,
+    play: JoinExistingTraeger.play,
+};
+
+/** Join an existing Träger, walked through: password → 2FA → done without the activation promise. */
+export const JoinExistingTraegerDone: Story = {
+    args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0, invite: JOIN_EXISTING }) },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const password = await canvas.findByLabelText(/^(Passwort|Password)$/);
+        await userEvent.type(password, 'SecurePass1!');
+        await userEvent.type(canvas.getByLabelText(/Passwort wiederholen|Repeat password/), 'SecurePass1!');
+        await userEvent.click(canvas.getByRole('button', { name: /Konto erstellen|Create account/ }));
+        await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
+        await userEvent.click(
+            canvas.getByRole('button', { name: /Zwei-Faktor-Authentifizierung aktivieren|Activate two-factor/ }),
+        );
+        await waitFor(() => expect(canvas.getByTestId('onboarding-done-tenant-id')).toHaveTextContent('40'));
+    },
+};
+
 export const LinkConsumed: Story = {
     args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0, inviteState: 'CONSUMED' }) },
 };

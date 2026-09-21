@@ -55,15 +55,28 @@ export interface TenantAdminOnboardingInviteDTO {
     recipientEmail: string;
     firstName: string | null;
     lastName: string | null;
-    /** The tenant ID the invite reserved (TenantIdReservationDTO.tenantId). */
-    reservedTenantId: number;
+    /**
+     * The tenant ID the invite reserved (TenantIdReservationDTO.tenantId).
+     * Absent when the invite joins an existing Träger (`joinsExistingTenant`).
+     */
+    reservedTenantId?: number;
     /**
      * TenantIdReservationDTO.token — proves ownership of the reservation and is
      * sent back on registration, where the backend forwards it as
      * MultilingualTenantDTO.tenantIdReservationToken so creation + consumption
      * happen atomically.
      */
-    tenantIdReservationToken: string;
+    tenantIdReservationToken?: string;
+    /**
+     * #1026 slices 4/5: the invite joins a Träger that already exists (an
+     * invite into an existing Träger, or a further admin of a new Träger its
+     * first admin has meanwhile created). The wizard then skips the
+     * organisation and DPA steps and registers with `account.password` alone;
+     * no reservation pair is issued.
+     */
+    joinsExistingTenant?: boolean;
+    /** The joined Träger — set together with `joinsExistingTenant`. */
+    tenantId?: number | null;
     /** ISO timestamp after which the link expires; null = no expiry. */
     expiresAt: string | null;
     /**
@@ -104,7 +117,21 @@ export interface DpaAcceptanceData {
     signerOrganisation: string;
 }
 
-export interface TenantAdminRegistrationRequest {
+/**
+ * Registration body. A NEW Träger sends organisation, DPA and the reservation
+ * pair; an invite that joins an existing Träger (#1026) sends only `account`.
+ */
+export type TenantAdminRegistrationRequest =
+    | TenantAdminNewTenantRegistrationRequest
+    | TenantAdminJoinRegistrationRequest;
+
+export interface TenantAdminJoinRegistrationRequest {
+    account: {
+        password: string;
+    };
+}
+
+export interface TenantAdminNewTenantRegistrationRequest {
     organisation: OrganisationData;
     /**
      * The request shape is UNCHANGED by the forward flow (#723 contract).
@@ -408,7 +435,16 @@ export const createStubTenantAdminOnboardingClient = (
                 // happens via getOnboardingInvite's PENDING_2FA_ACTIVATION.
                 throw new InviteLinkError('CONSUMED');
             }
+            if (invite.joinsExistingTenant) {
+                // #1026: joining an existing Träger needs the password alone.
+                if ('organisation' in request) {
+                    throw new Error('JOIN_TAKES_ACCOUNT_ONLY');
+                }
+                registered = true;
+                return { tenantId: invite.tenantId ?? 0, twoFactor: STUB_TWO_FACTOR };
+            }
             if (
+                !('organisation' in request) ||
                 request.tenantIdReservationToken !== invite.tenantIdReservationToken ||
                 request.reservedTenantId !== invite.reservedTenantId
             ) {

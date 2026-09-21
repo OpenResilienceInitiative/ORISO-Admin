@@ -76,6 +76,10 @@ const FORWARDED_DPA: DpaAcceptanceData = {
     signerOrganisation: '',
 };
 
+/** The Träger the invite is about: the joined one (#1026) or the reserved new one. */
+const invitedTenantId = (invite: TenantAdminOnboardingInviteDTO): number =>
+    (invite.joinsExistingTenant ? invite.tenantId : invite.reservedTenantId) ?? invite.tenantId ?? 0;
+
 export const useTenantAdminOnboardingFlow = (inviteToken: string, client: TenantAdminOnboardingClient) => {
     const [state, setState] = useState<TenantAdminOnboardingState>({ phase: 'loading' });
     const [invite, setInvite] = useState<TenantAdminOnboardingInviteDTO | null>(null);
@@ -114,14 +118,15 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                     setState({
                         phase: 'two-factor',
                         result: {
-                            tenantId: loaded.reservedTenantId,
+                            tenantId: invitedTenantId(loaded),
                             twoFactor: loaded.twoFactor ?? null,
                             resumed: true,
                         },
                     });
                     return;
                 }
-                setState({ phase: 'organisation' });
+                // #1026: joining an existing Träger skips organisation and DPA.
+                setState({ phase: loaded.joinsExistingTenant ? 'account' : 'organisation' });
             })
             .catch((error: unknown) => {
                 if (cancelled) return;
@@ -182,12 +187,12 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
     );
 
     const goBackToOrganisation = useCallback(() => {
-        if (stateRef.current.phase !== 'account' || busyRef.current) {
+        if (stateRef.current.phase !== 'account' || busyRef.current || invite?.joinsExistingTenant) {
             return;
         }
         setSubmitError(null);
         setState({ phase: 'organisation' });
-    }, []);
+    }, [invite]);
 
     const failFlow = (error: unknown, retryable: Exclude<TenantAdminOnboardingSubmitError, null>) => {
         if (error instanceof InviteLinkError) {
@@ -199,30 +204,34 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
 
     const submitAccount = useCallback(
         async (password: string) => {
-            if (
-                stateRef.current.phase !== 'account' ||
-                busyRef.current ||
-                !invite ||
-                !organisation ||
-                (!dpa && !dpaForward)
-            ) {
+            if (stateRef.current.phase !== 'account' || busyRef.current || !invite) {
+                return;
+            }
+            const joins = invite.joinsExistingTenant === true;
+            if (!joins && (!organisation || (!dpa && !dpaForward))) {
                 return;
             }
             busyRef.current = true;
             setBusy(true);
             setSubmitError(null);
             try {
-                const result = await client.registerTenantAdmin(inviteToken, {
-                    organisation,
-                    // Unchanged request shape (#723 contract): the forwarded
-                    // case simply sends `accepted: false` with no signer
-                    // identity — the server authorises that against its own
-                    // record of the forward.
-                    dpa: dpa ?? FORWARDED_DPA,
-                    account: { password },
-                    reservedTenantId: invite.reservedTenantId,
-                    tenantIdReservationToken: invite.tenantIdReservationToken,
-                });
+                const result = await client.registerTenantAdmin(
+                    inviteToken,
+                    joins
+                        ? // #1026: the Träger, its organisation data and its DPA exist already.
+                          { account: { password } }
+                        : {
+                              organisation: organisation as OrganisationData,
+                              // Unchanged request shape (#723 contract): the forwarded
+                              // case simply sends `accepted: false` with no signer
+                              // identity — the server authorises that against its own
+                              // record of the forward.
+                              dpa: dpa ?? FORWARDED_DPA,
+                              account: { password },
+                              reservedTenantId: invite.reservedTenantId as number,
+                              tenantIdReservationToken: invite.tenantIdReservationToken as string,
+                          },
+                );
                 setState({
                     phase: 'two-factor',
                     result: { tenantId: result.tenantId, twoFactor: result.twoFactor, resumed: false },
