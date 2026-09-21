@@ -162,9 +162,6 @@ export const AgencyLegalTextContainer = ({
         editorIdentityRef.current = { key: editorContextKey };
     }
     const editorIdentity = editorIdentityRef.current;
-    // Read by late async completions, which must know what is on screen when they land.
-    const showingAgencyWideRef = useRef(!isDepartment);
-    showingAgencyWideRef.current = !isDepartment;
     const setActionPending = (pending: boolean) => {
         draftActionPendingRef.current = pending;
         setDraftActionPending(pending);
@@ -335,18 +332,16 @@ export const AgencyLegalTextContainer = ({
             ...(field === 'privacy' ? { consentText: { ...agencyDraftConsent } } : {}),
             ...(serverBase.revision ? { revision: serverBase.revision } : {}),
         });
-        // Pin the saved revision even if the admin switched to a Fachbereich meanwhile: the draft
-        // belongs to the agency, and returning to "Alle Fachbereiche" must show it, not the old base.
+        // Pin the saved revision even if the admin switched to a Fachbereich meanwhile, so the next
+        // agency-wide save builds on it instead of running into a 409 against a stale base.
         setServerBaseState((current) =>
             current.identity === draftContextAtStart
                 ? { identity: draftContextAtStart, draft: saved, revision: saved.revision }
                 : current,
         );
-        if (editorIdentityRef.current !== operationIdentity) {
-            // Back on "Alle Fachbereiche" in a new session: remount so the editor shows the saved text.
-            if (showingAgencyWideRef.current) setAgencyEditorGeneration((current) => current + 1);
-            return saved;
-        }
+        // No remount for a session that began after the request: it may already hold new typing,
+        // which then saves on top of this revision instead of being replaced.
+        if (editorIdentityRef.current !== operationIdentity) return saved;
         const localDiscarded = discardAgencyDraft();
         setDraftSource(localDiscarded ? 'server' : undefined);
         setAgencyEditorGeneration((current) => current + 1);

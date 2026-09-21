@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
+    cardMounts: 0,
     card: vi.fn(),
     notice: vi.fn(),
     canEdit: vi.fn(() => true),
@@ -93,12 +94,19 @@ vi.mock('../TenantLegalDraftNotice', () => ({
         );
     },
 }));
-vi.mock('../DepartmentDataProtectionCard', () => ({
-    DepartmentDataProtectionCard: (props: any) => {
-        h.card(props);
-        return <div data-testid="legal-editor">{props.departmentSlot}</div>;
-    },
-}));
+vi.mock('../DepartmentDataProtectionCard', async () => {
+    const { useEffect } = await import('react');
+    return {
+        DepartmentDataProtectionCard: (props: any) => {
+            h.card(props);
+            // Counts mounts: a remount would replace the uncontrolled editor and its typing.
+            useEffect(() => {
+                h.cardMounts += 1;
+            }, []);
+            return <div data-testid="legal-editor">{props.departmentSlot}</div>;
+        },
+    };
+});
 
 import { AgencyLegalTextContainer } from '.';
 
@@ -398,6 +406,7 @@ describe('AgencyLegalTextContainer server drafts', () => {
         await userEvent.click(await screen.findByText('agency.legal.department.all'));
         await waitFor(() => expect(cardProps().saving).toBe(false));
 
+        const mountsBefore = h.cardMounts;
         finishOldSave({
             kind: 'DPP',
             content: { de: '<p>late old A</p>' },
@@ -407,9 +416,10 @@ describe('AgencyLegalTextContainer server drafts', () => {
         });
         await act(async () => oldSave);
 
-        // The save succeeded on the server: returning to "Alle Fachbereiche" shows it, and the next
-        // save builds on its revision instead of running into a 409 against a stale base.
+        // The save succeeded on the server, so the next save builds on its revision (no 409 against a
+        // stale base) — but the editor of the new session is not remounted, so its typing survives.
         await waitFor(() => expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>late old A</p>' }));
+        expect(h.cardMounts).toBe(mountsBefore);
         expect(h.localDiscard).not.toHaveBeenCalled();
     });
 
