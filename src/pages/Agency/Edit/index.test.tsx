@@ -17,6 +17,7 @@ const renderWithClient = (ui: React.ReactElement<any>) => {
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
     mutateAsync: vi.fn(),
+    isAgencySaving: false,
     navigate: vi.fn(),
     searchTenantData: vi.fn(),
     userRoles: {
@@ -209,7 +210,7 @@ vi.mock('../../../hooks/useAgencyPostCodesData', () => ({
 }));
 
 vi.mock('../../../hooks/useAgencyUpdate', () => ({
-    useAgencyUpdate: () => ({ mutate: mocks.mutate, mutateAsync: mocks.mutateAsync }),
+    useAgencyUpdate: () => ({ mutate: mocks.mutate, mutateAsync: mocks.mutateAsync, isPending: mocks.isAgencySaving }),
 }));
 
 vi.mock('../../../hooks/useAgencyLegalDataMissing', () => ({
@@ -467,6 +468,31 @@ describe('AgencyPageEdit create flow', () => {
         finishUpdate();
         await publication;
         expect(settled).toBe(true);
+    });
+
+    it('hands the pending agency update to the legal editor as saving', async () => {
+        mocks.routeId = '282';
+        mocks.agencyData = { id: 282, name: 'E2E Agency', tenantId: 84, topics: [], content: {} };
+        mocks.isAgencySaving = true;
+        renderWithClient(<AgencyPageEdit section="legal" />);
+        await waitFor(() => expect(mocks.agencyLegalProps?.saving).toBe(true));
+        mocks.isAgencySaving = false;
+    });
+
+    it('reports a rejected agency-wide publication and rethrows it to the legal editor', async () => {
+        const notificationSpy = vi.spyOn(notification, 'error').mockImplementation(() => undefined as never);
+        mocks.routeId = '282';
+        mocks.agencyData = { id: 282, name: 'E2E Agency', tenantId: 84, topics: [], content: {} };
+        const rejection = new Response(null, { status: 400 });
+        mocks.mutateAsync.mockRejectedValue(rejection);
+        renderWithClient(<AgencyPageEdit section="legal" />);
+
+        await waitFor(() => expect(mocks.agencyLegalProps).toBeDefined());
+        await expect(
+            mocks.agencyLegalProps.onSaveAgencyWide({ content: { privacy: { de: '<p>x</p>' } } }),
+        ).rejects.toBe(rejection);
+        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
+        notificationSpy.mockRestore();
     });
 
     it('renders a structured service validation error on the responsible field and focuses it', async () => {

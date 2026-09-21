@@ -13,8 +13,13 @@ import {
 export const tenantLegalDraftKey = (tenantId: string | number, kind: TenantLegalDraftKind) =>
     ['tenant-legal-draft', String(tenantId), kind] as const;
 
-interface ConflictState {
+/** One editing session of a tenant × kind. A → B → A starts a new one, so late answers from the first A are dropped. */
+interface ContextIdentity {
     key: string;
+}
+
+interface ConflictState {
+    key: ContextIdentity;
     remote?: TenantLegalDraft | null;
     refreshFailed: boolean;
 }
@@ -22,12 +27,14 @@ interface ConflictState {
 export const useTenantLegalDraft = (tenantId: string | number, kind: TenantLegalDraftKind, enabled: boolean) => {
     const queryClient = useQueryClient();
     const contextKey = `${tenantId}:${kind}`;
-    const contextKeyRef = useRef(contextKey);
-    contextKeyRef.current = contextKey;
+    const contextIdentityRef = useRef<ContextIdentity>({ key: contextKey });
+    if (contextIdentityRef.current.key !== contextKey) contextIdentityRef.current = { key: contextKey };
+    const contextIdentity = contextIdentityRef.current;
     const [conflictState, setConflictState] = useState<ConflictState | undefined>();
-    const hasConflict = conflictState?.key === contextKey;
+    const hasConflict = conflictState?.key === contextIdentity;
     const conflict = hasConflict ? conflictState?.remote : undefined;
-    if (conflictState && conflictState.key !== contextKey) setConflictState(undefined);
+    if (conflictState && conflictState.key !== contextIdentity) setConflictState(undefined);
+    const isCurrent = (identity: ContextIdentity) => contextIdentityRef.current === identity;
 
     const query = useQuery({
         queryKey: tenantLegalDraftKey(tenantId, kind),
@@ -37,54 +44,64 @@ export const useTenantLegalDraft = (tenantId: string | number, kind: TenantLegal
     });
 
     const readRemoteAfterConflict = useCallback(async () => {
-        if (contextKeyRef.current !== contextKey) return undefined;
+        const identity = contextIdentity;
+        if (!isCurrent(identity)) return undefined;
         setConflictState((previous) =>
-            previous && previous.key !== contextKey
+            previous && previous.key !== identity
                 ? previous
-                : { key: contextKey, remote: undefined, refreshFailed: false },
+                : { key: identity, remote: undefined, refreshFailed: false },
         );
         try {
             const remote = await getTenantLegalDraft(tenantId, kind);
-            if (contextKeyRef.current !== contextKey) return undefined;
+            if (!isCurrent(identity)) return undefined;
             setConflictState((previous) =>
-                previous?.key === contextKey ? { key: contextKey, remote, refreshFailed: false } : previous,
+                previous?.key === identity ? { key: identity, remote, refreshFailed: false } : previous,
             );
             return remote;
         } catch {
             setConflictState((previous) =>
-                previous?.key === contextKey ? { key: contextKey, remote: undefined, refreshFailed: true } : previous,
+                previous?.key === identity ? { key: identity, remote: undefined, refreshFailed: true } : previous,
             );
             return undefined;
         }
-    }, [contextKey, kind, tenantId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- identity is read from the ref on purpose
+    }, [contextIdentity, kind, tenantId]);
 
     const save = useCallback(
         async (next: SaveTenantLegalDraft) => {
+            const identity = contextIdentity;
             try {
                 const saved = await putTenantLegalDraft(tenantId, kind, next);
-                queryClient.setQueryData(tenantLegalDraftKey(tenantId, kind), saved);
-                setConflictState((previous) => (previous?.key === contextKey ? undefined : previous));
+                if (isCurrent(identity)) {
+                    queryClient.setQueryData(tenantLegalDraftKey(tenantId, kind), saved);
+                    setConflictState((previous) => (previous?.key === identity ? undefined : previous));
+                }
                 return saved;
             } catch (error) {
                 if (isTenantLegalDraftConflict(error)) await readRemoteAfterConflict();
                 throw error;
             }
         },
-        [contextKey, kind, queryClient, readRemoteAfterConflict, tenantId],
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- identity is read from the ref on purpose
+        [contextIdentity, kind, queryClient, readRemoteAfterConflict, tenantId],
     );
 
     const discard = useCallback(
         async (revision: string) => {
+            const identity = contextIdentity;
             try {
                 await deleteTenantLegalDraft(tenantId, kind, revision);
-                queryClient.setQueryData(tenantLegalDraftKey(tenantId, kind), null);
-                setConflictState((previous) => (previous?.key === contextKey ? undefined : previous));
+                if (isCurrent(identity)) {
+                    queryClient.setQueryData(tenantLegalDraftKey(tenantId, kind), null);
+                    setConflictState((previous) => (previous?.key === identity ? undefined : previous));
+                }
             } catch (error) {
                 if (isTenantLegalDraftConflict(error)) await readRemoteAfterConflict();
                 throw error;
             }
         },
-        [contextKey, kind, queryClient, readRemoteAfterConflict, tenantId],
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- identity is read from the ref on purpose
+        [contextIdentity, kind, queryClient, readRemoteAfterConflict, tenantId],
     );
 
     return {
@@ -99,6 +116,6 @@ export const useTenantLegalDraft = (tenantId: string | number, kind: TenantLegal
         conflictRefreshFailed: hasConflict && !!conflictState?.refreshFailed,
         conflictRefreshing: hasConflict && !conflictState?.refreshFailed && conflictState?.remote === undefined,
         retryConflict: readRemoteAfterConflict,
-        clearConflict: () => setConflictState((previous) => (previous?.key === contextKey ? undefined : previous)),
+        clearConflict: () => setConflictState((previous) => (previous?.key === contextIdentity ? undefined : previous)),
     };
 };

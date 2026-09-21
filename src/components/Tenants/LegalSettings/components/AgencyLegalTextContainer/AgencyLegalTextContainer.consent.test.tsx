@@ -197,7 +197,7 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         expect(cardProps().consentInheritedFrom).toBeUndefined();
     });
 
-    it('publishes the consent stored with the authoritative server draft and ignores a stray card value', async () => {
+    it('never stamps privacyConsent when publishing Alle Fachbereiche (#862)', async () => {
         storedDepartment();
         h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Träger-Satz' } } } });
         h.saveAgencyDraft.mockResolvedValue({
@@ -218,15 +218,7 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
             content: { de: '<p>neu</p>' },
             consentText: { de: 'Träger-Satz' },
         });
-        expect(onSaveAgencyWide).toHaveBeenCalledWith({
-            content: {
-                privacy: { de: '<p>normalisiert</p>' },
-                privacyConsent: { de: 'Gespeicherter Satz' },
-            },
-        });
-        expect(onSaveAgencyWide.mock.calls[0][0]).not.toEqual(
-            expect.objectContaining({ privacyConsent: { de: 'Nicht editierbar {{legal_links}}' } }),
-        );
+        expect(onSaveAgencyWide).toHaveBeenCalledWith({ content: { privacy: { de: '<p>normalisiert</p>' } } });
     });
 
     it('publishes a Fachbereich sentence as consentText', async () => {

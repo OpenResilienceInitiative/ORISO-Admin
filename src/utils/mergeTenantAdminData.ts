@@ -1,6 +1,12 @@
 import mergeWith from 'lodash.mergewith';
 import { TenantAdminData } from '../types/TenantAdminData';
 
+/**
+ * Legal language maps are snapshots: a published draft that no longer has a language or a
+ * consent entry must replace the stored map, or a deep merge would restore the removed wording.
+ */
+const REPLACED_CONTENT_MAPS = ['impressum', 'privacy', 'privacyConsent'] as const;
+
 export const mergeTenantAdminData = (
     currentTenantData: TenantAdminData | undefined,
     formData: Partial<TenantAdminData>,
@@ -20,6 +26,16 @@ export const mergeTenantAdminData = (
     const finalData = mergeWith(tmp, formData, (objValue, srcValue) => {
         return objValue instanceof Array ? srcValue : undefined;
     }) as TenantAdminData;
+
+    const formContent = formData.content as Record<string, unknown> | undefined;
+    if (finalData.content && formContent) {
+        REPLACED_CONTENT_MAPS.forEach((key) => {
+            const replacement = formContent[key];
+            if (replacement && typeof replacement === 'object') {
+                (finalData.content as Record<string, unknown>)[key] = { ...(replacement as Record<string, unknown>) };
+            }
+        });
+    }
 
     if (finalData.content) {
         Object.keys(finalData.content).forEach((key) => {

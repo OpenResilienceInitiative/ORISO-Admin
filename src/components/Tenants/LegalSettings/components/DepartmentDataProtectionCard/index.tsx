@@ -129,7 +129,7 @@ export const DepartmentDataProtectionCard = ({
     initialContentByLanguage = {},
     languages = ['de'],
     defaultLanguage,
-    publicationStatus = 'DRAFT',
+    publicationStatus,
     onSave,
     saving,
     onTranslate,
@@ -347,7 +347,7 @@ export const DepartmentDataProtectionCard = ({
                             {departmentName && <span className={styles.department}>{departmentName}</span>}
                             {/* Only a Fachbereich text has a publication status; the agency-wide
                                 text is live when saved, so an "Entwurf" tag there was false. */}
-                            {documentScope === 'department' && (
+                            {documentScope === 'department' && publicationStatus && (
                                 <Tag color={published ? 'green' : 'default'}>
                                     {published
                                         ? t('tenants.legal.departmentDataProtection.status.published')

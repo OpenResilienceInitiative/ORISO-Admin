@@ -162,6 +162,9 @@ export const AgencyLegalTextContainer = ({
         editorIdentityRef.current = { key: editorContextKey };
     }
     const editorIdentity = editorIdentityRef.current;
+    // Read by late async completions, which must know what is on screen when they land.
+    const showingAgencyWideRef = useRef(!isDepartment);
+    showingAgencyWideRef.current = !isDepartment;
     const setActionPending = (pending: boolean) => {
         draftActionPendingRef.current = pending;
         setDraftActionPending(pending);
@@ -326,14 +329,25 @@ export const AgencyLegalTextContainer = ({
     );
 
     const saveCurrentAgencyDraft = async (content: Record<string, string>, operationIdentity: { key: string }) => {
+        const draftContextAtStart = draftContextIdentity;
         const saved = await serverDraft.save({
             content: { ...content },
             ...(field === 'privacy' ? { consentText: { ...agencyDraftConsent } } : {}),
             ...(serverBase.revision ? { revision: serverBase.revision } : {}),
         });
-        if (editorIdentityRef.current !== operationIdentity) return saved;
+        // Pin the saved revision even if the admin switched to a Fachbereich meanwhile: the draft
+        // belongs to the agency, and returning to "Alle Fachbereiche" must show it, not the old base.
+        setServerBaseState((current) =>
+            current.identity === draftContextAtStart
+                ? { identity: draftContextAtStart, draft: saved, revision: saved.revision }
+                : current,
+        );
+        if (editorIdentityRef.current !== operationIdentity) {
+            // Back on "Alle Fachbereiche" in a new session: remount so the editor shows the saved text.
+            if (showingAgencyWideRef.current) setAgencyEditorGeneration((current) => current + 1);
+            return saved;
+        }
         const localDiscarded = discardAgencyDraft();
-        setServerBaseState({ identity: draftContextIdentity, draft: saved, revision: saved.revision });
         setDraftSource(localDiscarded ? 'server' : undefined);
         setAgencyEditorGeneration((current) => current + 1);
         notification.success({ message: t('legal.serverDraft.saved'), duration: 4 });
@@ -378,10 +392,9 @@ export const AgencyLegalTextContainer = ({
         }
         try {
             await onSaveAgencyWide({
-                content: {
-                    [agencyContentKey]: { ...saved.content },
-                    ...(field === 'privacy' ? { privacyConsent: { ...saved.consentText } } : {}),
-                },
+                // #862: "Alle Fachbereiche" stays consent-free, so the Träger sentence keeps
+                // inheriting; stamping one here would override it for good.
+                content: { [agencyContentKey]: { ...saved.content } },
             });
         } catch {
             notification.error({ message: t('legal.serverDraft.publishError'), duration: 8 });

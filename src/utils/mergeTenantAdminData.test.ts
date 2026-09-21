@@ -102,4 +102,20 @@ describe('serializeTenantAdminDataUpdate', () => {
     it('does not materialize missing licensing', () => {
         expect(JSON.parse(serializeTenantAdminDataUpdate(baseTenantAdminData(), {}))).not.toHaveProperty('licensing');
     });
+
+    it('replaces legal language maps instead of restoring removed languages', () => {
+        const current = {
+            content: {
+                impressum: { de: 'Impressum', en: 'Imprint' },
+                privacyConsent: { de: 'Ja', en: 'Yes' },
+                claim: { de: 'Claim' },
+            },
+        } as any;
+        const merged = mergeTenantAdminData(current, {
+            content: { impressum: { de: 'Neu' }, privacyConsent: {} },
+        } as any);
+        expect(merged.content.impressum).toEqual({ de: 'Neu' });
+        expect(merged.content.privacyConsent).toEqual({});
+        expect(merged.content.claim).toEqual({ de: 'Claim' });
+    });
 });

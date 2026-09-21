@@ -286,12 +286,8 @@ describe('AgencyLegalTextContainer server drafts', () => {
         await act(async () => cardProps().onSave({ de: '<script>x</script><p>raw</p>' }, true));
 
         expect(order).toEqual(['save', 'publish', 'delete']);
-        expect(h.onSaveAgencyWide).toHaveBeenCalledWith({
-            content: {
-                privacy: saved.content,
-                privacyConsent: saved.consentText,
-            },
-        });
+        // #862: the agency-wide publish carries the body only; consent keeps inheriting.
+        expect(h.onSaveAgencyWide).toHaveBeenCalledWith({ content: { privacy: saved.content } });
         expect(h.serverDiscard).toHaveBeenCalledWith('draft-id:4');
     });
 
@@ -378,7 +374,7 @@ describe('AgencyLegalTextContainer server drafts', () => {
         });
     });
 
-    it('does not let an A-to-department-to-A late save change the new A generation', async () => {
+    it('keeps a late agency save across an A-to-department-to-A switch, without touching local work', async () => {
         let finishOldSave: (draft: any) => void = () => undefined;
         h.serverSave.mockImplementation(
             () =>
@@ -411,10 +407,9 @@ describe('AgencyLegalTextContainer server drafts', () => {
         });
         await act(async () => oldSave);
 
-        expect(cardProps().initialContentByLanguage).toEqual({
-            de: '<p>agency de</p>',
-            en: '<p>tenant en</p>',
-        });
+        // The save succeeded on the server: returning to "Alle Fachbereiche" shows it, and the next
+        // save builds on its revision instead of running into a 409 against a stale base.
+        await waitFor(() => expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>late old A</p>' }));
         expect(h.localDiscard).not.toHaveBeenCalled();
     });
 
