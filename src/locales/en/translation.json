@@ -577,6 +577,7 @@
     "links.composer.emailTaken": "This email address is already used by an existing account or an existing invitation. Please use a different address.",
     "links.composer.sendDirect": "Send directly",
     "links.composer.sendCreateOnly": "Create recipient only",
+    "links.composer.sendAndNext": "Send & next",
     "links.composer.blocked.email": "Enter a valid email address first.",
     "links.composer.blocked.emailTaken": "This email address is already used by an existing account or an existing invitation. Please use a different address.",
     "links.composer.blocked.names": "Enter a first name and a name first.",

@@ -224,8 +224,9 @@ describe.each([
         const tenant = screen.getByRole('combobox', { name: 'Träger' });
         expect(tenant).toBeDisabled();
         expect(tenant).toHaveValue('Caritas Freiburg · 40');
-        const role = screen.getByRole('button', { name: /^Rolle bearbeiten/ });
-        expect(role).toHaveTextContent('Berater:in');
+        // A fresh page shows Rolle expanded: one role on offer, so the select is disabled.
+        const role = screen.getByRole('combobox', { name: 'Rolle' });
+        expect(role.closest('.ant-select')).toHaveTextContent('Berater:in');
         expect(role).toBeDisabled();
     });
 

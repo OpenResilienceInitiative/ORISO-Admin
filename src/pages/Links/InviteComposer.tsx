@@ -6,6 +6,7 @@ import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import SelectAllIcon from '@mui/icons-material/SelectAll';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
+import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import {
     agencyIdAllocationClient,
@@ -334,7 +335,16 @@ export const InviteComposer = ({
     const [emailTakenAddress, setEmailTakenAddress] = useState<string | null>(null);
     const [firstName, setFirstName] = useState(initialValues?.firstName ?? '');
     const [lastName, setLastName] = useState(initialValues?.lastName ?? '');
-    const [sendMode, setSendMode] = useState<InviteSendMode>(() => readPersistedSendMode(persistKey));
+    const [storedSendMode, setSendMode] = useState<InviteSendMode>(() => readPersistedSendMode(persistKey));
+    /*
+     * B4 "Senden & nächste": sends like "Direkt Versenden", then keeps the unit,
+     * the template and the topic level for the next person of this session and
+     * clears only the person. Session memory only — React state, never stored.
+     */
+    const [sendAndNext, setSendAndNext] = useState(false);
+    const sendMode: InviteSendMode = sendAndNext ? 'direct' : storedSendMode;
+    // Set after a "Senden & nächste" send: the E-Mail field takes focus once the cleared bar rendered.
+    const [focusEmailPending, setFocusEmailPending] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
 
     // #1026 visibility by viewer: tenant and agency admins are pinned to their
@@ -356,10 +366,9 @@ export const InviteComposer = ({
     const roleOptions = rolesForViewer(viewerScope).filter(
         (option) => allowedRoles == null || allowedRoles.includes(option),
     );
-    const [role, setRole] = useState<InviteRole>(() => {
-        const wanted = initialValues?.role ?? defaultRole ?? roleOptions[0];
-        return roleOptions.includes(wanted) ? wanted : roleOptions[0];
-    });
+    const pickRole = (wanted: InviteRole | undefined) =>
+        wanted != null && roleOptions.includes(wanted) ? wanted : roleOptions[0];
+    const [role, setRole] = useState<InviteRole>(() => pickRole(initialValues?.role ?? defaultRole));
     // Which select-type field's menu is open (opened directly from its pill).
     const [openSelect, setOpenSelect] = useState<CollapsibleKey | null>(null);
     const [topicPermission, setTopicPermission] = useState<TopicPermission>(
@@ -395,6 +404,13 @@ export const InviteComposer = ({
     useEffect(() => {
         if (lockedAgency) selectExistingAgency(lockedAgency);
     }, [lockedAgency?.id, lockedAgency?.name]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // B4: after "Senden & nächste" the cleared E-Mail field takes focus for the next person.
+    useEffect(() => {
+        if (!focusEmailPending) return;
+        setFocusEmailPending(false);
+        rootRef.current?.querySelector<HTMLInputElement>('input[name="recipientEmail"]')?.focus();
+    }, [focusEmailPending]);
 
     const tenantId = tenantAllocation.value;
     const showAgencyField = includeAgencyField && role !== 'TENANT_ADMIN';
@@ -493,8 +509,10 @@ export const InviteComposer = ({
         if (initialValues?.lastName?.trim()) initial.add('lastName');
         if (initialValues?.tenant && !tenantLocked) initial.add('tenant');
         if (initialValues?.agency && !agencyLocked) initial.add('agency');
-        // A preselected role / topic option / template is a chosen value: pill from the start.
-        SELECT_KEYS.forEach((key) => initial.add(key));
+        // A prefilled bar (stories, later resend/edit) shows its chosen values as
+        // pills. A fresh page starts with every field expanded: pills from the
+        // start only exist in the "Senden & nächste" state (B4).
+        if (initialValues) SELECT_KEYS.forEach((key) => initial.add(key));
         return initial;
     });
     const isCollapsed = (key: CollapsibleKey) => collapsedKeys.has(key) && fieldValid[key];
@@ -611,6 +629,7 @@ export const InviteComposer = ({
         agencyIdValid;
 
     const changeSendMode = (mode: InviteSendMode) => {
+        setSendAndNext(false);
         setSendMode(mode);
         try {
             window.localStorage.setItem(sendModeStorageKey(persistKey), mode);
@@ -653,6 +672,26 @@ export const InviteComposer = ({
             // Keep everything the admin typed; only the address needs correcting.
             setEmailTakenAddress(recipientEmail.trim().toLowerCase());
             setEmailTouched(true);
+            return;
+        }
+
+        if (outcome && sendAndNext) {
+            // B4: the next person joins the same unit with the same template and
+            // topic level — keep those as pills, clear only the person.
+            setRecipientEmail('');
+            setEmailTouched(false);
+            setEmailTakenAddress(null);
+            setFirstName('');
+            setLastName('');
+            setRole(pickRole(defaultRole));
+            setRoleBeforeGuidedSwitch(null);
+            setAlsoCounsellor(initialValues?.alsoCounsellor ?? true);
+            setCollapsedKeys(new Set<CollapsibleKey>(['tenant', 'agency', 'topics', 'template']));
+            // A number this invite may just have reserved has to be checked again:
+            // for the next counsellor it is now "wird mit einer offenen Admin-Einladung angelegt".
+            if (tenantAllocation.mode === 'manual') tenantAllocation.setManualValue(tenantAllocation.value);
+            if (agencyAllocation.mode === 'manual') agencyAllocation.setManualValue(agencyAllocation.value);
+            setFocusEmailPending(true);
             return;
         }
 
@@ -798,8 +837,13 @@ export const InviteComposer = ({
     const directSendLabel = createsUnit
         ? t('links.composer.sendCreateAndInvite', 'Anlegen & einladen')
         : t('links.composer.sendInvite', 'Einladen');
-    const singleSendLabel =
-        sendMode === 'direct' ? directSendLabel : t('links.composer.sendCreateOnly', 'Empfänger nur anlegen');
+    const sendAndNextLabel = t('links.composer.sendAndNext', 'Senden & nächste');
+    // eslint-disable-next-line no-nested-ternary -- three mutually exclusive send modes
+    const singleSendLabel = sendAndNext
+        ? sendAndNextLabel
+        : sendMode === 'direct'
+        ? directSendLabel
+        : t('links.composer.sendCreateOnly', 'Empfänger nur anlegen');
     const bulkSendLabel = t('links.bulk.sendSelected', '{{count}} ausgewählte senden', { count: selectionCount });
 
     /**
@@ -838,6 +882,12 @@ export const InviteComposer = ({
                 icon: <FileSaveIcon aria-hidden className={styles.menuIcon} data-glyph="file-save" />,
                 label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen'),
             },
+            // B4: send, then keep unit, template and topic level for the next person.
+            {
+                key: 'sendAndNext',
+                icon: <ForwardToInboxOutlinedIcon aria-hidden className={styles.menuIcon} />,
+                label: sendAndNextLabel,
+            },
             // #1026 slice 3: the admin's own account instead of an e-mail invite.
             ...(onSelfAssign
                 ? [
@@ -851,10 +901,15 @@ export const InviteComposer = ({
                 : []),
         ],
         selectable: true,
-        selectedKeys: [sendMode],
+        selectedKeys: [sendAndNext ? 'sendAndNext' : sendMode],
         onClick: ({ key }) => {
             if (key === 'selfAssign') {
                 onSelfAssign?.(agencyAllocation.mode === 'existing' ? agencyAllocation.unit : undefined);
+                return;
+            }
+            if (key === 'sendAndNext') {
+                // Session only: the persisted send mode stays what it was.
+                setSendAndNext(true);
                 return;
             }
             changeSendMode(key as InviteSendMode);

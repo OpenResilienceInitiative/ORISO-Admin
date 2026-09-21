@@ -505,6 +505,7 @@
     "links.composer.emailTaken": "Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.",
     "links.composer.sendDirect": "Direkt Versenden",
     "links.composer.sendCreateOnly": "Empfänger nur anlegen",
+    "links.composer.sendAndNext": "Senden & nächste",
     "links.composer.blocked.email": "Bitte eine gültige E-Mail-Adresse eingeben.",
     "links.composer.blocked.emailTaken": "Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.",
     "links.composer.blocked.names": "Bitte Vorname und Name eingeben.",

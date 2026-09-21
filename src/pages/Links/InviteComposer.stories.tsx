@@ -253,6 +253,7 @@ const FIELD = {
 };
 const SEND = {
     invite: either('Einladen', 'Invite'),
+    sendAndNext: either('Senden & nächste', 'Send & next'),
     createAndInvite: either('Anlegen & einladen', 'Create & invite'),
 };
 
@@ -275,12 +276,12 @@ export const Empty: Story = {
         const canvas = within(canvasElement);
         await expect(await canvas.findByRole('button', { name: SEND.createAndInvite })).toBeDisabled();
         await expect(canvas.getByRole('combobox', { name: FIELD.tenant })).toBeEnabled();
-        // Preselected values are chosen values: Rolle, Themen & Fachbereiche and Vorlage rest as pills.
-        await expect(canvas.getByRole('button', { name: PILL.role })).toHaveTextContent(/Berater:in|Counsellor/);
-        await expect(canvas.getByRole('button', { name: PILL.topics })).toHaveTextContent(
-            /Keine weiteren Fachbereiche|No further departments/,
-        );
-        await expect(canvas.getByRole('button', { name: PILL.template })).toHaveTextContent(/Berater:innen-Willkommen/);
+        // A fresh page starts with every field expanded (B4): pills from the start
+        // only exist after „Senden & nächste".
+        await expect(canvas.getByRole('combobox', { name: FIELD.role })).toBeInTheDocument();
+        await expect(canvas.getByRole('combobox', { name: FIELD.topics })).toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: PILL.role })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: PILL.template })).not.toBeInTheDocument();
     },
 };
 
@@ -357,7 +358,7 @@ export const TopicSelectOpen: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
-        await userEvent.click(await canvas.findByRole('button', { name: PILL.topics }));
+        await userEvent.click(await canvas.findByRole('combobox', { name: FIELD.topics }));
         await body.findByText(/Wählt selbst aus den vorhandenen Fachbereichen/);
         await body.findByText(/Darf neue Themen anlegen/);
     },
@@ -652,6 +653,46 @@ export const SelfAssignMenuEntry: Story = {
     },
 };
 
+/**
+ * B4 „Senden & nächste": sends like „Direkt Versenden", then prepares the bar
+ * for the next person of the same session — Träger, Beratungsstelle, Vorlage and
+ * „Themen & Fachbereiche" stay as ✓ pills, E-Mail, Vorname, Name and Rolle are
+ * cleared (Rolle back to the default), and the cursor waits in E-Mail.
+ */
+export const SendAndNext: Story = {
+    args: { initialValues: { ...PREFILLED, topicPermission: 'SELECT_EXISTING' }, onSubmit: fn(() => true) },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('button', { name: /Sendeoptionen|Send options/ }));
+        await userEvent.click(await body.findByRole('menuitem', { name: /Senden & nächste|Send & next/ }));
+        await userEvent.click(await canvas.findByRole('button', { name: SEND.sendAndNext }));
+        await waitFor(() =>
+            expect(args.onSubmit).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    recipientEmail: PREFILLED.recipientEmail,
+                    sendMode: 'direct',
+                    agencyId: 101,
+                }),
+            ),
+        );
+
+        const email = await canvas.findByRole('textbox', { name: FIELD.email });
+        await waitFor(() => expect(email).toHaveFocus());
+        await expect(email).toHaveValue('');
+        await expect(canvas.getByRole('textbox', { name: FIELD.firstName })).toHaveValue('');
+        await expect(canvas.getByRole('button', { name: PILL.tenant })).toBeInTheDocument();
+        await expect(canvas.getByRole('button', { name: PILL.agency })).toBeInTheDocument();
+        await expect(canvas.getByRole('button', { name: PILL.template })).toHaveTextContent(/Berater:innen-Willkommen/);
+        await expect(canvas.getByRole('button', { name: PILL.topics })).toHaveTextContent(
+            /Darf weitere Fachbereiche auswählen|may select/i,
+        );
+        await expect(canvas.getByRole('button', { name: PILL.role })).toHaveTextContent(/Berater:in|Counsellor/);
+        // The mode holds for the next person of this session.
+        await expect(canvas.getByRole('button', { name: SEND.sendAndNext })).toBeInTheDocument();
+    },
+};
+
 /** Tenant admin: the Träger is pinned to their own (visible, disabled); roles stay open. */
 export const TenantAdminLocked: Story = {
     args: { viewerScope: 'tenant', ownTenant: TENANTS[0] },
@@ -674,9 +715,10 @@ export const AgencyAdminLocked: Story = {
         await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toHaveValue(
             'Caritas Suchtberatung Freiburg · 101',
         );
-        // Only one role on offer: the Rolle pill is fixed on „Berater:in".
-        await expect(canvas.getByRole('button', { name: PILL.role })).toHaveTextContent(/Berater:in|Counsellor/);
-        await expect(canvas.getByRole('button', { name: PILL.role })).toBeDisabled();
+        // Only one role on offer: „Rolle" is fixed on „Berater:in".
+        const role = canvas.getByRole('combobox', { name: FIELD.role });
+        await expect(role.closest('.ant-select')).toHaveTextContent(/Berater:in|Counsellor/);
+        await expect(role).toBeDisabled();
         await expect(canvas.getByRole('button', { name: SEND.invite })).toBeInTheDocument();
     },
 };
@@ -686,7 +728,7 @@ export const RoleHidesFields: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
-        await userEvent.click(await canvas.findByRole('button', { name: PILL.role }));
+        await userEvent.click(await canvas.findByRole('combobox', { name: FIELD.role }));
         await userEvent.click(await body.findByTitle(/BST-Admin|Agency admin/));
         await waitFor(() => expect(canvas.queryByRole('button', { name: PILL.topics })).not.toBeInTheDocument());
         await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toBeInTheDocument();
@@ -702,8 +744,8 @@ export const TraegerTabRoleFixed: Story = {
     args: { allowedRoles: ['TENANT_ADMIN'], defaultRole: 'TENANT_ADMIN', includeAgencyField: false },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const role = await canvas.findByRole('button', { name: PILL.role });
-        await expect(role).toHaveTextContent(/Träger-Admin|Tenant admin/);
+        const role = await canvas.findByRole('combobox', { name: FIELD.role });
+        await expect(role.closest('.ant-select')).toHaveTextContent(/Träger-Admin|Tenant admin/);
         await expect(role).toBeDisabled();
     },
 };
@@ -827,8 +869,7 @@ export const TenantTabTemplateDialogOpen: Story = {
     parameters: { msw: { handlers: defaultHandlers } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        // The chosen template rests as a pill; expanding it shows the split button, whose main segment opens the dialog.
-        await userEvent.click(await canvas.findByRole('button', { name: PILL.template }));
+        // A fresh bar shows the template split button expanded; its main segment opens the dialog.
         await userEvent.click(await canvas.findByRole('button', { name: /Träger-Willkommen/ }));
     },
 };

@@ -569,6 +569,121 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
         expect(screen.queryByRole('button', { name: /^Berät auch bearbeiten/ })).not.toBeInTheDocument();
     });
 
+    it('starts a fresh page with every field expanded — no pills before anything was chosen', async () => {
+        render(<CounsellorInvitesTab />);
+
+        expect(await screen.findByRole('combobox', { name: 'Rolle' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^Rolle bearbeiten/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^Vorlage bearbeiten/ })).not.toBeInTheDocument();
+    });
+
+    /*
+     * B4 "Senden & nächste": send like "Direkt Versenden", then keep the unit,
+     * the template and the topic permission (as pills) for the next person and
+     * clear only the person: E-Mail, Vorname, Name, Rolle. Focus lands on E-Mail.
+     */
+    describe('"Senden & nächste"', () => {
+        const chooseSendAndNext = async (user: ReturnType<typeof userEvent.setup>) => {
+            await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
+            await user.click(await screen.findByRole('menuitem', { name: /Senden & nächste/ }));
+            return screen.findByRole('button', { name: 'Senden & nächste' });
+        };
+
+        it('keeps Träger, Beratungsstelle, Vorlage and topics, clears the person and focuses E-Mail', async () => {
+            mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+            mocks.createAccountInvite.mockResolvedValue({
+                ...invite(100, 79, 'WAITING_FOR_UNIT'),
+                targetRole: 'COUNSELLOR',
+                waitingForUnit: 'AGENCY',
+            });
+            const user = await fill('900');
+            // A deliberate pick of the topic level, so "kept" is observable. (Typing
+            // into the bar already folded the select fields into pills.)
+            await user.click(screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }));
+            await user.click(await screen.findByTitle('Darf weitere Fachbereiche auswählen'));
+
+            const send = await chooseSendAndNext(user);
+            await waitFor(() => expect(send).toBeEnabled(), { timeout: 10_000 });
+            await user.click(send);
+
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+            expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+                targetRole: 'COUNSELLOR',
+                agencyId: 900,
+                agencyIdAllocationMode: 'MANUAL',
+                topicPermission: 'SELECT_EXISTING',
+                templateId: 7,
+            });
+
+            const email = screen.getByLabelText('E-Mail');
+            await waitFor(() => expect(email).toHaveValue(''));
+            await waitFor(() => expect(email).toHaveFocus());
+            expect(screen.getByLabelText('Vorname')).toHaveValue('');
+            expect(screen.getByLabelText('Name')).toHaveValue('');
+            // The kept number is re-checked (it may just have been reserved), then folds back into its pill.
+            expect(
+                await screen.findByRole('button', { name: /^Beratungsstelle bearbeiten/ }, { timeout: 10_000 }),
+            ).toHaveAttribute('title', expect.stringContaining('900'));
+            expect(screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ })).toHaveTextContent(
+                'Darf weitere Fachbereiche auswählen',
+            );
+            expect(screen.getByRole('button', { name: /^Vorlage bearbeiten/ })).toHaveTextContent('Standard');
+            expect(screen.getByRole('button', { name: 'Senden & nächste' })).toBeInTheDocument();
+
+            // The next person only needs their own fields.
+            await user.type(email, 'bart.simpson@oriso.org');
+            await user.type(screen.getByLabelText('Vorname'), 'Bart');
+            await user.type(screen.getByLabelText('Name'), 'Simpson');
+            await waitFor(() => expect(screen.getByRole('button', { name: 'Senden & nächste' })).toBeEnabled(), {
+                timeout: 10_000,
+            });
+            await user.click(screen.getByRole('button', { name: 'Senden & nächste' }));
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(2));
+            expect(mocks.createAccountInvite.mock.calls[1][0]).toMatchObject({
+                recipientEmail: 'bart.simpson@oriso.org',
+                agencyId: 900,
+                topicPermission: 'SELECT_EXISTING',
+            });
+        });
+
+        it('puts Rolle back to the default role for the next person', async () => {
+            mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+            const user = await fill('900');
+            await user.click(screen.getByRole('button', { name: /^Rolle bearbeiten/ }));
+            await user.click(await screen.findByTitle('BST-Admin'));
+
+            const send = await chooseSendAndNext(user);
+            await waitFor(() => expect(send).toBeEnabled(), { timeout: 10_000 });
+            await user.click(send);
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+            expect(mocks.createAccountInvite.mock.calls[0][0].targetRole).toBe('AGENCY_ADMIN');
+
+            await waitFor(() => expect(screen.getByLabelText('E-Mail')).toHaveValue(''));
+            await waitFor(() =>
+                expect(screen.getByRole('button', { name: /^Rolle bearbeiten/ })).toHaveTextContent('Berater:in'),
+            );
+        });
+
+        it('clears nothing when the send fails', async () => {
+            mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+            mocks.createAccountInvite.mockRejectedValue(new Response(null, { status: 500 }));
+            const user = await fill('900');
+
+            const send = await chooseSendAndNext(user);
+            await waitFor(() => expect(send).toBeEnabled(), { timeout: 10_000 });
+            await user.click(send);
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+
+            expect(await screen.findByText('Could not create link')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /^E-Mail bearbeiten/ })).toHaveAttribute(
+                'title',
+                'lisa.simpson@oriso.org',
+            );
+            expect(screen.getByRole('button', { name: /^Vorname bearbeiten/ })).toHaveAttribute('title', 'Lisa');
+        });
+    });
+
     it('lets a counsellor wait for a new agency whose admin invite is open, and says so', async () => {
         mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
         mocks.createAccountInvite.mockResolvedValue({

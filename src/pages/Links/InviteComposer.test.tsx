@@ -141,8 +141,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     it("renders the template chooser at the row's medium height, like the send button", async () => {
         await renderTenantTab();
 
-        // #1026: a chosen template rests as a "✓ Standard" pill; expanding it shows the split button.
-        await userEvent.setup().click(await screen.findByTitle('Standard'));
+        // A fresh page shows the template split button expanded (B4: pills only after „Senden & nächste").
         const templatePill = (await screen.findByRole('button', { name: /Standard/ })).closest(
             `.${splitButtonStyles.splitButton}`,
         ) as HTMLElement;
@@ -163,7 +162,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         const wrapper = sendButton.closest(`.${splitButtonStyles.splitButton}`) as HTMLElement;
         // Template auto-selected and Träger-ID auto-suggested — the empty e-mail
         // alone must keep the action gated and in the outlined (non-primary) look.
-        expect(await screen.findByTitle('Standard')).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: /Standard/ })).toBeInTheDocument();
         expect(sendButton).toBeDisabled();
         // `primary` is an alias of the sheet's `filled` variant since #741.
         expect(wrapper).not.toHaveClass(splitButtonStyles.filled);
@@ -183,7 +182,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         const user = userEvent.setup();
 
         const sendButton = await findSendButton('Anlegen & einladen');
-        expect(await screen.findByTitle('Standard')).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: /Standard/ })).toBeInTheDocument();
         expect(sendButton).toBeDisabled();
         expect(screen.getByTestId('composer-send-icon')).toHaveAttribute('data-glyph', 'mail');
 
@@ -371,8 +370,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         renderTenantTab();
         const user = userEvent.setup();
 
-        // #1026: expand the collapsed "✓ Standard" pill, then the main segment opens the dialog.
-        await user.click(await screen.findByTitle('Standard'));
+        // The main segment of the (expanded) template split button opens the dialog.
         await user.click(await screen.findByRole('button', { name: /Standard/ }));
 
         expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('list');
@@ -561,7 +559,6 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         renderTenantTab();
         const user = userEvent.setup();
 
-        await user.click(await screen.findByTitle('Standard'));
         await user.click(await screen.findByRole('button', { name: 'Vorlagenmenü öffnen' }));
         await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Standard“/ }));
 

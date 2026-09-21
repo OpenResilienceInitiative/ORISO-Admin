@@ -108,7 +108,8 @@ export const AgencyAdmin: Story = {
         await waitFor(() => expect(agency).toHaveValue('Caritas Suchtberatung Freiburg · 101'), { timeout: 5_000 });
         await expect(agency).toBeDisabled();
         await expect(canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ })).toBeDisabled();
-        await expect(canvas.getByRole('button', { name: /^(Rolle|Role) (bearbeiten|edit)/i })).toBeDisabled();
+        // One role on offer: „Rolle" is fixed on „Berater:in".
+        await expect(canvas.getByRole('combobox', { name: /^(Rolle|Role)$/ })).toBeDisabled();
         await expect(canvas.queryByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeNull();
     },
 };
