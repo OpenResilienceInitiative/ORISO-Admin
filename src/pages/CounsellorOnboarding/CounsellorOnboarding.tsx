@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import PersonOffOutlined from '@mui/icons-material/PersonOffOutlined';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Refresh from '@mui/icons-material/Refresh';
@@ -12,6 +13,7 @@ import {
     createHttpCounsellorOnboardingClient,
 } from '../../api/counsellorOnboarding/counsellorOnboarding';
 import { M3Button } from '../../components/M3Button';
+import { DialogButton, Modal } from '../../components/Modal';
 import { FloatingLabelInput } from '../../components/FloatingLabelInput';
 import { FloatingLabelSelect } from '../../components/FloatingLabelSelect';
 import { InputChipPicker } from '../../components/InputChipPicker';
@@ -101,6 +103,8 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         submitRegistration,
         submitTwoFactorCode,
     } = useCounsellorOnboardingFlow(inviteToken, resolvedClient);
+    // Frank Q28: switching "Berät auch" off while founding an agency asks first.
+    const [confirmNoCounselling, setConfirmNoCounselling] = useState(false);
 
     if (state.phase === 'loading') {
         return (
@@ -204,6 +208,8 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     const singleAgencyTopic = agencyTopicsOnly && topics.length === 1;
     const pickExactlyOne = topicPermission === 'NONE' && !singleAgencyTopic;
     let topicHintKey: string | undefined;
+    // Frank Q28: founding without counselling — the topics are the new agency's, not the person's.
+    const foundsWithoutCounselling = createsAgency && !counsels(invite, data);
     if (selectableTopics.length === 0) {
         // No hint over an empty row — the alert below carries the explanation.
         topicHintKey = undefined;
@@ -213,6 +219,8 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         topicHintKey = 'counsellorOnboarding.topics.pickOneHint';
     } else if (agencyTopicsOnly) {
         topicHintKey = 'counsellorOnboarding.topics.selectExistingHint';
+    } else if (foundsWithoutCounselling) {
+        topicHintKey = 'counsellorOnboarding.topics.agencyTopicsHint';
     } else {
         topicHintKey = hasCoverage ? 'counsellorOnboarding.topics.addHint' : 'counsellorOnboarding.topics.chooseHint';
     }
@@ -222,16 +230,16 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     // accept a credential that form would reject.
     const usernameErrKey = usernameErrorKey(data.account.username);
     const passwordErrKey = passwordErrorKey(data.account.password);
-    // #1026 slice 3: an agency admin who does not counsel needs no topic and no counsellor profile.
+    // #1026 slice 3: an agency admin who does not counsel needs no counsellor profile.
+    // Frank Q28: a FOUNDING one still gives the new agency at least one topic.
     const agencyAdmin = isAgencyAdminInvite(invite);
     const counselling = counsels(invite, data);
-    const topicsValid = !counselling || data.topicIds.length > 0;
-    // The hint names what is still missing; without counselling no topic is.
+    const needsTopics = counselling || createsAgency;
+    const topicsValid = !needsTopics || data.topicIds.length > 0;
+    // The hint names what is still missing; without a topic step no topic is.
     let submitHintKey = createsAgency ? 'counsellorOnboarding.submitHintAgency' : 'counsellorOnboarding.submitHint';
-    if (!counselling) {
-        submitHintKey = createsAgency
-            ? 'counsellorOnboarding.submitHintAgencyNoTopics'
-            : 'counsellorOnboarding.submitHintNoTopics';
+    if (!needsTopics) {
+        submitHintKey = 'counsellorOnboarding.submitHintNoTopics';
     }
     const agencyValid = !createsAgency || data.agency.name.trim().length > 0;
     const canSubmit = usernameErrKey === null && passwordErrKey === null && topicsValid && agencyValid && !busy;
@@ -281,7 +289,15 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                             checked={data.alsoCounsellor}
                             disabled={busy}
                             label={t('counsellorOnboarding.alsoCounsellor.label')}
-                            onChange={setAlsoCounsellor}
+                            onChange={(next) => {
+                                // Founding without counselling is allowed, but the agency still
+                                // needs a topic — say so before the switch goes off.
+                                if (!next && createsAgency) {
+                                    setConfirmNoCounselling(true);
+                                    return;
+                                }
+                                setAlsoCounsellor(next);
+                            }}
                         />
                     </div>
                 </Section>
@@ -399,7 +415,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 </Section>
             )}
 
-            {counselling && (
+            {needsTopics && (
                 <Section titleKey="cards.focusTopics.title" hintKey={topicHintKey}>
                     {/* eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down */}
                     {selectableTopics.length === 0 ? (
@@ -450,6 +466,33 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                         />
                     )}
                 </Section>
+            )}
+
+            {confirmNoCounselling && (
+                <Modal
+                    icon={<PersonOffOutlined />}
+                    titleKey="counsellorOnboarding.alsoCounsellorOff.title"
+                    contentKey="counsellorOnboarding.alsoCounsellorOff.body"
+                    width={520}
+                    // X, Escape and the mask keep counselling on — the safe way out.
+                    onClose={() => setConfirmNoCounselling(false)}
+                    footer={
+                        <>
+                            <DialogButton onClick={() => setConfirmNoCounselling(false)}>
+                                {t('counsellorOnboarding.alsoCounsellorOff.keep')}
+                            </DialogButton>
+                            <DialogButton
+                                primary
+                                onClick={() => {
+                                    setConfirmNoCounselling(false);
+                                    setAlsoCounsellor(false);
+                                }}
+                            >
+                                {t('counsellorOnboarding.alsoCounsellorOff.confirm')}
+                            </DialogButton>
+                        </>
+                    }
+                />
             )}
 
             <div className={styles.submitRow}>

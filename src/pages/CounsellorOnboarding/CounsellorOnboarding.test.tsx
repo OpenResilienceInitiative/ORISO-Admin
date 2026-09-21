@@ -538,6 +538,95 @@ describe('CounsellorOnboarding — agency admin, "Berät auch" (#1026)', () => {
         );
     });
 
+    /*
+     * Frank Q28 (#1026): a FOUNDING agency admin must give the new agency at
+     * least one topic, even without counselling — otherwise the counsellors
+     * queued for it have nothing to pick.
+     */
+    describe('founding a new agency', () => {
+        const FOUNDING_INVITE: CounsellorOnboardingInviteDTO = {
+            ...AGENCY_ADMIN_INVITE,
+            agencyExists: false,
+            topics: [],
+            availableTopics: [{ id: 14, name: 'Suchtberatung' }],
+        };
+        const nameAgency = async (user: ReturnType<typeof userEvent.setup>) =>
+            user.type(screen.getByLabelText('counsellorOnboarding.agency.name'), 'Suchtberatung Nord');
+
+        it('without counselling still requires one topic for the agency and sends it', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({ ...FOUNDING_INVITE, alsoCounsellor: false }),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await fillAccount(user);
+            await nameAgency(user);
+            // No counsellor profile, but the topic step stays — it is the agency's.
+            expect(screen.queryByRole('heading', { name: 'cards.avatarName.title' })).not.toBeInTheDocument();
+            expect(screen.getByText('counsellorOnboarding.topics.agencyTopicsHint')).toBeInTheDocument();
+            expect(submit()).toBeDisabled();
+
+            await addTopic(user, 'Suchtberatung');
+            expect(submit()).toBeEnabled();
+            await user.click(submit());
+
+            await waitFor(() => expect(client.registerCounsellor).toHaveBeenCalledTimes(1));
+            expect(client.registerCounsellor).toHaveBeenCalledWith(
+                'raw-token',
+                expect.objectContaining({
+                    alsoCounsellor: false,
+                    topicIds: [14],
+                    agency: { name: 'Suchtberatung Nord' },
+                }),
+            );
+        });
+
+        it('asks before "Berät auch" goes off; "Doch selbst beraten" keeps it on', async () => {
+            const client = createClient({ getOnboardingInvite: vi.fn().mockResolvedValue(FOUNDING_INVITE) });
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await user.click(await screen.findByRole('switch', { name: 'counsellorOnboarding.alsoCounsellor.label' }));
+            const dialog = await screen.findByRole('dialog');
+            expect(within(dialog).getByText('counsellorOnboarding.alsoCounsellorOff.title')).toBeInTheDocument();
+            expect(within(dialog).getByText('counsellorOnboarding.alsoCounsellorOff.body')).toBeInTheDocument();
+
+            await user.click(
+                within(dialog).getByRole('button', { name: 'counsellorOnboarding.alsoCounsellorOff.keep' }),
+            );
+            await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+            expect(alsoCounsellorSwitch()).toHaveAttribute('aria-checked', 'true');
+        });
+
+        it('"Ja, nur Admin" turns it off and the topic step stays mandatory', async () => {
+            const client = createClient({ getOnboardingInvite: vi.fn().mockResolvedValue(FOUNDING_INVITE) });
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await fillAccount(user);
+            await nameAgency(user);
+            await user.click(alsoCounsellorSwitch());
+            await user.click(
+                await screen.findByRole('button', { name: 'counsellorOnboarding.alsoCounsellorOff.confirm' }),
+            );
+            await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+            expect(alsoCounsellorSwitch()).toHaveAttribute('aria-checked', 'false');
+            expect(screen.getByRole('heading', { name: 'cards.focusTopics.title' })).toBeInTheDocument();
+            expect(submit()).toBeDisabled();
+        });
+
+        it('an existing agency switches off without asking', async () => {
+            const client = createClient({ getOnboardingInvite: vi.fn().mockResolvedValue(AGENCY_ADMIN_INVITE) });
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await user.click(await screen.findByRole('switch', { name: 'counsellorOnboarding.alsoCounsellor.label' }));
+            expect(alsoCounsellorSwitch()).toHaveAttribute('aria-checked', 'false');
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+    });
+
     it('treats an agency admin who counsels as CREATE, whatever topic level the invite carries', async () => {
         const client = createClient({
             getOnboardingInvite: vi.fn().mockResolvedValue({ ...AGENCY_ADMIN_INVITE, topicPermission: 'NONE' }),

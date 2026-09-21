@@ -378,3 +378,77 @@ export const AgencyAdminAlsoCounsellorOffMobile: Story = {
     ...PHONE_390,
     play: AgencyAdminAlsoCounsellorOff.play,
 };
+
+/*
+ * Frank Q28 (#1026): a FOUNDING agency admin gives the new agency at least one
+ * topic, even without counselling — the counsellors queued for it pick from
+ * those. Switching "Berät auch" off while founding asks first.
+ */
+const FOUNDING_INVITE = {
+    ...AGENCY_ADMIN,
+    agencyId: 13,
+    departmentId: null,
+    agencyExists: false,
+    topics: [],
+    availableTopics: [
+        { id: 21, name: 'Familienberatung' },
+        { id: 23, name: 'Suchtberatung' },
+    ],
+};
+
+/** Founding admin switches "Berät auch" off: the confirmation dialog (left open for review). */
+export const AgencyAdminFoundingConfirmNoCounselling: Story = {
+    name: 'Agency admin founding — confirm "Berät auch" off',
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: { ...FOUNDING_INVITE, alsoCounsellor: true },
+        }),
+    },
+    play: async ({ canvasElement, userEvent }) => {
+        await userEvent.click(await alsoCounsellorSwitch(canvasElement));
+        const dialog = await within(document.body).findByRole('dialog');
+        // The dialog fades in; wait for the title to be shown.
+        await waitFor(() =>
+            expect(within(dialog).getByText(/Sie beraten nicht selbst\?|Not counselling yourself\?/)).toBeVisible(),
+        );
+        await expect(within(dialog).getByText(/mindestens ein Thema|at least one topic/)).toBeVisible();
+        await expect(within(dialog).getByRole('button', { name: /Ja, nur Admin|Yes, admin only/ })).toBeVisible();
+        await expect(
+            within(dialog).getByRole('button', { name: /Doch selbst beraten|Counsel after all/ }),
+        ).toBeVisible();
+        // Until confirmed, the switch stays on.
+        await expect(await alsoCounsellorSwitch(canvasElement)).toHaveAttribute('aria-checked', 'true');
+    },
+};
+
+/** The same dialog on a phone (390 px): both actions on one row. */
+export const AgencyAdminFoundingConfirmNoCounsellingMobile: Story = {
+    ...PHONE_390,
+    name: 'Agency admin founding — confirm "Berät auch" off (390px)',
+    args: AgencyAdminFoundingConfirmNoCounselling.args,
+    play: AgencyAdminFoundingConfirmNoCounselling.play,
+};
+
+/** Confirmed "nur Admin": no counsellor profile, but the agency's topic step stays mandatory. */
+export const AgencyAdminFoundingWithoutCounselling: Story = {
+    name: 'Agency admin founding — without counselling, topic still required',
+    args: AgencyAdminFoundingConfirmNoCounselling.args,
+    play: async ({ canvasElement, userEvent }) => {
+        const canvas = within(canvasElement);
+        await userEvent.type(await canvas.findByLabelText('Benutzername'), 'oskar_b');
+        await userEvent.type(canvas.getByLabelText('Passwort'), 'SecurePass1!');
+        await userEvent.type(canvas.getByLabelText('Name der Beratungsstelle'), 'Suchtberatung Nord');
+        await userEvent.click(await alsoCounsellorSwitch(canvasElement));
+        await userEvent.click(await within(document.body).findByRole('button', { name: /Ja, nur Admin/ }));
+        await waitFor(async () =>
+            expect(await alsoCounsellorSwitch(canvasElement)).toHaveAttribute('aria-checked', 'false'),
+        );
+        await expect(canvas.getByRole('heading', { name: /^(Themenfelder|Focus topics)$/ })).toBeInTheDocument();
+        const submit = canvas.getByRole('button', { name: 'Konto erstellen' });
+        await expect(submit).toBeDisabled();
+        await userEvent.click(canvas.getByRole('button', { name: 'Thema hinzufügen' }));
+        await userEvent.click(await within(document.body).findByRole('menuitem', { name: 'Suchtberatung' }));
+        await expect(submit).toBeEnabled();
+    },
+};
