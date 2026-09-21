@@ -47,7 +47,14 @@ export const useAddOrUpdateTenant = ({ id, ...options }: UseAddOrUpdateTenantOpt
             return fetchData({
                 url: `${tenantAdminEndpoint}${id ? `/${id}` : ''}`,
                 method: id ? FETCH_METHODS.PUT : FETCH_METHODS.POST,
-                responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.CONFLICT_WITH_RESPONSE],
+                // Both refusals travel in a header, so both branches must hand the caller the
+                // RAW response: 409 for a taken subdomain, 400 + X-Reason SUBDOMAIN_INVALID for
+                // a malformed one. Without the 400 branch the reason header is lost.
+                responseHandling: [
+                    FETCH_SUCCESS.CONTENT,
+                    FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
+                    FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+                ],
                 bodyData,
             });
         },

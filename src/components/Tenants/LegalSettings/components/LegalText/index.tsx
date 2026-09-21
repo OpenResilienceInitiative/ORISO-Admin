@@ -28,6 +28,12 @@ const hintSessionKey = (type: 'privacy' | 'imprint') => `oriso-admin.legal.${typ
 
 const scopedKey = (key: string, scope: string) => `${key}.${scope}`;
 
+const VERSION_HISTORY_STATUS_KEYS = {
+    loading: 'legal.versions.loading',
+    unsupported: 'legal.versions.unsupported',
+    unavailable: 'legal.versions.unavailable.title',
+} as const;
+
 const isHintDismissed = (type: 'privacy' | 'imprint', scope: string) => {
     try {
         return (
@@ -109,14 +115,15 @@ export const LegalText = ({
     );
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
 
-    // Version look-back for the Träger-level text (ADR-021 decision 3). Empty
-    // until the history endpoints of #250 are deployed — the card then behaves
-    // exactly as it did before. A genuine failure (403, 500, network) is NOT an
-    // empty history and is reported as such.
-    const { data: versions = [], isError: versionsUnavailable } = useLegalTextVersions(
+    // Version look-back for the Träger-level text (ADR-021 decision 3). TenantService
+    // has not shipped this collection yet: that must not be phrased as "never
+    // published" or turn the persisted current body into an "Entwurf". A genuine
+    // failure (403, 500, network) remains separate from both states.
+    const { data: versions, historyState } = useLegalTextVersions(
         { level: 'tenant', tenantId: Number(tenantId), kind: legalType === 'imprint' ? 'IMPRINT' : 'DPP' },
         !!legalType,
     );
+    const versionsUnavailable = historyState === 'unavailable';
     // Keeps the consent sentence on the same version as the body shown above it.
     const {
         onViewVersionChange,
@@ -326,6 +333,10 @@ export const LegalText = ({
                 publishing={isPending}
                 versionLabel={t('legal.m3Editor.versionLabel')}
                 versions={editorVersions}
+                versionHistoryState={historyState}
+                versionHistoryStatusLabel={
+                    historyState === 'available' ? undefined : t(VERSION_HISTORY_STATUS_KEYS[historyState])
+                }
                 // Restore = copy into the active language's draft; the published
                 // chain stays append-only.
                 onRestoreVersion={

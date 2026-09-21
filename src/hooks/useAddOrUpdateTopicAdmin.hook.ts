@@ -1,9 +1,9 @@
-import merge from 'lodash.merge';
 import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { topicAdminEndpoint } from '../appConfig';
 import { TopicAdminData } from '../types/TopicAdmin';
 import { TOPIC_ADMIN_KEY, useTopicAdmin } from './useTopicAdmin';
+import { buildTopicRequestBody } from './topicRequestBody';
 
 interface UseAddOrUpdateTopicOptions
     extends UseMutationOptions<TopicAdminData, Error, TopicAdminData, Error | Response> {
@@ -16,21 +16,7 @@ export const useAddOrUpdateTopicAdmin = ({ id, ...options }: UseAddOrUpdateTopic
 
     return useMutation({
         mutationFn: (formData) => {
-            const bodyData = JSON.stringify(
-                merge({}, topicData, {
-                    ...formData,
-                    name: {
-                        ...(formData?.name || {}),
-                        translate: undefined,
-                    },
-                    description: {
-                        ...(formData?.description || {}),
-                        translate: undefined,
-                    },
-                    external: false,
-                    status: formData.status ? 'ACTIVE' : 'INACTIVE',
-                }),
-            );
+            const bodyData = JSON.stringify(buildTopicRequestBody(topicData, formData));
 
             return fetchData({
                 url: id ? `${topicAdminEndpoint}/${id}` : topicAdminEndpoint,

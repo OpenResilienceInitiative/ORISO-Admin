@@ -136,7 +136,7 @@
         svg {
             width: @overlay-icon-size-xs;
             height: @overlay-icon-size-xs;
-            fill: var(--m3-primary, var(--skin-color-primary, @primary));
+            fill: var(--skin-color-primary, @primary);
         }
 
         .text {
@@ -148,7 +148,7 @@
 
         &--active {
             .overlay__stepIcon {
-                background-color: var(--m3-primary, var(--skin-color-primary, @primary));
+                background-color: var(--skin-color-primary, @primary);
             }
 
             svg,
@@ -176,7 +176,7 @@
     &__stepIcon {
         width: calc(~'@{overlay-icon-size-xs} * 2');
         height: calc(~'@{overlay-icon-size-xs} * 2');
-        border: 1px solid var(--m3-primary, var(--skin-color-primary, @primary));
+        border: 1px solid var(--skin-color-primary, @primary);
         border-radius: @overlay-icon-size-xs;
         display: flex;
         justify-content: center;

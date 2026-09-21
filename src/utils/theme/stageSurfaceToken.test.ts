@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { computeOrisoPalette } from './orisoScheme';
+import { contrastRatio } from '../contrastRatio';
 
 const appCss = readFileSync(resolve(__dirname, '../../app.css'), 'utf8');
 const protectedLayout = readFileSync(resolve(__dirname, '../../styles/components/protectedLayout.less'), 'utf8');
@@ -9,22 +10,6 @@ const stage = readFileSync(resolve(__dirname, '../../styles/components/stage.les
 
 const staticToken = (name: string): string | undefined =>
     appCss.match(new RegExp(`^\\s*${name}:\\s*([^;]+);`, 'm'))?.[1]?.trim();
-
-const srgb = (channel: number) => {
-    const c = channel / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-};
-
-const relativeLuminance = (hex: string) => {
-    const value = hex.trim().replace('#', '');
-    const [r, g, b] = [0, 2, 4].map((offset) => srgb(parseInt(value.slice(offset, offset + 2), 16)));
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-};
-
-const contrastRatio = (a: string, b: string) => {
-    const [light, dark] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
-    return (light + 0.05) / (dark + 0.05);
-};
 
 const DEFAULT_SEED = { accentDark: '#a5000a', primary: '#a5000a' };
 
