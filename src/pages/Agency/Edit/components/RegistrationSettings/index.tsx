@@ -50,11 +50,21 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         pageSize: 1000,
         enabled: showConsultantAssignment,
     });
+    // Superadmins pick the tenant in the form; tenant admins carry it in their token.
+    const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
     const consultantOptions = useMemo(() => {
-        const activeConsultants = (consultants?.data || []).filter(isActiveRecord);
+        // A platform admin's consultant search spans tenants and the backend stores a
+        // cross-tenant agency assignment without rejecting it, so scope the list to the
+        // agency's tenant. An unknown tenant leaves it unfiltered rather than emptying
+        // the picker — same rule as the supervisor picker in users/Edit.
+        const assignable = (consultants?.data || []).filter(
+            (consultant) =>
+                isActiveRecord(consultant) &&
+                (consultantTenantId === undefined || String(consultant.tenantId) === String(consultantTenantId)),
+        );
 
-        return convertToOptions(activeConsultants, ['firstname', 'lastname', 'email'], 'id');
-    }, [consultants?.data]);
+        return convertToOptions(assignable, ['firstname', 'lastname', 'email'], 'id');
+    }, [consultants?.data, consultantTenantId]);
     // One rule for both screens. A selection counts because saving assigns it, which is what
     // the hint on this card promises; the backend count covers counsellors attached earlier.
     const mayGoOnline = mayBeVisibleInRegistration({
@@ -62,8 +72,6 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         hasSelectedConsultants,
     });
     const needsConsultantAssignment = !mayGoOnline;
-    // Superadmins pick the tenant in the form; tenant admins carry it in their token.
-    const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
 
     const onConsultantCreated = (consultant) => {
         const current = form.getFieldValue('consultantIds') || [];

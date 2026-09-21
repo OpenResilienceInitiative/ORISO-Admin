@@ -487,7 +487,14 @@ describe('AgencyPageEdit create flow', () => {
 });
 
 const TOPIC = { id: 7, name: 'Debt counselling', status: 'ACTIVE' };
-const CONSULTANT = { id: 1, firstname: 'Erika', lastname: 'Beispiel', email: 'erika@example.org' };
+const CONSULTANT = { id: 1, firstname: 'Erika', lastname: 'Beispiel', email: 'erika@example.org', tenantId: '7' };
+const FOREIGN_CONSULTANT = {
+    id: 2,
+    firstname: 'Fremd',
+    lastname: 'Mandant',
+    email: 'fremd@example.org',
+    tenantId: '99',
+};
 const CONSULTANT_LABEL = 'Erika Beispiel erika@example.org';
 
 const setupUser = () => userEvent.setup({ delay: null });
@@ -755,6 +762,22 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
 
         expect(await screen.findByText(NEEDS_CONSULTANT)).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('does not offer a counsellor from another tenant', async () => {
+        const user = setupUser();
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        // The platform admin's consultant search spans tenants; the agency belongs to tenant 7.
+        mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+        mocks.hasConsultants = false;
+        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: true, topics: [TOPIC], tenantId: 7 };
+        renderWithClient(<AgencyPageEdit />);
+
+        await user.click(await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' }));
+
+        expect(await screen.findByRole('option', { name: CONSULTANT_LABEL })).toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: /Fremd Mandant/ })).not.toBeInTheDocument();
     });
 
     it('warns when the card saved but the counsellor could not be assigned', async () => {
