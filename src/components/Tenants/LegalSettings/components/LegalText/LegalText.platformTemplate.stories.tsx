@@ -5,7 +5,10 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook/adminStoryDecorators';
 import type { TenantLegalDraft } from '../../../../../api/tenant/legalDrafts';
-import type { DistributeTenantLegalProposal } from '../../../../../api/tenant/legalProposals';
+import type {
+    DistributeAgencyLegalProposal,
+    DistributeTenantLegalProposal,
+} from '../../../../../api/tenant/legalProposals';
 import { LegalText } from './index';
 
 /**
@@ -165,6 +168,9 @@ export const SendToAllTraeger: Story = {
         await userEvent.click(button);
         const dialog = await page.findByRole('dialog');
         await expect(
+            within(dialog).getByText(/Impressum-Vorlage an Träger senden|Send imprint template to Träger/),
+        ).toBeInTheDocument();
+        await expect(
             within(dialog).getByText(/Veröffentlicht wird dabei nichts|Nothing is published/),
         ).toBeInTheDocument();
         await userEvent.click(within(dialog).getByRole('button', { name: /^(Senden|Send)$/ }));
@@ -265,5 +271,96 @@ export const TraegerSeesNoTemplateAction: Story = {
         const canvas = within(canvasElement);
         await canvas.findByRole('button', { name: /^(Veröffentlichen|Publish)$/ });
         await expect(canvas.queryByRole('button', { name: /Vorlage veröffentlichen|Publish as template/ })).toBeNull();
+    },
+};
+
+/* ------------------------------------------------------------------------------------ */
+/* Träger → Beratungsstellen: the same dialog one rung down (ORISO-AgencyService#303).   */
+/* The server side does not exist yet; `offerTemplatesToAgencies` is off in the app and  */
+/* on here, so the UX can be agreed before the endpoint is built.                        */
+/* ------------------------------------------------------------------------------------ */
+
+const TRAEGER_ID = 7;
+const traegerDraft: TenantLegalDraft = { ...savedPlatformDraft, revision: '41:3' };
+const agencies = [
+    { id: 101, name: 'Beratungsstelle Nordlicht Mitte' },
+    { id: 102, name: 'Beratungsstelle Nordlicht Süd' },
+];
+const sentToAgencies: DistributeAgencyLegalProposal[] = [];
+
+const traegerHandlers = [
+    ...baseHandlers,
+    http.get('*/service/tenantadmin/:id', () =>
+        HttpResponse.json({ ...mainTenant, id: TRAEGER_ID, name: 'Träger Nordlicht' }),
+    ),
+    http.get('*/service/tenantadmin/7/legal-drafts/IMPRINT', () => HttpResponse.json(traegerDraft)),
+    http.get('*/service/agencyadmin/agencies', () =>
+        HttpResponse.json({ _embedded: agencies.map((agency) => ({ _embedded: agency })), total: agencies.length }),
+    ),
+    http.post('*/service/agencyadmin/legal-proposal-distributions', async ({ request }) => {
+        const body = (await request.json()) as DistributeAgencyLegalProposal;
+        sentToAgencies.push(body);
+        const recipientAgencyIds = body.audience === 'ALL' ? agencies.map((a) => a.id) : body.agencyIds ?? [];
+        return HttpResponse.json({ requestKey: body.requestKey, recipientAgencyIds }, { status: 201 });
+    }),
+];
+
+const asTraeger = (Story: () => JSX.Element) => {
+    setStoryAuth([UserRole.TenantAdmin], TRAEGER_ID);
+    sentToAgencies.length = 0;
+    return <Story />;
+};
+
+/** A Träger offers its saved draft to selected Beratungsstellen — same dialog, other words. */
+export const TraegerSendsTemplateToSelectedAgencies: Story = {
+    args: { tenantId: TRAEGER_ID, draftTenantId: undefined, offerTemplatesToAgencies: true },
+    decorators: [asTraeger],
+    parameters: { msw: { handlers: traegerHandlers } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const page = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await enabledTemplateButton(canvas));
+        const dialog = await page.findByRole('dialog');
+        await expect(
+            within(dialog).getByText(
+                /Impressum-Vorlage an Beratungsstellen senden|Send imprint template to counselling centres/,
+            ),
+        ).toBeInTheDocument();
+        await userEvent.click(
+            within(dialog).getByLabelText(/Ausgewählte Beratungsstellen|Selected counselling centres/),
+        );
+        await userEvent.click(await within(dialog).findByText('Beratungsstelle Nordlicht Süd'));
+        const send = within(dialog).getByRole('button', { name: /^(Senden|Send)$/ });
+        await waitFor(() => expect(send).toBeEnabled());
+        await userEvent.click(send);
+        await waitFor(() => expect(sentToAgencies).toHaveLength(1));
+        await expect(sentToAgencies[0]).toMatchObject({
+            kind: 'IMPRINT',
+            sourceRevision: '41:3',
+            audience: 'SELECTED',
+            agencyIds: [102],
+        });
+        await expect(
+            await page.findByText(/an 1 Beratungsstelle gesendet|sent to 1 counselling centre/),
+        ).toBeInTheDocument();
+    },
+};
+
+/** Send to all of the Träger's Beratungsstellen. */
+export const TraegerSendsTemplateToAllAgencies: Story = {
+    args: { tenantId: TRAEGER_ID, draftTenantId: undefined, offerTemplatesToAgencies: true },
+    decorators: [asTraeger],
+    parameters: { msw: { handlers: traegerHandlers } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const page = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await enabledTemplateButton(canvas));
+        const dialog = await page.findByRole('dialog');
+        await userEvent.click(within(dialog).getByRole('button', { name: /^(Senden|Send)$/ }));
+        await waitFor(() => expect(sentToAgencies).toHaveLength(1));
+        await expect(sentToAgencies[0]).toMatchObject({ audience: 'ALL', sourceRevision: '41:3' });
+        await expect(
+            await page.findByText(/an 2 Beratungsstellen gesendet|sent to 2 counselling centres/),
+        ).toBeInTheDocument();
     },
 };

@@ -13,7 +13,7 @@ import { LegalConsentField } from '../LegalConsentField';
 import { LegalDraftNotice } from '../LegalDraftNotice';
 import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
 import { useTenantLegalDraft } from '../../hooks/useTenantLegalDraft';
-import { SendLegalTemplateDialog } from '../SendLegalTemplateDialog';
+import { SendLegalTemplateDialog, TemplateRecipientLevel } from '../SendLegalTemplateDialog';
 import { isSameDraftContent } from '../../utils/draftComparison';
 import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
 import { toEditorVersions } from '../../utils/legalVersionOptions';
@@ -73,6 +73,13 @@ interface LegalTextProps {
      * draft TenantService keeps under tenant 0 while the published text lives on the main tenant.
      */
     draftTenantId?: string | number;
+    /**
+     * Lets a Träger offer its saved draft to its own Beratungsstellen as a template — the
+     * rung below the platform's. Off until the AgencyService side exists
+     * (OpenResilienceInitiative/ORISO-AgencyService#303); the stories switch it on so the
+     * UX can be agreed first.
+     */
+    offerTemplatesToAgencies?: boolean;
     fieldName: string[];
     titleKey: string;
     /**
@@ -100,6 +107,7 @@ interface LegalTextProps {
 export const LegalText = ({
     tenantId,
     draftTenantId,
+    offerTemplatesToAgencies = false,
     fieldName,
     titleKey,
     legalType,
@@ -472,6 +480,9 @@ export const LegalText = ({
     // be offered, and only as the SAVED revision: the dialog names that version, so sending what
     // is merely typed would put a different text in front of every Träger than the one named.
     const isPlatformDraft = String(draftTenantId ?? tenantId) === '0';
+    let templateLevel: TemplateRecipientLevel | undefined;
+    if (isPlatformDraft) templateLevel = 'traeger';
+    else if (offerTemplatesToAgencies) templateLevel = 'agencies';
     const savedServerDraft = serverBase.draft ?? null;
     const hasUnsavedTemplateChanges =
         !!savedServerDraft &&
@@ -486,7 +497,7 @@ export const LegalText = ({
     const canPublishTemplate =
         canEditLegalText &&
         !!legalType &&
-        isPlatformDraft &&
+        !!templateLevel &&
         !serverDraft.isError &&
         !serverDraft.hasConflict &&
         sourceChosen;
@@ -617,8 +628,9 @@ export const LegalText = ({
                     modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
                 }
             />
-            {templateDialogOpen && savedServerDraft && legalType && (
+            {templateDialogOpen && savedServerDraft && legalType && templateLevel && (
                 <SendLegalTemplateDialog
+                    level={templateLevel}
                     kind={legalType === 'imprint' ? 'IMPRINT' : 'PRIVACY'}
                     draftRevision={savedServerDraft.revision}
                     draftSavedAt={savedServerDraft.updatedAt}

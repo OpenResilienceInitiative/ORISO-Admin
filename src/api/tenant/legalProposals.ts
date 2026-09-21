@@ -1,4 +1,4 @@
-import { tenantAdminEndpoint } from '../../appConfig';
+import { agencyLegalProposalDistributionsEndpoint, tenantAdminEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 import type { TenantLegalDraftKind } from './legalDrafts';
 
@@ -52,3 +52,37 @@ export const newDistributionRequestKey = () =>
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
         : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+
+export interface DistributeAgencyLegalProposal {
+    requestKey: string;
+    kind: TenantLegalDraftKind;
+    /** The Träger's saved draft revision (`id:version`) the Beratungsstellen receive. */
+    sourceRevision: string;
+    audience: TenantLegalProposalAudience;
+    /** Required for `SELECTED`, ignored for `ALL`. Only the Träger's own Beratungsstellen. */
+    agencyIds?: number[];
+}
+
+export interface AgencyLegalProposalDistribution {
+    requestKey: string;
+    recipientAgencyIds: number[];
+}
+
+/**
+ * Träger → Beratungsstellen: the same step one rung down. Contract proposed in
+ * OpenResilienceInitiative/ORISO-AgencyService#303 and mirrored on the platform call above,
+ * so both rungs behave identically. Not implemented server-side yet.
+ */
+export const distributeAgencyLegalProposal = (request: DistributeAgencyLegalProposal) =>
+    fetchData({
+        url: agencyLegalProposalDistributionsEndpoint,
+        method: FETCH_METHODS.POST,
+        skipAuth: false,
+        bodyData: JSON.stringify(request),
+        responseHandling: [
+            FETCH_ERRORS.CONFLICT,
+            FETCH_ERRORS.NO_MATCH,
+            FETCH_ERRORS.CATCH_ALL_SILENT,
+            FETCH_SUCCESS.CONTENT,
+        ],
+    }) as Promise<AgencyLegalProposalDistribution>;
