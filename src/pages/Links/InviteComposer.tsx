@@ -511,9 +511,7 @@ export const InviteComposer = ({
 
     // "Einladen" = into a unit that exists; "Anlegen & einladen" = the invite
     // also creates the Träger / Beratungsstelle (Auto or a free number).
-    const createsUnit =
-        agencyIsNew ||
-        (tenantAllowCreate && !tenantLocked && isNewUnit(tenantAllocation));
+    const createsUnit = agencyIsNew || (tenantAllowCreate && !tenantLocked && isNewUnit(tenantAllocation));
     const unitLabel = (allocation: UseIdAllocationResult) => {
         if (allocation.mode === 'existing' && allocation.unit) {
             return allocation.unit.name

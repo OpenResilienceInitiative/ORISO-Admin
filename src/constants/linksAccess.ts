@@ -21,8 +21,7 @@ export interface LinksAccessContext {
     hasRole: HasRoleFn;
 }
 
-const isAgencyAdmin = (hasRole: HasRoleFn): boolean =>
-    hasRole([UserRole.AgencyAdmin, UserRole.RestrictedAgencyAdmin]);
+const isAgencyAdmin = (hasRole: HasRoleFn): boolean => hasRole([UserRole.AgencyAdmin, UserRole.RestrictedAgencyAdmin]);
 
 export const resolveVisibleLinksTabs = ({ isSuperAdmin, hasRole }: LinksAccessContext): LinksTabKey[] => {
     if (isSuperAdmin) {

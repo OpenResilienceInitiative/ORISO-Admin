@@ -32,9 +32,21 @@ describe('linksAccess', () => {
     });
 
     it.each([
-        ['platform admin', 'platform', { isSuperAdmin: true, hasRole: hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin) }],
-        ['tenant admin', 'tenant', { isSuperAdmin: false, hasRole: hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin) }],
-        ['agency admin', 'agency', { isSuperAdmin: false, hasRole: hasRoleFor(UserRole.AgencyAdmin, UserRole.UserAdmin) }],
+        [
+            'platform admin',
+            'platform',
+            { isSuperAdmin: true, hasRole: hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin) },
+        ],
+        [
+            'tenant admin',
+            'tenant',
+            { isSuperAdmin: false, hasRole: hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin) },
+        ],
+        [
+            'agency admin',
+            'agency',
+            { isSuperAdmin: false, hasRole: hasRoleFor(UserRole.AgencyAdmin, UserRole.UserAdmin) },
+        ],
         [
             'restricted agency admin',
             'agency',

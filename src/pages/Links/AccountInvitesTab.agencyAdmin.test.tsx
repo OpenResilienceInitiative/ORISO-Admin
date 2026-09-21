@@ -3,16 +3,9 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-// (See AccountInvitesTab.test.tsx for why the tab is) imported statically, NOT with `await import(...)` inside a test. Every `vi.mock`
-// below is hoisted above this line, so the mocks still apply — but a dynamic
-// import inside the first test bills the whole transform + evaluation of this
-// tab's module graph (~12.5s on an idle laptop, measured) to that ONE test's
-// 30s budget. It fit locally and blew the budget on a loaded CI runner, which
-// is why "sends tenant-admin invites with the role-derived accept base URL"
-// timed out in CI while every other test in this file stayed under 4s. A static
-// import moves that cost into the file's (untimed) collection phase.
+// Static import on purpose — see the note in AccountInvitesTab.test.tsx.
 import { CounsellorInvitesTab } from './AccountInvitesTab';
 import { UserRole } from '../../enums/UserRole';
 

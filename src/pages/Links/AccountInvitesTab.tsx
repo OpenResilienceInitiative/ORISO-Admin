@@ -139,7 +139,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const isTenantInvite = targetRole === 'TENANT_ADMIN';
     // #1026: platform admin, Träger admin (own Träger) or Beratungsstellen-Admin
     // (own Träger and own agencies, counsellors only). The Träger tab is platform-only.
-    const viewerScope: InviteViewerScope = isTenantInvite ? 'platform' : resolveInviteViewerScope({ isSuperAdmin, hasRole });
+    const viewerScope: InviteViewerScope = isTenantInvite
+        ? 'platform'
+        : resolveInviteViewerScope({ isSuperAdmin, hasRole });
     const isAgencyViewer = viewerScope === 'agency';
 
     // #1026: an agency admin's own agencies. The agency search is scoped per role
