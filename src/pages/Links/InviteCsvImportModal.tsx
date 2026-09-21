@@ -452,27 +452,32 @@ export const InviteCsvImportModal = ({
         {
             title: t('links.csvImport.col.status', 'Status'),
             key: 'status',
+            width: 200,
             render: (_: unknown, row: ImportRow) => statusTag(row),
         },
         {
             title: t('links.accountInvites.email', 'E-Mail'),
             dataIndex: 'email',
             key: 'email',
+            width: 200,
         },
         {
             title: t('links.accountInvites.firstName', 'Vorname'),
             key: 'firstName',
+            width: 120,
             render: (_: unknown, row: ImportRow) =>
                 nameCell(row, 'firstName', t('links.accountInvites.firstName', 'Vorname')),
         },
         {
             title: t('links.composer.lastName', 'Name'),
             key: 'lastName',
+            width: 120,
             render: (_: unknown, row: ImportRow) => nameCell(row, 'lastName', t('links.composer.lastName', 'Name')),
         },
         {
             title: idLabel,
             key: 'id',
+            width: 110,
             render: (_: unknown, row: ImportRow) => {
                 if (row.rejectedReason) return '—';
                 const id = idByLine.get(row.line);
@@ -500,6 +505,7 @@ export const InviteCsvImportModal = ({
         {
             title: t('links.csvImport.col.target', 'Ziel'),
             key: 'target',
+            width: 90,
             render: (_: unknown, row: ImportRow) => {
                 if (row.rejectedReason) return '—';
                 return row.target === 'EXISTING'
@@ -510,11 +516,13 @@ export const InviteCsvImportModal = ({
         {
             title: t('links.composer.role', 'Rolle'),
             key: 'role',
+            width: 110,
             render: (_: unknown, row: ImportRow) => (row.rejectedReason ? '—' : roleLabel(row.role ?? tabRole)),
         },
         {
             title: t('links.composer.template', 'Vorlage'),
             key: 'template',
+            width: 160,
             render: (_: unknown, row: ImportRow) => {
                 if (row.rejectedReason) return '—';
                 if (row.template == null) {
@@ -530,6 +538,7 @@ export const InviteCsvImportModal = ({
         {
             title: t('links.composer.topics', 'Themen & Fachbereiche'),
             key: 'topicPermission',
+            width: 180,
             render: (_: unknown, row: ImportRow) => {
                 if (row.rejectedReason || (row.role ?? tabRole) !== 'COUNSELLOR') return '—';
                 const value = row.topicPermission ?? DEFAULT_TOPIC_PERMISSION;
@@ -543,6 +552,7 @@ export const InviteCsvImportModal = ({
         {
             title: '',
             key: 'remove',
+            width: 48,
             render: (_: unknown, row: ImportRow) =>
                 row.state === 'created' || row.state === 'creating' ? null : (
                     <Button
@@ -561,7 +571,8 @@ export const InviteCsvImportModal = ({
         <Modal
             titleKey="links.csvImport.title"
             icon={<UploadFileOutlinedIcon />}
-            width={1180}
+            // Eight data columns since #1026: wide enough to show them all on a laptop.
+            width={1440}
             footer={
                 <div className={styles.footer}>
                     <DialogButton disabled={running} onClick={onClose}>
