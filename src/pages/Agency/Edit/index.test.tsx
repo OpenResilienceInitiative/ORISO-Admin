@@ -781,6 +781,28 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         expect(screen.queryByText(NEEDS_CONSULTANT)).not.toBeInTheDocument();
     });
 
+    it('drops a counsellor picked before the tenant was chosen', async () => {
+        const user = setupUser();
+        mocks.routeId = 'add';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+        mocks.hasConsultants = false;
+        // No tenant is picked yet, so the picker deliberately offers every tenant's counsellors.
+        renderWithClient(<AgencyPageEdit />);
+
+        await user.click(await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' }));
+        await user.click(await screen.findByRole('option', { name: /Fremd Mandant/ }));
+
+        // Choosing tenant 7 narrows the options. The select keeps values it cannot resolve, so
+        // without pruning the foreign id would still be submitted and then assigned.
+        await fillRequiredCreateFields(user);
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        const saved = mocks.mutate.mock.calls[0][0] as { consultantIds?: unknown[] };
+        expect(saved.consultantIds ?? []).toEqual([]);
+    });
+
     it('does not offer a counsellor from another tenant', async () => {
         const user = setupUser();
         mocks.routeId = '282';

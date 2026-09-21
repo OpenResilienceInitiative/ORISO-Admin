@@ -93,6 +93,25 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         }
     }, [form, hasSelectedConsultants, id]);
 
+    // Narrowing the options does not narrow the selection: MuiSelectField keeps a value it
+    // cannot resolve, so a counsellor picked before the tenant was known would still be
+    // submitted and assigned. Drop what the tenant no longer allows — but only once the
+    // search has answered, or a pending query would read as an empty list and wipe a valid pick.
+    useEffect(() => {
+        if (isLoadingConsultants || !consultants?.data) {
+            return;
+        }
+        const allowed = new Set(consultantOptions.map(({ value }) => String(value)));
+        const current = form.getFieldValue('consultantIds') || [];
+        const kept = current.filter((entry) =>
+            allowed.has(String(entry !== null && typeof entry === 'object' ? entry?.value : entry)),
+        );
+
+        if (kept.length !== current.length) {
+            form.setFieldValue('consultantIds', kept);
+        }
+    }, [consultantOptions, consultants?.data, form, isLoadingConsultants]);
+
     const fields = (
         <>
             {needsConsultantAssignment && (
