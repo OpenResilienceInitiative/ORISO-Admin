@@ -255,7 +255,7 @@ export const LegalText = ({
      * an input that cannot be persisted is worse than none.
      */
     const storedConsent = (data?.content as Record<string, unknown> | undefined)?.privacyConsent;
-    const consentEnabled = legalType === 'privacy';
+    const consentEnabled = legalType === 'privacy' && storedConsent !== undefined;
     const consentByLanguage = useMemo<Record<string, string>>(() => {
         const base =
             storedConsent && typeof storedConsent === 'object' ? (storedConsent as Record<string, string>) : {};
@@ -471,7 +471,7 @@ export const LegalText = ({
                 <TenantLegalDraftNotice
                     savedAt={serverBase.draft?.updatedAt}
                     localSavedAt={savedAt}
-                    collision={draftCollision}
+                    collision={draftCollision && !sourceChosen}
                     loadServer={() => {
                         setDraftSource('server');
                         setEdits({});
