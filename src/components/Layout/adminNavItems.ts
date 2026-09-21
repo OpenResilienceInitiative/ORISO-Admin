@@ -145,8 +145,8 @@ export const buildAdminNavItems = ({
             iconPath: routePathNames.statistic,
         });
     }
-    // "Links" hands out invite links one level below the admin (tenants / counsellors), so
-    // Beratungsstellen-Admins get no entry at all; see `linksAccess.ts` for the per-tab rule.
+    // "Links" hands out invite links one level below the admin (tenants / counsellors);
+    // Beratungsstellen-Admins get the counsellor tab (#1026). See `linksAccess.ts`.
     if (canSeeLinksSection({ isSuperAdmin, hasRole })) {
         items.push({
             key: 'links',

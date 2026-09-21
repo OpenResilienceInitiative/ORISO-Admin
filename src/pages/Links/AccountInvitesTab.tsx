@@ -20,7 +20,8 @@ import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import type { AllocationMode } from '../../api/idAllocation/idAllocation';
 import getAgencyDataById from '../../api/agency/getAgencyById';
-import { searchInviteAgencies } from '../../api/agency/searchInviteAgencies';
+import { searchInviteAgencies, type InviteAgencyHit } from '../../api/agency/searchInviteAgencies';
+import { resolveInviteViewerScope } from '../../constants/linksAccess';
 import { Modal } from '../../components/Modal';
 import {
     extractApiErrorMessageOrNull,
@@ -35,7 +36,7 @@ import { InviteComposer, InviteComposerValues, InviteSendMode, InviteSubmitOutco
 import { InviteCsvImportModal, type InviteCsvCreateOutcome, type InviteCsvCreateRow } from './InviteCsvImportModal';
 import { InviteProgressBoard } from './inviteProgress/InviteProgressBoard';
 import { SelfAssignDialog, type SelfAssignTopic } from './SelfAssignDialog';
-import { inviteConflictReasonKey, type InviteRole, type TopicPermission } from './inviteModel';
+import { inviteConflictReasonKey, type InviteRole, type InviteViewerScope, type TopicPermission } from './inviteModel';
 import type { IdUnitOption } from '../../components/IdAllocationField';
 import styles from './styles.module.scss';
 
@@ -72,6 +73,12 @@ const foundsTenant = (invite: AccountInviteDTO) =>
     invite.targetRole === 'TENANT_ADMIN' && invite.tenantIdAllocationMode !== 'EXISTING';
 const belongsToTab = (invite: AccountInviteDTO, tenantTab: boolean) =>
     INVITE_TAB_ROLES.has(invite.targetRole) && foundsTenant(invite) === tenantTab;
+/**
+ * An agency admin may only invite counsellors (UserService#1215); the list the
+ * backend scopes to their agencies shows exactly those, nothing they cannot act on.
+ */
+const visibleForViewer = (invite: AccountInviteDTO, viewerScope: InviteViewerScope) =>
+    viewerScope !== 'agency' || invite.targetRole === 'COUNSELLOR';
 
 /** One id per CSV file, so the backend can match rows of the same file in any order (#1026 slice 5). */
 const newImportBatchId = () =>
@@ -128,13 +135,41 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     // Only a real Träger (> 0) is the viewer's own one.
     const jwtTenantId = Number(parseUserAuthInfo().tenantId);
     const currentTenantId = Number.isFinite(jwtTenantId) && jwtTenantId > 0 ? jwtTenantId : undefined;
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, hasRole } = useUserRoles();
+    const isTenantInvite = targetRole === 'TENANT_ADMIN';
+    // #1026: platform admin, Träger admin (own Träger) or Beratungsstellen-Admin
+    // (own Träger and own agencies, counsellors only). The Träger tab is platform-only.
+    const viewerScope: InviteViewerScope = isTenantInvite ? 'platform' : resolveInviteViewerScope({ isSuperAdmin, hasRole });
+    const isAgencyViewer = viewerScope === 'agency';
+
+    // #1026: an agency admin's own agencies. The agency search is scoped per role
+    // by the backend (AgencyService#307), so an empty query returns exactly them.
+    // One agency locks the field; several make it a pick among them.
+    const [ownAgencies, setOwnAgencies] = useState<InviteAgencyHit[]>([]);
+    useEffect(() => {
+        if (!isAgencyViewer) return undefined;
+        let cancelled = false;
+        searchInviteAgencies('', currentTenantId)
+            .then((hits) => {
+                if (!cancelled) setOwnAgencies(hits);
+            })
+            .catch(() => {
+                // The field stays a scoped pick; the backend still refuses foreign agencies.
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [isAgencyViewer, currentTenantId]);
+    const ownAgency = useMemo<IdUnitOption | undefined>(
+        () => (ownAgencies.length === 1 ? { id: ownAgencies[0].id, name: ownAgencies[0].name } : undefined),
+        [ownAgencies],
+    );
+    const ownTenantName = ownAgencies.find((agency) => agency.tenantName)?.tenantName;
 
     // Client-side taken-id knowledge (existing tenants + still-active
     // DRAFT/EMAIL_SENT TENANT_ADMIN invites). The composer's ID field itself now
     // validates against the authoritative allocation endpoints (#570); this set
     // only pre-flags collisions in the CSV import preview.
-    const isTenantInvite = targetRole === 'TENANT_ADMIN';
     const [existingTenantIds, setExistingTenantIds] = useState<Set<number>>(new Set());
 
     useEffect(() => {
@@ -225,7 +260,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     size: 200,
                     targetRole: isTenantInvite ? 'TENANT_ADMIN' : undefined,
                 });
-                all.push(...(response.content ?? []).filter((invite) => belongsToTab(invite, isTenantInvite)));
+                all.push(
+                    ...(response.content ?? []).filter(
+                        (invite) => belongsToTab(invite, isTenantInvite) && visibleForViewer(invite, viewerScope),
+                    ),
+                );
                 totalPages = response.totalPages ?? 0;
                 page += 1;
             }
@@ -238,7 +277,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             // A superseded run leaves `loading` to the run that overtook it.
             if (isLatest()) setLoading(false);
         }
-    }, [isTenantInvite, t]);
+    }, [isTenantInvite, viewerScope, t]);
 
     const loadTemplates = useCallback(() => {
         listInviteEmailTemplates(templateKind)
@@ -828,8 +867,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 searchTenants={!isTenantInvite && isSuperAdmin ? searchTenantsForPicker : undefined}
                 onSelfAssign={isTenantInvite ? undefined : (agency) => setSelfAssign({ agency })}
                 includeAgencyField={includeAgencyField}
-                ownTenant={currentTenantId != null ? { id: currentTenantId } : undefined}
-                viewerScope={isTenantInvite || isSuperAdmin ? 'platform' : 'tenant'}
+                ownTenant={currentTenantId != null ? { id: currentTenantId, name: ownTenantName } : undefined}
+                ownAgency={ownAgency}
+                viewerScope={viewerScope}
                 initialTenantId={isTenantInvite ? undefined : currentTenantId}
                 persistKey={targetRole}
                 requireNames={targetRole === 'COUNSELLOR'}
@@ -842,7 +882,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 templates={templates}
                 onBulkSend={onBulkSend}
                 onClearSelection={() => setSelectedIds([])}
-                onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode, batchId: newImportBatchId() })}
+                // #1026: no CSV for agency admins — a file can carry roles and new
+                // units their role may not hand out (the backend would refuse the rows).
+                onCsvParsed={
+                    isAgencyViewer
+                        ? undefined
+                        : (result, sendMode) => setCsvImport({ result, sendMode, batchId: newImportBatchId() })
+                }
                 onDeleteSelected={() => setBulkDeleteConfirmOpen(true)}
                 onManageTemplates={(intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list')}
                 // A4: the tab owns the query; the board filters the list it holds.
@@ -880,7 +926,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             />
             {selfAssign && (
                 <SelfAssignDialog
-                    viewerScope={isSuperAdmin ? 'platform' : 'tenant'}
+                    viewerScope={viewerScope}
                     initialAgency={selfAssign.agency}
                     searchAgencies={(query) => searchAgenciesForPicker(query, { tenantId: currentTenantId })}
                     loadAgencyTopics={loadAgencyTopics}
@@ -907,7 +953,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     idKind={isTenantInvite ? 'tenant' : 'agency'}
                     tabRole={targetRole === 'TENANT_ADMIN' ? 'TENANT_ADMIN' : 'COUNSELLOR'}
                     templates={activeTemplates}
-                    viewerScope={isTenantInvite || isSuperAdmin ? 'platform' : 'tenant'}
+                    viewerScope={viewerScope}
                     tabRoles={isTenantInvite ? ['TENANT_ADMIN'] : undefined}
                     ownTenantKnown={currentTenantId != null}
                     parseResult={csvImport.result}

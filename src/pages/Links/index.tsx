@@ -35,8 +35,8 @@ const LINK_TABS: ReadonlyArray<{ key: LinksTabKey; to: string; titleKey: string 
 ];
 
 /**
- * Tabs the signed-in admin may see (platform admin: all; tenant admin: counsellor
- * invites only; agency admins: none — they never reach this page, see `linksAccess.ts`).
+ * Tabs the signed-in admin may see (platform admin: all; tenant and agency admins:
+ * counsellor invites only, see `linksAccess.ts`).
  */
 const useVisibleLinkTabs = () => {
     const { isSuperAdmin, hasRole } = useUserRoles();
@@ -99,7 +99,7 @@ export const LinksPage = () => {
     );
 };
 
-/** `/admin/links` lands on the first tab the admin may see (tenant admins: counsellor invites). */
+/** `/admin/links` lands on the first tab the admin may see (tenant and agency admins: counsellor invites). */
 export const LinksIndexRedirect = () => {
     const [firstTab] = useVisibleLinkTabs();
     return <Navigate to={firstTab?.to ?? routePathNames.root} replace />;

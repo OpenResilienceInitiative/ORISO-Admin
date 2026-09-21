@@ -31,6 +31,13 @@ export interface IdAllocationFieldProps {
      */
     allowCreate?: boolean;
     /**
+     * `false` = only units the search returned can be picked; a typed number is
+     * a search query, never taken over as a unit (#1026: an agency admin may only
+     * invite into their OWN agencies, which is exactly what the scoped search
+     * returns). Default `true`.
+     */
+    acceptTypedIds?: boolean;
+    /**
      * #1026 slice 5: a number reserved by an open ADMIN invite is not a
      * collision for this invite — it joins that unit (a counsellor waits for
      * it, a second admin shares the reservation). The field then explains
@@ -75,6 +82,7 @@ export const IdAllocationField = ({
     locked = false,
     searchUnits,
     allowCreate = true,
+    acceptTypedIds = true,
     reservedJoinsPendingUnit = false,
     onBlur,
     inputRef,
@@ -154,7 +162,7 @@ export const IdAllocationField = ({
                     : t('idAllocationField.createNew', '＋ Neu anlegen (nächste freie Nummer)'),
         });
     }
-    if (DIGITS.test(trimmed)) {
+    if (acceptTypedIds && DIGITS.test(trimmed)) {
         const id = Number(trimmed);
         entries.push({
             key: `typed-${id}`,
@@ -177,7 +185,8 @@ export const IdAllocationField = ({
             ].join(' · '),
         }),
     );
-    const noMatches = searchUnits != null && trimmed !== '' && !DIGITS.test(trimmed) && results.length === 0;
+    const noMatches =
+        searchUnits != null && trimmed !== '' && !(acceptTypedIds && DIGITS.test(trimmed)) && results.length === 0;
 
     const isSelected = (entry: MenuEntry) => {
         if (entry.kind === 'create') return mode === 'auto';
@@ -234,7 +243,7 @@ export const IdAllocationField = ({
         const typed = raw.trim();
         // A typed number applies immediately — the availability check (new) or
         // the unit pick (existing-only) runs while the admin keeps typing.
-        if (DIGITS.test(typed)) {
+        if (acceptTypedIds && DIGITS.test(typed)) {
             if (allowCreate) allocation.setManualValue(Number(typed));
             else allocation.selectExisting({ id: Number(typed) });
         }

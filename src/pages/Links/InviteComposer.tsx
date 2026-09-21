@@ -177,7 +177,11 @@ export interface InviteComposerProps {
     viewerScope?: InviteViewerScope;
     /** The viewer's own Träger — shown locked for tenant and agency admins. */
     ownTenant?: IdUnitOption;
-    /** The viewer's own Beratungsstelle — shown locked for agency admins. */
+    /**
+     * The viewer's own Beratungsstelle — shown locked for an agency admin of ONE
+     * agency. Omit it for an agency admin of several: the field then picks among
+     * the hits of `searchAgencies` (scoped to their agencies), never a new one.
+     */
     ownAgency?: IdUnitOption;
     /** Role preselected in the "Rolle" field (the tab's target role in the app). */
     defaultRole?: InviteRole;
@@ -336,7 +340,10 @@ export const InviteComposer = ({
     // #1026 visibility by viewer: tenant and agency admins are pinned to their
     // own Träger, agency admins also to their own Beratungsstelle.
     const tenantLocked = viewerScope !== 'platform';
-    const agencyLocked = viewerScope === 'agency';
+    // An agency admin of ONE agency is pinned to it; with several, the field
+    // picks among them (the tab's search is scoped to them) — never a new one.
+    const agencyMayBeNew = viewerScope !== 'agency';
+    const agencyLocked = viewerScope === 'agency' && ownAgency != null;
     const lockedTenant = tenantLocked ? ownTenant : undefined;
     const lockedAgency = agencyLocked ? ownAgency : undefined;
     // Non-Träger tabs keep today's contract: the Träger field names an EXISTING
@@ -422,7 +429,7 @@ export const InviteComposer = ({
     // counsellor waits for it, a second admin shares the reservation.
     const agencyJoinsPendingUnit =
         showAgencyField && agencyAllocation.mode === 'manual' && agencyAllocation.validation === 'reserved';
-    const agencyIsNew = showAgencyField && isNewUnit(agencyAllocation);
+    const agencyIsNew = showAgencyField && agencyMayBeNew && isNewUnit(agencyAllocation);
     // Outside the Träger tab the Träger field names an EXISTING Träger. It is
     // required where the backend cannot infer it: a Träger-admin invite, and a
     // new Beratungsstelle (an existing one brings its own Träger).
@@ -430,7 +437,10 @@ export const InviteComposer = ({
     const tenantMayBeNew = tenantAllowCreate && !tenantLocked;
     const tenantIdValid =
         !tenantRequired || (tenantMayBeNew ? tenantAllocation.canSubmit : tenantAllocation.mode === 'existing');
-    const agencyIdValid = !showAgencyField || agencyAllocation.canSubmit || agencyJoinsPendingUnit;
+    const agencyPicked = agencyMayBeNew
+        ? agencyAllocation.canSubmit || agencyJoinsPendingUnit
+        : agencyAllocation.mode === 'existing';
+    const agencyIdValid = !showAgencyField || agencyPicked;
     /*
      * #1026 slice 5 (breaking): a counsellor invite no longer creates a new
      * Beratungsstelle. It may only WAIT for one whose admin invite is open —
@@ -465,7 +475,7 @@ export const InviteComposer = ({
         firstName: firstName.trim().length > 0,
         lastName: lastName.trim().length > 0,
         tenant: tenantAllowCreate ? tenantAllocation.canSubmit : tenantAllocation.mode === 'existing',
-        agency: agencyAllocation.canSubmit || agencyJoinsPendingUnit,
+        agency: agencyPicked,
         role: true,
         alsoCounsellor: true,
         topics: true,
@@ -498,7 +508,7 @@ export const InviteComposer = ({
     // "Einladen" = into a unit that exists; "Anlegen & einladen" = the invite
     // also creates the Träger / Beratungsstelle (Auto or a free number).
     const createsUnit =
-        (showAgencyField && isNewUnit(agencyAllocation)) ||
+        agencyIsNew ||
         (tenantAllowCreate && !tenantLocked && isNewUnit(tenantAllocation));
     const unitLabel = (allocation: UseIdAllocationResult) => {
         if (allocation.mode === 'existing' && allocation.unit) {
@@ -565,6 +575,9 @@ export const InviteComposer = ({
                       'Bitte einen Träger wählen: bestehend, freie Nummer oder „Neu anlegen“.',
                   )
                 : t('links.composer.blocked.tenantExisting', 'Bitte einen bestehenden Träger wählen.');
+        }
+        if (!agencyIdValid && !agencyMayBeNew) {
+            return t('links.composer.blocked.ownAgency', 'Bitte eine Ihrer Beratungsstellen wählen.');
         }
         if (!agencyIdValid) {
             return t(
@@ -1041,7 +1054,9 @@ export const InviteComposer = ({
                         onExpand={() => expand('agency')}
                     >
                         <IdAllocationField
+                            acceptTypedIds={agencyMayBeNew}
                             allocation={agencyAllocation}
+                            allowCreate={agencyMayBeNew}
                             label={agencyLabel}
                             locked={agencyLocked}
                             reservedJoinsPendingUnit

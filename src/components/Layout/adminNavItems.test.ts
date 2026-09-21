@@ -221,7 +221,7 @@ describe('buildAdminNavItems', () => {
         it.each([
             ['agency-admin + user-admin', hasRoleFor(UserRole.AgencyAdmin, UserRole.UserAdmin)],
             ['restricted-agency-admin + user-admin', hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin)],
-        ])('is hidden from a Beratungsstellen-Admin (%s) even with Agency read', (_label, hasRole) => {
+        ])('is shown to a Beratungsstellen-Admin (%s), who invites counsellors into own agencies (#1026)', (_label, hasRole) => {
             const items = build({
                 isSuperAdmin: false,
                 hasRole,
@@ -229,7 +229,7 @@ describe('buildAdminNavItems', () => {
                 labels,
                 settingsPath: '/admin/theme-settings/general',
             });
-            expect(linksEntry(items)).toBeUndefined();
+            expect(linksEntry(items)).toBeDefined();
         });
     });
 });
