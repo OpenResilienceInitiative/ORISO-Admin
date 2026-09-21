@@ -190,3 +190,8 @@
     letter-spacing: 0.4px;
     line-height: 16px;
 }
+
+/* Wrapper that only swallows the focus change of a send press (see InviteComposer). */
+.sendSlot {
+    display: contents;
+}

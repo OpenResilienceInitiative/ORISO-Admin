@@ -602,6 +602,41 @@ export const AgencyAdminAlsoCounsellor: Story = {
     },
 };
 
+/**
+ * Found on Pre-Dev: pressing „Einladen" right after picking a Beratungsstelle
+ * did nothing. The mousedown blurred the still-open field, it collapsed to its
+ * pill, the row gave back its scroll and the button slid away before mouseup —
+ * the click landed on the row. Pressing the send button must not move focus.
+ */
+export const SendRightAfterPickingAgency: Story = {
+    args: {
+        initialValues: {
+            recipientEmail: PREFILLED.recipientEmail,
+            firstName: PREFILLED.firstName,
+            lastName: PREFILLED.lastName,
+            tenant: TENANTS[0],
+        },
+        // Keeps the request pending, so the bar is observed as the click left it.
+        onSubmit: fn(() => new Promise<boolean>(() => {})),
+    },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const agency = await canvas.findByRole('combobox', { name: FIELD.agency });
+        await userEvent.click(agency);
+        await userEvent.type(agency, 'sucht');
+        await userEvent.click(await body.findByRole('option', { name: /Caritas Suchtberatung Freiburg/ }));
+        await expect(agency).toHaveFocus();
+        const send = canvas.getByRole('button', { name: SEND.invite });
+        await expect(send).toBeEnabled();
+        await userEvent.click(send);
+        // Focus stayed in the field: it did not collapse under the pointer.
+        await expect(agency).toHaveFocus();
+        await expect(canvas.queryByRole('button', { name: PILL.agency })).not.toBeInTheDocument();
+        await waitFor(() => expect(args.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ agencyId: 101 })));
+    },
+};
+
 /** „Mich selbst eintragen" sits in the send menu and hands over the Beratungsstelle chosen in the bar. */
 export const SelfAssignMenuEntry: Story = {
     args: { initialValues: PREFILLED, onSelfAssign: fn() },

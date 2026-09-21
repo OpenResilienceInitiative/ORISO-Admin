@@ -1108,35 +1108,41 @@ export const InviteComposer = ({
                 other resting state is tonal M3 secondary (owner call). The icon
                 stays in both states — a send button without its glyph was the
                 "icons are missing" note. */}
-                <SplitButton
-                    icon={bulkMode ? <SelectAllIcon fontSize="small" /> : renderSendGlyph()}
-                    label={bulkMode ? String(selectionCount) : singleSendLabel}
-                    mainDisabled={!sendReady || submitting}
-                    mainDescribedBy={sendBlockedReason ? sendHintId : undefined}
-                    // The send-mode menu switches "Direkt Versenden" vs "Empfänger
-                    // nur anlegen", which only ever applies to the single-create
-                    // flow (see handleSend). In bulk mode it changed nothing and
-                    // only put a second, inert chevron next to the collapse one.
-                    menu={bulkMode ? undefined : sendMenu}
-                    menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
-                    title={bulkMode ? bulkSendLabel : undefined}
-                    // Filled primary is the single-send CTA; the selection counter
-                    // stays tonal secondary even when ready (Figma 1165:16407
-                    // selection variant) — a state display with actions hanging off
-                    // it, not the page's call to action. What BOTH share: a filled
-                    // shape is a promise that pressing does something. The tonal
-                    // disabled rule keeps `opacity: 1`, so a dead tonal counter was
-                    // pixel-identical to a live one ("Number counter Button
-                    // funktioniert hier nicht"). Not-ready therefore rests
-                    // `outlined` — colour arrives with the ability to fire.
-                    variant={(() => {
-                        if (!sendReady) return 'outlined';
-                        return bulkMode ? 'secondary' : 'primary';
-                    })()}
-                    collapseLabel={t('links.bulk.clearSelection', 'Auswahl aufheben')}
-                    onClick={bulkMode ? onBulkSend : handleSend}
-                    onCollapse={bulkMode ? onClearSelection : undefined}
-                />
+                {/* Pressing send must not move focus: a blur would collapse the field
+                    still being edited, the row would give back its scroll, and the
+                    button would slide away between mousedown and mouseup — the click
+                    then landed on the row (found on Pre-Dev). Keyboard focus is unaffected. */}
+                <span className={styles.sendSlot} onMouseDownCapture={(event) => event.preventDefault()}>
+                    <SplitButton
+                        icon={bulkMode ? <SelectAllIcon fontSize="small" /> : renderSendGlyph()}
+                        label={bulkMode ? String(selectionCount) : singleSendLabel}
+                        mainDisabled={!sendReady || submitting}
+                        mainDescribedBy={sendBlockedReason ? sendHintId : undefined}
+                        // The send-mode menu switches "Direkt Versenden" vs "Empfänger
+                        // nur anlegen", which only ever applies to the single-create
+                        // flow (see handleSend). In bulk mode it changed nothing and
+                        // only put a second, inert chevron next to the collapse one.
+                        menu={bulkMode ? undefined : sendMenu}
+                        menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
+                        title={bulkMode ? bulkSendLabel : undefined}
+                        // Filled primary is the single-send CTA; the selection counter
+                        // stays tonal secondary even when ready (Figma 1165:16407
+                        // selection variant) — a state display with actions hanging off
+                        // it, not the page's call to action. What BOTH share: a filled
+                        // shape is a promise that pressing does something. The tonal
+                        // disabled rule keeps `opacity: 1`, so a dead tonal counter was
+                        // pixel-identical to a live one ("Number counter Button
+                        // funktioniert hier nicht"). Not-ready therefore rests
+                        // `outlined` — colour arrives with the ability to fire.
+                        variant={(() => {
+                            if (!sendReady) return 'outlined';
+                            return bulkMode ? 'secondary' : 'primary';
+                        })()}
+                        collapseLabel={t('links.bulk.clearSelection', 'Auswahl aufheben')}
+                        onClick={bulkMode ? onBulkSend : handleSend}
+                        onCollapse={bulkMode ? onClearSelection : undefined}
+                    />
+                </span>
             </GlobalSearchBar>
             {sendBlockedReason && (
                 <div className={styles.sendHintRow}>
