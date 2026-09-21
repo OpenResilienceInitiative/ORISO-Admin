@@ -534,16 +534,15 @@ export const LegalText = ({
     const hasAnyContent = Object.values(contentByLanguage).some((html) => !isEmptyLegalContent(html));
     // Until the sent versions are known, "new" cannot be judged; offering the action
     // meanwhile made it flash up and vanish once the list arrived.
-    const templateIsNew =
-        templateHistory.state === 'loading'
-            ? false
-            : latestTemplate
-            ? !isSameDraftContent(
-                  { content: contentByLanguage, consent: consentByLanguage },
-                  { content: latestTemplate.content, consent: latestTemplate.privacyConsent },
-                  { compareConsent: consentEnabled },
-              )
-            : hasAnyContent;
+    let templateIsNew = hasAnyContent;
+    if (templateHistory.state === 'loading') templateIsNew = false;
+    else if (latestTemplate) {
+        templateIsNew = !isSameDraftContent(
+            { content: contentByLanguage, consent: consentByLanguage },
+            { content: latestTemplate.content, consent: latestTemplate.privacyConsent },
+            { compareConsent: consentEnabled },
+        );
+    }
     const canPublishTemplate =
         canEditLegalText &&
         !!legalType &&
