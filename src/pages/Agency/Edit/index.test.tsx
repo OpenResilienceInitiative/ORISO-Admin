@@ -14,6 +14,12 @@ const renderWithClient = (ui: React.ReactElement<any>) => {
     return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 };
 
+// Every test here mounts the whole agency edit page and drives it through real antd
+// interactions. The heaviest take ~16s of CPU on an idle machine, which leaves no room
+// under the project's 30s budget once CI runs files in parallel: the same test measures
+// 16.2s on dev, and a run whose wall time is half its cumulative test time doubles that.
+vi.setConfig({ testTimeout: 60_000 });
+
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
     navigate: vi.fn(),
