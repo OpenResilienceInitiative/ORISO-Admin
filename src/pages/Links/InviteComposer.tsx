@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FocusEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type ReactNode } from 'react';
 import { DeleteOutlined, DownloadOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
 import { message, Upload, type MenuProps } from 'antd';
 import type { DefaultOptionType } from 'antd/es/select';
@@ -331,6 +331,7 @@ export const InviteComposer = ({
     const [firstName, setFirstName] = useState(initialValues?.firstName ?? '');
     const [lastName, setLastName] = useState(initialValues?.lastName ?? '');
     const [sendMode, setSendMode] = useState<InviteSendMode>(() => readPersistedSendMode(persistKey));
+    const rootRef = useRef<HTMLDivElement>(null);
 
     // #1026 visibility by viewer: tenant and agency admins are pinned to their
     // own Träger, agency admins also to their own Beratungsstelle.
@@ -641,6 +642,11 @@ export const InviteComposer = ({
         }
 
         if (outcome) {
+            // The send press keeps focus in the field being edited (see the send
+            // slot below). Starting over, that field must let go — otherwise its
+            // type-ahead reopens over the fresh bar.
+            const active = document.activeElement;
+            if (active instanceof HTMLElement && rootRef.current?.contains(active)) active.blur();
             setRecipientEmail('');
             setEmailTouched(false);
             setEmailTakenAddress(null);
@@ -925,7 +931,7 @@ export const InviteComposer = ({
     }
 
     return (
-        <div className={classNames(styles.composer, className)} onFocus={handleRowFocus}>
+        <div ref={rootRef} className={classNames(styles.composer, className)} onFocus={handleRowFocus}>
             <GlobalSearchBar
                 leading={moreButton}
                 searchPlaceholder={searchPlaceholder}

@@ -93,6 +93,10 @@ export const CollapsibleField = ({
     const slotRef = useRef<HTMLDivElement>(null);
     const lastWidth = useRef<number | undefined>(undefined);
     const lastCollapsed = useRef(collapsed);
+    // Only a pill click hands focus to the field. A field that re-opens because
+    // the bar was reset (after a send) must not grab focus — its type-ahead
+    // would pop open over the fresh row.
+    const expandRequested = useRef(false);
 
     useLayoutEffect(() => {
         const slot = slotRef.current;
@@ -111,7 +115,8 @@ export const CollapsibleField = ({
         lastCollapsed.current = collapsed;
         if (!toggled) return undefined;
 
-        if (!collapsed) {
+        if (!collapsed && expandRequested.current) {
+            expandRequested.current = false;
             // Expanded by a pill click: hand the caret back where typing continues.
             const input = slot.querySelector('input');
             if (input) {
@@ -172,7 +177,10 @@ export const CollapsibleField = ({
                     disabled={disabled}
                     title={valueSummary}
                     type="button"
-                    onClick={onExpand}
+                    onClick={() => {
+                        expandRequested.current = true;
+                        onExpand();
+                    }}
                 >
                     <CheckGlyph />
                     <span className={styles.label}>{pillText ?? label}</span>

@@ -571,6 +571,9 @@ export const CounsellorJoinsPendingAgency: Story = {
                 }),
             ),
         );
+        // After a successful send the bar starts over: no type-ahead is left open over it.
+        await waitFor(() => expect(canvas.getByRole('combobox', { name: FIELD.agency })).not.toHaveFocus());
+        await expect(within(canvasElement.ownerDocument.body).queryByRole('listbox')).toBeNull();
     },
 };
 
