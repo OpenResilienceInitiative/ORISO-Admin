@@ -412,6 +412,38 @@ describe('AgencyLegalTextContainer server drafts', () => {
         await waitFor(() => expect(switcher()).toBeEnabled());
     });
 
+    it('does not let a late save from an earlier visit replace the base of a new visit (agency A→B→A)', async () => {
+        let finishOldSave: (draft: any) => void = () => undefined;
+        h.serverSave.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    finishOldSave = resolve;
+                }),
+        );
+        const view = renderContainer();
+        const oldSave = cardProps().onSave({ de: '<p>old A</p>' }, false);
+
+        const otherAgency = { ...agencyData, id: agencyData.id + 1 };
+        view.rerender(
+            <AgencyLegalTextContainer agencyData={otherAgency} field="privacy" onSaveAgencyWide={h.onSaveAgencyWide} />,
+        );
+        view.rerender(
+            <AgencyLegalTextContainer agencyData={agencyData} field="privacy" onSaveAgencyWide={h.onSaveAgencyWide} />,
+        );
+        const baseOfNewVisit = cardProps().initialContentByLanguage;
+
+        finishOldSave({
+            kind: 'DPP',
+            content: { de: '<p>late old A</p>' },
+            consentText: {},
+            revision: 'draft-id:8',
+            savedAt: '2026-09-22T09:00:00',
+        });
+        await act(async () => oldSave);
+
+        expect(cardProps().initialContentByLanguage).toEqual(baseOfNewVisit);
+    });
+
     it('locks the Fachbereich switcher while a discard is in flight', async () => {
         let finishDiscard: () => void = () => undefined;
         h.server.draft = {

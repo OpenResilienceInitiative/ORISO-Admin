@@ -156,6 +156,12 @@ export const AgencyLegalTextContainer = ({
         canEditLegalText && !isDepartment && agencyData !== undefined && Number.isFinite(agencyId);
     const serverDraft = useAgencyLegalDraft(agencyId, VERSION_KIND[field], agencyDraftEnabled);
     const draftContextIdentity = `${agencyId}:${field}:${userData?.id ?? ''}`;
+    // One object per agency × document × user session: an A→B→A switch restores the same string but
+    // is a new session, while switching Fachbereich stays in the same one (same agency draft).
+    const draftSessionRef = useRef({ key: draftContextIdentity });
+    if (draftSessionRef.current.key !== draftContextIdentity) {
+        draftSessionRef.current = { key: draftContextIdentity };
+    }
     const editorContextKey = `${draftContextIdentity}:${String(selected)}`;
     const editorIdentityRef = useRef({ key: editorContextKey });
     if (editorIdentityRef.current.key !== editorContextKey) {
@@ -327,6 +333,7 @@ export const AgencyLegalTextContainer = ({
 
     const saveCurrentAgencyDraft = async (content: Record<string, string>, operationIdentity: { key: string }) => {
         const draftContextAtStart = draftContextIdentity;
+        const draftSessionAtStart = draftSessionRef.current;
         const saved = await serverDraft.save({
             content: { ...content },
             ...(field === 'privacy' ? { consentText: { ...agencyDraftConsent } } : {}),
@@ -334,11 +341,13 @@ export const AgencyLegalTextContainer = ({
         });
         // Pin the saved revision even if the admin switched to a Fachbereich meanwhile, so the next
         // agency-wide save builds on it instead of running into a 409 against a stale base.
-        setServerBaseState((current) =>
-            current.identity === draftContextAtStart
-                ? { identity: draftContextAtStart, draft: saved, revision: saved.revision }
-                : current,
-        );
+        if (draftSessionRef.current === draftSessionAtStart) {
+            setServerBaseState((current) =>
+                current.identity === draftContextAtStart
+                    ? { identity: draftContextAtStart, draft: saved, revision: saved.revision }
+                    : current,
+            );
+        }
         // No remount for a session that began after the request: it may already hold new typing,
         // which then saves on top of this revision instead of being replaced.
         if (editorIdentityRef.current !== operationIdentity) return saved;
