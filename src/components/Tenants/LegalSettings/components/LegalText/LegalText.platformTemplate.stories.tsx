@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves in Storybook/Vite
 import { expect, userEvent, waitFor, within } from 'storybook/test';
@@ -305,7 +306,7 @@ const traegerHandlers = [
     }),
 ];
 
-const asTraeger = (Story: () => JSX.Element) => {
+const asTraeger = (Story: () => ReactElement) => {
     setStoryAuth([UserRole.TenantAdmin], TRAEGER_ID);
     sentToAgencies.length = 0;
     return <Story />;
