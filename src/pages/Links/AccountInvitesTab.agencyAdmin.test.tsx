@@ -199,6 +199,13 @@ const SECOND_AGENCY = {
     topics: ['Schulden'],
 };
 
+/** The picker's search answers in pages (AgencyService `total`, 10 per page). */
+const agencyPage = (hits: Array<Record<string, unknown>>, total = hits.length, hasMore = false) => ({
+    hits,
+    total,
+    hasMore,
+});
+
 describe.each([
     ['agency admin', UserRole.AgencyAdmin],
     ['restricted agency admin', UserRole.RestrictedAgencyAdmin],
@@ -212,7 +219,7 @@ describe.each([
         mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
         mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
         mocks.createAccountInvite.mockResolvedValue({ ...invite(99, 40, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' });
-        mocks.searchInviteAgencies.mockResolvedValue([OWN_AGENCY]);
+        mocks.searchInviteAgencies.mockResolvedValue(agencyPage([OWN_AGENCY]));
     });
 
     it('fixes the role on Berater:in and locks Träger and Beratungsstelle to the own unit', async () => {
@@ -281,7 +288,7 @@ describe.each([
     });
 
     it('with several own agencies: picks only among them, no new agency, no number stepping', async () => {
-        mocks.searchInviteAgencies.mockResolvedValue([OWN_AGENCY, SECOND_AGENCY]);
+        mocks.searchInviteAgencies.mockResolvedValue(agencyPage([OWN_AGENCY, SECOND_AGENCY]));
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
@@ -317,6 +324,47 @@ describe.each([
         });
         expect(mocks.nextFreeAgencyId).not.toHaveBeenCalled();
     });
+
+    /*
+     * Pre-Dev finding (#1026): an agency admin with more than 10 agencies saw
+     * only the first 10 in the Beratungsstelle field — the search asked for
+     * page 1 and stopped. The rest must be reachable.
+     */
+    it('with more than 10 own agencies: the 11th and 12th are reachable via "Weitere anzeigen"', async () => {
+        const own = Array.from({ length: 12 }, (_, index) => ({
+            id: 201 + index,
+            name: `Caritas Beratungsstelle ${String(index + 1).padStart(2, '0')}`,
+            tenantId: 40,
+            tenantName: 'Caritas Freiburg',
+            topics: ['Sucht'],
+        }));
+        mocks.searchInviteAgencies.mockImplementation(async (_query: string, _tenantId?: number, page = 1) =>
+            agencyPage(own.slice((page - 1) * 10, page * 10), own.length, page * 10 < own.length),
+        );
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+
+        const agency = await screen.findByRole('combobox', { name: 'Beratungsstelle' });
+        await waitFor(() => expect(agency).toBeEnabled(), SLOW);
+        await user.click(agency);
+        await screen.findByRole('option', { name: /Caritas Beratungsstelle 10/ }, SLOW);
+        expect(screen.queryByRole('option', { name: /Caritas Beratungsstelle 12/ })).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('option', { name: 'Weitere anzeigen (10 von 12)' }));
+        await user.click(await screen.findByRole('option', { name: /Caritas Beratungsstelle 12/ }, SLOW));
+
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@oriso.org');
+        await user.type(screen.getByLabelText('Vorname'), 'Lisa');
+        await user.type(screen.getByLabelText('Name'), 'Simpson');
+        const send = screen.getByRole('button', { name: 'Einladen' });
+        await waitFor(() => expect(send).toBeEnabled());
+        await user.click(send);
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+            agencyId: 212,
+            agencyIdAllocationMode: 'EXISTING',
+        });
+    });
 });
 
 /*
@@ -347,7 +395,7 @@ describe('CounsellorInvitesTab — platform admin picks an existing agency first
         mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
         mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
         mocks.createAccountInvite.mockResolvedValue({ ...invite(99, 7, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' });
-        mocks.searchInviteAgencies.mockResolvedValue([FOREIGN_AGENCY]);
+        mocks.searchInviteAgencies.mockResolvedValue(agencyPage([FOREIGN_AGENCY]));
         mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
     });
 

@@ -9,8 +9,24 @@ import styles from './styles.module.scss';
 export { useIdAllocation } from './useIdAllocation';
 export type { IdFieldMode, IdUnitOption, IdValidationState, UseIdAllocationResult } from './useIdAllocation';
 
-/** Type-ahead data source (#1026). Wired to the real Träger/agency search later; stories inject fixtures. */
-export type IdUnitSearch = (query: string) => Promise<IdUnitOption[]> | IdUnitOption[];
+/** One page of a paged type-ahead search; `hasMore` is the server's word, `total` its full hit count. */
+export interface IdUnitSearchPage {
+    units: IdUnitOption[];
+    hasMore: boolean;
+    total?: number;
+}
+
+type IdUnitSearchResult = IdUnitOption[] | IdUnitSearchPage;
+
+/**
+ * Type-ahead data source (#1026). A plain list is final; a page with
+ * `hasMore` makes the menu offer "Weitere anzeigen", which asks for `page + 1`
+ * — so a unit beyond the first page stays reachable.
+ */
+export type IdUnitSearch = (query: string, page?: number) => Promise<IdUnitSearchResult> | IdUnitSearchResult;
+
+const asPage = (result: IdUnitSearchResult): IdUnitSearchPage =>
+    Array.isArray(result) ? { units: result, hasMore: false } : result;
 
 export interface IdAllocationFieldProps {
     /** Visible field label, e.g. "Träger" / "Beratungsstelle". */
@@ -57,7 +73,8 @@ const SEARCH_DEBOUNCE_MS = 150;
 type MenuEntry =
     | { key: string; kind: 'create'; label: string }
     | { key: string; kind: 'typed'; id: number; label: string }
-    | { key: string; kind: 'unit'; unit: IdUnitOption; label: string; secondary: string };
+    | { key: string; kind: 'unit'; unit: IdUnitOption; label: string; secondary: string }
+    | { key: string; kind: 'more'; label: string };
 
 const CheckMark = () => (
     <svg className={styles.optionCheck} width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
@@ -96,6 +113,10 @@ export const IdAllocationField = ({
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<IdUnitOption[]>([]);
+    // Paging of the current query: the last page loaded and whether the server has more.
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
+    const [total, setTotal] = useState<number | undefined>();
     const [nextFree, setNextFree] = useState<number | null | undefined>();
     const [activeIndex, setActiveIndex] = useState(0);
     const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; minWidth: number }>();
@@ -116,16 +137,25 @@ export const IdAllocationField = ({
     })();
 
     // --- search -----------------------------------------------------------
+    // A new query (or a fresh open) starts at page 1 and replaces the list.
     useEffect(() => {
         if (!open || !searchUnits) return undefined;
         let cancelled = false;
         const timer = window.setTimeout(() => {
-            Promise.resolve(searchUnits(query.trim()))
+            Promise.resolve(searchUnits(query.trim(), 1))
                 .then((found) => {
-                    if (!cancelled) setResults(found);
+                    if (cancelled) return;
+                    const first = asPage(found);
+                    setResults(first.units);
+                    setPage(1);
+                    setHasMore(first.hasMore);
+                    setTotal(first.total);
                 })
                 .catch(() => {
-                    if (!cancelled) setResults([]);
+                    if (cancelled) return;
+                    setResults([]);
+                    setHasMore(false);
+                    setTotal(undefined);
                 });
         }, SEARCH_DEBOUNCE_MS);
         return () => {
@@ -133,6 +163,28 @@ export const IdAllocationField = ({
             window.clearTimeout(timer);
         };
     }, [open, query, searchUnits]);
+
+    const queryRef = useRef(query);
+    queryRef.current = query;
+    const loadMore = () => {
+        if (!searchUnits) return;
+        const forQuery = query;
+        const nextPage = page + 1;
+        Promise.resolve(searchUnits(forQuery.trim(), nextPage))
+            .then((found) => {
+                // A reply for a query the admin has typed past is stale.
+                if (queryRef.current !== forQuery) return;
+                const next = asPage(found);
+                setResults((previous) => {
+                    const known = new Set(previous.map((unit) => unit.id));
+                    return [...previous, ...next.units.filter((unit) => !known.has(unit.id))];
+                });
+                setPage(nextPage);
+                setHasMore(next.hasMore);
+                setTotal(next.total ?? total);
+            })
+            .catch(() => setHasMore(false));
+    };
 
     useEffect(() => {
         if (!open || !allowCreate) return undefined;
@@ -185,10 +237,28 @@ export const IdAllocationField = ({
             ].join(' · '),
         }),
     );
+    if (searchUnits != null && hasMore) {
+        entries.push({
+            key: 'more',
+            kind: 'more',
+            label:
+                total != null
+                    ? t('idAllocationField.loadMoreCount', 'Weitere anzeigen ({{shown}} von {{total}})', {
+                          shown: results.length,
+                          total,
+                      })
+                    : t('idAllocationField.loadMore', 'Weitere anzeigen'),
+        });
+    }
     const noMatches =
-        searchUnits != null && trimmed !== '' && !(acceptTypedIds && DIGITS.test(trimmed)) && results.length === 0;
+        searchUnits != null &&
+        trimmed !== '' &&
+        !(acceptTypedIds && DIGITS.test(trimmed)) &&
+        results.length === 0 &&
+        !hasMore;
 
     const isSelected = (entry: MenuEntry) => {
+        if (entry.kind === 'more') return false;
         if (entry.kind === 'create') return mode === 'auto';
         if (entry.kind === 'unit') return mode === 'existing' && unit?.id === entry.unit.id;
         return mode !== 'auto' && value === entry.id;
@@ -229,6 +299,11 @@ export const IdAllocationField = ({
     };
 
     const choose = (entry: MenuEntry) => {
+        // "Weitere anzeigen" is not a pick: the menu stays open and grows.
+        if (entry.kind === 'more') {
+            loadMore();
+            return;
+        }
         if (entry.kind === 'create') allocation.resetToAuto();
         else if (entry.kind === 'unit') allocation.selectExisting(entry.unit);
         else if (allowCreate) allocation.setManualValue(entry.id);
@@ -375,6 +450,7 @@ export const IdAllocationField = ({
                                         [styles.optionSelected]: selected,
                                         [styles.optionActive]: index === activeIndex,
                                         [styles.optionCreate]: entry.kind === 'create',
+                                        [styles.optionMore]: entry.kind === 'more',
                                     })}
                                     id={`${listId}-${entry.key}`}
                                     key={entry.key}

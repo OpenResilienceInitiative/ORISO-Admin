@@ -146,14 +146,18 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
 
     // #1026: an agency admin's own agencies. The agency search is scoped per role
     // by the backend (AgencyService#307), so an empty query returns exactly them.
-    // One agency locks the field; several make it a pick among them.
+    // One agency (server `total` = 1) locks the field; several make it a pick
+    // among them, paged in the field itself — only the first page is loaded here.
     const [ownAgencies, setOwnAgencies] = useState<InviteAgencyHit[]>([]);
+    const [ownAgencyTotal, setOwnAgencyTotal] = useState(0);
     useEffect(() => {
         if (!isAgencyViewer) return undefined;
         let cancelled = false;
         searchInviteAgencies('', currentTenantId)
-            .then((hits) => {
-                if (!cancelled) setOwnAgencies(hits);
+            .then(({ hits, total }) => {
+                if (cancelled) return;
+                setOwnAgencies(hits);
+                setOwnAgencyTotal(total);
             })
             .catch(() => {
                 // The field stays a scoped pick; the backend still refuses foreign agencies.
@@ -163,8 +167,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         };
     }, [isAgencyViewer, currentTenantId]);
     const ownAgency = useMemo<IdUnitOption | undefined>(
-        () => (ownAgencies.length === 1 ? { id: ownAgencies[0].id, name: ownAgencies[0].name } : undefined),
-        [ownAgencies],
+        () =>
+            ownAgencies.length === 1 && ownAgencyTotal <= 1
+                ? { id: ownAgencies[0].id, name: ownAgencies[0].name }
+                : undefined,
+        [ownAgencies, ownAgencyTotal],
     );
     const ownTenantName = ownAgencies.find((agency) => agency.tenantName)?.tenantName;
 
@@ -438,18 +445,28 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             .map((tenant) => ({ id: Number(tenant.id), name: tenant.name ?? undefined }));
     }, []);
 
+    // Paged (#1026): the field asks for the next page on "Weitere anzeigen", so
+    // every agency in the viewer's scope is reachable, not only the first 10.
     const searchAgenciesForPicker = useCallback(
-        async (query: string, { tenantId }: { tenantId?: number }) =>
-            (await searchInviteAgencies(query, tenantId)).map(
-                ({ id, name, topics, tenantId: agencyTenantId, tenantName }) => ({
+        async (query: string, { tenantId, page = 1 }: { tenantId?: number; page?: number }) => {
+            const result = await searchInviteAgencies(query, tenantId, page);
+            return {
+                units: result.hits.map(({ id, name, topics, tenantId: agencyTenantId, tenantName }) => ({
                     id,
                     name,
                     topics,
                     tenantId: agencyTenantId,
                     tenantName,
-                }),
-            ),
-        [],
+                })),
+                hasMore: result.hasMore,
+                // The server already scopes Träger and agency admins to their own
+                // Träger, so its total is theirs. For the platform admin it counts
+                // every Träger; with a Träger chosen (a client-side filter) it
+                // would overstate, so no count is shown then.
+                total: viewerScope !== 'platform' || tenantId == null ? result.total : undefined,
+            };
+        },
+        [viewerScope],
     );
 
     const onCreate = useCallback(
@@ -938,7 +955,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 <SelfAssignDialog
                     viewerScope={viewerScope}
                     initialAgency={selfAssign.agency}
-                    searchAgencies={(query) => searchAgenciesForPicker(query, { tenantId: currentTenantId })}
+                    searchAgencies={(query, page) =>
+                        searchAgenciesForPicker(query, { tenantId: currentTenantId, page })
+                    }
                     loadAgencyTopics={loadAgencyTopics}
                     onClose={() => setSelfAssign(undefined)}
                     onAssigned={() => loadInvites()}

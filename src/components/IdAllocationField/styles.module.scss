@@ -59,6 +59,12 @@
     font-weight: 500;
 }
 
+/* "Weitere anzeigen": an action at the end of the list, read like a text button. */
+.optionMore {
+    color: var(--m3-primary, #a5000a);
+    font-weight: 500;
+}
+
 .optionCheck {
     flex-shrink: 0;
 }

@@ -196,6 +196,66 @@ describe('IdAllocationField', () => {
         expect(allocation.selectExisting).toHaveBeenCalledWith({ id: 14, name: 'Diakonie Lahr', topics: ['Schulden'] });
     });
 
+    /*
+     * #1026 Pre-Dev finding: the picker showed the first 10 hits and nothing
+     * else, so an agency admin with 12 agencies could not reach two of them.
+     * A paged search now offers "Weitere anzeigen" until the server says done.
+     */
+    it('loads further pages of a paged search on request, keeping the menu open', async () => {
+        const allocation = allocationState();
+        const units = Array.from({ length: 12 }, (_, index) => ({
+            id: 101 + index,
+            name: `Beratungsstelle ${101 + index}`,
+        }));
+        const searchUnits = vi.fn((_query: string, page = 1) => ({
+            units: units.slice((page - 1) * 10, page * 10),
+            hasMore: page * 10 < units.length,
+            total: units.length,
+        }));
+        const user = userEvent.setup();
+        render(
+            <IdAllocationField
+                label="Beratungsstelle"
+                allocation={allocation}
+                allowCreate={false}
+                acceptTypedIds={false}
+                searchUnits={searchUnits}
+            />,
+        );
+
+        await user.click(screen.getByRole('combobox', { name: 'Beratungsstelle' }));
+        await screen.findByRole('option', { name: /Beratungsstelle 110/ });
+        expect(screen.queryByRole('option', { name: /Beratungsstelle 112/ })).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('option', { name: 'Weitere anzeigen (10 von 12)' }));
+        const last = await screen.findByRole('option', { name: /Beratungsstelle 112/ });
+        expect(searchUnits).toHaveBeenLastCalledWith('', 2);
+        // The first page stays, the "more" entry is gone once the server has nothing left.
+        expect(screen.getByRole('option', { name: /Beratungsstelle 101/ })).toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: /Weitere anzeigen/ })).not.toBeInTheDocument();
+
+        await user.click(last);
+        expect(allocation.selectExisting).toHaveBeenCalledWith({ id: 112, name: 'Beratungsstelle 112' });
+    });
+
+    it('starts again at page 1 when the query changes', async () => {
+        const allocation = allocationState();
+        const searchUnits = vi.fn((query: string, page = 1) => ({
+            units: [{ id: page * 100, name: `${query || 'alle'} Seite ${page}` }],
+            hasMore: page === 1,
+        }));
+        const user = userEvent.setup();
+        render(<IdAllocationField label="Beratungsstelle" allocation={allocation} searchUnits={searchUnits} />);
+
+        const input = screen.getByRole('combobox', { name: 'Beratungsstelle' });
+        await user.click(input);
+        await user.click(await screen.findByRole('option', { name: 'Weitere anzeigen' }));
+        await screen.findByRole('option', { name: /alle Seite 2/ });
+        await user.type(input, 'sucht');
+        await screen.findByRole('option', { name: /sucht Seite 1/ });
+        expect(screen.queryByRole('option', { name: /Seite 2/ })).not.toBeInTheDocument();
+    });
+
     it('selects the active entry with the keyboard', async () => {
         const allocation = allocationState({ mode: 'manual', value: 21, validation: 'available' });
         const user = userEvent.setup();

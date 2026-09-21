@@ -201,7 +201,7 @@ export interface InviteComposerProps {
     /** Type-ahead sources for the ID fields (#1026). Omit and the menu offers only "Neu" + typed numbers. */
     searchTenants?: IdUnitSearch;
     /** Agency search; receives the currently chosen Träger so results can be scoped to it. */
-    searchAgencies?: (query: string, context: { tenantId?: number }) => Promise<IdUnitOption[]> | IdUnitOption[];
+    searchAgencies?: (query: string, context: { tenantId?: number; page?: number }) => ReturnType<IdUnitSearch>;
     /**
      * May the Träger field create a NEW Träger? Defaults to `requireTenantId`
      * (the Träger tab); elsewhere the field points at an existing Träger.
@@ -418,7 +418,7 @@ export const InviteComposer = ({
     const showAlsoCounsellor = showAgencyField && role === 'AGENCY_ADMIN';
 
     const searchAgenciesInTenant = useCallback(
-        (query: string) => (searchAgencies ? searchAgencies(query, { tenantId }) : []),
+        (query: string, page?: number) => (searchAgencies ? searchAgencies(query, { tenantId, page }) : []),
         [searchAgencies, tenantId],
     );
 
