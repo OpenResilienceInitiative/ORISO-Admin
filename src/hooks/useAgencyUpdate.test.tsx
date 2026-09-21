@@ -92,6 +92,23 @@ describe('useAgencyUpdate sequential card saves', () => {
         expect(update.description).toBe('Keep this description');
     });
 
+    it('reloads the agency after a failed update so a partial server write is not undone later', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+        mocks.updateAgencyData.mockRejectedValueOnce(new Error('postcode range rejected'));
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await expect(result.current.mutateAsync({ description: 'x' } as never)).rejects.toThrow(
+            'postcode range rejected',
+        );
+
+        await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['AGENCY', '282'] }));
+    });
+
     it('does not let a failed legal publication leak into a later unrelated card save', async () => {
         const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         queryClient.setQueryData(['AGENCY', '282'], {
