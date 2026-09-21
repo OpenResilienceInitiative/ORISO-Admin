@@ -25,6 +25,7 @@ import {
     type SmtpSendFailureDetail,
 } from '../../utils/extractApiErrorMessage';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
+import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 import { InviteComposer, InviteComposerValues, InviteSendMode, InviteSubmitOutcome } from './InviteComposer';
@@ -48,6 +49,9 @@ const isBulkSelectable = (invite: AccountInviteDTO) =>
 
 export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField = false }: AccountInvitesTabProps) => {
     const { t } = useTranslation();
+    // ORISO-Admin#1026: invite templates are global, so only the platform admin
+    // may create them; the composer keeps "Neu aus …" visible but disabled.
+    const { isSuperAdmin } = useUserRoles();
     const [invites, setInvites] = useState<AccountInviteDTO[]>([]);
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState<number | undefined>();
@@ -719,6 +723,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 // the same lifted selection the dialog picker writes.
                 onSelectTemplate={setSelectedTemplateId}
                 // "Neu aus „X"": open the dialog's create view prefilled from X.
+                templateCreateDisabledReason={
+                    isSuperAdmin
+                        ? undefined
+                        : t('links.templates.platformAdminOnly', 'Nur Plattform-Admins können Vorlagen ändern')
+                }
                 onCreateFromTemplate={(templateId) => {
                     setCreateFromTemplateId(templateId);
                     setTemplatesDialogView('create');

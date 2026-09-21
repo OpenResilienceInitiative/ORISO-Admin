@@ -104,6 +104,12 @@ export const EmailTemplatesDialog = ({
     const [submitting, setSubmitting] = useState(false);
     const [view, setView] = useState<'list' | 'form'>('list');
     const { isSuperAdmin, tenantId: activeTenantId } = useUserRoles();
+    // ORISO-Admin#1026: invite templates are global — one row is used by every
+    // Träger — so only the platform admin may create or change them (the
+    // UserService answers 403 to everyone else). Others still see and pick them;
+    // the edit controls stay visible but disabled, with the reason.
+    const canEditTemplates = isSuperAdmin;
+    const editLockedReason = t('links.templates.platformAdminOnly', 'Nur Plattform-Admins können Vorlagen ändern');
     // Preview context is deliberately separate from the persisted template draft.
     const [previewTenant, setPreviewTenant] = useState('platform');
     const {
@@ -217,7 +223,7 @@ export const EmailTemplatesDialog = ({
     // once; the template list may still be loading when the prefill is requested.
     const createDeepLinkDone = useRef(false);
     useEffect(() => {
-        if (initialView !== 'create' || createDeepLinkDone.current) {
+        if (initialView !== 'create' || createDeepLinkDone.current || !canEditTemplates) {
             return;
         }
         if (initialTemplateId == null) {
@@ -236,7 +242,15 @@ export const EmailTemplatesDialog = ({
             createDeepLinkDone.current = true;
             openCreateForm();
         }
-    }, [initialView, initialTemplateId, templates, loadCompleted, openCreateForm, openCreateFromTemplate]);
+    }, [
+        canEditTemplates,
+        initialView,
+        initialTemplateId,
+        templates,
+        loadCompleted,
+        openCreateForm,
+        openCreateFromTemplate,
+    ]);
 
     // The composer only offers active templates of its own tab's kind, so those are the
     // only rows that can be picked — selecting anything else would put a name on the
@@ -429,14 +443,30 @@ export const EmailTemplatesDialog = ({
                 key: 'actions',
                 render: (_: unknown, template: InviteEmailTemplateDTO) => (
                     <div className={listingTableStyles.actionGroup}>
-                        <Button size="small" onClick={() => openEditForm(template)}>
-                            {t('links.templates.edit', 'Edit')}
-                        </Button>
+                        {canEditTemplates ? (
+                            <Button size="small" onClick={() => openEditForm(template)}>
+                                {t('links.templates.edit', 'Edit')}
+                            </Button>
+                        ) : (
+                            <Tooltip title={editLockedReason}>
+                                <span>
+                                    <Button disabled size="small">
+                                        {t('links.templates.edit', 'Edit')}
+                                    </Button>
+                                </span>
+                            </Tooltip>
+                        )}
                         {/* The backend exposes no DELETE for invite-email-templates yet
                             (AccountInviteController: POST/PUT/GET only), so per #314 the
                             delete action ships disabled with an explanatory tooltip
                             instead of inventing an endpoint. */}
-                        <Tooltip title={t('links.templates.deleteUnavailable', 'Backend-Endpoint fehlt (#314)')}>
+                        <Tooltip
+                            title={
+                                canEditTemplates
+                                    ? t('links.templates.deleteUnavailable', 'Backend-Endpoint fehlt (#314)')
+                                    : editLockedReason
+                            }
+                        >
                             <span>
                                 <Button danger disabled size="small">
                                     {t('links.templates.delete', 'Delete')}
@@ -447,15 +477,25 @@ export const EmailTemplatesDialog = ({
                 ),
             },
         ],
-        [isSelectable, kindLabel, onSelect, openEditForm, selectedTemplateId, t],
+        [canEditTemplates, editLockedReason, isSelectable, kindLabel, onSelect, openEditForm, selectedTemplateId, t],
     );
 
     const listFooter = (
         <div className={styles.footerActions}>
             <DialogButton onClick={onClose}>{t('links.templates.close', 'Close')}</DialogButton>
-            <DialogButton primary onClick={openCreateForm}>
-                {t('links.templates.new', 'New template')}
-            </DialogButton>
+            {canEditTemplates ? (
+                <DialogButton primary onClick={openCreateForm}>
+                    {t('links.templates.new', 'New template')}
+                </DialogButton>
+            ) : (
+                <Tooltip title={editLockedReason}>
+                    <span>
+                        <DialogButton primary disabled>
+                            {t('links.templates.new', 'New template')}
+                        </DialogButton>
+                    </span>
+                </Tooltip>
+            )}
         </div>
     );
 
@@ -688,7 +728,8 @@ export const EmailTemplatesDialog = ({
                         : undefined,
                     // Manager-only mode: without picking, a row click is free
                     // for the edit shortcut.
-                    onDoubleClick: onSelect ? undefined : () => openEditForm(template),
+                    // Only the platform admin may edit (ORISO-Admin#1026).
+                    onDoubleClick: onSelect || !canEditTemplates ? undefined : () => openEditForm(template),
                 })}
             />
         </Modal>

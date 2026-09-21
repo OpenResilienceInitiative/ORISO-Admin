@@ -277,17 +277,56 @@ describe('EmailTemplatesDialog', () => {
         );
     });
 
-    it('uses the active tenant without offering cross-tenant preview selection', async () => {
-        mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: 40 });
-        renderDialog();
-        await openCreateForm(userEvent.setup());
-        expect(screen.queryByLabelText('Vorschau für')).not.toBeInTheDocument();
-        expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
-        await waitFor(() =>
-            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
-                expect.objectContaining({ tenantId: 40 }),
-            ),
-        );
+    /*
+     * ORISO-Admin#1026: invite templates are global — one row is used by every
+     * Träger — so only the platform admin may create or change them (the
+     * UserService answers 403 otherwise). A Träger admin still sees and picks
+     * templates; the edit controls stay visible but disabled, with the reason.
+     */
+    describe('as a Träger admin (not the platform admin)', () => {
+        const REASON = 'Nur Plattform-Admins können Vorlagen ändern';
+
+        beforeEach(() => {
+            mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: 40 });
+        });
+
+        it('disables "New template" and every "Edit", naming the reason', async () => {
+            const user = userEvent.setup();
+            renderDialog();
+            await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+
+            const newButton = screen.getByRole('button', { name: 'New template' });
+            expect(newButton).toBeDisabled();
+            const editButtons = screen.getAllByRole('button', { name: 'Edit' });
+            expect(editButtons).toHaveLength(3);
+            editButtons.forEach((button) => expect(button).toBeDisabled());
+
+            await user.hover(editButtons[0].parentElement as HTMLElement);
+            expect(await screen.findByText(REASON)).toBeInTheDocument();
+        });
+
+        it('does not open the edit form on row double-click', async () => {
+            renderDialog();
+            await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+            fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+            expect(screen.queryByLabelText('Vorlagenname')).not.toBeInTheDocument();
+        });
+
+        it('stays on the list when opened with the create deep link', async () => {
+            renderDialog({ initialView: 'create' });
+            await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+            expect(screen.queryByLabelText('Vorlagenname')).not.toBeInTheDocument();
+            expect(mocks.createInviteEmailTemplate).not.toHaveBeenCalled();
+        });
+
+        it('still lets the admin pick a template for sending', async () => {
+            const user = userEvent.setup();
+            const onSelect = vi.fn();
+            renderDialog({ onSelect });
+            await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+            await user.click(screen.getByRole('button', { name: 'Default tenant template' }));
+            expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+        });
     });
 
     it('previews through the backend renderer, not a local re-implementation', async () => {

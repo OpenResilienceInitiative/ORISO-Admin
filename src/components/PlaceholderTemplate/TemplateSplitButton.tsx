@@ -19,6 +19,13 @@ export interface TemplateSplitButtonProps {
     onSelectTemplate: (id: number | string) => void;
     /** Offers "new from template" menu entries; omit to hide them. */
     onCreateFromTemplate?: (id: number | string) => void;
+    /**
+     * When set, the "new from template" entries stay visible but disabled and
+     * carry this reason (design rule: disable, don't hide). Used while invite
+     * templates are global and only the platform admin may create them
+     * (ORISO-Admin#1026).
+     */
+    createDisabledReason?: string;
     /** Main-segment press (e.g. open a manage dialog). Optional in the pure picker. */
     onMainClick?: () => void;
     /** Read-only surfaces keep the chooser visible but inert. */
@@ -62,6 +69,7 @@ export const TemplateSplitButton = ({
     activeTemplateId,
     onSelectTemplate,
     onCreateFromTemplate,
+    createDisabledReason,
     onMainClick,
     disabled = false,
     icon = <DescriptionOutlinedIcon />,
@@ -92,8 +100,9 @@ export const TemplateSplitButton = ({
     const createItems = onCreateFromTemplate
         ? templates.map((template) => ({
               key: `${CREATE_PREFIX}${template.id}`,
+              disabled: !!createDisabledReason,
               label: (
-                  <span className={styles.templateMenuRow}>
+                  <span className={styles.templateMenuRow} title={createDisabledReason}>
                       <AddRoundedIcon fontSize="small" aria-hidden />
                       <span>
                           {/* The template name is literal data, not translatable prose —
@@ -131,7 +140,7 @@ export const TemplateSplitButton = ({
             const id = templates.find((template) => String(template.id) === raw)?.id ?? raw;
             if (key.startsWith(SELECT_PREFIX)) {
                 onSelectTemplate(id);
-            } else if (key.startsWith(CREATE_PREFIX)) {
+            } else if (key.startsWith(CREATE_PREFIX) && !createDisabledReason) {
                 onCreateFromTemplate?.(id);
             }
         },
