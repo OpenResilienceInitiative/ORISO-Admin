@@ -74,8 +74,10 @@ const persistedHandlers = () => {
     ];
 };
 
+// Module-level so the story's beforeEach can reset it: the handlers are built once, and a rerun
+// would otherwise start with a nonzero count and get the newer draft on its very first read.
+let conflictReads = 0;
 const conflictHandlers = () => {
-    let reads = 0;
     const newer = {
         ...persistedDraft,
         content: { de: '<h2>Neuere Server-Fassung</h2><p>Von einer anderen Administration.</p>' },
@@ -86,9 +88,9 @@ const conflictHandlers = () => {
     return [
         ...commonHandlers,
         http.get(DRAFT_ENDPOINT, async () => {
-            reads += 1;
-            if (reads > 1) await delay(600);
-            return HttpResponse.json(reads > 1 ? newer : persistedDraft);
+            conflictReads += 1;
+            if (conflictReads > 1) await delay(600);
+            return HttpResponse.json(conflictReads > 1 ? newer : persistedDraft);
         }),
         http.put(DRAFT_ENDPOINT, () => new HttpResponse(null, { status: 409 })),
     ];
@@ -157,6 +159,9 @@ export const LocalAndServerCollision: Story = {
 };
 
 export const ConflictRefresh: Story = {
+    beforeEach: () => {
+        conflictReads = 0;
+    },
     parameters: { msw: { handlers: conflictHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);

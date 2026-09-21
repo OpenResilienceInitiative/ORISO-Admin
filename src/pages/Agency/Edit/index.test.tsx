@@ -303,6 +303,7 @@ describe('AgencyPageEdit create flow', () => {
         mocks.legalForm.setFields.mockReset();
         mocks.legalForm.scrollToField.mockReset();
         mocks.agencyLegalProps = undefined;
+        mocks.isAgencySaving = false;
     });
 
     it('renders the tenant assignment field for super-admin agency creation', async () => {
@@ -476,7 +477,6 @@ describe('AgencyPageEdit create flow', () => {
         mocks.isAgencySaving = true;
         renderWithClient(<AgencyPageEdit section="legal" />);
         await waitFor(() => expect(mocks.agencyLegalProps?.saving).toBe(true));
-        mocks.isAgencySaving = false;
     });
 
     it('reports a rejected agency-wide publication and rethrows it to the legal editor', async () => {

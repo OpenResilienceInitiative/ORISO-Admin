@@ -498,7 +498,7 @@ export const AgencyLegalTextContainer = ({
             <TenantLegalDraftNotice
                 savedAt={serverBase.draft?.savedAt}
                 localSavedAt={localDraftSavedAt}
-                collision={draftCollision}
+                collision={draftCollision && !sourceChosen}
                 loadServer={() => {
                     if (draftActionPendingRef.current) return;
                     setDraftSource('server');
@@ -529,10 +529,14 @@ export const AgencyLegalTextContainer = ({
                 }}
                 keepEditing={() => {
                     if (draftActionPendingRef.current) return;
-                    setServerBaseState((current) => ({
-                        ...current,
-                        revision: serverDraft.conflict?.revision,
-                    }));
+                    // A refresh that found no draft means it is gone: keep editing from "no draft" rather than
+                    // a revision the server no longer has (which would 409 again, or skip a needed DELETE).
+                    const remote = serverDraft.conflict;
+                    setServerBaseState((current) =>
+                        remote === null
+                            ? { ...current, draft: null, revision: undefined }
+                            : { ...current, revision: remote?.revision ?? current.revision },
+                    );
                     serverDraft.clearConflict();
                 }}
                 onDiscard={async () => {

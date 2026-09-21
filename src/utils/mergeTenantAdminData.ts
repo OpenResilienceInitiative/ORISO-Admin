@@ -16,6 +16,13 @@ export const mergeTenantAdminData = (
         ...base,
         content: { ...(base.content ?? {}) },
     };
+    // mergeWith writes into its destination; without a copy a partial map would edit the caller's cache.
+    REPLACED_CONTENT_MAPS.forEach((key) => {
+        const existing = (tmp.content as Record<string, unknown>)[key];
+        if (existing && typeof existing === 'object') {
+            (tmp.content as Record<string, unknown>)[key] = { ...(existing as Record<string, unknown>) };
+        }
+    });
 
     Object.keys(tmp.content).forEach((key) => {
         if (typeof tmp.content[key] === 'boolean') {

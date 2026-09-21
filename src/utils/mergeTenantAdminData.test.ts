@@ -118,4 +118,11 @@ describe('serializeTenantAdminDataUpdate', () => {
         expect(merged.content.privacyConsent).toEqual({});
         expect(merged.content.claim).toEqual({ de: 'Claim' });
     });
+
+    it("does not write a partial legal map into the caller's data", () => {
+        const current = { content: { impressum: { de: 'Alt', en: 'Old' } } } as any;
+        const merged = mergeTenantAdminData(current, { content: { impressum: { de: 'Neu' } } } as any);
+        expect(merged.content.impressum).toEqual({ de: 'Neu' });
+        expect(current.content.impressum).toEqual({ de: 'Alt', en: 'Old' });
+    });
 });

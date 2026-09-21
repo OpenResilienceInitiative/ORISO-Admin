@@ -333,6 +333,8 @@ describe('LegalText (M3 editor)', () => {
     it('treats a saved server draft as the whole text: a language it dropped is not published again', async () => {
         const user = userEvent.setup();
         mocks.updateTenant.mockResolvedValue(undefined);
+        // Published text still has `en`; the saved server draft dropped it deliberately.
+        mocks.imprint = { de: '<p>published de</p>', en: '<p>published en</p>' };
         mocks.serverDrafts.IMPRINT = {
             kind: 'IMPRINT',
             content: { de: '<p>server</p>' },

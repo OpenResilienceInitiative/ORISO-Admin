@@ -429,8 +429,9 @@ export const LegalText = ({
         // Publish exactly the normalized payload returned by the revision-checked
         // draft write. This keeps the live text and the saved revision identical.
         const formData = set({}, fieldName, { ...saved.content });
-        if (consentEnabled && saved.privacyConsent) {
-            set(formData, ['content', 'privacyConsent'], { ...saved.privacyConsent });
+        if (consentEnabled) {
+            // The draft PUT may not echo the optional consent map; the one sent is then authoritative.
+            set(formData, ['content', 'privacyConsent'], { ...(saved.privacyConsent ?? consentByLanguage) });
         }
         try {
             if (showConfirmationModal) {

@@ -73,6 +73,8 @@ export const useTenantLegalDraft = (tenantId: string | number, kind: TenantLegal
             try {
                 const saved = await putTenantLegalDraft(tenantId, kind, next);
                 if (isCurrent(identity)) {
+                    // A read still in flight must not land after this write and restore the old revision.
+                    await queryClient.cancelQueries({ queryKey: tenantLegalDraftKey(tenantId, kind) });
                     queryClient.setQueryData(tenantLegalDraftKey(tenantId, kind), saved);
                     setConflictState((previous) => (previous?.key === identity ? undefined : previous));
                 }
@@ -92,6 +94,7 @@ export const useTenantLegalDraft = (tenantId: string | number, kind: TenantLegal
             try {
                 await deleteTenantLegalDraft(tenantId, kind, revision);
                 if (isCurrent(identity)) {
+                    await queryClient.cancelQueries({ queryKey: tenantLegalDraftKey(tenantId, kind) });
                     queryClient.setQueryData(tenantLegalDraftKey(tenantId, kind), null);
                     setConflictState((previous) => (previous?.key === identity ? undefined : previous));
                 }

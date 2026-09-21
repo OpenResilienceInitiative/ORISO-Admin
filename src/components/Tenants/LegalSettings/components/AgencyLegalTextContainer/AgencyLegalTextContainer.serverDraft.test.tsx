@@ -263,10 +263,12 @@ describe('AgencyLegalTextContainer server drafts', () => {
 
         await userEvent.click(screen.getByRole('button', { name: 'load-server' }));
         expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>server</p>' });
+        expect(noticeProps().collision).toBe(false);
         expect(h.localDiscard).not.toHaveBeenCalled();
 
         await userEvent.click(screen.getByRole('button', { name: 'keep-local' }));
         expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>local</p>' });
+        expect(noticeProps().collision).toBe(false);
         expect(h.localDiscard).not.toHaveBeenCalled();
     });
 
