@@ -2185,6 +2185,7 @@
     "links.inviteProgress.queueProblemState": "Kein BST-Admin – Einladung wartet",
     "links.inviteProgress.queueProblemTenantState": "Kein Träger-Admin – Einladung wartet",
     "links.inviteProgress.queueProblemStateHint": "für diese neue Einheit ist keine Admin-Einladung mehr offen; die Einladung wartet.",
+    "links.inviteProgress.topicsShortLabel": "Themen",
     "links.inviteProgress.topicsFor": "Themen für {{name}}",
     "links.inviteProgress.action.resendWaiting": "Noch nicht möglich: Die Einladung geht automatisch raus, sobald die Beratungsstelle bzw. der Träger angelegt ist.",
     "idAllocationField.reservedJoinsPending": "Nr. {{id}} wird mit einer offenen Admin-Einladung angelegt — diese Einladung schließt sich an.",
@@ -2199,7 +2200,7 @@
     "agency.form.settings.counsellorTopicPermission.title": "Themen & Fachbereiche neuer Berater:innen",
     "agency.form.settings.counsellorTopicPermission.help": "Voreinstellung für jede neue Einladung in diese Beratungsstelle. In der Einladung und später in der Einladungstabelle lässt sie sich pro Person ändern.",
     "links.csvImport.columnsHintV3": "Spalten: E-Mail, Vorname, Name, Träger-ID, Ziel (neu/bestehend), Rolle, Vorlage — nur E-Mail ist Pflicht. „bestehend“ lädt eine weitere Träger-Admin in den Träger mit dieser Nummer ein; leere Träger-IDs werden für neue Träger automatisch vergeben; eine leere Vorlage nimmt die aus der Leiste.",
-    "links.composer.topics.noneShort": "Themen: keine weiteren",
-    "links.composer.topics.selectExistingShort": "Themen: aus der BST",
-    "links.composer.topics.createShort": "Themen: neue anlegen"
+    "links.composer.topics.noneShort": "Keine weiteren",
+    "links.composer.topics.selectExistingShort": "Auswählen",
+    "links.composer.topics.createShort": "Anlegen"
 }

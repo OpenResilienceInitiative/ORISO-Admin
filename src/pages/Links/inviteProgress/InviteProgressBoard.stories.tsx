@@ -390,26 +390,46 @@ export const TopicPermissionInTable: Story = {
 };
 
 /**
+ * #1026 (Frank): the topic cell shows only the short label ("Keine weiteren",
+ * "Auswählen", "Anlegen") under the one-word label "Themen" — nothing may be
+ * clipped. The full title and description are in the tooltip and the menu.
+ */
+const expectTopicCellsUnclipped = async (canvasElement: HTMLElement) => {
+    const canvas = within(canvasElement);
+    const selects = await canvas.findAllByRole('combobox', { name: /Themen für|Topics for/ });
+    await expect(selects.length).toBeGreaterThan(0);
+    selects.forEach((select) => {
+        const field = select.closest('.ant-select') as HTMLElement;
+        const shown = field.querySelector<HTMLElement>('.ant-select-selection-item');
+        expect(shown).not.toBeNull();
+        expect((shown as HTMLElement).textContent).toMatch(
+            /^(Keine weiteren|Auswählen|Anlegen|No more|Select|Create)$/,
+        );
+        // Fully rendered: nothing clipped (scrollWidth fits the box).
+        expect((shown as HTMLElement).scrollWidth).toBeLessThanOrEqual((shown as HTMLElement).clientWidth + 1);
+        const label = select.closest('[class*="field"]')?.querySelector<HTMLElement>('label');
+        expect(label).not.toBeNull();
+        expect((label as HTMLElement).scrollWidth).toBeLessThanOrEqual((label as HTMLElement).clientWidth + 1);
+        // One line: the floating label must not wrap into the value.
+        expect((label as HTMLElement).getClientRects().length).toBe(1);
+    });
+};
+
+/** The same queue at 1440 px: the topic cell is readable in full. */
+export const QueueDesktop: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    args: { onTopicPermissionChange: fn() },
+    render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
+    play: async ({ canvasElement }) => expectTopicCellsUnclipped(canvasElement),
+};
+
+/**
  * The same queue on a phone (390 px, narrower than the issue's 412 px): the topic
- * select and the problem badge stack into the card, and the topic select's short
- * label is its only information, so it must be readable in full — no ellipsis.
+ * select and the problem badge stack into the card; the short label is readable in full.
  */
 export const QueueMobile: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     args: { onTopicPermissionChange: fn() },
     render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        const selects = await canvas.findAllByRole('combobox', { name: /Themen für|Topics for/ });
-        await expect(selects.length).toBeGreaterThan(0);
-        selects.forEach((select) => {
-            const field = select.closest('.ant-select') as HTMLElement;
-            const label = field.querySelector<HTMLElement>('.ant-select-selection-item');
-            expect(label).not.toBeNull();
-            const shown = label as HTMLElement;
-            // Fully rendered: nothing clipped (scrollWidth fits) and the text is not cut short.
-            expect(shown.scrollWidth).toBeLessThanOrEqual(shown.clientWidth + 1);
-            expect(shown.textContent).toMatch(/^(Themen|Topics): /);
-        });
-    },
+    play: async ({ canvasElement }) => expectTopicCellsUnclipped(canvasElement),
 };

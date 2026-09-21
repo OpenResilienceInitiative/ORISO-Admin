@@ -58,11 +58,15 @@ export const TOPIC_PERMISSION_LABEL_KEYS: Record<
     },
 };
 
-/** Short labels for tight places (the invite table); the menu keeps the full titles. */
+/**
+ * Short labels for the invite table cell (#1026, Frank's decision): the field's
+ * own label already says "Themen", so the value is one or two words. The full
+ * title and description live in the tooltip and in the open select.
+ */
 export const TOPIC_PERMISSION_SHORT_LABEL_KEYS: Record<TopicPermission, [key: string, fallback: string]> = {
-    NONE: ['links.composer.topics.noneShort', 'Themen: keine weiteren'],
-    SELECT_EXISTING: ['links.composer.topics.selectExistingShort', 'Themen: aus der BST'],
-    CREATE: ['links.composer.topics.createShort', 'Themen: neue anlegen'],
+    NONE: ['links.composer.topics.noneShort', 'Keine weiteren'],
+    SELECT_EXISTING: ['links.composer.topics.selectExistingShort', 'Auswählen'],
+    CREATE: ['links.composer.topics.createShort', 'Anlegen'],
 };
 
 /**

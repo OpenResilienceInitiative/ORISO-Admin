@@ -490,6 +490,50 @@ describe('InviteProgressBoard — #1026 queue and topic permission', () => {
         expect(onTopicPermissionChange).toHaveBeenCalledWith(accepted, 'CREATE');
     });
 
+    /*
+     * Frank's decision (#1026): the cell shows the SHORT label only; the full
+     * title and its description live in a tooltip and in the open select.
+     */
+    it('shows the short topic label in the cell, the full title and description in a tooltip', async () => {
+        render(
+            <InviteProgressBoard
+                {...counsellorProps([{ ...accepted, topicPermission: 'NONE' }], { onTopicPermissionChange: vi.fn() })}
+            />,
+        );
+
+        const select = screen.getByRole('combobox', { name: /Themen für/ });
+        const field = select.closest('.ant-select') as HTMLElement;
+        expect(field.querySelector('.ant-select-selection-item')).toHaveTextContent(/^Keine weiteren$/);
+        await userEvent.hover(field);
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip).toHaveTextContent('Keine weiteren Fachbereiche');
+        expect(tooltip).toHaveTextContent('Nur die vorausgewählten Fachbereiche.');
+    });
+
+    it.each([
+        ['SELECT_EXISTING', 'Auswählen'],
+        ['CREATE', 'Anlegen'],
+    ] as const)('labels %s as "%s" in the cell', (topicPermission, short) => {
+        render(
+            <InviteProgressBoard
+                {...counsellorProps([{ ...accepted, topicPermission }], { onTopicPermissionChange: vi.fn() })}
+            />,
+        );
+
+        const field = screen.getByRole('combobox', { name: /Themen für/ }).closest('.ant-select') as HTMLElement;
+        expect(field.querySelector('.ant-select-selection-item')).toHaveTextContent(new RegExp(`^${short}$`));
+    });
+
+    it('lists every option with its full title and description in the open select', async () => {
+        render(<InviteProgressBoard {...counsellorProps([accepted], { onTopicPermissionChange: vi.fn() })} />);
+
+        await userEvent.click(screen.getByRole('combobox', { name: /Themen für/ }));
+        const option = (await screen.findAllByTitle('Darf weitere Fachbereiche auswählen')).find((element) =>
+            element.classList.contains('ant-select-item-option'),
+        );
+        expect(option).toHaveTextContent('Wählt selbst aus den vorhandenen Fachbereichen der Beratungsstelle.');
+    });
+
     it('offers no topic column without a change handler and on the Träger tab', () => {
         render(<InviteProgressBoard {...baseProps()} onTopicPermissionChange={vi.fn()} />);
 

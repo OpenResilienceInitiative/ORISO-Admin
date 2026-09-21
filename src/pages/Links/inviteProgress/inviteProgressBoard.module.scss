@@ -108,13 +108,41 @@
     white-space: nowrap;
 }
 
-/* #1026 slice 6: per-row topic permission. */
-.topicSelect {
-    width: 100%;
-
-    /* Narrow enough that the recipient column does not push a 1440px table wide. */
-    max-width: 184px;
+/* #1026 slice 6: per-row topic permission. The cell shows only the short
+   label under the one-word label "Themen" (Frank's decision), so the field
+   is narrow by content and never clips; title + description sit in the
+   tooltip and in the open select. */
+.topicTooltip {
+    display: block;
+    width: fit-content;
     margin-top: 8px;
+}
+
+.topicSelectAnchor {
+    display: block;
+}
+
+.topicSelect {
+    /* Fits the longest short label ("Keine weiteren") plus the arrow;
+       narrower than the recipient's e-mail line, so the column keeps its width. */
+    width: 200px;
+}
+
+.topicOption {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 320px;
+    white-space: normal;
+}
+
+.topicOptionTitle {
+    font: 500 14px/20px var(--m3-body-font-family);
+}
+
+.topicOptionDescription {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 12px/16px var(--m3-body-font-family);
 }
 
 /* ── Actions ─────────────────────────────────────────────────────────────── */
@@ -194,9 +222,6 @@
     /* The short topic label is the select's only information; the card has the
        room, so the desktop cap would only cut it off with an ellipsis. */
 
-    .topicSelect {
-        max-width: none;
-    }
 
     .metaCell {
         display: flex !important;
