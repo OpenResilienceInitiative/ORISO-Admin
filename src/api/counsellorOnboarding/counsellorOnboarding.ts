@@ -44,6 +44,16 @@ export type CounsellorTopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
 
 /** Resolved state of a counsellor invite link, keyed by the raw invite token. */
 export interface CounsellorOnboardingInviteDTO {
+    /**
+     * #1026 slice 3: `AGENCY_ADMIN` invites run this wizard too. Absent (older
+     * backend) = `COUNSELLOR`.
+     */
+    targetRole?: 'COUNSELLOR' | 'AGENCY_ADMIN';
+    /**
+     * Agency-admin invites only: the inviter's proposal whether the invitee also
+     * counsels. The wizard shows it as a switch the invitee may change.
+     */
+    alsoCounsellor?: boolean | null;
     recipientEmail: string;
     firstName: string | null;
     lastName: string | null;
@@ -111,6 +121,11 @@ export interface CounsellorRegistrationRequest {
      * as its departments; the invitee becomes its owner.
      */
     agency?: { name: string };
+    /**
+     * Agency-admin invites only (#1026 slice 3): the invitee's own choice. Off =
+     * an agency-admin login only, no consultant, topics optional.
+     */
+    alsoCounsellor?: boolean;
 }
 
 export interface CounsellorRegistrationResultDTO {
@@ -331,12 +346,16 @@ export const createStubCounsellorOnboardingClient = (
             if (!request.account.username || !request.account.password) {
                 throw new Error('ACCOUNT_DATA_MISSING');
             }
+            // Like the backend (#1026 slice 3): an agency admin who does not counsel
+            // needs no topic; an agency-admin invite always carries CREATE.
+            const agencyAdmin = invite.targetRole === 'AGENCY_ADMIN';
+            const counselling = !agencyAdmin || (request.alsoCounsellor ?? invite.alsoCounsellor ?? true);
             // Like the backend: coverage plus — with CREATE only — every active tenant topic.
-            const permission = invite.topicPermission ?? 'CREATE';
+            const permission = agencyAdmin ? 'CREATE' : invite.topicPermission ?? 'CREATE';
             const selectable =
                 permission === 'CREATE' ? [...invite.topics, ...(invite.availableTopics ?? [])] : invite.topics;
             const coveredIds = new Set(selectable.map(({ id }) => id));
-            if (request.topicIds.length === 0 || request.topicIds.some((id) => !coveredIds.has(id))) {
+            if ((counselling && request.topicIds.length === 0) || request.topicIds.some((id) => !coveredIds.has(id))) {
                 throw new Error('TOPICS_OUTSIDE_COVERAGE');
             }
             if (permission === 'NONE' && invite.departmentId == null && request.topicIds.length > 1) {

@@ -16,6 +16,7 @@ import { FloatingLabelInput } from '../../components/FloatingLabelInput';
 import { FloatingLabelSelect } from '../../components/FloatingLabelSelect';
 import { InputChipPicker } from '../../components/InputChipPicker';
 import { FilterChip } from '../../components/FilterChip';
+import { M3Switch } from '../../components/M3Switch';
 import { CounsellorAvatarField } from '../../components/CounsellorAvatarField';
 import { TwoFactorSetup, TwoFactorSetupInlineError } from '../../components/TwoFactorSetup/TwoFactorSetup';
 import { toBase32Secret } from '../../utils/totpSecret';
@@ -23,7 +24,13 @@ import { SALUTATION_KEYS } from '../../utils/salutationKeys';
 import { SuccessCard } from '../../components/cards/SuccessCard';
 import { passwordErrorKey, usernameErrorKey } from '../../utils/consultantCredentialRules';
 import { LinkErrorState } from '../TenantOnboarding/LinkErrorState';
-import { MIN_PASSWORD_LENGTH, useCounsellorOnboardingFlow } from './useCounsellorOnboardingFlow';
+import {
+    counsels,
+    effectiveTopicPermission,
+    isAgencyAdminInvite,
+    MIN_PASSWORD_LENGTH,
+    useCounsellorOnboardingFlow,
+} from './useCounsellorOnboardingFlow';
 import styles from './styles.module.scss';
 import { ReactComponent as CounsellorGlyph } from '../../resources/img/svg/navbar/users_active.svg';
 
@@ -90,6 +97,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         updateAgency,
         setTopics,
         toggleTopic,
+        setAlsoCounsellor,
         submitRegistration,
         submitTwoFactorCode,
     } = useCounsellorOnboardingFlow(inviteToken, resolvedClient);
@@ -191,7 +199,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     // ORISO-Admin#1026, slice 6: without CREATE there is no "+" — the invitee
     // chooses among the agency's own topics (SELECT_EXISTING) or keeps the
     // assigned one (NONE; without an assigned one: exactly one agency topic).
-    const topicPermission = invite.topicPermission ?? 'CREATE';
+    const topicPermission = effectiveTopicPermission(invite);
     const agencyTopicsOnly = topicPermission !== 'CREATE';
     const singleAgencyTopic = agencyTopicsOnly && topics.length === 1;
     const pickExactlyOne = topicPermission === 'NONE' && !singleAgencyTopic;
@@ -214,7 +222,17 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     // accept a credential that form would reject.
     const usernameErrKey = usernameErrorKey(data.account.username);
     const passwordErrKey = passwordErrorKey(data.account.password);
-    const topicsValid = data.topicIds.length > 0;
+    // #1026 slice 3: an agency admin who does not counsel needs no topic and no counsellor profile.
+    const agencyAdmin = isAgencyAdminInvite(invite);
+    const counselling = counsels(invite, data);
+    const topicsValid = !counselling || data.topicIds.length > 0;
+    // The hint names what is still missing; without counselling no topic is.
+    let submitHintKey = createsAgency ? 'counsellorOnboarding.submitHintAgency' : 'counsellorOnboarding.submitHint';
+    if (!counselling) {
+        submitHintKey = createsAgency
+            ? 'counsellorOnboarding.submitHintAgencyNoTopics'
+            : 'counsellorOnboarding.submitHintNoTopics';
+    }
     const agencyValid = !createsAgency || data.agency.name.trim().length > 0;
     const canSubmit = usernameErrKey === null && passwordErrKey === null && topicsValid && agencyValid && !busy;
     // Field-specific inline errors appear while the field HAS content but
@@ -243,12 +261,31 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     <CounsellorGlyph width={32} height={32} />
                 </span>
                 <Typography variant="h4" component="h1" className={styles.pageTitle} sx={{ fontWeight: 700, mb: 1 }}>
-                    {t('counsellorOnboarding.title')}
+                    {agencyAdmin ? t('counsellorOnboarding.agencyAdminTitle') : t('counsellorOnboarding.title')}
                 </Typography>
                 <Typography color="text.secondary" className={styles.pageIntro} sx={{ mb: 1 }}>
-                    {t('counsellorOnboarding.intro')}
+                    {agencyAdmin ? t('counsellorOnboarding.agencyAdminIntro') : t('counsellorOnboarding.intro')}
                 </Typography>
             </header>
+
+            {agencyAdmin && (
+                <Section
+                    titleKey="counsellorOnboarding.alsoCounsellor.title"
+                    hintKey="counsellorOnboarding.alsoCounsellor.hint"
+                >
+                    <div className={styles.switchRow}>
+                        <span className={styles.switchLabel} aria-hidden="true">
+                            {t('counsellorOnboarding.alsoCounsellor.label')}
+                        </span>
+                        <M3Switch
+                            checked={data.alsoCounsellor}
+                            disabled={busy}
+                            label={t('counsellorOnboarding.alsoCounsellor.label')}
+                            onChange={setAlsoCounsellor}
+                        />
+                    </div>
+                </Section>
+            )}
 
             <Section titleKey="cards.advisorAccount.title" hintKey="cards.advisorAccount.subtitle">
                 <FloatingLabelInput
@@ -291,27 +328,33 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     readOnly
                     disabled
                 />
-                <FloatingLabelSelect
-                    label={t('cards.personalInfo.salutation')}
-                    options={SALUTATION_KEYS.map((key) => ({
-                        value: key,
-                        label: t(`counselor.salutation.option.${key}`),
-                    }))}
-                    value={data.person.salutation}
-                    onChange={(salutation) => updatePerson({ ...data.person, salutation })}
-                    showSearch
-                />
-                <FloatingLabelInput
-                    label={t('cards.personalInfo.position')}
-                    value={data.person.position}
-                    onChange={(e) => updatePerson({ ...data.person, position: e.target.value })}
-                />
-                <FloatingLabelInput
-                    label={t('cards.personalInfo.jobTitle')}
-                    allowClear
-                    value={data.person.title}
-                    onChange={(e) => updatePerson({ ...data.person, title: e.target.value })}
-                />
+                {counselling && (
+                    <FloatingLabelSelect
+                        label={t('cards.personalInfo.salutation')}
+                        options={SALUTATION_KEYS.map((key) => ({
+                            value: key,
+                            label: t(`counselor.salutation.option.${key}`),
+                        }))}
+                        value={data.person.salutation}
+                        onChange={(salutation) => updatePerson({ ...data.person, salutation })}
+                        showSearch
+                    />
+                )}
+                {counselling && (
+                    <FloatingLabelInput
+                        label={t('cards.personalInfo.position')}
+                        value={data.person.position}
+                        onChange={(e) => updatePerson({ ...data.person, position: e.target.value })}
+                    />
+                )}
+                {counselling && (
+                    <FloatingLabelInput
+                        label={t('cards.personalInfo.jobTitle')}
+                        allowClear
+                        value={data.person.title}
+                        onChange={(e) => updatePerson({ ...data.person, title: e.target.value })}
+                    />
+                )}
             </Section>
 
             {/*
@@ -319,27 +362,29 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
               the picker sits above the two names, exactly where the Figma card puts
               it. The own-picture upload is the only part still missing (#1049).
             */}
-            <Section titleKey="cards.avatarName.title" hintKey="cards.avatarName.subtitle">
-                <CounsellorAvatarField
-                    value={data.avatar}
-                    onChange={updateAvatar}
-                    displayName={data.names.publicName}
-                    firstname={invite.firstName}
-                    lastname={invite.lastName}
-                />
-                <FloatingLabelInput
-                    label={t('cards.avatarName.publicName')}
-                    supportingText={t('cards.avatarName.publicNameHint')}
-                    value={data.names.publicName}
-                    onChange={(e) => updateNames({ ...data.names, publicName: e.target.value })}
-                />
-                <FloatingLabelInput
-                    label={t('cards.avatarName.internalName')}
-                    supportingText={t('cards.avatarName.internalNameHint')}
-                    value={data.names.internalName}
-                    onChange={(e) => updateNames({ ...data.names, internalName: e.target.value })}
-                />
-            </Section>
+            {counselling && (
+                <Section titleKey="cards.avatarName.title" hintKey="cards.avatarName.subtitle">
+                    <CounsellorAvatarField
+                        value={data.avatar}
+                        onChange={updateAvatar}
+                        displayName={data.names.publicName}
+                        firstname={invite.firstName}
+                        lastname={invite.lastName}
+                    />
+                    <FloatingLabelInput
+                        label={t('cards.avatarName.publicName')}
+                        supportingText={t('cards.avatarName.publicNameHint')}
+                        value={data.names.publicName}
+                        onChange={(e) => updateNames({ ...data.names, publicName: e.target.value })}
+                    />
+                    <FloatingLabelInput
+                        label={t('cards.avatarName.internalName')}
+                        supportingText={t('cards.avatarName.internalNameHint')}
+                        value={data.names.internalName}
+                        onChange={(e) => updateNames({ ...data.names, internalName: e.target.value })}
+                    />
+                </Section>
+            )}
 
             {createsAgency && (
                 <Section titleKey="counsellorOnboarding.agency.title" hintKey="counsellorOnboarding.agency.subtitle">
@@ -354,51 +399,58 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 </Section>
             )}
 
-            <Section titleKey="cards.focusTopics.title" hintKey={topicHintKey}>
-                {/* eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down */}
-                {selectableTopics.length === 0 ? (
-                    // Neither coverage nor tenant topics: say so instead of leaving a
-                    // submit that can never be enabled (the dead end of #1 on dev).
-                    <Typography role="alert" variant="body2" color="text.secondary" data-testid="wizard-topics-none">
-                        {t('counsellorOnboarding.topics.none')}
-                    </Typography>
-                ) : agencyTopicsOnly ? (
-                    <div
-                        className={styles.topicChipRow}
-                        role="group"
-                        aria-label={t('cards.focusTopics.title')}
-                        data-testid="wizard-agency-topics"
-                    >
-                        {topics.map((topic) => {
-                            const selected = data.topicIds.includes(topic.id);
-                            return (
-                                <FilterChip
-                                    key={topic.id}
-                                    label={topicLabel(topic, topicFallback)}
-                                    selected={selected}
-                                    disabled={singleAgencyTopic || busy}
-                                    onChange={(next) => {
-                                        if (pickExactlyOne) {
-                                            setTopics(next ? [topic.id] : []);
-                                        } else {
-                                            toggleTopic(topic.id);
-                                        }
-                                    }}
-                                />
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <InputChipPicker
-                        options={topicOptions}
-                        value={data.topicIds}
-                        onChange={setTopics}
-                        addLabel={t('counsellorOnboarding.topics.add')}
-                        removeLabel={(label) => t('counsellorOnboarding.topics.remove', { topic: label })}
-                        ariaLabel={t('cards.focusTopics.title')}
-                    />
-                )}
-            </Section>
+            {counselling && (
+                <Section titleKey="cards.focusTopics.title" hintKey={topicHintKey}>
+                    {/* eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down */}
+                    {selectableTopics.length === 0 ? (
+                        // Neither coverage nor tenant topics: say so instead of leaving a
+                        // submit that can never be enabled (the dead end of #1 on dev).
+                        <Typography
+                            role="alert"
+                            variant="body2"
+                            color="text.secondary"
+                            data-testid="wizard-topics-none"
+                        >
+                            {t('counsellorOnboarding.topics.none')}
+                        </Typography>
+                    ) : agencyTopicsOnly ? (
+                        <div
+                            className={styles.topicChipRow}
+                            role="group"
+                            aria-label={t('cards.focusTopics.title')}
+                            data-testid="wizard-agency-topics"
+                        >
+                            {topics.map((topic) => {
+                                const selected = data.topicIds.includes(topic.id);
+                                return (
+                                    <FilterChip
+                                        key={topic.id}
+                                        label={topicLabel(topic, topicFallback)}
+                                        selected={selected}
+                                        disabled={singleAgencyTopic || busy}
+                                        onChange={(next) => {
+                                            if (pickExactlyOne) {
+                                                setTopics(next ? [topic.id] : []);
+                                            } else {
+                                                toggleTopic(topic.id);
+                                            }
+                                        }}
+                                    />
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <InputChipPicker
+                            options={topicOptions}
+                            value={data.topicIds}
+                            onChange={setTopics}
+                            addLabel={t('counsellorOnboarding.topics.add')}
+                            removeLabel={(label) => t('counsellorOnboarding.topics.remove', { topic: label })}
+                            ariaLabel={t('cards.focusTopics.title')}
+                        />
+                    )}
+                </Section>
+            )}
 
             <div className={styles.submitRow}>
                 {submitError === 'registration' && (
@@ -408,12 +460,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 )}
                 {!canSubmit && !busy && (
                     <Typography color="text.secondary" variant="body2" data-testid="wizard-submit-hint">
-                        {t(
-                            createsAgency ? 'counsellorOnboarding.submitHintAgency' : 'counsellorOnboarding.submitHint',
-                            {
-                                minLength: MIN_PASSWORD_LENGTH,
-                            },
-                        )}
+                        {t(submitHintKey, { minLength: MIN_PASSWORD_LENGTH })}
                     </Typography>
                 )}
                 <M3Button type="submit" variant="filled" disabled={!canSubmit} loading={busy}>

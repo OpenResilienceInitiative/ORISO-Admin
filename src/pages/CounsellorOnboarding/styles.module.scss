@@ -124,3 +124,16 @@
     flex-wrap: wrap;
     gap: 8px;
 }
+
+/* #1026: "Berät auch" for an agency-admin invite — label left, switch right. */
+.switchRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.switchLabel {
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 400 16px/24px var(--m3-body-font-family);
+}

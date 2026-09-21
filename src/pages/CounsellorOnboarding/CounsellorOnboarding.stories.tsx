@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { createStubCounsellorOnboardingClient } from '../../api/counsellorOnboarding/counsellorOnboarding';
@@ -319,4 +319,53 @@ export const TopicPermissionSelectExistingMobile: Story = {
     ...PHONE_390,
     name: 'Topic permission: SELECT_EXISTING (390px)',
     args: TopicPermissionSelectExisting.args,
+};
+
+/*
+ * #1026 slice 3: an AGENCY_ADMIN invite runs this wizard. The inviter's
+ * "Berät auch" proposal arrives as a switch the invitee may change.
+ */
+const AGENCY_ADMIN = { targetRole: 'AGENCY_ADMIN' as const, topicPermission: 'CREATE' as const };
+const alsoCounsellorSwitch = (canvasElement: HTMLElement) =>
+    within(canvasElement).findByRole('switch', { name: /Berät auch|Also counsels/ });
+
+/** Agency admin who also counsels (the default proposal): topics are required like for a counsellor. */
+export const AgencyAdminAlsoCounsellorOn: Story = {
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: { ...AGENCY_ADMIN, alsoCounsellor: true },
+        }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await alsoCounsellorSwitch(canvasElement)).toHaveAttribute('aria-checked', 'true');
+        await expect(canvas.getByRole('heading', { name: /^(Themenfelder|Focus topics)$/ })).toBeInTheDocument();
+    },
+};
+
+/** Agency admin, "Berät auch" off: a login only — no topics, no counsellor profile. */
+export const AgencyAdminAlsoCounsellorOff: Story = {
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: { ...AGENCY_ADMIN, alsoCounsellor: false },
+        }),
+    },
+    play: async ({ canvasElement, userEvent }) => {
+        const canvas = within(canvasElement);
+        const toggle = await alsoCounsellorSwitch(canvasElement);
+        await expect(toggle).toHaveAttribute('aria-checked', 'false');
+        await expect(canvas.queryByTestId('wizard-agency-topics')).toBeNull();
+        await expect(canvas.queryByRole('button', { name: /Thema hinzufügen|Add topic/ })).toBeNull();
+        // The invitee may change the proposal: on brings the topic step back.
+        await userEvent.click(toggle);
+        await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
+    },
+};
+
+/** The same off state on a phone (390 px). */
+export const AgencyAdminAlsoCounsellorOffMobile: Story = {
+    args: AgencyAdminAlsoCounsellorOff.args,
+    ...PHONE_390,
 };
