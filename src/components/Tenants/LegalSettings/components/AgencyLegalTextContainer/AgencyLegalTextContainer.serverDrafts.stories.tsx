@@ -136,7 +136,9 @@ export const PersistedServerDraft: Story = {
     parameters: { msw: { handlers: persistedHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText('Sie bearbeiten einen Server-Entwurf')).toBeVisible();
+        await expect(
+            await canvas.findByText(/noch nicht veröffentlicht\. Online bleibt bis dahin die bisherige Fassung\./),
+        ).toBeVisible();
         await expect(canvas.getByText('Server-Entwurf der Beratungsstelle')).toBeVisible();
         await expect(canvas.getByRole('button', { name: 'Entwurf speichern' })).toBeVisible();
         await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
@@ -149,7 +151,7 @@ export const LocalAndServerCollision: Story = {
         const canvas = within(canvasElement);
         await expect(await canvas.findByText('Zwei Entwürfe gefunden')).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Entwurf speichern' })).not.toBeInTheDocument();
-        await userEvent.click(canvas.getByRole('button', { name: 'Lokalen Entwurf verwenden' }));
+        await userEvent.click(canvas.getByRole('button', { name: 'Entwurf aus diesem Browser verwenden' }));
         const localDraftContent = canvas.getAllByText('Lokaler Alt-Entwurf');
         await expect(localDraftContent[0]).toBeVisible();
         await expect(canvas.getByRole('button', { name: 'Entwurf speichern' })).toBeVisible();
@@ -162,8 +164,8 @@ export const ConflictRefresh: Story = {
         const canvas = within(canvasElement);
         await userEvent.click(await canvas.findByRole('button', { name: 'Entwurf speichern' }));
         await expect(await canvas.findByText('Der Entwurf wurde zwischenzeitlich geändert')).toBeVisible();
-        await expect(canvas.queryByRole('button', { name: 'Server-Entwurf laden' })).not.toBeInTheDocument();
-        await waitFor(() => expect(canvas.getByRole('button', { name: 'Server-Entwurf laden' })).toBeVisible(), {
+        await expect(canvas.queryByRole('button', { name: 'Gespeicherte Fassung laden' })).not.toBeInTheDocument();
+        await waitFor(() => expect(canvas.getByRole('button', { name: 'Gespeicherte Fassung laden' })).toBeVisible(), {
             timeout: 3000,
         });
         await expect(canvas.getByRole('button', { name: 'Eigene Fassung weiterbearbeiten' })).toBeVisible();

@@ -14,8 +14,16 @@ export type EditorHintSnackbarProps = {
     tone?: EditorHintSnackbarTone;
     /** Hide for this session (the X / check affordance). */
     onClose: () => void;
-    /** Hide permanently ("nicht mehr anzeigen") — the caller persists the choice. */
-    onDismiss: () => void;
+    /**
+     * The text action. Defaults to hiding permanently ("nicht mehr anzeigen", the caller
+     * persists the choice); a caller with a different action names it via `actionLabel`.
+     * Without a handler there is no action — only the close affordance.
+     */
+    onDismiss?: () => void;
+    actionLabel?: string;
+    actionDisabled?: boolean;
+    /** Accessible name of the close affordance, when "close hint" is not the right word. */
+    closeLabel?: string;
 };
 
 /**
@@ -24,7 +32,15 @@ export type EditorHintSnackbarProps = {
  * scroll space for it so neither legal text nor controls become unreachable,
  * including on narrow viewports.
  */
-export const EditorHintSnackbar = ({ text, tone = 'blocker', onClose, onDismiss }: EditorHintSnackbarProps) => {
+export const EditorHintSnackbar = ({
+    text,
+    tone = 'blocker',
+    onClose,
+    onDismiss,
+    actionLabel,
+    actionDisabled = false,
+    closeLabel,
+}: EditorHintSnackbarProps) => {
     const { t } = useTranslation();
     const isSuccess = tone === 'success';
     return (
@@ -32,13 +48,22 @@ export const EditorHintSnackbar = ({ text, tone = 'blocker', onClose, onDismiss 
             <span className={styles.hintSnackbarText} role="status">
                 {text}
             </span>
-            <button type="button" className={styles.hintSnackbarAction} onClick={onDismiss}>
-                {t('legal.help.snackbar.dismiss')}
-            </button>
+            {onDismiss && (
+                <button
+                    type="button"
+                    className={styles.hintSnackbarAction}
+                    onClick={onDismiss}
+                    disabled={actionDisabled}
+                >
+                    {actionLabel ?? t('legal.help.snackbar.dismiss')}
+                </button>
+            )}
             <button
                 type="button"
                 className={styles.hintSnackbarClose}
-                aria-label={t(isSuccess ? 'legal.help.snackbar.acknowledge' : 'legal.help.snackbar.close')}
+                aria-label={
+                    closeLabel ?? t(isSuccess ? 'legal.help.snackbar.acknowledge' : 'legal.help.snackbar.close')
+                }
                 onClick={onClose}
             >
                 {isSuccess ? <Check /> : <Close />}

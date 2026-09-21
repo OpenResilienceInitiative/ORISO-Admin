@@ -2011,8 +2011,8 @@
         "fileName": "send_400_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/send_400_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CustomIcons/EditorIcons.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:oriso:send:filled",
@@ -2064,6 +2064,19 @@
         "sourcePath": "src/resources/img/svg/oriso/switch_on_400_24px.svg",
         "exportNames": [],
         "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:oriso:template:base",
+        "family": "template",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "template_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/template_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/EditorIcons.tsx"],
         "usage": "app-used"
     },
     {

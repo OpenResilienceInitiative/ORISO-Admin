@@ -50,7 +50,7 @@ import {
     MinimizeContentIcon,
     PublishedIcon,
     EditIcon,
-    SendTemplateIcon,
+    PublishTemplateIcon,
     VersionHistoryIcon,
 } from '../CustomIcons/EditorIcons';
 import { createImageDropPasteHandlers, useEditorImageUpload } from './useEditorImageUpload';
@@ -1178,7 +1178,7 @@ export const M3RichTextEditor = ({
                                     }
                                     onClick={onPublishTemplate}
                                 >
-                                    <SendTemplateIcon />
+                                    <PublishTemplateIcon />
                                     <span>{t('legal.m3Editor.publishTemplate')}</span>
                                 </button>
                                 {publishTemplateDisabledReason && (

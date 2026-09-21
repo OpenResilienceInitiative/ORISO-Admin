@@ -12,6 +12,8 @@ import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.
 import { LegalConsentField } from '../LegalConsentField';
 import { LegalDraftNotice } from '../LegalDraftNotice';
 import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
+import { DraftStatusSnackbar, isDraftInfoState } from '../DraftStatusSnackbar';
+import { EditorSnackbarQueue } from '../../../../FormPluginEditor/EditorSnackbarQueue';
 import { useTenantLegalDraft } from '../../hooks/useTenantLegalDraft';
 import { SendLegalTemplateDialog, TemplateRecipientLevel } from '../SendLegalTemplateDialog';
 import { isSameDraftContent } from '../../utils/draftComparison';
@@ -128,6 +130,8 @@ export const LegalText = ({
     const [activeLanguage, setActiveLanguage] = useState('de');
     const [edits, setEdits] = useState<Record<string, string>>({});
     const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+    // Closing the draft snackbar hides it for THIS saved version; a newer save shows it again.
+    const [closedDraftSnackbar, setClosedDraftSnackbar] = useState<string | undefined>();
     const [pendingFormData, setPendingFormData] = useState<Record<string, unknown>>();
     const [pendingDraftRevision, setPendingDraftRevision] = useState<string>();
     const [modalVisible, setModalVisible] = useState(false);
@@ -502,6 +506,19 @@ export const LegalText = ({
         !serverDraft.hasConflict &&
         sourceChosen;
 
+    const draftSnackbarKey = `draft:${serverBase.draft?.updatedAt ?? ''}:${savedAt ?? ''}`;
+    const showDraftSnackbar =
+        canEditLegalText &&
+        !!legalType &&
+        closedDraftSnackbar !== draftSnackbarKey &&
+        isDraftInfoState({
+            savedAt: serverBase.draft?.updatedAt,
+            localSavedAt: savedAt,
+            collision: draftCollision,
+            unavailable: serverDraft.isError,
+            conflict: serverDraft.hasConflict,
+        });
+
     return (
         <div className={styles.card}>
             {canEditLegalText && legalType ? (
@@ -545,6 +562,7 @@ export const LegalText = ({
                         serverDraft.clearConflict();
                     }}
                     onDiscard={discardDraftAndEdits}
+                    showInfo={false}
                 />
             ) : (
                 canEditLegalText && <LegalDraftNotice savedAt={savedAt} onDiscard={discardDraftAndEdits} />
@@ -577,18 +595,42 @@ export const LegalText = ({
                 helpSlot={
                     legalType && <EditorHelpText text={help.text} hint={showHintSnackbar ? undefined : help.hint} />
                 }
+                // Only hand over a slot when a message is actually showing: the editor reserves
+                // bottom space whenever the slot is set, and an empty queue must not leave a gap.
                 snackbarSlot={
-                    showHintSnackbar && (
-                        <EditorHintSnackbar
-                            text={help.hint}
-                            onClose={() => {
-                                if (legalType && dismissalScope) persistHintClosedForSession(legalType, dismissalScope);
-                                setHintHidden(true);
-                            }}
-                            onDismiss={() => {
-                                if (legalType && dismissalScope) persistHintDismissed(legalType, dismissalScope);
-                                setHintHidden(true);
-                            }}
+                    (showDraftSnackbar || showHintSnackbar) && (
+                        <EditorSnackbarQueue
+                            items={[
+                                showDraftSnackbar && {
+                                    key: draftSnackbarKey,
+                                    node: (
+                                        <DraftStatusSnackbar
+                                            savedAt={serverBase.draft?.updatedAt}
+                                            localSavedAt={savedAt}
+                                            onDiscard={discardDraftAndEdits}
+                                            onClose={() => setClosedDraftSnackbar(draftSnackbarKey)}
+                                        />
+                                    ),
+                                },
+                                showHintSnackbar && {
+                                    key: 'help-hint',
+                                    node: (
+                                        <EditorHintSnackbar
+                                            text={help.hint}
+                                            onClose={() => {
+                                                if (legalType && dismissalScope)
+                                                    persistHintClosedForSession(legalType, dismissalScope);
+                                                setHintHidden(true);
+                                            }}
+                                            onDismiss={() => {
+                                                if (legalType && dismissalScope)
+                                                    persistHintDismissed(legalType, dismissalScope);
+                                                setHintHidden(true);
+                                            }}
+                                        />
+                                    ),
+                                },
+                            ]}
                         />
                     )
                 }

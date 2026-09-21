@@ -612,7 +612,7 @@ describe('LegalText — tenant server draft', () => {
 
         renderImprint();
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
-        expect(screen.getByText('legal.serverDraft.saved.title')).toBeInTheDocument();
+        expect(screen.getByText('legal.draftSnackbar.saved')).toBeInTheDocument();
     });
 
     it('discarding restores the published text and removes the notice', async () => {
@@ -623,10 +623,10 @@ describe('LegalText — tenant server draft', () => {
         first.unmount();
 
         renderImprint();
-        await user.click(screen.getByRole('button', { name: 'legal.serverDraft.discard' }));
+        await user.click(screen.getByRole('button', { name: 'legal.draftSnackbar.discard' }));
 
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>');
-        expect(screen.queryByText('legal.serverDraft.saved.title')).not.toBeInTheDocument();
+        expect(screen.queryByText('legal.draftSnackbar.saved')).not.toBeInTheDocument();
     });
 
     it('keeps the imprint and privacy drafts apart', async () => {
@@ -645,7 +645,7 @@ describe('LegalText — tenant server draft', () => {
                 placeHolderKey="settings.privacy.placeholder"
             />,
         );
-        expect(screen.queryByText('legal.serverDraft.saved.title')).not.toBeInTheDocument();
+        expect(screen.queryByText('legal.draftSnackbar.saved')).not.toBeInTheDocument();
     });
 
     it('publishes the draft text and drops the draft once the tenant write succeeds', async () => {
@@ -663,7 +663,7 @@ describe('LegalText — tenant server draft', () => {
         });
 
         renderImprint();
-        expect(screen.queryByText('legal.serverDraft.saved.title')).not.toBeInTheDocument();
+        expect(screen.queryByText('legal.draftSnackbar.saved')).not.toBeInTheDocument();
         mocks.updateTenant.mockReset();
     });
 
@@ -689,7 +689,7 @@ describe('LegalText — tenant server draft', () => {
         vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
             throw new Error('denied');
         });
-        await user.click(screen.getByRole('button', { name: 'legal.serverDraft.discard' }));
+        await user.click(screen.getByRole('button', { name: 'legal.draftSnackbar.discard' }));
 
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
         vi.restoreAllMocks();
@@ -745,7 +745,7 @@ describe('LegalText — tenant server draft', () => {
         await waitFor(() =>
             expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>'),
         );
-        expect(screen.getByText('legal.serverDraft.saved.title')).toBeInTheDocument();
+        expect(screen.getByText('legal.draftSnackbar.saved')).toBeInTheDocument();
     });
 
     it('never shows a stored draft to a viewer who may not edit', async () => {
@@ -761,8 +761,8 @@ describe('LegalText — tenant server draft', () => {
         renderImprint();
 
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>');
-        expect(screen.queryByText('legal.serverDraft.saved.title')).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'legal.serverDraft.discard' })).not.toBeInTheDocument();
+        expect(screen.queryByText('legal.draftSnackbar.saved')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'legal.draftSnackbar.discard' })).not.toBeInTheDocument();
     });
 
     it('requires an explicit choice when a browser draft and server draft both exist', async () => {
@@ -972,7 +972,7 @@ describe('LegalText — tenant server draft', () => {
             updatedAt: '2026-09-17T09:00:00Z',
         };
         const view = renderImprint();
-        await user.click(screen.getByRole('button', { name: 'legal.serverDraft.discard' }));
+        await user.click(screen.getByRole('button', { name: 'legal.draftSnackbar.discard' }));
 
         mocks.userId = 'user-2';
         view.rerender(

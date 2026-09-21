@@ -105,6 +105,8 @@ interface DepartmentDataProtectionCardProps {
      * (Figma 1261:52149). Absent when the card edits a single fixed department.
      */
     departmentSlot?: React.ReactNode;
+    /** The editor snackbar place (e.g. the draft status), passed through to the editor. */
+    snackbarSlot?: React.ReactNode;
     /**
      * The signed-in admin may not change legal content (#609). The card then reads —
      * editor, publish, draft-save and the consent sentence all inert — instead of
@@ -134,6 +136,7 @@ export const DepartmentDataProtectionCard = ({
     documentType = 'privacy',
     documentScope = 'department',
     departmentSlot,
+    snackbarSlot,
     versions = [],
     versionsUnavailable = false,
     consentByLanguage,
@@ -277,6 +280,7 @@ export const DepartmentDataProtectionCard = ({
     return (
         <div className={styles.card}>
             <M3RichTextEditor
+                snackbarSlot={snackbarSlot}
                 title={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
                 icon={documentType === 'imprint' ? ImprintIcon : GdprIcon}
                 value={currentContent}

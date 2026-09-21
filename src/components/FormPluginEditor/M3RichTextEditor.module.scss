@@ -785,9 +785,31 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
 // M3 inverse snackbar (Figma 1229-17864). It floats inside the editor surface;
 // .hasSnackbar above reserves matching scroll space so text remains reachable.
+// A snackbar flips in from its lower edge. The editor shows one at a time
+// (EditorSnackbarQueue); when the next one takes the place, this replays, so the
+// change is visible instead of the text silently swapping.
+// Rotation only, no opacity: edge-on at -90deg the snackbar is already invisible, and an
+// opacity of 0 would make every "is the snackbar visible" check fail during the 240ms.
+@keyframes hintSnackbarFlipIn {
+    from {
+        transform: perspective(600px) rotateX(-90deg);
+    }
+
+    to {
+        transform: none;
+    }
+}
+
 .hintSnackbar {
     position: absolute;
     z-index: 5;
+    transform-origin: 50% 100%;
+    animation: hintSnackbarFlipIn 240ms cubic-bezier(0.2, 0, 0, 1);
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+
     right: 6px;
     bottom: 6px;
     left: 6px;
