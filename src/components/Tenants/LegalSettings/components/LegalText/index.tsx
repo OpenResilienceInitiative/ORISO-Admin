@@ -266,8 +266,13 @@ export const LegalText = ({
         if (!canEditLegalText) {
             return base;
         }
+        // A saved server draft is a complete snapshot: a language it no longer has stays gone.
+        // A device-local draft may hold only the languages that were edited, so it still layers.
+        if (sourceChosen && selectedDraft && draftSource !== 'local' && serverBase.draft === selectedDraft) {
+            return { ...selectedDraft.content, ...edits };
+        }
         return { ...base, ...(sourceChosen ? selectedDraft?.content ?? {} : {}), ...edits };
-    }, [canEditLegalText, publishedByLanguage, sourceChosen, selectedDraft, edits]);
+    }, [canEditLegalText, publishedByLanguage, sourceChosen, selectedDraft, draftSource, serverBase.draft, edits]);
 
     /**
      * The consent sentence that belongs to the Träger privacy policy (ADR-021
@@ -289,12 +294,20 @@ export const LegalText = ({
         if (!canEditLegalText) {
             return base;
         }
+        if (
+            sourceChosen &&
+            selectedDraft?.privacyConsent &&
+            draftSource !== 'local' &&
+            serverBase.draft === selectedDraft
+        ) {
+            return { ...selectedDraft.privacyConsent, ...consentEdits };
+        }
         return {
             ...base,
             ...(sourceChosen ? selectedDraft?.privacyConsent ?? {} : {}),
             ...consentEdits,
         };
-    }, [canEditLegalText, storedConsent, sourceChosen, selectedDraft, consentEdits]);
+    }, [canEditLegalText, storedConsent, sourceChosen, selectedDraft, draftSource, serverBase.draft, consentEdits]);
     const blockedLanguages = useMemo(
         () => (consentEnabled ? consentPublicationBlockers(consentByLanguage) : []),
         [consentEnabled, consentByLanguage],
@@ -459,8 +472,9 @@ export const LegalText = ({
         // Publish exactly the normalized payload returned by the revision-checked
         // draft write. This keeps the live text and the saved revision identical.
         const formData = set({}, fieldName, { ...saved.content });
-        if (consentEnabled && saved.privacyConsent) {
-            set(formData, ['content', 'privacyConsent'], { ...saved.privacyConsent });
+        if (consentEnabled) {
+            // The draft PUT may not echo the optional consent map; the one sent is then authoritative.
+            set(formData, ['content', 'privacyConsent'], { ...(saved.privacyConsent ?? consentByLanguage) });
         }
         try {
             if (showConfirmationModal) {

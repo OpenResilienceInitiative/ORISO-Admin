@@ -41,7 +41,7 @@ describe('read-mode legal reader — text inset (before-state H1/H2, 2026-08-18)
         // the text scrolling underneath it.
         const readMode = moduleStyles.match(/\.readMode\s*{[\s\S]*?\n}/)?.[0] ?? '';
         expect(readMode).toMatch(/\.editorContentScroll\s*{[^}]*padding-inline:\s*24px;/);
-        expect(readMode).toMatch(/@media \(max-width: 600px\)\s*{\s*padding-inline:\s*16px;/);
+        expect(readMode).toMatch(/@media \(max-width: 599px\)\s*{\s*padding-inline:\s*16px;/);
     });
 
     it('keeps the 8px vertical padding of the read-mode text surface', () => {

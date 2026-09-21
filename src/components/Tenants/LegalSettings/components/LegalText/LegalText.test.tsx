@@ -334,6 +334,35 @@ describe('LegalText (M3 editor)', () => {
         expect(mocks.serverDiscard).toHaveBeenCalledWith('saved:normalized');
     });
 
+    it('treats a saved server draft as the whole text: a language it dropped is not published again', async () => {
+        const user = userEvent.setup();
+        mocks.updateTenant.mockResolvedValue(undefined);
+        // Published text still has `en`; the saved server draft dropped it deliberately.
+        mocks.imprint = { de: '<p>published de</p>', en: '<p>published en</p>' };
+        mocks.serverDrafts.IMPRINT = {
+            kind: 'IMPRINT',
+            content: { de: '<p>server</p>' },
+            revision: 'server:2',
+            updatedAt: '2026-09-21T10:00:00Z',
+        };
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                legalType="imprint"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(await screen.findByRole('button', { name: 'legal.m3Editor.publish' }));
+
+        await waitFor(() =>
+            expect(mocks.updateTenant).toHaveBeenCalledWith({ content: { imprint: { de: '<p>edited</p>' } } }),
+        );
+    });
+
     it('retains the saved server draft when publication fails', async () => {
         const user = userEvent.setup();
         mocks.updateTenant.mockRejectedValue(new Error('publication failed'));

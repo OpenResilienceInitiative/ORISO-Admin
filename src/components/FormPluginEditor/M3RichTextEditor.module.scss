@@ -1321,7 +1321,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     .editorContentScroll {
         padding-inline: 24px;
 
-        @media (max-width: 600px) {
+        @media (max-width: 599px) {
             padding-inline: 16px;
         }
     }
