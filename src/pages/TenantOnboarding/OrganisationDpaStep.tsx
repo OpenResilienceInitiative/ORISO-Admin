@@ -357,6 +357,7 @@ export const OrganisationDpaStep = ({
             {forwardDialogOpen && (
                 <DpaForwardDialog
                     forward={(request) => forwardClient.forward(inviteToken, request)}
+                    inviteToken={inviteToken}
                     onClose={() => setForwardDialogOpen(false)}
                     onForwarded={({ link, recipientEmail, mailFailed }) => {
                         setForwardDialogOpen(false);

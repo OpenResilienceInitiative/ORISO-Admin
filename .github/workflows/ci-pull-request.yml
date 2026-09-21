@@ -7,9 +7,15 @@ env:
     REGISTRY: ghcr.io
     ORG: openresilienceinitiative
 
+concurrency:
+    # A superseded pull-request head is not worth finishing.
+    group: ci-pull-request-${{ github.ref }}
+    cancel-in-progress: true
+
 jobs:
     build:
         runs-on: ubuntu-latest
+        timeout-minutes: 45
 
         steps:
             - name: Checkout repository
@@ -35,6 +41,7 @@ jobs:
     storybook-tests:
         name: Storybook component tests (interactions + a11y)
         runs-on: ubuntu-latest
+        timeout-minutes: 45
 
         steps:
             - name: Checkout repository
