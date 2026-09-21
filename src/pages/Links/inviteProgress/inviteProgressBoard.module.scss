@@ -111,7 +111,9 @@
 /* #1026 slice 6: per-row topic permission. */
 .topicSelect {
     width: 100%;
-    max-width: 220px;
+
+    /* Narrow enough that the recipient column does not push a 1440px table wide. */
+    max-width: 184px;
     margin-top: 8px;
 }
 
